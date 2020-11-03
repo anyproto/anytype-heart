@@ -10,7 +10,7 @@ message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
     google.protobuf.Struct details = 2;
     google.protobuf.Struct fileKeys = 3;
-    repeated anytype.relation.Relation relations = 4;
+    repeated anytype.relation.Relation extraRelations = 4;
     repeated string objectTypes = 5;
 }
 

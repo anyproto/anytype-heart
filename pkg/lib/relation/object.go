@@ -118,6 +118,7 @@ func MergeAndSortRelations(objTypeRelations []*relation.Relation, extraRelations
 			continue
 		}
 		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = struct{}{}
 	}
 
 	if details == nil || details.Fields == nil {

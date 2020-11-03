@@ -53,7 +53,7 @@ func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }
 
-func (st *SmartTest) AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -70,7 +70,7 @@ func (st *SmartTest) AddRelations(relations []*pbrelation.Relation) (relationsWi
 	return st.meta.Relations, nil
 }
 
-func (st *SmartTest) UpdateRelations(relations []*pbrelation.Relation) (err error) {
+func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -95,7 +95,7 @@ func (st *SmartTest) UpdateRelations(relations []*pbrelation.Relation) (err erro
 	return nil
 }
 
-func (st *SmartTest) RemoveRelations(relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(relationKeys []string) (err error) {
 	return nil
 }
 
@@ -122,7 +122,7 @@ func (st *SmartTest) Reindex() error {
 func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
-			Relations: st.Relations(),
+			Relations: st.ExtraRelations(),
 			Details: &types.Struct{
 				Fields: make(map[string]*types.Value),
 			}}

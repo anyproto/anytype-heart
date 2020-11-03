@@ -23,12 +23,12 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		fileKeys = append(fileKeys, *fk)
 	}
 	return &State{
-		rootId:      rootId,
-		blocks:      blocks,
-		details:     snapshot.Data.Details,
-		relations:   snapshot.Data.Relations,
-		objectTypes: snapshot.Data.ObjectTypes,
-		fileKeys:    fileKeys,
+		rootId:         rootId,
+		blocks:         blocks,
+		details:        snapshot.Data.Details,
+		extraRelations: snapshot.Data.ExtraRelations,
+		objectTypes:    snapshot.Data.ObjectTypes,
+		fileKeys:       fileKeys,
 	}
 }
 
@@ -159,8 +159,8 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 }
 
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
-	rels := s.Relations()
-	for _, rel := range s.Relations() {
+	rels := s.ExtraRelations()
+	for _, rel := range s.ExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
 			log.Warnf("changeRelationAdd, relation already exists")
@@ -168,15 +168,15 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 		}
 	}
 
-	s.relations = append(rels, add.Relation)
+	s.extraRelations = append(rels, add.Relation)
 	return nil
 }
 
 func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
-	rels := s.Relations()
+	rels := s.ExtraRelations()
 	for i, rel := range rels {
 		if rel.Key == remove.Key {
-			s.relations = append(rels[:i], rels[i+1:]...)
+			s.extraRelations = append(rels[:i], rels[i+1:]...)
 			return nil
 		}
 	}
@@ -186,7 +186,7 @@ func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
 }
 
 func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
-	for _, rel := range s.Relations() {
+	for _, rel := range s.ExtraRelations() {
 		// todo: copy slice?
 		if rel.Key != update.Key {
 			continue
@@ -497,18 +497,18 @@ func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation)
 }
 
 func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
-	if s.relations == nil {
+	if s.extraRelations == nil {
 		return nil
 	}
 	var prev []*pbrelation.Relation
 	if s.parent != nil {
-		prev = s.parent.Relations()
+		prev = s.parent.ExtraRelations()
 	}
 
 	var prevMap = pbtypes.CopyRelationsToMap(prev)
-	var curMap = pbtypes.CopyRelationsToMap(s.relations)
+	var curMap = pbtypes.CopyRelationsToMap(s.extraRelations)
 
-	for _, v := range s.relations {
+	for _, v := range s.extraRelations {
 		pv, ok := prevMap[v.Key]
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{

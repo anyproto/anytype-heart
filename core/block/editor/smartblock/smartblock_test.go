@@ -63,7 +63,7 @@ func TestSmartBlock_Show(t *testing.T) {
 			}
 		}()
 	})
-	fx.metaService.EXPECT().FetchObjectTypes(gomock.Any())
+	fx.metaService.EXPECT().FetchObjectTypes(gomock.Any()).AnyTimes()
 
 	ctx := state.NewContext(nil)
 	err := fx.Show(ctx)

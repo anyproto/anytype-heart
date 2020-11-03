@@ -77,7 +77,7 @@ var (
 			DefaultValue: nil,
 			Key:          "iconEmoji",
 			DataSource:   relation.Relation_details,
-			Hidden:       false,
+			Hidden:       true,
 			ReadOnly:     false,
 		},
 		"iconImage": {
@@ -86,7 +86,7 @@ var (
 			DefaultValue: nil,
 			Key:          "iconImage",
 			DataSource:   relation.Relation_details,
-			Hidden:       false,
+			Hidden:       true,
 			ReadOnly:     false,
 		},
 		"coverImage": {

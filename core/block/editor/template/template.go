@@ -133,7 +133,7 @@ var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer 
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
 				return true
 			} else {
-				if dvBlock.Model().GetDataview().Source == "pages" {
+				if dvBlock.Model().GetDataview().Source == "pages" || len(dvBlock.Model().GetDataview().Relations) == 0 {
 					// remove old pages set
 					s.Unlink(b.Model().Id)
 					return false

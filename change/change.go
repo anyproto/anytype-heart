@@ -73,10 +73,10 @@ func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations [
 	return &pb.Change{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:      blocks,
-				Details:     details,
-				Relations:   relations,
-				ObjectTypes: objectTypes,
+				Blocks:         blocks,
+				Details:        details,
+				ExtraRelations: relations,
+				ObjectTypes:    objectTypes,
 			},
 			FileKeys: fkeys,
 		},

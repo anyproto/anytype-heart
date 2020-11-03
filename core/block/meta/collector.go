@@ -63,7 +63,7 @@ func (c *collector) updateMeta() {
 		BlockId: c.blockId,
 		SmartBlockMeta: core.SmartBlockMeta{
 			ObjectTypes: c.doc.ObjectTypes(),
-			Relations:   c.doc.Relations(),
+			Relations:   c.doc.ExtraRelations(),
 			Details:     c.doc.Details(),
 		},
 	}
@@ -107,7 +107,7 @@ func (c *collector) fetchInitialMeta() (err error) {
 		BlockId: c.blockId,
 		SmartBlockMeta: core.SmartBlockMeta{
 			ObjectTypes: c.doc.ObjectTypes(),
-			Relations:   c.doc.Relations(),
+			Relations:   c.doc.ExtraRelations(),
 			Details:     c.doc.Details(),
 		},
 	}

@@ -11367,7 +11367,7 @@ deprecated
 | blocks | [Block](#anytype.model.Block) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated |  |
+| extraRelations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated |  |
 | objectTypes | [string](#string) | repeated |  |
 
 

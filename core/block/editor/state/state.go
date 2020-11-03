@@ -40,7 +40,8 @@ type Doc interface {
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
 	Details() *types.Struct
-	Relations() []*pbrelation.Relation
+	ExtraRelations() []*pbrelation.Relation
+
 	ObjectTypes() []string
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
@@ -61,17 +62,17 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx         *Context
-	parent      *State
-	blocks      map[string]simple.Block
-	rootId      string
-	newIds      []string
-	changeId    string
-	changes     []*pb.ChangeContent
-	fileKeys    []pb.ChangeFileKeys
-	details     *types.Struct
-	relations   []*pbrelation.Relation
-	objectTypes []string
+	ctx            *Context
+	parent         *State
+	blocks         map[string]simple.Block
+	rootId         string
+	newIds         []string
+	changeId       string
+	changes        []*pb.ChangeContent
+	fileKeys       []pb.ChangeFileKeys
+	details        *types.Struct
+	extraRelations []*pbrelation.Relation
+	objectTypes    []string
 
 	changesStructureIgnoreIds []string
 
@@ -423,12 +424,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			})
 		}
 	}
-	if s.parent != nil && s.relations != nil {
-		prev := s.parent.Relations()
+	if s.parent != nil && s.extraRelations != nil {
+		prev := s.parent.ExtraRelations()
 
-		if !pbtypes.RelationsEqual(prev, s.relations) {
-			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.relations)}
-			s.parent.relations = s.relations
+		if !pbtypes.RelationsEqual(prev, s.extraRelations) {
+			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
+			s.parent.extraRelations = s.extraRelations
 		}
 	}
 
@@ -456,8 +457,8 @@ func (s *State) intermediateApply() {
 	if s.details != nil {
 		s.parent.details = s.details
 	}
-	if s.relations != nil {
-		s.parent.relations = s.relations
+	if s.extraRelations != nil {
+		s.parent.extraRelations = s.extraRelations
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
@@ -595,17 +596,17 @@ func (s *State) SetDetail(key string, value *types.Value) {
 }
 
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {
-	for _, rel := range s.relations {
+	for _, rel := range s.extraRelations {
 		if rel.Key == relation.Key {
 			return s
 		}
 	}
-	s.relations = append(s.relations, relation)
+	s.extraRelations = append(s.extraRelations, relation)
 	return s
 }
 
 func (s *State) SetRelations(relations []*pbrelation.Relation) *State {
-	s.relations = relations
+	s.extraRelations = relations
 	return s
 }
 
@@ -622,11 +623,11 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-func (s *State) Relations() []*pbrelation.Relation {
-	if s.relations == nil && s.parent != nil {
-		return s.parent.Relations()
+func (s *State) ExtraRelations() []*pbrelation.Relation {
+	if s.extraRelations == nil && s.parent != nil {
+		return s.parent.ExtraRelations()
 	}
-	return s.relations
+	return s.extraRelations
 }
 
 func (s *State) ObjectTypes() []string {
@@ -654,7 +655,8 @@ func (s *State) Snippet() (snippet string) {
 
 func (s *State) FileDetailsKeys() (fileFields []string) {
 	fileFields = append(fileFields, DetailsFileFields[:]...)
-	for _, rel := range s.Relations() {
+	// todo: we should get combined relations using smartBlock.Relations() here
+	for _, rel := range s.ExtraRelations() {
 		if rel.Format == pbrelation.RelationFormat_file {
 			if slice.FindPos(fileFields, rel.Key) == -1 {
 				fileFields = append(fileFields, rel.Key)
@@ -796,7 +798,7 @@ func (s *State) Copy() *State {
 }
 
 func (s *State) HasRelation(key string) bool {
-	for _, rel := range s.Relations() {
+	for _, rel := range s.ExtraRelations() {
 		if rel.Key == key {
 			return true
 		}

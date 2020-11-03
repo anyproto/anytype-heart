@@ -295,7 +295,7 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 			return nil, fmt.Errorf("failed to get schema %s for dataview: %s", tb.Model().GetDataview().SchemaURL, err.Error())
 		}
 
-		view.Relations = getDefaultRelations(sch)*/
+		view.ExtraRelations = getDefaultRelations(sch)*/
 	}
 
 	if len(view.Sorts) == 0 {

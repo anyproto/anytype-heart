@@ -1223,7 +1223,7 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 
 	err = s.Do(sb.ID(), func(b smartblock.SmartBlock) error {
 		details := b.Details()
-		objectType.Relations = b.Relations()
+		objectType.Relations = b.ExtraRelations()
 		objectType.Url = url
 		if details != nil && details.Fields != nil {
 			if v, ok := details.Fields["name"]; ok {
@@ -1244,14 +1244,14 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 
 func (s *service) UpdateRelations(objectId string, relations []*pbrelation.Relation) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.UpdateRelations(relations)
+		return b.UpdateExtraRelations(relations)
 	})
 }
 
 func (s *service) AddRelations(objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		var err2 error
-		relationsWithKeys, err2 = b.AddRelations(relations)
+		relationsWithKeys, err2 = b.AddExtraRelations(relations)
 		if err2 != nil {
 			return err2
 		}
@@ -1372,7 +1372,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 
 func (s *service) RemoveRelations(objectTypeId string, relationKeys []string) (err error) {
 	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
-		return b.RemoveRelations(relationKeys)
+		return b.RemoveExtraRelations(relationKeys)
 	})
 }
 

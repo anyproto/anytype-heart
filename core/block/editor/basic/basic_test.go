@@ -208,7 +208,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{},
 			}}))
-		sb.AddRelations([]*pbrelation.Relation{
+		sb.AddExtraRelations([]*pbrelation.Relation{
 			{Key: "key"},
 		})
 	}

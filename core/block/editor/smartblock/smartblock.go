@@ -69,9 +69,9 @@ type SmartBlock interface {
 	History() undo.History
 	Anytype() anytype.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
-	AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	UpdateRelations(relations []*pbrelation.Relation) (err error)
-	RemoveRelations(relationKeys []string) (err error)
+	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	UpdateExtraRelations(relations []*pbrelation.Relation) (err error)
+	RemoveExtraRelations(relationKeys []string) (err error)
 	AddObjectTypes(objectTypes []string) (err error)
 	RemoveObjectTypes(objectTypes []string) (err error)
 
@@ -114,7 +114,7 @@ func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{
 		ObjectTypes: sb.ObjectTypes(),
 		Details:     sb.Details(),
-		Relations:   sb.Relations(),
+		Relations:   sb.ExtraRelations(),
 	}
 }
 
@@ -215,7 +215,6 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 		}
 	}
 
-	sb.Relations()
 	var objectTypesUrls []string
 	for ot := range objectTypesMap {
 		objectTypesUrls = append(objectTypesUrls, ot)
@@ -317,11 +316,21 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 				ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
 			}
 		}
+
+		details := sb.Doc.(*state.State).Details()
+
 		for _, rel := range sb.Relations() {
 			if rel.Format == pbrelation.RelationFormat_object {
-				ids = append(ids, strings.TrimPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix))
+				if strings.HasPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix) {
+					ids = append(ids, strings.TrimPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix))
+				}
+
+				if targetId := pbtypes.GetString(details, rel.Key); targetId != "" {
+					ids = append(ids, targetId)
+				}
 			}
 		}
+
 	}
 	sort.Strings(ids)
 	return
@@ -431,7 +440,7 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 	}
 
 	if act == nil || act.Relations != nil {
-		storeInfo.relations = &pbrelation.Relations{Relations: pbtypes.CopyRelations(sb.Relations())}
+		storeInfo.relations = &pbrelation.Relations{Relations: pbtypes.CopyRelations(sb.ExtraRelations())}
 	}
 
 	if storeInfo.details == nil || storeInfo.details.Fields == nil {
@@ -512,8 +521,8 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	return
 }
 
-func (sb *smartBlock) AddRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.Relations())
+func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	copy := pbtypes.CopyRelations(sb.ExtraRelations())
 
 	var existsMap = map[string]struct{}{}
 	for _, rel := range copy {
@@ -577,8 +586,8 @@ func (sb *smartBlock) RemoveObjectTypes(objectTypes []string) (err error) {
 	return
 }
 
-func (sb *smartBlock) UpdateRelations(relations []*pbrelation.Relation) (err error) {
-	copy := pbtypes.CopyRelations(sb.Relations())
+func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation) (err error) {
+	copy := pbtypes.CopyRelations(sb.ExtraRelations())
 
 	for i, rel := range copy {
 		for _, relation := range relations {
@@ -595,8 +604,8 @@ func (sb *smartBlock) UpdateRelations(relations []*pbrelation.Relation) (err err
 	return
 }
 
-func (sb *smartBlock) RemoveRelations(relationKeys []string) (err error) {
-	copy := pbtypes.CopyRelations(sb.Relations())
+func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
+	copy := pbtypes.CopyRelations(sb.ExtraRelations())
 	filtered := []*pbrelation.Relation{}
 	for _, rel := range copy {
 		var toBeRemoved bool
@@ -752,6 +761,16 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 			sb.onNewStateHooks = append(sb.onNewStateHooks, f)
 		}
 	}
+}
+
+func (sb *smartBlock) Relations() []*pbrelation.Relation {
+	var relations []*pbrelation.Relation
+	objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
+	for _, objType := range objectTypes {
+		relations = append(relations, objType.Relations...)
+	}
+
+	return relation.MergeAndSortRelations(relations, sb.ExtraRelations(), sb.Details())
 }
 
 func (sb *smartBlock) execHooks(event Hook) {
