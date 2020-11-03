@@ -652,6 +652,18 @@ func (s *State) Snippet() (snippet string) {
 	return text.Truncate(snippet, snippetMaxSize)
 }
 
+func (s *State) FileDetailsKeys() (fileFields []string) {
+	fileFields = append(fileFields, DetailsFileFields[:]...)
+	for _, rel := range s.Relations() {
+		if rel.Format == pbrelation.RelationFormat_file {
+			if slice.FindPos(fileFields, rel.Key) == -1 {
+				fileFields = append(fileFields, rel.Key)
+			}
+		}
+	}
+	return
+}
+
 func (s *State) GetAllFileHashes() (hashes []string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
@@ -663,7 +675,8 @@ func (s *State) GetAllFileHashes() (hashes []string) {
 	if det == nil || det.Fields == nil {
 		return
 	}
-	for _, field := range DetailsFileFields {
+
+	for _, field := range s.FileDetailsKeys() {
 		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
 			hashes = append(hashes, v.GetStringValue())
 		}

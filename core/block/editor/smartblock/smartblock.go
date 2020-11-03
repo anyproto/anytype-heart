@@ -364,7 +364,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	changes := sb.Doc.(*state.State).GetChanges()
-	fileHashes := getChangedFileHashes(act)
+	fileHashes := getChangedFileHashes(s, act)
 	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes, doSnapshot)
 	if err != nil {
 		return
@@ -702,7 +702,7 @@ func hasDepIds(act *undo.Action) bool {
 	return false
 }
 
-func getChangedFileHashes(act undo.Action) (hashes []string) {
+func getChangedFileHashes(s *state.State, act undo.Action) (hashes []string) {
 	for _, nb := range act.Add {
 		if fh, ok := nb.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
@@ -716,7 +716,7 @@ func getChangedFileHashes(act undo.Action) (hashes []string) {
 	if act.Details != nil {
 		det := act.Details.After
 		if det != nil && det.Fields != nil {
-			for _, field := range state.DetailsFileFields {
+			for _, field := range s.FileDetailsKeys() {
 				if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
 					hashes = append(hashes, v.GetStringValue())
 				}
