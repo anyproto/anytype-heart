@@ -91,8 +91,11 @@ service ClientCommands {
 
     rpc BlockGetDataviewAvailableRelations (anytype.Rpc.Block.Get.Dataview.AvailableRelations.Request) returns (anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response);
     rpc BlockSetDataviewView (anytype.Rpc.Block.Set.Dataview.View.Request) returns (anytype.Rpc.Block.Set.Dataview.View.Response);
-
     rpc BlockSetDataviewActiveView (anytype.Rpc.Block.Set.Dataview.ActiveView.Request) returns (anytype.Rpc.Block.Set.Dataview.ActiveView.Response);
+
+    rpc BlockDataviewRelationAdd (anytype.Rpc.Block.Dataview.RelationAdd.Request) returns (anytype.Rpc.Block.Dataview.RelationAdd.Response);
+    rpc BlockDataviewRelationDelete (anytype.Rpc.Block.Dataview.RelationDelete.Request) returns (anytype.Rpc.Block.Dataview.RelationDelete.Response);
+
     rpc BlockCreateDataviewView (anytype.Rpc.Block.Create.Dataview.View.Request) returns (anytype.Rpc.Block.Create.Dataview.View.Response);
     rpc BlockDeleteDataviewView (anytype.Rpc.Block.Delete.Dataview.View.Request) returns (anytype.Rpc.Block.Delete.Dataview.View.Response);
 

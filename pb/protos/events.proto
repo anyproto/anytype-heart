@@ -42,6 +42,7 @@ message Event {
             Block.Set.Dataview.View blockSetDataviewView = 19;
             Block.Delete.Dataview.View blockDeleteDataviewView = 20;
             Block.Set.Relation blockSetRelation = 21;
+            Block.Set.Dataview.Relation blockSetDataviewRelation = 23;
 
             Block.Show blockShow = 30;
             User.Block.Join userBlockJoin = 31;
@@ -171,13 +172,19 @@ message Event {
                     uint32 total = 7; // total number of records
                 }
 
-                // sent when the view settings have been changed
+                // sent when the view have been changed or added
                 message View {
                     string id = 1; // dataview block's id
                     string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
                     anytype.model.Block.Content.Dataview.View view = 3;
                     uint32 offset = 4; // middleware will try to preserve the current aciveview's offset&limit but may reset it in case it becomes invalid or not actual anymore
                     uint32 limit = 5;
+                }
+
+                // sent when the dataview relation has been changed or added
+                message Relation {
+                    string id = 1; // dataview block's id
+                    anytype.relation.Relation relation = 2;
                 }
             }
 

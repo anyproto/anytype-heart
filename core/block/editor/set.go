@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/google/uuid"
 )
 
@@ -50,7 +51,8 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				Source: "https://anytype.io/schemas/object/bundled/page",
+				Source:    "https://anytype.io/schemas/object/bundled/page",
+				Relations: relation.BundledObjectTypes["page"].Relations,
 				Views: []*model.BlockContentDataviewView{
 					{
 						Id:   uuid.New().String(),

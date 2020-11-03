@@ -137,6 +137,8 @@ type Service interface {
 	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
 	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
+	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (id string, err error)
+	DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
 
 	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (*types.Struct, error)
 	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) error
@@ -716,6 +718,25 @@ func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDelete
 	})
 
 	return
+}
+
+func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (key string, err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		rel, err := b.AddRelation(ctx, req.BlockId, *req.Relation, true)
+		if err != nil {
+			return err
+		}
+		key = rel.Key
+		return nil
+	})
+
+	return
+}
+
+func (s *service) DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.DeleteRelation(ctx, req.BlockId, req.RelationKey, true)
+	})
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {

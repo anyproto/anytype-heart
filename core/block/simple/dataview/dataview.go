@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
@@ -36,6 +37,10 @@ type Block interface {
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
+
+	AddRelation(relation pbrelation.Relation)
+	DeleteRelation(relationKey string) error
+
 	GetSource() string
 	SetSource(source string) error
 
@@ -197,4 +202,29 @@ func (d *Dataview) SetSource(source string) error {
 
 func (d *Dataview) GetSource() string {
 	return d.content.Source
+}
+
+func (d *Dataview) AddRelation(relation pbrelation.Relation) {
+	if relation.Key == "" {
+		relation.Key = uuid.New().String()
+	}
+
+	d.content.Relations = append(d.content.Relations, &relation)
+}
+
+func (d *Dataview) DeleteRelation(relationKey string) error {
+	var found bool
+	for i, r := range d.content.Relations {
+		if r.Key == relationKey {
+			found = true
+			d.content.Relations = append(d.content.Relations[:i], d.content.Relations[i+1:]...)
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("relation not found")
+	}
+
+	return nil
 }

@@ -16,6 +16,7 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
@@ -32,6 +33,8 @@ type Dataview interface {
 	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
+	AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error)
+	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -51,7 +54,6 @@ type dataviewImpl struct {
 	limit        int
 	records      []database.Record
 	mu           sync.Mutex
-	database.Database
 }
 
 type ObjectTypeGetter interface {
@@ -64,6 +66,56 @@ type dataviewCollectionImpl struct {
 	dataviews []*dataviewImpl
 }
 
+func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error) {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return nil, err
+	}
+	if relation.Key == "" {
+		relation.Key = bson.NewObjectId().Hex()
+	} else {
+		existingRelations, err := d.GetAggregatedRelations(ctx, blockId)
+		if err != nil {
+			return nil, err
+		}
+		var foundRelation *pbrelation.Relation
+		for _, rel := range existingRelations {
+			if rel.Key == relation.Key {
+				foundRelation = rel
+			}
+		}
+		if foundRelation == nil {
+			return nil, fmt.Errorf("provided relation with key not found among aggregated relations for dataview")
+		}
+
+		if !pbtypes.RelationEqual(foundRelation, &relation) {
+			return nil, fmt.Errorf("provided relation not equals to the existing aggregated relation with the same key")
+		}
+	}
+
+	tb.AddRelation(relation)
+
+	return &relation, d.Apply(s)
+}
+
+func (d *dataviewCollectionImpl) DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	if err = tb.DeleteRelation(relationKey); err != nil {
+		return err
+	}
+
+	if showEvent {
+		return d.Apply(s)
+	}
+	return d.Apply(s, smartblock.NoEvent)
+}
+
 func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, blockId string) ([]*pbrelation.Relation, error) {
 	s := d.NewStateCtx(ctx)
 
@@ -72,16 +124,22 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, bloc
 		return nil, err
 	}
 
-	dv := d.getDataviewImpl(tb)
 	objectType, err := d.GetObjectType(tb.GetSource())
 	if err != nil {
 		return nil, err
 	}
 
 	var relations []*pbrelation.Relation
-
+	var db database.Reader
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(tb.GetSource()); err != nil {
+		return nil, err
+	} else {
+		db = target
+	}
 	sch := schema.New(objectType)
-	aggregatedRelations, err := dv.Database.AggregateRelations(&sch)
+	aggregatedRelations, err := db.AggregateRelations(&sch)
 	if err != nil {
 		return nil, err
 	}

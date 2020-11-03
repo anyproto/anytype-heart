@@ -215,6 +215,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 		}
 	}
 
+	sb.Relations()
 	var objectTypesUrls []string
 	for ot := range objectTypesMap {
 		objectTypesUrls = append(objectTypesUrls, ot)
