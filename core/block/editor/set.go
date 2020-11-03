@@ -16,10 +16,11 @@ import (
 	"github.com/google/uuid"
 )
 
-func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
-	sb := &Set{
-		SmartBlock: smartblock.New(ms),
-	}
+func NewSet(
+	ms meta.Service,
+	dbCtrl database.Ctrl,
+) *Set {
+	sb := &Set{SmartBlock: smartblock.New(ms)}
 
 	sb.Basic = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)
