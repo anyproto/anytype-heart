@@ -316,6 +316,11 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 				ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
 			}
 		}
+		for _, rel := range sb.Relations() {
+			if rel.Format == pbrelation.RelationFormat_object {
+				ids = append(ids, strings.TrimPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix))
+			}
+		}
 	}
 	sort.Strings(ids)
 	return
@@ -670,6 +675,9 @@ func (sb *smartBlock) Close() (err error) {
 
 func hasDepIds(act *undo.Action) bool {
 	if act == nil {
+		return true
+	}
+	if act.Relations != nil || act.ObjectTypes != nil {
 		return true
 	}
 	for _, edit := range act.Change {
