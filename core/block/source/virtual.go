@@ -45,7 +45,7 @@ func (v *virtual) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }
 
-func (v *virtual) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error) {
+func (v *virtual) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }
 

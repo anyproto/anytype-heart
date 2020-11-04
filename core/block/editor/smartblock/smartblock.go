@@ -372,9 +372,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if act.IsEmpty() {
 		return nil
 	}
-	changes := sb.Doc.(*state.State).GetChanges()
-	fileHashes := getChangedFileHashes(s, act)
-	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes, doSnapshot)
+	st := sb.Doc.(*state.State)
+	fileDetailsKeys := sb.fileDetailsKeys()
+	pushChangeParams := source.PushChangeParams{
+		State:             st,
+		Changes:           st.GetChanges(),
+		FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
+		DoSnapshot:        doSnapshot,
+		GetAllFileHashes: func() []string {
+			return st.GetAllFileHashes(fileDetailsKeys)
+		},
+	}
+	id, err := sb.source.PushChange(pushChangeParams)
 	if err != nil {
 		return
 	}
@@ -711,7 +720,7 @@ func hasDepIds(act *undo.Action) bool {
 	return false
 }
 
-func getChangedFileHashes(s *state.State, act undo.Action) (hashes []string) {
+func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Action) (hashes []string) {
 	for _, nb := range act.Add {
 		if fh, ok := nb.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
@@ -725,7 +734,7 @@ func getChangedFileHashes(s *state.State, act undo.Action) (hashes []string) {
 	if act.Details != nil {
 		det := act.Details.After
 		if det != nil && det.Fields != nil {
-			for _, field := range s.FileDetailsKeys() {
+			for _, field := range fileDetailKeys {
 				if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
 					hashes = append(hashes, v.GetStringValue())
 				}
@@ -765,11 +774,12 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
-	objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
-	for _, objType := range objectTypes {
-		relations = append(relations, objType.Relations...)
+	if sb.meta != nil {
+		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
+		for _, objType := range objectTypes {
+			relations = append(relations, objType.Relations...)
+		}
 	}
-
 	return relation.MergeAndSortRelations(relations, sb.ExtraRelations(), sb.Details())
 }
 
@@ -786,6 +796,17 @@ func (sb *smartBlock) execHooks(event Hook) {
 			h()
 		}
 	}
+}
+
+func (sb *smartBlock) fileDetailsKeys() (fileKeys []string) {
+	for _, rel := range sb.Relations() {
+		if rel.Format == pbrelation.RelationFormat_file {
+			if slice.FindPos(fileKeys, rel.Key) == -1 {
+				fileKeys = append(fileKeys, rel.Key)
+			}
+		}
+	}
+	return
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {

@@ -85,8 +85,8 @@ func TestSmartBlock_Apply(t *testing.T) {
 		s := fx.NewState()
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
-
-		fx.source.EXPECT().PushChange(gomock.Any(), gomock.Any(), gomock.Any(), false)
+		fx.metaService.EXPECT().FetchObjectTypes(gomock.Any())
+		fx.source.EXPECT().PushChange(gomock.Any())
 		var event *pb.Event
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e

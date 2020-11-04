@@ -653,20 +653,7 @@ func (s *State) Snippet() (snippet string) {
 	return text.Truncate(snippet, snippetMaxSize)
 }
 
-func (s *State) FileDetailsKeys() (fileFields []string) {
-	fileFields = append(fileFields, DetailsFileFields[:]...)
-	// todo: we should get combined relations using smartBlock.Relations() here
-	for _, rel := range s.ExtraRelations() {
-		if rel.Format == pbrelation.RelationFormat_file {
-			if slice.FindPos(fileFields, rel.Key) == -1 {
-				fileFields = append(fileFields, rel.Key)
-			}
-		}
-	}
-	return
-}
-
-func (s *State) GetAllFileHashes() (hashes []string) {
+func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
@@ -678,7 +665,7 @@ func (s *State) GetAllFileHashes() (hashes []string) {
 		return
 	}
 
-	for _, field := range s.FileDetailsKeys() {
+	for _, field := range detailsKeys {
 		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
 			hashes = append(hashes, v.GetStringValue())
 		}

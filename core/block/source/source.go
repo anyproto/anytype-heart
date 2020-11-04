@@ -31,7 +31,7 @@ type Source interface {
 	Virtual() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
-	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error)
+	PushChange(params PushChangeParams) (id string, err error)
 	Close() (err error)
 }
 
@@ -152,27 +152,35 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	return
 }
 
-func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error) {
+type PushChangeParams struct {
+	State             *state.State
+	Changes           []*pb.ChangeContent
+	FileChangedHashes []string
+	DoSnapshot        bool
+	GetAllFileHashes  func() []string
+}
+
+func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	var c = &pb.Change{
 		PreviousIds:     s.tree.Heads(),
 		LastSnapshotId:  s.lastSnapshotId,
 		PreviousMetaIds: s.tree.MetaHeads(),
 		Timestamp:       time.Now().Unix(),
 	}
-	if doSnapshot || s.needSnapshot() || len(changes) == 0 {
+	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.logHeads,
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:         st.Blocks(),
-				Details:        st.Details(),
-				ExtraRelations: st.ExtraRelations(),
-				ObjectTypes:    st.ObjectTypes(),
+				Blocks:         params.State.Blocks(),
+				Details:        params.State.Details(),
+				ExtraRelations: params.State.ExtraRelations(),
+				ObjectTypes:    params.State.ObjectTypes(),
 			},
-			FileKeys: s.getFileKeysByHashes(st.GetAllFileHashes()),
+			FileKeys: s.getFileKeysByHashes(params.GetAllFileHashes()),
 		}
 	}
-	c.Content = changes
-	c.FileKeys = s.getFileKeysByHashes(fileChangedHashes)
+	c.Content = params.Changes
+	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
 
 	if id, err = s.sb.PushRecord(c); err != nil {
 		return
