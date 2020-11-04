@@ -598,6 +598,7 @@
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
     - [Event.Block.Delete.Dataview](#anytype.Event.Block.Delete.Dataview)
+    - [Event.Block.Delete.Dataview.Relation](#anytype.Event.Block.Delete.Dataview.Relation)
     - [Event.Block.Delete.Dataview.View](#anytype.Event.Block.Delete.Dataview.View)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.Fill](#anytype.Event.Block.Fill)
@@ -9136,6 +9137,22 @@ B. Partial block load
 
 
 
+<a name="anytype.Event.Block.Delete.Dataview.Relation"></a>
+
+### Event.Block.Delete.Dataview.Relation
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| relationKey | [string](#string) |  | view id to remove |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Delete.Dataview.View"></a>
 
 ### Event.Block.Delete.Dataview.View
@@ -9944,6 +9961,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
+| relationKey | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
 | relation | [relation.Relation](#anytype.relation.Relation) |  |  |
 
 
@@ -10464,6 +10482,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetDataviewRecords | [Event.Block.Set.Dataview.Records](#anytype.Event.Block.Set.Dataview.Records) |  |  |
 | blockSetDataviewView | [Event.Block.Set.Dataview.View](#anytype.Event.Block.Set.Dataview.View) |  |  |
 | blockDeleteDataviewView | [Event.Block.Delete.Dataview.View](#anytype.Event.Block.Delete.Dataview.View) |  |  |
+| blockDeleteDataviewRelation | [Event.Block.Delete.Dataview.Relation](#anytype.Event.Block.Delete.Dataview.Relation) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation) |  |  |
 | blockSetDataviewRelation | [Event.Block.Set.Dataview.Relation](#anytype.Event.Block.Set.Dataview.Relation) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |

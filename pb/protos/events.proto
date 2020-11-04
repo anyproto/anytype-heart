@@ -41,6 +41,8 @@ message Event {
             Block.Set.Dataview.Records blockSetDataviewRecords = 18;
             Block.Set.Dataview.View blockSetDataviewView = 19;
             Block.Delete.Dataview.View blockDeleteDataviewView = 20;
+            Block.Delete.Dataview.Relation blockDeleteDataviewRelation = 24;
+
             Block.Set.Relation blockSetRelation = 21;
             Block.Set.Dataview.Relation blockSetDataviewRelation = 23;
 
@@ -142,6 +144,11 @@ message Event {
                     string id = 1; // dataview block's id
                     string viewId = 2; // view id to remove
                 }
+
+                message Relation {
+                    string id = 1; // dataview block's id
+                    string relationKey = 2; // view id to remove
+                }
             }
         }
 
@@ -187,7 +194,8 @@ message Event {
                 // sent when the dataview relation has been changed or added
                 message Relation {
                     string id = 1; // dataview block's id
-                    anytype.relation.Relation relation = 2;
+                    string relationKey = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
+                    anytype.relation.Relation relation = 3;
                 }
             }
 

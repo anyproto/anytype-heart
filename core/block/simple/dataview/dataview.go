@@ -39,6 +39,8 @@ type Block interface {
 	DeleteView(viewID string) error
 
 	AddRelation(relation pbrelation.Relation)
+	SetRelation(relationKey string, relation pbrelation.Relation) error
+
 	DeleteRelation(relationKey string) error
 
 	GetSource() string
@@ -74,6 +76,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		return
 	}
 
+	// @TODO: rewrite for optimised compare
 	for _, view2 := range dv.content.Views {
 		var found bool
 		var changed bool
@@ -98,7 +101,6 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 						}}}})
 		}
 	}
-
 	for _, view1 := range d.content.Views {
 		var found bool
 		for _, view2 := range dv.content.Views {
@@ -118,7 +120,46 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		}
 	}
 
-	// @TODO: rewrite for optimised compare
+	for _, rel2 := range dv.content.Relations {
+		var found bool
+		var changed bool
+		for _, rel1 := range d.content.Relations {
+			if rel1.Key == rel2.Key {
+				found = true
+				changed = !pbtypes.RelationEqual(rel1, rel2)
+				break
+			}
+		}
+
+		if !found || changed {
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewRelation{
+						&pb.EventBlockSetDataviewRelation{
+							Id:          dv.Id,
+							RelationKey: rel2.Key,
+							Relation:    rel2,
+						}}}})
+		}
+	}
+	for _, rel1 := range d.content.Relations {
+		var found bool
+		for _, rel2 := range dv.content.Relations {
+			if rel1.Key == rel2.Key {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			msgs = append(msgs,
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewRelation{
+					&pb.EventBlockDeleteDataviewRelation{
+						Id:          dv.Id,
+						RelationKey: rel1.Key,
+					}}}})
+		}
+	}
 
 	return
 }
@@ -177,6 +218,25 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 
 	if !found {
 		return fmt.Errorf("view not found")
+	}
+
+	return nil
+}
+
+func (s *Dataview) SetRelation(relationKey string, rel pbrelation.Relation) error {
+	var found bool
+	for i, v := range s.content.Relations {
+		if v.Key == relationKey {
+			found = true
+
+			s.content.Relations[i] = &rel
+
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("relation not found")
 	}
 
 	return nil

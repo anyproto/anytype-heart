@@ -80,6 +80,24 @@ func CopyRelation(in *pbrelation.Relation) (out *pbrelation.Relation) {
 	return out
 }
 
+func CopyObjectType(in *pbrelation.ObjectType) (out *pbrelation.ObjectType) {
+	if in == nil {
+		return nil
+	}
+
+	buf := bytesPool.Get().([]byte)
+	size := in.Size()
+	if cap(buf) < size {
+		buf = make([]byte, 0, size*2)
+	}
+	size, _ = in.MarshalToSizedBuffer(buf[:size])
+	out = &pbrelation.ObjectType{}
+	_ = out.Unmarshal(buf[:size])
+
+	bytesPool.Put(buf)
+	return out
+}
+
 func CopyRelations(in []*pbrelation.Relation) (out []*pbrelation.Relation) {
 	if in == nil {
 		return nil

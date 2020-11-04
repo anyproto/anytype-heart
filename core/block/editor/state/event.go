@@ -100,6 +100,18 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+	case *pb.EventMessageValueOfBlockSetDataviewRelation:
+		if err = apply(o.BlockSetDataviewRelation.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok && o.BlockSetDataviewRelation.Relation != nil {
+				if f.SetRelation(o.BlockSetDataviewRelation.RelationKey, *o.BlockSetDataviewRelation.Relation) != nil {
+					f.AddRelation(*o.BlockSetDataviewRelation.Relation)
+				}
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
 	case *pb.EventMessageValueOfBlockDeleteDataviewView:
 		if err = apply(o.BlockDeleteDataviewView.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {

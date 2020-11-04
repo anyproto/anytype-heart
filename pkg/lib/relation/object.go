@@ -89,7 +89,7 @@ func GetObjectType(objectTypeURL string) (*relation.ObjectType, error) {
 	bundledId := strings.TrimPrefix(objectTypeURL, bundledObjectTypeURLPrefix)
 
 	if v, exists := BundledObjectTypes[bundledId]; exists {
-		return v, nil
+		return pbtypes.CopyObjectType(v), nil
 	} else {
 		return nil, ErrNotFound
 	}
