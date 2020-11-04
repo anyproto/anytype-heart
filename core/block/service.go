@@ -8,41 +8,41 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
-	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
-	"github.com/anytypeio/go-anytype-middleware/core/history"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/globalsign/mgo/bson"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
+	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
-	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/history"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 var (
@@ -163,10 +163,18 @@ type Service interface {
 	Close() error
 }
 
-func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview, sendEvent func(event *pb.Event)) Service {
+func NewService(
+	accountId string,
+	a anytype.Service,
+	lp linkpreview.LinkPreview,
+	ss status.Service,
+	sendEvent func(event *pb.Event),
+) Service {
 	s := &service{
 		accountId: accountId,
 		anytype:   a,
+		status:    ss,
+		meta:      meta.NewService(a),
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
@@ -174,7 +182,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 		linkPreview:  lp,
 		process:      process.NewService(sendEvent),
 	}
-	s.meta = meta.NewService(a)
+
 	s.history = history.NewHistory(a, s, s.meta)
 	go s.cleanupTicker()
 	s.init()
@@ -184,6 +192,7 @@ func NewService(accountId string, a anytype.Service, lp linkpreview.LinkPreview,
 
 type openedBlock struct {
 	smartblock.SmartBlock
+	threadId  thread.ID
 	lastUsage time.Time
 	locked    bool
 	refs      int32
@@ -192,6 +201,7 @@ type openedBlock struct {
 type service struct {
 	anytype      anytype.Service
 	meta         meta.Service
+	status       status.Service
 	accountId    string
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
@@ -199,7 +209,7 @@ type service struct {
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
 	history      history.History
-	m            sync.RWMutex
+	m            sync.Mutex
 }
 
 func (s *service) init() {
@@ -248,6 +258,17 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		v.SmartblockOpened(ctx)
 	}
 
+	if s.status != nil &&
+		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
+		ob.threadId == thread.Undef {
+		if tid, err := thread.Decode(ob.Id()); err == nil {
+			ob.threadId = tid
+			s.status.Watch(tid, ob.Id())
+		} else {
+			log.Warnf("can't restore thread ID: %v", err)
+		}
+	}
+
 	return nil
 }
 
@@ -272,17 +293,27 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	return bs.Id(), nil
 }
 
-func (s *service) CloseBlock(id string) (err error) {
+func (s *service) CloseBlock(id string) error {
 	s.m.Lock()
 	defer s.m.Unlock()
-	if ob, ok := s.openedBlocks[id]; ok {
-		ob.Lock()
-		defer ob.Unlock()
-		ob.SetEventFunc(nil)
-		ob.locked = false
-		return
+
+	ob, ok := s.openedBlocks[id]
+	if !ok {
+		return ErrBlockNotFound
 	}
-	return ErrBlockNotFound
+
+	ob.Lock()
+	defer ob.Unlock()
+	ob.SetEventFunc(nil)
+	ob.locked = false
+
+	if s.status != nil &&
+		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
+		ob.threadId == thread.Undef {
+		s.status.Unwatch(ob.threadId)
+	}
+
+	return nil
 }
 
 func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
@@ -325,7 +356,6 @@ func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (er
 		} else {
 			return archive.UnArchive(req.BlockId)
 		}
-		return nil
 	})
 }
 

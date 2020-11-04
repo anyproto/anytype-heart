@@ -31,7 +31,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/ipfsliteinterface"
-	net2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
+	tnet "github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 )
 
 var log = logging.Logger("anytype-core-litenet")
@@ -41,10 +41,15 @@ const (
 	defaultLogstorePath = "logstore"
 )
 
-func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecret []byte, opts ...NetOption) (net2.NetBoostrapper, error) {
-	config := &NetConfig{}
+func DefaultNetwork(
+	repoPath string,
+	privKey crypto.PrivKey,
+	privateNetworkSecret []byte,
+	opts ...NetOption,
+) (tnet.NetBoostrapper, error) {
+	var config NetConfig
 	for _, opt := range opts {
-		if err := opt(config); err != nil {
+		if err := opt(&config); err != nil {
 			return nil, err
 		}
 	}
@@ -123,8 +128,9 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 	}
 
 	api, err := net.NewNetwork(ctx, h, lite.BlockStore(), lite, tstore, net.Config{
-		Debug:  config.Debug,
-		PubSub: config.PubSub,
+		Debug:        config.Debug,
+		PubSub:       config.PubSub,
+		SyncTracking: config.SyncTracking,
 	}, config.GRPCServerOptions, config.GRPCDialOptions)
 	if err != nil {
 		cancel()
@@ -151,10 +157,11 @@ func DefaultNetwork(repoPath string, privKey crypto.PrivKey, privateNetworkSecre
 
 type NetConfig struct {
 	HostAddr          ma.Multiaddr
-	Debug             bool
-	Offline           bool
 	GRPCServerOptions []grpc.ServerOption
 	GRPCDialOptions   []grpc.DialOption
+	SyncTracking      bool
+	Debug             bool
+	Offline           bool
 	PubSub            bool
 }
 
@@ -202,6 +209,13 @@ func WithNetGRPCDialOptions(opts ...grpc.DialOption) NetOption {
 	}
 }
 
+func WithNetSyncTracking() NetOption {
+	return func(c *NetConfig) error {
+		c.SyncTracking = true
+		return nil
+	}
+}
+
 type netBoostrapper struct {
 	cancel context.CancelFunc
 	app.Net
@@ -216,7 +230,7 @@ type netBoostrapper struct {
 	lanDht *dht.IpfsDHT
 }
 
-var _ net2.NetBoostrapper = (*netBoostrapper)(nil)
+var _ tnet.NetBoostrapper = (*netBoostrapper)(nil)
 
 func (tsb *netBoostrapper) Datastore() datastore.Batching {
 	return tsb.logstoreDatastore

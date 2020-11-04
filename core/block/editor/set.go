@@ -19,7 +19,10 @@ import (
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
-func NewSet(ms meta.Service, dbCtrl database.Ctrl) *Set {
+func NewSet(
+	ms meta.Service,
+	dbCtrl database.Ctrl,
+) *Set {
 	sb := &Set{
 		SmartBlock: smartblock.New(ms, objects.BundledObjectTypeURLPrefix+"set"),
 	}

@@ -18,13 +18,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/multiformats/go-multiaddr"
+	ma "github.com/multiformats/go-multiaddr"
+	tcn "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
-	net2 "github.com/textileio/go-threads/net"
+	tnet "github.com/textileio/go-threads/net"
 	"github.com/textileio/go-threads/util"
 	"google.golang.org/grpc"
 )
@@ -59,27 +59,6 @@ type PredefinedBlockIds struct {
 	Archive string
 
 	SetPages string
-}
-
-type Anytype struct {
-	t                  net.NetBoostrapper
-	files              *files.Service
-	cafe               cafe.Client
-	mdns               discovery.Service
-	localStore         localstore.LocalStore
-	predefinedBlockIds threads.DerivedSmartblockIds
-	threadService      threads.Service
-
-	logLevels map[string]string
-
-	opts ServiceOptions
-
-	replicationWG    sync.WaitGroup
-	migrationOnce    sync.Once
-	lock             sync.Mutex
-	isStarted        bool          // use under the lock
-	shutdownStartsCh chan struct{} // closed when node shutdown starts
-	onlineCh         chan struct{} // closed when became online
 }
 
 type Service interface {
@@ -120,6 +99,69 @@ type Service interface {
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
 	ObjectUpdateLastOpened(id string) error
+
+	SyncStatus() tcn.SyncInfo
+	FileStatus() FileInfo
+}
+
+var _ Service = (*Anytype)(nil)
+
+type Anytype struct {
+	t                  net.NetBoostrapper
+	files              *files.Service
+	cafe               cafe.Client
+	mdns               discovery.Service
+	localStore         localstore.LocalStore
+	predefinedBlockIds threads.DerivedSmartblockIds
+	threadService      threads.Service
+	pinRegistry        *filePinRegistry
+
+	logLevels map[string]string
+
+	opts ServiceOptions
+
+	replicationWG    sync.WaitGroup
+	migrationOnce    sync.Once
+	lock             sync.Mutex
+	isStarted        bool          // use under the lock
+	shutdownStartsCh chan struct{} // closed when node shutdown starts
+	onlineCh         chan struct{} // closed when became online
+}
+
+func New(options ...ServiceOption) (*Anytype, error) {
+	opts := ServiceOptions{}
+
+	for _, opt := range options {
+		err := opt(&opts)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if opts.Device == nil {
+		return nil, fmt.Errorf("no device keypair provided")
+	}
+
+	logging.SetHost(opts.Device.Address())
+
+	a := &Anytype{
+		opts:             opts,
+		shutdownStartsCh: make(chan struct{}),
+		onlineCh:         make(chan struct{}),
+		pinRegistry:      newFilePinRegistry(),
+	}
+
+	if opts.CafeGrpcHost != "" {
+		isLocal := strings.HasPrefix(opts.CafeGrpcHost, "127.0.0.1") || strings.HasPrefix(opts.CafeGrpcHost, "localhost")
+
+		var err error
+		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, "<todo>", isLocal, opts.Device, opts.Account)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get grpc client: %w", err)
+		}
+	}
+
+	return a, nil
 }
 
 func (a *Anytype) Account() string {
@@ -136,8 +178,12 @@ func (a *Anytype) Device() string {
 	return a.opts.Device.Address()
 }
 
-func (a *Anytype) ThreadsNet() net.NetBoostrapper {
+func (a *Anytype) SyncStatus() tcn.SyncInfo {
 	return a.t
+}
+
+func (a *Anytype) FileStatus() FileInfo {
+	return a.pinRegistry
 }
 
 func (a *Anytype) Ipfs() ipfs.IPFS {
@@ -188,50 +234,6 @@ func (a *Anytype) HandlePeerFound(p peer.AddrInfo) {
 	a.t.Host().Peerstore().AddAddrs(p.ID, p.Addrs, pstore.ConnectedAddrTTL)
 }
 
-func init() {
-	net2.PullInterval = pullInterval
-	// apply log levels in go-threads and go-ipfs deps
-	logging.ApplyLevelsFromEnv()
-}
-
-func New(options ...ServiceOption) (*Anytype, error) {
-	opts := ServiceOptions{}
-
-	for _, opt := range options {
-		err := opt(&opts)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	if opts.Device == nil {
-		return nil, fmt.Errorf("no device keypair provided")
-	}
-
-	logging.SetHost(opts.Device.Address())
-
-	a := &Anytype{
-		opts:          opts,
-		replicationWG: sync.WaitGroup{},
-		migrationOnce: sync.Once{},
-
-		shutdownStartsCh: make(chan struct{}),
-		onlineCh:         make(chan struct{}),
-	}
-
-	if opts.CafeGrpcHost != "" {
-		isLocal := strings.HasPrefix(opts.CafeGrpcHost, "127.0.0.1") || strings.HasPrefix(opts.CafeGrpcHost, "localhost")
-
-		var err error
-		a.cafe, err = cafe.NewClient(opts.CafeGrpcHost, "<todo>", isLocal, opts.Device, opts.Account)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get grpc client: %w", err)
-		}
-	}
-
-	return a, nil
-}
-
 func (a *Anytype) runPeriodicJobsInBackground() {
 	tick := time.NewTicker(time.Hour)
 	defer tick.Stop()
@@ -278,14 +280,25 @@ func (a *Anytype) start() error {
 		a.t = a.opts.NetBootstraper
 	} else {
 		var err error
-		if a.t, err = a.startNetwork(a.opts.HostAddr, a.opts.Offline); err != nil {
+		if a.t, err = a.startNetwork(a.opts.HostAddr); err != nil {
 			if strings.Contains(err.Error(), "address already in use") { // FIXME proper cross-platform solution?
 				// start on random port in case saved port is already used by some other app
-				if a.t, err = a.startNetwork(nil, a.opts.Offline); err != nil {
+				if a.t, err = a.startNetwork(nil); err != nil {
 					return err
 				}
 			} else {
 				return err
+			}
+		}
+	}
+
+	if a.opts.CafeP2PAddr != nil {
+		// protect cafe connections from pruning
+		if p, err := a.opts.CafeP2PAddr.ValueForProtocol(ma.P_P2P); err == nil {
+			if pid, err := peer.Decode(p); err == nil {
+				a.t.Host().ConnManager().Protect(pid, "cafe-sync")
+			} else {
+				log.Errorf("decoding peerID from cafe address failed: %v", err)
 			}
 		}
 	}
@@ -390,6 +403,10 @@ func (a *Anytype) Stop() error {
 	return nil
 }
 
+func (a *Anytype) ThreadService() threads.Service {
+	return a.threadService
+}
+
 func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 	if a.threadService == nil {
 		return fmt.Errorf("thread service not ready yet")
@@ -398,21 +415,15 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 	return a.threadService.InitNewThreadsChan(ch)
 }
 
-func (a *Anytype) ThreadService() threads.Service {
-	return a.threadService
-}
-
-func (a *Anytype) startNetwork(hostAddr multiaddr.Multiaddr, offline bool) (net.NetBoostrapper, error) {
-	return litenet.DefaultNetwork(
-		a.opts.Repo,
-		a.opts.Device,
-		[]byte(ipfsPrivateNetworkKey),
+func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error) {
+	var opts = []litenet.NetOption{
 		litenet.WithNetHostAddr(hostAddr),
 		litenet.WithNetDebug(false),
-		litenet.WithOffline(offline),
+		litenet.WithOffline(a.opts.Offline),
 		litenet.WithNetPubSub(true), // TODO control with env var
+		litenet.WithNetSyncTracking(),
 		litenet.WithNetGRPCServerOptions(
-			grpc.MaxRecvMsgSize(1024*1024*20),
+			grpc.MaxRecvMsgSize(1024 * 1024 * 20),
 		),
 		litenet.WithNetGRPCDialOptions(
 			grpc.WithDefaultCallOptions(
@@ -420,16 +431,24 @@ func (a *Anytype) startNetwork(hostAddr multiaddr.Multiaddr, offline bool) (net.
 				grpc.MaxCallSendMsgSize(1024*1024*10),
 			),
 
-			// TODO metrics
+			// gRPC metrics
 			//grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
 			//grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
 		),
-	)
+	}
+
+	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
 func init() {
-	// redefine timeouts
-	net2.DialTimeout = 10 * time.Second
-	net2.PushTimeout = 30 * time.Second
-	net2.PullTimeout = 2 * time.Minute
+	// redefine thread pulling interval
+	tnet.PullInterval = pullInterval
+
+	// redefine timeouts for threads
+	tnet.DialTimeout = 10 * time.Second
+	tnet.PushTimeout = 30 * time.Second
+	tnet.PullTimeout = 2 * time.Minute
+
+	// apply log levels in go-threads and go-ipfs deps
+	logging.ApplyLevelsFromEnv()
 }

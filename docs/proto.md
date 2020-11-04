@@ -686,6 +686,9 @@
     - [Event.Process.Done](#anytype.Event.Process.Done)
     - [Event.Process.New](#anytype.Event.Process.New)
     - [Event.Process.Update](#anytype.Event.Process.Update)
+    - [Event.Status](#anytype.Event.Status)
+    - [Event.Status.CafeConnect](#anytype.Event.Status.CafeConnect)
+    - [Event.Status.ThreadSync](#anytype.Event.Status.ThreadSync)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
@@ -697,6 +700,7 @@
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
     - [ResponseEvent](#anytype.ResponseEvent)
   
+    - [Event.Status.ThreadSync.SyncStatus](#anytype.Event.Status.ThreadSync.SyncStatus)
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
@@ -10471,6 +10475,8 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | processNew | [Event.Process.New](#anytype.Event.Process.New) |  |  |
 | processUpdate | [Event.Process.Update](#anytype.Event.Process.Update) |  |  |
 | processDone | [Event.Process.Done](#anytype.Event.Process.Done) |  |  |
+| connStatus | [Event.Status.CafeConnect](#anytype.Event.Status.CafeConnect) |  |  |
+| threadStatus | [Event.Status.ThreadSync](#anytype.Event.Status.ThreadSync) |  |  |
 
 
 
@@ -10541,6 +10547,47 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | process | [Model.Process](#anytype.Model.Process) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status"></a>
+
+### Event.Status
+
+
+
+
+
+
+
+<a name="anytype.Event.Status.CafeConnect"></a>
+
+### Event.Status.CafeConnect
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| connected | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.ThreadSync"></a>
+
+### Event.Status.ThreadSync
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Status.ThreadSync.SyncStatus](#anytype.Event.Status.ThreadSync.SyncStatus) |  |  |
+| lastPull | [int64](#int64) |  |  |
 
 
 
@@ -10703,6 +10750,20 @@ Precondition: user A and user B opened the same block
 
 
  
+
+
+<a name="anytype.Event.Status.ThreadSync.SyncStatus"></a>
+
+### Event.Status.ThreadSync.SyncStatus
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Unknown | 0 |  |
+| InProgress | 1 |  |
+| Success | 2 |  |
+| Failure | 3 |  |
+
 
 
 <a name="anytype.Model.Process.State"></a>

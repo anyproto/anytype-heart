@@ -33,6 +33,10 @@ func (v *virtual) Type() pb.SmartBlockType {
 	return v.sbType
 }
 
+func (v *virtual) Virtual() bool {
+	return true
+}
+
 func (v *virtual) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	return state.NewDoc(v.id, nil), nil
 }

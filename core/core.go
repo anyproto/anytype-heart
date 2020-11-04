@@ -7,6 +7,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	libCore "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
@@ -34,14 +35,11 @@ type Middleware struct {
 
 	blocksService block.Service
 	linkPreview   linkpreview.LinkPreview
+	status        status.Service
 
 	Anytype libCore.Service
 
 	m sync.RWMutex
-}
-
-func init() {
-	logging.SetVersion(GitSummary)
 }
 
 func New() *Middleware {
@@ -81,6 +79,10 @@ func (mw *Middleware) setBlockService(bs block.Service) {
 		mw.blocksService.Close()
 	}
 	mw.blocksService = bs
+}
+
+func (mw *Middleware) setStatusService(ss status.Service) {
+	mw.status = ss
 }
 
 // Start starts the anytype node and HTTP gateway
@@ -123,6 +125,10 @@ func (mw *Middleware) stop() error {
 		}
 	}
 
+	if mw.status != nil {
+		mw.status.Stop()
+	}
+
 	if mw != nil && mw.Anytype != nil {
 		err := mw.Anytype.Stop()
 		if err != nil {
@@ -141,4 +147,8 @@ func (mw *Middleware) reindexDoc(id string) error {
 		return err
 	}
 	return bs.Reindex(id)
+}
+
+func init() {
+	logging.SetVersion(GitSummary)
 }

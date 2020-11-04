@@ -128,8 +128,9 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 
 func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
-		return err
+		return fmt.Errorf("reading document: %w", err)
 	}
+
 	sb.source = s
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
