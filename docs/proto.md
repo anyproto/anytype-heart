@@ -10393,8 +10393,8 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | deprecated, details for current and dependent smart blocks |
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
-| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | object types for the actual object and all dependent objects |
-| objectTypesPerObject | [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject) | repeated | objectType it to get default relations from |
+| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
+| objectTypesPerObject | [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject) | repeated | objectType URLs per object |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
 | layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
 

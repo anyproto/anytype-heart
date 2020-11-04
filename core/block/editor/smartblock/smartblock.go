@@ -149,9 +149,15 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, relations, objectTypesUrlByObject, objectTypes, err := sb.fetchMeta()
+		details, objectTypesUrlByObject, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
+		}
+
+		// omit relations
+		// todo: switch to other pb type
+		for _, ot := range objectTypes {
+			ot.Relations = nil
 		}
 
 		var layout pbrelation.ObjectTypeLayout
@@ -169,6 +175,8 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 
 		}
 
+		// todo: sb.Relations() makes extra query to read objectType which we already have here
+		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
@@ -176,7 +184,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 					Type:                 sb.Type(),
 					Blocks:               sb.Blocks(),
 					Details:              details,
-					Relations:            relations,
+					Relations:            sb.Relations(),
 					ObjectTypesPerObject: objectTypesUrlByObject,
 					ObjectTypes:          objectTypes,
 					Layout:               layout,
@@ -187,7 +195,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations []*pbrelation.Relation, objectTypesUrlByObject []*pb.EventBlockShowObjectTypesPerObject, objectTypes []*pbrelation.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypesUrlByObject []*pb.EventBlockShowObjectTypesPerObject, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -216,13 +224,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 		}
 	}
 
-	var objectTypesUrls []string
-	for ot := range objectTypesMap {
-		objectTypesUrls = append(objectTypesUrls, ot)
-	}
-
-	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
-
+	// todo: should we use badger here?
 	timeout := time.After(time.Second)
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
@@ -245,17 +247,14 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, relations
 					ObjectTypes: d.SmartBlockMeta.ObjectTypes,
 				})
 			}
-
-			if d.BlockId == sb.Id() {
-				// only for the actual sb
-				for i := range objectTypes {
-					relations = append(relations, objectTypes[i].Relations...)
-				}
-
-				relations = relation.MergeAndSortRelations(relations, d.Relations, d.Details)
-			}
 		}
 	}
+
+	var objectTypesUrls []string
+	for ot := range objectTypesMap {
+		objectTypesUrls = append(objectTypesUrls, ot)
+	}
+	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
 
 	defer func() {
 		go func() {
