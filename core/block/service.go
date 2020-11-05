@@ -134,10 +134,12 @@ type Service interface {
 	GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockGetDataviewAvailableRelationsRequest) (relations []*pbrelation.Relation, err error)
 	GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (string, error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error
-	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
+	UpdateDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
 	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
 	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (id string, err error)
+	UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationUpdateRequest) error
+
 	DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
 
 	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (*types.Struct, error)
@@ -690,7 +692,7 @@ func (s *service) GetDataviewObjectType(ctx *state.Context, contextId string, bl
 	return
 }
 
-func (s *service) SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error {
+func (s *service) UpdateDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.UpdateView(ctx, req.BlockId, req.ViewId, *req.View, true)
 	})
@@ -748,6 +750,12 @@ func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDelete
 	})
 
 	return
+}
+
+func (s *service) UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationUpdateRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateRelation(ctx, req.BlockId, req.RelationKey, *req.Relation, true)
+	})
 }
 
 func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (key string, err error) {

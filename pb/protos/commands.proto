@@ -1329,6 +1329,31 @@ message Rpc {
                     }
                 }
             }
+            message RelationUpdate {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3; // key of relation to update
+                    anytype.relation.Relation relation = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+
             message RelationDelete {
                 message Request {
                     string contextId = 1;

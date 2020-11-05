@@ -35,6 +35,7 @@ type Dataview interface {
 	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
 	AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error)
 	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
+	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation pbrelation.Relation, showEvent bool) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -107,6 +108,40 @@ func (d *dataviewCollectionImpl) DeleteRelation(ctx *state.Context, blockId stri
 	}
 
 	if err = tb.DeleteRelation(relationKey); err != nil {
+		return err
+	}
+
+	if showEvent {
+		return d.Apply(s)
+	}
+	return d.Apply(s, smartblock.NoEvent)
+}
+
+func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation pbrelation.Relation, showEvent bool) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range tb.Model().GetDataview().Relations {
+		if rel.Key == relationKey {
+			if relation.Format != rel.Format {
+				return fmt.Errorf("changing format of existing relation is retricted")
+			}
+
+			if relation.DataSource != rel.DataSource {
+				return fmt.Errorf("changing data source of existing relation is retricted")
+			}
+
+			if relation.Hidden != rel.Hidden {
+				return fmt.Errorf("changing hidden flag of existing relation is retricted")
+			}
+			break
+		}
+	}
+
+	if err = tb.SetRelation(relationKey, relation); err != nil {
 		return err
 	}
 
