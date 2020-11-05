@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -364,6 +365,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
+	if !pbtypes.Exists(sb.Details(), "createdDate") {
+		if e := sb.setCreationInfo(s); e != nil {
+			log.With("thread", sb.Id()).Errorf("can't set creation info: %v", err)
+		}
+	}
+
 	var beforeSnippet = sb.Doc.Snippet()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -411,6 +418,26 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		})
 	}
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
+	return
+}
+
+func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
+	var (
+		createdDate = time.Now().Unix()
+		createdBy   = sb.Anytype().Account()
+	)
+	fc, err := sb.source.FindFirstChange()
+	if err == change.ErrEmpty {
+		err = nil
+	} else if err != nil {
+		return
+	} else {
+		createdDate = fc.Timestamp
+		// TODO: wait for @dgtony pr
+		//createdBy = fc.Account
+	}
+	s.SetDetail("createdDate", pbtypes.Float64(float64(createdDate)))
+	s.SetDetail("createdBy", pbtypes.String(createdBy))
 	return
 }
 

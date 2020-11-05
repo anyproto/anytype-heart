@@ -1,6 +1,7 @@
 package source
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -47,6 +48,10 @@ func (v *virtual) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 
 func (v *virtual) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
+}
+
+func (v *virtual) FindFirstChange() (c *change.Change, err error) {
+	return nil, change.ErrEmpty
 }
 
 func (v *virtual) Close() (err error) {
