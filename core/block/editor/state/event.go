@@ -103,7 +103,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockSetDataviewRelation:
 		if err = apply(o.BlockSetDataviewRelation.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok && o.BlockSetDataviewRelation.Relation != nil {
-				if f.SetRelation(o.BlockSetDataviewRelation.RelationKey, *o.BlockSetDataviewRelation.Relation) != nil {
+				if f.UpdateRelation(o.BlockSetDataviewRelation.RelationKey, *o.BlockSetDataviewRelation.Relation) != nil {
 					f.AddRelation(*o.BlockSetDataviewRelation.Relation)
 				}
 				return nil

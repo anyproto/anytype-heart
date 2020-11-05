@@ -124,24 +124,7 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 		return err
 	}
 
-	for _, rel := range tb.Model().GetDataview().Relations {
-		if rel.Key == relationKey {
-			if relation.Format != rel.Format {
-				return fmt.Errorf("changing format of existing relation is retricted")
-			}
-
-			if relation.DataSource != rel.DataSource {
-				return fmt.Errorf("changing data source of existing relation is retricted")
-			}
-
-			if relation.Hidden != rel.Hidden {
-				return fmt.Errorf("changing hidden flag of existing relation is retricted")
-			}
-			break
-		}
-	}
-
-	if err = tb.SetRelation(relationKey, relation); err != nil {
+	if err = tb.UpdateRelation(relationKey, relation); err != nil {
 		return err
 	}
 

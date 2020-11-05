@@ -108,6 +108,69 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
 	})
 
+	t.Run("update_not_existing", func(t *testing.T) {
+		respUpdate := mw.BlockDataviewRelationUpdate(&pb.RpcBlockDataviewRelationUpdateRequest{
+			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			RelationKey: "ffff",
+			Relation:    &pbrelation.Relation{Key: "ffff"},
+		})
+		require.Equal(t, pb.RpcBlockDataviewRelationUpdateResponseError_BAD_INPUT, respUpdate.Error.Code, respUpdate.Error.Description)
+		respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
+		require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
+		require.Len(t, respOpenPagesSet.Event.Messages, 2)
+		block = getBlockById("dataview", respOpenPagesSet.Event.Messages[0].GetBlockShow().Blocks)
+
+		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
+		require.Equal(t, "new", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
+
+	})
+
+	t.Run("update_cant_change_format", func(t *testing.T) {
+		respUpdate := mw.BlockDataviewRelationUpdate(&pb.RpcBlockDataviewRelationUpdateRequest{
+			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			RelationKey: relKey,
+			Relation: &pbrelation.Relation{
+				Key:      relKey,
+				Format:   1,
+				Name:     "new_changed",
+				ReadOnly: false,
+			},
+		})
+		require.Equal(t, pb.RpcBlockDataviewRelationUpdateResponseError_BAD_INPUT, respUpdate.Error.Code, respUpdate.Error.Description)
+		respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
+		require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
+		require.Len(t, respOpenPagesSet.Event.Messages, 2)
+		block = getBlockById("dataview", respOpenPagesSet.Event.Messages[0].GetBlockShow().Blocks)
+
+		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
+		require.Equal(t, "new", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
+	})
+
+	t.Run("update_correct", func(t *testing.T) {
+		respUpdate := mw.BlockDataviewRelationUpdate(&pb.RpcBlockDataviewRelationUpdateRequest{
+			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			RelationKey: relKey,
+			Relation: &pbrelation.Relation{
+				Key:      relKey,
+				Format:   0,
+				Name:     "new_changed",
+				ReadOnly: false,
+			},
+		})
+		require.Equal(t, pb.RpcBlockDataviewRelationUpdateResponseError_NULL, respUpdate.Error.Code, respUpdate.Error.Description)
+		respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
+		require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
+		require.Len(t, respOpenPagesSet.Event.Messages, 2)
+		block = getBlockById("dataview", respOpenPagesSet.Event.Messages[0].GetBlockShow().Blocks)
+
+		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
+		require.Equal(t, "new_changed", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
+
+	})
+
 	t.Run("delete_incorrect", func(t *testing.T) {
 		respDataviewRelationAdd := mw.BlockDataviewRelationDelete(&pb.RpcBlockDataviewRelationDeleteRequest{
 			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
@@ -193,14 +256,16 @@ func TestCustomType(t *testing.T) {
 	require.NotNil(t, show)
 	require.Len(t, show.ObjectTypes, 1)
 	require.Len(t, show.ObjectTypesPerObject, 1)
-	require.Equal(t, show.ObjectTypes[0], respObjectTypeCreate.ObjectType)
+	// omit relations
+	respObjectTypeCreate.ObjectType.Relations = nil
+	require.Equal(t, respObjectTypeCreate.ObjectType, show.ObjectTypes[0])
 
 	respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
 	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
 
 	require.Len(t, respOpenCustomTypeSet.Event.Messages, 2)
 	require.Len(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
-	require.Equal(t, respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue(), respOpenCustomTypeSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
+	require.Equal(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue(), respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue())
 
 	show = respOpenCustomTypeSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
