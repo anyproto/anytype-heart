@@ -359,7 +359,13 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if err = sr.Unmarshal(chp); err != nil {
 		return
 	}
-	ch = &Change{Id: id, Change: chp}
+	ch = &Change{
+		Id:      id,
+		Account: sr.AccountID,
+		Device:  sr.LogID,
+		Change:  chp,
+	}
+
 	if sb.onlyDetails {
 		ch.PreviousIds = ch.PreviousDetailsIds
 	}
