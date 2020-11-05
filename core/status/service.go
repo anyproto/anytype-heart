@@ -16,17 +16,18 @@ const (
 	threadStatusUpdatePeriod = 3 * time.Second
 )
 
+type LogTime struct {
+	AccountID string
+	DeviceID  string
+	LastEdit  int64
+}
+
 type Service interface {
 	Watch(tid thread.ID, eventCtx string)
 	Unwatch(tid thread.ID)
+	UpdateTimeline(tid thread.ID, tl []LogTime)
 	ThreadSummary() net.SyncSummary
 	FileSummary() core.FilePinSummary
-
-	// TODO extend with specific requests e.g:
-	//  - peer connectivity map
-	//  - thread status
-	//  - file status
-
 	Start() error
 	Stop()
 }
@@ -113,6 +114,12 @@ func (r *service) Unwatch(tid thread.ID) {
 		delete(r.watchers, tid)
 		stop()
 	}
+}
+
+func (r *service) UpdateTimeline(tid thread.ID, tl []LogTime) {
+
+	// todo implement!
+
 }
 
 func (r *service) ThreadSummary() net.SyncSummary {

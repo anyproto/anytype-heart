@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 )
 
@@ -20,9 +21,9 @@ type Service interface {
 	FetchDetails(ids []string) (details []Meta)
 }
 
-func NewService(a anytype.Service) Service {
+func NewService(a anytype.Service, ss status.Service) Service {
 	s := &service{
-		ps: newPubSub(a),
+		ps: newPubSub(a, ss),
 	}
 	var newSmartblockCh = make(chan string)
 	if err := a.InitNewSmartblocksChan(newSmartblockCh); err != nil {

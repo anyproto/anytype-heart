@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/textileio/go-threads/core/thread"
-
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -38,6 +36,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 var (
@@ -153,7 +152,7 @@ func NewService(
 		accountId: accountId,
 		anytype:   a,
 		status:    ss,
-		meta:      meta.NewService(a),
+		meta:      meta.NewService(a, ss),
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
@@ -969,7 +968,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, id)
+	sc, err := source.NewSource(s.anytype, s.status, id)
 	if err != nil {
 		return
 	}
