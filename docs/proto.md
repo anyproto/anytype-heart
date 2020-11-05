@@ -582,8 +582,11 @@
     - [Event.Process.New](#anytype.Event.Process.New)
     - [Event.Process.Update](#anytype.Event.Process.Update)
     - [Event.Status](#anytype.Event.Status)
-    - [Event.Status.CafeConnect](#anytype.Event.Status.CafeConnect)
-    - [Event.Status.ThreadSync](#anytype.Event.Status.ThreadSync)
+    - [Event.Status.Thread](#anytype.Event.Status.Thread)
+    - [Event.Status.Thread.Account](#anytype.Event.Status.Thread.Account)
+    - [Event.Status.Thread.Cafe](#anytype.Event.Status.Thread.Cafe)
+    - [Event.Status.Thread.Device](#anytype.Event.Status.Thread.Device)
+    - [Event.Status.Thread.Summary](#anytype.Event.Status.Thread.Summary)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
@@ -595,7 +598,7 @@
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
     - [ResponseEvent](#anytype.ResponseEvent)
   
-    - [Event.Status.ThreadSync.SyncStatus](#anytype.Event.Status.ThreadSync.SyncStatus)
+    - [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus)
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
@@ -8979,8 +8982,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | processNew | [Event.Process.New](#anytype.Event.Process.New) |  |  |
 | processUpdate | [Event.Process.Update](#anytype.Event.Process.Update) |  |  |
 | processDone | [Event.Process.Done](#anytype.Event.Process.Done) |  |  |
-| connStatus | [Event.Status.CafeConnect](#anytype.Event.Status.CafeConnect) |  |  |
-| threadStatus | [Event.Status.ThreadSync](#anytype.Event.Status.ThreadSync) |  |  |
+| threadStatus | [Event.Status.Thread](#anytype.Event.Status.Thread) |  |  |
 
 
 
@@ -9067,31 +9069,86 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 
 
-<a name="anytype.Event.Status.CafeConnect"></a>
+<a name="anytype.Event.Status.Thread"></a>
 
-### Event.Status.CafeConnect
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| connected | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Status.ThreadSync"></a>
-
-### Event.Status.ThreadSync
+### Event.Status.Thread
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| status | [Event.Status.ThreadSync.SyncStatus](#anytype.Event.Status.ThreadSync.SyncStatus) |  |  |
-| lastPull | [int64](#int64) |  |  |
+| summary | [Event.Status.Thread.Summary](#anytype.Event.Status.Thread.Summary) |  |  |
+| cafe | [Event.Status.Thread.Cafe](#anytype.Event.Status.Thread.Cafe) |  |  |
+| accounts | [Event.Status.Thread.Account](#anytype.Event.Status.Thread.Account) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Account"></a>
+
+### Event.Status.Thread.Account
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| online | [bool](#bool) |  |  |
+| lastPulled | [int64](#int64) |  |  |
+| lastEdited | [int64](#int64) |  |  |
+| devices | [Event.Status.Thread.Device](#anytype.Event.Status.Thread.Device) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Cafe"></a>
+
+### Event.Status.Thread.Cafe
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus) |  |  |
+| lastPulled | [int64](#int64) |  |  |
+| lastPushSucceed | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Device"></a>
+
+### Event.Status.Thread.Device
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| online | [bool](#bool) |  |  |
+| lastPulled | [int64](#int64) |  |  |
+| lastEdited | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Summary"></a>
+
+### Event.Status.Thread.Summary
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus) |  |  |
 
 
 
@@ -9256,17 +9313,18 @@ Precondition: user A and user B opened the same block
  
 
 
-<a name="anytype.Event.Status.ThreadSync.SyncStatus"></a>
+<a name="anytype.Event.Status.Thread.SyncStatus"></a>
 
-### Event.Status.ThreadSync.SyncStatus
+### Event.Status.Thread.SyncStatus
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Unknown | 0 |  |
-| InProgress | 1 |  |
-| Success | 2 |  |
-| Failure | 3 |  |
+| Offline | 1 |  |
+| Syncing | 2 |  |
+| Synced | 3 |  |
+| Failed | 4 |  |
 
 
 
