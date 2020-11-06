@@ -200,8 +200,6 @@ install-dev-js: build-js
 	@cp -r dist/server ../js-anytype/dist/anytypeHelper
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
-	@cp -R pkg/lib/schema/* ../js-anytype/src/json/schema
-	@chmod -R 755 ../js-anytype/src/json/schema/*
 
 build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build&install into ../js-anytype"
