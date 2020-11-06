@@ -351,8 +351,12 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 }
 
 func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error) {
-	var source string
-	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+	var (
+		source  string
+		ok      bool
+		dvBlock dataview.Block
+	)
+	if dvBlock, ok = d.Pick(blockId).(dataview.Block); !ok {
 		return nil, fmt.Errorf("not a dataview block")
 	} else {
 		source = dvBlock.Model().GetDataview().Source
@@ -367,7 +371,7 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 		db = target
 	}
 
-	created, err := db.Create(database.Record{Details: rec.Details})
+	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details})
 	if err != nil {
 		return nil, err
 	}
@@ -376,8 +380,13 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.ObjectDetails) error {
-	var source string
-	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
+	var (
+		source  string
+		ok      bool
+		dvBlock dataview.Block
+	)
+
+	if dvBlock, ok = d.Pick(blockId).(dataview.Block); !ok {
 		return fmt.Errorf("not a dataview block")
 	} else {
 		source = dvBlock.Model().GetDataview().Source
@@ -392,7 +401,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 		db = target
 	}
 
-	return db.Update(recID, database.Record{Details: rec.Details})
+	return db.Update(recID, dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details})
 }
 
 func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {

@@ -79,6 +79,21 @@ var (
 			Layout:    relation.ObjectType_set,
 			IconEmoji: "🗂",
 		},
+		"objectType": {
+			Url:  bundledObjectTypeURLPrefix + "objectType",
+			Name: "Object Type",
+			Relations: []*relation.Relation{
+				MustGetBundledRelationByKey("id"),
+				MustGetBundledRelationByKey("name"),
+				MustGetBundledRelationByKey("createdDate"),
+				MustGetBundledRelationByKey("lastModifiedDate"),
+				MustGetBundledRelationByKey("lastOpenedDate"),
+				MustGetBundledRelationByKey("iconEmoji"),
+				MustGetBundledRelationByKey("iconImage"),
+			},
+			Layout:    relation.ObjectType_objectType,
+			IconEmoji: "ℹ️",
+		},
 	}
 )
 

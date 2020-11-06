@@ -634,6 +634,8 @@ enum SmartBlockType {
     Breadcrumbs = 4; // have only Link simpleblocks
 
     Set = 5; // only have dataview simpleblock
+    ObjectType = 6; // have relations list
+
 }
 
 message ResponseEvent {

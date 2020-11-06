@@ -10904,6 +10904,7 @@ Precondition: user A and user B opened the same block
 | Archive | 3 | have only Link simpleblocks |
 | Breadcrumbs | 4 | have only Link simpleblocks |
 | Set | 5 | only have dataview simpleblock |
+| ObjectType | 6 | have relations list |
 
 
  
@@ -11877,6 +11878,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 | contact | 1 |  |
 | task | 2 |  |
 | set | 3 |  |
+| objectType | 4 |  |
 
 
 

@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -20,24 +21,32 @@ func New(
 	pageStore localstore.ObjectStore,
 	objectTypeUrl string,
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
+	getRelations func(objectId string) (relations []*pbrelation.Relation, err error),
+	setRelations func(id string, relations []*pbrelation.Relation) (err error),
+
 	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error),
 ) database.Database {
 	return &setOfObjects{
 		ObjectStore:      pageStore,
 		objectTypeUrl:    objectTypeUrl,
 		setDetails:       setDetails,
+		getRelations:     getRelations,
+		setRelations:     setRelations,
 		createSmartBlock: createSmartBlock,
 	}
 }
 
 type setOfObjects struct {
 	localstore.ObjectStore
-	objectTypeUrl    string
-	setDetails       func(req pb.RpcBlockSetDetailsRequest) error
+	objectTypeUrl string
+	setDetails    func(req pb.RpcBlockSetDetailsRequest) error
+	getRelations  func(objectId string) (relations []*pbrelation.Relation, err error)
+	setRelations  func(id string, relations []*pbrelation.Relation) (err error)
+
 	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 }
 
-func (sp setOfObjects) Create(rec database.Record) (database.Record, error) {
+func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record) (database.Record, error) {
 	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, []string{sp.objectTypeUrl}, nil)
 	if err != nil {
 		return rec, err
@@ -52,7 +61,7 @@ func (sp setOfObjects) Create(rec database.Record) (database.Record, error) {
 	return rec, nil
 }
 
-func (sp *setOfObjects) Update(id string, rec database.Record) error {
+func (sp *setOfObjects) Update(id string, relations []*pbrelation.Relation, rec database.Record) error {
 	var details []*pb.RpcBlockSetDetailsDetail
 	for k, v := range rec.Details.Fields {
 		details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
@@ -62,6 +71,29 @@ func (sp *setOfObjects) Update(id string, rec database.Record) error {
 		return nil
 	}
 
+	existingRelations, err := sp.getRelations(id)
+	if err != nil {
+		return err
+	}
+
+	var existingRelationMap = make(map[string]*pbrelation.Relation, len(existingRelations))
+	for i, relation := range existingRelations {
+		existingRelationMap[relation.Key] = existingRelations[i]
+	}
+
+	var relationsToSet []*pbrelation.Relation
+	for i, relation := range relations {
+		if _, detailSet := rec.Details.Fields[relation.Key]; detailSet {
+			if rel, exists := existingRelationMap[relation.Key]; !exists {
+				relationsToSet = append(relationsToSet, relations[i])
+			} else if !pbtypes.RelationEqual(rel, relation) {
+				// todo: check if this relation is extra?
+				relationsToSet = append(relationsToSet, relations[i])
+			}
+		}
+	}
+
+	err = sp.setRelations(id, relationsToSet)
 	return sp.setDetails(pb.RpcBlockSetDetailsRequest{
 		ContextId: id, // not sure?
 		Details:   details,

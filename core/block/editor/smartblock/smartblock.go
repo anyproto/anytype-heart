@@ -69,9 +69,10 @@ type SmartBlock interface {
 	History() undo.History
 	Anytype() anytype.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
+	Relations() []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	UpdateExtraRelations(relations []*pbrelation.Relation) (err error)
+	UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(relationKeys []string) (err error)
 	AddObjectTypes(objectTypes []string) (err error)
 	RemoveObjectTypes(objectTypes []string) (err error)
@@ -541,20 +542,20 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 }
 
 func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.ExtraRelations())
+	copy := pbtypes.CopyRelations(sb.Relations())
 
 	var existsMap = map[string]struct{}{}
 	for _, rel := range copy {
 		existsMap[rel.Key] = struct{}{}
 	}
 	for _, rel := range relations {
+		if rel.Key == "" {
+			rel.Key = bson.NewObjectId().Hex()
+		}
 		if _, exists := existsMap[rel.Key]; !exists {
-			if rel.Key == "" {
-				rel.Key = bson.NewObjectId().Hex()
-			}
 			// we return the pointers slice here just for clarity
 			relationsWithKeys = append(relationsWithKeys, rel)
-			copy = append(copy, rel)
+			copy = append(copy, pbtypes.CopyRelation(rel))
 		} else {
 			return nil, fmt.Errorf("relation with the same key already exists")
 		}
@@ -605,18 +606,23 @@ func (sb *smartBlock) RemoveObjectTypes(objectTypes []string) (err error) {
 	return
 }
 
-func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation) (err error) {
-	copy := pbtypes.CopyRelations(sb.ExtraRelations())
-
-	for i, rel := range copy {
-		for _, relation := range relations {
-			if rel.Key == relation.Key {
-				copy[i] = relation
+func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
+	var newRelations []*pbrelation.Relation
+	for i := range relations {
+		for j := range extraRelations {
+			if extraRelations[j].Key == relations[i].Key {
+				extraRelations[j] = relations[i]
+				break
 			}
+		}
+
+		if createIfMissing {
+			newRelations = append(newRelations, relations[i])
 		}
 	}
 
-	s := sb.NewState().SetRelations(copy)
+	s := sb.NewState().SetRelations(append(extraRelations, newRelations...))
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
@@ -786,8 +792,11 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
-		for _, objType := range objectTypes {
-			relations = append(relations, objType.Relations...)
+		if !(len(objectTypes) == 1 && objectTypes[0].Url == objects.BundledObjectTypeURLPrefix+"objectType") {
+			// do not fetch objectTypes for object type type to avoid universe collapse
+			for _, objType := range objectTypes {
+				relations = append(relations, objType.Relations...)
+			}
 		}
 	}
 	return relation.MergeAndSortRelations(relations, sb.ExtraRelations(), sb.Details())

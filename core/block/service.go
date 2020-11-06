@@ -91,9 +91,11 @@ type Service interface {
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
-	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
-	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	RemoveRelations(id string, relationKeys []string) (err error)
+
+	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
+	UpdateExtraRelations(id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
+	AddExtraRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveExtraRelations(id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 
 	AddObjectTypes(objectId string, objectTypes []string) (err error)
@@ -463,7 +465,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
-		if _, err = s.AddRelations(id, relations); err != nil {
+		if _, err = s.AddExtraRelations(id, relations); err != nil {
 			return id, fmt.Errorf("can't add relations to object: %v", err)
 		}
 	}
@@ -1083,6 +1085,8 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
+	case pb.SmartBlockType_ObjectType:
+		sb = editor.NewObjectType(s.meta)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -1280,13 +1284,21 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 	return objectType, err
 }
 
-func (s *service) UpdateRelations(objectId string, relations []*pbrelation.Relation) (err error) {
+func (s *service) GetRelations(objectId string) (relations []*pbrelation.Relation, err error) {
+	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
+		relations = b.Relations()
+		return nil
+	})
+	return
+}
+
+func (s *service) UpdateExtraRelations(objectId string, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.UpdateExtraRelations(relations)
+		return b.UpdateExtraRelations(relations, createIfMissing)
 	})
 }
 
-func (s *service) AddRelations(objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (s *service) AddExtraRelations(objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		var err2 error
 		relationsWithKeys, err2 = b.AddExtraRelations(relations)
@@ -1408,7 +1420,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	return linkId, setId, nil
 }
 
-func (s *service) RemoveRelations(objectTypeId string, relationKeys []string) (err error) {
+func (s *service) RemoveExtraRelations(objectTypeId string, relationKeys []string) (err error) {
 	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
 		return b.RemoveExtraRelations(relationKeys)
 	})

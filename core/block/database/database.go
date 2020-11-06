@@ -13,12 +13,15 @@ import (
 
 type Ctrl interface {
 	Anytype() anytype.Service
+
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
+	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
+
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
-	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
-	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	RemoveRelations(id string, relationKeys []string) (err error)
+	UpdateExtraRelations(id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
+	AddExtraRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveExtraRelations(id string, relationKeys []string) (err error)
 
 	AddObjectTypes(objectId string, objectTypes []string) (err error)
 	RemoveObjectTypes(objectId string, objectTypes []string) (err error)
@@ -38,5 +41,17 @@ func (r router) Get(id string) (database.Database, error) {
 	setDetailsNoContext := func(req pb.RpcBlockSetDetailsRequest) error {
 		return r.s.SetDetails(nil, req)
 	}
-	return objects.New(r.s.Anytype().ObjectStore(), id, setDetailsNoContext, r.s.CreateSmartBlock), nil
+
+	setOrAddRelations := func(id string, relations []*pbrelation.Relation) error {
+		return r.s.UpdateExtraRelations(id, relations, true)
+	}
+
+	return objects.New(
+		r.s.Anytype().ObjectStore(),
+		id,
+		setDetailsNoContext,
+		r.s.GetRelations,
+		setOrAddRelations,
+		r.s.CreateSmartBlock,
+	), nil
 }

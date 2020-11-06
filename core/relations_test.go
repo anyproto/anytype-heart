@@ -168,7 +168,6 @@ func TestRelationAdd(t *testing.T) {
 
 		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
 		require.Equal(t, "new_changed", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
-
 	})
 
 	t.Run("delete_incorrect", func(t *testing.T) {
@@ -208,7 +207,7 @@ func TestCustomType(t *testing.T) {
 
 	respObjectTypeList := mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
-	require.Len(t, respObjectTypeList.ObjectTypes, 3)
+	require.Len(t, respObjectTypeList.ObjectTypes, len(relation.BundledObjectTypes))
 
 	respObjectTypeCreate := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
 		ObjectType: &pbrelation.ObjectType{
@@ -223,16 +222,11 @@ func TestCustomType(t *testing.T) {
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
 	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 8) // including relation.RequiredInternalRelations
 	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
+	newRelation := respObjectTypeCreate.ObjectType.Relations[7]
 
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
-	require.Len(t, respObjectTypeList.ObjectTypes, 4)
-	require.Equal(t, respObjectTypeCreate.ObjectType.Url, respObjectTypeList.ObjectTypes[3].Url)
-	require.Len(t, respObjectTypeList.ObjectTypes[3].Relations, 8)
-
-	respObjectTypeList = mw.ObjectTypeList(nil)
-	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
-	require.Len(t, respObjectTypeList.ObjectTypes, 4)
+	require.Len(t, respObjectTypeList.ObjectTypes, len(relation.BundledObjectTypes)+1)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
 	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
 	require.Len(t, lastObjType.Relations, 8)
@@ -246,10 +240,11 @@ func TestCustomType(t *testing.T) {
 	respOpenCustomTypeSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
 	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
 
-	respCreateRecordInCustomTypeSet := mw.BlockCreateDataviewRecord(&pb.RpcBlockCreateDataviewRecordRequest{ContextId: respCreateCustomTypeSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom1")}}})
+	respCreateRecordInCustomTypeSet := mw.BlockCreateDataviewRecord(&pb.RpcBlockCreateDataviewRecordRequest{ContextId: respCreateCustomTypeSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom1"), newRelation.Key: pbtypes.String("newRelationVal")}}})
 	require.Equal(t, 0, int(respCreateRecordInCustomTypeSet.Error.Code), respCreateRecordInCustomTypeSet.Error.Description)
 
-	respOpenCustomTypeObject := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue()})
+	customObjectId := respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue()
+	respOpenCustomTypeObject := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: customObjectId})
 	require.Equal(t, 0, int(respOpenCustomTypeObject.Error.Code), respOpenCustomTypeObject.Error.Description)
 	require.Len(t, respOpenCustomTypeObject.Event.Messages, 1)
 	show := respOpenCustomTypeObject.Event.Messages[0].GetBlockShow()
@@ -259,6 +254,26 @@ func TestCustomType(t *testing.T) {
 	// omit relations
 	respObjectTypeCreate.ObjectType.Relations = nil
 	require.Equal(t, respObjectTypeCreate.ObjectType, show.ObjectTypes[0])
+	var details *types2.Struct
+	for _, detail := range show.Details {
+		if detail.Id == customObjectId {
+			details = detail.Details
+			break
+		}
+	}
+
+	var found bool
+	for _, rel := range show.Relations {
+		if rel.Key == newRelation.Key {
+			require.Equal(t, newRelation, rel)
+			found = true
+			break
+		}
+	}
+	require.True(t, found)
+
+	require.NotNil(t, details.Fields[newRelation.Key])
+	require.Equal(t, "newRelationVal", details.Fields[newRelation.Key].GetStringValue())
 
 	respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
 	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
@@ -270,6 +285,7 @@ func TestCustomType(t *testing.T) {
 	show = respOpenCustomTypeSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 }
+
 func TestBundledType(t *testing.T) {
 	_, mw := start(t)
 

@@ -32,9 +32,9 @@ type Reader interface {
 type Writer interface {
 	// Creating record involves some additional operations that may change
 	// the record. So we return potentially modified record as a result.
-	Create(rec Record) (Record, error)
+	Create(relations []*pbrelation.Relation, rec Record) (Record, error)
 
-	Update(id string, rec Record) error
+	Update(id string, relations []*pbrelation.Relation, rec Record) error
 	Delete(id string) error
 }
 

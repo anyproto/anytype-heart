@@ -16,6 +16,7 @@ message ObjectType {
         contact = 1;
         task = 2;
         set = 3;
+        objectType = 4;
     }
 }
 
