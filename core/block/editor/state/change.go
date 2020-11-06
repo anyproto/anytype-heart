@@ -299,14 +299,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetLink:
 			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockSetDataviewView:
-			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockSetDataviewRelation:
-			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockDeleteDataviewRelation:
-			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockDeleteDataviewView:
-			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetRelation:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDelete:
@@ -320,6 +312,15 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 					})
 				}
 			}
+
+		case *pb.EventMessageValueOfBlockDataviewViewSet:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewRelationSet:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewViewDelete:
+			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %T", msg)
 		}

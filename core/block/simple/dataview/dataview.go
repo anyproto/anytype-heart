@@ -91,8 +91,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		if !found || changed {
 			msgs = append(msgs,
 				simple.EventMessage{
-					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewView{
-						&pb.EventBlockSetDataviewView{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewSet{
+						&pb.EventBlockDataviewViewSet{
 							Id:     dv.Id,
 							ViewId: view2.Id,
 							View:   view2,
@@ -112,8 +112,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 		if !found {
 			msgs = append(msgs,
-				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewView{
-					&pb.EventBlockDeleteDataviewView{
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewDelete{
+					&pb.EventBlockDataviewViewDelete{
 						Id:     dv.Id,
 						ViewId: view1.Id,
 					}}}})
@@ -134,8 +134,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		if !found || changed {
 			msgs = append(msgs,
 				simple.EventMessage{
-					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewRelation{
-						&pb.EventBlockSetDataviewRelation{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
+						&pb.EventBlockDataviewRelationSet{
 							Id:          dv.Id,
 							RelationKey: rel2.Key,
 							Relation:    rel2,
@@ -153,8 +153,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 		if !found {
 			msgs = append(msgs,
-				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewRelation{
-					&pb.EventBlockDeleteDataviewRelation{
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
+					&pb.EventBlockDataviewRelationDelete{
 						Id:          dv.Id,
 						RelationKey: rel1.Key,
 					}}}})

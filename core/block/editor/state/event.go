@@ -88,11 +88,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockSetDataviewView:
-		if err = apply(o.BlockSetDataviewView.Id, func(b simple.Block) error {
-			if f, ok := b.(dataview.Block); ok && o.BlockSetDataviewView.View != nil {
-				if f.SetView(o.BlockSetDataviewView.ViewId, *o.BlockSetDataviewView.View) != nil {
-					f.AddView(*o.BlockSetDataviewView.View)
+	case *pb.EventMessageValueOfBlockDataviewViewSet:
+		if err = apply(o.BlockDataviewViewSet.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok && o.BlockDataviewViewSet.View != nil {
+				if f.SetView(o.BlockDataviewViewSet.ViewId, *o.BlockDataviewViewSet.View) != nil {
+					f.AddView(*o.BlockDataviewViewSet.View)
 				}
 				return nil
 			}
@@ -100,11 +100,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockSetDataviewRelation:
-		if err = apply(o.BlockSetDataviewRelation.Id, func(b simple.Block) error {
-			if f, ok := b.(dataview.Block); ok && o.BlockSetDataviewRelation.Relation != nil {
-				if f.UpdateRelation(o.BlockSetDataviewRelation.RelationKey, *o.BlockSetDataviewRelation.Relation) != nil {
-					f.AddRelation(*o.BlockSetDataviewRelation.Relation)
+	case *pb.EventMessageValueOfBlockDataviewRelationSet:
+		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok && o.BlockDataviewRelationSet.Relation != nil {
+				if f.UpdateRelation(o.BlockDataviewRelationSet.RelationKey, *o.BlockDataviewRelationSet.Relation) != nil {
+					f.AddRelation(*o.BlockDataviewRelationSet.Relation)
 				}
 				return nil
 			}
@@ -112,10 +112,10 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockDeleteDataviewView:
-		if err = apply(o.BlockDeleteDataviewView.Id, func(b simple.Block) error {
+	case *pb.EventMessageValueOfBlockDataviewViewDelete:
+		if err = apply(o.BlockDataviewViewDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				return f.DeleteView(o.BlockDeleteDataviewView.Id)
+				return f.DeleteView(o.BlockDataviewViewDelete.Id)
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {

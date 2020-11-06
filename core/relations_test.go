@@ -279,8 +279,8 @@ func TestCustomType(t *testing.T) {
 	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
 
 	require.Len(t, respOpenCustomTypeSet.Event.Messages, 2)
-	require.Len(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
-	require.Equal(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue(), respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue())
+	require.Len(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 1)
+	require.Equal(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[0].Fields["id"].GetStringValue(), respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue())
 
 	show = respOpenCustomTypeSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
@@ -298,8 +298,8 @@ func TestBundledType(t *testing.T) {
 	show := respOpenPagesSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 
-	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 1)
-	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[0].Fields["id"].GetStringValue())
+	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 1)
+	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[0].Fields["id"].GetStringValue())
 
 	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
@@ -309,6 +309,6 @@ func TestBundledType(t *testing.T) {
 	require.Len(t, respOpenPagesSet.Event.Messages, 2)
 	show = respOpenPagesSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
-	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted, 2)
-	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockSetDataviewRecords().Inserted[1].Fields["id"].GetStringValue())
+	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 2)
+	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[1].Fields["id"].GetStringValue())
 }

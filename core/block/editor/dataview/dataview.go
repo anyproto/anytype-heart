@@ -492,15 +492,12 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	var msgs = []*pb.EventMessage{
-		{Value: &pb.EventMessageValueOfBlockSetDataviewRecords{
-			BlockSetDataviewRecords: &pb.EventBlockSetDataviewRecords{
-				Id:             dv.blockId,
-				ViewId:         activeView.Id,
-				Updated:        nil,
-				Removed:        currentEntriesIds,
-				Inserted:       records,
-				InsertPosition: 0,
-				Total:          uint32(total),
+		{Value: &pb.EventMessageValueOfBlockDataviewRecordsSet{
+			BlockDataviewRecordsSet: &pb.EventBlockDataviewRecordsSet{
+				Id:      dv.blockId,
+				ViewId:  activeView.Id,
+				Records: records,
+				Total:   uint32(total),
 			},
 		}},
 	}
@@ -516,11 +513,11 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 					return
 				}
 				d.SendEvent([]*pb.EventMessage{
-					{Value: &pb.EventMessageValueOfBlockSetDataviewRecords{
-						&pb.EventBlockSetDataviewRecords{
+					{Value: &pb.EventMessageValueOfBlockDataviewRecordsUpdate{
+						&pb.EventBlockDataviewRecordsUpdate{
 							Id:      dv.blockId,
 							ViewId:  activeView.Id,
-							Updated: []*types.Struct{rec.Details},
+							Records: []*types.Struct{rec.Details},
 						}}}})
 			}
 		}

@@ -601,10 +601,16 @@
     - [Event.Account.Show](#anytype.Event.Account.Show)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
+    - [Event.Block.Dataview](#anytype.Event.Block.Dataview)
+    - [Event.Block.Dataview.RecordsDelete](#anytype.Event.Block.Dataview.RecordsDelete)
+    - [Event.Block.Dataview.RecordsInsert](#anytype.Event.Block.Dataview.RecordsInsert)
+    - [Event.Block.Dataview.RecordsSet](#anytype.Event.Block.Dataview.RecordsSet)
+    - [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate)
+    - [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete)
+    - [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet)
+    - [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete)
+    - [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
-    - [Event.Block.Delete.Dataview](#anytype.Event.Block.Delete.Dataview)
-    - [Event.Block.Delete.Dataview.Relation](#anytype.Event.Block.Delete.Dataview.Relation)
-    - [Event.Block.Delete.Dataview.View](#anytype.Event.Block.Delete.Dataview.View)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
     - [Event.Block.Fill](#anytype.Event.Block.Fill)
     - [Event.Block.Fill.Align](#anytype.Event.Block.Fill.Align)
@@ -653,10 +659,6 @@
     - [Event.Block.Set.Bookmark.Type](#anytype.Event.Block.Set.Bookmark.Type)
     - [Event.Block.Set.Bookmark.Url](#anytype.Event.Block.Set.Bookmark.Url)
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
-    - [Event.Block.Set.Dataview](#anytype.Event.Block.Set.Dataview)
-    - [Event.Block.Set.Dataview.Records](#anytype.Event.Block.Set.Dataview.Records)
-    - [Event.Block.Set.Dataview.Relation](#anytype.Event.Block.Set.Dataview.Relation)
-    - [Event.Block.Set.Dataview.View](#anytype.Event.Block.Set.Dataview.View)
     - [Event.Block.Set.Details](#anytype.Event.Block.Set.Details)
     - [Event.Block.Set.Div](#anytype.Event.Block.Set.Div)
     - [Event.Block.Set.Div.Style](#anytype.Event.Block.Set.Div.Style)
@@ -9191,34 +9193,90 @@ B. Partial block load
 
 
 
-<a name="anytype.Event.Block.Delete"></a>
+<a name="anytype.Event.Block.Dataview"></a>
 
-### Event.Block.Delete
+### Event.Block.Dataview
+
+
+
+
+
+
+
+<a name="anytype.Event.Block.Dataview.RecordsDelete"></a>
+
+### Event.Block.Dataview.RecordsDelete
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockIds | [string](#string) | repeated |  |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| removed | [string](#string) | repeated |  |
 
 
 
 
 
 
-<a name="anytype.Event.Block.Delete.Dataview"></a>
+<a name="anytype.Event.Block.Dataview.RecordsInsert"></a>
 
-### Event.Block.Delete.Dataview
-
-
-
+### Event.Block.Dataview.RecordsInsert
+sent when the active view&#39;s should add more records
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| insertPosition | [uint32](#uint32) |  | position to insert |
 
 
-<a name="anytype.Event.Block.Delete.Dataview.Relation"></a>
 
-### Event.Block.Delete.Dataview.Relation
+
+
+
+<a name="anytype.Event.Block.Dataview.RecordsSet"></a>
+
+### Event.Block.Dataview.RecordsSet
+sent when the active view&#39;s visible records have been updated
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| total | [uint32](#uint32) |  | total number of records |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Dataview.RecordsUpdate"></a>
+
+### Event.Block.Dataview.RecordsUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
+| insertPosition | [uint32](#uint32) |  | position to insert |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Dataview.RelationDelete"></a>
+
+### Event.Block.Dataview.RelationDelete
 
 
 
@@ -9232,9 +9290,26 @@ B. Partial block load
 
 
 
-<a name="anytype.Event.Block.Delete.Dataview.View"></a>
+<a name="anytype.Event.Block.Dataview.RelationSet"></a>
 
-### Event.Block.Delete.Dataview.View
+### Event.Block.Dataview.RelationSet
+sent when the dataview relation has been changed or added
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| relationKey | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Dataview.ViewDelete"></a>
+
+### Event.Block.Dataview.ViewDelete
 
 
 
@@ -9242,6 +9317,40 @@ B. Partial block load
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id to remove |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Dataview.ViewSet"></a>
+
+### Event.Block.Dataview.ViewSet
+sent when the view have been changed or added
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
+| offset | [uint32](#uint32) |  | middleware will try to preserve the current aciveview&#39;s offset&amp;limit but may reset it in case it becomes invalid or not actual anymore |
+| limit | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Delete"></a>
+
+### Event.Block.Delete
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockIds | [string](#string) | repeated |  |
 
 
 
@@ -9999,74 +10108,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.Dataview"></a>
-
-### Event.Block.Set.Dataview
-
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Dataview.Records"></a>
-
-### Event.Block.Set.Dataview.Records
-sent when the active view&#39;s visible records have been
-changed either by the view settings(filters/sort/limit/offset) or by the data itself
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| updated | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | existing records updated |
-| inserted | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
-| insertPosition | [uint32](#uint32) |  | position to insert |
-| removed | [string](#string) | repeated |  |
-| total | [uint32](#uint32) |  | total number of records |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Dataview.Relation"></a>
-
-### Event.Block.Set.Dataview.Relation
-sent when the dataview relation has been changed or added
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | dataview block&#39;s id |
-| relationKey | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Set.Dataview.View"></a>
-
-### Event.Block.Set.Dataview.View
-sent when the view have been changed or added
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | dataview block&#39;s id |
-| viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
-| offset | [uint32](#uint32) |  | middleware will try to preserve the current aciveview&#39;s offset&amp;limit but may reset it in case it becomes invalid or not actual anymore |
-| limit | [uint32](#uint32) |  |  |
-
-
-
-
-
-
 <a name="anytype.Event.Block.Set.Details"></a>
 
 ### Event.Block.Set.Details
@@ -10558,12 +10599,15 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  |  |
 | blockSetRelations | [Event.Block.Set.Relations](#anytype.Event.Block.Set.Relations) |  |  |
 | blockSetDiv | [Event.Block.Set.Div](#anytype.Event.Block.Set.Div) |  |  |
-| blockSetDataviewRecords | [Event.Block.Set.Dataview.Records](#anytype.Event.Block.Set.Dataview.Records) |  |  |
-| blockSetDataviewView | [Event.Block.Set.Dataview.View](#anytype.Event.Block.Set.Dataview.View) |  |  |
-| blockDeleteDataviewView | [Event.Block.Delete.Dataview.View](#anytype.Event.Block.Delete.Dataview.View) |  |  |
-| blockDeleteDataviewRelation | [Event.Block.Delete.Dataview.Relation](#anytype.Event.Block.Delete.Dataview.Relation) |  |  |
+| blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype.Event.Block.Dataview.RecordsSet) |  |  |
+| blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate) |  |  |
+| blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype.Event.Block.Dataview.RecordsInsert) |  |  |
+| blockDataviewRecordsDelete | [Event.Block.Dataview.RecordsDelete](#anytype.Event.Block.Dataview.RecordsDelete) |  |  |
+| blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet) |  |  |
+| blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
+| blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
+| blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation) |  |  |
-| blockSetDataviewRelation | [Event.Block.Set.Dataview.Relation](#anytype.Event.Block.Set.Dataview.Relation) |  |  |
 | blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
