@@ -1393,7 +1393,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
 						TargetBlockId: setId,
-						Style:         model.BlockContentLink_Page,
+						Style:         model.BlockContentLink_Dataview,
 					},
 				},
 			},
