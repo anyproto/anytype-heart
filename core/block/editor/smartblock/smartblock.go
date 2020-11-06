@@ -69,6 +69,7 @@ type SmartBlock interface {
 	History() undo.History
 	Anytype() anytype.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
+	HasRelation(relationKey string) bool
 	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(relations []*pbrelation.Relation) (err error)
 	RemoveExtraRelations(relationKeys []string) (err error)
@@ -104,6 +105,15 @@ type smartBlock struct {
 	defaultObjectTypeUrl string
 	onNewStateHooks      []func()
 	onCloseHooks         []func()
+}
+
+func (sb *smartBlock) HasRelation(key string) bool {
+	for _, rel := range sb.Relations() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (sb *smartBlock) Id() string {
