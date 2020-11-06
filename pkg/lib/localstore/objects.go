@@ -1,6 +1,7 @@
 package localstore
 
 import (
+	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -66,12 +67,65 @@ func NewObjectStore(ds ds.TxnDatastore) ObjectStore {
 	return &dsObjectStore{ds: ds}
 }
 
+type subscription struct {
+	ids  []string
+	quit chan struct{}
+	ch   chan *types.Struct
+}
+
 type dsObjectStore struct {
 	// underlying storage
 	ds ds.TxnDatastore
 
 	// serializing page updates
 	l sync.Mutex
+
+	subscriptions []*subscription
+}
+
+func (m *dsObjectStore) QueryAndSubscribeForChanges(ctx context.Context, schema *schema.Schema, q database.Query, updatedRecordsCh chan database.Record) (records []database.Record, total int, err error) {
+	m.l.Lock()
+	defer m.l.Unlock()
+
+	records, total, err = m.Query(schema, q)
+	ch := make(chan *types.Struct)
+	quitCh := make(chan struct{})
+
+	var ids []string
+	for _, record := range records {
+		ids = append(ids, pbtypes.GetString(record.Details, "id"))
+	}
+
+	sub := subscription{ids: ids, quit: quitCh, ch: ch}
+	m.subscriptions = append(m.subscriptions, &sub)
+
+	go func() {
+		defer func() {
+			close(sub.quit)
+			close(updatedRecordsCh)
+			m.l.Lock()
+			for i, s := range m.subscriptions {
+				if s.ch == sub.ch {
+					m.subscriptions = append(m.subscriptions[:i], m.subscriptions[i+1:]...)
+				}
+			}
+			m.l.Unlock()
+		}()
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case details, ok := <-ch:
+				if !ok {
+					return
+				}
+
+				updatedRecordsCh <- database.Record{Details: details}
+			}
+		}
+	}()
+
+	return
 }
 
 func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []database.Record, total int, err error) {
@@ -220,7 +274,7 @@ func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) er
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) DeletePage(id string) error {
+func (m *dsObjectStore) DeleteObject(id string) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -459,7 +513,35 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 		}
 	}
 
-	return txn.Commit()
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+
+	if details != nil && details.Fields != nil {
+		m.sendUpdatesToSubscriptions(id, details)
+	}
+
+	return nil
+}
+
+func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
+	details.Fields[database.RecordIDField] = pb.ToValue(id)
+	for _, sub := range m.subscriptions {
+		for _, subId := range sub.ids {
+			if subId == id {
+				go func(quit chan struct{}, ch chan *types.Struct) {
+					select {
+					case ch <- details:
+						break
+					case <-quit:
+						break
+					}
+				}(sub.quit, sub.ch)
+				break
+			}
+		}
+	}
 }
 
 func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {

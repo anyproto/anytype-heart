@@ -1,6 +1,7 @@
 package dataview
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -55,6 +56,8 @@ type dataviewImpl struct {
 	limit        int
 	records      []database.Record
 	mu           sync.Mutex
+
+	cancelSubscriptions context.CancelFunc
 }
 
 type ObjectTypeGetter interface {
@@ -447,13 +450,24 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		return nil, err
 	}
 	sch := schema.New(objectType)
-	entries, total, err := db.Query(&sch, database.Query{
+
+	dv.mu.Lock()
+	if dv.cancelSubscriptions != nil {
+		dv.cancelSubscriptions()
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	dv.cancelSubscriptions = cancel
+	dv.mu.Unlock()
+
+	recordsUpdates := make(chan database.Record)
+	entries, total, err := db.QueryAndSubscribeForChanges(ctx, &sch, database.Query{
 		Relations: activeView.Relations,
 		Filters:   activeView.Filters,
 		Sorts:     activeView.Sorts,
 		Limit:     dv.limit,
 		Offset:    dv.offset,
-	})
+	}, recordsUpdates)
 	if err != nil {
 		return nil, err
 	}
@@ -484,6 +498,24 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries
+
+	go func() {
+		for {
+			select {
+			case rec, ok := <-recordsUpdates:
+				if !ok {
+					return
+				}
+				d.SendEvent([]*pb.EventMessage{
+					{Value: &pb.EventMessageValueOfBlockSetDataviewRecords{
+						&pb.EventBlockSetDataviewRecords{
+							Id:      dv.blockId,
+							ViewId:  activeView.Id,
+							Updated: []*types.Struct{rec.Details},
+						}}}})
+			}
+		}
+	}()
 
 	return msgs, nil
 }
