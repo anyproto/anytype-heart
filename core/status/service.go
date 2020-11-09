@@ -99,7 +99,8 @@ func (r *service) Watch(tid thread.ID, eventCtx string) {
 				msg.Status = pb.EventStatusThreadSync_Failure
 			}
 
-			r.sendEvent(eventCtx, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &msg})
+			// fixme temporarily disabled
+			//r.sendEvent(eventCtx, &pb.EventMessageValueOfThreadStatus{ThreadStatus: &msg})
 		}
 	}()
 }
