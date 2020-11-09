@@ -344,6 +344,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 
 	}
 	sort.Strings(ids)
+
 	return
 }
 

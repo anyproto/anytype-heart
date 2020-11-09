@@ -67,12 +67,6 @@ func NewObjectStore(ds ds.TxnDatastore) ObjectStore {
 	return &dsObjectStore{ds: ds}
 }
 
-type subscription struct {
-	ids  []string
-	quit chan struct{}
-	ch   chan *types.Struct
-}
-
 type dsObjectStore struct {
 	// underlying storage
 	ds ds.TxnDatastore
@@ -80,10 +74,10 @@ type dsObjectStore struct {
 	// serializing page updates
 	l sync.Mutex
 
-	subscriptions []*subscription
+	subscriptions []database.Subscription
 }
 
-func (m *dsObjectStore) QueryAndSubscribeForChanges(ctx context.Context, schema *schema.Schema, q database.Query, updatedRecordsCh chan database.Record) (records []database.Record, total int, err error) {
+func (m *dsObjectStore) QueryAndSubscribeForChanges(ctx context.Context, schema *schema.Schema, q database.Query, updatedRecordsCh chan database.Record) (records []database.Record, subscription database.Subscription, total int, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
 
@@ -96,16 +90,16 @@ func (m *dsObjectStore) QueryAndSubscribeForChanges(ctx context.Context, schema 
 		ids = append(ids, pbtypes.GetString(record.Details, "id"))
 	}
 
-	sub := subscription{ids: ids, quit: quitCh, ch: ch}
-	m.subscriptions = append(m.subscriptions, &sub)
+	subscription = database.NewSubscription(ids, ch, quitCh)
+	m.subscriptions = append(m.subscriptions, subscription)
 
 	go func() {
 		defer func() {
-			close(sub.quit)
+			close(quitCh)
 			close(updatedRecordsCh)
 			m.l.Lock()
 			for i, s := range m.subscriptions {
-				if s.ch == sub.ch {
+				if s.RecordChan() == ch {
 					m.subscriptions = append(m.subscriptions[:i], m.subscriptions[i+1:]...)
 				}
 			}
@@ -226,7 +220,7 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbr
 	return relations, nil
 }
 
-func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error {
+/*func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -272,7 +266,7 @@ func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) er
 	}
 
 	return txn.Commit()
-}
+}*/
 
 func (m *dsObjectStore) DeleteObject(id string) error {
 	txn, err := m.ds.NewTransaction(false)
@@ -518,17 +512,13 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 		return err
 	}
 
-	if details != nil && details.Fields != nil {
-		m.sendUpdatesToSubscriptions(id, details)
-	}
-
 	return nil
 }
 
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	details.Fields[database.RecordIDField] = pb.ToValue(id)
 	for _, sub := range m.subscriptions {
-		for _, subId := range sub.ids {
+		for _, subId := range sub.Subscriptions() {
 			if subId == id {
 				go func(quit chan struct{}, ch chan *types.Struct) {
 					select {
@@ -537,14 +527,15 @@ func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 					case <-quit:
 						break
 					}
-				}(sub.quit, sub.ch)
-				break
+				}(sub.QuitChan(), sub.RecordChan())
 			}
 		}
 	}
 }
 
 func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -570,6 +561,8 @@ func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {
 }
 
 func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -602,7 +595,16 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.Obje
 		return err
 	}
 
-	return txn.Put(detailsKey, b)
+	err = txn.Put(detailsKey, b)
+	if err != nil {
+		return err
+	}
+
+	if details.Details != nil && details.Details.Fields != nil {
+		m.sendUpdatesToSubscriptions(id, details.Details)
+	}
+
+	return nil
 }
 
 func (m *dsObjectStore) updateRelations(txn ds.Txn, id string, relations *pbrelation.Relations) error {

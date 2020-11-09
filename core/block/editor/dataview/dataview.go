@@ -57,7 +57,8 @@ type dataviewImpl struct {
 	records      []database.Record
 	mu           sync.Mutex
 
-	cancelSubscriptions context.CancelFunc
+	recordsUpdatesSubscription database.Subscription
+	recordsUpdatesCancel       context.CancelFunc
 }
 
 type ObjectTypeGetter interface {
@@ -371,7 +372,8 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 		db = target
 	}
 
-	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details})
+	dv := d.getDataviewImpl(dvBlock)
+	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription)
 	if err != nil {
 		return nil, err
 	}
@@ -461,16 +463,16 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	sch := schema.New(objectType)
 
 	dv.mu.Lock()
-	if dv.cancelSubscriptions != nil {
-		dv.cancelSubscriptions()
+	if dv.recordsUpdatesCancel != nil {
+		dv.recordsUpdatesCancel()
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	dv.cancelSubscriptions = cancel
+	dv.recordsUpdatesCancel = cancel
 	dv.mu.Unlock()
 
 	recordsUpdates := make(chan database.Record)
-	entries, total, err := db.QueryAndSubscribeForChanges(ctx, &sch, database.Query{
+	entries, sub, total, err := db.QueryAndSubscribeForChanges(ctx, &sch, database.Query{
 		Relations: activeView.Relations,
 		Filters:   activeView.Filters,
 		Sorts:     activeView.Sorts,
@@ -480,6 +482,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	if err != nil {
 		return nil, err
 	}
+	dv.recordsUpdatesSubscription = sub
 
 	var currentEntriesIds []string
 	for _, entry := range dv.records {

@@ -24,7 +24,7 @@ type Record struct {
 
 type Reader interface {
 	Query(schema *schema.Schema, q Query) (records []Record, total int, err error)
-	QueryAndSubscribeForChanges(ctx context.Context, schema *schema.Schema, q Query, updatedRecordsCh chan Record) (records []Record, total int, err error)
+	QueryAndSubscribeForChanges(ctx context.Context, schema *schema.Schema, q Query, updatedRecordsCh chan Record) (records []Record, sub Subscription, total int, err error)
 
 	AggregateRelations(schema *schema.Schema) (relations []*pbrelation.Relation, err error)
 }
@@ -32,7 +32,8 @@ type Reader interface {
 type Writer interface {
 	// Creating record involves some additional operations that may change
 	// the record. So we return potentially modified record as a result.
-	Create(relations []*pbrelation.Relation, rec Record) (Record, error)
+	// in case subscription is not nil it will be subscribed to the record updates
+	Create(relations []*pbrelation.Relation, rec Record, sub Subscription) (Record, error)
 
 	Update(id string, relations []*pbrelation.Relation, rec Record) error
 	Delete(id string) error

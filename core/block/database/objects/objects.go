@@ -46,7 +46,7 @@ type setOfObjects struct {
 	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
 }
 
-func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record) (database.Record, error) {
+func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record, sub database.Subscription) (database.Record, error) {
 	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, []string{sp.objectTypeUrl}, nil)
 	if err != nil {
 		return rec, err
@@ -54,6 +54,15 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 
 	if rec.Details == nil || rec.Details.Fields == nil {
 		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
+	}
+
+	if sub != nil {
+		sub.Subscribe(id)
+	}
+
+	err = sp.UpdateObject(id, rec.Details, &pbrelation.Relations{Relations: relations}, nil, "")
+	if err != nil {
+		return rec, err
 	}
 
 	// inject created block ID into the record

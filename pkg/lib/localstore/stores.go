@@ -56,7 +56,6 @@ type ObjectStore interface {
 	Indexable
 	database.Reader
 
-	AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error
 	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	UpdateLastModified(id string, time time.Time) error
 	UpdateLastOpened(id string, time time.Time) error
