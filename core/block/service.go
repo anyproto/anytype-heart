@@ -240,7 +240,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		ob.threadId == thread.Undef {
 		if tid, err := thread.Decode(ob.Id()); err == nil {
 			ob.threadId = tid
-			s.status.Watch(tid, ob.Id())
+			s.status.Watch(tid)
 		} else {
 			log.Warnf("can't restore thread ID: %v", err)
 		}
