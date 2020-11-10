@@ -2,12 +2,14 @@ package link
 
 import (
 	"fmt"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 func init() {
@@ -29,6 +31,7 @@ type Block interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetLink) error
+	ToText(targetDetails *types.Struct) simple.Block
 }
 
 type Link struct {
@@ -91,4 +94,29 @@ func (l *Link) ApplyEvent(e *pb.EventBlockSetLink) error {
 		l.content.TargetBlockId = e.TargetBlockId.GetValue()
 	}
 	return nil
+}
+
+func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
+	tb := &model.BlockContentText{}
+	if l.content.TargetBlockId != "" {
+		name := pbtypes.GetString(targetDetails, "name")
+		if name != "" {
+			tb.Text = name
+			tb.Marks = &model.BlockContentTextMarks{
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{0, int32(utf8.RuneCountInString(name))},
+						Type:  model.BlockContentTextMark_Mention,
+						Param: l.content.TargetBlockId,
+					},
+				},
+			}
+		}
+	}
+	m := pbtypes.CopyBlock(l.Model())
+	m.Id = ""
+	m.Content = &model.BlockContentOfText{
+		Text: tb,
+	}
+	return simple.New(m)
 }

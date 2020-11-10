@@ -7,10 +7,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 var setTextApplyInterval = time.Second * 3
@@ -21,6 +24,7 @@ type Text interface {
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 	SetText(req pb.RpcBlockSetTextTextRequest) (err error)
+	TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
 func NewText(sb smartblock.SmartBlock) Text {
@@ -207,6 +211,80 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 		return
 	}
 	return
+}
+
+func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) (err error) {
+	s := t.NewStateCtx(ctx)
+
+	turnInto := func(b text.Block) {
+		b.SetStyle(style)
+		switch style {
+		case model.BlockContentText_Header1,
+			model.BlockContentText_Header2,
+			model.BlockContentText_Header3,
+			model.BlockContentText_Quote,
+			model.BlockContentText_Code:
+			if len(b.Model().ChildrenIds) > 0 {
+				ids := b.Model().ChildrenIds
+				b.Model().ChildrenIds = nil
+				if err = s.InsertTo(b.Model().Id, model.Block_Bottom, ids...); err != nil {
+					return
+				}
+			}
+		}
+	}
+
+	onlyParents := func(ids []string) (parents []string) {
+		var childrenIds []string
+		for _, id := range ids {
+			if b := s.Pick(id); b != nil {
+				childrenIds = append(childrenIds, b.Model().ChildrenIds...)
+			}
+		}
+		parents = ids[:0]
+		for _, id := range ids {
+			if slice.FindPos(childrenIds, id) == -1 {
+				parents = append(parents, id)
+			}
+		}
+		return
+	}
+
+	switch style {
+	case model.BlockContentText_Toggle,
+		model.BlockContentText_Checkbox,
+		model.BlockContentText_Marked,
+		model.BlockContentText_Numbered:
+		ids = onlyParents(ids)
+	}
+
+	for _, id := range ids {
+		var textBlock text.Block
+		var ok bool
+		b := s.Get(id)
+		textBlock, ok = b.(text.Block)
+		if !ok {
+			if linkBlock, ok := b.(link.Block); ok {
+				var targetDetails *types.Struct
+				if targetId := linkBlock.Model().GetLink().TargetBlockId; targetId != "" {
+					result := t.MetaService().FetchDetails([]string{targetId})
+					if len(result) > 0 {
+						targetDetails = result[0].Details
+					}
+				}
+				textBlock = linkBlock.ToText(targetDetails).(text.Block)
+				s.Add(textBlock)
+				if err = s.InsertTo(id, model.Block_Replace, textBlock.Model().Id); err != nil {
+					return
+				}
+			}
+		}
+		if textBlock != nil {
+			turnInto(textBlock)
+		}
+	}
+
+	return t.Apply(s)
 }
 
 func getText(s *state.State, id string) (text.Block, error) {

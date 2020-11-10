@@ -68,6 +68,7 @@ type SmartBlock interface {
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
+	MetaService() meta.Service
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -435,6 +436,10 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 
 func (sb *smartBlock) Reindex() (err error) {
 	return sb.updatePageStore("", nil)
+}
+
+func (sb *smartBlock) MetaService() meta.Service {
+	return sb.meta
 }
 
 func (sb *smartBlock) Close() (err error) {

@@ -6,6 +6,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,4 +55,22 @@ func TestLink_Diff(t *testing.T) {
 		assert.NotNil(t, change.TargetBlockId)
 		assert.NotNil(t, change.Style)
 	})
+}
+
+func TestLink_ToText(t *testing.T) {
+	b := NewLink(&model.Block{
+		Restrictions: &model.BlockRestrictions{},
+		Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "targetId"}},
+	}).(*Link)
+	tb := b.ToText(&types.Struct{
+		Fields: map[string]*types.Value{
+			"name": pbtypes.String("target name"),
+		},
+	})
+	require.NotNil(t, tb)
+	textModel := tb.Model().GetText()
+	assert.Equal(t, "target name", textModel.Text)
+	require.Len(t, textModel.Marks.Marks, 1)
+	assert.Equal(t, "targetId", textModel.Marks.Marks[0].Param)
+	assert.Equal(t, &model.Range{0, 11}, textModel.Marks.Marks[0].Range)
 }
