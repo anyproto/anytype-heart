@@ -60,6 +60,8 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 		sub.Subscribe(id)
 	}
 
+	rec.Details.Fields["type"] = pbtypes.StringList([]string{sp.objectTypeUrl})
+
 	err = sp.UpdateObject(id, rec.Details, &pbrelation.Relations{Relations: relations}, nil, "")
 	if err != nil {
 		return rec, err

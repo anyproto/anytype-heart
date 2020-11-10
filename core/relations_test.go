@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -192,6 +193,10 @@ func TestRelationAdd(t *testing.T) {
 			BlockId:     "dataview",
 			RelationKey: relKey,
 		})
+		mw.blocksService.Close()
+		respAccountCreate := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: mw.Anytype.Account(), RootPath: rootPath})
+		require.Equal(t, 0, int(respAccountCreate.Error.Code))
+
 		require.Equal(t, 0, int(respDataviewRelationDelete.Error.Code), respDataviewRelationDelete.Error.Description)
 		respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
@@ -214,22 +219,30 @@ func TestCustomType(t *testing.T) {
 			Name: "1",
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
-				{Format: pbrelation.RelationFormat_object, Name: "bio", ObjectType: "https://anytype.io/schemas/object/bundled/pages"},
+				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectType: "https://anytype.io/schemas/object/bundled/pages"},
+				{Format: pbrelation.RelationFormat_description, Name: "bio"},
 			},
 		},
 	})
 
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
-	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 8) // including relation.RequiredInternalRelations
+	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 9) // including relation.RequiredInternalRelations
 	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
-	newRelation := respObjectTypeCreate.ObjectType.Relations[7]
+	var newRelation *pbrelation.Relation
+	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
+		if rel.Name == "bio" {
+			newRelation = rel
+			break
+		}
+	}
 
+	fmt.Printf("newRelation: %+v\n", newRelation)
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
 	require.Len(t, respObjectTypeList.ObjectTypes, len(relation.BundledObjectTypes)+1)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
 	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
-	require.Len(t, lastObjType.Relations, 8)
+	require.Len(t, lastObjType.Relations, 9)
 
 	respCreateCustomTypeSet := mw.SetCreate(&pb.RpcSetCreateRequest{
 		ObjectTypeUrl: respObjectTypeCreate.ObjectType.Url,

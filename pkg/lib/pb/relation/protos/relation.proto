@@ -41,7 +41,27 @@ message Relation {
     bool multi = 8; // allow multiple values (stored in pb list)
 
     string objectType = 10; // URL of object type, empty to allow link to any object
-    repeated string selectDict = 11; // default dictionary to choose for select/multiSelect format. Any known existing(or previously used) value for this RelationType will be appended to this list
+    // repeated string selectDict = 11; //deprecated
+    repeated SelectOption selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
+
+    message SelectOption {
+        string id = 1; // id generated automatically if omitted
+        string text = 2;
+        Color color = 3;
+
+        enum Color {
+            Grey = 0;
+            Yellow = 1;
+            Amber = 2;
+            Red = 3;
+            Pink = 4;
+            Purple = 5;
+            Blue = 6;
+            Sky = 7;
+            Teal = 8;
+            Green = 9;
+        }
+    }
 
     enum RelationDataSource {
         details = 0; // default, stored inside the smartblock's details

@@ -739,8 +739,6 @@
     - [Block.Content.Dataview](#anytype.model.Block.Content.Dataview)
     - [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter)
     - [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation)
-    - [Block.Content.Dataview.Relation.DateOptions](#anytype.model.Block.Content.Dataview.Relation.DateOptions)
-    - [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions)
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
@@ -782,11 +780,13 @@
 - [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
     - [ObjectType](#anytype.relation.ObjectType)
     - [Relation](#anytype.relation.Relation)
+    - [Relation.SelectOption](#anytype.relation.Relation.SelectOption)
     - [RelationWithValue](#anytype.relation.RelationWithValue)
     - [Relations](#anytype.relation.Relations)
   
     - [ObjectType.Layout](#anytype.relation.ObjectType.Layout)
     - [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource)
+    - [Relation.SelectOption.Color](#anytype.relation.Relation.SelectOption.Color)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
   
@@ -1207,7 +1207,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| dict | [string](#string) | repeated |  |
+| dict | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string dict = 1; // deprecated |
 
 
 
@@ -11257,36 +11257,9 @@ Bookmark is to keep a web-link and to preview a content.
 | key | [string](#string) |  |  |
 | isVisible | [bool](#bool) |  |  |
 | width | [int32](#int32) |  | the displayed column % calculated based on other visible relations |
-| isReadOnly | [bool](#bool) |  | can&#39;t be edited |
-| emptyOptions | [Block.Content.Dataview.Relation.EmptyOptions](#anytype.model.Block.Content.Dataview.Relation.EmptyOptions) |  |  |
-| dateOptions | [Block.Content.Dataview.Relation.DateOptions](#anytype.model.Block.Content.Dataview.Relation.DateOptions) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dataview.Relation.DateOptions"></a>
-
-### Block.Content.Dataview.Relation.DateOptions
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| includeTime | [bool](#bool) |  |  |
+| dateIncludeTime | [bool](#bool) |  |  |
 | timeFormat | [Block.Content.Dataview.Relation.TimeFormat](#anytype.model.Block.Content.Dataview.Relation.TimeFormat) |  |  |
 | dateFormat | [Block.Content.Dataview.Relation.DateFormat](#anytype.model.Block.Content.Dataview.Relation.DateFormat) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Block.Content.Dataview.Relation.EmptyOptions"></a>
-
-### Block.Content.Dataview.Relation.EmptyOptions
-
 
 
 
@@ -11871,7 +11844,26 @@ Relation describe the human-interpreted relation type. It may be something like 
 | readOnly | [bool](#bool) |  | not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
 | objectType | [string](#string) |  | URL of object type, empty to allow link to any object |
-| selectDict | [string](#string) | repeated | default dictionary to choose for select/multiSelect format. Any known existing(or previously used) value for this RelationType will be appended to this list |
+| selectDict | [Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string selectDict = 11; //deprecated
+
+default dictionary with unique values to choose for select/multiSelect format |
+
+
+
+
+
+
+<a name="anytype.relation.Relation.SelectOption"></a>
+
+### Relation.SelectOption
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | id generated automatically if omitted |
+| text | [string](#string) |  |  |
+| color | [Relation.SelectOption.Color](#anytype.relation.Relation.SelectOption.Color) |  |  |
 
 
 
@@ -11936,6 +11928,26 @@ Relation describe the human-interpreted relation type. It may be something like 
 | details | 0 | default, stored inside the smartblock&#39;s details |
 | local | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
+
+
+
+<a name="anytype.relation.Relation.SelectOption.Color"></a>
+
+### Relation.SelectOption.Color
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Grey | 0 |  |
+| Yellow | 1 |  |
+| Amber | 2 |  |
+| Red | 3 |  |
+| Pink | 4 |  |
+| Purple | 5 |  |
+| Blue | 6 |  |
+| Sky | 7 |  |
+| Teal | 8 |  |
+| Green | 9 |  |
 
 
 

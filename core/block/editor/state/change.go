@@ -315,11 +315,11 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 
 		case *pb.EventMessageValueOfBlockDataviewViewSet:
 			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewViewDelete:
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewRelationSet:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
-			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockDataviewViewDelete:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %T", msg)
@@ -490,7 +490,7 @@ func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation)
 		})
 	}
 
-	if slice.UnsortedEquals(prev.SelectDict, new.SelectDict) {
+	if pbtypes.RelationSelectDictEqual(prev.SelectDict, new.SelectDict) {
 		// todo: CRDT SelectDict patches
 		updates = append(updates, &pb.ChangeRelationUpdate{
 			Key:   prev.Key,

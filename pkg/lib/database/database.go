@@ -151,7 +151,7 @@ func (filters filters) Filter(e query.Entry) bool {
 			if relation == nil {
 				log.Debugf("failed to get relation options for %s: %s", filter.RelationKey)
 			} else {
-				dateIncludeTime = relation.GetDateOptions() != nil && relation.GetDateOptions().IncludeTime
+				dateIncludeTime = relation.DateIncludeTime
 			}
 		}
 

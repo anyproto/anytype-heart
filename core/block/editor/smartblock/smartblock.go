@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -343,6 +344,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		}
 
 	}
+	util.UniqueStrings(ids)
 	sort.Strings(ids)
 
 	return
@@ -416,7 +418,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if act.Details != nil {
+	if act.Details != nil || act.ObjectTypes != nil || act.Relations != nil {
 		sb.meta.ReportChange(meta.Meta{
 			BlockId:        sb.Id(),
 			SmartBlockMeta: *sb.Meta(),

@@ -1347,7 +1347,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 
 	var relations []*model.BlockContentDataviewRelation
 	for _, rel := range objType.Relations {
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden, IsReadOnly: rel.ReadOnly})
+		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
 	}
 
 	dataview := model.BlockContentOfDataview{

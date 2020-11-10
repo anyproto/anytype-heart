@@ -49,6 +49,14 @@ func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
 	return
 }
 
+func (st *SmartTest) HasRelation(relationKey string) bool {
+	return true
+}
+
+func (st *SmartTest) Relations() []*pbrelation.Relation {
+	return nil
+}
+
 func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }
@@ -70,7 +78,7 @@ func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relati
 	return st.meta.Relations, nil
 }
 
-func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation) (err error) {
+func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -86,7 +94,7 @@ func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation) (err
 			found = true
 			st.meta.Relations[i] = d
 		}
-		if !found {
+		if !found && !createIfMissing {
 			return fmt.Errorf("relation not found")
 		}
 	}

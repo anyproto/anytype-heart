@@ -67,7 +67,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 								Type:        model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false, IsReadOnly: true}, {Key: "name", IsVisible: true}, {Key: "lastOpenedDate", IsVisible: true, IsReadOnly: true}, {Key: "lastModifiedDate", IsVisible: true, IsReadOnly: true}, {Key: "createdDate", IsVisible: true, IsReadOnly: true}},
+						Relations: []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpenedDate", IsVisible: true}, {Key: "lastModifiedDate", IsVisible: true}, {Key: "createdDate", IsVisible: true}},
 						Filters:   nil,
 					},
 				},

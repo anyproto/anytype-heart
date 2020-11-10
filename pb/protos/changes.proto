@@ -98,7 +98,8 @@ message Change {
 
     message RelationUpdate {
         message Dict {
-            repeated string dict = 1;
+            // repeated string dict = 1; // deprecated
+            repeated anytype.relation.Relation.SelectOption dict = 2;
         }
 
         string key = 1;

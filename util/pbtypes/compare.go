@@ -2,7 +2,6 @@ package pbtypes
 
 import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) (equal bool) {
@@ -57,8 +56,30 @@ func RelationEqual(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal 
 	if rel1.ObjectType != rel2.ObjectType {
 		return false
 	}
-	if !slice.SortedEquals(rel1.SelectDict, rel2.SelectDict) {
+
+	if !RelationSelectDictEqual(rel1.SelectDict, rel2.SelectDict) {
 		return false
+	}
+
+	return true
+}
+
+func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationSelectOption) bool {
+	if len(dict1) != len(dict2) {
+		return false
+	}
+
+	for i := 0; i < len(dict1); i++ {
+		if dict1[i].Id != dict2[i].Id {
+			return false
+		}
+		if dict1[i].Text != dict2[i].Text {
+			return false
+		}
+
+		if dict1[i].Color != dict2[i].Color {
+			return false
+		}
 	}
 
 	return true
