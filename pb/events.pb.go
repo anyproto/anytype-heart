@@ -5245,7 +5245,7 @@ func (m *EventBlockDataviewRelationSet) GetRelation() *relation.Relation {
 	return nil
 }
 
-// sent when the active view's visible records have been updated
+// sent when the active view's visible records should be replaced
 type EventBlockDataviewRecordsSet struct {
 	Id      string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ViewId  string          `protobuf:"bytes,2,opt,name=viewId,proto3" json:"viewId,omitempty"`
@@ -5314,7 +5314,7 @@ func (m *EventBlockDataviewRecordsSet) GetTotal() uint32 {
 	return 0
 }
 
-// sent when the active view's should add more records
+// sent when client should insert new records on the active view
 type EventBlockDataviewRecordsInsert struct {
 	Id             string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ViewId         string          `protobuf:"bytes,2,opt,name=viewId,proto3" json:"viewId,omitempty"`
@@ -5383,6 +5383,7 @@ func (m *EventBlockDataviewRecordsInsert) GetInsertPosition() uint32 {
 	return 0
 }
 
+// sent when client should update existing records on the active view
 type EventBlockDataviewRecordsUpdate struct {
 	Id             string          `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ViewId         string          `protobuf:"bytes,2,opt,name=viewId,proto3" json:"viewId,omitempty"`
@@ -5451,6 +5452,7 @@ func (m *EventBlockDataviewRecordsUpdate) GetInsertPosition() uint32 {
 	return 0
 }
 
+// sent when client should remove existing records on the active view
 type EventBlockDataviewRecordsDelete struct {
 	Id      string   `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	ViewId  string   `protobuf:"bytes,2,opt,name=viewId,proto3" json:"viewId,omitempty"`

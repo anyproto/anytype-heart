@@ -47,20 +47,7 @@ message Relation {
     message SelectOption {
         string id = 1; // id generated automatically if omitted
         string text = 2;
-        Color color = 3;
-
-        enum Color {
-            Grey = 0;
-            Yellow = 1;
-            Amber = 2;
-            Red = 3;
-            Pink = 4;
-            Purple = 5;
-            Blue = 6;
-            Sky = 7;
-            Teal = 8;
-            Green = 9;
-        }
+        string color = 3; // stored
     }
 
     enum RelationDataSource {

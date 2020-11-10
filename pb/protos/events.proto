@@ -518,17 +518,17 @@ message Event {
 
             message RelationDelete {
                 string id = 1; // dataview block's id
-                string relationKey = 2; // view id to remove
+                string relationKey = 2; // relation key to remove
             }
 
             // sent when the dataview relation has been changed or added
             message RelationSet {
                 string id = 1; // dataview block's id
-                string relationKey = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
+                string relationKey = 2; // relation key to update
                 anytype.relation.Relation relation = 3;
             }
 
-            // sent when the active view's visible records have been updated
+            // sent when the active view's visible records should be replaced
             message RecordsSet {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
@@ -536,7 +536,7 @@ message Event {
                 uint32 total = 7; // total number of records
             }
 
-            // sent when the active view's should add more records
+            // sent when client should insert new records on the active view
             message RecordsInsert {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
@@ -544,6 +544,7 @@ message Event {
                 uint32 insertPosition = 5; // position to insert
             }
 
+            // sent when client should update existing records on the active view
             message RecordsUpdate {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
@@ -551,6 +552,7 @@ message Event {
                 uint32 insertPosition = 5; // position to insert
             }
 
+            // sent when client should remove existing records on the active view
             message RecordsDelete {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle

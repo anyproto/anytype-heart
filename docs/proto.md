@@ -786,7 +786,6 @@
   
     - [ObjectType.Layout](#anytype.relation.ObjectType.Layout)
     - [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource)
-    - [Relation.SelectOption.Color](#anytype.relation.Relation.SelectOption.Color)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
   
@@ -9206,7 +9205,7 @@ B. Partial block load
 <a name="anytype.Event.Block.Dataview.RecordsDelete"></a>
 
 ### Event.Block.Dataview.RecordsDelete
-
+sent when client should remove existing records on the active view
 
 
 | Field | Type | Label | Description |
@@ -9223,7 +9222,7 @@ B. Partial block load
 <a name="anytype.Event.Block.Dataview.RecordsInsert"></a>
 
 ### Event.Block.Dataview.RecordsInsert
-sent when the active view&#39;s should add more records
+sent when client should insert new records on the active view
 
 
 | Field | Type | Label | Description |
@@ -9241,7 +9240,7 @@ sent when the active view&#39;s should add more records
 <a name="anytype.Event.Block.Dataview.RecordsSet"></a>
 
 ### Event.Block.Dataview.RecordsSet
-sent when the active view&#39;s visible records have been updated
+sent when the active view&#39;s visible records should be replaced
 
 
 | Field | Type | Label | Description |
@@ -9259,7 +9258,7 @@ sent when the active view&#39;s visible records have been updated
 <a name="anytype.Event.Block.Dataview.RecordsUpdate"></a>
 
 ### Event.Block.Dataview.RecordsUpdate
-
+sent when client should update existing records on the active view
 
 
 | Field | Type | Label | Description |
@@ -9283,7 +9282,7 @@ sent when the active view&#39;s visible records have been updated
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| relationKey | [string](#string) |  | view id to remove |
+| relationKey | [string](#string) |  | relation key to remove |
 
 
 
@@ -9299,7 +9298,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| relationKey | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
+| relationKey | [string](#string) |  | relation key to update |
 | relation | [relation.Relation](#anytype.relation.Relation) |  |  |
 
 
@@ -11863,7 +11862,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | id generated automatically if omitted |
 | text | [string](#string) |  |  |
-| color | [Relation.SelectOption.Color](#anytype.relation.Relation.SelectOption.Color) |  |  |
+| color | [string](#string) |  | stored |
 
 
 
@@ -11928,26 +11927,6 @@ default dictionary with unique values to choose for select/multiSelect format |
 | details | 0 | default, stored inside the smartblock&#39;s details |
 | local | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
-
-
-
-<a name="anytype.relation.Relation.SelectOption.Color"></a>
-
-### Relation.SelectOption.Color
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Grey | 0 |  |
-| Yellow | 1 |  |
-| Amber | 2 |  |
-| Red | 3 |  |
-| Pink | 4 |  |
-| Purple | 5 |  |
-| Blue | 6 |  |
-| Sky | 7 |  |
-| Teal | 8 |  |
-| Green | 9 |  |
 
 
 
