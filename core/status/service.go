@@ -76,7 +76,7 @@ func NewService(
 		devThreads: make(map[string]hashset.HashSet),
 		devAccount: make(map[string]string),
 		connMap:    make(map[string]bool),
-		tsTrigger:  queue.NewBulkQueue(threadStatusEventBatchPeriod, 5),
+		tsTrigger:  queue.NewBulkQueue(threadStatusEventBatchPeriod, 1),
 	}
 }
 
@@ -222,10 +222,12 @@ func (s *service) startConnectivityTracking() error {
 			for tid, t := range ts {
 				t.Lock()
 				t.UpdateConnectivity(devID, event.Connected)
-				if t.modified {
+				var modified = t.modified
+				t.Unlock()
+
+				if modified {
 					s.tsTrigger.Push(tid)
 				}
-				t.Unlock()
 			}
 		}
 	}()
@@ -245,10 +247,7 @@ func (s *service) startSendingThreadStatus() {
 		s.mu.Unlock()
 
 		for id, t := range ts {
-			t.Lock()
 			event := s.constructEvent(t)
-			t.Unlock()
-
 			s.sendEvent(
 				id.String(),
 				&pb.EventMessageValueOfThreadStatus{ThreadStatus: &event},
@@ -262,6 +261,8 @@ func (s *service) getThreadStatus(tid thread.ID) *threadStatus {
 	ts, exist := s.threads[tid]
 	if !exist {
 		ts = newThreadStatus(func(devID string) bool {
+			// deadlock-safe b/c connectivity resolve should
+			// never be running under the global mutex
 			s.mu.Lock()
 			defer s.mu.Unlock()
 			return s.connMap[devID]
