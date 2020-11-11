@@ -386,7 +386,7 @@ func (block *smartBlock) decodeRecord(
 
 	var logID string
 	if decodeLogID {
-		if pk, err := crypto.UnmarshalEd25519PublicKey(rec.PubKey()); err != nil {
+		if pk, err := crypto.UnmarshalPublicKey(rec.PubKey()); err != nil {
 			return nil, fmt.Errorf("failed to decode record's public key: %w", err)
 		} else if pid, err := peer.IDFromPublicKey(pk); err != nil {
 			return nil, fmt.Errorf("failed to restore ID from public key: %w", err)
