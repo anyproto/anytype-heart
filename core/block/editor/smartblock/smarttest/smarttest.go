@@ -50,7 +50,7 @@ func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
 }
 
 func (st *SmartTest) HasRelation(relationKey string) bool {
-	return true
+	return st.NewState().HasRelation(relationKey)
 }
 
 func (st *SmartTest) Relations() []*pbrelation.Relation {

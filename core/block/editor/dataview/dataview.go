@@ -3,6 +3,7 @@ package dataview
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	blockDB "github.com/anytypeio/go-anytype-middleware/core/block/database"
@@ -23,6 +24,7 @@ import (
 )
 
 const defaultLimit = 100
+const relationSelectOptionDefaultColor = "grey"
 
 var log = logging.Logger("anytype-mw-editor")
 
@@ -37,6 +39,9 @@ type Dataview interface {
 	AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error)
 	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
 	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation pbrelation.Relation, showEvent bool) error
+	AddRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error)
+	UpdateRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error
+	DeleteRelationSelectOption(ctx *state.Context, blockId string, relationKey string, optionId string, showEvent bool) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -136,6 +141,107 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 		return d.Apply(s)
 	}
 	return d.Apply(s, smartblock.NoEvent)
+}
+
+// AddRelationSelectOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
+func (d *dataviewCollectionImpl) AddRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error) {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, rel := range tb.Model().GetDataview().Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_select {
+			return nil, fmt.Errorf("relation is non-select format")
+		}
+		for _, opt := range rel.SelectDict {
+			if strings.EqualFold(opt.Text, option.Text) {
+				// here we can have the option with another color. but it looks
+				return opt, nil
+			}
+		}
+
+		if option.Color == "" {
+			option.Color = relationSelectOptionDefaultColor
+		}
+
+		option.Id = bson.NewObjectId().Hex()
+		rel.SelectDict = append(rel.SelectDict, &option)
+		if err = tb.UpdateRelation(relationKey, *rel); err != nil {
+			return nil, err
+		}
+
+		if showEvent {
+			return &option, d.Apply(s)
+		}
+		return &option, d.Apply(s, smartblock.NoEvent)
+	}
+
+	return nil, fmt.Errorf("relation not found")
+}
+
+func (d *dataviewCollectionImpl) UpdateRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range tb.Model().GetDataview().Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_select {
+			return fmt.Errorf("relation is non-select format")
+		}
+		for i, opt := range rel.SelectDict {
+			if opt.Id == option.Id {
+				rel.SelectDict[i] = &option
+				if showEvent {
+					return d.Apply(s)
+				}
+				return d.Apply(s, smartblock.NoEvent)
+			}
+		}
+
+		return fmt.Errorf("relation option not found")
+	}
+
+	return fmt.Errorf("relation not found")
+}
+
+func (d *dataviewCollectionImpl) DeleteRelationSelectOption(ctx *state.Context, blockId string, relationKey string, optionId string, showEvent bool) error {
+	s := d.NewStateCtx(ctx)
+	tb, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return err
+	}
+
+	for _, rel := range tb.Model().GetDataview().Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_select {
+			return fmt.Errorf("relation is non-select format")
+		}
+		for i, opt := range rel.SelectDict {
+			if opt.Id == optionId {
+				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
+				if showEvent {
+					return d.Apply(s)
+				}
+				return d.Apply(s, smartblock.NoEvent)
+			}
+		}
+
+		return fmt.Errorf("relation option not found")
+	}
+
+	return fmt.Errorf("relation not found")
 }
 
 func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, blockId string) ([]*pbrelation.Relation, error) {

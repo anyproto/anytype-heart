@@ -516,13 +516,14 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 }
 
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
-	details.Fields[database.RecordIDField] = pb.ToValue(id)
+	detCopy := pbtypes.CopyStruct(details)
+	detCopy.Fields[database.RecordIDField] = pb.ToValue(id)
 	for _, sub := range m.subscriptions {
 		for _, subId := range sub.Subscriptions() {
 			if subId == id {
 				go func(quit chan struct{}, ch chan *types.Struct) {
 					select {
-					case ch <- details:
+					case ch <- detCopy:
 						break
 					case <-quit:
 						break

@@ -74,15 +74,6 @@
     - [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response)
     - [Rpc.Block.Copy.Response.Error](#anytype.Rpc.Block.Copy.Response.Error)
     - [Rpc.Block.Create](#anytype.Rpc.Block.Create)
-    - [Rpc.Block.Create.Dataview](#anytype.Rpc.Block.Create.Dataview)
-    - [Rpc.Block.Create.Dataview.Record](#anytype.Rpc.Block.Create.Dataview.Record)
-    - [Rpc.Block.Create.Dataview.Record.Request](#anytype.Rpc.Block.Create.Dataview.Record.Request)
-    - [Rpc.Block.Create.Dataview.Record.Response](#anytype.Rpc.Block.Create.Dataview.Record.Response)
-    - [Rpc.Block.Create.Dataview.Record.Response.Error](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error)
-    - [Rpc.Block.Create.Dataview.View](#anytype.Rpc.Block.Create.Dataview.View)
-    - [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request)
-    - [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response)
-    - [Rpc.Block.Create.Dataview.View.Response.Error](#anytype.Rpc.Block.Create.Dataview.View.Response.Error)
     - [Rpc.Block.Create.Request](#anytype.Rpc.Block.Create.Request)
     - [Rpc.Block.Create.Response](#anytype.Rpc.Block.Create.Response)
     - [Rpc.Block.Create.Response.Error](#anytype.Rpc.Block.Create.Response.Error)
@@ -99,6 +90,18 @@
     - [Rpc.Block.Cut.Response](#anytype.Rpc.Block.Cut.Response)
     - [Rpc.Block.Cut.Response.Error](#anytype.Rpc.Block.Cut.Response.Error)
     - [Rpc.Block.Dataview](#anytype.Rpc.Block.Dataview)
+    - [Rpc.Block.Dataview.RecordCreate](#anytype.Rpc.Block.Dataview.RecordCreate)
+    - [Rpc.Block.Dataview.RecordCreate.Request](#anytype.Rpc.Block.Dataview.RecordCreate.Request)
+    - [Rpc.Block.Dataview.RecordCreate.Response](#anytype.Rpc.Block.Dataview.RecordCreate.Response)
+    - [Rpc.Block.Dataview.RecordCreate.Response.Error](#anytype.Rpc.Block.Dataview.RecordCreate.Response.Error)
+    - [Rpc.Block.Dataview.RecordDelete](#anytype.Rpc.Block.Dataview.RecordDelete)
+    - [Rpc.Block.Dataview.RecordDelete.Request](#anytype.Rpc.Block.Dataview.RecordDelete.Request)
+    - [Rpc.Block.Dataview.RecordDelete.Response](#anytype.Rpc.Block.Dataview.RecordDelete.Response)
+    - [Rpc.Block.Dataview.RecordDelete.Response.Error](#anytype.Rpc.Block.Dataview.RecordDelete.Response.Error)
+    - [Rpc.Block.Dataview.RecordUpdate](#anytype.Rpc.Block.Dataview.RecordUpdate)
+    - [Rpc.Block.Dataview.RecordUpdate.Request](#anytype.Rpc.Block.Dataview.RecordUpdate.Request)
+    - [Rpc.Block.Dataview.RecordUpdate.Response](#anytype.Rpc.Block.Dataview.RecordUpdate.Response)
+    - [Rpc.Block.Dataview.RecordUpdate.Response.Error](#anytype.Rpc.Block.Dataview.RecordUpdate.Response.Error)
     - [Rpc.Block.Dataview.RelationAdd](#anytype.Rpc.Block.Dataview.RelationAdd)
     - [Rpc.Block.Dataview.RelationAdd.Request](#anytype.Rpc.Block.Dataview.RelationAdd.Request)
     - [Rpc.Block.Dataview.RelationAdd.Response](#anytype.Rpc.Block.Dataview.RelationAdd.Response)
@@ -107,20 +110,42 @@
     - [Rpc.Block.Dataview.RelationDelete.Request](#anytype.Rpc.Block.Dataview.RelationDelete.Request)
     - [Rpc.Block.Dataview.RelationDelete.Response](#anytype.Rpc.Block.Dataview.RelationDelete.Response)
     - [Rpc.Block.Dataview.RelationDelete.Response.Error](#anytype.Rpc.Block.Dataview.RelationDelete.Response.Error)
+    - [Rpc.Block.Dataview.RelationListAvailable](#anytype.Rpc.Block.Dataview.RelationListAvailable)
+    - [Rpc.Block.Dataview.RelationListAvailable.Request](#anytype.Rpc.Block.Dataview.RelationListAvailable.Request)
+    - [Rpc.Block.Dataview.RelationListAvailable.Response](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response)
+    - [Rpc.Block.Dataview.RelationListAvailable.Response.Error](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error)
+    - [Rpc.Block.Dataview.RelationSelectOptionAdd](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd)
+    - [Rpc.Block.Dataview.RelationSelectOptionAdd.Request](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Request)
+    - [Rpc.Block.Dataview.RelationSelectOptionAdd.Response](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response)
+    - [Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error)
+    - [Rpc.Block.Dataview.RelationSelectOptionDelete](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete)
+    - [Rpc.Block.Dataview.RelationSelectOptionDelete.Request](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Request)
+    - [Rpc.Block.Dataview.RelationSelectOptionDelete.Response](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response)
+    - [Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error)
+    - [Rpc.Block.Dataview.RelationSelectOptionUpdate](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate)
+    - [Rpc.Block.Dataview.RelationSelectOptionUpdate.Request](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Request)
+    - [Rpc.Block.Dataview.RelationSelectOptionUpdate.Response](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response)
+    - [Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error)
     - [Rpc.Block.Dataview.RelationUpdate](#anytype.Rpc.Block.Dataview.RelationUpdate)
     - [Rpc.Block.Dataview.RelationUpdate.Request](#anytype.Rpc.Block.Dataview.RelationUpdate.Request)
     - [Rpc.Block.Dataview.RelationUpdate.Response](#anytype.Rpc.Block.Dataview.RelationUpdate.Response)
     - [Rpc.Block.Dataview.RelationUpdate.Response.Error](#anytype.Rpc.Block.Dataview.RelationUpdate.Response.Error)
-    - [Rpc.Block.Delete](#anytype.Rpc.Block.Delete)
-    - [Rpc.Block.Delete.Dataview](#anytype.Rpc.Block.Delete.Dataview)
-    - [Rpc.Block.Delete.Dataview.Record](#anytype.Rpc.Block.Delete.Dataview.Record)
-    - [Rpc.Block.Delete.Dataview.Record.Request](#anytype.Rpc.Block.Delete.Dataview.Record.Request)
-    - [Rpc.Block.Delete.Dataview.Record.Response](#anytype.Rpc.Block.Delete.Dataview.Record.Response)
-    - [Rpc.Block.Delete.Dataview.Record.Response.Error](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error)
-    - [Rpc.Block.Delete.Dataview.View](#anytype.Rpc.Block.Delete.Dataview.View)
-    - [Rpc.Block.Delete.Dataview.View.Request](#anytype.Rpc.Block.Delete.Dataview.View.Request)
-    - [Rpc.Block.Delete.Dataview.View.Response](#anytype.Rpc.Block.Delete.Dataview.View.Response)
-    - [Rpc.Block.Delete.Dataview.View.Response.Error](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error)
+    - [Rpc.Block.Dataview.ViewCreate](#anytype.Rpc.Block.Dataview.ViewCreate)
+    - [Rpc.Block.Dataview.ViewCreate.Request](#anytype.Rpc.Block.Dataview.ViewCreate.Request)
+    - [Rpc.Block.Dataview.ViewCreate.Response](#anytype.Rpc.Block.Dataview.ViewCreate.Response)
+    - [Rpc.Block.Dataview.ViewCreate.Response.Error](#anytype.Rpc.Block.Dataview.ViewCreate.Response.Error)
+    - [Rpc.Block.Dataview.ViewDelete](#anytype.Rpc.Block.Dataview.ViewDelete)
+    - [Rpc.Block.Dataview.ViewDelete.Request](#anytype.Rpc.Block.Dataview.ViewDelete.Request)
+    - [Rpc.Block.Dataview.ViewDelete.Response](#anytype.Rpc.Block.Dataview.ViewDelete.Response)
+    - [Rpc.Block.Dataview.ViewDelete.Response.Error](#anytype.Rpc.Block.Dataview.ViewDelete.Response.Error)
+    - [Rpc.Block.Dataview.ViewSetActive](#anytype.Rpc.Block.Dataview.ViewSetActive)
+    - [Rpc.Block.Dataview.ViewSetActive.Request](#anytype.Rpc.Block.Dataview.ViewSetActive.Request)
+    - [Rpc.Block.Dataview.ViewSetActive.Response](#anytype.Rpc.Block.Dataview.ViewSetActive.Response)
+    - [Rpc.Block.Dataview.ViewSetActive.Response.Error](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error)
+    - [Rpc.Block.Dataview.ViewUpdate](#anytype.Rpc.Block.Dataview.ViewUpdate)
+    - [Rpc.Block.Dataview.ViewUpdate.Request](#anytype.Rpc.Block.Dataview.ViewUpdate.Request)
+    - [Rpc.Block.Dataview.ViewUpdate.Response](#anytype.Rpc.Block.Dataview.ViewUpdate.Response)
+    - [Rpc.Block.Dataview.ViewUpdate.Response.Error](#anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error)
     - [Rpc.Block.Download](#anytype.Rpc.Block.Download)
     - [Rpc.Block.Download.Request](#anytype.Rpc.Block.Download.Request)
     - [Rpc.Block.Download.Response](#anytype.Rpc.Block.Download.Response)
@@ -135,11 +160,6 @@
     - [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response)
     - [Rpc.Block.File.CreateAndUpload.Response.Error](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error)
     - [Rpc.Block.Get](#anytype.Rpc.Block.Get)
-    - [Rpc.Block.Get.Dataview](#anytype.Rpc.Block.Get.Dataview)
-    - [Rpc.Block.Get.Dataview.AvailableRelations](#anytype.Rpc.Block.Get.Dataview.AvailableRelations)
-    - [Rpc.Block.Get.Dataview.AvailableRelations.Request](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Request)
-    - [Rpc.Block.Get.Dataview.AvailableRelations.Response](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response)
-    - [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error)
     - [Rpc.Block.Get.Marks](#anytype.Rpc.Block.Get.Marks)
     - [Rpc.Block.Get.Marks.Request](#anytype.Rpc.Block.Get.Marks.Request)
     - [Rpc.Block.Get.Marks.Response](#anytype.Rpc.Block.Get.Marks.Response)
@@ -196,15 +216,6 @@
     - [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response)
     - [Rpc.Block.Replace.Response.Error](#anytype.Rpc.Block.Replace.Response.Error)
     - [Rpc.Block.Set](#anytype.Rpc.Block.Set)
-    - [Rpc.Block.Set.Dataview](#anytype.Rpc.Block.Set.Dataview)
-    - [Rpc.Block.Set.Dataview.ActiveView](#anytype.Rpc.Block.Set.Dataview.ActiveView)
-    - [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request)
-    - [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response)
-    - [Rpc.Block.Set.Dataview.ActiveView.Response.Error](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error)
-    - [Rpc.Block.Set.Dataview.View](#anytype.Rpc.Block.Set.Dataview.View)
-    - [Rpc.Block.Set.Dataview.View.Request](#anytype.Rpc.Block.Set.Dataview.View.Request)
-    - [Rpc.Block.Set.Dataview.View.Response](#anytype.Rpc.Block.Set.Dataview.View.Response)
-    - [Rpc.Block.Set.Dataview.View.Response.Error](#anytype.Rpc.Block.Set.Dataview.View.Response.Error)
     - [Rpc.Block.Set.Details](#anytype.Rpc.Block.Set.Details)
     - [Rpc.Block.Set.Details.Detail](#anytype.Rpc.Block.Set.Details.Detail)
     - [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request)
@@ -284,12 +295,6 @@
     - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
     - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
     - [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error)
-    - [Rpc.Block.Update](#anytype.Rpc.Block.Update)
-    - [Rpc.Block.Update.Dataview](#anytype.Rpc.Block.Update.Dataview)
-    - [Rpc.Block.Update.Dataview.Record](#anytype.Rpc.Block.Update.Dataview.Record)
-    - [Rpc.Block.Update.Dataview.Record.Request](#anytype.Rpc.Block.Update.Dataview.Record.Request)
-    - [Rpc.Block.Update.Dataview.Record.Response](#anytype.Rpc.Block.Update.Dataview.Record.Response)
-    - [Rpc.Block.Update.Dataview.Record.Response.Error](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error)
     - [Rpc.Block.Upload](#anytype.Rpc.Block.Upload)
     - [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request)
     - [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response)
@@ -495,21 +500,27 @@
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
-    - [Rpc.Block.Create.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error.Code)
-    - [Rpc.Block.Create.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
     - [Rpc.Block.CreatePage.Response.Error.Code](#anytype.Rpc.Block.CreatePage.Response.Error.Code)
     - [Rpc.Block.CreateSet.Response.Error.Code](#anytype.Rpc.Block.CreateSet.Response.Error.Code)
     - [Rpc.Block.Cut.Response.Error.Code](#anytype.Rpc.Block.Cut.Response.Error.Code)
+    - [Rpc.Block.Dataview.RecordCreate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RecordCreate.Response.Error.Code)
+    - [Rpc.Block.Dataview.RecordDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.RecordDelete.Response.Error.Code)
+    - [Rpc.Block.Dataview.RecordUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RecordUpdate.Response.Error.Code)
     - [Rpc.Block.Dataview.RelationAdd.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationAdd.Response.Error.Code)
     - [Rpc.Block.Dataview.RelationDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationDelete.Response.Error.Code)
+    - [Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code)
+    - [Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error.Code)
+    - [Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error.Code)
+    - [Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error.Code)
     - [Rpc.Block.Dataview.RelationUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationUpdate.Response.Error.Code)
-    - [Rpc.Block.Delete.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error.Code)
-    - [Rpc.Block.Delete.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code)
+    - [Rpc.Block.Dataview.ViewCreate.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewCreate.Response.Error.Code)
+    - [Rpc.Block.Dataview.ViewDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewDelete.Response.Error.Code)
+    - [Rpc.Block.Dataview.ViewSetActive.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error.Code)
+    - [Rpc.Block.Dataview.ViewUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
     - [Rpc.Block.File.CreateAndUpload.Response.Error.Code](#anytype.Rpc.Block.File.CreateAndUpload.Response.Error.Code)
-    - [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code)
     - [Rpc.Block.Get.Marks.Response.Error.Code](#anytype.Rpc.Block.Get.Marks.Response.Error.Code)
     - [Rpc.Block.GetPublicWebURL.Response.Error.Code](#anytype.Rpc.Block.GetPublicWebURL.Response.Error.Code)
     - [Rpc.Block.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Block.ImportMarkdown.Response.Error.Code)
@@ -523,8 +534,6 @@
     - [Rpc.Block.Relation.Add.Response.Error.Code](#anytype.Rpc.Block.Relation.Add.Response.Error.Code)
     - [Rpc.Block.Relation.SetKey.Response.Error.Code](#anytype.Rpc.Block.Relation.SetKey.Response.Error.Code)
     - [Rpc.Block.Replace.Response.Error.Code](#anytype.Rpc.Block.Replace.Response.Error.Code)
-    - [Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code)
-    - [Rpc.Block.Set.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.View.Response.Error.Code)
     - [Rpc.Block.Set.Details.Response.Error.Code](#anytype.Rpc.Block.Set.Details.Response.Error.Code)
     - [Rpc.Block.Set.Fields.Response.Error.Code](#anytype.Rpc.Block.Set.Fields.Response.Error.Code)
     - [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code)
@@ -544,7 +553,6 @@
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
-    - [Rpc.Block.Update.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code)
     - [Rpc.BlockList.Delete.Page.Response.Error.Code](#anytype.Rpc.BlockList.Delete.Page.Response.Error.Code)
@@ -880,21 +888,24 @@
 | BlockSetVideoName | [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request) | [Rpc.Block.Set.Video.Name.Response](#anytype.Rpc.Block.Set.Video.Name.Response) |  |
 | BlockSetVideoWidth | [Rpc.Block.Set.Video.Width.Request](#anytype.Rpc.Block.Set.Video.Width.Request) | [Rpc.Block.Set.Video.Width.Response](#anytype.Rpc.Block.Set.Video.Width.Response) |  |
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response) |  |
-| BlockGetDataviewAvailableRelations | [Rpc.Block.Get.Dataview.AvailableRelations.Request](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Request) | [Rpc.Block.Get.Dataview.AvailableRelations.Response](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response) |  |
-| BlockSetDataviewView | [Rpc.Block.Set.Dataview.View.Request](#anytype.Rpc.Block.Set.Dataview.View.Request) | [Rpc.Block.Set.Dataview.View.Response](#anytype.Rpc.Block.Set.Dataview.View.Response) |  |
-| BlockSetDataviewActiveView | [Rpc.Block.Set.Dataview.ActiveView.Request](#anytype.Rpc.Block.Set.Dataview.ActiveView.Request) | [Rpc.Block.Set.Dataview.ActiveView.Response](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response) |  |
-| BlockDataviewRelationAdd | [Rpc.Block.Dataview.RelationAdd.Request](#anytype.Rpc.Block.Dataview.RelationAdd.Request) | [Rpc.Block.Dataview.RelationAdd.Response](#anytype.Rpc.Block.Dataview.RelationAdd.Response) |  |
-| BlockDataviewRelationUpdate | [Rpc.Block.Dataview.RelationUpdate.Request](#anytype.Rpc.Block.Dataview.RelationUpdate.Request) | [Rpc.Block.Dataview.RelationUpdate.Response](#anytype.Rpc.Block.Dataview.RelationUpdate.Response) |  |
-| BlockDataviewRelationDelete | [Rpc.Block.Dataview.RelationDelete.Request](#anytype.Rpc.Block.Dataview.RelationDelete.Request) | [Rpc.Block.Dataview.RelationDelete.Response](#anytype.Rpc.Block.Dataview.RelationDelete.Response) |  |
-| BlockCreateDataviewView | [Rpc.Block.Create.Dataview.View.Request](#anytype.Rpc.Block.Create.Dataview.View.Request) | [Rpc.Block.Create.Dataview.View.Response](#anytype.Rpc.Block.Create.Dataview.View.Response) |  |
-| BlockDeleteDataviewView | [Rpc.Block.Delete.Dataview.View.Request](#anytype.Rpc.Block.Delete.Dataview.View.Request) | [Rpc.Block.Delete.Dataview.View.Response](#anytype.Rpc.Block.Delete.Dataview.View.Response) |  |
-| BlockCreateDataviewRecord | [Rpc.Block.Create.Dataview.Record.Request](#anytype.Rpc.Block.Create.Dataview.Record.Request) | [Rpc.Block.Create.Dataview.Record.Response](#anytype.Rpc.Block.Create.Dataview.Record.Response) |  |
-| BlockUpdateDataviewRecord | [Rpc.Block.Update.Dataview.Record.Request](#anytype.Rpc.Block.Update.Dataview.Record.Request) | [Rpc.Block.Update.Dataview.Record.Response](#anytype.Rpc.Block.Update.Dataview.Record.Response) |  |
-| BlockDeleteDataviewRecord | [Rpc.Block.Delete.Dataview.Record.Request](#anytype.Rpc.Block.Delete.Dataview.Record.Request) | [Rpc.Block.Delete.Dataview.Record.Response](#anytype.Rpc.Block.Delete.Dataview.Record.Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
-| BlockObjectTypeAdd | [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request) | [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response) |  |
+| BlockDataviewViewCreate | [Rpc.Block.Dataview.ViewCreate.Request](#anytype.Rpc.Block.Dataview.ViewCreate.Request) | [Rpc.Block.Dataview.ViewCreate.Response](#anytype.Rpc.Block.Dataview.ViewCreate.Response) | ## Dataview # View |
+| BlockDataviewViewDelete | [Rpc.Block.Dataview.ViewDelete.Request](#anytype.Rpc.Block.Dataview.ViewDelete.Request) | [Rpc.Block.Dataview.ViewDelete.Response](#anytype.Rpc.Block.Dataview.ViewDelete.Response) |  |
+| BlockDataviewViewUpdate | [Rpc.Block.Dataview.ViewUpdate.Request](#anytype.Rpc.Block.Dataview.ViewUpdate.Request) | [Rpc.Block.Dataview.ViewUpdate.Response](#anytype.Rpc.Block.Dataview.ViewUpdate.Response) |  |
+| BlockDataviewViewSetActive | [Rpc.Block.Dataview.ViewSetActive.Request](#anytype.Rpc.Block.Dataview.ViewSetActive.Request) | [Rpc.Block.Dataview.ViewSetActive.Response](#anytype.Rpc.Block.Dataview.ViewSetActive.Response) |  |
+| BlockDataviewRelationAdd | [Rpc.Block.Dataview.RelationAdd.Request](#anytype.Rpc.Block.Dataview.RelationAdd.Request) | [Rpc.Block.Dataview.RelationAdd.Response](#anytype.Rpc.Block.Dataview.RelationAdd.Response) | # Relation |
+| BlockDataviewRelationUpdate | [Rpc.Block.Dataview.RelationUpdate.Request](#anytype.Rpc.Block.Dataview.RelationUpdate.Request) | [Rpc.Block.Dataview.RelationUpdate.Response](#anytype.Rpc.Block.Dataview.RelationUpdate.Response) |  |
+| BlockDataviewRelationDelete | [Rpc.Block.Dataview.RelationDelete.Request](#anytype.Rpc.Block.Dataview.RelationDelete.Request) | [Rpc.Block.Dataview.RelationDelete.Response](#anytype.Rpc.Block.Dataview.RelationDelete.Response) |  |
+| BlockDataviewRelationSelectOptionAdd | [Rpc.Block.Dataview.RelationSelectOptionAdd.Request](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Request) | [Rpc.Block.Dataview.RelationSelectOptionAdd.Response](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response) |  |
+| BlockDataviewRelationSelectOptionUpdate | [Rpc.Block.Dataview.RelationSelectOptionUpdate.Request](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Request) | [Rpc.Block.Dataview.RelationSelectOptionUpdate.Response](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response) |  |
+| BlockDataviewRelationSelectOptionDelete | [Rpc.Block.Dataview.RelationSelectOptionDelete.Request](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Request) | [Rpc.Block.Dataview.RelationSelectOptionDelete.Response](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response) |  |
+| BlockDataviewRelationListAvailable | [Rpc.Block.Dataview.RelationListAvailable.Request](#anytype.Rpc.Block.Dataview.RelationListAvailable.Request) | [Rpc.Block.Dataview.RelationListAvailable.Response](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response) |  |
+| BlockDataviewRecordCreate | [Rpc.Block.Dataview.RecordCreate.Request](#anytype.Rpc.Block.Dataview.RecordCreate.Request) | [Rpc.Block.Dataview.RecordCreate.Response](#anytype.Rpc.Block.Dataview.RecordCreate.Response) | # Record |
+| BlockDataviewRecordUpdate | [Rpc.Block.Dataview.RecordUpdate.Request](#anytype.Rpc.Block.Dataview.RecordUpdate.Request) | [Rpc.Block.Dataview.RecordUpdate.Response](#anytype.Rpc.Block.Dataview.RecordUpdate.Response) |  |
+| BlockDataviewRecordDelete | [Rpc.Block.Dataview.RecordDelete.Request](#anytype.Rpc.Block.Dataview.RecordDelete.Request) | [Rpc.Block.Dataview.RecordDelete.Response](#anytype.Rpc.Block.Dataview.RecordDelete.Response) |  |
+| BlockObjectTypeAdd | [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request) | [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response) | ## Object&#39;s relations add existing object type to the object so it will appear in sets and offer relations from this object |
 | BlockObjectTypeRemove | [Rpc.Block.ObjectType.Remove.Request](#anytype.Rpc.Block.ObjectType.Remove.Request) | [Rpc.Block.ObjectType.Remove.Response](#anytype.Rpc.Block.ObjectType.Remove.Response) |  |
 | BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype.Rpc.Block.Relation.SetKey.Request) | [Rpc.Block.Relation.SetKey.Response](#anytype.Rpc.Block.Relation.SetKey.Response) |  |
 | BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) |  |
@@ -902,12 +913,12 @@
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) | SetCreate just creates the new set, without adding the link to it from some other page |
+| ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request) | [Rpc.ObjectType.Create.Response](#anytype.Rpc.ObjectType.Create.Response) | ## ObjectType |
+| ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype.Rpc.ObjectType.List.Request) | [Rpc.ObjectType.List.Response](#anytype.Rpc.ObjectType.List.Response) | ObjectTypeList lists all object types both bundled and created by user |
 | ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype.Rpc.ObjectType.Relation.List.Request) | [Rpc.ObjectType.Relation.List.Response](#anytype.Rpc.ObjectType.Relation.List.Response) |  |
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype.Rpc.ObjectType.Relation.Add.Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype.Rpc.ObjectType.Relation.Add.Response) |  |
 | ObjectTypeRelationUpdate | [Rpc.ObjectType.Relation.Update.Request](#anytype.Rpc.ObjectType.Relation.Update.Request) | [Rpc.ObjectType.Relation.Update.Response](#anytype.Rpc.ObjectType.Relation.Update.Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype.Rpc.ObjectType.Relation.Remove.Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype.Rpc.ObjectType.Relation.Remove.Response) |  |
-| ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request) | [Rpc.ObjectType.Create.Response](#anytype.Rpc.ObjectType.Create.Response) | ObjectTypeCreate creates the new object type |
-| ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype.Rpc.ObjectType.List.Request) | [Rpc.ObjectType.List.Response](#anytype.Rpc.ObjectType.List.Response) | ObjectTypeList lists all object types both bundled and created by user |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | HistoryShow | [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request) | [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response) |  |
@@ -1803,135 +1814,6 @@ Create a Smart/Internal block. Request can contain a block with a content, or it
 
 
 
-<a name="anytype.Rpc.Block.Create.Dataview"></a>
-
-### Rpc.Block.Create.Dataview
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.Record"></a>
-
-### Rpc.Block.Create.Dataview.Record
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.Record.Request"></a>
-
-### Rpc.Block.Create.Dataview.Record.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.Record.Response"></a>
-
-### Rpc.Block.Create.Dataview.Record.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Create.Dataview.Record.Response.Error](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error) |  |  |
-| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.Record.Response.Error"></a>
-
-### Rpc.Block.Create.Dataview.Record.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Create.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.Record.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.View"></a>
-
-### Rpc.Block.Create.Dataview.View
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.View.Request"></a>
-
-### Rpc.Block.Create.Dataview.View.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block to insert the new block |
-| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.View.Response"></a>
-
-### Rpc.Block.Create.Dataview.View.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Create.Dataview.View.Response.Error](#anytype.Rpc.Block.Create.Dataview.View.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-| viewId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.View.Response.Error"></a>
-
-### Rpc.Block.Create.Dataview.View.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Create.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Block.Create.Request"></a>
 
 ### Rpc.Block.Create.Request
@@ -2180,6 +2062,183 @@ common simple block command
 
 
 
+<a name="anytype.Rpc.Block.Dataview.RecordCreate"></a>
+
+### Rpc.Block.Dataview.RecordCreate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordCreate.Request"></a>
+
+### Rpc.Block.Dataview.RecordCreate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordCreate.Response"></a>
+
+### Rpc.Block.Dataview.RecordCreate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.RecordCreate.Response.Error](#anytype.Rpc.Block.Dataview.RecordCreate.Response.Error) |  |  |
+| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordCreate.Response.Error"></a>
+
+### Rpc.Block.Dataview.RecordCreate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.RecordCreate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RecordCreate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordDelete"></a>
+
+### Rpc.Block.Dataview.RecordDelete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordDelete.Request"></a>
+
+### Rpc.Block.Dataview.RecordDelete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| recordId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordDelete.Response"></a>
+
+### Rpc.Block.Dataview.RecordDelete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.RecordDelete.Response.Error](#anytype.Rpc.Block.Dataview.RecordDelete.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordDelete.Response.Error"></a>
+
+### Rpc.Block.Dataview.RecordDelete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.RecordDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.RecordDelete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordUpdate"></a>
+
+### Rpc.Block.Dataview.RecordUpdate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordUpdate.Request"></a>
+
+### Rpc.Block.Dataview.RecordUpdate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| recordId | [string](#string) |  |  |
+| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordUpdate.Response"></a>
+
+### Rpc.Block.Dataview.RecordUpdate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.RecordUpdate.Response.Error](#anytype.Rpc.Block.Dataview.RecordUpdate.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordUpdate.Response.Error"></a>
+
+### Rpc.Block.Dataview.RecordUpdate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.RecordUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RecordUpdate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Dataview.RelationAdd"></a>
 
 ### Rpc.Block.Dataview.RelationAdd
@@ -2299,6 +2358,245 @@ common simple block command
 
 
 
+<a name="anytype.Rpc.Block.Dataview.RelationListAvailable"></a>
+
+### Rpc.Block.Dataview.RelationListAvailable
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationListAvailable.Request"></a>
+
+### Rpc.Block.Dataview.RelationListAvailable.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationListAvailable.Response"></a>
+
+### Rpc.Block.Dataview.RelationListAvailable.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.RelationListAvailable.Response.Error](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error) |  |  |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error"></a>
+
+### Rpc.Block.Dataview.RelationListAvailable.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionAdd"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionAdd
+RelationSelectOptionAdd may return existing option in case dataview already has one with the same text
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Request"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionAdd.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to add relation |
+| relationKey | [string](#string) |  | relation key to add the option |
+| option | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) |  | id of select options will be autogenerated |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionAdd.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| option | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionDelete"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionDelete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Request"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionDelete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to add relation |
+| relationKey | [string](#string) |  | relation key to add the option |
+| optionId | [string](#string) |  | id of select options to remove |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionDelete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionUpdate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Request"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionUpdate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to add relation |
+| relationKey | [string](#string) |  | relation key to add the option |
+| option | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) |  | id of select options will be autogenerated |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionUpdate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Dataview.RelationUpdate"></a>
 
 ### Rpc.Block.Dataview.RelationUpdate
@@ -2359,19 +2657,9 @@ common simple block command
 
 
 
-<a name="anytype.Rpc.Block.Delete"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewCreate"></a>
 
-### Rpc.Block.Delete
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Delete.Dataview"></a>
-
-### Rpc.Block.Delete.Dataview
+### Rpc.Block.Dataview.ViewCreate
 
 
 
@@ -2379,58 +2667,49 @@ common simple block command
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.Record"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewCreate.Request"></a>
 
-### Rpc.Block.Delete.Dataview.Record
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Delete.Dataview.Record.Request"></a>
-
-### Rpc.Block.Delete.Dataview.Record.Request
+### Rpc.Block.Dataview.ViewCreate.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| recordId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to insert the new block |
+| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.Record.Response"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewCreate.Response"></a>
 
-### Rpc.Block.Delete.Dataview.Record.Response
+### Rpc.Block.Dataview.ViewCreate.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Delete.Dataview.Record.Response.Error](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error) |  |  |
+| error | [Rpc.Block.Dataview.ViewCreate.Response.Error](#anytype.Rpc.Block.Dataview.ViewCreate.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| viewId | [string](#string) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.Record.Response.Error"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewCreate.Response.Error"></a>
 
-### Rpc.Block.Delete.Dataview.Record.Response.Error
+### Rpc.Block.Dataview.ViewCreate.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Delete.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.Record.Response.Error.Code) |  |  |
+| code | [Rpc.Block.Dataview.ViewCreate.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewCreate.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2438,19 +2717,19 @@ common simple block command
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.View"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewDelete"></a>
 
-### Rpc.Block.Delete.Dataview.View
-
-
+### Rpc.Block.Dataview.ViewDelete
 
 
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.View.Request"></a>
 
-### Rpc.Block.Delete.Dataview.View.Request
+
+<a name="anytype.Rpc.Block.Dataview.ViewDelete.Request"></a>
+
+### Rpc.Block.Dataview.ViewDelete.Request
 
 
 
@@ -2465,15 +2744,15 @@ common simple block command
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.View.Response"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewDelete.Response"></a>
 
-### Rpc.Block.Delete.Dataview.View.Response
+### Rpc.Block.Dataview.ViewDelete.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Delete.Dataview.View.Response.Error](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error) |  |  |
+| error | [Rpc.Block.Dataview.ViewDelete.Response.Error](#anytype.Rpc.Block.Dataview.ViewDelete.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
@@ -2481,15 +2760,136 @@ common simple block command
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.View.Response.Error"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewDelete.Response.Error"></a>
 
-### Rpc.Block.Delete.Dataview.View.Response.Error
+### Rpc.Block.Dataview.ViewDelete.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Delete.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code) |  |  |
+| code | [Rpc.Block.Dataview.ViewDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewDelete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetActive"></a>
+
+### Rpc.Block.Dataview.ViewSetActive
+set the current active view (persisted only within a session)
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetActive.Request"></a>
+
+### Rpc.Block.Dataview.ViewSetActive.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block |
+| viewId | [string](#string) |  | id of active view |
+| offset | [uint32](#uint32) |  |  |
+| limit | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetActive.Response"></a>
+
+### Rpc.Block.Dataview.ViewSetActive.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.ViewSetActive.Response.Error](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error"></a>
+
+### Rpc.Block.Dataview.ViewSetActive.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.ViewSetActive.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewUpdate"></a>
+
+### Rpc.Block.Dataview.ViewUpdate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewUpdate.Request"></a>
+
+### Rpc.Block.Dataview.ViewUpdate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  | id of dataview block to update |
+| viewId | [string](#string) |  | id of view to update |
+| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewUpdate.Response"></a>
+
+### Rpc.Block.Dataview.ViewUpdate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.ViewUpdate.Response.Error](#anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error"></a>
+
+### Rpc.Block.Dataview.ViewUpdate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.ViewUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2691,74 +3091,6 @@ common simple block command
 
 ### Rpc.Block.Get
 
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Get.Dataview"></a>
-
-### Rpc.Block.Get.Dataview
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations"></a>
-
-### Rpc.Block.Get.Dataview.AvailableRelations
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Request"></a>
-
-### Rpc.Block.Get.Dataview.AvailableRelations.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response"></a>
-
-### Rpc.Block.Get.Dataview.AvailableRelations.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error) |  |  |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error"></a>
-
-### Rpc.Block.Get.Dataview.AvailableRelations.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code](#anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -3589,137 +3921,6 @@ Image/Video/File blocks then:
 
 ### Rpc.Block.Set
 
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview"></a>
-
-### Rpc.Block.Set.Dataview
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.ActiveView"></a>
-
-### Rpc.Block.Set.Dataview.ActiveView
-set the current active view (persisted only within a session)
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Request"></a>
-
-### Rpc.Block.Set.Dataview.ActiveView.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block |
-| viewId | [string](#string) |  | id of active view |
-| offset | [uint32](#uint32) |  |  |
-| limit | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Response"></a>
-
-### Rpc.Block.Set.Dataview.ActiveView.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Dataview.ActiveView.Response.Error](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error"></a>
-
-### Rpc.Block.Set.Dataview.ActiveView.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.View"></a>
-
-### Rpc.Block.Set.Dataview.View
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.View.Request"></a>
-
-### Rpc.Block.Set.Dataview.View.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  | id of dataview block to update |
-| viewId | [string](#string) |  | id of view to update |
-| view | [model.Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.View.Response"></a>
-
-### Rpc.Block.Set.Dataview.View.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Set.Dataview.View.Response.Error](#anytype.Rpc.Block.Set.Dataview.View.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.View.Response.Error"></a>
-
-### Rpc.Block.Set.Dataview.View.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Set.Dataview.View.Response.Error.Code](#anytype.Rpc.Block.Set.Dataview.View.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -4851,85 +5052,6 @@ Remove blocks from the childrenIds of its parents
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Update"></a>
-
-### Rpc.Block.Update
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Update.Dataview"></a>
-
-### Rpc.Block.Update.Dataview
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Update.Dataview.Record"></a>
-
-### Rpc.Block.Update.Dataview.Record
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Update.Dataview.Record.Request"></a>
-
-### Rpc.Block.Update.Dataview.Record.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| recordId | [string](#string) |  |  |
-| record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Update.Dataview.Record.Response"></a>
-
-### Rpc.Block.Update.Dataview.Record.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.Update.Dataview.Record.Response.Error](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.Update.Dataview.Record.Response.Error"></a>
-
-### Rpc.Block.Update.Dataview.Record.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.Update.Dataview.Record.Response.Error.Code](#anytype.Rpc.Block.Update.Dataview.Record.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7813,32 +7935,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Create.Dataview.Record.Response.Error.Code"></a>
-
-### Rpc.Block.Create.Dataview.Record.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Create.Dataview.View.Response.Error.Code"></a>
-
-### Rpc.Block.Create.Dataview.View.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.Block.Create.Response.Error.Code"></a>
 
 ### Rpc.Block.Create.Response.Error.Code
@@ -7892,6 +7988,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Dataview.RecordCreate.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.RecordCreate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordDelete.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.RecordDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RecordUpdate.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.RecordUpdate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Dataview.RelationAdd.Response.Error.Code"></a>
 
 ### Rpc.Block.Dataview.RelationAdd.Response.Error.Code
@@ -7918,6 +8053,59 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_A_DATAVIEW_BLOCK | 3 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionAdd.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
+<a name="anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.RelationSelectOptionUpdate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Block.Dataview.RelationUpdate.Response.Error.Code"></a>
 
 ### Rpc.Block.Dataview.RelationUpdate.Response.Error.Code
@@ -7931,9 +8119,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.Record.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewCreate.Response.Error.Code"></a>
 
-### Rpc.Block.Delete.Dataview.Record.Response.Error.Code
+### Rpc.Block.Dataview.ViewCreate.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -7944,9 +8132,35 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.Delete.Dataview.View.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.Dataview.ViewDelete.Response.Error.Code"></a>
 
-### Rpc.Block.Delete.Dataview.View.Response.Error.Code
+### Rpc.Block.Dataview.ViewDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.ViewSetActive.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.ViewUpdate.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -7993,20 +8207,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
-
-
-
-<a name="anytype.Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code"></a>
-
-### Rpc.Block.Get.Dataview.AvailableRelations.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_A_DATAVIEW_BLOCK | 3 | ... |
 
 
 
@@ -8173,32 +8373,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Replace.Response.Error.Code"></a>
 
 ### Rpc.Block.Replace.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code"></a>
-
-### Rpc.Block.Set.Dataview.ActiveView.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Set.Dataview.View.Response.Error.Code"></a>
-
-### Rpc.Block.Set.Dataview.View.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -8448,19 +8622,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Unlink.Response.Error.Code"></a>
 
 ### Rpc.Block.Unlink.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Block.Update.Dataview.Record.Response.Error.Code"></a>
-
-### Rpc.Block.Update.Dataview.Record.Response.Error.Code
 
 
 | Name | Number | Description |
