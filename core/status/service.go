@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/dgtony/collections/hashset"
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
@@ -13,6 +14,8 @@ import (
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
+
+var log = logging.Logger("anytype-mw-status")
 
 const (
 	threadStatusUpdatePeriod     = 5 * time.Second
@@ -76,7 +79,7 @@ func NewService(
 		devThreads: make(map[string]hashset.HashSet),
 		devAccount: make(map[string]string),
 		connMap:    make(map[string]bool),
-		tsTrigger:  queue.NewBulkQueue(threadStatusEventBatchPeriod, 1),
+		tsTrigger:  queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2),
 	}
 }
 
@@ -114,11 +117,12 @@ func (s *service) Watch(tid thread.ID) {
 			for pid, status := range view {
 				ts.UpdateStatus(pid.String(), status)
 			}
-
-			if ts.modified {
-				s.tsTrigger.Push(tid)
-			}
+			var modified = ts.modified
 			ts.Unlock()
+
+			if modified && !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
+				log.Warn("unable to submit thread status notification for more than 2 seconds")
+			}
 		}
 	}()
 }
@@ -151,14 +155,14 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 	s.mu.Unlock()
 
 	ts.Lock()
-	defer ts.Unlock()
-
 	for _, logTime := range timeline {
 		ts.UpdateTimeline(logTime.DeviceID, logTime.LastEdit)
 	}
+	var modified = ts.modified
+	ts.Unlock()
 
-	if ts.modified {
-		s.tsTrigger.Push(tid)
+	if modified && !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
+		log.Warn("unable to submit timeline update notification for more than 2 seconds")
 	}
 }
 
@@ -225,8 +229,8 @@ func (s *service) startConnectivityTracking() error {
 				var modified = t.modified
 				t.Unlock()
 
-				if modified {
-					s.tsTrigger.Push(tid)
+				if modified && !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
+					log.Warn("unable to submit connectivity update notification for more than 2 seconds")
 				}
 			}
 		}
@@ -272,7 +276,7 @@ func (s *service) getThreadStatus(tid thread.ID) *threadStatus {
 	return ts
 }
 
-func (s *service) constructEvent(ts *threadStatus) (event pb.EventStatusThread) {
+func (s *service) constructEvent(ts *threadStatus) pb.EventStatusThread {
 	type devInfo struct {
 		id string
 		ds deviceStatus
@@ -282,6 +286,10 @@ func (s *service) constructEvent(ts *threadStatus) (event pb.EventStatusThread) 
 		accounts = make(map[string][]devInfo)
 		cafe     deviceStatus
 		dss      []deviceStatus
+		event    = pb.EventStatusThread{
+			Summary: &pb.EventStatusThreadSummary{},
+			Cafe:    &pb.EventStatusThreadCafe{},
+		}
 
 		max = func(x, y int64) int64 {
 			if x > y {
@@ -360,8 +368,7 @@ func (s *service) constructEvent(ts *threadStatus) (event pb.EventStatusThread) 
 
 	// decide sync status summary
 	event.Summary.Status = summary(event.Cafe.Status, dss...)
-
-	return
+	return event
 }
 
 func (s *service) sendEvent(ctx string, event pb.IsEventMessageValue) {
