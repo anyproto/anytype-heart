@@ -417,19 +417,20 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	}
 
 	if len(view.Relations) == 0 {
-		// todo: fill with required relations
-		/*sch, err := schema.Get(tb.Model().GetDataview().SchemaURL)
+		objType, err := d.ObjectTypeGetter.GetObjectType(tb.GetSource())
 		if err != nil {
-			return nil, fmt.Errorf("failed to get schema %s for dataview: %s", tb.Model().GetDataview().SchemaURL, err.Error())
+			return nil, fmt.Errorf("object type not found")
 		}
 
-		view.ExtraRelations = getDefaultRelations(sch)*/
+		for _, rel := range objType.Relations {
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
+		}
 	}
 
 	if len(view.Sorts) == 0 {
 		// todo: set depends on the view type
 		view.Sorts = []*model.BlockContentDataviewSort{{
-			RelationKey: "id",
+			RelationKey: "name",
 			Type:        model.BlockContentDataviewSort_Asc,
 		}}
 	}
