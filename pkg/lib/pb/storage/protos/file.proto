@@ -26,6 +26,12 @@ message FileInfo {
     int64 added = 10;
     google.protobuf.Struct meta = 11;
     repeated string targets = 12;
+    EncryptionMode encMode = 13;
+
+    enum EncryptionMode {
+        AES_GCM = 0;
+        AES_CFB = 1;
+    }
 }
 
 message Directory {

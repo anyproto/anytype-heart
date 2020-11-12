@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"image"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -91,7 +92,7 @@ type uploader struct {
 	service      BlockService
 	anytype      anytype.Service
 	block        file.Block
-	getReader    func(ctx context.Context) (*bufioClose, error)
+	getReader    func(ctx context.Context) (*bufioSeekClose, error)
 	name         string
 	typeDetect   bool
 	forceType    bool
@@ -101,16 +102,24 @@ type uploader struct {
 	groupId      string
 }
 
-type bufioClose struct {
+type bufioSeekClose struct {
 	*bufio.Reader
 	close func() error
+	seek  func(offset int64, whence int) (int64, error)
 }
 
-func (bc *bufioClose) Close() error {
+func (bc *bufioSeekClose) Close() error {
 	if bc.close != nil {
 		return bc.close()
 	}
 	return nil
+}
+
+func (bc *bufioSeekClose) Seek(offset int64, whence int) (int64, error) {
+	if bc.seek != nil {
+		return bc.seek(offset, whence)
+	}
+	return 0, fmt.Errorf("seek not supported for this type")
 }
 
 func (u *uploader) SetBlock(block file.Block) Uploader {
@@ -135,8 +144,8 @@ func (u *uploader) SetType(tp model.BlockContentFileType) Uploader {
 }
 
 func (u *uploader) SetBytes(b []byte) Uploader {
-	u.getReader = func(_ context.Context) (*bufioClose, error) {
-		return &bufioClose{
+	u.getReader = func(_ context.Context) (*bufioSeekClose, error) {
+		return &bufioSeekClose{
 			Reader: bufio.NewReaderSize(bytes.NewReader(b), bufSize),
 		}, nil
 	}
@@ -150,7 +159,7 @@ func (u *uploader) AddOptions(options ...files.AddOption) Uploader {
 func (u *uploader) SetUrl(url string) Uploader {
 	url, _ = uri.ProcessURI(url)
 	u.name = filepath.Base(url)
-	u.getReader = func(ctx context.Context) (*bufioClose, error) {
+	u.getReader = func(ctx context.Context) (*bufioSeekClose, error) {
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 		if err != nil {
 			return nil, err
@@ -159,9 +168,29 @@ func (u *uploader) SetUrl(url string) Uploader {
 		if err != nil {
 			return nil, err
 		}
-		return &bufioClose{
-			Reader: bufio.NewReaderSize(resp.Body, bufSize),
-			close:  resp.Body.Close,
+
+		tmpFile, err := ioutil.TempFile("anytype", "downloaded_file_*")
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = io.Copy(tmpFile, resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		buf := bufio.NewReaderSize(tmpFile, bufSize)
+		return &bufioSeekClose{
+			Reader: buf,
+			seek: func(offset int64, whence int) (int64, error) {
+				buf.Reset(tmpFile)
+				return tmpFile.Seek(offset, whence)
+			},
+			close: func() error {
+				_ = tmpFile.Close()
+				os.Remove(tmpFile.Name())
+				return resp.Body.Close()
+			},
 		}, nil
 	}
 	return u
@@ -169,14 +198,20 @@ func (u *uploader) SetUrl(url string) Uploader {
 
 func (u *uploader) SetFile(path string) Uploader {
 	u.name = filepath.Base(path)
-	u.getReader = func(ctx context.Context) (*bufioClose, error) {
+	u.getReader = func(ctx context.Context) (*bufioSeekClose, error) {
 		f, err := os.Open(path)
 		if err != nil {
 			return nil, err
 		}
-		return &bufioClose{
-			Reader: bufio.NewReaderSize(f, bufSize),
-			close:  f.Close,
+
+		buf := bufio.NewReaderSize(f, bufSize)
+		return &bufioSeekClose{
+			Reader: buf,
+			seek: func(offset int64, whence int) (int64, error) {
+				buf.Reset(f)
+				return f.Seek(offset, whence)
+			},
+			close: f.Close,
 		}, nil
 	}
 	return u
@@ -278,7 +313,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	return
 }
 
-func (u *uploader) detectType(buf *bufioClose) model.BlockContentFileType {
+func (u *uploader) detectType(buf *bufioSeekClose) model.BlockContentFileType {
 	b, err := buf.Peek(8192)
 	if err != nil && err != io.EOF {
 		return model.BlockContentFile_File

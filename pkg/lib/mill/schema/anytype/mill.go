@@ -34,8 +34,7 @@ func GetMill(id string, opts map[string]string) (mill.Mill, error) {
 		}, nil
 	case "/image/exif":
 		return &mill.ImageExif{}, nil
-	case "/json":
-		return &mill.Json{}, nil
+
 	default:
 		return nil, nil
 	}
