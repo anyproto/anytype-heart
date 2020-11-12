@@ -228,11 +228,19 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
 			for _, msg := range msgs {
 				records = append(records, msg.(core.SmartblockRecordEnvelope))
 			}
+
+			s.receiver.Lock()
+			var tl []status.LogTime
 			if err := s.applyRecords(records); err != nil {
 				log.Errorf("can't handle records: %v; records: %v", err, records)
 			} else if s.ss != nil {
+				tl = s.timeline()
+			}
+			s.receiver.Unlock()
+
+			if len(tl) > 0 {
 				// notify about probably updated timeline
-				s.ss.UpdateTimeline(s.tid, s.timeline())
+				s.ss.UpdateTimeline(s.tid, tl)
 			}
 
 			// wait 100 millisecond for better batching
@@ -244,9 +252,7 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
 	}
 }
 
-func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) (err error) {
-	s.receiver.Lock()
-	defer s.receiver.Unlock()
+func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	var changes = make([]*change.Change, 0, len(records))
 	for _, record := range records {
 		if record.LogID == s.a.Device() {
@@ -265,12 +271,13 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) (err erro
 	}
 	log.With("thread", s.id).Infof("received %d records; changes count: %d", len(records), len(changes))
 	if len(changes) == 0 {
-		return
+		return nil
 	}
+
 	switch s.tree.Add(changes...) {
 	case change.Nothing:
 		// existing or not complete
-		return
+		return nil
 	case change.Append:
 		s.lastSnapshotId = s.tree.LastSnapshotId()
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
@@ -283,8 +290,9 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) (err erro
 			return err
 		}
 		return s.receiver.StateRebuild(doc.(*state.State))
+	default:
+		return fmt.Errorf("unsupported tree mode")
 	}
-	return
 }
 
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
