@@ -218,6 +218,7 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 
 	turnInto := func(b text.Block) {
 		b.SetStyle(style)
+		// move children up
 		switch style {
 		case model.BlockContentText_Header1,
 			model.BlockContentText_Header2,
@@ -230,6 +231,23 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 				if err = s.InsertTo(b.Model().Id, model.Block_Bottom, ids...); err != nil {
 					return
 				}
+			}
+		}
+		// reset align and color
+		switch style {
+		case model.BlockContentText_Quote:
+			if b.Model().Align == model.Block_AlignCenter {
+				b.Model().Align = model.Block_AlignLeft
+			}
+		case model.BlockContentText_Checkbox,
+			model.BlockContentText_Marked,
+			model.BlockContentText_Numbered,
+			model.BlockContentText_Toggle:
+			b.Model().Align = model.Block_AlignLeft
+		case model.BlockContentText_Code:
+			b.Model().Align = model.Block_AlignLeft
+			b.Model().GetText().Marks = &model.BlockContentTextMarks{
+				Marks: nil,
 			}
 		}
 	}
