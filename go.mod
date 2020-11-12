@@ -49,6 +49,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
+	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/otiai10/opengraph v1.1.2
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd

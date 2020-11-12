@@ -3,6 +3,7 @@ package files
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
 	"crypto/sha256"
 	"fmt"
 	"io"
@@ -12,6 +13,9 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	symmetric "github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
@@ -27,7 +31,6 @@ import (
 	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/textileio/go-threads/crypto/symmetric"
 )
 
 var log = logging.Logger("anytype-files")
@@ -291,32 +294,54 @@ func (s *Service) fileIndexLink(ctx context.Context, inode ipld.Node, data strin
 }
 
 func (s *Service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
-	plaintext, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
+	r, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
 	}
+
+	var file storage.FileInfo
 
 	if key != "" {
 		key, err := symmetric.FromString(key)
 		if err != nil {
 			return nil, err
 		}
-		plaintext, err = key.Decrypt(plaintext)
-		if err != nil {
-			return nil, err
+
+		modes := []storage.FileInfoEncryptionMode{storage.FileInfo_AES_CFB, storage.FileInfo_AES_GCM}
+		for i, mode := range modes {
+			ed, err := getEncryptorDecryptor(key, mode)
+			if err != nil {
+				return nil, err
+			}
+			decryptedReader, err := ed.DecryptReader(r)
+			if err != nil {
+				return nil, err
+			}
+			b, err := ioutil.ReadAll(decryptedReader)
+			if err != nil {
+				if i == len(modes)-1 {
+					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
+				}
+
+				continue
+			}
+			err = proto.Unmarshal(b, &file)
+			if err != nil || file.Hash == "" {
+				if i == len(modes)-1 {
+					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
+				}
+				continue
+			}
+			// save successful enc mode so it will be cached in the DB
+			file.EncMode = mode
+			break
 		}
 	}
-
-	var file storage.FileInfo
-	err = proto.Unmarshal(plaintext, &file)
-	if err != nil {
-		log.Errorf("failed to decode proto: %s", string(plaintext))
-		// todo: get s fixed error if trying to unmarshal an encrypted file
-		return nil, err
+	if file.Hash == "" {
+		return nil, fmt.Errorf("failed to read file info proto with all encryption modes")
 	}
 
 	file.Targets = []string{target}
-
 	return &file, nil
 }
 
@@ -332,7 +357,7 @@ func (s *Service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, 
 	return reader, file, err
 }
 
-func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo) (io.ReadSeeker, error) {
+func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
 		return nil, err
@@ -341,39 +366,38 @@ func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo)
 	if err != nil {
 		return nil, err
 	}
-
-	var plaintext []byte
-	if file.Key != "" {
-		key, err := symmetric.FromString(file.Key)
-		if err != nil {
-			return nil, err
-		}
-		defer fd.Close()
-		b, err := ioutil.ReadAll(fd)
-		if err != nil {
-			return nil, err
-		}
-		plaintext, err = key.Decrypt(b)
-		if err != nil {
-			return nil, err
-		}
-		return bytes.NewReader(plaintext), nil
+	if file.Key == "" {
+		return fd, nil
 	}
 
-	return fd, nil
-}
-
-func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
-	var source string
-	input, err := ioutil.ReadAll(conf.Reader)
+	key, err := symmetric.FromString(file.Key)
 	if err != nil {
 		return nil, err
 	}
 
+	dec, err := getEncryptorDecryptor(key, file.EncMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return dec.DecryptReader(fd)
+}
+
+func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+	var source string
+
 	if conf.Use != "" {
 		source = conf.Use
 	} else {
-		source = checksum(input, conf.Plaintext)
+		var err error
+		source, err = checksum(conf.Reader, conf.Plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to calculate checksum: %w", err)
+		}
+		_, err = conf.Reader.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seek reader: %w", err)
+		}
 	}
 
 	opts, err := mill.Options(map[string]interface{}{
@@ -387,16 +411,26 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return efile, nil
 	}
 
-	res, err := mill.Mill(input, conf.Name)
+	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	check := checksum(res.File, conf.Plaintext)
+	check, err := checksum(res.File, conf.Plaintext)
+	if err != nil {
+		return nil, err
+	}
+	conf.Reader.Seek(0, io.SeekStart)
+
+	// todo: temp solution to read the same data again
+	res, err = mill.Mill(conf.Reader, conf.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil {
 		return efile, nil
 	}
-
 	model := &storage.FileInfo{
 		Mill:     mill.ID(),
 		Checksum: check,
@@ -404,33 +438,41 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		Opts:     opts,
 		Media:    conf.Media,
 		Name:     conf.Name,
-		Size_:    int64(len(res.File)),
 		Added:    time.Now().Unix(),
 		Meta:     pb.ToStruct(res.Meta),
 	}
 
-	var reader *bytes.Reader
+	var r io.Reader
 	if mill.Encrypt() && !conf.Plaintext {
 		key, err := symmetric.NewRandom()
 		if err != nil {
 			return nil, err
 		}
-		ciphertext, err := key.Encrypt(res.File)
+		enc := cfb.New(key, [aes.BlockSize]byte{})
+
+		r, err = enc.EncryptReader(res.File)
 		if err != nil {
 			return nil, err
 		}
+
 		model.Key = key.String()
-		reader = bytes.NewReader(ciphertext)
+		model.EncMode = storage.FileInfo_AES_CFB
 	} else {
-		reader = bytes.NewReader(res.File)
+		r = res.File
 	}
 
-	node, err := s.ipfs.AddFile(ctx, reader, nil)
+	node, err := s.ipfs.AddFile(ctx, r, nil)
 	if err != nil {
 		return nil, err
 	}
-	model.Hash = node.Cid().String()
 
+	stat, err := node.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	model.Hash = node.Cid().String()
+	model.Size_ = int64(stat.CumulativeSize)
 	err = s.store.Add(model)
 	if err != nil {
 		return nil, err
@@ -460,12 +502,15 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 			return err
 		}
 
-		ciphertext, err := key.Encrypt(plaintext)
+		ed, err := getEncryptorDecryptor(key, file.EncMode)
 		if err != nil {
 			return err
 		}
 
-		reader = bytes.NewReader(ciphertext)
+		reader, err = ed.EncryptReader(bytes.NewReader(plaintext))
+		if err != nil {
+			return err
+		}
 	} else {
 		reader = bytes.NewReader(plaintext)
 	}
@@ -656,12 +701,32 @@ func looksLikeFileNode(node ipld.Node) bool {
 	return true
 }
 
-func checksum(plaintext []byte, wontEncrypt bool) string {
+func checksum(r io.Reader, wontEncrypt bool) (string, error) {
 	var add int
 	if wontEncrypt {
 		add = 1
 	}
-	plaintext = append(plaintext, byte(add))
-	sum := sha256.Sum256(plaintext)
-	return base32.RawHexEncoding.EncodeToString(sum[:])
+	h := sha256.New()
+	_, err := io.Copy(h, r)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = h.Write([]byte{byte(add)})
+	if err != nil {
+		return "", err
+	}
+	checksum := h.Sum(nil)
+	return base32.RawHexEncoding.EncodeToString(checksum[:]), nil
+}
+
+func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMode) (symmetric.EncryptorDecryptor, error) {
+	switch mode {
+	case storage.FileInfo_AES_GCM:
+		return gcm.New(key), nil
+	case storage.FileInfo_AES_CFB:
+		return cfb.New(key, [aes.BlockSize]byte{}), nil
+	default:
+		return nil, fmt.Errorf("unsupported encryption mode")
+	}
 }

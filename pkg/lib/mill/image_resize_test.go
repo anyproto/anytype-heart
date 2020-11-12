@@ -1,10 +1,8 @@
 package mill
 
 import (
-	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -29,13 +27,7 @@ func TestImageResize_Mill(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		input, err := ioutil.ReadAll(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		file.Close()
-
-		res, err := m.Mill(input, "test")
+		res, err := m.Mill(file, "test")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -45,9 +37,10 @@ func TestImageResize_Mill(t *testing.T) {
 		}
 
 		// ensure exif was removed
-		_, err = exif.Decode(bytes.NewReader(res.File))
+		_, err = exif.Decode(res.File)
 		if err == nil || (err != io.EOF && err.Error() != errFailedToFindExifMarker.Error()) {
 			t.Errorf("exif data was not removed")
 		}
+		file.Close()
 	}
 }
