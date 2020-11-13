@@ -11,5 +11,6 @@ func TestNewRandom(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	require.Len(t, KeyBytes, len(key))
+
+	require.Len(t, key, KeyBytes)
 }

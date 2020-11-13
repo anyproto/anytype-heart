@@ -136,8 +136,19 @@ func TestDecryptReader(t *testing.T) {
 					dOffset, dErr := decryptedReader.Seek(st.offset, st.whence)
 					pOffset, pErr := plaintextReader.Seek(st.offset, st.whence)
 
-					require.Equal(t, pOffset, dOffset)
+					if pOffset > int64(len(symmetricTestData.plaintext)) {
+						// in case we out of bounds it is ok for our implementation to return error
+						// bytes reader seek instead will postpone the error until the actual read
+						require.Error(t, dErr)
+						return
+					}
+
 					require.Equal(t, pErr, dErr)
+					if pErr != nil {
+						return
+					}
+
+					require.Equal(t, pOffset, dOffset)
 
 					dB := make([]byte, st.length)
 					pB := make([]byte, st.length)

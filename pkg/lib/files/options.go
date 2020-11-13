@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -86,8 +87,7 @@ func (s *Service) NormalizeOptions(ctx context.Context, opts *AddOptions) error 
 	}
 
 	if opts.Media == "" {
-		var data = make([]byte, 512)
-		_, err := io.ReadFull(opts.Reader, data)
+		data, err := ioutil.ReadAll(io.LimitReader(opts.Reader, 512))
 		if err != nil && err != io.EOF {
 			return fmt.Errorf("failed to get first 512 bytes to detect content-type: %s", err)
 		}

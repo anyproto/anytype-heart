@@ -169,12 +169,17 @@ func (u *uploader) SetUrl(url string) Uploader {
 			return nil, err
 		}
 
-		tmpFile, err := ioutil.TempFile("anytype", "downloaded_file_*")
+		tmpFile, err := ioutil.TempFile("", "anytype_downloaded_file_*")
 		if err != nil {
 			return nil, err
 		}
 
 		_, err = io.Copy(tmpFile, resp.Body)
+		if err != nil {
+			return nil, err
+		}
+
+		_, err = tmpFile.Seek(0, io.SeekStart)
 		if err != nil {
 			return nil, err
 		}

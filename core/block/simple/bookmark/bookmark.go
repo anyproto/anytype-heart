@@ -246,13 +246,18 @@ func loadImage(stor anytype.Service, url string) (hash string, err error) {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	tmpFile, err := ioutil.TempFile("anytype", "downloaded_file_*")
+	tmpFile, err := ioutil.TempFile("", "anytype_downloaded_file_*")
 	if err != nil {
 		return "", err
 	}
 	defer os.Remove(tmpFile.Name())
 
 	_, err = io.Copy(tmpFile, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = tmpFile.Seek(0, io.SeekStart)
 	if err != nil {
 		return "", err
 	}
