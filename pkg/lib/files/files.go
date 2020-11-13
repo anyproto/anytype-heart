@@ -309,6 +309,12 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 
 		modes := []storage.FileInfoEncryptionMode{storage.FileInfo_AES_CFB, storage.FileInfo_AES_GCM}
 		for i, mode := range modes {
+			if i > 0 {
+				_, err = r.Seek(0, io.SeekStart)
+				if err != nil {
+					return nil, fmt.Errorf("failed to seek ciphertext after enc mode try")
+				}
+			}
 			ed, err := getEncryptorDecryptor(key, mode)
 			if err != nil {
 				return nil, err
