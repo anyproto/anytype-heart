@@ -5,6 +5,7 @@ import (
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -46,11 +47,11 @@ func (e *GCMEncryptDecryptor) DecryptReader(r io.ReadSeeker) (symmetric.ReadSeek
 		return nil, err
 	}
 
-	b, err = e.Decrypt(b)
+	plaintext, err := e.Decrypt(b)
 	if err != nil {
 		return nil, err
 	}
-	rsc := &noopCloser{bytes.NewReader(b)}
+	rsc := &noopCloser{bytes.NewReader(plaintext)}
 	return rsc, nil
 }
 
@@ -84,6 +85,9 @@ func (e *GCMEncryptDecryptor) Decrypt(ciphertext []byte) ([]byte, error) {
 	aesgcm, err := cipher.NewGCM(block)
 	if err != nil {
 		return nil, err
+	}
+	if len(ciphertext) < NonceBytes {
+		return nil, fmt.Errorf("ciphertext should be longer than NonceBytes")
 	}
 	nonce := ciphertext[:NonceBytes]
 	ciphertext = ciphertext[NonceBytes:]
