@@ -317,7 +317,7 @@ func (s *source) timeline() []status.LogTime {
 		timeline = make([]status.LogTime, 0, len(heads))
 	)
 	for _, head := range heads {
-		if ch := s.tree.Get(head); ch != nil {
+		if ch := s.tree.Get(head); ch != nil && len(ch.Account) > 0 && len(ch.Device) > 0 {
 			timeline = append(timeline, status.LogTime{
 				AccountID: ch.Account,
 				DeviceID:  ch.Device,
