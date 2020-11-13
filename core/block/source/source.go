@@ -193,9 +193,7 @@ func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileCh
 		return
 	}
 	ch := &change.Change{Id: id, Change: c}
-	s.receiver.Lock()
 	s.tree.Add(ch)
-	s.receiver.Unlock()
 	s.logHeads[s.logId] = id
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
