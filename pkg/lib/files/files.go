@@ -29,6 +29,7 @@ import (
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/miolini/datacounter"
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
 )
@@ -391,7 +392,6 @@ func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo)
 
 func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
 	var source string
-
 	if conf.Use != "" {
 		source = conf.Use
 	} else {
@@ -422,7 +422,8 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return nil, err
 	}
 
-	check, err := checksum(res.File, conf.Plaintext)
+	readerWithCounter := datacounter.NewReaderCounter(res.File)
+	check, err := checksum(readerWithCounter, conf.Plaintext)
 	if err != nil {
 		return nil, err
 	}
@@ -446,6 +447,7 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		Name:     conf.Name,
 		Added:    time.Now().Unix(),
 		Meta:     pb.ToStruct(res.Meta),
+		Size_:    int64(readerWithCounter.Count()),
 	}
 
 	var r io.Reader
@@ -472,13 +474,7 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return nil, err
 	}
 
-	stat, err := node.Stat()
-	if err != nil {
-		return nil, err
-	}
-
 	model.Hash = node.Cid().String()
-	model.Size_ = int64(stat.CumulativeSize)
 	err = s.store.Add(model)
 	if err != nil {
 		return nil, err
@@ -551,12 +547,11 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 	return helpers.AddLinkToDirectory(ctx, s.ipfs, dir, link, node.Cid().String())
 }
 
-func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
 
-	reader := bytes.NewReader(content)
 	mil, err := anytype.GetMill(sch.Mill, sch.Opts)
 	if err != nil {
 		return nil, err
