@@ -160,7 +160,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	rels := s.ExtraRelations()
-	for _, rel := range s.ExtraRelations() {
+	for _, rel := range rels {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
 			log.Warnf("changeRelationAdd, relation already exists")

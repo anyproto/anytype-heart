@@ -277,7 +277,7 @@ func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAd
 		s.AddRelation(req.Relation)
 	}
 	if rel, ok := b.(relation.Block); ok {
-		rel.SetKey(key)
+		rel.SetKey(req.Relation.Key)
 	} else {
 		return fmt.Errorf("unexpected block type: %T (want Relation)", b)
 	}
