@@ -596,12 +596,12 @@ func (s *State) SetDetail(key string, value *types.Value) {
 }
 
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {
-	for _, rel := range s.extraRelations {
+	for _, rel := range s.ExtraRelations() {
 		if rel.Key == relation.Key {
 			return s
 		}
 	}
-	s.extraRelations = append(s.extraRelations, relation)
+	s.extraRelations = append(s.ExtraRelations(), relation)
 	return s
 }
 
@@ -775,11 +775,16 @@ func (s *State) Copy() *State {
 	for k, v := range s.blocks {
 		blocks[k] = v.Copy()
 	}
+	objTypes := make([]string, len(s.objectTypes))
+	copy(objTypes, s.objectTypes)
+
 	copy := &State{
-		ctx:     s.ctx,
-		blocks:  blocks,
-		rootId:  s.rootId,
-		details: pbtypes.CopyStruct(s.details),
+		ctx:            s.ctx,
+		blocks:         blocks,
+		rootId:         s.rootId,
+		details:        pbtypes.CopyStruct(s.details),
+		extraRelations: pbtypes.CopyRelations(s.extraRelations),
+		objectTypes:    objTypes,
 	}
 	return copy
 }
