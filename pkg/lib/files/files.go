@@ -422,22 +422,27 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return nil, err
 	}
 
+	// count the result size after the applied mill
 	readerWithCounter := datacounter.NewReaderCounter(res.File)
 	check, err := checksum(readerWithCounter, conf.Plaintext)
 	if err != nil {
 		return nil, err
 	}
-	conf.Reader.Seek(0, io.SeekStart)
+	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil {
+		return efile, nil
+	}
 
-	// todo: temp solution to read the same data again
+	_, err = conf.Reader.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	// because mill result reader doesn't support seek we need to do the mill again
 	res, err = mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil {
-		return efile, nil
-	}
 	model := &storage.FileInfo{
 		Mill:     mill.ID(),
 		Checksum: check,
