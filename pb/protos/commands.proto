@@ -430,6 +430,7 @@ message Rpc {
                     enum Code {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                         // ...
                     }
                 }
