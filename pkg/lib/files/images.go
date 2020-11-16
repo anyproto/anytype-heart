@@ -3,7 +3,6 @@ package files
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"time"
 
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
@@ -13,12 +12,7 @@ import (
 )
 
 func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
-	b, err := ioutil.ReadAll(opts.Reader)
-	if err != nil {
-		return "", nil, err
-	}
-
-	dir, err := s.fileBuildDirectory(ctx, b, opts.Name, opts.Plaintext, anytype.ImageNode())
+	dir, err := s.fileBuildDirectory(ctx, opts.Reader, opts.Name, opts.Plaintext, anytype.ImageNode())
 	if err != nil {
 		return "", nil, err
 	}
