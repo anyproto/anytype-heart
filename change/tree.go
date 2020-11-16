@@ -35,12 +35,12 @@ type Tree struct {
 	// missed id -> list of dependency ids
 	waitList    map[string][]string
 	detailsOnly bool
-	mu          sync.Mutex
+	mu          sync.RWMutex
 }
 
 func (t *Tree) RootId() string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	if t.root != nil {
 		return t.root.Id
 	}
@@ -48,8 +48,8 @@ func (t *Tree) RootId() string {
 }
 
 func (t *Tree) Root() *Change {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.root
 }
 
@@ -264,15 +264,17 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	return
 }
 
+// Change objects should not be modified during the iteration!
 func (t *Tree) Iterate(startId string, f func(c *Change) (isContinue bool)) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	t.iterate(t.attached[startId], f)
 }
 
+// Change objects should not be modified during the iteration!
 func (t *Tree) IterateBranching(startId string, f func(c *Change, branchLevel int) (isContinue bool)) {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	// branchLevel indicates the number of parallel branches
 	var bc int
 	t.iterate(t.attached[startId], func(c *Change) (isContinue bool) {
@@ -288,8 +290,8 @@ func (t *Tree) IterateBranching(startId string, f func(c *Change, branchLevel in
 }
 
 func (t *Tree) Hash() string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	h := md5.New()
 	n := 0
 	t.iterate(t.root, func(c *Change) (isContinue bool) {
@@ -301,20 +303,20 @@ func (t *Tree) Hash() string {
 }
 
 func (t *Tree) Len() int {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return len(t.attached)
 }
 
 func (t *Tree) Heads() []string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.headIds
 }
 
 func (t *Tree) DetailsHeads() []string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.detailsHeadIds
 }
 
@@ -335,14 +337,14 @@ func (t *Tree) String() string {
 }
 
 func (t *Tree) Get(id string) *Change {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	return t.attached[id]
 }
 
 func (t *Tree) LastSnapshotId() string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
+	t.mu.RLock()
+	defer t.mu.RUnlock()
 	var sIds []string
 	for _, hid := range t.headIds {
 		hd := t.attached[hid]
