@@ -246,6 +246,8 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 			b.Model().Align = model.Block_AlignLeft
 		case model.BlockContentText_Code:
 			b.Model().Align = model.Block_AlignLeft
+			b.Model().BackgroundColor = ""
+			b.Model().GetText().Color = ""
 			b.Model().GetText().Marks = &model.BlockContentTextMarks{
 				Marks: nil,
 			}
