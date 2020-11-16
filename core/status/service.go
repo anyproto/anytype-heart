@@ -20,6 +20,7 @@ var log = logging.Logger("anytype-mw-status")
 const (
 	threadStatusUpdatePeriod     = 5 * time.Second
 	threadStatusEventBatchPeriod = 2 * time.Second
+	profileInformationLifetime   = 30 * time.Second
 
 	// truncate device names and account IDs
 	// to specified number of last symbols
@@ -243,6 +244,11 @@ func (s *service) startConnectivityTracking() error {
 }
 
 func (s *service) startSendingThreadStatus() {
+	var (
+		profile        core.Profile
+		profileUpdated time.Time
+	)
+
 	for is := range s.tsTrigger.RunBulk() {
 		var ts = make(map[thread.ID]*threadStatus, len(is))
 
@@ -253,8 +259,17 @@ func (s *service) startSendingThreadStatus() {
 		}
 		s.mu.Unlock()
 
+		if now := time.Now(); now.Sub(profileUpdated) > profileInformationLifetime {
+			profileUpdated = now
+			if updated, err := s.profile.LocalProfile(); err != nil {
+				log.Errorf("unable to get local profile: %v", err)
+			} else {
+				profile = updated
+			}
+		}
+
 		for id, t := range ts {
-			event := s.constructEvent(t)
+			event := s.constructEvent(t, profile)
 			s.sendEvent(
 				id.String(),
 				&pb.EventMessageValueOfThreadStatus{ThreadStatus: &event},
@@ -279,7 +294,7 @@ func (s *service) getThreadStatus(tid thread.ID) *threadStatus {
 	return ts
 }
 
-func (s *service) constructEvent(ts *threadStatus) pb.EventStatusThread {
+func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.EventStatusThread {
 	type devInfo struct {
 		id string
 		ds deviceStatus
@@ -293,8 +308,6 @@ func (s *service) constructEvent(ts *threadStatus) pb.EventStatusThread {
 			Summary: &pb.EventStatusThreadSummary{},
 			Cafe:    &pb.EventStatusThreadCafe{},
 		}
-
-		selfID, selfName, selfAvatar string
 
 		max = func(x, y int64) int64 {
 			if x > y {
@@ -332,21 +345,12 @@ func (s *service) constructEvent(ts *threadStatus) pb.EventStatusThread {
 	s.mu.Unlock()
 	ts.Unlock()
 
-	// get information about own account
-	if profile, err := s.profile.LocalProfile(); err != nil {
-		log.Errorf("unable to get local profile: %v", err)
-	} else {
-		selfID = profile.AccountAddr
-		selfName = profile.Name
-		selfAvatar = profile.IconImage
-	}
-
 	// accounts
 	for accID, devices := range accounts {
 		var accountInfo pb.EventStatusThreadAccount
-		if accID == selfID {
-			accountInfo.Name = selfName
-			accountInfo.ImageHash = selfAvatar
+		if accID == profile.AccountAddr {
+			accountInfo.Name = profile.Name
+			accountInfo.ImageHash = profile.IconImage
 		} else {
 			accountInfo.Name = shorten(accID)
 		}
