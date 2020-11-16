@@ -40,6 +40,7 @@ type Hook int
 const (
 	HookOnNewState Hook = iota
 	HookOnClose
+	HookOnBlockClose
 )
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -68,6 +69,7 @@ type SmartBlock interface {
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
+	BlockClose()
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -435,6 +437,11 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 
 func (sb *smartBlock) Reindex() (err error) {
 	return sb.updatePageStore("", nil)
+}
+
+func (sb *smartBlock) BlockClose() {
+	sb.execHooks(HookOnBlockClose)
+	sb.SetEventFunc(nil)
 }
 
 func (sb *smartBlock) Close() (err error) {

@@ -140,6 +140,10 @@ func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 	return nil
 }
 
+func (st *SmartTest) BlockClose() {
+	st.SetEventFunc(nil)
+}
+
 func (st *SmartTest) Close() (err error) {
 	return
 }
