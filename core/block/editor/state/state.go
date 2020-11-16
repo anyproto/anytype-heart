@@ -430,6 +430,16 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		if !pbtypes.RelationsEqual(prev, s.extraRelations) {
 			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
 			s.parent.extraRelations = s.extraRelations
+			msgs = append(msgs, simple.EventMessage{
+				Msg: &pb.EventMessage{
+					Value: &pb.EventMessageValueOfBlockSetRelations{
+						BlockSetRelations: &pb.EventBlockSetRelations{
+							Id:        s.RootId(),
+							Relations: pbtypes.CopyRelations(s.extraRelations),
+						},
+					},
+				},
+			})
 		}
 	}
 
