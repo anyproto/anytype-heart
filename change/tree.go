@@ -5,6 +5,7 @@ import (
 	"crypto/md5"
 	"fmt"
 	"sort"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
@@ -34,9 +35,12 @@ type Tree struct {
 	// missed id -> list of dependency ids
 	waitList    map[string][]string
 	detailsOnly bool
+	mu          sync.Mutex
 }
 
 func (t *Tree) RootId() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	if t.root != nil {
 		return t.root.Id
 	}
@@ -44,10 +48,14 @@ func (t *Tree) RootId() string {
 }
 
 func (t *Tree) Root() *Change {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.root
 }
 
 func (t *Tree) AddFast(changes ...*Change) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	for _, c := range changes {
 		// ignore existing
 		if _, ok := t.attached[c.Id]; ok {
@@ -61,6 +69,8 @@ func (t *Tree) AddFast(changes ...*Change) {
 }
 
 func (t *Tree) Add(changes ...*Change) (mode Mode) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var beforeHeadIds = t.headIds
 	var attached bool
 	for _, c := range changes {
@@ -255,10 +265,14 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 }
 
 func (t *Tree) Iterate(startId string, f func(c *Change) (isContinue bool)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	t.iterate(t.attached[startId], f)
 }
 
 func (t *Tree) IterateBranching(startId string, f func(c *Change, branchLevel int) (isContinue bool)) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	// branchLevel indicates the number of parallel branches
 	var bc int
 	t.iterate(t.attached[startId], func(c *Change) (isContinue bool) {
@@ -274,6 +288,8 @@ func (t *Tree) IterateBranching(startId string, f func(c *Change, branchLevel in
 }
 
 func (t *Tree) Hash() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	h := md5.New()
 	n := 0
 	t.iterate(t.root, func(c *Change) (isContinue bool) {
@@ -285,18 +301,26 @@ func (t *Tree) Hash() string {
 }
 
 func (t *Tree) Len() int {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return len(t.attached)
 }
 
 func (t *Tree) Heads() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.headIds
 }
 
 func (t *Tree) DetailsHeads() []string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.detailsHeadIds
 }
 
 func (t *Tree) String() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var buf = bytes.NewBuffer(nil)
 	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
 		buf.WriteString(c.Id)
@@ -313,10 +337,14 @@ func (t *Tree) String() string {
 }
 
 func (t *Tree) Get(id string) *Change {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	return t.attached[id]
 }
 
 func (t *Tree) LastSnapshotId() string {
+	t.mu.Lock()
+	defer t.mu.Unlock()
 	var sIds []string
 	for _, hid := range t.headIds {
 		hd := t.Get(hid)
