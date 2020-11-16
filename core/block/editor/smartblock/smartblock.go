@@ -83,16 +83,17 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds          []string
-	sendEvent       func(e *pb.Event)
-	undo            undo.History
-	source          source.Source
-	meta            meta.Service
-	metaSub         meta.Subscriber
-	metaData        *core.SmartBlockMeta
-	disableLayouts  bool
-	onNewStateHooks []func()
-	onCloseHooks    []func()
+	depIds            []string
+	sendEvent         func(e *pb.Event)
+	undo              undo.History
+	source            source.Source
+	meta              meta.Service
+	metaSub           meta.Subscriber
+	metaData          *core.SmartBlockMeta
+	disableLayouts    bool
+	onNewStateHooks   []func()
+	onCloseHooks      []func()
+	onBlockCloseHooks []func()
 }
 
 func (sb *smartBlock) Id() string {
@@ -527,6 +528,8 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 			sb.onCloseHooks = append(sb.onCloseHooks, f)
 		case HookOnNewState:
 			sb.onNewStateHooks = append(sb.onNewStateHooks, f)
+		case HookOnBlockClose:
+			sb.onBlockCloseHooks = append(sb.onBlockCloseHooks, f)
 		}
 	}
 }
@@ -538,6 +541,8 @@ func (sb *smartBlock) execHooks(event Hook) {
 		hooks = sb.onNewStateHooks
 	case HookOnClose:
 		hooks = sb.onCloseHooks
+	case HookOnBlockClose:
+		hooks = sb.onBlockCloseHooks
 	}
 	for _, h := range hooks {
 		if h != nil {
