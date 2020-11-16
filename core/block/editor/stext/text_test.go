@@ -306,8 +306,8 @@ func TestTextImpl_TurnInto(t *testing.T) {
 		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Quote, "1", "1.1", "2", "2.2"))
 		assert.Equal(t, model.BlockContentText_Quote, sb.Doc.Pick("1").Model().GetText().Style)
 		assert.Equal(t, model.BlockContentText_Quote, sb.Doc.Pick("1").Model().GetText().Style)
-		assert.Equal(t, model.BlockContentText_Quote, sb.Doc.Pick("1.1").Model().GetText().Style)
-		assert.Equal(t, model.BlockContentText_Quote, sb.Doc.Pick("2.2").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("1.1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("2.2").Model().GetText().Style)
 		assert.Equal(t, []string{"1", "1.1", "2", "2.2"}, sb.Doc.Pick("test").Model().ChildrenIds)
 	})
 	t.Run("turn link into text", func(t *testing.T) {
