@@ -319,8 +319,6 @@ func (t *Tree) DetailsHeads() []string {
 }
 
 func (t *Tree) String() string {
-	t.mu.Lock()
-	defer t.mu.Unlock()
 	var buf = bytes.NewBuffer(nil)
 	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
 		buf.WriteString(c.Id)
@@ -347,7 +345,7 @@ func (t *Tree) LastSnapshotId() string {
 	defer t.mu.Unlock()
 	var sIds []string
 	for _, hid := range t.headIds {
-		hd := t.Get(hid)
+		hd := t.attached[hid]
 		sId := hd.Id
 		if hd.Snapshot == nil {
 			sId = hd.LastSnapshotId
