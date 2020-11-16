@@ -987,6 +987,8 @@ func (s *service) createSmartBlock(id string, initEmpty bool) (sb smartblock.Sma
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
+	sb.Lock()
+	defer sb.Unlock()
 	err = sb.Init(sc, initEmpty)
 	return
 }
