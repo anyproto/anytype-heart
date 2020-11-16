@@ -315,8 +315,10 @@ func (s *service) constructEvent(ts *threadStatus) pb.EventStatusThread {
 			cafe = *status
 			continue
 		}
-		var accID = s.devAccount[devID]
-		accounts[accID] = append(accounts[accID], devInfo{devID, *status})
+
+		if accID, found := s.devAccount[devID]; found {
+			accounts[accID] = append(accounts[accID], devInfo{devID, *status})
+		} // omit devices with unmatched account
 	}
 
 	// clear modification status
