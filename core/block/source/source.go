@@ -230,17 +230,16 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
 			}
 
 			s.receiver.Lock()
-			var tl []status.LogTime
-			if err := s.applyRecords(records); err != nil {
-				log.Errorf("can't handle records: %v; records: %v", err, records)
-			} else if s.ss != nil {
-				tl = s.timeline()
-			}
+			err := s.applyRecords(records)
 			s.receiver.Unlock()
 
-			if len(tl) > 0 {
+			if err != nil {
+				log.Errorf("can't handle records: %v; records: %v", err, records)
+			} else if s.ss != nil {
 				// notify about probably updated timeline
-				s.ss.UpdateTimeline(s.tid, tl)
+				if tl := s.timeline(); len(tl) > 0 {
+					s.ss.UpdateTimeline(s.tid, tl)
+				}
 			}
 
 			// wait 100 millisecond for better batching
