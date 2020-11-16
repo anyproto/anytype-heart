@@ -91,8 +91,6 @@ type Service interface {
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)     // deprecated
 	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) // deprecated
 
-	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
-
 	PageStore() localstore.PageStore
 	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
 	PageList() ([]*model.PageInfo, error)
@@ -100,6 +98,8 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() FileInfo
+
+	ProfileInfo
 }
 
 var _ Service = (*Anytype)(nil)

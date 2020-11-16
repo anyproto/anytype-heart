@@ -53,6 +53,8 @@ func newFixture(t *testing.T) *fixture {
 		Profile: "profileId",
 	}).AnyTimes()
 	a.EXPECT().PageStore().Return(nil).AnyTimes()
+	a.EXPECT().ProfileID().AnyTimes()
+	a.EXPECT().LocalProfile().AnyTimes()
 	return &fixture{
 		History: NewHistory(a, new(bs), m),
 		anytype: a,
