@@ -2,6 +2,7 @@ package stext
 
 import (
 	"fmt"
+	"sort"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -11,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var setTextApplyInterval = time.Second * 3
@@ -187,9 +189,12 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	if err != nil {
 		return
 	}
+	beforeIds := tb.FillSmartIds(nil)
 	if err = tb.SetText(req.Text, req.Marks); err != nil {
 		return
 	}
+	afterIds := tb.FillSmartIds(nil)
+
 	if _, ok := tb.(text.DetailsBlock); ok {
 		if err = t.Apply(s); err != nil {
 			return
@@ -206,6 +211,15 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 		t.setTextFlushed <- struct{}{}
 		return
 	}
+	if len(beforeIds)+len(afterIds) > 0 {
+		sort.Strings(beforeIds)
+		sort.Strings(afterIds)
+		if !slice.SortedEquals(beforeIds, afterIds) {
+			// mentions changed
+			t.flushSetTextState()
+		}
+	}
+
 	return
 }
 
