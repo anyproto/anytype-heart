@@ -274,7 +274,12 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 	case model.BlockContentText_Toggle,
 		model.BlockContentText_Checkbox,
 		model.BlockContentText_Marked,
-		model.BlockContentText_Numbered:
+		model.BlockContentText_Numbered,
+		model.BlockContentText_Header1,
+		model.BlockContentText_Header2,
+		model.BlockContentText_Header3,
+		model.BlockContentText_Code,
+		model.BlockContentText_Quote:
 		ids = onlyParents(ids)
 	}
 
