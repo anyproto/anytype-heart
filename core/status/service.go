@@ -44,9 +44,10 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	cafeID string
-	tInfo  net.SyncInfo
-	fInfo  core.FileInfo
+	cafeID  string
+	tInfo   net.SyncInfo
+	fInfo   core.FileInfo
+	profile core.ProfileInfo
 
 	watchers map[thread.ID]func()
 	threads  map[thread.ID]*threadStatus
@@ -66,6 +67,7 @@ type service struct {
 func NewService(
 	ts net.SyncInfo,
 	fs core.FileInfo,
+	profile core.ProfileInfo,
 	emitter func(event *pb.Event),
 	cafe peer.ID,
 ) *service {
@@ -73,6 +75,7 @@ func NewService(
 		cafeID:     cafe.String(),
 		tInfo:      ts,
 		fInfo:      fs,
+		profile:    profile,
 		emitter:    emitter,
 		watchers:   make(map[thread.ID]func()),
 		threads:    make(map[thread.ID]*threadStatus),
@@ -291,6 +294,8 @@ func (s *service) constructEvent(ts *threadStatus) pb.EventStatusThread {
 			Cafe:    &pb.EventStatusThreadCafe{},
 		}
 
+		selfID, selfName, selfAvatar string
+
 		max = func(x, y int64) int64 {
 			if x > y {
 				return x
@@ -327,9 +332,25 @@ func (s *service) constructEvent(ts *threadStatus) pb.EventStatusThread {
 	s.mu.Unlock()
 	ts.Unlock()
 
+	// get information about own account
+	if profile, err := s.profile.LocalProfile(); err != nil {
+		log.Errorf("unable to get local profile: %v", err)
+	} else {
+		selfID = profile.AccountAddr
+		selfName = profile.Name
+		selfAvatar = profile.IconImage
+	}
+
 	// accounts
 	for accID, devices := range accounts {
-		var accountInfo = pb.EventStatusThreadAccount{Id: shorten(accID)}
+		var accountInfo pb.EventStatusThreadAccount
+		if accID == selfID {
+			accountInfo.Name = selfName
+			accountInfo.ImageHash = selfAvatar
+		} else {
+			accountInfo.Name = shorten(accID)
+		}
+
 		for _, device := range devices {
 			accountInfo.Devices = append(accountInfo.Devices, &pb.EventStatusThreadDevice{
 				Name:       shorten(device.id),
