@@ -574,12 +574,13 @@ message Event {
             }
 
             message Account {
-                string name = 1;
-                string imageHash = 2;
-                bool online = 3;
-                int64 lastPulled = 4;
-                int64 lastEdited = 5;
-                repeated Device devices = 6;
+                string id = 1;
+                string name = 2;
+                string imageHash = 3;
+                bool online = 4;
+                int64 lastPulled = 5;
+                int64 lastEdited = 6;
+                repeated Device devices = 7;
             }
 
             message Device {

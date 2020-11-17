@@ -9094,6 +9094,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | name | [string](#string) |  |  |
 | imageHash | [string](#string) |  |  |
 | online | [bool](#bool) |  |  |
