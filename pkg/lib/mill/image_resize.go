@@ -71,14 +71,19 @@ func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(m.Opts, add)
 }
 
-func (m *ImageResize) Mill(input []byte, name string) (*Result, error) {
-	img, formatStr, err := image.Decode(bytes.NewReader(input))
+func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
+	img, formatStr, err := image.Decode(r)
 	if err != nil {
 		return nil, err
 	}
 	format := Format(formatStr)
 
-	clean, err := removeExif(bytes.NewReader(input), img, format)
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	clean, err := removeExif(r, img, format)
 	if err != nil {
 		return nil, err
 	}
@@ -98,7 +103,7 @@ func (m *ImageResize) Mill(input []byte, name string) (*Result, error) {
 	}
 
 	return &Result{
-		File: buff.Bytes(),
+		File: buff,
 		Meta: map[string]interface{}{
 			"width":  rect.Dx(),
 			"height": rect.Dy(),

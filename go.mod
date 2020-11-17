@@ -12,7 +12,7 @@ require (
 	github.com/disintegration/imaging v1.6.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gobwas/glob v0.2.3
-	github.com/goccy/go-graphviz v0.0.7
+	github.com/goccy/go-graphviz v0.0.9
 	github.com/gogo/protobuf v1.3.1
 	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.4.4
@@ -46,9 +46,11 @@ require (
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
 	github.com/microcosm-cc/bluemonday v1.0.4
+	github.com/miolini/datacounter v1.0.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
+	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/otiai10/opengraph v1.1.2
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
@@ -60,7 +62,7 @@ require (
 	github.com/yuin/goldmark v1.1.30
 	go.uber.org/zap v1.15.0
 	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
-	golang.org/x/text v0.3.3
+	golang.org/x/text v0.3.4
 	google.golang.org/grpc v1.32.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c

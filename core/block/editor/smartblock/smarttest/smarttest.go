@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -14,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
 )
 
 func New(id string) *SmartTest {
@@ -25,9 +25,9 @@ func New(id string) *SmartTest {
 	}
 }
 
-func NewWithAnytype(id string, ctrl *gomock.Controller) *SmartTest {
+func NewWithMeta(id string, ms meta.Service) *SmartTest {
 	st := New(id)
-	st.anytype = testMock.NewMockService(ctrl)
+	st.ms = ms
 	return st
 }
 
@@ -37,6 +37,7 @@ type SmartTest struct {
 	id      string
 	hist    undo.History
 	meta    *core.SmartBlockMeta
+	ms      meta.Service
 	sync.Mutex
 	state.Doc
 }
@@ -138,6 +139,14 @@ func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 
 func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 	return nil
+}
+
+func (st *SmartTest) MetaService() meta.Service {
+	return st.ms
+}
+
+func (st *SmartTest) BlockClose() {
+	st.SetEventFunc(nil)
 }
 
 func (st *SmartTest) Close() (err error) {

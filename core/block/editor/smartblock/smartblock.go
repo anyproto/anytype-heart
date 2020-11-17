@@ -40,6 +40,7 @@ type Hook int
 const (
 	HookOnNewState Hook = iota
 	HookOnClose
+	HookOnBlockClose
 )
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -68,6 +69,8 @@ type SmartBlock interface {
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
+	MetaService() meta.Service
+	BlockClose()
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -81,16 +84,17 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds          []string
-	sendEvent       func(e *pb.Event)
-	undo            undo.History
-	source          source.Source
-	meta            meta.Service
-	metaSub         meta.Subscriber
-	metaData        *core.SmartBlockMeta
-	disableLayouts  bool
-	onNewStateHooks []func()
-	onCloseHooks    []func()
+	depIds            []string
+	sendEvent         func(e *pb.Event)
+	undo              undo.History
+	source            source.Source
+	meta              meta.Service
+	metaSub           meta.Subscriber
+	metaData          *core.SmartBlockMeta
+	disableLayouts    bool
+	onNewStateHooks   []func()
+	onCloseHooks      []func()
+	onBlockCloseHooks []func()
 }
 
 func (sb *smartBlock) Id() string {
@@ -437,6 +441,15 @@ func (sb *smartBlock) Reindex() (err error) {
 	return sb.updatePageStore("", nil)
 }
 
+func (sb *smartBlock) MetaService() meta.Service {
+	return sb.meta
+}
+
+func (sb *smartBlock) BlockClose() {
+	sb.execHooks(HookOnBlockClose)
+	sb.SetEventFunc(nil)
+}
+
 func (sb *smartBlock) Close() (err error) {
 	sb.execHooks(HookOnClose)
 	if sb.metaSub != nil {
@@ -520,6 +533,8 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 			sb.onCloseHooks = append(sb.onCloseHooks, f)
 		case HookOnNewState:
 			sb.onNewStateHooks = append(sb.onNewStateHooks, f)
+		case HookOnBlockClose:
+			sb.onBlockCloseHooks = append(sb.onBlockCloseHooks, f)
 		}
 	}
 }
@@ -531,6 +546,8 @@ func (sb *smartBlock) execHooks(event Hook) {
 		hooks = sb.onNewStateHooks
 	case HookOnClose:
 		hooks = sb.onCloseHooks
+	case HookOnBlockClose:
+		hooks = sb.onBlockCloseHooks
 	}
 	for _, h := range hooks {
 		if h != nil {
