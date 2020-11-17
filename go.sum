@@ -167,6 +167,7 @@ github.com/gobwas/glob v0.2.3 h1:A4xDbljILXROh+kObIiy5kIaPYD8e96x1tgBhUI5J+Y=
 github.com/gobwas/glob v0.2.3/go.mod h1:d3Ez4x06l9bZtSvzIay5+Yzi0fmZzPgnTbPcKjJAkT8=
 github.com/goccy/go-graphviz v0.0.7 h1:iDLOw5YcwnJynopbOdqHk1bMkjfm7H3f4OseIbUozjA=
 github.com/goccy/go-graphviz v0.0.7/go.mod h1:wXVsXxmyMQU6TN3zGRttjNn3h+iCAS7xQFC6TlNvLhk=
+github.com/goccy/go-graphviz v0.0.9/go.mod h1:wXVsXxmyMQU6TN3zGRttjNn3h+iCAS7xQFC6TlNvLhk=
 github.com/gogo/googleapis v0.0.0-20180223154316-0cd9801be74a/go.mod h1:gf4bu3Q80BeJ6H1S1vYPm8/ELATdvryBaNFGgqEef3s=
 github.com/gogo/googleapis v1.3.1 h1:CzMaKrvF6Qa7XtRii064vKBQiyvmY8H8vG1xa1/W1JA=
 github.com/gogo/googleapis v1.3.1/go.mod h1:d+q1s/xVJxZGKWwC/6UfPIF33J+G1Tq4GYv9Y+Tg/EU=
