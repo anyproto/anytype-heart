@@ -99,7 +99,7 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 	}, nil
 }
 
-func (a *Anytype) FileAddWithReader(ctx context.Context, content io.Reader, filename string) (File, error) {
+func (a *Anytype) FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) {
 	return a.FileAdd(ctx, files.WithReader(content), files.WithName(filename))
 }
 

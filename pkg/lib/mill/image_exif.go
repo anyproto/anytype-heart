@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"image"
+	"io"
 	"path/filepath"
 	"strings"
 	"time"
@@ -48,8 +49,8 @@ func (m *ImageExif) Options(add map[string]interface{}) (string, error) {
 	return hashOpts(make(map[string]string), add)
 }
 
-func (m *ImageExif) Mill(input []byte, name string) (*Result, error) {
-	conf, formatStr, err := image.DecodeConfig(bytes.NewReader(input))
+func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
+	conf, formatStr, err := image.DecodeConfig(r)
 	if err != nil {
 		return nil, err
 	}
@@ -58,7 +59,11 @@ func (m *ImageExif) Mill(input []byte, name string) (*Result, error) {
 	var created time.Time
 	var lat, lon float64
 
-	exf, err := exif.Decode(bytes.NewReader(input))
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+	exf, err := exif.Decode(r)
 	if err == nil {
 		createdTmp, err := exf.DateTime()
 		if err == nil {
@@ -69,6 +74,11 @@ func (m *ImageExif) Mill(input []byte, name string) (*Result, error) {
 		if err == nil {
 			lat, lon = latTmp, lonTmp
 		}
+	}
+
+	_, err = r.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
 	}
 
 	res := &ImageExifSchema{
@@ -82,10 +92,10 @@ func (m *ImageExif) Mill(input []byte, name string) (*Result, error) {
 		Longitude: lon,
 	}
 
-	data, err := json.Marshal(res)
+	b, err := json.Marshal(res)
 	if err != nil {
 		return nil, err
 	}
 
-	return &Result{File: data}, nil
+	return &Result{File: bytes.NewReader(b)}, nil
 }

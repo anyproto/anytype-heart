@@ -2,7 +2,6 @@ package mill
 
 import (
 	"encoding/json"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -18,19 +17,14 @@ func TestImageExif_Mill(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		input, err := ioutil.ReadAll(file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		file.Close()
-
-		res, err := m.Mill(input, "test")
+		res, err := m.Mill(file, "test")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		var exif *ImageExifSchema
-		if err := json.Unmarshal(res.File, &exif); err != nil {
+
+		if err := json.NewDecoder(res.File).Decode(&exif); err != nil {
 			t.Fatal(err)
 		}
 

@@ -3,7 +3,10 @@ package bookmark
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
+	"os"
 	"path/filepath"
 	"sync"
 	"time"
@@ -243,7 +246,23 @@ func loadImage(stor anytype.Service, url string) (hash string, err error) {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	im, err := stor.ImageAdd(context.TODO(), files.WithReader(resp.Body), files.WithName(filepath.Base(url)))
+	tmpFile, err := ioutil.TempFile("", "anytype_downloaded_file_*")
+	if err != nil {
+		return "", err
+	}
+	defer os.Remove(tmpFile.Name())
+
+	_, err = io.Copy(tmpFile, resp.Body)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = tmpFile.Seek(0, io.SeekStart)
+	if err != nil {
+		return "", err
+	}
+
+	im, err := stor.ImageAdd(context.TODO(), files.WithReader(tmpFile), files.WithName(filepath.Base(url)))
 	if err != nil {
 		return
 	}

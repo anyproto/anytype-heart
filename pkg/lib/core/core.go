@@ -81,15 +81,15 @@ type Service interface {
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
-	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)     // deprecated
-	FileAddWithReader(ctx context.Context, content io.Reader, filename string) (File, error) // deprecated
+	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
+	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
 	FileGetKeys(hash string) (*FileKeys, error)
 	FileStoreKeys(fileKeys ...FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
-	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)     // deprecated
-	ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) // deprecated
+	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
+	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
 
