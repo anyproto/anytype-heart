@@ -1,6 +1,7 @@
 package status
 
 import (
+	"sort"
 	"sync"
 	"time"
 
@@ -347,12 +348,10 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 
 	// accounts
 	for accID, devices := range accounts {
-		var accountInfo pb.EventStatusThreadAccount
+		var accountInfo = pb.EventStatusThreadAccount{Id: shorten(accID)}
 		if accID == profile.AccountAddr {
 			accountInfo.Name = profile.Name
 			accountInfo.ImageHash = profile.IconImage
-		} else {
-			accountInfo.Name = shorten(accID)
 		}
 
 		for _, device := range devices {
@@ -374,6 +373,18 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 		}
 		event.Accounts = append(event.Accounts, &accountInfo)
 	}
+
+	// maintain stable account order, with own account in a first position
+	sort.Slice(event.Accounts, func(i, j int) bool {
+		switch {
+		case event.Accounts[i].Id == profile.AccountAddr:
+			return true
+		case event.Accounts[j].Id == profile.AccountAddr:
+			return false
+		default:
+			return event.Accounts[i].Id < event.Accounts[j].Id
+		}
+	})
 
 	// cafe
 	event.Cafe.LastPulled = cafe.status.LastPull
