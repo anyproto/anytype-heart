@@ -283,7 +283,7 @@ func (s *service) CloseBlock(id string) error {
 
 	ob.Lock()
 	defer ob.Unlock()
-	ob.SetEventFunc(nil)
+	ob.BlockClose()
 	ob.locked = false
 
 	if s.status != nil &&

@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 
 	"github.com/mr-tron/base58/base58"
 
@@ -15,7 +16,7 @@ var log = logging.Logger("tex-mill")
 var ErrMediaTypeNotSupported = fmt.Errorf("media type not supported")
 
 type Result struct {
-	File []byte
+	File io.Reader
 	Meta map[string]interface{}
 }
 
@@ -25,7 +26,7 @@ type Mill interface {
 	Pin() bool     // pin by default
 	AcceptMedia(media string) error
 	Options(add map[string]interface{}) (string, error)
-	Mill(input []byte, name string) (*Result, error)
+	Mill(r io.ReadSeeker, name string) (*Result, error)
 }
 
 func accepts(list []string, media string) error {

@@ -29,7 +29,7 @@ type Text interface {
 
 func NewText(sb smartblock.SmartBlock) Text {
 	t := &textImpl{SmartBlock: sb, setTextFlushed: make(chan struct{})}
-	t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose)
+	t.AddHook(t.flushSetTextState, smartblock.HookOnNewState, smartblock.HookOnClose, smartblock.HookOnBlockClose)
 	return t
 }
 

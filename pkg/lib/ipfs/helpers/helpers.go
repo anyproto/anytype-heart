@@ -8,6 +8,7 @@ import (
 	gopath "path"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -26,19 +27,13 @@ import (
 var log = logging.Logger("anytype-ipfs")
 
 // DataAtPath return bytes under an ipfs path
-func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) ([]byte, error) {
+func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) (symmetric.ReadSeekCloser, error) {
 	resolvedPath, err := ResolvePath(ctx, node, path.New(pth))
 	if err != nil {
 		return nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
 
-	f, err := node.GetFile(ctx, resolvedPath.Cid())
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
-	return ioutil.ReadAll(f)
+	return node.GetFile(ctx, resolvedPath.Cid())
 }
 
 // DataAtCid return bytes under an ipfs path
