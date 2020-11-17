@@ -100,6 +100,7 @@ type Service interface {
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	TurnInto(ctx *state.Context, id string, style model.BlockContentTextStyle, ids ...string) error
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
 
@@ -517,6 +518,12 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 			}
 			return tb.InternalPaste(blocks)
 		})
+	})
+}
+
+func (s *service) TurnInto(ctx *state.Context, contextId string, style model.BlockContentTextStyle, ids ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.TurnInto(ctx, style, ids...)
 	})
 }
 
