@@ -268,6 +268,29 @@ func TestTextImpl_SetText(t *testing.T) {
 		time.Sleep(time.Second)
 		assert.Len(t, sb.Results.Applies, 2)
 	})
+	t.Run("flush on mention", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", ""))
+		tb := NewText(sb)
+
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "1",
+			Text:    "1",
+			Marks: &model.BlockContentTextMarks{
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{0, 1},
+						Type:  model.BlockContentTextMark_Mention,
+						Param: "blockId",
+					},
+				},
+			},
+		}))
+
+		assert.Equal(t, "1", sb.Pick("1").Model().GetText().Text)
+	})
 }
 
 func TestTextImpl_TurnInto(t *testing.T) {
