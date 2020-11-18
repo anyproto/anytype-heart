@@ -111,7 +111,7 @@ var (
 			Format:       relation.RelationFormat_number,
 			Name:         "Image cover Y offset",
 			DefaultValue: nil,
-			Key:          "coverX",
+			Key:          "coverY",
 			DataSource:   relation.Relation_details,
 			Hidden:       true,
 			ReadOnly:     false,

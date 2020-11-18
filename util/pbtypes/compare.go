@@ -18,7 +18,7 @@ func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) 
 	return true
 }
 
-func RelationEqual(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal bool) {
+func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal bool) {
 	if rel1 == nil && rel2 != nil {
 		return false
 	}
@@ -57,11 +57,42 @@ func RelationEqual(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal 
 		return false
 	}
 
-	if !RelationSelectDictEqual(rel1.SelectDict, rel2.SelectDict) {
+	return true
+}
+
+// RelationCompatible returns if provided relations are compatible in terms of underlying data format
+// e.g. it is ok if relation can have a different name and selectDict, while having the same key and format
+func RelationCompatible(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal bool) {
+	if rel1 == nil && rel2 != nil {
+		return false
+	}
+	if rel2 == nil && rel1 != nil {
+		return false
+	}
+	if rel2 == nil && rel1 == nil {
+		return true
+	}
+
+	if rel1.Key != rel2.Key {
+		return false
+	}
+	if rel1.Format != rel2.Format {
+		return false
+	}
+
+	if rel1.ObjectType != rel2.ObjectType {
 		return false
 	}
 
 	return true
+}
+
+func RelationEqual(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal bool) {
+	if !RelationEqualOmitDictionary(rel1, rel2) {
+		return false
+	}
+
+	return RelationSelectDictEqual(rel1.SelectDict, rel2.SelectDict)
 }
 
 func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationSelectOption) bool {

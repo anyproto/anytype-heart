@@ -460,6 +460,7 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 
 	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
+		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
 	}
 
 	if act == nil || act.Relations != nil {
@@ -613,23 +614,48 @@ func (sb *smartBlock) RemoveObjectTypes(objectTypes []string) (err error) {
 }
 
 func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+	objectTypeRelations := pbtypes.CopyRelations(sb.ObjectTypeRelations())
 	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
+	relationsToSet := pbtypes.CopyRelations(relations)
+
+	var somethingChanged bool
 	var newRelations []*pbrelation.Relation
-	for i := range relations {
+mainLoop:
+	for i := range relationsToSet {
+		for j := range objectTypeRelations {
+			if objectTypeRelations[j].Key == relationsToSet[i].Key {
+				if pbtypes.RelationEqual(objectTypeRelations[j], relationsToSet[i]) {
+					continue mainLoop
+				} else if !pbtypes.RelationCompatible(objectTypeRelations[j], relationsToSet[i]) {
+					return fmt.Errorf("can't set extraRelation incompatible with the same-key relation in the objectType")
+				}
+			}
+		}
 		for j := range extraRelations {
-			if extraRelations[j].Key == relations[i].Key {
-				extraRelations[j] = relations[i]
-				break
+			if extraRelations[j].Key == relationsToSet[i].Key {
+				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
+					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
+						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
+					}
+					extraRelations[j] = relationsToSet[i]
+					somethingChanged = true
+				}
+				continue mainLoop
 			}
 		}
 
 		if createIfMissing {
+			somethingChanged = true
 			newRelations = append(newRelations, relations[i])
 		}
 	}
 
+	if !somethingChanged {
+		return
+	}
+
 	s := sb.NewState().SetRelations(append(extraRelations, newRelations...))
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return
@@ -795,6 +821,10 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
+	return relation.MergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
+}
+
+func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
@@ -805,7 +835,7 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 			}
 		}
 	}
-	return relation.MergeAndSortRelations(relations, sb.ExtraRelations(), sb.Details())
+	return relations
 }
 
 func (sb *smartBlock) execHooks(event Hook) {

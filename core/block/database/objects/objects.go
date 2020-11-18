@@ -59,20 +59,31 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 	if sub != nil {
 		sub.Subscribe(id)
 	}
-
-	rec.Details.Fields["type"] = pbtypes.StringList([]string{sp.objectTypeUrl})
-
-	err = sp.UpdateObject(id, rec.Details, &pbrelation.Relations{Relations: relations}, nil, "")
+	err = sp.setRelations(id, relations)
 	if err != nil {
 		return rec, err
 	}
 
-	// inject created block ID into the record
+	rec.Details.Fields["type"] = pbtypes.StringList([]string{sp.objectTypeUrl})
+
+	var details []*pb.RpcBlockSetDetailsDetail
+	for k, v := range rec.Details.Fields {
+		details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
+	}
+
 	rec.Details.Fields[database.RecordIDField] = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
-	return rec, nil
+
+	if len(details) == 0 {
+		return rec, nil
+	}
+
+	return rec, sp.setDetails(pb.RpcBlockSetDetailsRequest{
+		ContextId: id, // not sure?
+		Details:   details,
+	})
 }
 
-func (sp *setOfObjects) Update(id string, relations []*pbrelation.Relation, rec database.Record) error {
+func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec database.Record) error {
 	var details []*pb.RpcBlockSetDetailsDetail
 	for k, v := range rec.Details.Fields {
 		details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
@@ -82,29 +93,11 @@ func (sp *setOfObjects) Update(id string, relations []*pbrelation.Relation, rec 
 		return nil
 	}
 
-	existingRelations, err := sp.getRelations(id)
+	err := sp.setRelations(id, rels)
 	if err != nil {
 		return err
 	}
 
-	var existingRelationMap = make(map[string]*pbrelation.Relation, len(existingRelations))
-	for i, relation := range existingRelations {
-		existingRelationMap[relation.Key] = existingRelations[i]
-	}
-
-	var relationsToSet []*pbrelation.Relation
-	for i, relation := range relations {
-		if _, detailSet := rec.Details.Fields[relation.Key]; detailSet {
-			if rel, exists := existingRelationMap[relation.Key]; !exists {
-				relationsToSet = append(relationsToSet, relations[i])
-			} else if !pbtypes.RelationEqual(rel, relation) {
-				// todo: check if this relation is extra?
-				relationsToSet = append(relationsToSet, relations[i])
-			}
-		}
-	}
-
-	err = sp.setRelations(id, relationsToSet)
 	return sp.setDetails(pb.RpcBlockSetDetailsRequest{
 		ContextId: id, // not sure?
 		Details:   details,
