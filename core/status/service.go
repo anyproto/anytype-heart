@@ -22,6 +22,7 @@ const (
 	threadStatusUpdatePeriod     = 5 * time.Second
 	threadStatusEventBatchPeriod = 2 * time.Second
 	profileInformationLifetime   = 30 * time.Second
+	cafeLastPullTimeout          = 10 * time.Minute
 
 	// truncate device names and account IDs
 	// to specified number of last symbols
@@ -374,7 +375,7 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 		event.Accounts = append(event.Accounts, &accountInfo)
 	}
 
-	// maintain stable account order, with own account in a first position
+	// maintain stable order, with own account in a first position
 	sort.Slice(event.Accounts, func(i, j int) bool {
 		switch {
 		case event.Accounts[i].Id == profile.AccountAddr:
@@ -387,25 +388,15 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 	})
 
 	// cafe
+	event.Cafe.Status = cafeStatus(cafe)
 	event.Cafe.LastPulled = cafe.status.LastPull
 	event.Cafe.LastPushSucceed = cafe.status.Up == net.Success
-	if !cafe.online {
+	if !cafe.online && event.Cafe.Status == pb.EventStatusThread_Failed {
 		event.Cafe.Status = pb.EventStatusThread_Offline
-	} else {
-		switch cafe.status.Down {
-		case net.Unknown:
-			event.Cafe.Status = pb.EventStatusThread_Unknown
-		case net.InProgress:
-			event.Cafe.Status = pb.EventStatusThread_Syncing
-		case net.Success:
-			event.Cafe.Status = pb.EventStatusThread_Synced
-		case net.Failure:
-			event.Cafe.Status = pb.EventStatusThread_Failed
-		}
 	}
 
-	// decide sync status summary
-	event.Summary.Status = summary(event.Cafe.Status, dss...)
+	// sync status summary
+	event.Summary.Status = summaryStatus(event.Cafe.Status, dss...)
 	return event
 }
 
@@ -416,8 +407,24 @@ func (s *service) sendEvent(ctx string, event pb.IsEventMessageValue) {
 	})
 }
 
+// Infer cafe status from net-level information
+func cafeStatus(cafe deviceStatus) pb.EventStatusThreadSyncStatus {
+	switch {
+	case cafe.status.Up == net.Failure || (cafe.status.Down == net.Failure &&
+		time.Since(time.Unix(cafe.status.LastPull, 0)) > cafeLastPullTimeout):
+		return pb.EventStatusThread_Failed
+	case cafe.status.Up == net.InProgress || cafe.status.Down == net.InProgress:
+		return pb.EventStatusThread_Syncing
+	case cafe.status.Up == net.Success ||
+		(cafe.status.Up == net.Unknown && cafe.status.Down == net.Success):
+		return pb.EventStatusThread_Synced
+	default:
+		return pb.EventStatusThread_Unknown
+	}
+}
+
 // Infer sync status summary from individual devices and cafe
-func summary(cafe pb.EventStatusThreadSyncStatus, devices ...deviceStatus) pb.EventStatusThreadSyncStatus {
+func summaryStatus(cafe pb.EventStatusThreadSyncStatus, devices ...deviceStatus) pb.EventStatusThreadSyncStatus {
 	var unknown, offline, inProgress, synced, failed int
 	for _, device := range devices {
 		switch device.status.Down {
@@ -444,10 +451,13 @@ func summary(cafe pb.EventStatusThreadSyncStatus, devices ...deviceStatus) pb.Ev
 		// sync with some devices or cafe is in progress
 		return pb.EventStatusThread_Syncing
 	case len(devices) == offline && cafe == pb.EventStatusThread_Offline:
-		// no connection with cafe or devices
+		// no connection with cafe/devices
 		return pb.EventStatusThread_Offline
+	case synced == 0 && cafe == pb.EventStatusThread_Failed:
+		// not synced at all
+		return pb.EventStatusThread_Failed
 	case unknown > 0 && cafe == pb.EventStatusThread_Unknown:
-		// no status information at all
+		// not enough status information
 		return pb.EventStatusThread_Unknown
 	default:
 		return pb.EventStatusThread_Failed
