@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
 )
@@ -245,6 +246,14 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 				return fmt.Errorf("changing hidden flag of existing relation is retricted")
 			}
 
+			if rel.Format == pbrelation.RelationFormat_select {
+				for i := range rel.SelectDict {
+					if rel.SelectDict[i].Id == "" {
+						rel.SelectDict[i].Id = bson.NewObjectId().Hex()
+					}
+				}
+			}
+
 			s.content.Relations[i] = &rel
 
 			break
@@ -282,7 +291,15 @@ func (d *Dataview) GetSource() string {
 
 func (d *Dataview) AddRelation(relation pbrelation.Relation) {
 	if relation.Key == "" {
-		relation.Key = uuid.New().String()
+		relation.Key = bson.NewObjectId().Hex()
+	}
+
+	if relation.Format == pbrelation.RelationFormat_select {
+		for i := range relation.SelectDict {
+			if relation.SelectDict[i].Id == "" {
+				relation.SelectDict[i].Id = bson.NewObjectId().Hex()
+			}
+		}
 	}
 
 	d.content.Relations = append(d.content.Relations, &relation)

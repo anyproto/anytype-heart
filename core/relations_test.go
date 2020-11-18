@@ -233,6 +233,7 @@ func TestRelationAdd(t *testing.T) {
 		rel := respRelCreate.Event.GetMessages()[0].GetBlockDataviewRelationSet()
 		require.Equal(t, respRelCreate.RelationKey, rel.RelationKey)
 		require.Len(t, rel.Relation.SelectDict, 1)
+		require.True(t, len(rel.Relation.SelectDict[0].Id) > 0)
 
 		respRecordCreate := mw.BlockDataviewRecordCreate(
 			&pb.RpcBlockDataviewRecordCreateRequest{

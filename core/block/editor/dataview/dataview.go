@@ -99,8 +99,8 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 			return nil, fmt.Errorf("provided relation with key not found among aggregated relations for dataview")
 		}
 
-		if !pbtypes.RelationEqual(foundRelation, &relation) {
-			return nil, fmt.Errorf("provided relation not equals to the existing aggregated relation with the same key")
+		if !pbtypes.RelationCompatible(foundRelation, &relation) {
+			return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
 		}
 	}
 
