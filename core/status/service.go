@@ -11,7 +11,6 @@ import (
 	"github.com/dgtony/collections/hashset"
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
-	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -47,10 +46,11 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	cafeID  string
-	tInfo   net.SyncInfo
-	fInfo   core.FileInfo
-	profile core.ProfileInfo
+	tInfo       net.SyncInfo
+	fInfo       core.FileInfo
+	profile     core.ProfileInfo
+	ownDeviceID string
+	cafeID      string
 
 	watchers map[thread.ID]func()
 	threads  map[thread.ID]*threadStatus
@@ -72,20 +72,22 @@ func NewService(
 	fs core.FileInfo,
 	profile core.ProfileInfo,
 	emitter func(event *pb.Event),
-	cafe peer.ID,
+	cafe string,
+	device string,
 ) *service {
 	return &service{
-		cafeID:     cafe.String(),
-		tInfo:      ts,
-		fInfo:      fs,
-		profile:    profile,
-		emitter:    emitter,
-		watchers:   make(map[thread.ID]func()),
-		threads:    make(map[thread.ID]*threadStatus),
-		devThreads: make(map[string]hashset.HashSet),
-		devAccount: make(map[string]string),
-		connMap:    make(map[string]bool),
-		tsTrigger:  queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2),
+		tInfo:       ts,
+		fInfo:       fs,
+		profile:     profile,
+		emitter:     emitter,
+		cafeID:      cafe,
+		ownDeviceID: device,
+		watchers:    make(map[thread.ID]func()),
+		threads:     make(map[thread.ID]*threadStatus),
+		devThreads:  make(map[string]hashset.HashSet),
+		devAccount:  make(map[string]string),
+		connMap:     make(map[string]bool),
+		tsTrigger:   queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2),
 	}
 }
 
@@ -333,6 +335,9 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 	for devID, status := range ts.devices {
 		if devID == s.cafeID {
 			cafe = *status
+			continue
+		} else if devID == s.ownDeviceID {
+			// do not include own device status
 			continue
 		}
 
