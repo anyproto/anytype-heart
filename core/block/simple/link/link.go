@@ -100,17 +100,18 @@ func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
 	tb := &model.BlockContentText{}
 	if l.content.TargetBlockId != "" {
 		name := pbtypes.GetString(targetDetails, "name")
-		if name != "" {
-			tb.Text = name
-			tb.Marks = &model.BlockContentTextMarks{
-				Marks: []*model.BlockContentTextMark{
-					{
-						Range: &model.Range{0, int32(utf8.RuneCountInString(name))},
-						Type:  model.BlockContentTextMark_Mention,
-						Param: l.content.TargetBlockId,
-					},
+		if name == "" {
+			name = "Untitled"
+		}
+		tb.Text = name
+		tb.Marks = &model.BlockContentTextMarks{
+			Marks: []*model.BlockContentTextMark{
+				{
+					Range: &model.Range{0, int32(utf8.RuneCountInString(name))},
+					Type:  model.BlockContentTextMark_Mention,
+					Param: l.content.TargetBlockId,
 				},
-			}
+			},
 		}
 	}
 	m := pbtypes.CopyBlock(l.Model())
