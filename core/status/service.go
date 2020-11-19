@@ -23,8 +23,7 @@ const (
 	profileInformationLifetime   = 30 * time.Second
 	cafeLastPullTimeout          = 10 * time.Minute
 
-	// truncate device names and account IDs
-	// to specified number of last symbols
+	// truncate device names and account IDs to last symbols
 	maxNameLength = 8
 )
 
@@ -380,6 +379,12 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 			// collect individual device statuses for summary
 			dss = append(dss, device.ds)
 		}
+
+		// devices in the same account ordered by last edit time (desc)
+		sort.Slice(accountInfo.Devices, func(i, j int) bool {
+			return accountInfo.Devices[i].LastEdited > accountInfo.Devices[j].LastEdited
+		})
+
 		event.Accounts = append(event.Accounts, &accountInfo)
 	}
 
