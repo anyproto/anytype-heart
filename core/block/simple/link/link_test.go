@@ -58,19 +58,34 @@ func TestLink_Diff(t *testing.T) {
 }
 
 func TestLink_ToText(t *testing.T) {
-	b := NewLink(&model.Block{
-		Restrictions: &model.BlockRestrictions{},
-		Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "targetId"}},
-	}).(*Link)
-	tb := b.ToText(&types.Struct{
-		Fields: map[string]*types.Value{
-			"name": pbtypes.String("target name"),
-		},
+	t.Run("with name", func(t *testing.T) {
+		b := NewLink(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "targetId"}},
+		}).(*Link)
+		tb := b.ToText(&types.Struct{
+			Fields: map[string]*types.Value{
+				"name": pbtypes.String("target name"),
+			},
+		})
+		require.NotNil(t, tb)
+		textModel := tb.Model().GetText()
+		assert.Equal(t, "target name", textModel.Text)
+		require.Len(t, textModel.Marks.Marks, 1)
+		assert.Equal(t, "targetId", textModel.Marks.Marks[0].Param)
+		assert.Equal(t, &model.Range{0, 11}, textModel.Marks.Marks[0].Range)
 	})
-	require.NotNil(t, tb)
-	textModel := tb.Model().GetText()
-	assert.Equal(t, "target name", textModel.Text)
-	require.Len(t, textModel.Marks.Marks, 1)
-	assert.Equal(t, "targetId", textModel.Marks.Marks[0].Param)
-	assert.Equal(t, &model.Range{0, 11}, textModel.Marks.Marks[0].Range)
+	t.Run("with empty name", func(t *testing.T) {
+		b := NewLink(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "targetId"}},
+		}).(*Link)
+		tb := b.ToText(nil)
+		require.NotNil(t, tb)
+		textModel := tb.Model().GetText()
+		assert.Equal(t, "Untitled", textModel.Text)
+		require.Len(t, textModel.Marks.Marks, 1)
+		assert.Equal(t, "targetId", textModel.Marks.Marks[0].Param)
+		assert.Equal(t, &model.Range{0, 8}, textModel.Marks.Marks[0].Range)
+	})
 }
