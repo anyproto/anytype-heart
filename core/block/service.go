@@ -229,7 +229,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		if e != nil {
 			return e
 		}
-		ob := newOpenedBlock(sb, true)
+		ob = newOpenedBlock(sb, true)
 		s.openedBlocks[id] = ob
 	}
 
