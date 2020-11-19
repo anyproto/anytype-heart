@@ -247,7 +247,9 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		v.SmartblockOpened(ctx)
 	}
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
-		s.status.Watch(tid)
+		if newWatcher := s.status.Watch(tid); newWatcher {
+			ob.AddHook(func() { s.status.Unwatch(tid) }, smartblock.HookOnClose)
+		}
 	}
 	return nil
 }
@@ -284,13 +286,6 @@ func (s *service) CloseBlock(id string) error {
 	defer ob.Unlock()
 	ob.SetEventFunc(nil)
 	ob.locked = false
-
-	if s.status != nil &&
-		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
-		ob.threadId == thread.Undef {
-		s.status.Unwatch(ob.threadId)
-	}
-
 	return nil
 }
 
