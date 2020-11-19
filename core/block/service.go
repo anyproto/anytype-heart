@@ -141,6 +141,30 @@ type Service interface {
 	Close() error
 }
 
+func newOpenedBlock(sb smartblock.SmartBlock, setLastUsage bool) *openedBlock {
+	var ob = openedBlock{SmartBlock: sb}
+	if setLastUsage {
+		ob.lastUsage = time.Now()
+	}
+	if sb.Type() != pb.SmartBlockType_Breadcrumbs {
+		// decode and store corresponding threadID for appropriate block
+		if tid, err := thread.Decode(sb.Id()); err != nil {
+			log.Warnf("can't restore thread ID: %v", err)
+		} else {
+			ob.threadId = tid
+		}
+	}
+	return &ob
+}
+
+type openedBlock struct {
+	smartblock.SmartBlock
+	threadId  thread.ID
+	lastUsage time.Time
+	locked    bool
+	refs      int32
+}
+
 func NewService(
 	accountId string,
 	a anytype.Service,
@@ -166,14 +190,6 @@ func NewService(
 	s.init()
 	log.Info("block service started")
 	return s
-}
-
-type openedBlock struct {
-	smartblock.SmartBlock
-	threadId  thread.ID
-	lastUsage time.Time
-	locked    bool
-	refs      int32
 }
 
 type service struct {
@@ -213,10 +229,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		if e != nil {
 			return e
 		}
-		ob = &openedBlock{
-			SmartBlock: sb,
-			lastUsage:  time.Now(),
-		}
+		ob := newOpenedBlock(sb, true)
 		s.openedBlocks[id] = ob
 	}
 
@@ -230,22 +243,12 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if e := s.anytype.PageUpdateLastOpened(id); e != nil {
 		log.Warnf("can't update last opened id: %v", e)
 	}
-
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
 	}
-
-	if s.status != nil &&
-		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
-		ob.threadId == thread.Undef {
-		if tid, err := thread.Decode(ob.Id()); err == nil {
-			ob.threadId = tid
-			s.status.Watch(tid)
-		} else {
-			log.Warnf("can't restore thread ID: %v", err)
-		}
+	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
+		s.status.Watch(tid)
 	}
-
 	return nil
 }
 
@@ -259,11 +262,9 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	bs.Lock()
 	defer bs.Unlock()
 	bs.SetEventFunc(s.sendEvent)
-	s.openedBlocks[bs.Id()] = &openedBlock{
-		SmartBlock: bs,
-		lastUsage:  time.Now(),
-		refs:       1,
-	}
+	ob := newOpenedBlock(bs, true)
+	ob.refs = 1
+	s.openedBlocks[bs.Id()] = ob
 	if err = bs.Show(ctx); err != nil {
 		return
 	}
@@ -953,9 +954,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 		if err != nil {
 			return
 		}
-		ob = &openedBlock{
-			SmartBlock: sb,
-		}
+		ob = newOpenedBlock(sb, false)
 		s.openedBlocks[id] = ob
 	}
 	ob.refs++
