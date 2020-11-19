@@ -35,7 +35,7 @@ type LogTime struct {
 }
 
 type Service interface {
-	Watch(tid thread.ID)
+	Watch(tid thread.ID) (new bool)
 	Unwatch(tid thread.ID)
 	UpdateTimeline(tid thread.ID, tl []LogTime)
 
@@ -91,12 +91,14 @@ func NewService(
 	}
 }
 
-func (s *service) Watch(tid thread.ID) {
+func (s *service) Watch(tid thread.ID) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	if _, exist := s.watchers[tid]; exist {
-		return
+		// send current status to init stateless caller
+		s.tsTrigger.Push(tid)
+		return false
 	}
 
 	var (
@@ -133,6 +135,7 @@ func (s *service) Watch(tid thread.ID) {
 			}
 		}
 	}()
+	return true
 }
 
 func (s *service) Unwatch(tid thread.ID) {
