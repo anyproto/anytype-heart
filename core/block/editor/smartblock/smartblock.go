@@ -383,7 +383,11 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 		}
 	}
 	for _, detail := range details {
-		copy.Fields[detail.Key] = detail.Value
+		if detail.Value != nil {
+			copy.Fields[detail.Key] = detail.Value
+		} else {
+			delete(copy.Fields, detail.Key)
+		}
 	}
 	if copy.Equal(sb.Details()) {
 		return
