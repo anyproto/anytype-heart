@@ -68,7 +68,7 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 		return response(pb.RpcWalletRecoverResponseError_BAD_INPUT, err)
 	}
 
-	err = os.MkdirAll(mw.rootPath, 0700)
+	err = os.MkdirAll(req.RootPath, 0700)
 	if err != nil {
 		return response(pb.RpcWalletRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
