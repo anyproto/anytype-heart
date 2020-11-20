@@ -62,20 +62,20 @@ func (mw *Middleware) WalletRecover(req *pb.RpcWalletRecoverRequest) *pb.RpcWall
 		return response(pb.RpcWalletRecoverResponseError_NULL, nil)
 	}
 
-	mw.mnemonic = req.Mnemonic
-	mw.rootPath = req.RootPath
-	mw.foundAccounts = nil
+	// test if mnemonic is correct
+	_, err := core.WalletAccountAt(req.Mnemonic, 0, "")
+	if err != nil {
+		return response(pb.RpcWalletRecoverResponseError_BAD_INPUT, err)
+	}
 
-	err := os.MkdirAll(mw.rootPath, 0700)
+	err = os.MkdirAll(mw.rootPath, 0700)
 	if err != nil {
 		return response(pb.RpcWalletRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
-	// test if mnemonic is correct
-	_, err = core.WalletAccountAt(req.Mnemonic, 0, "")
-	if err != nil {
-		return response(pb.RpcWalletRecoverResponseError_BAD_INPUT, err)
-	}
+	mw.mnemonic = req.Mnemonic
+	mw.rootPath = req.RootPath
+	mw.foundAccounts = nil
 
 	return response(pb.RpcWalletRecoverResponseError_NULL, nil)
 }
