@@ -21,6 +21,16 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	for _, fk := range snapshot.FileKeys {
 		fileKeys = append(fileKeys, *fk)
 	}
+
+	if snapshot.Data.Details != nil && snapshot.Data.Details.Fields != nil {
+		// clear nil values
+		for key, val := range snapshot.Data.Details.Fields {
+			if val == nil {
+				delete(snapshot.Data.Details.Fields, key)
+			}
+		}
+	}
+
 	s := &State{
 		rootId:   rootId,
 		blocks:   blocks,
@@ -120,7 +130,11 @@ func (s *State) changeBlockDetailsSet(set *pb.ChangeDetailsSet) error {
 		}
 	}
 	s.details = pbtypes.CopyStruct(det)
-	s.details.Fields[set.Key] = set.Value
+	if set.Value != nil {
+		s.details.Fields[set.Key] = set.Value
+	} else {
+		delete(s.details.Fields, set.Key)
+	}
 	return nil
 }
 
