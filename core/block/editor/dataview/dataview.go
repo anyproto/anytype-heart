@@ -24,7 +24,6 @@ import (
 )
 
 const defaultLimit = 100
-const relationSelectOptionDefaultColor = "grey"
 
 var log = logging.Logger("anytype-mw-editor")
 
@@ -163,10 +162,6 @@ func (d *dataviewCollectionImpl) AddRelationSelectOption(ctx *state.Context, blo
 				// here we can have the option with another color. but it looks
 				return opt, nil
 			}
-		}
-
-		if option.Color == "" {
-			option.Color = relationSelectOptionDefaultColor
 		}
 
 		option.Id = bson.NewObjectId().Hex()
