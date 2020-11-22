@@ -102,6 +102,8 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() FileInfo
+
+	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error)
 }
 
 var _ Service = (*Anytype)(nil)
@@ -438,6 +440,14 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 	}
 
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
+}
+
+func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error) {
+	ch = make(chan SmartblockRecordWithThreadID)
+	cancel = func() {
+		close(ch)
+	}
+	return
 }
 
 func init() {

@@ -2,6 +2,7 @@ package localstore
 
 import (
 	"context"
+	"encoding/binary"
 	"fmt"
 	"strings"
 	"sync"
@@ -30,6 +31,7 @@ var (
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
+	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
@@ -278,6 +280,7 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 	for _, k := range []ds.Key{
 		pagesDetailsBase.ChildString(id),
 		pagesSnippetBase.ChildString(id),
+		indexQueueBase.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
 			return err
@@ -586,6 +589,49 @@ func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
 		return err
 	}
 
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) AddToIndexQueue(id string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	var buf [8]byte
+	size := binary.PutVarint(buf[:], time.Now().Unix())
+	if err = txn.Put(indexQueueBase.ChildString(id), buf[:size]); err != nil {
+		return err
+	}
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	res, err := txn.Query(query.Query{})
+	if err != nil {
+		return fmt.Errorf("error query txn in datastore: %w", err)
+	}
+	for entry := range res.Next() {
+		i := strings.LastIndexByte(entry.Key, '/')
+		if i == -1 || len(entry.Key)-1 == i {
+			continue
+		}
+		id := entry.Key[i+1:]
+		ts, _ := binary.Varint(entry.Value)
+		if indexErr := f(id, time.Unix(ts, 0)); indexErr != nil {
+			log.Warnf("can't index '%s': %v", id, indexErr)
+			continue
+		}
+		if err := txn.Delete(indexQueueBase.ChildString(id)); err != nil {
+			return err
+		}
+	}
 	return txn.Commit()
 }
 

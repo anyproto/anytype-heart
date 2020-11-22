@@ -207,10 +207,10 @@ func (s *source) needSnapshot() bool {
 }
 
 func (s *source) changeListener(recordsCh chan core.SmartblockRecordWithLogID) {
-	defer close(s.closed)
 	batch := mb.New(0)
 	defer batch.Close()
 	go func() {
+		defer close(s.closed)
 		var records []core.SmartblockRecordWithLogID
 		for {
 			msgs := batch.Wait()

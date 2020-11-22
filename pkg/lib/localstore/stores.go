@@ -66,6 +66,8 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
+	AddToIndexQueue(id string) error
+	IndexForEach(f func(id string, tm time.Time) error) error
 }
 
 func NewLocalStore(store ds.Batching) LocalStore {
