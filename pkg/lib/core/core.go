@@ -415,7 +415,7 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 		litenet.WithNetDebug(false),
 		litenet.WithOffline(a.opts.Offline),
 		litenet.WithNetPubSub(true), // TODO control with env var
-		litenet.WithNetSyncTracking(),
+		litenet.WithNetSyncTracking(true),
 		litenet.WithNetGRPCServerOptions(
 			grpc.MaxRecvMsgSize(1024 * 1024 * 20),
 		),

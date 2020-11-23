@@ -60,6 +60,8 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
+	// FIXME: method refactoring required, racy vars (err)
+
 	s.Lock()
 	defer s.Unlock()
 
