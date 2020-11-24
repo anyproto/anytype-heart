@@ -11,6 +11,27 @@ import (
 )
 
 func newDoc(id string, a anytype.Service) (d *doc, err error) {
+	sb, err := a.GetBlock(id)
+	if err != nil {
+		err = fmt.Errorf("anytype.GetBlock error: %v", err)
+		return
+	}
+	d = &doc{
+		id:        id,
+		lastUsage: time.Now(),
+	}
+	d.tree, _, err = change.BuildMetaTree(sb)
+	if err == change.ErrEmpty {
+		d.tree = change.NewMetaTree()
+		d.st = state.NewDoc(id, nil).(*state.State)
+		err = nil
+	} else if err != nil {
+		return
+	} else {
+		if d.st, err = d.buildState(); err != nil {
+			return
+		}
+	}
 	return
 }
 
@@ -33,6 +54,7 @@ func (d *doc) meta() core.SmartBlockMeta {
 }
 
 func (d *doc) addRecords(records ...core.SmartblockRecordWithLogID) (hasChanges bool) {
+	d.lastUsage = time.Now()
 	var changes = d.changesBuf[:0]
 	for _, rec := range records {
 		c, err := change.NewChangeFromRecord(rec)
@@ -69,20 +91,20 @@ func (d *doc) addRecords(records ...core.SmartblockRecordWithLogID) (hasChanges 
 			log.Warnf("indexer: can't build crdt state (rebuild): %v", err)
 			return false
 		}
-		d.st = doc.(*state.State)
+		d.st = doc
 		return true
 	}
 	return
 }
 
-func (d *doc) buildState() (doc state.Doc, err error) {
+func (d *doc) buildState() (doc *state.State, err error) {
 	root := d.tree.Root()
 	if root == nil || root.GetSnapshot() == nil {
 		return nil, fmt.Errorf("root missing or not a snapshot")
 	}
 	doc = state.NewDocFromSnapshot(d.id, root.GetSnapshot()).(*state.State)
-	doc.(*state.State).SetChangeId(root.Id)
-	st, err := change.BuildStateSimpleCRDT(doc.(*state.State), d.tree)
+	doc.SetChangeId(root.Id)
+	st, err := change.BuildStateSimpleCRDT(doc, d.tree)
 	if err != nil {
 		return
 	}

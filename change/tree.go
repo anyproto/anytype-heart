@@ -63,6 +63,7 @@ func (t *Tree) AddFast(changes ...*Change) {
 func (t *Tree) Add(changes ...*Change) (mode Mode) {
 	var beforeHeadIds = t.headIds
 	var attached bool
+	var empty = t.Len() == 0
 	for _, c := range changes {
 		// ignore existing
 		if _, ok := t.attached[c.Id]; ok {
@@ -78,6 +79,9 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 		return Nothing
 	}
 	t.updateHeads()
+	if empty {
+		return Rebuild
+	}
 	for _, hid := range beforeHeadIds {
 		for _, newCh := range changes {
 			if _, ok := t.attached[newCh.Id]; ok {

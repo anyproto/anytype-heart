@@ -17,6 +17,8 @@ var log = logging.Logger("anytype-doc-indexer")
 
 var (
 	ftIndexInterval = time.Minute / 3
+	cleanupInterval = time.Minute
+	docTTL          = time.Minute * 2
 )
 
 func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
@@ -66,6 +68,7 @@ type indexer struct {
 
 	threadIdsBuf []string
 	recBuf       []core.SmartblockRecordWithLogID
+	mu           sync.Mutex
 }
 
 func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
@@ -88,9 +91,17 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
-
-	for r := range ch {
-		batch.Add(r)
+	ticker := time.NewTicker(cleanupInterval)
+	for {
+		select {
+		case rec, ok := <-ch:
+			if !ok {
+				return
+			}
+			batch.Add(rec)
+		case <-ticker.C:
+			i.cleanup()
+		}
 	}
 }
 
@@ -114,6 +125,8 @@ func (i *indexer) applyRecords(records []core.SmartblockRecordWithThreadID) {
 
 func (i *indexer) getDoc(id string) (d *doc, err error) {
 	var ok bool
+	i.mu.Lock()
+	defer i.mu.Unlock()
 	if d, ok = i.cache[id]; !ok {
 		if d, err = newDoc(id, i.anytype); err != nil {
 			return
@@ -171,9 +184,25 @@ func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
 	return
 }
 
+func (i *indexer) cleanup() {
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	toCleanup := time.Now().Add(-docTTL)
+	removed := 0
+	count := len(i.cache)
+	for k, v := range i.cache {
+		if v.lastUsage.Before(toCleanup) {
+			delete(i.cache, k)
+			removed++
+		}
+	}
+	log.Infof("indexer cleanup: removed %d from %d", removed, count)
+}
+
 func (i *indexer) Close() {
 	if i.cancel != nil {
 		i.cancel()
 	}
+	close(i.quit)
 	i.quitWG.Wait()
 }
