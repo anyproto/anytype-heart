@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
@@ -797,9 +798,9 @@ func (sb *smartBlock) storeFileKeys() {
 	if len(keys) == 0 {
 		return
 	}
-	fileKeys := make([]core.FileKeys, len(keys))
+	fileKeys := make([]files.FileKeys, len(keys))
 	for i, k := range keys {
-		fileKeys[i] = core.FileKeys{
+		fileKeys[i] = files.FileKeys{
 			Hash: k.Hash,
 			Keys: k.Keys,
 		}

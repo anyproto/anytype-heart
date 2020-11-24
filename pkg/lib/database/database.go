@@ -1,7 +1,6 @@
 package database
 
 import (
-	"context"
 	"strings"
 	"time"
 
@@ -24,7 +23,10 @@ type Record struct {
 
 type Reader interface {
 	Query(schema *schema.Schema, q Query) (records []Record, total int, err error)
-	QueryAndSubscribeForChanges(ctx context.Context, schema *schema.Schema, q Query, updatedRecordsCh chan Record) (records []Record, sub Subscription, total int, err error)
+	QueryAndSubscribeForChanges(schema *schema.Schema, q Query, subscription Subscription) (records []Record, close func(), total int, err error)
+
+	QueryById(ids []string) (records []Record, err error)
+	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
 	AggregateRelations(schema *schema.Schema) (relations []*pbrelation.Relation, err error)
 }
@@ -47,6 +49,7 @@ type Database interface {
 }
 
 type Query struct {
+	Ids       []string                              // in case Ids is set, filters are ignored
 	Relations []*model.BlockContentDataviewRelation // relations used to provide relations options
 	Filters   []*model.BlockContentDataviewFilter   // filters results. apply sequentially
 	Sorts     []*model.BlockContentDataviewSort     // order results. apply hierarchically
@@ -56,7 +59,7 @@ type Query struct {
 
 func (q Query) DSQuery(sch *schema.Schema) query.Query {
 	return query.Query{
-		Filters: []query.Filter{filters{Filters: q.Filters, Relations: q.Relations, Schema: sch}},
+		Filters: []query.Filter{filters{Ids: q.Ids, Filters: q.Filters, Relations: q.Relations, Schema: sch}},
 		Orders:  []query.Order{order{Sorts: q.Sorts, Relations: q.Relations, Schema: sch}},
 		Limit:   q.Limit,
 		Offset:  q.Offset,
@@ -71,6 +74,7 @@ type order struct {
 }
 
 type filters struct {
+	Ids       []string
 	Filters   []*model.BlockContentDataviewFilter
 	Relations []*model.BlockContentDataviewRelation
 
@@ -111,24 +115,30 @@ func (filters filters) Filter(e query.Entry) bool {
 	}
 
 	var foundType bool
-	if t, ok := details.Details.Fields["type"]; ok {
-		if list := t.GetListValue(); list != nil {
-			for _, val := range list.Values {
-				if val.GetStringValue() == filters.Schema.ObjType.Url {
-					foundType = true
-					break
+	if filters.Schema != nil {
+		if t, ok := details.Details.Fields["type"]; ok {
+			if list := t.GetListValue(); list != nil {
+				for _, val := range list.Values {
+					if val.GetStringValue() == filters.Schema.ObjType.Url {
+						foundType = true
+						break
+					}
 				}
 			}
+		} else {
+			if filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+				// backward compatibility in case we don't have type indexed for pages
+				foundType = true
+			}
 		}
-	} else {
-		if filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
-			// backward compatibility in case we don't have type indexed for pages
-			foundType = true
+
+		if !foundType {
+			return false
 		}
 	}
 
-	if !foundType {
-		return false
+	if len(filters.Ids) > 0 {
+		return true
 	}
 
 	if len(filters.Filters) == 0 {

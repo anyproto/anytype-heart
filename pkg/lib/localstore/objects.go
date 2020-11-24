@@ -1,7 +1,6 @@
 package localstore
 
 import (
-	"context"
 	"fmt"
 	"strings"
 	"sync"
@@ -74,50 +73,67 @@ type dsObjectStore struct {
 	// serializing page updates
 	l sync.Mutex
 
-	subscriptions []database.Subscription
+	subscriptions    []database.Subscription
+	depSubscriptions []database.Subscription
 }
 
-func (m *dsObjectStore) QueryAndSubscribeForChanges(ctx context.Context, schema *schema.Schema, q database.Query, updatedRecordsCh chan database.Record) (records []database.Record, subscription database.Subscription, total int, err error) {
+func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
 
 	records, total, err = m.Query(schema, q)
-	ch := make(chan *types.Struct)
-	quitCh := make(chan struct{})
 
 	var ids []string
 	for _, record := range records {
 		ids = append(ids, pbtypes.GetString(record.Details, "id"))
 	}
 
-	subscription = database.NewSubscription(ids, ch, quitCh)
-	m.subscriptions = append(m.subscriptions, subscription)
+	sub.Subscribe(ids)
+	m.addSubscriptionIfNotExists(sub)
+	close = func() {
+		m.closeAndRemoveSubscription(sub)
+	}
 
-	go func() {
-		defer func() {
-			close(quitCh)
-			close(updatedRecordsCh)
-			m.l.Lock()
-			for i, s := range m.subscriptions {
-				if s.RecordChan() == ch {
-					m.subscriptions = append(m.subscriptions[:i], m.subscriptions[i+1:]...)
-				}
-			}
-			m.l.Unlock()
-		}()
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case details, ok := <-ch:
-				if !ok {
-					return
-				}
+	return
+}
 
-				updatedRecordsCh <- database.Record{Details: details}
-			}
+// unsafe, use under mutex
+func (m *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) {
+	for _, s := range m.subscriptions {
+		if s == sub {
+			return
 		}
-	}()
+	}
+	log.Debugf("objStore subscription add %p", sub)
+	m.subscriptions = append(m.subscriptions, sub)
+}
+
+func (m *dsObjectStore) closeAndRemoveSubscription(sub database.Subscription) {
+	m.l.Lock()
+	defer m.l.Unlock()
+	sub.Close()
+
+	for i, s := range m.subscriptions {
+		if s == sub {
+			log.Debugf("objStore subscription remove %p", s)
+			m.subscriptions = append(m.subscriptions[:i], m.subscriptions[i+1:]...)
+			break
+		}
+	}
+}
+
+func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub database.Subscription) (records []database.Record, close func(), err error) {
+	m.l.Lock()
+	defer m.l.Unlock()
+
+	sub.Subscribe(ids)
+	records, err = m.QueryById(ids)
+
+	close = func() {
+		m.closeAndRemoveSubscription(sub)
+	}
+
+	m.addSubscriptionIfNotExists(sub)
 
 	return
 }
@@ -181,6 +197,37 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	return results, total, nil
 }
 
+func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	for _, id := range ids {
+		v, err := txn.Get(pagesDetailsBase.ChildString(id))
+		if err != nil {
+			log.Errorf("QueryByIds failed to find id: %s", id)
+			continue
+		}
+
+		var details model.ObjectDetails
+		if err = proto.Unmarshal(v, &details); err != nil {
+			log.Errorf("QueryByIds failed to unmarshal id: %s", id)
+			continue
+		}
+
+		if details.Details == nil || details.Details.Fields == nil {
+			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+
+		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
+		records = append(records, database.Record{Details: details.Details})
+	}
+
+	return
+}
+
 func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbrelation.Relation, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -206,9 +253,9 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbr
 			log.Errorf("failed to unmarshal: %s", err.Error())
 			continue
 		}
-
 		for i, rel := range rels.Relations {
 			if _, exists := relationsKeysMaps[rel.Key]; exists {
+				// todo: aggregate select dictionary?
 				continue
 			}
 
@@ -518,19 +565,10 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pb.ToValue(id)
-	for _, sub := range m.subscriptions {
-		for _, subId := range sub.Subscriptions() {
-			if subId == id {
-				go func(quit chan struct{}, ch chan *types.Struct) {
-					select {
-					case ch <- detCopy:
-						break
-					case <-quit:
-						break
-					}
-				}(sub.QuitChan(), sub.RecordChan())
-			}
-		}
+	for i := range m.subscriptions {
+		go func(sub database.Subscription) {
+			_ = sub.Publish(id, detCopy)
+		}(m.subscriptions[i])
 	}
 }
 

@@ -549,7 +549,6 @@ message Event {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
                 repeated google.protobuf.Struct records = 4; // block of new records to insert
-                uint32 insertPosition = 5; // position to insert
             }
 
             // sent when client should remove existing records on the active view

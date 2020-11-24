@@ -9,6 +9,7 @@ import (
 	"io"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
@@ -40,6 +41,11 @@ type Service struct {
 	store localstore.FileStore
 	ipfs  ipfs.IPFS
 	cafe  cafe.Client
+}
+
+type FileKeys struct {
+	Hash string
+	Keys map[string]string
 }
 
 func New(store localstore.FileStore, ipfs ipfs.IPFS, cafe cafe.Client) *Service {
@@ -242,7 +248,53 @@ func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 }
 
 func (s *Service) FileGetInfoForPath(pth string) (*storage.FileInfo, error) {
-	return nil, fmt.Errorf("not implemented")
+	if !strings.HasPrefix(pth, "/ipfs/") {
+		return nil, fmt.Errorf("path should starts with '/ipfs/...'")
+	}
+
+	pthParts := strings.Split(pth, "/")
+	if len(pthParts) < 4 {
+		return nil, fmt.Errorf("path is too short: it should match '/ipfs/:hash/...'")
+	}
+
+	keys, err := s.FileGetKeys(pthParts[2])
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrive file keys: %w", err)
+	}
+
+	if key, exists := keys.Keys["/"+strings.Join(pthParts[3:], "/")+"/"]; exists {
+		return s.fileInfoFromPath("", pth, key)
+	}
+
+	return nil, fmt.Errorf("key not found")
+}
+
+func (s *Service) FileGetKeys(hash string) (*FileKeys, error) {
+	m, err := s.store.GetFileKeys(hash)
+	if err != nil {
+		if err != localstore.ErrNotFound {
+			return nil, err
+		}
+	} else {
+		return &FileKeys{
+			Hash: hash,
+			Keys: m,
+		}, nil
+	}
+
+	// in case we don't have keys cached fot this file
+	// we should have all the CIDs locally, so 5s is more than enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	fileKeysRestored, err := s.FileRestoreKeys(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to restore file keys: %w", err)
+	}
+
+	return &FileKeys{
+		Hash: hash,
+		Keys: fileKeysRestored,
+	}, nil
 }
 
 // fileIndexData walks a file data node, indexing file links

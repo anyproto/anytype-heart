@@ -85,8 +85,8 @@ type Service interface {
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
 	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
 	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
-	FileGetKeys(hash string) (*FileKeys, error)
-	FileStoreKeys(fileKeys ...FileKeys) error
+	FileGetKeys(hash string) (*files.FileKeys, error)
+	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)

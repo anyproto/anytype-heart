@@ -50,6 +50,7 @@ type FileStore interface {
 	Count() (int, error)
 	DeleteByHash(hash string) error
 	DeleteFileKeys(hash string) error
+	List() ([]*storage.FileInfo, error)
 }
 
 type ObjectStore interface {

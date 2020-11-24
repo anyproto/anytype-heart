@@ -47,7 +47,6 @@ service ClientCommands {
     rpc BlockRedo (anytype.Rpc.Block.Redo.Request) returns (anytype.Rpc.Block.Redo.Response);
     rpc BlockSetFields (anytype.Rpc.Block.Set.Fields.Request) returns (anytype.Rpc.Block.Set.Fields.Response);
     rpc BlockSetRestrictions (anytype.Rpc.Block.Set.Restrictions.Request) returns (anytype.Rpc.Block.Set.Restrictions.Response);
-    rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);
 
     rpc BlockSetPageIsArchived (anytype.Rpc.Block.Set.Page.IsArchived.Request) returns (anytype.Rpc.Block.Set.Page.IsArchived.Response);
 
@@ -116,13 +115,19 @@ service ClientCommands {
 
     // ## Object's relations
     // add existing object type to the object so it will appear in sets and offer relations from this object
-    rpc BlockObjectTypeAdd (anytype.Rpc.Block.ObjectType.Add.Request) returns (anytype.Rpc.Block.ObjectType.Add.Response);
-    rpc BlockObjectTypeRemove (anytype.Rpc.Block.ObjectType.Remove.Request) returns (anytype.Rpc.Block.ObjectType.Remove.Response);
     rpc BlockRelationSetKey (anytype.Rpc.Block.Relation.SetKey.Request) returns (anytype.Rpc.Block.Relation.SetKey.Response);
     rpc BlockRelationAdd (anytype.Rpc.Block.Relation.Add.Request) returns (anytype.Rpc.Block.Relation.Add.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
+
+    rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
+    // BlockSetDetails will be renamed to ObjectSetDetails
+    rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);
+    // BlockObjectTypeAdd will be renamed to ObjectObjectTypeAdd
+    rpc BlockObjectTypeAdd (anytype.Rpc.Block.ObjectType.Add.Request) returns (anytype.Rpc.Block.ObjectType.Add.Response);
+    // BlockObjectTypeRemove will be renamed to ObjectObjectTypeRemove
+    rpc BlockObjectTypeRemove (anytype.Rpc.Block.ObjectType.Remove.Request) returns (anytype.Rpc.Block.ObjectType.Remove.Response);
 
     // PageCreate just creates the new page, without adding the link to it from some other page
     rpc PageCreate (anytype.Rpc.Page.Create.Request) returns (anytype.Rpc.Page.Create.Response);

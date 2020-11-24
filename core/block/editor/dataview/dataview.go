@@ -62,7 +62,9 @@ type dataviewImpl struct {
 	mu           sync.Mutex
 
 	recordsUpdatesSubscription database.Subscription
-	recordsUpdatesCancel       context.CancelFunc
+	depsUpdatesSubscription    database.Subscription
+
+	recordsUpdatesCancel context.CancelFunc
 }
 
 type ObjectTypeGetter interface {
@@ -261,7 +263,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, bloc
 	} else {
 		db = target
 	}
-	sch := schema.New(objectType)
+	sch := schema.New(objectType, nil)
 	aggregatedRelations, err := db.AggregateRelations(&sch)
 	if err != nil {
 		return nil, err
@@ -475,6 +477,7 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 	}
 
 	dv := d.getDataviewImpl(dvBlock)
+
 	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription)
 	if err != nil {
 		return nil, err
@@ -496,7 +499,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 		source = dvBlock.Model().GetDataview().Source
 	}
 
-	var db database.Writer
+	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
 	} else if target, err := dbRouter.Get(source); err != nil {
@@ -505,7 +508,48 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 		db = target
 	}
 
-	return db.Update(recID, dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details})
+	err := db.Update(recID, dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details})
+	if err != nil {
+		return err
+	}
+	dv := d.getDataviewImpl(dvBlock)
+
+	objectType, err := d.GetObjectType(source)
+	if err != nil {
+		return err
+	}
+	sch := schema.New(objectType, dvBlock.Model().GetDataview().Relations)
+
+	var depIdsMap = map[string]struct{}{}
+	var depIds []string
+	for key, item := range rec.Details.Fields {
+		if key == "id" {
+			continue
+		}
+
+		if rel, _ := sch.GetRelationByKey(key); rel != nil && rel.GetFormat() == pbrelation.RelationFormat_object {
+			depId := item.GetStringValue()
+			if depId != "" {
+				if _, exists := depIdsMap[depId]; !exists {
+					depIds = append(depIds, depId)
+					depIdsMap[depId] = struct{}{}
+				}
+			}
+		}
+	}
+
+	depDetails, _, err := db.QueryByIdAndSubscribeForChanges(depIds, dv.depsUpdatesSubscription)
+	if err != nil {
+		return err
+	}
+
+	sub := dv.depsUpdatesSubscription
+	go func() {
+		for _, det := range depDetails {
+			sub.Publish(pbtypes.GetString(det.Details, "id"), det.Details)
+		}
+	}()
+	return nil
 }
 
 func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {
@@ -562,38 +606,67 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	if err != nil {
 		return nil, err
 	}
-	sch := schema.New(objectType)
+	sch := schema.New(objectType, dvBlock.Model().GetDataview().Relations)
 
 	dv.mu.Lock()
 	if dv.recordsUpdatesCancel != nil {
 		dv.recordsUpdatesCancel()
 	}
 
-	ctx, cancel := context.WithCancel(context.Background())
-	dv.recordsUpdatesCancel = cancel
 	dv.mu.Unlock()
 
-	recordsUpdates := make(chan database.Record)
-	entries, sub, total, err := db.QueryAndSubscribeForChanges(ctx, &sch, database.Query{
+	recordsCh := make(chan *types.Struct)
+	depRecordsCh := make(chan *types.Struct)
+	recordsSub := database.NewSubscription(nil, recordsCh)
+	depRecordsSub := database.NewSubscription(nil, depRecordsCh)
+
+	entries, cancelRecordSubscripton, total, err := db.QueryAndSubscribeForChanges(&sch, database.Query{
 		Relations: activeView.Relations,
 		Filters:   activeView.Filters,
 		Sorts:     activeView.Sorts,
 		Limit:     dv.limit,
 		Offset:    dv.offset,
-	}, recordsUpdates)
+	}, recordsSub)
 	if err != nil {
 		return nil, err
 	}
-	dv.recordsUpdatesSubscription = sub
+	dv.recordsUpdatesSubscription = recordsSub
 
-	var currentEntriesIds []string
+	var currentEntriesIds, depIds []string
+	var depIdsMap = map[string]struct{}{}
+
 	for _, entry := range dv.records {
 		currentEntriesIds = append(currentEntriesIds, getEntryID(entry))
 	}
 
 	var records []*types.Struct
 	for _, entry := range entries {
+		for key, item := range entry.Details.Fields {
+			if key == "id" {
+				continue
+			}
+
+			if rel, _ := sch.GetRelationByKey(key); rel != nil && rel.GetFormat() == pbrelation.RelationFormat_object {
+				depId := item.GetStringValue()
+				if depId != "" {
+					if _, exists := depIdsMap[depId]; !exists {
+						depIds = append(depIds, depId)
+						depIdsMap[depId] = struct{}{}
+					}
+				}
+			}
+		}
 		records = append(records, entry.Details)
+	}
+
+	depEntries, cancelDepsSubscripton, err := db.QueryByIdAndSubscribeForChanges(depIds, depRecordsSub)
+	if err != nil {
+		return nil, err
+	}
+	dv.depsUpdatesSubscription = depRecordsSub
+	dv.recordsUpdatesCancel = func() {
+		cancelDepsSubscripton()
+		cancelRecordSubscripton()
 	}
 
 	var msgs = []*pb.EventMessage{
@@ -607,13 +680,17 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		}},
 	}
 
+	for _, depEntry := range depEntries {
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDetails{BlockSetDetails: &pb.EventBlockSetDetails{Id: pbtypes.GetString(depEntry.Details, "id"), Details: depEntry.Details}}})
+	}
+
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries
 
 	go func() {
 		for {
 			select {
-			case rec, ok := <-recordsUpdates:
+			case rec, ok := <-recordsCh:
 				if !ok {
 					return
 				}
@@ -622,9 +699,20 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 						&pb.EventBlockDataviewRecordsUpdate{
 							Id:      dv.blockId,
 							ViewId:  activeView.Id,
-							Records: []*types.Struct{rec.Details},
+							Records: []*types.Struct{rec},
+						}}}})
+			case rec, ok := <-depRecordsCh:
+				if !ok {
+					return
+				}
+				d.SendEvent([]*pb.EventMessage{
+					{Value: &pb.EventMessageValueOfBlockSetDetails{
+						BlockSetDetails: &pb.EventBlockSetDetails{
+							Id:      pbtypes.GetString(rec, "id"),
+							Details: rec,
 						}}}})
 			}
+
 		}
 	}()
 

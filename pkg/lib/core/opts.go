@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -30,7 +31,7 @@ type ServiceOptions struct {
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
 	ReindexFunc           func(smartblockId string) error
-	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*FileKeys) proto.Marshaler
+	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler
 	WebGatewaySnapshotUri string
 	NewSmartblockChan     chan string
 }
@@ -202,7 +203,7 @@ func WithReindexFunc(f func(smartblockId string) error) ServiceOption {
 	}
 }
 
-func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*FileKeys) proto.Marshaler) ServiceOption {
+func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.SnapshotMarshalerFunc = f
 		return nil

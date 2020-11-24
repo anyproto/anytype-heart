@@ -431,6 +431,30 @@ func (m *dsFileStore) Count() (int, error) {
 	return count, nil
 }
 
+func (m *dsFileStore) List() ([]*storage.FileInfo, error) {
+	var infos []*storage.FileInfo
+	res, err := GetKeys(m.ds, filesInfoBase.String(), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	hashes, err := GetLeavesFromResults(res)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, hash := range hashes {
+		info, err := m.GetByHash(hash)
+		if err != nil {
+			return nil, err
+		}
+
+		infos = append(infos, info)
+	}
+
+	return infos, nil
+}
+
 func (m *dsFileStore) DeleteByHash(hash string) error {
 	file, err := m.GetByHash(hash)
 	if err != nil {

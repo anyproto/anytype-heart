@@ -5,14 +5,19 @@ import (
 	"io"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 type File interface {
 	Meta() *FileMeta
 	Hash() string
 	Reader() (io.ReadSeeker, error)
+	Details() (*types.Struct, error)
+	Info() *storage.FileInfo
 }
 
 type file struct {
@@ -28,9 +33,21 @@ type FileMeta struct {
 	Added time.Time
 }
 
-type FileKeys struct {
-	Hash string
-	Keys map[string]string
+func (i *file) Details() (*types.Struct, error) {
+	meta := i.Meta()
+	return &types.Struct{
+		Fields: map[string]*types.Value{
+			"type":        pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "file"}),
+			"mimeType":    pbtypes.String(meta.Media),
+			"name":        pbtypes.String(meta.Name),
+			"sizeInBytes": pbtypes.Float64(float64(meta.Size)),
+			"addedDate":   pbtypes.Float64(float64(meta.Added.Unix())),
+		},
+	}, nil
+}
+
+func (i *file) Info() *storage.FileInfo {
+	return i.info
 }
 
 func (file *file) Meta() *FileMeta {

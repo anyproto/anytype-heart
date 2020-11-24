@@ -57,7 +57,7 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 	}
 
 	if sub != nil {
-		sub.Subscribe(id)
+		sub.Subscribe([]string{id})
 	}
 	err = sp.setRelations(id, relations)
 	if err != nil {
