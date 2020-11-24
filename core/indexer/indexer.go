@@ -33,6 +33,7 @@ func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
 		quitWG:     &sync.WaitGroup{},
 		quit:       make(chan struct{}),
 	}
+	i.quitWG.Add(2)
 	go i.detailsLoop(ch)
 	go i.ftLoop()
 	return i, nil

@@ -460,6 +460,9 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 
 	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
+		if storeInfo.details.Fields == nil {
+			storeInfo.details.Fields = make(map[string]*types.Value)
+		}
 		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
 	}
 
