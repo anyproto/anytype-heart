@@ -443,11 +443,64 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 }
 
 func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error) {
+	var ctx context.Context
+	ctx, cancel = context.WithCancel(context.Background())
 	ch = make(chan SmartblockRecordWithThreadID)
-	cancel = func() {
-		close(ch)
+	threadsCh, err := a.t.Subscribe(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to subscribe: %s", err.Error())
 	}
-	return
+
+	go func() {
+		smartBlocksCache := make(map[string]*smartBlock)
+		defer close(ch)
+		for {
+			select {
+			case val, ok := <-threadsCh:
+				if !ok {
+					return
+				}
+				var block *smartBlock
+				id := val.ThreadID().String()
+				if block, ok = smartBlocksCache[id]; !ok {
+					if block, err = a.GetSmartBlock(id); err != nil {
+						log.Errorf("failed to open smartblock %s: %v", id, err)
+						continue
+					} else {
+						smartBlocksCache[id] = block
+					}
+				}
+				rec, err := block.decodeRecord(ctx, val.Value())
+				if err != nil {
+					log.Errorf("failed to decode thread record: %s", err.Error())
+					continue
+				}
+				select {
+
+				case ch <- SmartblockRecordWithThreadID{
+					SmartblockRecordWithLogID: SmartblockRecordWithLogID{
+						SmartblockRecord: *rec,
+						LogID:            val.LogID().String(),
+					},
+					ThreadID: id,
+				}:
+					// everything is ok
+				case <-ctx.Done():
+					// no need to cancel, continue to read the rest msgs from the channel
+					continue
+				case <-a.shutdownStartsCh:
+					// cancel first, then we should read ok == false from the threadsCh
+					cancel()
+				}
+			case <-ctx.Done():
+				continue
+			case <-a.shutdownStartsCh:
+				cancel()
+			}
+		}
+	}()
+
+	return ch, cancel, nil
 }
 
 func init() {
