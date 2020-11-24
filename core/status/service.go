@@ -148,6 +148,10 @@ func (s *service) Unwatch(tid thread.ID) {
 }
 
 func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
+	if len(timeline) == 0 {
+		return
+	}
+
 	s.mu.Lock()
 	for _, logTime := range timeline {
 		// update account information for devices
@@ -157,9 +161,9 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 		dt, exist := s.devThreads[logTime.DeviceID]
 		if !exist {
 			dt = hashset.New()
+			s.devThreads[logTime.DeviceID] = dt
 		}
 		dt.Add(tid)
-		s.devThreads[logTime.DeviceID] = dt
 	}
 	ts := s.getThreadStatus(tid)
 	s.mu.Unlock()
@@ -344,7 +348,8 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 		}
 
 		if accID, found := s.devAccount[devID]; found {
-			accounts[accID] = append(accounts[accID], devInfo{devID, *status})
+			accountDevices := accounts[accID]
+			accounts[accID] = append(accountDevices, devInfo{devID, *status})
 		} // omit devices with unmatched account
 	}
 
