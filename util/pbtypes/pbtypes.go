@@ -50,3 +50,38 @@ func GetString(s *types.Struct, name string) string {
 	}
 	return ""
 }
+
+func GetStringList(s *types.Struct, name string) []string {
+	if s == nil || s.Fields == nil {
+		return nil
+	}
+
+	if v, ok := s.Fields[name]; !ok {
+		return nil
+	} else {
+		return GetStringListValue(v)
+
+	}
+}
+
+func GetStringListValue(v *types.Value) []string {
+	if v == nil {
+		return nil
+	}
+	var stringsSlice []string
+	if list, ok := v.Kind.(*types.Value_ListValue); ok {
+		if list.ListValue == nil {
+			return nil
+		}
+		for _, v := range list.ListValue.Values {
+			item := v.GetStringValue()
+			if item != "" {
+				stringsSlice = append(stringsSlice, item)
+			}
+		}
+	} else if val, ok := v.Kind.(*types.Value_StringValue); ok {
+		return []string{val.StringValue}
+	}
+
+	return nil
+}

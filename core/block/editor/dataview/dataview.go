@@ -528,11 +528,13 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 		}
 
 		if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
-			depId := item.GetStringValue()
-			if depId != "" {
-				if _, exists := depIdsMap[depId]; !exists {
-					depIds = append(depIds, depId)
-					depIdsMap[depId] = struct{}{}
+			depIdsToAdd := pbtypes.GetStringListValue(item)
+			if len(depIdsToAdd) > 0 {
+				for _, depId := range depIdsToAdd {
+					if _, exists := depIdsMap[depId]; !exists {
+						depIds = append(depIds, depId)
+						depIdsMap[depId] = struct{}{}
+					}
 				}
 			}
 		}
@@ -647,11 +649,13 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 			}
 
 			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
-				depId := item.GetStringValue()
-				if depId != "" {
-					if _, exists := depIdsMap[depId]; !exists {
-						depIds = append(depIds, depId)
-						depIdsMap[depId] = struct{}{}
+				depIdsToAdd := pbtypes.GetStringListValue(item)
+				if len(depIdsToAdd) > 0 {
+					for _, depId := range depIdsToAdd {
+						if _, exists := depIdsMap[depId]; !exists {
+							depIds = append(depIds, depId)
+							depIdsMap[depId] = struct{}{}
+						}
 					}
 				}
 			}
