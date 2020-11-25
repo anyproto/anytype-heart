@@ -523,18 +523,16 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 	var depIdsMap = map[string]struct{}{}
 	var depIds []string
 	for key, item := range rec.Details.Fields {
-		if key == "id" {
+		if key == "id" || key == "type" {
 			continue
 		}
 
 		if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
 			depIdsToAdd := pbtypes.GetStringListValue(item)
-			if len(depIdsToAdd) > 0 {
-				for _, depId := range depIdsToAdd {
-					if _, exists := depIdsMap[depId]; !exists {
-						depIds = append(depIds, depId)
-						depIdsMap[depId] = struct{}{}
-					}
+			for _, depId := range depIdsToAdd {
+				if _, exists := depIdsMap[depId]; !exists {
+					depIds = append(depIds, depId)
+					depIdsMap[depId] = struct{}{}
 				}
 			}
 		}
@@ -644,18 +642,16 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	var records []*types.Struct
 	for _, entry := range entries {
 		for key, item := range entry.Details.Fields {
-			if key == "id" {
+			if key == "id" || key == "type" {
 				continue
 			}
 
 			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
 				depIdsToAdd := pbtypes.GetStringListValue(item)
-				if len(depIdsToAdd) > 0 {
-					for _, depId := range depIdsToAdd {
-						if _, exists := depIdsMap[depId]; !exists {
-							depIds = append(depIds, depId)
-							depIdsMap[depId] = struct{}{}
-						}
+				for _, depId := range depIdsToAdd {
+					if _, exists := depIdsMap[depId]; !exists {
+						depIds = append(depIds, depId)
+						depIdsMap[depId] = struct{}{}
 					}
 				}
 			}

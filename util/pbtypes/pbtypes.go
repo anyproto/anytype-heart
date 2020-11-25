@@ -64,6 +64,7 @@ func GetStringList(s *types.Struct, name string) []string {
 	}
 }
 
+// GetStringListValue returns string slice from StringValue and List of StringValue
 func GetStringListValue(v *types.Value) []string {
 	if v == nil {
 		return nil
@@ -83,5 +84,5 @@ func GetStringListValue(v *types.Value) []string {
 		return []string{val.StringValue}
 	}
 
-	return nil
+	return stringsSlice
 }
