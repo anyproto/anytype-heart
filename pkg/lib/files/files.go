@@ -395,7 +395,17 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 			file.EncMode = mode
 			break
 		}
+	} else {
+		b, err := ioutil.ReadAll(r)
+		if err != nil {
+			return nil, err
+		}
+		err = proto.Unmarshal(b, &file)
+		if err != nil || file.Hash == "" {
+			return nil, fmt.Errorf("failed to unmarshal unencrypted file info")
+		}
 	}
+
 	if file.Hash == "" {
 		return nil, fmt.Errorf("failed to read file info proto with all encryption modes")
 	}
