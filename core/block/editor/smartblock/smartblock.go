@@ -449,7 +449,6 @@ func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *undo.Actio
 }
 
 func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (err error) {
-	return nil
 	if sb.Type() == pb.SmartBlockType_Archive {
 		return
 	}
@@ -489,7 +488,7 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 			storeInfo.links = slice.Remove(storeInfo.links, sb.Id())
 		}
 	}
-
+	return
 	if afterSnippet := sb.Doc.Snippet(); beforeSnippet != afterSnippet {
 		storeInfo.snippet = afterSnippet
 	}
