@@ -312,14 +312,6 @@ func (a *Anytype) start() error {
 		if err != nil && err != ErrAlreadyMigrated {
 			return err
 		}
-		go func() {
-			// todo: mw is locked during AccountSelect, this leads to deadlock in doBlockService
-			// as a workaround,do it in the goroutine
-			err = a.opts.ReindexFunc(id.String())
-			if err != nil {
-				log.Errorf("ReindexFunc failed: %s", err.Error())
-			}
-		}()
 		return nil
 	}, a.opts.NewSmartblockChan, a.opts.CafeP2PAddr)
 

@@ -163,7 +163,6 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
-	Reindex(id string) (err error)
 	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
 
 	History() history.History
@@ -1043,10 +1042,6 @@ func (s *service) AddRelationBlock(ctx *state.Context, req pb.RpcBlockRelationAd
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.AddRelationAndSet(ctx, req)
 	})
-}
-
-func (s *service) Reindex(id string) (err error) {
-	return nil
 }
 
 func (s *service) GetSearchInfo(id string) (info indexer.SearchInfo, err error) {

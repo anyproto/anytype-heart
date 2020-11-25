@@ -160,7 +160,6 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	if mw.Anytype, err = core.New(
 		core.WithRootPathAndAccount(mw.rootPath, account.Address()),
-		core.WithReindexFunc(mw.reindexDoc),
 		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
 	); err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
@@ -303,7 +302,6 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	// it is ok to unlock just after we've started with the 1st account
 	if mw.Anytype, err = core.New(
 		core.WithRootPathAndAccount(mw.rootPath, zeroAccount.Address()),
-		core.WithReindexFunc(mw.reindexDoc),
 		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
 	); err != nil {
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -487,7 +485,6 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		var err error
 		if mw.Anytype, err = core.New(
 			core.WithRootPathAndAccount(mw.rootPath, req.Id),
-			core.WithReindexFunc(mw.reindexDoc),
 			core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
 		); err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
