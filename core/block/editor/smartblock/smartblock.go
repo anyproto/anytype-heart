@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -79,11 +80,11 @@ type SmartBlock interface {
 	AddObjectTypes(objectTypes []string) (err error)
 	RemoveObjectTypes(objectTypes []string) (err error)
 
-	Reindex() error
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
+	GetSearchInfo() (indexer.SearchInfo, error)
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -448,6 +449,7 @@ func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *undo.Actio
 }
 
 func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (err error) {
+	return nil
 	if sb.Type() == pb.SmartBlockType_Archive {
 		return
 	}
@@ -730,10 +732,6 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	return nil
 }
 
-func (sb *smartBlock) Reindex() (err error) {
-	return sb.updatePageStore("", nil)
-}
-
 func (sb *smartBlock) Close() (err error) {
 	sb.execHooks(HookOnClose)
 	if sb.metaSub != nil {
@@ -866,6 +864,17 @@ func (sb *smartBlock) fileDetailsKeys() (fileKeys []string) {
 		}
 	}
 	return
+}
+
+func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
+	depIds := slice.Remove(sb.dependentSmartIds(), sb.Id())
+	return indexer.SearchInfo{
+		Id:      sb.Id(),
+		Title:   pbtypes.GetString(sb.Details(), "name"),
+		Snippet: sb.Snippet(),
+		Text:    sb.Doc.SearchText(),
+		Links:   depIds,
+	}, nil
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {

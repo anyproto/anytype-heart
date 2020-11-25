@@ -7,6 +7,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	libCore "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -36,6 +37,7 @@ type Middleware struct {
 	blocksService block.Service
 	linkPreview   linkpreview.LinkPreview
 	status        status.Service
+	indexer       indexer.Indexer
 
 	Anytype libCore.Service
 
@@ -72,6 +74,13 @@ func (mw *Middleware) doBlockService(f func(bs block.Service) error) (err error)
 		return
 	}
 	return f(bs)
+}
+
+func (mw *Middleware) setIndexer(is indexer.Indexer) {
+	if mw.indexer != nil {
+		mw.indexer.Close()
+	}
+	mw.indexer = is
 }
 
 func (mw *Middleware) setBlockService(bs block.Service) {
@@ -127,6 +136,10 @@ func (mw *Middleware) stop() error {
 
 	if mw.status != nil {
 		mw.status.Stop()
+	}
+
+	if mw.indexer != nil {
+		mw.indexer.Close()
 	}
 
 	if mw != nil && mw.Anytype != nil {

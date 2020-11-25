@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -184,6 +185,11 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		bs         = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, mw.EventSender.Send)
 	)
 
+	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)
+	if err != nil {
+		panic(err)
+	}
+
 	if err := ss.Start(); err != nil {
 		// app misconfiguration
 		panic(err)
@@ -221,6 +227,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	mw.foundAccounts = append(mw.foundAccounts, newAcc)
 	mw.setStatusService(ss)
 	mw.setBlockService(bs)
+	mw.setIndexer(is)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -510,11 +517,16 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		bs         = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, mw.EventSender.Send)
 	)
 
+	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)
+	if err != nil {
+		panic(err)
+	}
+
 	if err := ss.Start(); err != nil {
 		// app misconfiguration
 		panic(err)
 	}
-
+	mw.setIndexer(is)
 	mw.setStatusService(ss)
 	mw.setBlockService(bs)
 	return response(&acc, pb.RpcAccountSelectResponseError_NULL, nil)

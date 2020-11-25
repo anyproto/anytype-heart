@@ -146,10 +146,14 @@ func (i *indexer) index(id string, records []core.SmartblockRecordWithLogID) {
 		meta := d.meta()
 		if err := i.store.UpdateObject(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}, nil, ""); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
+		} else {
+			log.With("thread", id).Infof("indexed %d records", len(records))
 		}
 	}
 	if err := i.store.AddToIndexQueue(id); err != nil {
 		log.With("thread", id).Errorf("can't add id to index queue: %v", err)
+	} else {
+		log.With("thread", id).Debugf("to index queue")
 	}
 }
 
@@ -181,6 +185,8 @@ func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
 		return
 	}
 	// TODO: add info to FT engine here
+
+	log.With("thread", id).Infof("ft index updated")
 	return
 }
 

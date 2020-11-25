@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/globalsign/mgo/bson"
@@ -163,6 +164,7 @@ type Service interface {
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
 	Reindex(id string) (err error)
+	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
 
 	History() history.History
 
@@ -1044,9 +1046,17 @@ func (s *service) AddRelationBlock(ctx *state.Context, req pb.RpcBlockRelationAd
 }
 
 func (s *service) Reindex(id string) (err error) {
-	return s.Do(id, func(b smartblock.SmartBlock) error {
-		return b.Reindex()
-	})
+	return nil
+}
+
+func (s *service) GetSearchInfo(id string) (info indexer.SearchInfo, err error) {
+	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		info, err = b.GetSearchInfo()
+		return err
+	}); err != nil {
+		return
+	}
+	return
 }
 
 func (s *service) ProcessAdd(p process.Process) (err error) {

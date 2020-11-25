@@ -48,6 +48,7 @@ type Doc interface {
 	Snippet() (snippet string)
 	GetFileKeys() []pb.ChangeFileKeys
 	BlocksInit()
+	SearchText() string
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -254,6 +255,16 @@ func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 
 func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
+}
+
+func (s *State) SearchText() (text string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if tb := b.Model().GetText(); tb != nil {
+			text += tb.Text + "\n"
+		}
+		return true
+	})
+	return
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
