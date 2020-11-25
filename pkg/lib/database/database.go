@@ -49,7 +49,6 @@ type Database interface {
 }
 
 type Query struct {
-	Ids       []string                              // in case Ids is set, filters are ignored
 	Relations []*model.BlockContentDataviewRelation // relations used to provide relations options
 	Filters   []*model.BlockContentDataviewFilter   // filters results. apply sequentially
 	Sorts     []*model.BlockContentDataviewSort     // order results. apply hierarchically
@@ -59,7 +58,7 @@ type Query struct {
 
 func (q Query) DSQuery(sch *schema.Schema) query.Query {
 	return query.Query{
-		Filters: []query.Filter{filters{Ids: q.Ids, Filters: q.Filters, Relations: q.Relations, Schema: sch}},
+		Filters: []query.Filter{filters{Filters: q.Filters, Relations: q.Relations, Schema: sch}},
 		Orders:  []query.Order{order{Sorts: q.Sorts, Relations: q.Relations, Schema: sch}},
 		Limit:   q.Limit,
 		Offset:  q.Offset,
@@ -74,7 +73,6 @@ type order struct {
 }
 
 type filters struct {
-	Ids       []string
 	Filters   []*model.BlockContentDataviewFilter
 	Relations []*model.BlockContentDataviewRelation
 
@@ -137,31 +135,28 @@ func (filters filters) Filter(e query.Entry) bool {
 		}
 	}
 
-	if len(filters.Ids) > 0 {
-		return true
-	}
-
 	if len(filters.Filters) == 0 {
 		return true
 	}
 
 	total := true
 	for _, filter := range filters.Filters {
-		var res bool
-		rel, err := filters.Schema.GetRelationByKey(filter.RelationKey)
-		if err != nil {
-			log.Errorf("failed to find relation %s for the filter: %s", filter.RelationKey, err.Error())
-			continue
-		}
-		isDate := rel.Format == pbrelation.RelationFormat_date
+		var res, isDate, dateIncludeTime bool
+		if filters.Schema != nil {
+			rel, err := filters.Schema.GetRelationByKey(filter.RelationKey)
+			if err != nil {
+				log.Errorf("failed to find relation %s for the filter: %s", filter.RelationKey, err.Error())
+				continue
+			}
+			isDate = rel.Format == pbrelation.RelationFormat_date
 
-		var dateIncludeTime = false
-		if isDate {
-			relation := getRelationByKey(filters.Relations, filter.RelationKey)
-			if relation == nil {
-				log.Debugf("failed to get relation options for %s: %s", filter.RelationKey)
-			} else {
-				dateIncludeTime = relation.DateIncludeTime
+			if isDate {
+				relation := getRelationByKey(filters.Relations, filter.RelationKey)
+				if relation == nil {
+					log.Debugf("failed to get relation options for %s: %s", filter.RelationKey)
+				} else {
+					dateIncludeTime = relation.DateIncludeTime
+				}
 			}
 		}
 
@@ -170,9 +165,15 @@ func (filters filters) Filter(e query.Entry) bool {
 		case model.BlockContentDataviewFilter_Equal:
 			if v1, ok := filter.Value.Kind.(*types.Value_StringValue); ok {
 				if details.Details == nil || details.Details.Fields == nil || details.Details.Fields[filter.RelationKey] == nil {
-					res = v1.String() == ""
+					res = v1.StringValue == ""
 				} else if v2, ok := details.Details.Fields[filter.RelationKey].Kind.(*types.Value_StringValue); ok {
-					res = strings.EqualFold(v1.String(), v2.String())
+					res = strings.EqualFold(v1.StringValue, v2.StringValue)
+				} else if v2, ok := details.Details.Fields[filter.RelationKey].Kind.(*types.Value_ListValue); ok {
+					if len(v2.ListValue.Values) != 1 {
+						res = false
+					} else {
+						res = strings.EqualFold(v1.StringValue, v2.ListValue.Values[0].GetStringValue())
+					}
 				}
 			} else {
 				if isDate {

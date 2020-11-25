@@ -95,7 +95,7 @@ func TestRelationAdd(t *testing.T) {
 			Relation: &pbrelation.Relation{
 				Key:      "",
 				Format:   0,
-				Name:     "new",
+				Name:     "relation1",
 				ReadOnly: false,
 			},
 		})
@@ -132,7 +132,7 @@ func TestRelationAdd(t *testing.T) {
 		block = getBlockById("dataview", respOpenNewPage.Event.Messages[0].GetBlockShow().Blocks)
 
 		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
-		require.Equal(t, "new", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
+		require.Equal(t, "relation1", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
 
 	})
 
@@ -144,7 +144,7 @@ func TestRelationAdd(t *testing.T) {
 			Relation: &pbrelation.Relation{
 				Key:      relKey,
 				Format:   1,
-				Name:     "new_changed",
+				Name:     "relation1_changed",
 				ReadOnly: false,
 			},
 		})
@@ -155,7 +155,7 @@ func TestRelationAdd(t *testing.T) {
 		block = getBlockById("dataview", respOpenNewPage.Event.Messages[0].GetBlockShow().Blocks)
 
 		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
-		require.Equal(t, "new", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
+		require.Equal(t, "relation1", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
 	})
 
 	t.Run("update_correct", func(t *testing.T) {
@@ -215,7 +215,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations))
 	})
 
-	t.Run("add_relation", func(t *testing.T) {
+	t.Run("relation_add_select_option", func(t *testing.T) {
 		respRelCreate := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
 			ContextId: mw.Anytype.PredefinedBlocks().SetPages,
 			BlockId:   "dataview",
@@ -225,7 +225,7 @@ func TestRelationAdd(t *testing.T) {
 					Text:  "opt1",
 					Color: "red",
 				}},
-				Name:     "new_changed",
+				Name:     "relation2",
 				ReadOnly: false,
 			},
 		})
@@ -292,81 +292,14 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, rel.Relation, relOnPage)
 	})
 
-	t.Run("add_relation", func(t *testing.T) {
-		respRelCreate := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
-			ContextId: mw.Anytype.PredefinedBlocks().SetPages,
-			BlockId:   "dataview",
-			Relation: &pbrelation.Relation{
-				Format: pbrelation.RelationFormat_select,
-				SelectDict: []*pbrelation.RelationSelectOption{{
-					Text:  "opt1",
-					Color: "red",
-				}},
-				Name:     "new_changed",
-				ReadOnly: false,
-			},
-		})
-		require.Equal(t, 0, int(respRelCreate.Error.Code), respRelCreate.Error.Description)
-		rel := respRelCreate.Event.GetMessages()[0].GetBlockDataviewRelationSet()
-		require.Equal(t, respRelCreate.RelationKey, rel.RelationKey)
-		require.Len(t, rel.Relation.SelectDict, 1)
-		require.True(t, len(rel.Relation.SelectDict[0].Id) > 0)
-
-		respRecordCreate := mw.BlockDataviewRecordCreate(
-			&pb.RpcBlockDataviewRecordCreateRequest{
-				ContextId: mw.Anytype.PredefinedBlocks().SetPages,
-				BlockId:   "dataview",
-				Record: &types2.Struct{
-					Fields: map[string]*types2.Value{
-						rel.Relation.Key: pbtypes.StringList([]string{rel.Relation.SelectDict[0].Id}),
-					},
-				},
-			})
-
-		require.Equal(t, 0, int(respRecordCreate.Error.Code), respRecordCreate.Error.Description)
-		newPageId := respRecordCreate.Record.Fields["id"].GetStringValue()
-
-		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: newPageId})
-		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
-		require.Len(t, respOpenNewPage.Event.Messages, 1)
-
-		require.Len(t, respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
-		relOnPage := getRelationByKey(respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, rel.RelationKey)
-		require.Equal(t, rel.Relation, relOnPage)
-
-		respOptAdd := mw.BlockDataviewRelationSelectOptionAdd(&pb.RpcBlockDataviewRelationSelectOptionAddRequest{
-			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
-			BlockId:     "dataview",
-			RelationKey: rel.RelationKey,
-			Option: &pbrelation.RelationSelectOption{
-				Text:  "opt2",
-				Color: "green",
-			},
-		})
-
-		require.Equal(t, 0, int(respOptAdd.Error.Code), respOptAdd.Error.Description)
-
-		respRecordUpdate := mw.BlockDataviewRecordUpdate(
-			&pb.RpcBlockDataviewRecordUpdateRequest{
-				ContextId: mw.Anytype.PredefinedBlocks().SetPages,
-				BlockId:   "dataview",
-				RecordId:  newPageId,
-				Record: &types2.Struct{
-					Fields: map[string]*types2.Value{
-						rel.Relation.Key: pbtypes.String(respOptAdd.Option.Id),
-					},
-				},
-			})
-		require.Equal(t, 0, int(respRecordUpdate.Error.Code), respRecordUpdate.Error.Description)
-
-		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: newPageId})
-		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
-		require.Len(t, respOpenNewPage.Event.Messages, 1)
-
-		rel.Relation.SelectDict = append(rel.Relation.SelectDict, respOptAdd.Option)
-		relOnPage = getRelationByKey(respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, rel.RelationKey)
-		require.Len(t, relOnPage.SelectDict, 2)
-		require.Equal(t, rel.Relation, relOnPage)
+	t.Run("search_object", func(t *testing.T) {
+		respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
+			RelationKey: "type",
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(bundledObjectTypeURLPrefix + "page"),
+		}}})
+		require.Equal(t, 0, int(respSearch.Error.Code), respSearch.Error.Description)
+		require.Len(t, respSearch.Records, 1)
 	})
 }
 
@@ -460,6 +393,16 @@ func TestCustomType(t *testing.T) {
 
 	show = respOpenCustomTypeSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
+
+	t.Run("search_object", func(t *testing.T) {
+		respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
+			RelationKey: "type",
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(respObjectTypeCreate.ObjectType.Url),
+		}}})
+		require.Equal(t, 0, int(respSearch.Error.Code), respSearch.Error.Description)
+		require.Len(t, respSearch.Records, 1)
+	})
 }
 
 func TestBundledType(t *testing.T) {
