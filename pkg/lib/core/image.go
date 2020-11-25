@@ -116,18 +116,48 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 }
 
 func (i *image) Details() (*types.Struct, error) {
-	exif, err := i.Exif()
-	if err != nil {
-		return nil, err
-	}
-
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			"type":           pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "image"}),
-			"widthInPixels":  pbtypes.Float64(float64(exif.Width)),
-			"heightInPixels": pbtypes.Float64(float64(exif.Height)),
-			"createdDate":    pbtypes.Float64(float64(exif.Created.Unix())),
+			"type": pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "image"}),
 		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
+
+	largest, err := i.GetFileForLargestWidth(ctx)
+	if err != nil {
+		return details, nil
+	}
+
+	details.Fields["name"] = pbtypes.String(largest.Meta().Name)
+	details.Fields["mimeType"] = pbtypes.String(largest.Meta().Media)
+
+	details.Fields["sizeInBytes"] = pbtypes.Float64(float64(largest.Meta().Size))
+	details.Fields["addedDate"] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
+
+	if v, exists := largest.Info().Meta.Fields["width"]; exists {
+		details.Fields["widthInPixels"] = v
+	}
+
+	if v, exists := largest.Info().Meta.Fields["height"]; exists {
+		details.Fields["heightInPixels"] = v
+	}
+
+	exif, err := i.Exif()
+	if err != nil {
+		log.Errorf("failed to get exif for image %s: %w", err)
+		return nil, nil
+	}
+
+	if exif.Width > 0 {
+		details.Fields["widthInPixels"] = pbtypes.Float64(float64(exif.Width))
+	}
+	if exif.Height > 0 {
+		details.Fields["heightInPixels"] = pbtypes.Float64(float64(exif.Height))
+	}
+	if !exif.Created.IsZero() {
+		details.Fields["createdDate"] = pbtypes.Float64(float64(exif.Created.Unix()))
 	}
 	if exif.Latitude != 0.0 {
 		details.Fields["latitude"] = pbtypes.Float64(exif.Latitude)
@@ -146,27 +176,6 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 	if exif.ISO != 0 {
 		details.Fields["iso"] = pbtypes.Float64(float64(exif.ISO))
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
-	defer cancel()
-
-	largest, err := i.GetFileForLargestWidth(ctx)
-	if err != nil {
-		return details, nil
-	}
-
-	details.Fields["name"] = pbtypes.String(largest.Meta().Name)
-	details.Fields["sizeInBytes"] = pbtypes.Float64(float64(largest.Meta().Size))
-	details.Fields["addedDate"] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
-
-	// override width/height from the largest file
-	if v, exists := largest.Info().Meta.Fields["width"]; exists {
-		details.Fields["widthInPixels"] = v
-	}
-
-	if v, exists := largest.Info().Meta.Fields["height"]; exists {
-		details.Fields["heightInPixels"] = v
 	}
 
 	return details, nil
