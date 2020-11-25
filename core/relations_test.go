@@ -291,6 +291,83 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, relOnPage.SelectDict, 2)
 		require.Equal(t, rel.Relation, relOnPage)
 	})
+
+	t.Run("add_relation", func(t *testing.T) {
+		respRelCreate := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
+			ContextId: mw.Anytype.PredefinedBlocks().SetPages,
+			BlockId:   "dataview",
+			Relation: &pbrelation.Relation{
+				Format: pbrelation.RelationFormat_select,
+				SelectDict: []*pbrelation.RelationSelectOption{{
+					Text:  "opt1",
+					Color: "red",
+				}},
+				Name:     "new_changed",
+				ReadOnly: false,
+			},
+		})
+		require.Equal(t, 0, int(respRelCreate.Error.Code), respRelCreate.Error.Description)
+		rel := respRelCreate.Event.GetMessages()[0].GetBlockDataviewRelationSet()
+		require.Equal(t, respRelCreate.RelationKey, rel.RelationKey)
+		require.Len(t, rel.Relation.SelectDict, 1)
+		require.True(t, len(rel.Relation.SelectDict[0].Id) > 0)
+
+		respRecordCreate := mw.BlockDataviewRecordCreate(
+			&pb.RpcBlockDataviewRecordCreateRequest{
+				ContextId: mw.Anytype.PredefinedBlocks().SetPages,
+				BlockId:   "dataview",
+				Record: &types2.Struct{
+					Fields: map[string]*types2.Value{
+						rel.Relation.Key: pbtypes.StringList([]string{rel.Relation.SelectDict[0].Id}),
+					},
+				},
+			})
+
+		require.Equal(t, 0, int(respRecordCreate.Error.Code), respRecordCreate.Error.Description)
+		newPageId := respRecordCreate.Record.Fields["id"].GetStringValue()
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: newPageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+		require.Len(t, respOpenNewPage.Event.Messages, 1)
+
+		require.Len(t, respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
+		relOnPage := getRelationByKey(respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, rel.RelationKey)
+		require.Equal(t, rel.Relation, relOnPage)
+
+		respOptAdd := mw.BlockDataviewRelationSelectOptionAdd(&pb.RpcBlockDataviewRelationSelectOptionAddRequest{
+			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			RelationKey: rel.RelationKey,
+			Option: &pbrelation.RelationSelectOption{
+				Text:  "opt2",
+				Color: "green",
+			},
+		})
+
+		require.Equal(t, 0, int(respOptAdd.Error.Code), respOptAdd.Error.Description)
+
+		respRecordUpdate := mw.BlockDataviewRecordUpdate(
+			&pb.RpcBlockDataviewRecordUpdateRequest{
+				ContextId: mw.Anytype.PredefinedBlocks().SetPages,
+				BlockId:   "dataview",
+				RecordId:  newPageId,
+				Record: &types2.Struct{
+					Fields: map[string]*types2.Value{
+						rel.Relation.Key: pbtypes.String(respOptAdd.Option.Id),
+					},
+				},
+			})
+		require.Equal(t, 0, int(respRecordUpdate.Error.Code), respRecordUpdate.Error.Description)
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: newPageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+		require.Len(t, respOpenNewPage.Event.Messages, 1)
+
+		rel.Relation.SelectDict = append(rel.Relation.SelectDict, respOptAdd.Option)
+		relOnPage = getRelationByKey(respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, rel.RelationKey)
+		require.Len(t, relOnPage.SelectDict, 2)
+		require.Equal(t, rel.Relation, relOnPage)
+	})
 }
 
 func TestCustomType(t *testing.T) {

@@ -420,6 +420,11 @@
     - [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request)
     - [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype.Rpc.Navigation.ListObjects.Response.Error)
+    - [Rpc.Object](#anytype.Rpc.Object)
+    - [Rpc.Object.Search](#anytype.Rpc.Object.Search)
+    - [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request)
+    - [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response)
+    - [Rpc.Object.Search.Response.Error](#anytype.Rpc.Object.Search.Response.Error)
     - [Rpc.ObjectType](#anytype.Rpc.ObjectType)
     - [Rpc.ObjectType.Create](#anytype.Rpc.ObjectType.Create)
     - [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request)
@@ -582,6 +587,7 @@
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
+    - [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code)
@@ -856,7 +862,6 @@
 | BlockRedo | [Rpc.Block.Redo.Request](#anytype.Rpc.Block.Redo.Request) | [Rpc.Block.Redo.Response](#anytype.Rpc.Block.Redo.Response) |  |
 | BlockSetFields | [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request) | [Rpc.Block.Set.Fields.Response](#anytype.Rpc.Block.Set.Fields.Response) |  |
 | BlockSetRestrictions | [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request) | [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response) |  |
-| BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) |  |
 | BlockSetPageIsArchived | [Rpc.Block.Set.Page.IsArchived.Request](#anytype.Rpc.Block.Set.Page.IsArchived.Request) | [Rpc.Block.Set.Page.IsArchived.Response](#anytype.Rpc.Block.Set.Page.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListMoveToNewPage | [Rpc.BlockList.MoveToNewPage.Request](#anytype.Rpc.BlockList.MoveToNewPage.Request) | [Rpc.BlockList.MoveToNewPage.Response](#anytype.Rpc.BlockList.MoveToNewPage.Response) |  |
@@ -905,12 +910,14 @@
 | BlockDataviewRecordCreate | [Rpc.Block.Dataview.RecordCreate.Request](#anytype.Rpc.Block.Dataview.RecordCreate.Request) | [Rpc.Block.Dataview.RecordCreate.Response](#anytype.Rpc.Block.Dataview.RecordCreate.Response) | # Record |
 | BlockDataviewRecordUpdate | [Rpc.Block.Dataview.RecordUpdate.Request](#anytype.Rpc.Block.Dataview.RecordUpdate.Request) | [Rpc.Block.Dataview.RecordUpdate.Response](#anytype.Rpc.Block.Dataview.RecordUpdate.Response) |  |
 | BlockDataviewRecordDelete | [Rpc.Block.Dataview.RecordDelete.Request](#anytype.Rpc.Block.Dataview.RecordDelete.Request) | [Rpc.Block.Dataview.RecordDelete.Response](#anytype.Rpc.Block.Dataview.RecordDelete.Response) |  |
-| BlockObjectTypeAdd | [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request) | [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response) | ## Object&#39;s relations add existing object type to the object so it will appear in sets and offer relations from this object |
-| BlockObjectTypeRemove | [Rpc.Block.ObjectType.Remove.Request](#anytype.Rpc.Block.ObjectType.Remove.Request) | [Rpc.Block.ObjectType.Remove.Response](#anytype.Rpc.Block.ObjectType.Remove.Response) |  |
-| BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype.Rpc.Block.Relation.SetKey.Request) | [Rpc.Block.Relation.SetKey.Response](#anytype.Rpc.Block.Relation.SetKey.Response) |  |
+| BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype.Rpc.Block.Relation.SetKey.Request) | [Rpc.Block.Relation.SetKey.Response](#anytype.Rpc.Block.Relation.SetKey.Response) | ## Object&#39;s relations add existing object type to the object so it will appear in sets and offer relations from this object |
 | BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) |  |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request) | [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
+| ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
+| BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | BlockSetDetails will be renamed to ObjectSetDetails |
+| BlockObjectTypeAdd | [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request) | [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response) | BlockObjectTypeAdd will be renamed to ObjectObjectTypeAdd |
+| BlockObjectTypeRemove | [Rpc.Block.ObjectType.Remove.Request](#anytype.Rpc.Block.ObjectType.Remove.Request) | [Rpc.Block.ObjectType.Remove.Response](#anytype.Rpc.Block.ObjectType.Remove.Response) | BlockObjectTypeRemove will be renamed to ObjectObjectTypeRemove |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) | SetCreate just creates the new set, without adding the link to it from some other page |
 | ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request) | [Rpc.ObjectType.Create.Response](#anytype.Rpc.ObjectType.Create.Response) | ## ObjectType |
@@ -6827,6 +6834,74 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object"></a>
+
+### Rpc.Object
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Search"></a>
+
+### Rpc.Object.Search
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Search.Request"></a>
+
+### Rpc.Object.Search.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Search.Response"></a>
+
+### Rpc.Object.Search.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Search.Response.Error](#anytype.Rpc.Object.Search.Response.Error) |  |  |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Search.Response.Error"></a>
+
+### Rpc.Object.Search.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ObjectType"></a>
 
 ### Rpc.ObjectType
@@ -9023,6 +9098,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Object.Search.Response.Error.Code"></a>
+
+### Rpc.Object.Search.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.ObjectType.Create.Response.Error.Code"></a>
 
 ### Rpc.ObjectType.Create.Response.Error.Code
@@ -9427,7 +9515,6 @@ sent when client should update existing records on the active view
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
 | records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
-| insertPosition | [uint32](#uint32) |  | position to insert |
 
 
 
@@ -12075,6 +12162,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | task | 2 |  |
 | set | 3 |  |
 | objectType | 4 |  |
+| file | 5 |  |
 
 
 

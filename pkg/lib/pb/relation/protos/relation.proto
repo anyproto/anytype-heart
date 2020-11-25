@@ -17,6 +17,7 @@ message ObjectType {
         task = 2;
         set = 3;
         objectType = 4;
+        file = 5;
     }
 }
 

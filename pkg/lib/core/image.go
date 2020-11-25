@@ -2,17 +2,22 @@ package core
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"math"
+	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 )
 
 type Image interface {
 	Exif() (*mill.ImageExifSchema, error)
 	Hash() string
+	Details() (*types.Struct, error)
 	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
 	GetFileForLargestWidth(ctx context.Context) (File, error)
 }
@@ -28,8 +33,19 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 		return i.getFileForWidthFromCache(wantWidth)
 	}
 
+	if wantWidth > 1920 {
+		fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/original")
+		if err == nil {
+			return &file{
+				hash: fileIndex.Hash,
+				info: fileIndex,
+				node: i.service,
+			}, nil
+		}
+	}
+
 	sizeName := getSizeForWidth(wantWidth)
-	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
+	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -46,8 +62,19 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 		return i.getFileForWidthFromCache(math.MaxInt32)
 	}
 
-	sizeName := "large"
-	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/" + sizeName)
+	sizeName := "original"
+	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	if err == nil {
+		return &file{
+			hash: fileIndex.Hash,
+			info: fileIndex,
+			node: i.service,
+		}, nil
+	}
+
+	// fallback to large size, because older image nodes don't have an original
+	sizeName = "large"
+	fileIndex, err = i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -64,7 +91,85 @@ func (i *image) Hash() string {
 }
 
 func (i *image) Exif() (*mill.ImageExifSchema, error) {
-	return nil, fmt.Errorf("not implemented")
+	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/exif")
+	if err != nil {
+		return nil, err
+	}
+
+	f := &file{
+		hash: fileIndex.Hash,
+		info: fileIndex,
+		node: i.service,
+	}
+	r, err := f.Reader()
+	if err != nil {
+		return nil, err
+	}
+
+	var exif mill.ImageExifSchema
+	err = json.NewDecoder(r).Decode(&exif)
+	if err != nil {
+		return nil, err
+	}
+
+	return &exif, nil
+}
+
+func (i *image) Details() (*types.Struct, error) {
+	exif, err := i.Exif()
+	if err != nil {
+		return nil, err
+	}
+
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			"type":           pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "image"}),
+			"widthInPixels":  pbtypes.Float64(float64(exif.Width)),
+			"heightInPixels": pbtypes.Float64(float64(exif.Height)),
+			"createdDate":    pbtypes.Float64(float64(exif.Created.Unix())),
+		},
+	}
+	if exif.Latitude != 0.0 {
+		details.Fields["latitude"] = pbtypes.Float64(exif.Latitude)
+	}
+	if exif.Longitude != 0.0 {
+		details.Fields["longitude"] = pbtypes.Float64(exif.Longitude)
+	}
+	if exif.CameraModel != "" {
+		details.Fields["camera"] = pbtypes.String(exif.CameraModel)
+	}
+	if exif.ExposureTime != "" {
+		details.Fields["exposureTime"] = pbtypes.String(exif.ExposureTime)
+	}
+	if exif.FNumber != 0 {
+		details.Fields["focalRatio"] = pbtypes.Float64(exif.FNumber)
+	}
+	if exif.ISO != 0 {
+		details.Fields["iso"] = pbtypes.Float64(float64(exif.ISO))
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	defer cancel()
+
+	largest, err := i.GetFileForLargestWidth(ctx)
+	if err != nil {
+		return details, nil
+	}
+
+	details.Fields["name"] = pbtypes.String(largest.Meta().Name)
+	details.Fields["sizeInBytes"] = pbtypes.Float64(float64(largest.Meta().Size))
+	details.Fields["addedDate"] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
+
+	// override width/height from the largest file
+	if v, exists := largest.Info().Meta.Fields["width"]; exists {
+		details.Fields["widthInPixels"] = v
+	}
+
+	if v, exists := largest.Info().Meta.Fields["height"]; exists {
+		details.Fields["heightInPixels"] = v
+	}
+
+	return details, nil
 }
 
 func (i *image) getFileForWidthFromCache(wantWidth int) (File, error) {

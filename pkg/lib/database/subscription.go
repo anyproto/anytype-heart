@@ -7,44 +7,76 @@ import (
 )
 
 type subscription struct {
-	ids  []string
-	quit chan struct{}
-	ch   chan *types.Struct
+	ids    []string
+	quit   chan struct{}
+	closed bool
+	ch     chan *types.Struct
 	sync.RWMutex
 }
 
 type Subscription interface {
-	QuitChan() chan struct{}
+	Close()
 	RecordChan() chan *types.Struct
-	Subscribe(id string)
+	Subscribe(id []string)
 	Subscriptions() []string
-	SubscribedForId(id string) bool
+	Publish(id string, msg *types.Struct) bool
 }
 
 func (sub *subscription) RecordChan() chan *types.Struct {
 	return sub.ch
 }
 
-func (sub *subscription) QuitChan() chan struct{} {
-	return sub.quit
-}
-
-func (sub *subscription) Subscribe(id string) {
+func (sub *subscription) Close() {
 	sub.Lock()
 	defer sub.Unlock()
-	for _, idEx := range sub.ids {
-		if idEx == id {
-			return
+	if sub.closed {
+		return
+	}
+
+	close(sub.quit)
+	close(sub.ch)
+
+	sub.closed = true
+}
+
+func (sub *subscription) Subscribe(ids []string) {
+	sub.Lock()
+	defer sub.Unlock()
+loop:
+	for _, id := range ids {
+		for _, idEx := range sub.ids {
+			if idEx == id {
+				continue loop
+			}
+		}
+		sub.ids = append(sub.ids, id)
+	}
+}
+
+func (sub *subscription) Publish(id string, msg *types.Struct) bool {
+	sub.RLock()
+	defer sub.RUnlock()
+	for _, idE := range sub.ids {
+		if idE == id {
+			log.Debugf("objStore subscription send %s %p", id, sub)
+			select {
+			case <-sub.quit:
+				return false
+			case sub.ch <- msg:
+				return true
+			}
 		}
 	}
-	sub.ids = append(sub.ids, id)
+	return false
 }
 
 func (sub *subscription) SubscribedForId(id string) bool {
 	sub.RLock()
 	defer sub.RUnlock()
 	for _, idE := range sub.ids {
-		return idE == id
+		if idE == id {
+			return true
+		}
 	}
 	return false
 }
@@ -55,6 +87,6 @@ func (sub *subscription) Subscriptions() []string {
 	return sub.ids
 }
 
-func NewSubscription(ids []string, ch chan *types.Struct, quit chan struct{}) Subscription {
-	return &subscription{ids: ids, ch: ch, quit: quit}
+func NewSubscription(ids []string, ch chan *types.Struct) Subscription {
+	return &subscription{ids: ids, ch: ch, quit: make(chan struct{})}
 }

@@ -13,14 +13,19 @@ import (
 )
 
 type ImageExifSchema struct {
-	Created   time.Time `json:"created,omitempty"`
-	Name      string    `json:"name"`
-	Ext       string    `json:"extension"`
-	Width     int       `json:"width"`
-	Height    int       `json:"height"`
-	Format    string    `json:"format"`
-	Latitude  float64   `json:"latitude,omitempty"`
-	Longitude float64   `json:"longitude,omitempty"`
+	Created      time.Time `json:"created,omitempty"`
+	Name         string    `json:"name"`
+	Ext          string    `json:"extension"`
+	Width        int       `json:"width"`
+	Height       int       `json:"height"`
+	Format       string    `json:"format"`
+	CameraModel  string    `json:"model,omitempty"`
+	ISO          int       `json:"iso"`
+	ExposureTime string    `json:"exposure_time"`
+	FNumber      float64   `json:"f_number"`
+
+	Latitude  float64 `json:"latitude,omitempty"`
+	Longitude float64 `json:"longitude,omitempty"`
 }
 
 type ImageExif struct{}
@@ -57,7 +62,9 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	format := Format(formatStr)
 
 	var created time.Time
-	var lat, lon float64
+	var model, exposureTime string
+	var lat, lon, fNumber float64
+	var iso int
 
 	_, err = r.Seek(0, io.SeekStart)
 	if err != nil {
@@ -74,6 +81,30 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		if err == nil {
 			lat, lon = latTmp, lonTmp
 		}
+		tag, err := exf.Get(exif.Model)
+		if tag != nil {
+			model, _ = tag.StringVal()
+		}
+
+		tag, err = exf.Get(exif.ExposureTime)
+		if tag != nil {
+			exposureTimeRat, _ := tag.Rat(0)
+			if exposureTimeRat != nil {
+				exposureTime = exposureTimeRat.String()
+			}
+		}
+
+		tag, err = exf.Get(exif.FNumber)
+		if tag != nil {
+			fNumberRat, _ := tag.Rat(0)
+			if fNumberRat != nil {
+				fNumber, _ = fNumberRat.Float64()
+			}
+		}
+		tag, err = exf.Get(exif.ISOSpeedRatings)
+		if tag != nil {
+			iso, _ = tag.Int(0)
+		}
 	}
 
 	_, err = r.Seek(0, io.SeekStart)
@@ -82,14 +113,18 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	}
 
 	res := &ImageExifSchema{
-		Created:   created,
-		Name:      name,
-		Ext:       strings.ToLower(filepath.Ext(name)),
-		Format:    string(format),
-		Width:     conf.Width,
-		Height:    conf.Height,
-		Latitude:  lat,
-		Longitude: lon,
+		Created:      created,
+		Name:         name,
+		Ext:          strings.ToLower(filepath.Ext(name)),
+		Format:       string(format),
+		CameraModel:  model,
+		ISO:          iso,
+		ExposureTime: exposureTime,
+		FNumber:      fNumber,
+		Width:        conf.Width,
+		Height:       conf.Height,
+		Latitude:     lat,
+		Longitude:    lon,
 	}
 
 	b, err := json.Marshal(res)

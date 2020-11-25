@@ -10,7 +10,11 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -35,6 +39,7 @@ var migrations = []migration{
 	skipMigration,        // 3
 	skipMigration,        // 4
 	snapshotToChanges,    // 5
+	addFilesToObjects,    // 6
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -152,9 +157,9 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 	}
 
 	snap := snapshotsPB[0]
-	var keys []*FileKeys
+	var keys []*files.FileKeys
 	for fileHash, fileKeys := range snap.KeysByHash {
-		keys = append(keys, &FileKeys{
+		keys = append(keys, &files.FileKeys{
 			Hash: fileHash,
 			Keys: fileKeys.KeysByPath,
 		})
@@ -165,7 +170,7 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 		for _, fileField := range detailsFileFields {
 			if v, exists := snap.Details.Fields[fileField]; exists {
 				hash := v.GetStringValue()
-				keysForFile, err := a.FileGetKeys(hash)
+				keysForFile, err := a.files.FileGetKeys(hash)
 				if err != nil {
 					log.With(zap.String("hash", hash)).Error("failed to get file key", err.Error())
 				} else {
@@ -249,4 +254,78 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 	log.Infof("migration alterThreadsDbSchema: schema updated")
 
 	return nil
+}
+
+func addFilesToObjects(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		files, err := a.localStore.Files.List()
+		if err != nil {
+			return err
+		}
+		targetsProceed := map[string]struct{}{}
+		imgObjType, err := relation.GetObjectType(objects.BundledObjectTypeURLPrefix + "file")
+		if err != nil {
+			return err
+		}
+		fileObjType, err := relation.GetObjectType(objects.BundledObjectTypeURLPrefix + "image")
+		if err != nil {
+			return err
+		}
+
+		for _, file := range files {
+			if file.Mill == "/image/resize" {
+				if len(file.Targets) == 0 {
+					return fmt.Errorf("got image with empty targets list")
+				}
+
+				for _, target := range file.Targets {
+					if _, exists := targetsProceed[target]; exists {
+						continue
+					}
+					targetsProceed[target] = struct{}{}
+					img, err := a.ImageByHash(context.Background(), target)
+					if err != nil {
+						return err
+					}
+
+					details, err := img.Details()
+					if err != nil {
+						return err
+					}
+
+					err = a.localStore.Objects.UpdateObject(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations}, nil, "")
+					if err != nil {
+						return err
+					}
+				}
+
+			} else if file.Mill == "/blob" {
+				if len(file.Targets) == 0 {
+					return fmt.Errorf("got file with empty targets list")
+				}
+				for _, target := range file.Targets {
+					if _, exists := targetsProceed[target]; exists {
+						continue
+					}
+					targetsProceed[target] = struct{}{}
+					file, err := a.FileByHash(context.Background(), target)
+					if err != nil {
+						return err
+					}
+
+					details, err := file.Details()
+					if err != nil {
+						return err
+					}
+
+					err = a.localStore.Objects.UpdateObject(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations}, nil, "")
+					if err != nil {
+						return err
+					}
+				}
+			}
+		}
+
+		return nil
+	})
 }
