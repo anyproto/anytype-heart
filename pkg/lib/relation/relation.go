@@ -158,7 +158,7 @@ var (
 		// image
 		"widthInPixels": {
 			Format:       relation.RelationFormat_title,
-			Name:         "Width in pixels",
+			Name:         "Width",
 			DefaultValue: nil,
 			Key:          "widthInPixels",
 			DataSource:   relation.Relation_details,
@@ -167,7 +167,7 @@ var (
 		},
 		"heightInPixels": {
 			Format:       relation.RelationFormat_number,
-			Name:         "Height in pixels",
+			Name:         "Height",
 			DefaultValue: nil,
 			Key:          "heightInPixels",
 			DataSource:   relation.Relation_details,
