@@ -527,7 +527,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 			continue
 		}
 
-		if rel, _ := sch.GetRelationByKey(key); rel != nil && rel.GetFormat() == pbrelation.RelationFormat_object {
+		if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
 			depId := item.GetStringValue()
 			if depId != "" {
 				if _, exists := depIdsMap[depId]; !exists {
@@ -646,7 +646,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				continue
 			}
 
-			if rel, _ := sch.GetRelationByKey(key); rel != nil && rel.GetFormat() == pbrelation.RelationFormat_object {
+			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
 				depId := item.GetStringValue()
 				if depId != "" {
 					if _, exists := depIdsMap[depId]; !exists {

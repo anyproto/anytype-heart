@@ -65,7 +65,7 @@ enum RelationFormat {
     number = 2; // double
     select = 3; // string
     date = 4; // int64(pb.Value doesn't have int64) or string
-    file = 5; // deprecated in favor of object with targetType file, to be removed with 
+    file = 5; // relation can has objects of specific types: file, image, audio, video
     checkbox = 6; // boolean
     url = 7; // string with sanity check
     email = 8; // string with sanity check

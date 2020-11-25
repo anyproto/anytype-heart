@@ -12191,7 +12191,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | number | 2 | double |
 | select | 3 | string |
 | date | 4 | int64(pb.Value doesn&#39;t have int64) or string |
-| file | 5 | list of string, CID of media or file |
+| file | 5 | relation can has objects of specific types: file, image, audio, video |
 | checkbox | 6 | boolean |
 | url | 7 | string with sanity check |
 | email | 8 | string with sanity check |
