@@ -19,9 +19,11 @@ func New(objType *pbrelation.ObjectType, relations []*pbrelation.Relation) Schem
 }
 
 func (sch *Schema) GetRelationByKey(key string) (*pbrelation.Relation, error) {
-	for _, rel := range sch.Relations {
-		if rel.Key == key {
-			return rel, nil
+	if sch.Relations != nil {
+		for _, rel := range sch.Relations {
+			if rel.Key == key {
+				return rel, nil
+			}
 		}
 	}
 
