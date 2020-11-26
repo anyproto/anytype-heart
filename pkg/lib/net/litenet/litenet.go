@@ -22,6 +22,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/pnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	libp2ptls "github.com/libp2p/go-libp2p-tls"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/app"
 	"github.com/textileio/go-threads/core/logstore"
@@ -93,6 +94,7 @@ func DefaultNetwork(
 		litestore,
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),
 		libp2p.Peerstore(pstore),
+		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 	)
 
 	if err != nil {
