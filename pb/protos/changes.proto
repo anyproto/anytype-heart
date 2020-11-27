@@ -102,12 +102,16 @@ message Change {
             repeated anytype.relation.Relation.SelectOption dict = 2;
         }
 
+        message ObjectTypes {
+            repeated string objectTypes = 1;
+        }
+
         string key = 1;
         oneof value {
             anytype.relation.RelationFormat format = 2;
             string name = 3;
             google.protobuf.Value defaultValue = 4;
-            string objectType = 5;
+            ObjectTypes objectTypes = 5;
             bool multi = 6;
             Dict selectDict = 7;
         }

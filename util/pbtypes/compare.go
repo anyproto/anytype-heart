@@ -2,6 +2,7 @@ package pbtypes
 
 import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) (equal bool) {
@@ -53,7 +54,8 @@ func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Rel
 	if rel1.Multi != rel2.Multi {
 		return false
 	}
-	if rel1.ObjectType != rel2.ObjectType {
+
+	if slice.SortedEquals(rel1.ObjectTypes, rel2.ObjectTypes) {
 		return false
 	}
 
@@ -80,9 +82,7 @@ func RelationCompatible(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (e
 		return false
 	}
 
-	if rel1.ObjectType != rel2.ObjectType {
-		return false
-	}
+	// todo: should we compare objectType here?
 
 	return true
 }

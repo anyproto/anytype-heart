@@ -28,6 +28,7 @@
     - [Change.RelationRemove](#anytype.Change.RelationRemove)
     - [Change.RelationUpdate](#anytype.Change.RelationUpdate)
     - [Change.RelationUpdate.Dict](#anytype.Change.RelationUpdate.Dict)
+    - [Change.RelationUpdate.ObjectTypes](#anytype.Change.RelationUpdate.ObjectTypes)
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
@@ -1207,7 +1208,7 @@ the element of change tree used to store and internal apply smartBlock history
 | format | [relation.RelationFormat](#anytype.relation.RelationFormat) |  |  |
 | name | [string](#string) |  |  |
 | defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-| objectType | [string](#string) |  |  |
+| objectTypes | [Change.RelationUpdate.ObjectTypes](#anytype.Change.RelationUpdate.ObjectTypes) |  |  |
 | multi | [bool](#bool) |  |  |
 | selectDict | [Change.RelationUpdate.Dict](#anytype.Change.RelationUpdate.Dict) |  |  |
 
@@ -1225,6 +1226,21 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | dict | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string dict = 1; // deprecated |
+
+
+
+
+
+
+<a name="anytype.Change.RelationUpdate.ObjectTypes"></a>
+
+### Change.RelationUpdate.ObjectTypes
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypes | [string](#string) | repeated |  |
 
 
 
@@ -12090,8 +12106,8 @@ Relation describe the human-interpreted relation type. It may be something like 
 | hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
 | readOnly | [bool](#bool) |  | not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
-| objectType | [string](#string) |  | URL of object type, empty to allow link to any object |
-| selectDict | [Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string selectDict = 11; //deprecated
+| objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
+| selectDict | [Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string selectDict = 11; // deprecated, do not use
 
 default dictionary with unique values to choose for select/multiSelect format |
 

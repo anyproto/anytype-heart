@@ -16,7 +16,7 @@ var (
 	BundledRelations = map[string]*relation.Relation{
 		"id": {
 			Format:       relation.RelationFormat_object,
-			ObjectType:   ObjectTypeSelfType, // the actual objectType of the object which has this relation will be injected here
+			ObjectTypes:  []string{ObjectTypeSelfType}, // the actual objectType of the object which has this relation will be injected here
 			Name:         "Anytype ID",
 			DefaultValue: nil,
 			Key:          "id",
@@ -27,7 +27,7 @@ var (
 		"type": {
 			Format:       relation.RelationFormat_object,
 			Multi:        true,
-			ObjectType:   bundledObjectTypeURLPrefix + "objectType",
+			ObjectTypes:  []string{bundledObjectTypeURLPrefix + "objectType"},
 			Name:         "Object Type",
 			DefaultValue: nil,
 			Key:          "type",
@@ -231,7 +231,7 @@ var (
 		// video
 		"thumbnailImage": {
 			Format:       relation.RelationFormat_object,
-			ObjectType:   bundledObjectTypeURLPrefix + "image",
+			ObjectTypes:  []string{bundledObjectTypeURLPrefix + "image"},
 			Name:         "Thumbnail image",
 			DefaultValue: nil,
 			Key:          "thumbnailImage",
