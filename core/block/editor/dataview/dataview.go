@@ -356,12 +356,19 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 		return err
 	}
 
+	oldView := tb.GetView(viewId)
+	var needRecordRefresh bool
+	if !pbtypes.DataviewFiltersEqualSorted(oldView.Filters, view.Filters) {
+		needRecordRefresh = true
+	} else if !pbtypes.DataviewSortsEqualSorted(oldView.Sorts, view.Sorts) {
+		needRecordRefresh = true
+	}
 	if err = tb.SetView(viewId, view); err != nil {
 		return err
 	}
 
 	dv := d.getDataviewImpl(tb)
-	if dv.activeViewId == viewId {
+	if needRecordRefresh && dv.activeViewId == viewId {
 		dv.offset = 0
 		msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(tb), tb)
 		if err != nil {
