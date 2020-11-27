@@ -55,7 +55,7 @@ func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Rel
 		return false
 	}
 
-	if slice.SortedEquals(rel1.ObjectTypes, rel2.ObjectTypes) {
+	if !slice.SortedEquals(rel1.ObjectTypes, rel2.ObjectTypes) {
 		return false
 	}
 

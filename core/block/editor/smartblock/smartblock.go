@@ -239,6 +239,8 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 
 	// todo: should we use badger here?
 	timeout := time.After(time.Second)
+	var objectTypesUrlByObjectMap = map[string][]string{}
+
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
 		case <-timeout:
@@ -255,10 +257,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 					objectTypesMap[ot] = struct{}{}
 				}
 
-				objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
-					ObjectId:    d.BlockId,
-					ObjectTypes: d.SmartBlockMeta.ObjectTypes,
-				})
+				objectTypesUrlByObjectMap[d.BlockId] = d.SmartBlockMeta.ObjectTypes
 			}
 		}
 	}
@@ -268,6 +267,12 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 		objectTypesUrls = append(objectTypesUrls, ot)
 	}
 	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
+	for id, ots := range objectTypesUrlByObjectMap {
+		objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
+			ObjectId:    id,
+			ObjectTypes: ots,
+		})
+	}
 
 	defer func() {
 		go func() {
