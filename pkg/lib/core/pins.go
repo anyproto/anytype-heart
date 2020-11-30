@@ -54,7 +54,12 @@ func (a *Anytype) checkPins() {
 		}
 
 		for _, pin := range resp.GetPins() {
-			switch pin.GetStatus() {
+			var (
+				cid    = pin.GetCid()
+				status = pin.GetStatus()
+			)
+
+			switch status {
 			case cafepb.PinStatus_Queued:
 				queued++
 			case cafepb.PinStatus_Done:
@@ -63,17 +68,19 @@ func (a *Anytype) checkPins() {
 				failedCIDs = append(failedCIDs, pin.GetCid())
 			}
 
-			onlyLocal.Remove(pin.GetCid())
+			onlyLocal.Remove(cid)
+			a.pinRegistry.Update(cid, status)
 		}
 
 		log.Debugf("cafe status: queued for pinning: %d, pinned: %d, failed: %d, local: %d",
 			queued, pinned, len(failedCIDs), onlyLocal.Len())
 
-		a.pinRegistry.Update(pinned, queued+onlyLocal.Len(), len(failedCIDs))
-
-		// add local files for the sync
-		for _, cid := range onlyLocal.List() {
-			failedCIDs = append(failedCIDs, cid.(string))
+		for _, i := range onlyLocal.List() {
+			var cid = i.(string)
+			// add local files for the sync
+			failedCIDs = append(failedCIDs, cid)
+			// local files will be requested for pin right now
+			a.pinRegistry.Update(cid, cafepb.PinStatus_Queued)
 		}
 
 		if len(failedCIDs) > 0 {
@@ -108,43 +115,80 @@ func (a *Anytype) deriveContext(timeout time.Duration) context.Context {
 
 /* File status service */
 
-type FilePinSummary struct {
-	Pinned, InProgress, Failed int
-	CheckedAt                  int64
-}
+type (
+	FilePinStatus struct {
+		Status  cafepb.PinStatus
+		Updated int64
+	}
 
-type FileInfo interface {
-	FileSummary() FilePinSummary
-}
+	FilePinSummary struct {
+		Pinned, InProgress, Failed int
+		LastUpdated                int64
+	}
+
+	FileInfo interface {
+		PinStatus(cids ...string) map[string]FilePinStatus
+		FileSummary() FilePinSummary
+	}
+)
 
 var _ FileInfo = (*filePinRegistry)(nil)
 
-// Stub implementation
 type filePinRegistry struct {
-	summary FilePinSummary
-	mu      sync.RWMutex
+	files map[string]FilePinStatus
+	mu    sync.RWMutex
 }
 
 func newFilePinRegistry() *filePinRegistry {
-	return &filePinRegistry{}
+	return &filePinRegistry{files: make(map[string]FilePinStatus)}
+}
+
+func (f *filePinRegistry) PinStatus(cids ...string) map[string]FilePinStatus {
+	if len(cids) == 0 {
+		return nil
+	}
+
+	f.mu.RLock()
+	defer f.mu.RUnlock()
+
+	var result = make(map[string]FilePinStatus, len(cids))
+	for _, c := range cids {
+		if status, found := f.files[c]; found {
+			result[c] = status
+		}
+	}
+
+	return result
 }
 
 func (f *filePinRegistry) FileSummary() FilePinSummary {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
 
-	return f.summary
-}
+	var summary FilePinSummary
+	for _, status := range f.files {
+		switch status.Status {
+		case cafepb.PinStatus_Queued:
+			summary.InProgress++
+		case cafepb.PinStatus_Failed:
+			summary.Failed++
+		case cafepb.PinStatus_Done:
+			summary.Pinned++
+		}
 
-func (f *filePinRegistry) Update(pinned, inProgress, failed int) {
-	var summary = FilePinSummary{
-		Pinned:     pinned,
-		InProgress: inProgress,
-		Failed:     failed,
-		CheckedAt:  time.Now().Unix(),
+		if status.Updated > summary.LastUpdated {
+			summary.LastUpdated = status.Updated
+		}
 	}
 
+	return summary
+}
+
+func (f *filePinRegistry) Update(cid string, status cafepb.PinStatus) {
 	f.mu.Lock()
-	f.summary = summary
+	f.files[cid] = FilePinStatus{
+		Status:  status,
+		Updated: time.Now().Unix(),
+	}
 	f.mu.Unlock()
 }
