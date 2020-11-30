@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -64,13 +65,14 @@ func (m *filterNotSystemObjects) Filter(e query.Entry) bool {
 	return false
 }
 
-func NewObjectStore(ds ds.TxnDatastore) ObjectStore {
-	return &dsObjectStore{ds: ds}
+func NewObjectStore(ds ds.TxnDatastore, fts ftsearch.FTSearch) ObjectStore {
+	return &dsObjectStore{ds: ds, fts: fts}
 }
 
 type dsObjectStore struct {
 	// underlying storage
-	ds ds.TxnDatastore
+	ds  ds.TxnDatastore
+	fts ftsearch.FTSearch
 
 	// serializing page updates
 	l sync.Mutex
@@ -650,11 +652,11 @@ func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) erro
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
-
-	res, err := txn.Query(query.Query{})
+	res, err := txn.Query(query.Query{Prefix: indexQueueBase.String()})
 	if err != nil {
 		return fmt.Errorf("error query txn in datastore: %w", err)
 	}
+	defer res.Close()
 	for entry := range res.Next() {
 		i := strings.LastIndexByte(entry.Key, '/')
 		if i == -1 || len(entry.Key)-1 == i {
@@ -713,6 +715,16 @@ func (m *dsObjectStore) Prefix() string {
 
 func (m *dsObjectStore) Indexes() []Index {
 	return nil
+}
+
+func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
+	return m.fts
+}
+
+func (m *dsObjectStore) Close() {
+	if m.fts != nil {
+		m.fts.Close()
+	}
 }
 
 /* internal */

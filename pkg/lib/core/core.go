@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
@@ -304,8 +306,11 @@ func (a *Anytype) start() error {
 			}
 		}
 	}
-
-	a.localStore = localstore.NewLocalStore(a.t.Datastore())
+	fts, err := ftsearch.NewFTSearch(filepath.Join(a.opts.Repo, "fts"))
+	if err != nil {
+		log.Errorf("can't start fulltext search service: %v", err)
+	}
+	a.localStore = localstore.NewLocalStore(a.t.Datastore(), fts)
 	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
 	a.threadService = threads.New(a.t, a.t.Logstore(), a.opts.Repo, a.opts.Device, a.opts.Account, func(id thread.ID) error {
 		err := a.migratePageToChanges(id)

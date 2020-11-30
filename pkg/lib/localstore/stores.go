@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -69,12 +70,14 @@ type ObjectStore interface {
 	List() ([]*model.ObjectInfo, error)
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
+	FTSearch() ftsearch.FTSearch
+	Close()
 }
 
-func NewLocalStore(store ds.Batching) LocalStore {
+func NewLocalStore(store ds.Batching, fts ftsearch.FTSearch) LocalStore {
 	return LocalStore{
 		Files:   NewFileStore(store.(ds.TxnDatastore)),
-		Objects: NewObjectStore(store.(ds.TxnDatastore)),
+		Objects: NewObjectStore(store.(ds.TxnDatastore), fts),
 	}
 }
 

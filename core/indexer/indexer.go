@@ -7,8 +7,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
 )
@@ -147,7 +149,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordWithLogID) {
 		if err := i.store.UpdateObject(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}, nil, ""); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
 		} else {
-			log.With("thread", id).Infof("indexed %d records", len(records))
+			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, "name"))
 		}
 	}
 	if err := i.store.AddToIndexQueue(id); err != nil {
@@ -184,9 +186,17 @@ func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
 	if err = i.store.UpdateObject(id, nil, nil, info.Links, info.Snippet); err != nil {
 		return
 	}
-	// TODO: add info to FT engine here
+	if fts := i.store.FTSearch(); fts != nil {
+		if err := fts.Index(ftsearch.SearchDoc{
+			Id:    id,
+			Title: info.Title,
+			Text:  info.Text,
+		}); err != nil {
+			log.Errorf("can't ft index doc: %v", err)
+		}
+	}
 
-	log.With("thread", id).Infof("ft index updated")
+	log.With("thread", id).Infof("ft index updated: %v", tm)
 	return
 }
 

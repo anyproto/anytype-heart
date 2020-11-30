@@ -20,7 +20,7 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	bds, err := badger.NewDatastore(tmpDir, nil)
 	require.NoError(t, err)
 
-	ds := NewObjectStore(bds)
+	ds := NewObjectStore(bds, nil)
 
 	require.NoError(t, ds.AddToIndexQueue("one"))
 	require.NoError(t, ds.AddToIndexQueue("one"))
@@ -53,4 +53,15 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	}))
 
 	assert.Equal(t, 0, count)
+
+	require.NoError(t, ds.AddToIndexQueue("one"))
+	require.NoError(t, ds.AddToIndexQueue("one"))
+	require.NoError(t, ds.AddToIndexQueue("two"))
+
+	count = 0
+	require.NoError(t, ds.IndexForEach(func(id string, tm time.Time) error {
+		count++
+		return nil
+	}))
+	assert.Equal(t, 2, count)
 }
