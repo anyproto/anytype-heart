@@ -181,12 +181,12 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		cafePid, _  = peer.Decode(cafePeerId)
 		ownDevice   = mw.Anytype.Device()
 		profileInfo = mw.Anytype
-		fileInfo    = mw.Anytype.FileStatus()
-		syncInfo    = mw.Anytype.SyncStatus()
+		fileStatus  = mw.Anytype.FileStatus()
+		syncStatus  = mw.Anytype.SyncStatus()
 		eventSender = mw.EventSender.Send
 		details     = []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 
-		ss = status.NewService(syncInfo, fileInfo, profileInfo, eventSender, cafePid.String(), ownDevice)
+		ss = status.NewService(syncStatus, fileStatus, profileInfo, eventSender, cafePid.String(), ownDevice)
 		bs = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, eventSender)
 	)
 
@@ -514,11 +514,11 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		cafePid, _  = peer.Decode(cafePeerId)
 		ownDevice   = mw.Anytype.Device()
 		profileInfo = mw.Anytype
-		fileInfo    = mw.Anytype.FileStatus()
-		syncInfo    = mw.Anytype.SyncStatus()
+		fileStatus  = mw.Anytype.FileStatus()
+		syncStatus  = mw.Anytype.SyncStatus()
 		eventSender = mw.EventSender.Send
 
-		ss = status.NewService(syncInfo, fileInfo, profileInfo, eventSender, cafePid.String(), ownDevice)
+		ss = status.NewService(syncStatus, fileStatus, profileInfo, eventSender, cafePid.String(), ownDevice)
 		bs = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, eventSender)
 	)
 

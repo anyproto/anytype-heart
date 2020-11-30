@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -97,7 +98,7 @@ type Service interface {
 	PageUpdateLastOpened(id string) error
 
 	SyncStatus() tcn.SyncInfo
-	FileStatus() FileInfo
+	FileStatus() pin.FilePinService
 
 	ProfileInfo
 }
@@ -112,7 +113,7 @@ type Anytype struct {
 	localStore         localstore.LocalStore
 	predefinedBlockIds threads.DerivedSmartblockIds
 	threadService      threads.Service
-	pinRegistry        *filePinRegistry
+	pinService         pin.FilePinService
 
 	logLevels map[string]string
 
@@ -146,7 +147,6 @@ func New(options ...ServiceOption) (*Anytype, error) {
 		opts:             opts,
 		shutdownStartsCh: make(chan struct{}),
 		onlineCh:         make(chan struct{}),
-		pinRegistry:      newFilePinRegistry(),
 	}
 
 	if opts.CafeGrpcHost != "" {
@@ -180,8 +180,8 @@ func (a *Anytype) SyncStatus() tcn.SyncInfo {
 	return a.t
 }
 
-func (a *Anytype) FileStatus() FileInfo {
-	return a.pinRegistry
+func (a *Anytype) FileStatus() pin.FilePinService {
+	return a.pinService
 }
 
 func (a *Anytype) Ipfs() ipfs.IPFS {
@@ -302,7 +302,14 @@ func (a *Anytype) start() error {
 	}
 
 	a.localStore = localstore.NewLocalStore(a.t.Datastore())
-	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { <-a.shutdownStartsCh; cancel() }()
+	a.pinService = pin.NewFilePinService(ctx, a.cafe, a.localStore.Files)
+	a.pinService.Start()
+
+	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.pinService)
+
 	a.threadService = threads.New(a.t, a.t.Logstore(), a.opts.Repo, a.opts.Device, a.opts.Account, func(id thread.ID) error {
 		err := a.migratePageToChanges(id)
 		if err != nil && err != ErrAlreadyMigrated {
@@ -318,9 +325,6 @@ func (a *Anytype) start() error {
 		}()
 		return nil
 	}, a.opts.NewSmartblockChan, a.opts.CafeP2PAddr)
-
-	// find and retry failed pins
-	go a.checkPins()
 
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {

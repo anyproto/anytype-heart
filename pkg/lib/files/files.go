@@ -4,14 +4,13 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strconv"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
-	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
@@ -21,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -35,14 +35,14 @@ var log = logging.Logger("anytype-files")
 type Service struct {
 	store localstore.FileStore
 	ipfs  ipfs.IPFS
-	cafe  cafe.Client
+	pins  pin.FilePinService
 }
 
-func New(store localstore.FileStore, ipfs ipfs.IPFS, cafe cafe.Client) *Service {
+func New(store localstore.FileStore, ipfs ipfs.IPFS, pins pin.FilePinService) *Service {
 	return &Service{
 		store: store,
 		ipfs:  ipfs,
-		cafe:  cafe,
+		pins:  pins,
 	}
 }
 
@@ -56,6 +56,8 @@ var ValidMetaLinkNames = []string{"meta"}
 var ValidContentLinkNames = []string{"content"}
 
 var cidBuilder = cid.V1Builder{Codec: cid.DagProtobuf, MhType: mh.SHA2_256}
+
+const maxPinAttempts = 10
 
 func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storage.FileInfo, error) {
 	fileInfo, err := s.FileAddWithConfig(ctx, &m.Blob{}, opts)
@@ -81,21 +83,22 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
-	if s.cafe != nil {
-		go func() {
-			for i := 0; i <= 10; i++ {
-				_, err := s.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: nodeHash})
-				if err != nil {
-					log.Errorf("failed to pin file %s on the cafe: %s", nodeHash, err.Error())
-					time.Sleep(time.Minute * time.Duration(i+1))
-					continue
+	go func() {
+		for attempt := 1; attempt <= maxPinAttempts; attempt++ {
+			if err := s.pins.FilePin(nodeHash); err != nil {
+				if errors.Is(err, pin.ErrNoCafe) {
+					return
 				}
 
-				log.Debugf("pinning file %s started on the cafe", nodeHash)
-				break
+				log.Errorf("failed to pin file %s on the cafe (attempt %d): %s", nodeHash, attempt, err.Error())
+				time.Sleep(time.Minute * time.Duration(attempt))
+				continue
 			}
-		}()
-	}
+
+			log.Debugf("pinning file %s started on the cafe", nodeHash)
+			break
+		}
+	}()
 
 	return nodeHash, fileInfo, nil
 }
