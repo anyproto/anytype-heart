@@ -571,6 +571,13 @@ message Event {
                 SyncStatus status = 1;
                 int64 lastPulled = 2;
                 bool lastPushSucceed = 3;
+                PinStatus files = 4;
+
+                message PinStatus {
+                    int32 pinning = 1;
+                    int32 pinned = 2;
+                    int32 failed = 3;
+                }
             }
 
             message Account {

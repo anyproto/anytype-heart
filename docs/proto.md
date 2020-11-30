@@ -585,6 +585,7 @@
     - [Event.Status.Thread](#anytype.Event.Status.Thread)
     - [Event.Status.Thread.Account](#anytype.Event.Status.Thread.Account)
     - [Event.Status.Thread.Cafe](#anytype.Event.Status.Thread.Cafe)
+    - [Event.Status.Thread.Cafe.PinStatus](#anytype.Event.Status.Thread.Cafe.PinStatus)
     - [Event.Status.Thread.Device](#anytype.Event.Status.Thread.Device)
     - [Event.Status.Thread.Summary](#anytype.Event.Status.Thread.Summary)
     - [Event.User](#anytype.Event.User)
@@ -9118,6 +9119,24 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | status | [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus) |  |  |
 | lastPulled | [int64](#int64) |  |  |
 | lastPushSucceed | [bool](#bool) |  |  |
+| files | [Event.Status.Thread.Cafe.PinStatus](#anytype.Event.Status.Thread.Cafe.PinStatus) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Cafe.PinStatus"></a>
+
+### Event.Status.Thread.Cafe.PinStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pinning | [int32](#int32) |  |  |
+| pinned | [int32](#int32) |  |  |
+| failed | [int32](#int32) |  |  |
 
 
 
