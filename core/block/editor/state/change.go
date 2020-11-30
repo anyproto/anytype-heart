@@ -469,10 +469,10 @@ func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation)
 		})
 	}
 
-	if prev.ObjectType != new.ObjectType {
+	if !slice.UnsortedEquals(prev.ObjectTypes, new.ObjectTypes) {
 		updates = append(updates, &pb.ChangeRelationUpdate{
 			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfObjectType{ObjectType: new.ObjectType},
+			Value: &pb.ChangeRelationUpdateValueOfObjectTypes{ObjectTypes: &pb.ChangeRelationUpdateObjectTypes{ObjectTypes: new.ObjectTypes}},
 		})
 	}
 

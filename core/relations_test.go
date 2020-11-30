@@ -315,7 +315,7 @@ func TestCustomType(t *testing.T) {
 			Name: "1",
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
-				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectType: "https://anytype.io/schemas/object/bundled/pages"},
+				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/pages"}},
 				{Format: pbrelation.RelationFormat_description, Name: "bio"},
 			},
 		},

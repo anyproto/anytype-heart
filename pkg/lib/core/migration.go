@@ -75,7 +75,9 @@ func (a *Anytype) runMigrationsUnsafe() error {
 	}
 
 	if len(migrations) == version {
-		return nil
+		// TODO: TEMP FIX to run last migration every time, remove with release
+
+		//return nil
 	} else if len(migrations) < version {
 		log.Errorf("repo version(%d) is higher than the total migrations number(%d)", version, len(migrations))
 		return nil
@@ -290,7 +292,8 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 
 					details, err := img.Details()
 					if err != nil {
-						return err
+						log.Errorf("failed to fetch details for img %s: %w", img.Hash(), err)
+						continue
 					}
 
 					err = a.localStore.Objects.UpdateObject(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations}, nil, "")
@@ -315,7 +318,8 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 
 					details, err := file.Details()
 					if err != nil {
-						return err
+						log.Errorf("failed to fetch details for file %s: %w", file.Hash(), err)
+						continue
 					}
 
 					err = a.localStore.Objects.UpdateObject(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations}, nil, "")

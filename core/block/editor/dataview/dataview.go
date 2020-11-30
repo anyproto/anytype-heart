@@ -356,12 +356,19 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 		return err
 	}
 
+	oldView := tb.GetView(viewId)
+	var needRecordRefresh bool
+	if !pbtypes.DataviewFiltersEqualSorted(oldView.Filters, view.Filters) {
+		needRecordRefresh = true
+	} else if !pbtypes.DataviewSortsEqualSorted(oldView.Sorts, view.Sorts) {
+		needRecordRefresh = true
+	}
 	if err = tb.SetView(viewId, view); err != nil {
 		return err
 	}
 
 	dv := d.getDataviewImpl(tb)
-	if dv.activeViewId == viewId {
+	if needRecordRefresh && dv.activeViewId == viewId {
 		dv.offset = 0
 		msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(tb), tb)
 		if err != nil {
@@ -523,13 +530,13 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 	var depIdsMap = map[string]struct{}{}
 	var depIds []string
 	for key, item := range rec.Details.Fields {
-		if key == "id" {
+		if key == "id" || key == "type" {
 			continue
 		}
 
-		if rel, _ := sch.GetRelationByKey(key); rel != nil && rel.GetFormat() == pbrelation.RelationFormat_object {
-			depId := item.GetStringValue()
-			if depId != "" {
+		if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
+			depIdsToAdd := pbtypes.GetStringListValue(item)
+			for _, depId := range depIdsToAdd {
 				if _, exists := depIdsMap[depId]; !exists {
 					depIds = append(depIds, depId)
 					depIdsMap[depId] = struct{}{}
@@ -642,13 +649,13 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	var records []*types.Struct
 	for _, entry := range entries {
 		for key, item := range entry.Details.Fields {
-			if key == "id" {
+			if key == "id" || key == "type" {
 				continue
 			}
 
-			if rel, _ := sch.GetRelationByKey(key); rel != nil && rel.GetFormat() == pbrelation.RelationFormat_object {
-				depId := item.GetStringValue()
-				if depId != "" {
+			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
+				depIdsToAdd := pbtypes.GetStringListValue(item)
+				for _, depId := range depIdsToAdd {
 					if _, exists := depIdsMap[depId]; !exists {
 						depIds = append(depIds, depId)
 						depIdsMap[depId] = struct{}{}

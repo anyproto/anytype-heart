@@ -41,8 +41,10 @@ message Relation {
     bool readOnly = 7; // not editable by user
     bool multi = 8; // allow multiple values (stored in pb list)
 
-    string objectType = 10; // URL of object type, empty to allow link to any object
-    // repeated string selectDict = 11; //deprecated
+    repeated string objectTypes = 9; // URL of object type, empty to allow link to any object
+    // string objectType = 10; // deprecated, do not use
+
+    // repeated string selectDict = 11; // deprecated, do not use
     repeated SelectOption selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
 
     message SelectOption {
@@ -65,7 +67,7 @@ enum RelationFormat {
     number = 2; // double
     select = 3; // string
     date = 4; // int64(pb.Value doesn't have int64) or string
-    file = 5; // deprecated in favor of object with targetType file, to be removed with 
+    file = 5; // relation can has objects of specific types: file, image, audio, video
     checkbox = 6; // boolean
     url = 7; // string with sanity check
     email = 8; // string with sanity check

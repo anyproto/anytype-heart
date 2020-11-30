@@ -240,6 +240,8 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 
 	// todo: should we use badger here?
 	timeout := time.After(time.Second)
+	var objectTypesUrlByObjectMap = map[string][]string{}
+
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
 		case <-timeout:
@@ -256,10 +258,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 					objectTypesMap[ot] = struct{}{}
 				}
 
-				objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
-					ObjectId:    d.BlockId,
-					ObjectTypes: d.SmartBlockMeta.ObjectTypes,
-				})
+				objectTypesUrlByObjectMap[d.BlockId] = d.SmartBlockMeta.ObjectTypes
 			}
 		}
 	}
@@ -269,6 +268,12 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 		objectTypesUrls = append(objectTypesUrls, ot)
 	}
 	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
+	for id, ots := range objectTypesUrlByObjectMap {
+		objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
+			ObjectId:    id,
+			ObjectTypes: ots,
+		})
+	}
 
 	defer func() {
 		go func() {
@@ -335,12 +340,18 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 
 		for _, rel := range sb.Relations() {
 			if rel.Format == pbrelation.RelationFormat_object {
-				if strings.HasPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix) {
-					ids = append(ids, strings.TrimPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix))
+				// add all custom object types as dependents
+				for _, ot := range rel.ObjectTypes {
+					if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
+						ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
+					}
 				}
 
-				if targetId := pbtypes.GetString(details, rel.Key); targetId != "" {
-					ids = append(ids, targetId)
+				// add all object relation values as dependents
+				for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
+					if targetId != "" {
+						ids = append(ids, targetId)
+					}
 				}
 			}
 		}

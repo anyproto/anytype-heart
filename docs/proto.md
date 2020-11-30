@@ -28,6 +28,7 @@
     - [Change.RelationRemove](#anytype.Change.RelationRemove)
     - [Change.RelationUpdate](#anytype.Change.RelationUpdate)
     - [Change.RelationUpdate.Dict](#anytype.Change.RelationUpdate.Dict)
+    - [Change.RelationUpdate.ObjectTypes](#anytype.Change.RelationUpdate.ObjectTypes)
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
@@ -1207,7 +1208,7 @@ the element of change tree used to store and internal apply smartBlock history
 | format | [relation.RelationFormat](#anytype.relation.RelationFormat) |  |  |
 | name | [string](#string) |  |  |
 | defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-| objectType | [string](#string) |  |  |
+| objectTypes | [Change.RelationUpdate.ObjectTypes](#anytype.Change.RelationUpdate.ObjectTypes) |  |  |
 | multi | [bool](#bool) |  |  |
 | selectDict | [Change.RelationUpdate.Dict](#anytype.Change.RelationUpdate.Dict) |  |  |
 
@@ -1225,6 +1226,21 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | dict | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string dict = 1; // deprecated |
+
+
+
+
+
+
+<a name="anytype.Change.RelationUpdate.ObjectTypes"></a>
+
+### Change.RelationUpdate.ObjectTypes
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectTypes | [string](#string) | repeated |  |
 
 
 
@@ -6864,6 +6880,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
+| fullText | [string](#string) |  | full text search |
+| offset | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
 
 
 
@@ -12090,8 +12109,8 @@ Relation describe the human-interpreted relation type. It may be something like 
 | hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
 | readOnly | [bool](#bool) |  | not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
-| objectType | [string](#string) |  | URL of object type, empty to allow link to any object |
-| selectDict | [Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string selectDict = 11; //deprecated
+| objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
+| selectDict | [Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string selectDict = 11; // deprecated, do not use
 
 default dictionary with unique values to choose for select/multiSelect format |
 
@@ -12191,7 +12210,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | number | 2 | double |
 | select | 3 | string |
 | date | 4 | int64(pb.Value doesn&#39;t have int64) or string |
-| file | 5 | list of string, CID of media or file |
+| file | 5 | relation can has objects of specific types: file, image, audio, video |
 | checkbox | 6 | boolean |
 | url | 7 | string with sanity check |
 | email | 8 | string with sanity check |

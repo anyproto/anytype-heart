@@ -1,7 +1,9 @@
 package pbtypes
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) (equal bool) {
@@ -53,7 +55,8 @@ func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Rel
 	if rel1.Multi != rel2.Multi {
 		return false
 	}
-	if rel1.ObjectType != rel2.ObjectType {
+
+	if !slice.SortedEquals(rel1.ObjectTypes, rel2.ObjectTypes) {
 		return false
 	}
 
@@ -80,9 +83,7 @@ func RelationCompatible(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (e
 		return false
 	}
 
-	if rel1.ObjectType != rel2.ObjectType {
-		return false
-	}
+	// todo: should we compare objectType here?
 
 	return true
 }
@@ -111,6 +112,80 @@ func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationSelectOption) bo
 		if dict1[i].Color != dict2[i].Color {
 			return false
 		}
+	}
+
+	return true
+}
+
+func DataviewSortsEqualSorted(sorts1, sorts2 []*model.BlockContentDataviewSort) bool {
+	if len(sorts1) != len(sorts2) {
+		return false
+	}
+	for i := range sorts1 {
+		if !DataviewSortEqual(sorts1[i], sorts2[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func DataviewFiltersEqualSorted(filters1, filters2 []*model.BlockContentDataviewFilter) bool {
+	if len(filters1) != len(filters2) {
+		return false
+	}
+	for i := range filters1 {
+		if !DataviewFilterEqual(filters1[i], filters2[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
+func DataviewSortEqual(sort1, sort2 *model.BlockContentDataviewSort) bool {
+	if sort1 == nil && sort2 != nil {
+		return false
+	}
+	if sort1 != nil && sort2 == nil {
+		return false
+	}
+	if sort1 == nil && sort2 == nil {
+		return true
+	}
+	if sort1.RelationKey != sort2.RelationKey {
+		return false
+	}
+	if sort1.Type != sort2.Type {
+		return false
+	}
+	return true
+}
+
+func DataviewFilterEqual(filter1, filter2 *model.BlockContentDataviewFilter) bool {
+	if filter1 == nil && filter2 != nil {
+		return false
+	}
+	if filter1 != nil && filter2 == nil {
+		return false
+	}
+	if filter1 == nil && filter2 == nil {
+		return true
+	}
+	if filter1.RelationKey != filter2.RelationKey {
+		return false
+	}
+	if filter1.Condition != filter2.Condition {
+		return false
+	}
+	if filter1.Operator != filter2.Operator {
+		return false
+	}
+	if filter1.RelationProperty != filter2.RelationProperty {
+		return false
+	}
+	if filter1.Value.Compare(filter2.Value) != 0 {
+		return false
 	}
 
 	return true
