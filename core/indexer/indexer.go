@@ -179,6 +179,7 @@ func (i *indexer) ftIndex() {
 }
 
 func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
+	st := time.Now()
 	info, err := i.searchInfo.GetSearchInfo(id)
 	if err != nil {
 		return
@@ -195,8 +196,7 @@ func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
 			log.Errorf("can't ft index doc: %v", err)
 		}
 	}
-
-	log.With("thread", id).Infof("ft index updated: %v", tm)
+	log.With("thread", id).Infof("ft index updated for a %v", time.Since(st))
 	return
 }
 
