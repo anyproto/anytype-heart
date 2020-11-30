@@ -39,7 +39,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return m
 	}
 
-	records, _, err := mw.Anytype.ObjectStore().Query(nil, database.Query{Filters: req.Filters, Sorts: req.Sorts})
+	records, _, err := mw.Anytype.ObjectStore().Query(nil, database.Query{Filters: req.Filters, Sorts: req.Sorts, Offset: int(req.Offset), Limit: int(req.Limit)})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}

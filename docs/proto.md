@@ -6880,6 +6880,9 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
+| fullText | [string](#string) |  | full text search |
+| offset | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
 
 
 

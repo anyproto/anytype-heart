@@ -548,7 +548,7 @@ message Event {
             message RecordsUpdate {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                repeated google.protobuf.Struct records = 4; // block of new records to insert
+                repeated google.protobuf.Struct records = 4; // records to update. Use 'id' field to get records ids
             }
 
             // sent when client should remove existing records on the active view
