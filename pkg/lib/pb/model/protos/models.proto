@@ -198,7 +198,7 @@ message Block {
         message Dataview {
             string source = 1;
             repeated View views = 2;
-            string schemaURL = 3; // deprecated
+            // index 3 is deprecated, was used for schemaURL in old-format sets
             repeated anytype.relation.Relation relations = 4;
 
             message View {

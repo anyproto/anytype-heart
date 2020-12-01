@@ -11484,8 +11484,7 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) |  |  |
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
-| schemaURL | [string](#string) |  | deprecated |
-| relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 
 
 

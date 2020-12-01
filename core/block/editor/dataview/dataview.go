@@ -345,7 +345,7 @@ func (d *dataviewCollectionImpl) GetObjectTypeURL(ctx *state.Context, blockId st
 	if v, ok := tb.Model().Content.(*model.BlockContentOfDataview); !ok {
 		return "", fmt.Errorf("wrong dataview block content type: %T", tb.Model().Content)
 	} else {
-		return v.Dataview.SchemaURL, nil
+		return v.Dataview.Source, nil
 	}
 }
 
