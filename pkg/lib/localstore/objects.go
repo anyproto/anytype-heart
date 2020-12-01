@@ -154,6 +154,11 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	dsq.Filters = append([]query.Filter{&filterNotSystemObjects{}}, dsq.Filters...)
+	if q.FullText != "" {
+		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
+			return
+		}
+	}
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
@@ -721,6 +726,20 @@ func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
 	return m.fts
 }
 
+func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query, error) {
+	if m.fts == nil {
+		return dsq, fmt.Errorf("fullText search not configured")
+	}
+	ids, err := m.fts.Search(text)
+	if err != nil {
+		return dsq, err
+	}
+	idsQuery := newIdsFilter(ids)
+	dsq.Filters = append([]query.Filter{idsQuery}, dsq.Filters...)
+	dsq.Orders = append([]query.Order{idsQuery}, dsq.Orders...)
+	return dsq, nil
+}
+
 func (m *dsObjectStore) Close() {
 	if m.fts != nil {
 		m.fts.Close()
@@ -875,4 +894,39 @@ func outgoingLinkKey(from, to string) ds.Key {
 
 func inboundLinkKey(from, to string) ds.Key {
 	return pagesInboundLinksBase.ChildString(to).ChildString(from)
+}
+
+func newIdsFilter(ids []string) idsFilter {
+	f := make(idsFilter)
+	for i, id := range ids {
+		f[id] = i
+	}
+	return f
+}
+
+type idsFilter map[string]int
+
+func (f idsFilter) Filter(e query.Entry) bool {
+	_, ok := f[extractIdFromKey(e.Key)]
+	return ok
+}
+
+func (f idsFilter) Compare(a, b query.Entry) int {
+	aIndex := f[extractIdFromKey(a.Key)]
+	bIndex := f[extractIdFromKey(b.Key)]
+	if aIndex == bIndex {
+		return 0
+	} else if aIndex < bIndex {
+		return -1
+	} else {
+		return 1
+	}
+}
+
+func extractIdFromKey(key string) (id string) {
+	i := strings.LastIndexByte(key, '/')
+	if i == -1 || len(key)-1 == i {
+		return
+	}
+	return key[i+1:]
 }
