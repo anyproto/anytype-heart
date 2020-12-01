@@ -267,12 +267,25 @@ func (filters filters) Filter(e query.Entry) bool {
 				break
 			}
 
+			if len(list.Values) == 0 {
+				// true in case client send an empty IN request
+				res = true
+				break
+			}
+
 			detail := details.Details.Fields[filter.RelationKey]
 			if detail == nil {
 				res = false
 				break
 			}
-
+			if v, isList := detail.Kind.(*types.Value_ListValue); isList {
+				if len(v.ListValue.Values) != 1 {
+					// IN query can work only on single item value
+					res = false
+					break
+				}
+				detail = v.ListValue.Values[0]
+			}
 			var matchFound bool
 			for _, item := range list.Values {
 				if item.Equal(detail) {
