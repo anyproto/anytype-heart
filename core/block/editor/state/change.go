@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -22,14 +23,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		fileKeys = append(fileKeys, *fk)
 	}
 
-	if snapshot.Data.Details != nil && snapshot.Data.Details.Fields != nil {
-		// clear nil values
-		for key, val := range snapshot.Data.Details.Fields {
-			if val == nil {
-				delete(snapshot.Data.Details.Fields, key)
-			}
-		}
-	}
+	// clear nil values
+	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
 
 	s := &State{
 		rootId:   rootId,
