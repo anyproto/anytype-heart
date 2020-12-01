@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -172,8 +173,8 @@ func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info,
 			ctx, _ := context.WithTimeout(context.Background(), 5*time.Second)
 			err := tdb.HandleNetRecord(ctx, records[i], thrd.Key)
 			if err != nil {
-				// todo: errCantCreateExistingInstance error is not exported
-				if err.Error() != "can't create already existing instance" {
+				// todo: errCantCreateExistingInstance error is not exported and has a typo
+				if !strings.HasSuffix(err.Error(), "already existing instance") {
 					log.Errorf("failed to handle record: %s", err.Error())
 				}
 			} else {
