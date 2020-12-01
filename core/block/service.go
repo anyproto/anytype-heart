@@ -247,7 +247,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		v.SmartblockOpened(ctx)
 	}
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
-		if newWatcher := s.status.Watch(tid); newWatcher {
+		if newWatcher := s.status.Watch(tid, ob.NewState().GetAllFileHashes); newWatcher {
 			ob.AddHook(func() { s.status.Unwatch(tid) }, smartblock.HookOnClose)
 		}
 	}

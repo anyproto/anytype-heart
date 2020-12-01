@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/dgtony/collections/hashset"
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
@@ -34,9 +35,9 @@ type LogTime struct {
 }
 
 type Service interface {
-	Watch(tid thread.ID) (new bool)
-	Unwatch(tid thread.ID)
-	UpdateTimeline(tid thread.ID, tl []LogTime)
+	Watch(thread.ID, func() []string) (new bool)
+	Unwatch(thread.ID)
+	UpdateTimeline(thread.ID, []LogTime)
 
 	Start() error
 	Stop()
@@ -46,7 +47,7 @@ var _ Service = (*service)(nil)
 
 type service struct {
 	tInfo       net.SyncInfo
-	fInfo       core.FileInfo
+	fInfo       pin.FilePinService
 	profile     core.ProfileInfo
 	ownDeviceID string
 	cafeID      string
@@ -68,7 +69,7 @@ type service struct {
 
 func NewService(
 	ts net.SyncInfo,
-	fs core.FileInfo,
+	fs pin.FilePinService,
 	profile core.ProfileInfo,
 	emitter func(event *pb.Event),
 	cafe string,
@@ -90,7 +91,7 @@ func NewService(
 	}
 }
 
-func (s *service) Watch(tid thread.ID) bool {
+func (s *service) Watch(tid thread.ID, fList func() []string) bool {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -116,15 +117,21 @@ func (s *service) Watch(tid thread.ID) bool {
 				return
 			}
 
-			view, _ := s.tInfo.View(tid)
+			var (
+				tStat, _ = s.tInfo.View(tid)
+				pStat    = s.fInfo.PinStatus(fList()...)
+			)
 
 			s.mu.Lock()
 			ts := s.getThreadStatus(tid)
 			s.mu.Unlock()
 
 			ts.Lock()
-			for pid, status := range view {
+			for pid, status := range tStat {
 				ts.UpdateStatus(pid.String(), status)
+			}
+			for cid, info := range pStat {
+				ts.UpdateFiles(cid, info)
 			}
 			var modified = ts.modified
 			ts.Unlock()
@@ -492,6 +499,7 @@ type (
 	threadStatus struct {
 		devices  map[string]*deviceStatus
 		devConn  func(devID string) bool
+		files    map[string]pin.FilePinInfo
 		modified bool
 		sync.Mutex
 	}
@@ -499,8 +507,9 @@ type (
 
 func newThreadStatus(conn func(devID string) bool) *threadStatus {
 	return &threadStatus{
-		devices: make(map[string]*deviceStatus),
 		devConn: conn,
+		devices: make(map[string]*deviceStatus),
+		files:   make(map[string]pin.FilePinInfo),
 	}
 }
 
@@ -524,6 +533,13 @@ func (s *threadStatus) UpdateConnectivity(devID string, online bool) {
 	var dev = s.getDevice(devID)
 	if dev.online != online {
 		dev.online = online
+		s.modified = true
+	}
+}
+
+func (s *threadStatus) UpdateFiles(cid string, info pin.FilePinInfo) {
+	if fi, ok := s.files[cid]; !ok || fi != info {
+		s.files[cid] = info
 		s.modified = true
 	}
 }
