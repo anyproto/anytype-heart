@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
@@ -358,6 +359,21 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 			accountDevices := accounts[accID]
 			accounts[accID] = append(accountDevices, devInfo{devID, *status})
 		} // omit devices with unmatched account
+	}
+
+	// get file pinning stats
+	for _, info := range ts.files {
+		switch info.Status {
+		case cafepb.PinStatus_Queued:
+			event.Cafe.Files.Pinning++
+		case cafepb.PinStatus_Done:
+			event.Cafe.Files.Pinned++
+		case cafepb.PinStatus_Failed:
+			event.Cafe.Files.Failed++
+		}
+		if info.Updated > event.Cafe.Files.Updated {
+			event.Cafe.Files.Updated = info.Updated
+		}
 	}
 
 	// clear modification status
