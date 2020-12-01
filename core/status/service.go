@@ -324,7 +324,7 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 		dss      []deviceStatus
 		event    = pb.EventStatusThread{
 			Summary: &pb.EventStatusThreadSummary{},
-			Cafe:    &pb.EventStatusThreadCafe{},
+			Cafe:    &pb.EventStatusThreadCafe{Files: &pb.EventStatusThreadCafePinStatus{}},
 		}
 
 		max = func(x, y int64) int64 {
