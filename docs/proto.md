@@ -9137,6 +9137,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | pinning | [int32](#int32) |  |  |
 | pinned | [int32](#int32) |  |  |
 | failed | [int32](#int32) |  |  |
+| updated | [int64](#int64) |  |  |
 
 
 

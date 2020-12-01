@@ -577,6 +577,7 @@ message Event {
                     int32 pinning = 1;
                     int32 pinned = 2;
                     int32 failed = 3;
+                    int64 updated = 4;
                 }
             }
 
