@@ -19,6 +19,7 @@ func NewFTSearch(path string) (FTSearch, error) {
 type FTSearch interface {
 	Index(d SearchDoc) (err error)
 	Search(query string) (results []string, err error)
+	Delete(id string) error
 	Close()
 }
 
@@ -54,6 +55,10 @@ func (f *ftSearch) Search(query string) (results []string, err error) {
 		results = append(results, r.ID)
 	}
 	return
+}
+
+func (f *ftSearch) Delete(id string) (err error) {
+	return f.index.Delete(id)
 }
 
 func (f *ftSearch) Close() {

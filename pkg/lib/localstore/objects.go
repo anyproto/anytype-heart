@@ -356,7 +356,11 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 			return err
 		}
 	}
-
+	if m.fts != nil {
+		if err := m.fts.Delete(id); err != nil {
+			return err
+		}
+	}
 	return txn.Commit()
 }
 
@@ -663,11 +667,7 @@ func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) erro
 	}
 	defer res.Close()
 	for entry := range res.Next() {
-		i := strings.LastIndexByte(entry.Key, '/')
-		if i == -1 || len(entry.Key)-1 == i {
-			continue
-		}
-		id := entry.Key[i+1:]
+		id := extractIdFromKey(entry.Key)
 		ts, _ := binary.Varint(entry.Value)
 		if indexErr := f(id, time.Unix(ts, 0)); indexErr != nil {
 			log.Warnf("can't index '%s': %v", id, indexErr)
