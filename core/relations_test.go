@@ -359,7 +359,7 @@ func TestCustomType(t *testing.T) {
 	show := respOpenCustomTypeObject.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 	require.Len(t, show.ObjectTypes, 1)
-	require.Len(t, show.ObjectTypesPerObject, 1)
+	require.Len(t, show.ObjectTypePerObject, 1)
 	// omit relations
 	respObjectTypeCreate.ObjectType.Relations = nil
 	require.Equal(t, respObjectTypeCreate.ObjectType, show.ObjectTypes[0])
