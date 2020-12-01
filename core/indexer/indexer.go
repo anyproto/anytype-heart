@@ -38,6 +38,9 @@ func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
 		quit:       make(chan struct{}),
 	}
 	i.quitWG.Add(2)
+	if err := i.ftInit(); err != nil {
+		log.Errorf("can't init ft: %v", err)
+	}
 	go i.detailsLoop(ch)
 	go i.ftLoop()
 	return i, nil
@@ -198,6 +201,27 @@ func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
 	}
 	log.With("thread", id).Infof("ft index updated for a %v", time.Since(st))
 	return
+}
+
+func (i *indexer) ftInit() error {
+	if ft := i.store.FTSearch(); ft != nil {
+		docCount, err := ft.DocCount()
+		if err != nil {
+			return err
+		}
+		if docCount == 0 {
+			all, err := i.store.List()
+			if err != nil {
+				return err
+			}
+			for _, d := range all {
+				if err := i.store.AddToIndexQueue(d.Id); err != nil {
+					return err
+				}
+			}
+		}
+	}
+	return nil
 }
 
 func (i *indexer) cleanup() {

@@ -20,6 +20,7 @@ type FTSearch interface {
 	Index(d SearchDoc) (err error)
 	Search(query string) (results []string, err error)
 	Delete(id string) error
+	DocCount() (uint64, error)
 	Close()
 }
 
@@ -59,6 +60,10 @@ func (f *ftSearch) Search(query string) (results []string, err error) {
 
 func (f *ftSearch) Delete(id string) (err error) {
 	return f.index.Delete(id)
+}
+
+func (f *ftSearch) DocCount() (uint64, error) {
+	return f.index.DocCount()
 }
 
 func (f *ftSearch) Close() {
