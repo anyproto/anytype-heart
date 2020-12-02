@@ -98,6 +98,7 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 
 	fileInfoKey := filesInfoBase.ChildString(file.Hash)
 
+	log.Debugf("file add %s", file.Hash)
 	exists, err := txn.Has(fileInfoKey)
 	if err != nil {
 		return err

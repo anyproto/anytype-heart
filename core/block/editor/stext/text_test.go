@@ -5,15 +5,22 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
+	"github.com/gogo/protobuf/types"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-func newTextBlock(id, contentText string) simple.Block {
+func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
 	return text.NewText(&model.Block{
 		Id: id,
 		Content: &model.BlockContentOfText{
@@ -21,6 +28,7 @@ func newTextBlock(id, contentText string) simple.Block {
 				Text: contentText,
 			},
 		},
+		ChildrenIds: childrenIds,
 	})
 }
 
@@ -259,5 +267,105 @@ func TestTextImpl_SetText(t *testing.T) {
 		assert.Equal(t, "2", sb.NewState().Pick("2").Model().GetText().Text)
 		time.Sleep(time.Second)
 		assert.Len(t, sb.Results.Applies, 2)
+	})
+	t.Run("flush on mention", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", ""))
+		tb := NewText(sb)
+
+		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId: "1",
+			Text:    "1",
+			Marks: &model.BlockContentTextMarks{
+				Marks: []*model.BlockContentTextMark{
+					{
+						Range: &model.Range{0, 1},
+						Type:  model.BlockContentTextMark_Mention,
+						Param: "blockId",
+					},
+				},
+			},
+		}))
+
+		assert.Equal(t, "1", sb.Pick("1").Model().GetText().Text)
+	})
+}
+
+func TestTextImpl_TurnInto(t *testing.T) {
+	t.Run("common text style", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", ""))
+		tb := NewText(sb)
+		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Header4, "1", "2"))
+		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Header4, sb.Doc.Pick("1").Model().GetText().Style)
+	})
+	t.Run("apply only for parents", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "", "1.1")).
+			AddBlock(newTextBlock("2", "", "2.2")).
+			AddBlock(newTextBlock("1.1", "")).
+			AddBlock(newTextBlock("2.2", ""))
+		tb := NewText(sb)
+		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Checkbox, "1", "1.1", "2", "2.2"))
+		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1").Model().GetText().Style)
+		assert.NotEqual(t, model.BlockContentText_Checkbox, sb.Doc.Pick("1.1").Model().GetText().Style)
+		assert.NotEqual(t, model.BlockContentText_Checkbox, sb.Doc.Pick("2.2").Model().GetText().Style)
+	})
+	t.Run("move children up", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "", "1.1")).
+			AddBlock(newTextBlock("2", "", "2.2")).
+			AddBlock(newTextBlock("1.1", "")).
+			AddBlock(newTextBlock("2.2", ""))
+		tb := NewText(sb)
+		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Quote, "1", "1.1", "2", "2.2"))
+		assert.Equal(t, model.BlockContentText_Quote, sb.Doc.Pick("1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Quote, sb.Doc.Pick("1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("1.1").Model().GetText().Style)
+		assert.Equal(t, model.BlockContentText_Paragraph, sb.Doc.Pick("2.2").Model().GetText().Style)
+		assert.Equal(t, []string{"1", "1.1", "2", "2.2"}, sb.Doc.Pick("test").Model().ChildrenIds)
+	})
+	t.Run("turn link into text", func(t *testing.T) {
+		ctrl := gomock.NewController(t)
+		defer ctrl.Finish()
+		ms := mockMeta.NewMockService(ctrl)
+		sb := smarttest.NewWithMeta("test", ms)
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(link.NewLink(&model.Block{
+				Id: "2",
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: "targetId",
+					},
+				},
+			}))
+		tb := NewText(sb)
+
+		ms.EXPECT().FetchDetails([]string{"targetId"}).Return([]meta.Meta{
+			{
+				BlockId: "targetId",
+				SmartBlockMeta: core.SmartBlockMeta{
+					Details: &types.Struct{
+						Fields: map[string]*types.Value{
+							"name": pbtypes.String("link name"),
+						},
+					},
+				},
+			},
+		})
+
+		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Paragraph, "2"))
+		secondBlockId := sb.Doc.Pick("test").Model().ChildrenIds[1]
+		assert.NotEqual(t, "2", secondBlockId)
+		assert.Equal(t, "link name", sb.Doc.Pick(secondBlockId).Model().GetText().Text)
 	})
 }

@@ -1,11 +1,11 @@
 package files
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net/http"
 	"strings"
 
@@ -16,14 +16,14 @@ import (
 
 type AddOption func(*AddOptions)
 type AddOptions struct {
-	Reader    io.Reader
+	Reader    io.ReadSeeker
 	Use       string
 	Media     string
 	Name      string
 	Plaintext bool
 }
 
-func WithReader(r io.Reader) AddOption {
+func WithReader(r io.ReadSeeker) AddOption {
 	return func(args *AddOptions) {
 		args.Reader = r
 	}
@@ -87,11 +87,16 @@ func (s *Service) NormalizeOptions(ctx context.Context, opts *AddOptions) error 
 	}
 
 	if opts.Media == "" {
-		buf := bufio.NewReader(opts.Reader)
-		data, err := buf.Peek(512)
+		data, err := ioutil.ReadAll(io.LimitReader(opts.Reader, 512))
 		if err != nil && err != io.EOF {
 			return fmt.Errorf("failed to get first 512 bytes to detect content-type: %s", err)
 		}
+
+		_, err = opts.Reader.Seek(0, io.SeekStart)
+		if err != nil {
+			return fmt.Errorf("failed to seek underlying reader: %w", err)
+		}
+
 		t, err := filetype.Match(data)
 		if err != nil {
 			log.Warnf("filetype failed to match for %s: %s", opts.Name, err.Error())
@@ -99,8 +104,6 @@ func (s *Service) NormalizeOptions(ctx context.Context, opts *AddOptions) error 
 		} else {
 			opts.Media = t.MIME.Value
 		}
-
-		opts.Reader = buf
 	}
 
 	return nil
