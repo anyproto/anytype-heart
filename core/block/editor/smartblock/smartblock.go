@@ -766,7 +766,8 @@ func hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
-	if act.Relations != nil || act.ObjectTypes != nil {
+	// todo: check details for exact object-relations changes
+	if act.Relations != nil || act.ObjectTypes != nil || act.Details != nil {
 		return true
 	}
 	for _, edit := range act.Change {

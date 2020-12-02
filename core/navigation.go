@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -16,6 +18,10 @@ func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequ
 		}
 
 		return m
+	}
+
+	if mw.Anytype == nil {
+		return response(pb.RpcNavigationListObjectsResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
 	Objects, err := mw.Anytype.ObjectList()
@@ -43,6 +49,10 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetO
 		}
 
 		return m
+	}
+
+	if mw.Anytype == nil {
+		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
 	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
