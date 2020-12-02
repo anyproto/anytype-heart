@@ -71,7 +71,7 @@ type source struct {
 	sb             core.SmartBlock
 	tree           *change.Tree
 	lastSnapshotId string
-	logHeads       map[string]string
+	logHeads       map[string]*change.Change
 	receiver       ChangeReceiver
 	unsubscribe    func()
 	detailsOnly    bool
@@ -178,7 +178,7 @@ func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileCh
 	}
 	if doSnapshot || s.needSnapshot() || len(changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
-			LogHeads: s.logHeads,
+			LogHeads: s.logHeadIDs(),
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:  st.BlocksToSave(),
 				Details: st.Details(),
@@ -194,7 +194,7 @@ func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileCh
 	}
 	ch := &change.Change{Id: id, Change: c}
 	s.tree.Add(ch)
-	s.logHeads[s.logId] = id
+	s.logHeads[s.logId] = ch
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
 		log.Infof("%s: pushed snapshot", s.id)
@@ -264,7 +264,7 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 			continue
 		}
 		changes = append(changes, ch)
-		s.logHeads[record.LogID] = record.ID
+		s.logHeads[record.LogID] = ch
 	}
 	log.With("thread", s.id).Infof("received %d records; changes count: %d", len(records), len(changes))
 	if len(changes) == 0 {
@@ -308,13 +308,20 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	return fileKeys
 }
 
+func (s *source) logHeadIDs() map[string]string {
+	var hs = make(map[string]string)
+	for id, ch := range s.logHeads {
+		if ch != nil {
+			hs[id] = ch.Id
+		}
+	}
+	return hs
+}
+
 func (s *source) timeline() []status.LogTime {
-	var (
-		heads    = s.tree.Heads()
-		timeline = make([]status.LogTime, 0, len(heads))
-	)
-	for _, head := range heads {
-		if ch := s.tree.Get(head); ch != nil && len(ch.Account) > 0 && len(ch.Device) > 0 {
+	var timeline = make([]status.LogTime, 0, len(s.logHeads))
+	for _, ch := range s.logHeads {
+		if ch != nil && len(ch.Account) > 0 && len(ch.Device) > 0 {
 			timeline = append(timeline, status.LogTime{
 				AccountID: ch.Account,
 				DeviceID:  ch.Device,
