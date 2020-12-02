@@ -343,6 +343,10 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 					}
 				}
 
+				if rel.Key == "id" || rel.Key == "type" {
+					continue
+				}
+
 				// add all object relation values as dependents
 				for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
 					if targetId != "" {
