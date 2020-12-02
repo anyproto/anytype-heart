@@ -108,7 +108,13 @@ func (s *service) Watch(tid thread.ID, fList func() []string) bool {
 		closer = func() { close(stop); ticker.Stop() }
 	)
 
+	// store watcher closer
 	s.watchers[tid] = closer
+
+	// cafe replicates every single thread, so here we just
+	// track all the threads seen so far, in order to be
+	// notified when cafe connectivity status changes
+	s.getDeviceThreads(s.cafeID).Add(tid)
 
 	go func() {
 		for {
@@ -166,13 +172,13 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 		s.devAccount[logTime.DeviceID] = logTime.AccountID
 
 		// update device threads
-		dt, exist := s.devThreads[logTime.DeviceID]
-		if !exist {
-			dt = hashset.New()
-			s.devThreads[logTime.DeviceID] = dt
-		}
-		dt.Add(tid)
+		s.getDeviceThreads(logTime.DeviceID).Add(tid)
 	}
+
+	// cafe is just a replicator, it won't appear in a timeline
+	// so we should explicitly add potentially new thread
+	s.getDeviceThreads(s.cafeID).Add(tid)
+
 	ts := s.getThreadStatus(tid)
 	s.mu.Unlock()
 
@@ -187,15 +193,6 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 		log.Warn("unable to submit timeline update notification for more than 2 seconds")
 	}
 }
-
-//func (s *service) ThreadSummary() net.SyncSummary {
-//	ps, _ := s.tInfo.PeerSummary(s.cafe)
-//	return ps
-//}
-//
-//func (s *service) FileSummary() core.FilePinSummary {
-//	return s.fInfo.FileSummary()
-//}
 
 func (s *service) Start() error {
 	if err := s.startConnectivityTracking(); err != nil {
@@ -229,29 +226,27 @@ func (s *service) startConnectivityTracking() error {
 		for event := range connEvents {
 			var (
 				devID = event.Peer.String()
-				ts    = make(map[thread.ID]*threadStatus)
+				ts    []thread.ID
 			)
 
 			s.mu.Lock()
 			// update peer connectivity
 			s.connMap[devID] = event.Connected
 
-			// find threads shared with peer
+			// find threads shared with peer / cafe replicated
 			if tids, exist := s.devThreads[devID]; exist {
 				for _, i := range tids.List() {
 					var tid = i.(thread.ID)
-					ts[tid] = s.getThreadStatus(tid)
+					// notify currently watched threads only
+					if _, watched := s.watchers[tid]; watched {
+						ts = append(ts, tid)
+					}
 				}
 			}
 			s.mu.Unlock()
 
-			for tid, t := range ts {
-				t.Lock()
-				t.UpdateConnectivity(devID, event.Connected)
-				var modified = t.modified
-				t.Unlock()
-
-				if modified && !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
+			for _, tid := range ts {
+				if !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
 					log.Warn("unable to submit connectivity update notification for more than 2 seconds")
 				}
 			}
@@ -300,16 +295,20 @@ func (s *service) startSendingThreadStatus() {
 func (s *service) getThreadStatus(tid thread.ID) *threadStatus {
 	ts, exist := s.threads[tid]
 	if !exist {
-		ts = newThreadStatus(func(devID string) bool {
-			// deadlock-safe b/c connectivity resolve should
-			// never be running under the global mutex
-			s.mu.Lock()
-			defer s.mu.Unlock()
-			return s.connMap[devID]
-		})
+		ts = newThreadStatus()
 		s.threads[tid] = ts
 	}
 	return ts
+}
+
+// Unsafe, use under the global lock!
+func (s *service) getDeviceThreads(devID string) *hashset.HashSet {
+	ts, ok := s.devThreads[devID]
+	if !ok {
+		ts = hashset.New()
+		s.devThreads[devID] = ts
+	}
+	return &ts
 }
 
 func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.EventStatusThread {
@@ -320,8 +319,9 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 
 	var (
 		accounts = make(map[string][]devInfo)
+		conn     = make(map[string]bool)
+		dss      = make(map[string]deviceStatus)
 		cafe     deviceStatus
-		dss      []deviceStatus
 		event    = pb.EventStatusThread{
 			Summary: &pb.EventStatusThreadSummary{},
 			Cafe:    &pb.EventStatusThreadCafe{Files: &pb.EventStatusThreadCafePinStatus{}},
@@ -345,23 +345,26 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 	ts.Lock()
 	s.mu.Lock()
 
-	// construct account tree
+	// device status and connectivity
 	for devID, status := range ts.devices {
 		if devID == s.cafeID {
 			cafe = *status
-			continue
-		} else if devID == s.ownDeviceID {
-			// do not include own device status
+		} else if devID != s.ownDeviceID {
+			// include into account tree
+			if accID, found := s.devAccount[devID]; found {
+				accountDevices := accounts[accID]
+				accounts[accID] = append(accountDevices, devInfo{devID, *status})
+			} // omit devices with unmatched account
+		} else {
+			// skip own device status
 			continue
 		}
 
-		if accID, found := s.devAccount[devID]; found {
-			accountDevices := accounts[accID]
-			accounts[accID] = append(accountDevices, devInfo{devID, *status})
-		} // omit devices with unmatched account
+		// device connection status
+		conn[devID] = s.connMap[devID]
 	}
 
-	// get file pinning stats
+	// file pinning stats
 	for _, info := range ts.files {
 		switch info.Status {
 		case cafepb.PinStatus_Queued:
@@ -386,6 +389,7 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 	for accID, devices := range accounts {
 		var accountInfo = pb.EventStatusThreadAccount{Id: shorten(accID)}
 		if accID == profile.AccountAddr {
+			// decorate own account with name and avatar
 			accountInfo.Name = profile.Name
 			accountInfo.ImageHash = profile.IconImage
 		}
@@ -393,19 +397,19 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 		for _, device := range devices {
 			accountInfo.Devices = append(accountInfo.Devices, &pb.EventStatusThreadDevice{
 				Name:       shorten(device.id),
-				Online:     device.ds.online,
+				Online:     conn[device.id],
 				LastPulled: device.ds.status.LastPull,
 				LastEdited: device.ds.lastEdited,
 			})
 
 			// account considered online if any device is online
-			accountInfo.Online = accountInfo.Online || device.ds.online
+			accountInfo.Online = accountInfo.Online || conn[device.id]
 			// the very last edit among all devices
 			accountInfo.LastEdited = max(accountInfo.LastEdited, device.ds.lastEdited)
 			// the very last pull among all devices
 			accountInfo.LastPulled = max(accountInfo.LastPulled, device.ds.status.LastPull)
 			// collect individual device statuses for summary
-			dss = append(dss, device.ds)
+			dss[device.id] = device.ds
 		}
 
 		// devices in the same account ordered by last edit time (desc)
@@ -432,12 +436,12 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 	event.Cafe.Status = cafeStatus(cafe)
 	event.Cafe.LastPulled = cafe.status.LastPull
 	event.Cafe.LastPushSucceed = cafe.status.Up == net.Success
-	if !cafe.online && event.Cafe.Status == pb.EventStatusThread_Failed {
+	if !conn[s.cafeID] && event.Cafe.Status == pb.EventStatusThread_Failed {
 		event.Cafe.Status = pb.EventStatusThread_Offline
 	}
 
 	// sync status summary
-	event.Summary.Status = summaryStatus(event.Cafe.Status, dss...)
+	event.Summary.Status = summaryStatus(event.Cafe.Status, dss, conn)
 	return event
 }
 
@@ -465,9 +469,13 @@ func cafeStatus(cafe deviceStatus) pb.EventStatusThreadSyncStatus {
 }
 
 // Infer sync status summary from individual devices and cafe
-func summaryStatus(cafe pb.EventStatusThreadSyncStatus, devices ...deviceStatus) pb.EventStatusThreadSyncStatus {
+func summaryStatus(
+	cafe pb.EventStatusThreadSyncStatus,
+	devices map[string]deviceStatus,
+	connectivity map[string]bool,
+) pb.EventStatusThreadSyncStatus {
 	var unknown, offline, inProgress, synced, failed int
-	for _, device := range devices {
+	for id, device := range devices {
 		switch device.status.Down {
 		case net.Unknown:
 			unknown += 1
@@ -478,7 +486,7 @@ func summaryStatus(cafe pb.EventStatusThreadSyncStatus, devices ...deviceStatus)
 		case net.Failure:
 			failed += 1
 		}
-		if !device.online {
+		if !connectivity[id] {
 			offline += 1
 		}
 	}
@@ -509,21 +517,18 @@ type (
 	deviceStatus struct {
 		status     net.SyncStatus
 		lastEdited int64
-		online     bool
 	}
 
 	threadStatus struct {
 		devices  map[string]*deviceStatus
-		devConn  func(devID string) bool
 		files    map[string]pin.FilePinInfo
 		modified bool
 		sync.Mutex
 	}
 )
 
-func newThreadStatus(conn func(devID string) bool) *threadStatus {
+func newThreadStatus() *threadStatus {
 	return &threadStatus{
-		devConn: conn,
 		devices: make(map[string]*deviceStatus),
 		files:   make(map[string]pin.FilePinInfo),
 	}
@@ -545,14 +550,6 @@ func (s *threadStatus) UpdateTimeline(devID string, lastEdit int64) {
 	}
 }
 
-func (s *threadStatus) UpdateConnectivity(devID string, online bool) {
-	var dev = s.getDevice(devID)
-	if dev.online != online {
-		dev.online = online
-		s.modified = true
-	}
-}
-
 func (s *threadStatus) UpdateFiles(cid string, info pin.FilePinInfo) {
 	if fi, ok := s.files[cid]; !ok || fi != info {
 		s.files[cid] = info
@@ -563,7 +560,7 @@ func (s *threadStatus) UpdateFiles(cid string, info pin.FilePinInfo) {
 func (s *threadStatus) getDevice(id string) *deviceStatus {
 	dev, found := s.devices[id]
 	if !found {
-		dev = &deviceStatus{online: s.devConn(id)}
+		dev = &deviceStatus{}
 		s.devices[id] = dev
 		s.modified = true
 	}

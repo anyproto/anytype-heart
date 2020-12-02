@@ -379,6 +379,7 @@ func (a *Anytype) Stop() error {
 		close(a.shutdownStartsCh)
 	}
 
+	// fixme useless!
 	a.replicationWG.Wait()
 
 	if a.mdns != nil {
