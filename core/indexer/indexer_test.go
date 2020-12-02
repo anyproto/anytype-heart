@@ -85,6 +85,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.getSerach = mockIndexer.NewMockGetSearchInfo(fx.ctrl)
 	fx.anytype = testMock.NewMockService(fx.ctrl)
 	fx.objectStore = testMock.NewMockObjectStore(fx.ctrl)
+	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.ch = make(chan core.SmartblockRecordWithThreadID)
 	fx.anytype.EXPECT().SubscribeForNewRecords().Return(fx.ch, func() {
