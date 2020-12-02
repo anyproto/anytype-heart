@@ -99,14 +99,15 @@ func (sb *stateBuilder) getLogs() (logs []core.SmartblockLog, err error) {
 	}
 	var nonEmptyLogs = logs[:0]
 	for _, l := range logs {
+		if len(l.Head) == 0 {
+			continue
+		}
 		if ch, err := sb.loadChange(l.Head); err != nil {
 			log.Errorf("loading head %s of the log %s failed: %v", l.Head, l.ID, err)
 		} else {
 			sb.logHeads[l.ID] = ch
 		}
-		if l.Head != "" {
-			nonEmptyLogs = append(nonEmptyLogs, l)
-		}
+		nonEmptyLogs = append(nonEmptyLogs, l)
 	}
 	return nonEmptyLogs, nil
 }
