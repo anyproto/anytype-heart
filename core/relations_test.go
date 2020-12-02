@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
@@ -40,8 +41,12 @@ func start(t *testing.T) (rootPath string, mw *Middleware) {
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
 	defer os.RemoveAll(rootPath)
-	os.Setenv("cafe_p2p_addr", "-")
-	os.Setenv("cafe_grpc_addr", "-")
+
+	// override default config
+	config.DefaultConfig.InMemoryDS = true
+	config.DefaultConfig.Offline = true
+	config.DefaultConfig.CafeP2PAddr = "-"
+	config.DefaultConfig.CafeGRPCAddr = "-"
 
 	mw.EventSender = event.NewCallbackSender(func(event *pb.Event) {
 		// nothing to do
