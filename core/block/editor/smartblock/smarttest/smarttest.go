@@ -74,7 +74,7 @@ func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relati
 		}
 		st.meta.Relations = append(st.meta.Relations, pbtypes.CopyRelation(d))
 	}
-	st.Doc.(*state.State).SetRelations(st.meta.Relations)
+	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
 	return st.meta.Relations, nil
 }
 
@@ -99,7 +99,7 @@ func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation, crea
 		}
 	}
 
-	st.Doc.(*state.State).SetRelations(st.meta.Relations)
+	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
 	return nil
 }
 

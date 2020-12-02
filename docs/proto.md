@@ -11214,6 +11214,7 @@ Precondition: user A and user B opened the same block
 | Breadcrumbs | 4 | have only Link simpleblocks |
 | Set | 5 | only have dataview simpleblock |
 | ObjectType | 6 | have relations list |
+| File | 7 |  |
 
 
  

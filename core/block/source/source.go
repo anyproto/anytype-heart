@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/cheggaaa/mb"
@@ -38,6 +39,14 @@ type Source interface {
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
 func NewSource(a anytype.Service, id string) (s Source, err error) {
+	st, err := smartblock.SmartBlockTypeFromID(id)
+	if st == smartblock.SmartBlockTypeFile {
+		return NewFiles(a, id), nil
+	}
+	return newSource(a, id)
+}
+
+func newSource(a anytype.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)

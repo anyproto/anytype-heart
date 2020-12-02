@@ -41,7 +41,6 @@ func start(t *testing.T) (rootPath string, mw *Middleware) {
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
 	defer os.RemoveAll(rootPath)
-
 	// override default config
 	config.DefaultConfig.InMemoryDS = true
 	config.DefaultConfig.Offline = true
@@ -435,4 +434,24 @@ func TestBundledType(t *testing.T) {
 	require.NotNil(t, show)
 	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 2)
 	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[1].Fields["id"].GetStringValue())
+}
+
+func TestFile(t *testing.T) {
+	_, mw := start(t)
+
+	respUploadImage := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+	require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)
+
+	respOpenImage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respUploadImage.Hash})
+	require.Equal(t, 0, int(respOpenImage.Error.Code), respOpenImage.Error.Description)
+	require.Len(t, respOpenImage.Event.Messages, 1)
+	show := respOpenImage.Event.Messages[0].GetBlockShow()
+	require.NotNil(t, show)
+	require.Len(t, respOpenImage.Event.Messages[0].GetBlockShow().Details, 1)
+	require.Equal(t, "a.jpg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "name"))
+	require.Equal(t, "image/jpeg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "mimeType"))
+
+	b := getBlockById("file", respOpenImage.Event.Messages[0].GetBlockShow().Blocks)
+	require.NotNil(t, b)
+	require.Equal(t, respUploadImage.Hash, b.GetFile().Hash)
 }

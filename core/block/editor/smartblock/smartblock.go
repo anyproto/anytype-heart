@@ -229,6 +229,15 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 		if b := sb.Doc.Pick("dataview"); b != nil {
 			if dv := b.Model().GetDataview(); dv != nil {
 				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
+				for _, rel := range dv.Relations {
+					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+						for _, ot := range rel.ObjectTypes {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								uniqueObjTypes = append(uniqueObjTypes, ot)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
@@ -581,7 +590,7 @@ func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relat
 		}
 	}
 
-	s := sb.NewState().SetRelations(copy)
+	s := sb.NewState().SetExtraRelations(copy)
 
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
@@ -667,7 +676,7 @@ mainLoop:
 		return
 	}
 
-	s := sb.NewState().SetRelations(append(extraRelations, newRelations...))
+	s := sb.NewState().SetExtraRelations(append(extraRelations, newRelations...))
 	if err = sb.Apply(s); err != nil {
 		return
 	}
@@ -690,7 +699,7 @@ func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
 		}
 	}
 
-	s := sb.NewState().SetRelations(filtered)
+	s := sb.NewState().SetExtraRelations(filtered)
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}

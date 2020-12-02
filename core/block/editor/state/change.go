@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -168,7 +169,12 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 		}
 	}
 
-	s.extraRelations = append(rels, add.Relation)
+	rel := add.Relation
+	if rel.Format == pbrelation.RelationFormat_file && rel.ObjectTypes == nil {
+		rel.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+	}
+
+	s.extraRelations = append(rels, rel)
 	return nil
 }
 

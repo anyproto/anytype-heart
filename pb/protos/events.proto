@@ -653,6 +653,7 @@ enum SmartBlockType {
     Set = 5; // only have dataview simpleblock
     ObjectType = 6; // have relations list
 
+    File = 7;
 }
 
 message ResponseEvent {
