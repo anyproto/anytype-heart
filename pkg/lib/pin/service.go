@@ -11,12 +11,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/dgtony/collections/hashset"
-	ct "github.com/dgtony/collections/time"
 )
 
 const (
-	pinCheckPeriod     = 10 * time.Minute
-	cafeRequestTimeout = 30 * time.Second
+	pinCheckPeriodActive = 15 * time.Second
+	pinCheckPeriodIdle   = 10 * time.Minute
+	cafeRequestTimeout   = 30 * time.Second
 )
 
 var ErrNoCafe = errors.New("no cafe client")
@@ -43,8 +43,9 @@ type filePinService struct {
 	cafe  cafe.Client
 	store localstore.FileStore
 
-	files map[string]FilePinInfo
-	mu    sync.RWMutex
+	files    map[string]FilePinInfo
+	activate chan struct{}
+	mu       sync.RWMutex
 }
 
 func NewFilePinService(
@@ -53,10 +54,11 @@ func NewFilePinService(
 	store localstore.FileStore,
 ) *filePinService {
 	return &filePinService{
-		ctx:   ctx,
-		cafe:  cafe,
-		store: store,
-		files: make(map[string]FilePinInfo),
+		ctx:      ctx,
+		cafe:     cafe,
+		store:    store,
+		activate: make(chan struct{}),
+		files:    make(map[string]FilePinInfo),
 	}
 }
 
@@ -88,15 +90,20 @@ func (f *filePinService) FilePin(cid string) error {
 	_, err := f.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: cid})
 
 	f.mu.Lock()
-	defer f.mu.Unlock()
-
 	if err != nil {
 		f.set(cid, cafepb.PinStatus_Failed)
-		return err
+	} else {
+		f.set(cid, cafepb.PinStatus_Queued)
+	}
+	f.mu.Unlock()
+
+	// interrupt idle sync phase
+	select {
+	case f.activate <- struct{}{}:
+	default:
 	}
 
-	f.set(cid, cafepb.PinStatus_Queued)
-	return nil
+	return err
 }
 
 func (f *filePinService) Start() {
@@ -132,19 +139,29 @@ func (f *filePinService) set(cid string, status cafepb.PinStatus) {
 
 // Periodically synchronize pin-statuses with cafe
 func (f *filePinService) syncCafe() {
-	t := ct.NewRightAwayTicker(pinCheckPeriod)
-	defer t.Stop()
+	var active = true
 
 	for {
 		var (
 			queued, pinned, failed []string
 			onlyLocal              = hashset.New()
+			period                 time.Duration
 		)
 
+		if active {
+			period = pinCheckPeriodActive
+		} else {
+			period = pinCheckPeriodIdle
+		}
+
+		t := time.NewTimer(period)
+
 		select {
-		case <-t.C:
+		case <-f.activate: // new file pinned
+			t.Stop()
 		case <-f.ctx.Done():
 			return
+		case <-t.C: // ready for periodic check
 		}
 
 		log.Debugf("checking pinned files statuses...")
@@ -208,6 +225,9 @@ func (f *filePinService) syncCafe() {
 
 		log.Debugf("file pinning status :: in progress: %d, pinned: %d, failed: %d, local: %d",
 			len(queued), len(pinned), len(failed), len(local))
+
+		// pinning is active until there are queued, retried or local files
+		active = len(queued)+len(failed)+len(local) > 0
 
 		if retried := len(failed) + len(local); retried > 0 {
 			log.Infof("trying to pin %d files", retried)
