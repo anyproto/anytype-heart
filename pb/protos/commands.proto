@@ -2504,6 +2504,9 @@ message Rpc {
         message ListObjects {
             message Request {
                 Context context = 1;
+                string fullText = 2;
+                int32 limit = 3;
+                int32 offset = 4;
             }
 
             message Response {

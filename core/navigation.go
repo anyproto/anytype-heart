@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -23,22 +24,24 @@ func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequ
 	if mw.Anytype == nil {
 		return response(pb.RpcNavigationListObjectsResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
-
-	Objects, err := mw.Anytype.ObjectList()
+	var objectTypes []coresb.SmartBlockType
+	if req.Context != pb.RpcNavigation_Navigation {
+		objectTypes = []coresb.SmartBlockType{
+			coresb.SmartBlockTypeSet,
+			coresb.SmartBlockTypeArchive,
+			coresb.SmartBlockTypeHome,
+		}
+	}
+	records, _, err := mw.Anytype.ObjectStore().QueryObjectInfo(database.Query{
+		FullText: req.FullText,
+		Limit:    int(req.Limit),
+		Offset:   int(req.Offset),
+	}, objectTypes)
 	if err != nil {
 		return response(pb.RpcNavigationListObjectsResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	var ObjectsFiltered []*model.ObjectInfo
-	for _, page := range Objects {
-		if req.Context != pb.RpcNavigation_Navigation && (page.ObjectType == model.ObjectInfo_Set || page.ObjectType == model.ObjectInfo_Archive) {
-			continue
-		}
-
-		ObjectsFiltered = append(ObjectsFiltered, page)
-	}
-
-	return response(pb.RpcNavigationListObjectsResponseError_NULL, ObjectsFiltered, nil)
+	return response(pb.RpcNavigationListObjectsResponseError_NULL, records, nil)
 }
 
 func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {

@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -68,6 +69,7 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
+	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
 	FTSearch() ftsearch.FTSearch

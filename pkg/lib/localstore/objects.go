@@ -46,9 +46,19 @@ const (
 	pageSchema = "https://anytype.io/schemas/page"
 )
 
-type filterNotSystemObjects struct{}
+var filterNotSystemObjects = &filterObjectTypes{
+	objectTypes: []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeObjectType,
+	},
+}
 
-func (m *filterNotSystemObjects) Filter(e query.Entry) bool {
+type filterObjectTypes struct {
+	objectTypes []smartblock.SmartBlockType
+}
+
+func (m *filterObjectTypes) Filter(e query.Entry) bool {
 	keyParts := strings.Split(e.Key, "/")
 	id := keyParts[len(keyParts)-1]
 
@@ -153,7 +163,7 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{&filterNotSystemObjects{}}, dsq.Filters...)
+	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
 			return
@@ -206,6 +216,61 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	return results, total, nil
 }
 
+func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	dsq := q.DSQuery(nil)
+	dsq.Offset = 0
+	dsq.Limit = 0
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+	if len(objectTypes) > 0 {
+		dsq.Filters = append([]query.Filter{&filterObjectTypes{objectTypes}}, dsq.Filters...)
+	}
+	if q.FullText != "" {
+		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
+			return
+		}
+	}
+	res, err := txn.Query(dsq)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	var (
+		offset = q.Offset
+	)
+
+	// We use own limit/offset implementation in order to find out
+	// total number of records matching specified filters. Query
+	// returns this number for handy pagination on clients.
+	for rec := range res.Next() {
+		total++
+
+		if offset > 0 {
+			offset--
+			continue
+		}
+
+		if q.Limit > 0 && len(results) >= q.Limit {
+			continue
+		}
+
+		key := ds.NewKey(rec.Key)
+		keyList := key.List()
+		id := keyList[len(keyList)-1]
+		oi, err := getObjectInfo(txn, id)
+		if err != nil {
+			return nil, 0, err
+		}
+		results = append(results, oi)
+	}
+	return results, total, nil
+}
+
 func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -248,7 +313,7 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbr
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesRelationsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{&filterNotSystemObjects{}}, dsq.Filters...)
+	dsq.Filters = append([]query.Filter{&filterObjectTypes{}}, dsq.Filters...)
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, fmt.Errorf("error when querying ds: %w", err)
