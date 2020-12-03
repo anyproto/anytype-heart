@@ -24,7 +24,9 @@ func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequ
 	if mw.Anytype == nil {
 		return response(pb.RpcNavigationListObjectsResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
-	var objectTypes []coresb.SmartBlockType
+	objectTypes := []coresb.SmartBlockType{
+		coresb.SmartBlockTypeArchive,
+	}
 	if req.Context != pb.RpcNavigation_Navigation {
 		objectTypes = []coresb.SmartBlockType{
 			coresb.SmartBlockTypeSet,
