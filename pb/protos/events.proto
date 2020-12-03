@@ -113,13 +113,13 @@ message Event {
                 repeated anytype.relation.RelationWithValue relations = 2;
             }
 
-            message ObjectTypesPerObject {
+            message ObjectTypePerObject {
                 string objectId = 1;
-                repeated string objectTypes = 2;
+                string objectType = 2;
             }
 
             repeated anytype.relation.ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
-            repeated ObjectTypesPerObject objectTypesPerObject = 6; // objectType URLs per object
+            repeated ObjectTypePerObject objectTypePerObject = 6; // objectType URLs per object
             repeated anytype.relation.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
 
             anytype.relation.ObjectType.Layout layout = 8; //
@@ -653,6 +653,7 @@ enum SmartBlockType {
     Set = 5; // only have dataview simpleblock
     ObjectType = 6; // have relations list
 
+    File = 7;
 }
 
 message ResponseEvent {

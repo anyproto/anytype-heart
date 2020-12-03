@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
@@ -105,6 +106,10 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 		}
 	}
 
+	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
+		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+	}
+
 	tb.AddRelation(relation)
 
 	return &relation, d.Apply(s)
@@ -132,6 +137,10 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
+	}
+
+	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
+		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
 	}
 
 	if err = tb.UpdateRelation(relationKey, relation); err != nil {
@@ -345,7 +354,7 @@ func (d *dataviewCollectionImpl) GetObjectTypeURL(ctx *state.Context, blockId st
 	if v, ok := tb.Model().Content.(*model.BlockContentOfDataview); !ok {
 		return "", fmt.Errorf("wrong dataview block content type: %T", tb.Model().Content)
 	} else {
-		return v.Dataview.SchemaURL, nil
+		return v.Dataview.Source, nil
 	}
 }
 

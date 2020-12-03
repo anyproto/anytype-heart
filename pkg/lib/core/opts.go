@@ -28,6 +28,7 @@ type ServiceOptions struct {
 	CafeP2PAddr           ma.Multiaddr
 	WebGatewayBaseUrl     string
 	Offline               bool
+	InMemoryDS            bool
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
 	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler
@@ -77,6 +78,16 @@ func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
 		// "-" or any other single char assumes as empty for env var compatability
 		if len(cfg.CafeP2PAddr) > 1 {
 			opts = append(opts, WithCafeP2PAddr(cfg.CafeP2PAddr))
+		} else if cfg.CafeP2PAddr == "-" {
+			opts = append(opts, WithoutCafe())
+		}
+
+		if cfg.Offline {
+			opts = append(opts, WithOfflineMode(true))
+		}
+
+		if cfg.InMemoryDS {
+			opts = append(opts, WithInMemoryDS(true))
 		}
 
 		if len(cfg.CafeGRPCAddr) > 1 {
@@ -98,6 +109,13 @@ func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
 func WithNewSmartblockChan(ch chan string) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.NewSmartblockChan = ch
+		return nil
+	}
+}
+
+func WithInMemoryDS(inMemoryDs bool) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.InMemoryDS = inMemoryDs
 		return nil
 	}
 }

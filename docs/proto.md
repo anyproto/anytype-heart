@@ -701,7 +701,7 @@
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
     - [Event.Block.Show](#anytype.Event.Block.Show)
-    - [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject)
+    - [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject)
     - [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject)
     - [Event.Message](#anytype.Event.Message)
     - [Event.Ping](#anytype.Event.Ping)
@@ -6880,8 +6880,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
-| fullText | [string](#string) |  | full text search |
-| offset | [int32](#int32) |  |  |
+| offset | [int32](#int32) |  | 3 is reserved for the full text search |
 | limit | [int32](#int32) |  |  |
 
 
@@ -9533,7 +9532,7 @@ sent when client should update existing records on the active view
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
 | viewId | [string](#string) |  | view id, client should double check this to make sure client doesn&#39;t switch the active view in the middle |
-| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | block of new records to insert |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated | records to update. Use &#39;id&#39; field to get records ids |
 
 
 
@@ -10798,7 +10797,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | deprecated, details for current and dependent smart blocks |
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 | objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| objectTypesPerObject | [Event.Block.Show.ObjectTypesPerObject](#anytype.Event.Block.Show.ObjectTypesPerObject) | repeated | objectType URLs per object |
+| objectTypePerObject | [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject) | repeated | objectType URLs per object |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
 | layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
 
@@ -10807,16 +10806,16 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 
 
-<a name="anytype.Event.Block.Show.ObjectTypesPerObject"></a>
+<a name="anytype.Event.Block.Show.ObjectTypePerObject"></a>
 
-### Event.Block.Show.ObjectTypesPerObject
+### Event.Block.Show.ObjectTypePerObject
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectId | [string](#string) |  |  |
-| objectTypes | [string](#string) | repeated |  |
+| objectType | [string](#string) |  |  |
 
 
 
@@ -11215,6 +11214,7 @@ Precondition: user A and user B opened the same block
 | Breadcrumbs | 4 | have only Link simpleblocks |
 | Set | 5 | only have dataview simpleblock |
 | ObjectType | 6 | have relations list |
+| File | 7 |  |
 
 
  
@@ -11485,8 +11485,7 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) |  |  |
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
-| schemaURL | [string](#string) |  | deprecated |
-| relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 
 
 

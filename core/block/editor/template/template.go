@@ -126,6 +126,36 @@ var WithTitle = StateTransformer(func(s *state.State) {
 	}
 })
 
+var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		b.Model().Restrictions = &model.BlockRestrictions{
+			Read:   false,
+			Edit:   true,
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		}
+		return true
+	})
+})
+
+var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
+	return func(s *state.State) {
+		WithEmpty(s)
+
+		for _, block := range blocks {
+			if block.Id == "" {
+				panic("WithRootBlocks arg must contains exact ids for blocks")
+			}
+			s.Add(simple.New(block))
+			err := s.InsertTo(s.RootId(), model.Block_Inner, block.Id)
+			if err != nil {
+				log.Errorf("template WithDataview failed to insert: %w", err)
+			}
+		}
+	}
+}
+
 var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer {
 	return func(s *state.State) {
 		// remove old dataview

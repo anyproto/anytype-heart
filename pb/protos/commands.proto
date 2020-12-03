@@ -2846,7 +2846,7 @@ message Rpc {
             message Request {
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
                 repeated anytype.model.Block.Content.Dataview.Sort sorts = 2;
-                // 3 is reserved for the full text search
+                string fullText = 3;
                 int32 offset = 4;
                 int32 limit = 5;
             }

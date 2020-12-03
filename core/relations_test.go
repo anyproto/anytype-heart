@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
@@ -40,8 +41,11 @@ func start(t *testing.T) (rootPath string, mw *Middleware) {
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
 	defer os.RemoveAll(rootPath)
-	os.Setenv("cafe_p2p_addr", "-")
-	os.Setenv("cafe_grpc_addr", "-")
+	// override default config
+	config.DefaultConfig.InMemoryDS = true
+	config.DefaultConfig.Offline = true
+	config.DefaultConfig.CafeP2PAddr = "-"
+	config.DefaultConfig.CafeGRPCAddr = "-"
 
 	mw.EventSender = event.NewCallbackSender(func(event *pb.Event) {
 		// nothing to do
@@ -359,7 +363,7 @@ func TestCustomType(t *testing.T) {
 	show := respOpenCustomTypeObject.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 	require.Len(t, show.ObjectTypes, 1)
-	require.Len(t, show.ObjectTypesPerObject, 1)
+	require.Len(t, show.ObjectTypePerObject, 1)
 	// omit relations
 	respObjectTypeCreate.ObjectType.Relations = nil
 	require.Equal(t, respObjectTypeCreate.ObjectType, show.ObjectTypes[0])
@@ -430,4 +434,24 @@ func TestBundledType(t *testing.T) {
 	require.NotNil(t, show)
 	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 2)
 	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[1].Fields["id"].GetStringValue())
+}
+
+func TestFile(t *testing.T) {
+	_, mw := start(t)
+
+	respUploadImage := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+	require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)
+
+	respOpenImage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respUploadImage.Hash})
+	require.Equal(t, 0, int(respOpenImage.Error.Code), respOpenImage.Error.Description)
+	require.Len(t, respOpenImage.Event.Messages, 1)
+	show := respOpenImage.Event.Messages[0].GetBlockShow()
+	require.NotNil(t, show)
+	require.Len(t, respOpenImage.Event.Messages[0].GetBlockShow().Details, 1)
+	require.Equal(t, "a.jpg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "name"))
+	require.Equal(t, "image/jpeg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "mimeType"))
+
+	b := getBlockById("file", respOpenImage.Event.Messages[0].GetBlockShow().Blocks)
+	require.NotNil(t, b)
+	require.Equal(t, respUploadImage.Hash, b.GetFile().Hash)
 }

@@ -3,6 +3,7 @@ package relation
 import (
 	"log"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 )
 
@@ -11,6 +12,8 @@ const ObjectTypeSelfType = "self"
 
 // all required internal relations will be added to any new object type
 var RequiredInternalRelations = []string{"id", "name", "type", "createdDate", "lastModifiedDate", "lastOpenedDate"}
+
+var FormatFilePossibleTargetObjectTypes = []string{objects.BundledObjectTypeURLPrefix + "file", objects.BundledObjectTypeURLPrefix + "image", objects.BundledObjectTypeURLPrefix + "video", objects.BundledObjectTypeURLPrefix + "audio"}
 
 var (
 	BundledRelations = map[string]*relation.Relation{
@@ -86,6 +89,7 @@ var (
 			DefaultValue: nil,
 			Key:          "iconImage",
 			DataSource:   relation.Relation_details,
+			ObjectTypes:  []string{objects.BundledObjectTypeURLPrefix + "image"},
 			Hidden:       true,
 			ReadOnly:     false,
 		},
@@ -95,6 +99,7 @@ var (
 			DefaultValue: nil,
 			Key:          "coverImage",
 			DataSource:   relation.Relation_details,
+			ObjectTypes:  []string{objects.BundledObjectTypeURLPrefix + "image"},
 			Hidden:       true,
 			ReadOnly:     false,
 		},

@@ -163,7 +163,7 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, objectTypesUrlByObject, objectTypes, err := sb.fetchMeta()
+		details, objectTypeUrlByObject, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
 		}
@@ -175,18 +175,17 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		}
 
 		var layout pbrelation.ObjectTypeLayout
-		for _, objectTypesUrlForObject := range objectTypesUrlByObject {
+		for _, objectTypesUrlForObject := range objectTypeUrlByObject {
 			if objectTypesUrlForObject.ObjectId != sb.Id() {
 				continue
 			}
-			for _, otUrl := range objectTypesUrlForObject.ObjectTypes {
-				for _, ot := range objectTypes {
-					if ot.Url == otUrl {
-						layout = ot.Layout
-					}
+
+			for _, ot := range objectTypes {
+				if ot.Url == objectTypesUrlForObject.ObjectType {
+					layout = ot.Layout
+					break
 				}
 			}
-
 		}
 
 		// todo: sb.Relations() makes extra query to read objectType which we already have here
@@ -194,14 +193,14 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-					RootId:               sb.RootId(),
-					Type:                 sb.Type(),
-					Blocks:               sb.Blocks(),
-					Details:              details,
-					Relations:            sb.Relations(),
-					ObjectTypesPerObject: objectTypesUrlByObject,
-					ObjectTypes:          objectTypes,
-					Layout:               layout,
+					RootId:              sb.RootId(),
+					Type:                sb.Type(),
+					Blocks:              sb.Blocks(),
+					Details:             details,
+					Relations:           sb.Relations(),
+					ObjectTypePerObject: objectTypeUrlByObject,
+					ObjectTypes:         objectTypes,
+					Layout:              layout,
 				}},
 			},
 		})
@@ -209,7 +208,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypesUrlByObject []*pb.EventBlockShowObjectTypesPerObject, objectTypes []*pbrelation.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypeUrlByObject []*pb.EventBlockShowObjectTypePerObject, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -224,23 +223,29 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 		SmartBlockMeta: *sb.Meta(),
 	})
 
-	var objectTypesMap = map[string]struct{}{}
-	for _, ot := range sb.ObjectTypes() {
-		objectTypesMap[ot] = struct{}{}
-	}
+	var uniqueObjTypes []string
 
 	if sb.Type() == pb.SmartBlockType_Set {
 		// add the object type from the dataview source
 		if b := sb.Doc.Pick("dataview"); b != nil {
 			if dv := b.Model().GetDataview(); dv != nil {
-				objectTypesMap[dv.Source] = struct{}{}
+				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
+				for _, rel := range dv.Relations {
+					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+						for _, ot := range rel.ObjectTypes {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								uniqueObjTypes = append(uniqueObjTypes, ot)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
 	// todo: should we use badger here?
 	timeout := time.After(time.Second)
-	var objectTypesUrlByObjectMap = map[string][]string{}
+	var objectTypeUrlByObjectMap = map[string]string{}
 
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
@@ -254,24 +259,25 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 				})
 			}
 			if d.ObjectTypes != nil {
-				for _, ot := range d.ObjectTypes {
-					objectTypesMap[ot] = struct{}{}
+				if len(d.SmartBlockMeta.ObjectTypes) > 0 {
+					if len(d.SmartBlockMeta.ObjectTypes) > 1 {
+						log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
+					}
+					trimedType := d.SmartBlockMeta.ObjectTypes[0]
+					if slice.FindPos(uniqueObjTypes, trimedType) == -1 {
+						uniqueObjTypes = append(uniqueObjTypes, trimedType)
+					}
+					objectTypeUrlByObjectMap[d.BlockId] = trimedType
 				}
-
-				objectTypesUrlByObjectMap[d.BlockId] = d.SmartBlockMeta.ObjectTypes
 			}
 		}
 	}
 
-	var objectTypesUrls []string
-	for ot := range objectTypesMap {
-		objectTypesUrls = append(objectTypesUrls, ot)
-	}
-	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
-	for id, ots := range objectTypesUrlByObjectMap {
-		objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
-			ObjectId:    id,
-			ObjectTypes: ots,
+	objectTypes = sb.meta.FetchObjectTypes(uniqueObjTypes)
+	for id, ot := range objectTypeUrlByObjectMap {
+		objectTypeUrlByObject = append(objectTypeUrlByObject, &pb.EventBlockShowObjectTypePerObject{
+			ObjectId:   id,
+			ObjectType: ot,
 		})
 	}
 
@@ -345,6 +351,10 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 					if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
 						ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
 					}
+				}
+
+				if rel.Key == "id" || rel.Key == "type" {
+					continue
 				}
 
 				// add all object relation values as dependents
@@ -584,7 +594,7 @@ func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relat
 		}
 	}
 
-	s := sb.NewState().SetRelations(copy)
+	s := sb.NewState().SetExtraRelations(copy)
 
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
@@ -670,7 +680,7 @@ mainLoop:
 		return
 	}
 
-	s := sb.NewState().SetRelations(append(extraRelations, newRelations...))
+	s := sb.NewState().SetExtraRelations(append(extraRelations, newRelations...))
 	if err = sb.Apply(s); err != nil {
 		return
 	}
@@ -693,7 +703,7 @@ func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
 		}
 	}
 
-	s := sb.NewState().SetRelations(filtered)
+	s := sb.NewState().SetExtraRelations(filtered)
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
@@ -756,7 +766,8 @@ func hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
-	if act.Relations != nil || act.ObjectTypes != nil {
+	// todo: check details for exact object-relations changes
+	if act.Relations != nil || act.ObjectTypes != nil || act.Details != nil {
 		return true
 	}
 	for _, edit := range act.Change {

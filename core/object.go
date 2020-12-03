@@ -1,6 +1,8 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -37,6 +39,10 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		}
 
 		return m
+	}
+
+	if mw.Anytype == nil {
+		return response(pb.RpcObjectSearchResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
 	records, _, err := mw.Anytype.ObjectStore().Query(nil, database.Query{

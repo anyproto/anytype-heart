@@ -419,6 +419,7 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 		litenet.WithNetHostAddr(hostAddr),
 		litenet.WithNetDebug(false),
 		litenet.WithOffline(a.opts.Offline),
+		litenet.WithInMemoryDS(a.opts.InMemoryDS),
 		litenet.WithNetPubSub(true), // TODO control with env var
 		litenet.WithNetSyncTracking(),
 		litenet.WithNetGRPCServerOptions(

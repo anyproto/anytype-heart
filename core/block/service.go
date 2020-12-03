@@ -1130,6 +1130,8 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	case pb.SmartBlockType_ObjectType:
 		sb = editor.NewObjectType(s.meta)
+	case pb.SmartBlockType_File:
+		sb = editor.NewFiles(s.meta)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

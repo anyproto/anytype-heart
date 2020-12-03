@@ -29,6 +29,8 @@ var DefaultConfig = Config{
 
 type Config struct {
 	HostAddr          string `json:"host_addr,omitempty" envconfig:"host_addr"`
+	Offline           bool   `json:"offline,omitempty" envconfig:"offline"`
+	InMemoryDS        bool   `json:"in_memory_ds,omitempty" envconfig:"in_memory_ds"`
 	CafeP2PAddr       string `json:"cafe_p2p_addr,omitempty" envconfig:"cafe_p2p_addr"`
 	CafeGRPCAddr      string `json:"cafe_grpc_addr,omitempty" envconfig:"cafe_grpc_addr"`
 	WebGatewayBaseUrl string `json:"web_gateway_base_url,omitempty" envconfig:"web_gateway_base_url"`

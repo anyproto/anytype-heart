@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -622,11 +623,15 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 			return s
 		}
 	}
+	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
+		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+	}
+
 	s.extraRelations = append(s.ExtraRelations(), relation)
 	return s
 }
 
-func (s *State) SetRelations(relations []*pbrelation.Relation) *State {
+func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	s.extraRelations = relations
 	return s
 }
