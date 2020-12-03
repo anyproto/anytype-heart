@@ -47,8 +47,10 @@ func (f *ftSearch) Index(d SearchDoc) (err error) {
 }
 
 func (f *ftSearch) Search(query string) (results []string, err error) {
-	q := bleve.NewSearchRequest(bleve.NewQueryStringQuery(query))
-	res, err := f.index.Search(q)
+	q := bleve.NewFuzzyQuery(query)
+	q.SetFuzziness(2)
+	sr := bleve.NewSearchRequest(q)
+	res, err := f.index.Search(sr)
 	if err != nil {
 		return
 	}
