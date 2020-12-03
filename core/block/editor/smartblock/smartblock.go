@@ -446,6 +446,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
+	s.SetDetail("lastModifiedDate", pbtypes.Float64(float64(time.Now().Unix())))
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return
 }

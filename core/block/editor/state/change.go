@@ -23,7 +23,8 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	for _, fk := range snapshot.FileKeys {
 		fileKeys = append(fileKeys, *fk)
 	}
-	return &State{
+
+	s := &State{
 		rootId:         rootId,
 		blocks:         blocks,
 		details:        snapshot.Data.Details,
@@ -31,6 +32,9 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
 	}
+
+	s.fillLocalScopeDetails()
+	return s
 }
 
 func (s *State) SetChangeId(id string) {
@@ -427,12 +431,13 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	}
 	var prev *types.Struct
 	if s.parent != nil {
-		prev = s.parent.Details()
+		prev = s.parent.ObjectScopedDetails()
 	}
 	if prev == nil || prev.Fields == nil {
 		prev = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
-	for k, v := range s.details.Fields {
+	curDetails := s.objectScopedDetailsForCurrentState()
+	for k, v := range curDetails.Fields {
 		pv, ok := prev.Fields[k]
 		if !ok || !pv.Equal(v) {
 			ch = append(ch, &pb.ChangeContent{
@@ -443,7 +448,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 		}
 	}
 	for k := range prev.Fields {
-		if _, ok := s.details.Fields[k]; !ok {
+		if _, ok := curDetails.Fields[k]; !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{
 					DetailsUnset: &pb.ChangeDetailsUnset{Key: k},
