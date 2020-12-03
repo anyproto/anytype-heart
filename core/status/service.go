@@ -433,7 +433,7 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 	})
 
 	// cafe
-	event.Cafe.Status = cafeStatus(cafe)
+	event.Cafe.Status = cafeStatus(cafe, event.Cafe.Files.Pinning > 0)
 	event.Cafe.LastPulled = cafe.status.LastPull
 	event.Cafe.LastPushSucceed = cafe.status.Up == net.Success
 	if !conn[s.cafeID] && event.Cafe.Status == pb.EventStatusThread_Failed {
@@ -453,12 +453,12 @@ func (s *service) sendEvent(ctx string, event pb.IsEventMessageValue) {
 }
 
 // Infer cafe status from net-level information
-func cafeStatus(cafe deviceStatus) pb.EventStatusThreadSyncStatus {
+func cafeStatus(cafe deviceStatus, pinInProgress bool) pb.EventStatusThreadSyncStatus {
 	switch {
 	case cafe.status.Up == net.Failure || (cafe.status.Down == net.Failure &&
 		time.Since(time.Unix(cafe.status.LastPull, 0)) > cafeLastPullTimeout):
 		return pb.EventStatusThread_Failed
-	case cafe.status.Up == net.InProgress || cafe.status.Down == net.InProgress:
+	case cafe.status.Up == net.InProgress || cafe.status.Down == net.InProgress || pinInProgress:
 		return pb.EventStatusThread_Syncing
 	case cafe.status.Up == net.Success ||
 		(cafe.status.Up == net.Unknown && cafe.status.Down == net.Success):
