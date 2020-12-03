@@ -65,13 +65,7 @@ func NewFilePinService(
 func (f *filePinService) PinStatus(cids ...string) map[string]FilePinInfo {
 	f.mu.RLock()
 	defer f.mu.RUnlock()
-
-	switch len(cids) {
-	case 0:
-		return f.findAll()
-	default:
-		return f.findCids(cids)
-	}
+	return f.findCids(cids)
 }
 
 func (f *filePinService) FilePin(cid string) error {
@@ -118,14 +112,6 @@ func (f *filePinService) findCids(cids []string) map[string]FilePinInfo {
 		if status, found := f.files[c]; found {
 			result[c] = status
 		}
-	}
-	return result
-}
-
-func (f *filePinService) findAll() map[string]FilePinInfo {
-	var result = make(map[string]FilePinInfo, len(f.files))
-	for cid, status := range f.files {
-		result[cid] = status
 	}
 	return result
 }
