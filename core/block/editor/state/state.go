@@ -607,7 +607,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 }
 
 func (s *State) SetDetail(key string, value *types.Value) {
-	if s.details == nil {
+	if s.details == nil && s.parent != nil {
 		s.details = pbtypes.CopyStruct(s.parent.Details())
 	}
 	if s.details == nil || s.details.Fields == nil {
@@ -639,6 +639,35 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	return s
+}
+
+func (s *State) fillLocalScopeDetails() {
+	s.SetDetail("id", pbtypes.String(s.rootId))
+	s.SetDetail("type", pbtypes.StringList(s.ObjectTypes()))
+	// todo: lastModifiedDate
+}
+
+// ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
+func (s *State) ObjectScopedDetails() *types.Struct {
+	if s.details == nil && s.parent != nil {
+		return s.parent.ObjectScopedDetails()
+	}
+
+	return s.objectScopedDetailsForCurrentState()
+}
+
+// objectScopedDetailsForCurrentState clears current state details from local-only relations
+func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
+	if s.details == nil || s.details.Fields == nil {
+		return nil
+	}
+	d := pbtypes.CopyStruct(s.details)
+	for key, _ := range d.Fields {
+		if slice.FindPos(relationCol.LocalOnlyRelationsKeys, key) != -1 {
+			delete(d.Fields, key)
+		}
+	}
+	return d
 }
 
 func (s *State) Details() *types.Struct {

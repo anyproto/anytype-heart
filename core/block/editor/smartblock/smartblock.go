@@ -345,27 +345,27 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		details := sb.Doc.(*state.State).Details()
 
 		for _, rel := range sb.Relations() {
-			if rel.Format == pbrelation.RelationFormat_object {
-				// add all custom object types as dependents
-				for _, ot := range rel.ObjectTypes {
-					if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
-						ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
-					}
+			if rel.Format != pbrelation.RelationFormat_object && rel.Format != pbrelation.RelationFormat_file {
+				continue
+			}
+			// add all custom object types as dependents
+			for _, ot := range rel.ObjectTypes {
+				if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
+					ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
 				}
+			}
 
-				if rel.Key == "id" || rel.Key == "type" {
-					continue
-				}
+			if rel.Key == "id" || rel.Key == "type" {
+				continue
+			}
 
-				// add all object relation values as dependents
-				for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
-					if targetId != "" {
-						ids = append(ids, targetId)
-					}
+			// add all object relation values as dependents
+			for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
+				if targetId != "" {
+					ids = append(ids, targetId)
 				}
 			}
 		}
-
 	}
 	util.UniqueStrings(ids)
 	sort.Strings(ids)
@@ -447,6 +447,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
+	s.SetDetail("lastModifiedDate", pbtypes.Float64(float64(time.Now().Unix())))
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return
 }

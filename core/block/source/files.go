@@ -95,6 +95,7 @@ func (v *files) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 	}
 
 	s.SetDetails(d)
+	s.SetDetail("id", pbtypes.String(v.id))
 	s.SetObjectTypes(pbtypes.GetStringList(d, "type"))
 	return s, nil
 }

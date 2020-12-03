@@ -15,6 +15,9 @@ var RequiredInternalRelations = []string{"id", "name", "type", "createdDate", "l
 
 var FormatFilePossibleTargetObjectTypes = []string{objects.BundledObjectTypeURLPrefix + "file", objects.BundledObjectTypeURLPrefix + "image", objects.BundledObjectTypeURLPrefix + "video", objects.BundledObjectTypeURLPrefix + "audio"}
 
+// filled in init
+var LocalOnlyRelationsKeys []string
+
 var (
 	BundledRelations = map[string]*relation.Relation{
 		"id": {
@@ -300,5 +303,13 @@ func MustGetBundledRelationByKey(key string) *relation.Relation {
 		return nil
 	} else {
 		return v
+	}
+}
+
+func init() {
+	for _, r := range BundledRelations {
+		if r.DataSource == relation.Relation_local {
+			LocalOnlyRelationsKeys = append(LocalOnlyRelationsKeys, r.Key)
+		}
 	}
 }
