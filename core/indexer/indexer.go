@@ -242,7 +242,11 @@ func (i *indexer) cleanup() {
 func (i *indexer) Close() {
 	if i.cancel != nil {
 		i.cancel()
+		i.cancel = nil
 	}
-	close(i.quit)
-	i.quitWG.Wait()
+	if i.quit != nil {
+		close(i.quit)
+		i.quitWG.Wait()
+		i.quit = nil
+	}
 }
