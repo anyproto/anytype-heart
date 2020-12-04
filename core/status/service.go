@@ -476,16 +476,17 @@ func summaryStatus(
 ) pb.EventStatusThreadSyncStatus {
 	var unknown, offline, inProgress, synced, failed int
 	for id, device := range devices {
-		switch device.status.Down {
-		case net.Unknown:
-			unknown += 1
-		case net.InProgress:
-			inProgress += 1
-		case net.Success:
-			synced += 1
-		case net.Failure:
-			failed += 1
+		switch {
+		case device.status.Down == net.Success:
+			synced++
+		case device.status.Down == net.InProgress || device.status.Up == net.InProgress:
+			inProgress++
+		case device.status.Down == net.Failure:
+			failed++
+		case device.status.Down == net.Unknown:
+			unknown++
 		}
+
 		if !connectivity[id] {
 			offline += 1
 		}
