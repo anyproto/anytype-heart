@@ -119,6 +119,8 @@ func (m *dsPageStore) Query(q database.Query) (records []database.Record, total 
 
 		if details.Details == nil || details.Details.Fields == nil {
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		} else {
+			pb.StructDeleteEmptyFields(details.Details)
 		}
 
 		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
@@ -521,6 +523,8 @@ func getPageInfo(txn ds.Txn, id string) (*model.PageInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	pb.StructDeleteEmptyFields(details.Details)
 
 	return &model.PageInfo{
 		Id:              id,
