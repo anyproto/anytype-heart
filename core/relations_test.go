@@ -269,7 +269,6 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 1)
 
-		require.Len(t, respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
 		relOnPage := getRelationByKey(respOpenNewPage.Event.Messages[0].GetBlockShow().Relations, rel.RelationKey)
 		require.Equal(t, rel.Relation, relOnPage)
 
@@ -308,15 +307,6 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, rel.Relation, relOnPage)
 	})
 
-	t.Run("search_object", func(t *testing.T) {
-		respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
-			RelationKey: "type",
-			Condition:   model.BlockContentDataviewFilter_Equal,
-			Value:       pbtypes.String(bundledObjectTypeURLPrefix + "page"),
-		}}})
-		require.Equal(t, 0, int(respSearch.Error.Code), respSearch.Error.Description)
-		require.Len(t, respSearch.Records, 1)
-	})
 }
 
 func TestCustomType(t *testing.T) {
