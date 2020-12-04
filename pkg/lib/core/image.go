@@ -146,7 +146,7 @@ func (i *image) Details() (*types.Struct, error) {
 
 	exif, err := i.Exif()
 	if err != nil {
-		log.Errorf("failed to get exif for image %s: %w", err)
+		log.Errorf("failed to get exif for image: %w", err)
 		return nil, nil
 	}
 

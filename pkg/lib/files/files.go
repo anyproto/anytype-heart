@@ -551,6 +551,7 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return nil, err
 	}
 
+	fileInfo.Hash = contentNode.Cid().String()
 	plaintext, err := proto.Marshal(fileInfo)
 	if err != nil {
 		return nil, err
@@ -572,7 +573,6 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	}
 
 	fileInfo.MetaHash = metaNode.Cid().String()
-	fileInfo.Hash = contentNode.Cid().String()
 
 	err = s.store.Add(fileInfo)
 	if err != nil {
