@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 
@@ -9,6 +10,12 @@ import (
 	"github.com/gogo/status"
 	"google.golang.org/grpc/codes"
 )
+
+type ProfileInfo interface {
+	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
+	LocalProfile() (Profile, error)
+	ProfileID() string
+}
 
 type Profile struct {
 	AccountAddr string
@@ -68,4 +75,42 @@ func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []s
 		return status.Error(codes.DeadlineExceeded, "timeouted")
 	}
 
+}
+
+func (a *Anytype) LocalProfile() (Profile, error) {
+	var (
+		profile   = Profile{AccountAddr: a.Account()}
+		profileId = a.predefinedBlockIds.Profile
+	)
+
+	ps := a.localStore.Pages
+	if ps == nil {
+		return profile, errors.New("no pagestore available")
+	}
+
+	profileDetails, err := ps.GetDetails(profileId)
+	if err != nil {
+		return profile, err
+	}
+
+	if profileDetails != nil && profileDetails.Details != nil && profileDetails.Details.Fields != nil {
+		for _, s := range []struct {
+			field    string
+			receiver *string
+		}{
+			{"name", &profile.Name},
+			{"iconImage", &profile.IconImage},
+			{"iconColor", &profile.IconColor},
+		} {
+			if value, ok := profileDetails.Details.Fields[s.field]; ok {
+				*s.receiver = value.GetStringValue()
+			}
+		}
+	}
+
+	return profile, nil
+}
+
+func (a *Anytype) ProfileID() string {
+	return a.predefinedBlockIds.Profile
 }

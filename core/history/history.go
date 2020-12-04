@@ -208,19 +208,11 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 }
 
 func (h *history) getProfileInfo() (profileId, profileName string, err error) {
-	profileId = h.a.PredefinedBlocks().Profile
-	ps := h.a.PageStore()
-	if ps == nil {
-		return
-	}
-	profileDetails, err := ps.GetDetails(profileId)
+	profileId = h.a.ProfileID()
+	lp, err := h.a.LocalProfile()
 	if err != nil {
 		return
 	}
-	if profileDetails != nil && profileDetails.Details != nil && profileDetails.Details.Fields != nil {
-		if name, ok := profileDetails.Details.Fields["name"]; ok {
-			profileName = name.GetStringValue()
-		}
-	}
+	profileName = lp.Name
 	return
 }

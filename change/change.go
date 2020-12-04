@@ -10,19 +10,23 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-func NewChangeFromRecord(record core.SmartblockRecordWithLogID) (*Change, error) {
+func NewChangeFromRecord(record core.SmartblockRecordEnvelope) (*Change, error) {
 	var ch = &pb.Change{}
 	if err := record.Unmarshal(ch); err != nil {
 		return nil, err
 	}
 	return &Change{
-		Id:     record.ID,
-		Change: ch,
+		Id:      record.ID,
+		Account: record.AccountID,
+		Device:  record.LogID,
+		Change:  ch,
 	}, nil
 }
 
 type Change struct {
 	Id          string
+	Account     string
+	Device      string
 	Next        []*Change
 	detailsOnly bool
 	*pb.Change

@@ -319,7 +319,7 @@ func (t *Tree) Get(id string) *Change {
 func (t *Tree) LastSnapshotId() string {
 	var sIds []string
 	for _, hid := range t.headIds {
-		hd := t.Get(hid)
+		hd := t.attached[hid]
 		sId := hd.Id
 		if hd.Snapshot == nil {
 			sId = hd.LastSnapshotId

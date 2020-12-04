@@ -8,7 +8,7 @@ require (
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/cheggaaa/mb v1.0.2
-	github.com/dgtony/collections v0.1.3
+	github.com/dgtony/collections v0.1.5
 	github.com/disintegration/imaging v1.6.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gobwas/glob v0.2.3
@@ -42,6 +42,7 @@ require (
 	github.com/libp2p/go-libp2p-kad-dht v0.9.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
 	github.com/libp2p/go-libp2p-pubsub v0.3.1 // indirect
+	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/magiconair/properties v1.8.4
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
@@ -56,7 +57,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
-	github.com/textileio/go-threads v1.0.1-0.20201105175943-f6ee922ff6ce
+	github.com/textileio/go-threads v1.0.1-0.20201120174647-65694be0cdd2
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/goldmark v1.1.30
@@ -70,7 +71,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.1-0.20201105175943-f6ee922ff6ce
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20201126121527-25845f034112
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 

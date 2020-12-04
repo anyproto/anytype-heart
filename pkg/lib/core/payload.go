@@ -16,9 +16,10 @@ type SmartblockLog struct {
 	Head string
 }
 
-type SmartblockRecordWithLogID struct {
+type SmartblockRecordEnvelope struct {
 	SmartblockRecord
-	LogID string
+	AccountID string
+	LogID     string
 }
 
 type SmartblockRecord struct {

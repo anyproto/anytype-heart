@@ -14,6 +14,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
+	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/libp2p/go-libp2p-core/peer"
 	mh "github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/cbor"
 	"github.com/textileio/go-threads/core/net"
@@ -86,10 +88,10 @@ type SmartBlock interface {
 	BaseSchema() SmartBlockSchema
 
 	GetLogs() ([]SmartblockLog, error)
-	GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error)
+	GetRecord(ctx context.Context, recordID string) (*SmartblockRecordEnvelope, error)
 	PushRecord(payload proto.Marshaler) (id string, err error)
 
-	SubscribeForRecords(ch chan SmartblockRecordWithLogID) (cancel func(), err error)
+	SubscribeForRecords(ch chan SmartblockRecordEnvelope) (cancel func(), err error)
 	// SubscribeClientEvents provide a way to subscribe for the client-side events e.g. carriage position change
 	SubscribeClientEvents(event chan<- proto.Message) (cancelFunc func(), err error)
 	// PublishClientEvent gives a way to push the new client-side event e.g. carriage position change
@@ -266,7 +268,7 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 	return rec.Value().Cid().String(), nil
 }
 
-func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordWithLogID) (cancel func(), err error) {
+func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (cancel func(), err error) {
 	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.Background())
 
@@ -285,18 +287,17 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordWithLogID) 
 					return
 				}
 
-				rec, err := block.decodeRecord(ctx, val.Value())
+				rec, err := block.decodeRecord(ctx, val.Value(), false)
 				if err != nil {
 					log.Errorf("failed to decode thread record: %s", err.Error())
 					continue
 				}
 				select {
-
-				case ch <- SmartblockRecordWithLogID{
-					SmartblockRecord: *rec,
+				case ch <- SmartblockRecordEnvelope{
+					SmartblockRecord: rec.SmartblockRecord,
+					AccountID:        rec.AccountID,
 					LogID:            val.LogID().String(),
-				}:
-					// everything is ok
+				}: // everything is ok
 				case <-ctx.Done():
 					// no need to cancel, continue to read the rest msgs from the channel
 					continue
@@ -354,7 +355,11 @@ func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
 	return logs, nil
 }
 
-func (block *smartBlock) decodeRecord(ctx context.Context, rec net.Record) (*SmartblockRecord, error) {
+func (block *smartBlock) decodeRecord(
+	ctx context.Context,
+	rec net.Record,
+	decodeLogID bool,
+) (*SmartblockRecordEnvelope, error) {
 	event, err := cbor.EventFromRecord(ctx, block.node.t, rec)
 	if err != nil {
 		return nil, err
@@ -364,14 +369,13 @@ func (block *smartBlock) decodeRecord(ctx context.Context, rec net.Record) (*Sma
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record body: %w", err)
 	}
-	m := new(SignedPbPayload)
-	err = cbornode.DecodeInto(node.RawData(), m)
-	if err != nil {
+
+	var m SignedPbPayload
+	if err = cbornode.DecodeInto(node.RawData(), &m); err != nil {
 		return nil, fmt.Errorf("incorrect record type: %w", err)
 	}
 
-	err = m.Verify()
-	if err != nil {
+	if err = m.Verify(); err != nil {
 		return nil, err
 	}
 
@@ -380,14 +384,29 @@ func (block *smartBlock) decodeRecord(ctx context.Context, rec net.Record) (*Sma
 		prevID = rec.PrevID().String()
 	}
 
-	return &SmartblockRecord{
-		ID:      rec.Cid().String(),
-		PrevID:  prevID,
-		Payload: m.Data,
+	var logID string
+	if decodeLogID {
+		if pk, err := crypto.UnmarshalPublicKey(rec.PubKey()); err != nil {
+			return nil, fmt.Errorf("failed to decode record's public key: %w", err)
+		} else if pid, err := peer.IDFromPublicKey(pk); err != nil {
+			return nil, fmt.Errorf("failed to restore ID from public key: %w", err)
+		} else {
+			logID = pid.String()
+		}
+	}
+
+	return &SmartblockRecordEnvelope{
+		SmartblockRecord: SmartblockRecord{
+			ID:      rec.Cid().String(),
+			PrevID:  prevID,
+			Payload: m.Data,
+		},
+		AccountID: m.AccAddr,
+		LogID:     logID,
 	}, nil
 }
 
-func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*SmartblockRecord, error) {
+func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*SmartblockRecordEnvelope, error) {
 	rid, err := cid.Decode(recordID)
 	if err != nil {
 		return nil, err
@@ -398,7 +417,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 		return nil, err
 	}
 
-	return block.decodeRecord(ctx, rec)
+	return block.decodeRecord(ctx, rec, true)
 }
 
 func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Block) error {
