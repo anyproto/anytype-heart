@@ -707,6 +707,11 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
 	}
 
+	if details.Details == nil || details.Details.Fields == nil {
+		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	details.Details.Fields["id"] = pbtypes.String(id)
+
 	var objectTypes []string
 	// remove hardcoded type
 	// todo: maybe we should move it to a separate key?
