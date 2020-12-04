@@ -36,9 +36,9 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 		return nil, err
 	}
 
-	if len(fileList) == 0 {
+	if len(fileList) == 0 || fileList[0].MetaHash == "" {
 		// info from ipfs
-		fileList, err = a.files.FileIndexInfo(ctx, hash)
+		fileList, err = a.files.FileIndexInfo(ctx, hash, false)
 		if err != nil {
 			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound

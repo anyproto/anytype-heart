@@ -20,9 +20,9 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}
 
 	// check the image files count explicitly because we have a bug when the info can be cached not fully(only for some files)
-	if len(files) < 4 {
+	if len(files) < 4 || files[0].MetaHash == "" {
 		// index image files info from ipfs
-		files, err = a.files.FileIndexInfo(ctx, hash)
+		files, err = a.files.FileIndexInfo(ctx, hash, true)
 		if err != nil {
 			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrImageNotFound

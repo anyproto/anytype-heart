@@ -37,7 +37,7 @@ type LocalStore struct {
 type FileStore interface {
 	Indexable
 	Add(file *storage.FileInfo) error
-	AddMulti(files ...*storage.FileInfo) error
+	AddMulti(upsert bool, files ...*storage.FileInfo) error
 	AddFileKeys(fileKeys ...FileKeys) error
 	GetFileKeys(hash string) (map[string]string, error)
 	GetByHash(hash string) (*storage.FileInfo, error)

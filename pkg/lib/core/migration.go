@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
@@ -76,7 +77,7 @@ func (a *Anytype) runMigrationsUnsafe() error {
 
 	if len(migrations) == version {
 		// TODO: TEMP FIX to run last migration every time, remove with release
-
+		version--
 		//return nil
 	} else if len(migrations) < version {
 		log.Errorf("repo version(%d) is higher than the total migrations number(%d)", version, len(migrations))
@@ -259,6 +260,7 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 }
 
 func addFilesToObjects(a *Anytype, lastMigration bool) error {
+	// todo: better split into 2 migrations
 	return doWithRunningNode(a, true, !lastMigration, func() error {
 		files, err := a.localStore.Files.List()
 		if err != nil {
@@ -273,8 +275,21 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 		if err != nil {
 			return err
 		}
+		log.Debugf("migrating %d files", len(files))
 
 		for _, file := range files {
+			if file.MetaHash == "" {
+				for _, target := range file.Targets {
+					ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+					defer cancel()
+					// reindex file to add metaHash
+					_, err = a.files.FileIndexInfo(ctx, target, true)
+					if err != nil {
+						log.Errorf("FileIndexInfo error: %s", err.Error())
+					}
+				}
+			}
+
 			if file.Mill == "/image/resize" {
 				if len(file.Targets) == 0 {
 					return fmt.Errorf("got image with empty targets list")
