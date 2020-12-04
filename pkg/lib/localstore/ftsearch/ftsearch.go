@@ -1,6 +1,12 @@
 package ftsearch
 
-import "github.com/blevesearch/bleve"
+import (
+	"strings"
+	"unicode/utf8"
+
+	"github.com/blevesearch/bleve"
+	"github.com/blevesearch/bleve/search/query"
+)
 
 type SearchDoc struct {
 	Id    string
@@ -46,9 +52,16 @@ func (f *ftSearch) Index(d SearchDoc) (err error) {
 	return f.index.Index(d.Id, d)
 }
 
-func (f *ftSearch) Search(query string) (results []string, err error) {
-	q := bleve.NewFuzzyQuery(query)
-	q.SetFuzziness(2)
+func (f *ftSearch) Search(text string) (results []string, err error) {
+	var q query.Query
+	text = strings.TrimSpace(text)
+	if utf8.RuneCountInString(text) <= 3 {
+		q = bleve.NewPrefixQuery(text)
+	} else {
+		fq := bleve.NewFuzzyQuery(text)
+		fq.SetFuzziness(2)
+		q = fq
+	}
 	sr := bleve.NewSearchRequest(q)
 	res, err := f.index.Search(sr)
 	if err != nil {
