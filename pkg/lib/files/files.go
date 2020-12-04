@@ -347,7 +347,7 @@ func (s *Service) fileIndexLink(ctx context.Context, inode ipld.Node, data strin
 }
 
 func (s *Service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
-	r, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
+	cid, r, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
 	}
@@ -409,8 +409,9 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 	if file.Hash == "" {
 		return nil, fmt.Errorf("failed to read file info proto with all encryption modes")
 	}
-
+	file.MetaHash = cid.String()
 	file.Targets = []string{target}
+	log.Debugf("fileInfoFromPath %s", path)
 	return &file, nil
 }
 
@@ -475,9 +476,12 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return nil, err
 	}
 
-	if efile, _ := s.store.GetBySource(mill.ID(), source, opts); efile != nil {
+	if efile, _ := s.store.GetBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
+		log.Errorf("mill:%s, source:%s, opts:%s, efile found: %s", mill.ID(), source, opts, efile.Hash)
+		efile.Targets = nil
 		return efile, nil
 	}
+	log.Errorf("mill:%s, source:%s, opts:%s, efile NOT found", mill.ID(), source, opts)
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
@@ -490,7 +494,10 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	if err != nil {
 		return nil, err
 	}
-	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil {
+
+	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
+		log.Errorf("mill:%s, check:%s, efile found", mill.ID(), check)
+		efile.Targets = nil
 		return efile, nil
 	}
 
@@ -505,7 +512,7 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return nil, err
 	}
 
-	model := &storage.FileInfo{
+	fileInfo := &storage.FileInfo{
 		Mill:     mill.ID(),
 		Checksum: check,
 		Source:   source,
@@ -517,37 +524,63 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		Size_:    int64(readerWithCounter.Count()),
 	}
 
-	var r io.Reader
+	var (
+		contentReader io.Reader
+		encryptor     symmetric.EncryptorDecryptor
+	)
 	if mill.Encrypt() && !conf.Plaintext {
 		key, err := symmetric.NewRandom()
 		if err != nil {
 			return nil, err
 		}
-		enc := cfb.New(key, [aes.BlockSize]byte{})
+		encryptor = cfb.New(key, [aes.BlockSize]byte{})
 
-		r, err = enc.EncryptReader(res.File)
+		contentReader, err = encryptor.EncryptReader(res.File)
 		if err != nil {
 			return nil, err
 		}
 
-		model.Key = key.String()
-		model.EncMode = storage.FileInfo_AES_CFB
+		fileInfo.Key = key.String()
+		fileInfo.EncMode = storage.FileInfo_AES_CFB
 	} else {
-		r = res.File
+		contentReader = res.File
 	}
 
-	node, err := s.ipfs.AddFile(ctx, r, nil)
+	contentNode, err := s.ipfs.AddFile(ctx, contentReader, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	model.Hash = node.Cid().String()
-	err = s.store.Add(model)
+	plaintext, err := proto.Marshal(fileInfo)
 	if err != nil {
 		return nil, err
 	}
 
-	return model, nil
+	var metaReader io.Reader
+	if encryptor != nil {
+		metaReader, err = encryptor.EncryptReader(bytes.NewReader(plaintext))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		metaReader = bytes.NewReader(plaintext)
+	}
+
+	metaNode, err := s.ipfs.AddFile(ctx, metaReader, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo.MetaHash = metaNode.Cid().String()
+	fileInfo.Hash = contentNode.Cid().String()
+
+	err = s.store.Add(fileInfo)
+	if err != nil {
+		return nil, err
+	}
+	log.Errorf("mill:%s, check:%s, efile NOT found and added %s", mill.ID(), check, fileInfo.Hash)
+
+	return fileInfo, nil
 }
 
 func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
@@ -556,42 +589,14 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 		return err
 	}
 
-	// remove locally indexed targets
-	file.Targets = nil
-
-	plaintext, err := proto.Marshal(file)
-	if err != nil {
-		return err
-	}
-
-	var reader io.Reader
-	if file.Key != "" {
-		key, err := symmetric.FromString(file.Key)
-		if err != nil {
-			return err
-		}
-
-		ed, err := getEncryptorDecryptor(key, file.EncMode)
-		if err != nil {
-			return err
-		}
-
-		reader, err = ed.EncryptReader(bytes.NewReader(plaintext))
-		if err != nil {
-			return err
-		}
-	} else {
-		reader = bytes.NewReader(plaintext)
-	}
-
 	pair := uio.NewDirectory(s.ipfs)
 	pair.SetCidBuilder(cidBuilder)
 
-	_, err = helpers.AddDataToDirectory(ctx, s.ipfs, pair, MetaLinkName, reader)
-	if err != nil {
-		return err
+	if file.MetaHash == "" {
+		return fmt.Errorf("metaHash is empty")
 	}
 
+	err = helpers.AddLinkToDirectory(ctx, s.ipfs, pair, MetaLinkName, file.MetaHash)
 	err = helpers.AddLinkToDirectory(ctx, s.ipfs, pair, ContentLinkName, file.Hash)
 	if err != nil {
 		return err
@@ -605,11 +610,6 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 	if err != nil {
 		return err
 	}
-
-	/*err = helpers.PinNode(s.node, node, false)
-	if err != nil {
-		return err
-	}*/
 
 	return helpers.AddLinkToDirectory(ctx, s.ipfs, dir, link, node.Cid().String())
 }
@@ -702,7 +702,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 	return dir, nil
 }
 
-func (s *Service) FileIndexInfo(ctx context.Context, hash string) ([]*storage.FileInfo, error) {
+func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
 	links, err := helpers.LinksAtCid(ctx, s.ipfs, hash)
 	if err != nil {
 		return nil, err
@@ -747,7 +747,7 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string) ([]*storage.Fi
 		}
 	}
 
-	err = s.store.AddMulti(files...)
+	err = s.store.AddMulti(updateIfExists, files...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add files to store: %w", err)
 	}
