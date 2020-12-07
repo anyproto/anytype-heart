@@ -19,7 +19,7 @@ const (
 	cafeRequestTimeout   = 30 * time.Second
 )
 
-var ErrNoCafe = errors.New("no cafe client")
+var ErrNoCafe = errors.New("no cafe available")
 
 var log = logging.Logger("anytype-file-pinning")
 
@@ -81,7 +81,9 @@ func (f *filePinService) FilePin(cid string) error {
 		return nil
 	}
 
-	_, err := f.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: cid})
+	var reqCtx, cancel = context.WithTimeout(f.ctx, cafeRequestTimeout)
+	defer cancel()
+	_, err := f.cafe.FilePin(reqCtx, &cafepb.FilePinRequest{Cid: cid})
 
 	f.mu.Lock()
 	if err != nil {
