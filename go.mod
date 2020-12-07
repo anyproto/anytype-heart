@@ -20,28 +20,27 @@ require (
 	github.com/google/uuid v1.1.2
 	github.com/h2non/filetype v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/hsanjuan/ipfs-lite v1.1.16
+	github.com/hsanjuan/ipfs-lite v1.1.17
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
-	github.com/ipfs/go-ds-badger v0.2.4
-	github.com/ipfs/go-ipfs-blockstore v1.0.1
+	github.com/ipfs/go-ds-badger v0.2.6
+	github.com/ipfs/go-ipfs-blockstore v1.0.3
 	github.com/ipfs/go-ipfs-files v0.0.8
-	github.com/ipfs/go-ipld-cbor v0.0.4
+	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
 	github.com/ipfs/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
-	github.com/ipfs/interface-go-ipfs-core v0.3.0
+	github.com/ipfs/interface-go-ipfs-core v0.4.0
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/libp2p/go-libp2p v0.11.0
+	github.com/libp2p/go-libp2p v0.12.0
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
-	github.com/libp2p/go-libp2p-core v0.6.1
-	github.com/libp2p/go-libp2p-kad-dht v0.9.0
+	github.com/libp2p/go-libp2p-core v0.7.0
+	github.com/libp2p/go-libp2p-kad-dht v0.11.0
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
-	github.com/libp2p/go-libp2p-pubsub v0.3.1 // indirect
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/magiconair/properties v1.8.4
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
@@ -57,12 +56,10 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
-	github.com/textileio/go-threads v1.0.1-0.20201120174647-65694be0cdd2
+	github.com/textileio/go-threads v1.0.2-0.20201207162022-b26c14c7ba54
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
-	github.com/xeipuuv/gojsonschema v1.2.0
 	github.com/yuin/goldmark v1.1.30
-	go.uber.org/zap v1.15.0
-	golang.org/x/net v0.0.0-20200519113804-d87ec0cfa476 // indirect
+	go.uber.org/zap v1.16.0
 	golang.org/x/text v0.3.4
 	google.golang.org/grpc v1.32.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
@@ -71,7 +68,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20201126121527-25845f034112
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20201207162022-b26c14c7ba54
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
