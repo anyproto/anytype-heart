@@ -352,7 +352,7 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return ch, nil
 	}
 	if sb.smartblock == nil {
-		return
+		return nil, fmt.Errorf("no smarblock in builder")
 	}
 	st := time.Now()
 	sr, err := sb.smartblock.GetRecord(context.TODO(), id)
