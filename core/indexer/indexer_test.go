@@ -53,8 +53,8 @@ func TestNewIndexer(t *testing.T) {
 		sb.EXPECT().GetLogs().Return(nil, nil)
 		fx.anytype.EXPECT().GetBlock(sbId).Return(sb, nil)
 		fx.objectStore.EXPECT().AddToIndexQueue(sbId)
-		fx.objectStore.EXPECT().UpdateObject(sbId, det, gomock.Any(), nil, "").DoAndReturn(func(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) (err error) {
-			assert.Equal(t, det, details)
+		fx.objectStore.EXPECT().UpdateObject(sbId, gomock.Any(), gomock.Any(), nil, "").DoAndReturn(func(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) (err error) {
+			assert.Equal(t, "value", pbtypes.GetString(det, "key"))
 			close(updatedCh)
 			return
 		})
