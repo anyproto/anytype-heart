@@ -91,6 +91,9 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 }
 
 func (t *Tree) add(c *Change) (attached bool) {
+	if c == nil {
+		return false
+	}
 	if t.detailsOnly {
 		c.PreviousIds = c.PreviousDetailsIds
 	}
