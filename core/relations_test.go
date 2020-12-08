@@ -218,7 +218,7 @@ func TestRelationAdd(t *testing.T) {
 			BlockId:     "dataview",
 			RelationKey: relKey,
 		})
-		mw.blocksService.Close()
+		//mw.blocksService.Close()
 		respAccountCreate := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: mw.Anytype.Account(), RootPath: rootPath})
 		require.Equal(t, 0, int(respAccountCreate.Error.Code))
 

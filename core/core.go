@@ -127,7 +127,9 @@ func (mw *Middleware) stop() error {
 			log.Warnf("error while stop gateway: %v", err)
 		}
 	}
-
+	if mw.indexer != nil {
+		mw.indexer.Close()
+	}
 	if mw.blocksService != nil {
 		if err := mw.blocksService.Close(); err != nil {
 			log.Warnf("error while stop block service: %v", err)
@@ -136,10 +138,6 @@ func (mw *Middleware) stop() error {
 
 	if mw.status != nil {
 		mw.status.Stop()
-	}
-
-	if mw.indexer != nil {
-		mw.indexer.Close()
 	}
 
 	if mw != nil && mw.Anytype != nil {
