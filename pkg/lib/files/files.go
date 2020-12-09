@@ -479,11 +479,9 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	}
 
 	if efile, _ := s.store.GetBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
-		log.Errorf("mill:%s, source:%s, opts:%s, efile found: %s", mill.ID(), source, opts, efile.Hash)
 		efile.Targets = nil
 		return efile, nil
 	}
-	log.Errorf("mill:%s, source:%s, opts:%s, efile NOT found", mill.ID(), source, opts)
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
@@ -498,7 +496,6 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	}
 
 	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
-		log.Errorf("mill:%s, check:%s, efile found", mill.ID(), check)
 		efile.Targets = nil
 		return efile, nil
 	}
@@ -580,7 +577,6 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	if err != nil {
 		return nil, err
 	}
-	log.Errorf("mill:%s, check:%s, efile NOT found and added %s", mill.ID(), check, fileInfo.Hash)
 
 	return fileInfo, nil
 }
