@@ -12,10 +12,10 @@ import (
 	"github.com/goccy/go-graphviz/cgraph"
 )
 
-func (tr *Tree) Graphviz() (data string, err error) {
+func (t *Tree) Graphviz() (data string, err error) {
 	var order = make(map[string]string)
 	var seq = 0
-	tr.Iterate(tr.RootId(), func(c *Change) (isContinue bool) {
+	t.Iterate(t.RootId(), func(c *Change) (isContinue bool) {
 		v := order[c.Id]
 		if v == "" {
 			order[c.Id] = fmt.Sprint(seq)
@@ -48,12 +48,12 @@ func (tr *Tree) Graphviz() (data string, err error) {
 		n.SetLabel(fmt.Sprintf("%s: %s", c.Id, ord))
 		return nil
 	}
-	for _, c := range tr.attached {
+	for _, c := range t.attached {
 		if err = addChange(c); err != nil {
 			return
 		}
 	}
-	for _, c := range tr.unAttached {
+	for _, c := range t.unAttached {
 		if err = addChange(c); err != nil {
 			return
 		}
@@ -86,12 +86,12 @@ func (tr *Tree) Graphviz() (data string, err error) {
 		}
 		return nil
 	}
-	for _, c := range tr.attached {
+	for _, c := range t.attached {
 		if err = addLinks(c); err != nil {
 			return
 		}
 	}
-	for _, c := range tr.unAttached {
+	for _, c := range t.unAttached {
 		if err = addLinks(c); err != nil {
 			return
 		}

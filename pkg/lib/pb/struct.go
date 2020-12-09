@@ -8,6 +8,17 @@ import (
 	st "github.com/gogo/protobuf/types"
 )
 
+func StructDeleteEmptyFields(v *st.Struct) {
+	if v == nil || v.Fields == nil {
+		return
+	}
+	for key, val := range v.Fields {
+		if val == nil {
+			delete(v.Fields, key)
+		}
+	}
+}
+
 // ToStruct converts a map[string]interface{} to a ptypes.Struct
 func ToStruct(v map[string]interface{}) *st.Struct {
 	size := len(v)

@@ -359,6 +359,10 @@
     - [Rpc.BlockList.Set.Text.Style.Request](#anytype.Rpc.BlockList.Set.Text.Style.Request)
     - [Rpc.BlockList.Set.Text.Style.Response](#anytype.Rpc.BlockList.Set.Text.Style.Response)
     - [Rpc.BlockList.Set.Text.Style.Response.Error](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error)
+    - [Rpc.BlockList.TurnInto](#anytype.Rpc.BlockList.TurnInto)
+    - [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request)
+    - [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response)
+    - [Rpc.BlockList.TurnInto.Response.Error](#anytype.Rpc.BlockList.TurnInto.Response.Error)
     - [Rpc.Config](#anytype.Rpc.Config)
     - [Rpc.Config.Get](#anytype.Rpc.Config.Get)
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
@@ -573,6 +577,7 @@
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
+    - [Rpc.BlockList.TurnInto.Response.Error.Code](#anytype.Rpc.BlockList.TurnInto.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
@@ -710,8 +715,12 @@
     - [Event.Process.New](#anytype.Event.Process.New)
     - [Event.Process.Update](#anytype.Event.Process.Update)
     - [Event.Status](#anytype.Event.Status)
-    - [Event.Status.CafeConnect](#anytype.Event.Status.CafeConnect)
-    - [Event.Status.ThreadSync](#anytype.Event.Status.ThreadSync)
+    - [Event.Status.Thread](#anytype.Event.Status.Thread)
+    - [Event.Status.Thread.Account](#anytype.Event.Status.Thread.Account)
+    - [Event.Status.Thread.Cafe](#anytype.Event.Status.Thread.Cafe)
+    - [Event.Status.Thread.Cafe.PinStatus](#anytype.Event.Status.Thread.Cafe.PinStatus)
+    - [Event.Status.Thread.Device](#anytype.Event.Status.Thread.Device)
+    - [Event.Status.Thread.Summary](#anytype.Event.Status.Thread.Summary)
     - [Event.User](#anytype.Event.User)
     - [Event.User.Block](#anytype.Event.User.Block)
     - [Event.User.Block.Join](#anytype.Event.User.Block.Join)
@@ -723,7 +732,7 @@
     - [Model.Process.Progress](#anytype.Model.Process.Progress)
     - [ResponseEvent](#anytype.ResponseEvent)
   
-    - [Event.Status.ThreadSync.SyncStatus](#anytype.Event.Status.ThreadSync.SyncStatus)
+    - [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus)
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
@@ -875,6 +884,7 @@
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
 | BlockListSetPageIsArchived | [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request) | [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response) |  |
 | BlockListDeletePage | [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request) | [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response) |  |
+| BlockListTurnInto | [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request) | [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
 | BlockListSetTextColor | [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request) | [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response) |  |
@@ -5987,6 +5997,65 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.BlockList.TurnInto"></a>
+
+### Rpc.BlockList.TurnInto
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.TurnInto.Request"></a>
+
+### Rpc.BlockList.TurnInto.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| style | [model.Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.TurnInto.Response"></a>
+
+### Rpc.BlockList.TurnInto.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.TurnInto.Response.Error](#anytype.Rpc.BlockList.TurnInto.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.TurnInto.Response.Error"></a>
+
+### Rpc.BlockList.TurnInto.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.TurnInto.Response.Error.Code](#anytype.Rpc.BlockList.TurnInto.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Config"></a>
 
 ### Rpc.Config
@@ -8907,6 +8976,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.TurnInto.Response.Error.Code"></a>
+
+### Rpc.BlockList.TurnInto.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Config.Get.Response.Error.Code"></a>
 
 ### Rpc.Config.Get.Response.Error.Code
@@ -10882,8 +10964,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | processNew | [Event.Process.New](#anytype.Event.Process.New) |  |  |
 | processUpdate | [Event.Process.Update](#anytype.Event.Process.Update) |  |  |
 | processDone | [Event.Process.Done](#anytype.Event.Process.Done) |  |  |
-| connStatus | [Event.Status.CafeConnect](#anytype.Event.Status.CafeConnect) |  |  |
-| threadStatus | [Event.Status.ThreadSync](#anytype.Event.Status.ThreadSync) |  |  |
+| threadStatus | [Event.Status.Thread](#anytype.Event.Status.Thread) |  |  |
 
 
 
@@ -10970,31 +11051,107 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 
 
 
-<a name="anytype.Event.Status.CafeConnect"></a>
+<a name="anytype.Event.Status.Thread"></a>
 
-### Event.Status.CafeConnect
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| connected | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Status.ThreadSync"></a>
-
-### Event.Status.ThreadSync
+### Event.Status.Thread
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| status | [Event.Status.ThreadSync.SyncStatus](#anytype.Event.Status.ThreadSync.SyncStatus) |  |  |
-| lastPull | [int64](#int64) |  |  |
+| summary | [Event.Status.Thread.Summary](#anytype.Event.Status.Thread.Summary) |  |  |
+| cafe | [Event.Status.Thread.Cafe](#anytype.Event.Status.Thread.Cafe) |  |  |
+| accounts | [Event.Status.Thread.Account](#anytype.Event.Status.Thread.Account) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Account"></a>
+
+### Event.Status.Thread.Account
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| imageHash | [string](#string) |  |  |
+| online | [bool](#bool) |  |  |
+| lastPulled | [int64](#int64) |  |  |
+| lastEdited | [int64](#int64) |  |  |
+| devices | [Event.Status.Thread.Device](#anytype.Event.Status.Thread.Device) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Cafe"></a>
+
+### Event.Status.Thread.Cafe
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus) |  |  |
+| lastPulled | [int64](#int64) |  |  |
+| lastPushSucceed | [bool](#bool) |  |  |
+| files | [Event.Status.Thread.Cafe.PinStatus](#anytype.Event.Status.Thread.Cafe.PinStatus) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Cafe.PinStatus"></a>
+
+### Event.Status.Thread.Cafe.PinStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pinning | [int32](#int32) |  |  |
+| pinned | [int32](#int32) |  |  |
+| failed | [int32](#int32) |  |  |
+| updated | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Device"></a>
+
+### Event.Status.Thread.Device
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| online | [bool](#bool) |  |  |
+| lastPulled | [int64](#int64) |  |  |
+| lastEdited | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Status.Thread.Summary"></a>
+
+### Event.Status.Thread.Summary
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus) |  |  |
 
 
 
@@ -11159,17 +11316,18 @@ Precondition: user A and user B opened the same block
  
 
 
-<a name="anytype.Event.Status.ThreadSync.SyncStatus"></a>
+<a name="anytype.Event.Status.Thread.SyncStatus"></a>
 
-### Event.Status.ThreadSync.SyncStatus
+### Event.Status.Thread.SyncStatus
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Unknown | 0 |  |
-| InProgress | 1 |  |
-| Success | 2 |  |
-| Failure | 3 |  |
+| Offline | 1 |  |
+| Syncing | 2 |  |
+| Synced | 3 |  |
+| Failed | 4 |  |
 
 
 

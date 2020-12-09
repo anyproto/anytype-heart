@@ -57,9 +57,11 @@ func Test_Issue605Tree(t *testing.T) {
 	var changeSet map[string][]byte
 	require.NoError(t, gob.NewDecoder(bytes.NewReader(data)).Decode(&changeSet))
 	sb := NewTestSmartBlock()
-	sb.changes = make(map[string]*core.SmartblockRecord)
+	sb.changes = make(map[string]*core.SmartblockRecordEnvelope)
 	for k, v := range changeSet {
-		sb.changes[k] = &core.SmartblockRecord{Payload: v}
+		sb.changes[k] = &core.SmartblockRecordEnvelope{
+			SmartblockRecord: core.SmartblockRecord{Payload: v},
+		}
 	}
 	t.Log("changes:", len(sb.changes))
 	sb.logs = append(sb.logs, core.SmartblockLog{

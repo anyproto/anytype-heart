@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
@@ -59,6 +60,8 @@ func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 	require.Len(t, info2.Links.Outbound, 1)
 
 	require.Equal(t, block1.ID(), info2.Links.Outbound[0].Id)
+	details1.Fields["id"] = pbtypes.String(block1.ID())
+
 	require.True(t, info2.Links.Outbound[0].Details.Compare(details1) == 0)
 
 	info1, err := s.ObjectInfoWithLinks(block1.ID())
@@ -67,6 +70,8 @@ func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 	require.Len(t, info1.Links.Inbound, 1)
 
 	require.Equal(t, block2.ID(), info1.Links.Inbound[0].Id)
+	details2.Fields["id"] = pbtypes.String(block2.ID())
+
 	require.True(t, info1.Links.Inbound[0].Details.Compare(details2) == 0)
 	require.Equal(t, getSnippet(blocks1), info1.Info.Snippet)
 
@@ -80,6 +85,7 @@ func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 		},
 	}
 
+	details2Modified.Fields["id"] = pbtypes.String(block2.ID())
 	err = block2.(*smartBlock).indexSnapshot(details2Modified, nil, blocks2Modified)
 	require.NoError(t, err)
 
@@ -150,7 +156,10 @@ func Test_Anytype_PageList(t *testing.T) {
 	}
 
 	require.NotNil(t, pageById[block1.ID()])
-	require.Equal(t, details1, pageById[block1.ID()].Details)
+	details1.Fields["id"] = pbtypes.String(block1.ID())
+	details2.Fields["id"] = pbtypes.String(block2.ID())
+
+	require.True(t, details1.Compare(pageById[block1.ID()].Details) == 0)
 	require.Equal(t, "test", pageById[block1.ID()].Snippet)
 
 	require.Equal(t, block2.ID(), pageById[block2.ID()].Id)

@@ -188,6 +188,8 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 
 		if details.Details == nil || details.Details.Fields == nil {
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		} else {
+			pb.StructDeleteEmptyFields(details.Details)
 		}
 
 		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)

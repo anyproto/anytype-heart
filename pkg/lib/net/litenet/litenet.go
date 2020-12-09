@@ -23,9 +23,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/pnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	libp2ptls "github.com/libp2p/go-libp2p-tls"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/app"
 	"github.com/textileio/go-threads/core/logstore"
+	tlcore "github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	"github.com/textileio/go-threads/net"
 	"google.golang.org/grpc"
@@ -99,6 +101,7 @@ func DefaultNetwork(
 		ds,
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),
 		libp2p.Peerstore(pstore),
+		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 	)
 
 	if err != nil {
@@ -134,10 +137,17 @@ func DefaultNetwork(
 		return nil, err
 	}
 
+	// persistent sync tracking only
+	var syncBook tlcore.SyncBook
+	if config.SyncTracking {
+		syncBook = tstore
+	}
+
 	api, err := net.NewNetwork(ctx, h, lite.BlockStore(), lite, tstore, net.Config{
 		Debug:        config.Debug,
 		PubSub:       config.PubSub,
 		SyncTracking: config.SyncTracking,
+		SyncBook:     syncBook,
 	}, config.GRPCServerOptions, config.GRPCDialOptions)
 	if err != nil {
 		cancel()
@@ -225,9 +235,9 @@ func WithNetGRPCDialOptions(opts ...grpc.DialOption) NetOption {
 	}
 }
 
-func WithNetSyncTracking() NetOption {
+func WithNetSyncTracking(enabled bool) NetOption {
 	return func(c *NetConfig) error {
-		c.SyncTracking = true
+		c.SyncTracking = enabled
 		return nil
 	}
 }

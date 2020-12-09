@@ -2,13 +2,14 @@ package files
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
-	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 )
 
 func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
@@ -47,21 +48,22 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 		}
 	}
 
-	if s.cafe != nil {
-		go func() {
-			for i := 0; i <= 10; i++ {
-				_, err := s.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: nodeHash})
-				if err != nil {
-					log.Errorf("failed to pin image %s on the cafe: %s", nodeHash, err.Error())
-					time.Sleep(time.Minute * time.Duration((i+1)*2))
-					continue
+	go func() {
+		for attempt := 1; attempt <= maxPinAttempts; attempt++ {
+			if err := s.pins.FilePin(nodeHash); err != nil {
+				if errors.Is(err, pin.ErrNoCafe) {
+					return
 				}
-				log.Debugf("image %s pinned on cafe", nodeHash)
 
-				break
+				log.Errorf("failed to pin image %s on the cafe (attempt %d): %s", nodeHash, attempt, err.Error())
+				time.Sleep(time.Minute * time.Duration(attempt))
+				continue
 			}
-		}()
-	}
+
+			log.Debugf("image %s pinned on cafe", nodeHash)
+			break
+		}
+	}()
 
 	return nodeHash, variantsByWidth, nil
 }

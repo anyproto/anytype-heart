@@ -7,6 +7,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -42,14 +43,14 @@ type Subscriber interface {
 	Close()
 }
 
-func newPubSub(a anytype.Service) *pubSub {
+func newPubSub(a anytype.Service, ss status.Service) *pubSub {
 	ps := &pubSub{
 		subscribers: make(map[string]map[Subscriber]struct{}),
 		collectors:  make(map[string]*collector),
 		lastUsage:   make(map[string]time.Time),
 		anytype:     a,
 		newSource: func(id string) (source.Source, error) {
-			return source.NewSource(a, id)
+			return source.NewSource(a, ss, id)
 		},
 	}
 	go ps.ticker()
