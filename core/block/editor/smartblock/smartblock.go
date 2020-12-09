@@ -79,6 +79,7 @@ type SmartBlock interface {
 	RemoveExtraRelations(relationKeys []string) (err error)
 	AddObjectTypes(objectTypes []string) (err error)
 	RemoveObjectTypes(objectTypes []string) (err error)
+	FileRelationKeys() []string
 
 	Reindex() error
 	SendEvent(msgs []*pb.EventMessage)
@@ -413,14 +414,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	st := sb.Doc.(*state.State)
-	fileDetailsKeys := sb.fileDetailsKeys()
+	fileDetailsKeys := sb.FileRelationKeys()
 	pushChangeParams := source.PushChangeParams{
 		State:             st,
 		Changes:           st.GetChanges(),
 		FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
 		DoSnapshot:        doSnapshot,
 		GetAllFileHashes: func() []string {
-			return st.GetAllFileHashes(fileDetailsKeys)
+			return st.GetAllFileHashes(sb.FileRelationKeys())
 		},
 	}
 	id, err := sb.source.PushChange(pushChangeParams)
@@ -898,7 +899,7 @@ func (sb *smartBlock) execHooks(event Hook) {
 	}
 }
 
-func (sb *smartBlock) fileDetailsKeys() (fileKeys []string) {
+func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
 	for _, rel := range sb.Relations() {
 		if rel.Format == pbrelation.RelationFormat_file {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {

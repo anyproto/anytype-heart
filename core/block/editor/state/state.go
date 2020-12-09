@@ -709,9 +709,13 @@ func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 		return
 	}
 
-	for _, field := range detailsKeys {
-		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
-			hashes = append(hashes, v.GetStringValue())
+	for _, key := range detailsKeys {
+		if v := pbtypes.GetStringList(det, key); v != nil {
+			for _, hash := range v {
+				if slice.FindPos(hashes, hash) == -1 {
+					hashes = append(hashes, hash)
+				}
+			}
 		}
 	}
 	return

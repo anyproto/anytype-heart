@@ -281,8 +281,8 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 			bs    = ob.NewState()
 			fList = func() []string {
 				ob.Lock()
-				// todo: add all file relation keys from ob.Relations()
-				fs := bs.GetAllFileHashes(nil)
+				ob.Relations()
+				fs := bs.GetAllFileHashes(ob.FileRelationKeys())
 				ob.Unlock()
 				return fs
 			}
