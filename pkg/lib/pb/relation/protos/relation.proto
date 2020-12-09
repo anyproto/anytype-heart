@@ -42,9 +42,7 @@ message Relation {
     bool multi = 8; // allow multiple values (stored in pb list)
 
     repeated string objectTypes = 9; // URL of object type, empty to allow link to any object
-    // string objectType = 10; // deprecated, do not use
-
-    // repeated string selectDict = 11; // deprecated, do not use
+    // index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
     repeated SelectOption selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
 
     message SelectOption {
@@ -54,7 +52,7 @@ message Relation {
     }
 
     enum RelationDataSource {
-        details = 0; // default, stored inside the smartblock's details
+        details = 0; // default, stored inside the object's details
         local = 1; // stored locally, e.g. in badger or generated on the fly
         account = 2; // stored in the account DB. means existing only for specific anytype account
     }

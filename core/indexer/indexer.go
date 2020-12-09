@@ -72,7 +72,7 @@ type indexer struct {
 	quit       chan struct{}
 
 	threadIdsBuf []string
-	recBuf       []core.SmartblockRecordWithLogID
+	recBuf       []core.SmartblockRecordEnvelope
 	mu           sync.Mutex
 }
 
@@ -122,7 +122,7 @@ func (i *indexer) applyRecords(records []core.SmartblockRecordWithThreadID) {
 	for _, tid := range threadIds {
 		threadRecords := i.recBuf[:0]
 		for _, rec := range records {
-			threadRecords = append(threadRecords, rec.SmartblockRecordWithLogID)
+			threadRecords = append(threadRecords, rec.SmartblockRecordEnvelope)
 		}
 		i.index(tid, threadRecords)
 	}
@@ -141,7 +141,7 @@ func (i *indexer) getDoc(id string) (d *doc, err error) {
 	return
 }
 
-func (i *indexer) index(id string, records []core.SmartblockRecordWithLogID) {
+func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 	d, err := i.getDoc(id)
 	if err != nil {
 		log.Warnf("can't get doc '%s': %v", id, err)

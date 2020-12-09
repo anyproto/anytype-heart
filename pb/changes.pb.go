@@ -1009,7 +1009,6 @@ func (*ChangeRelationUpdate) XXX_OneofWrappers() []interface{} {
 }
 
 type ChangeRelationUpdateDict struct {
-	// repeated string dict = 1; // deprecated
 	Dict []*relation.RelationSelectOption `protobuf:"bytes,2,rep,name=dict,proto3" json:"dict,omitempty"`
 }
 

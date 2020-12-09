@@ -285,7 +285,7 @@ type Relation struct {
 	ReadOnly     bool                       `protobuf:"varint,7,opt,name=readOnly,proto3" json:"readOnly,omitempty"`
 	Multi        bool                       `protobuf:"varint,8,opt,name=multi,proto3" json:"multi,omitempty"`
 	ObjectTypes  []string                   `protobuf:"bytes,9,rep,name=objectTypes,proto3" json:"objectTypes,omitempty"`
-	// repeated string selectDict = 11; // deprecated, do not use
+	// index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
 	SelectDict []*RelationSelectOption `protobuf:"bytes,12,rep,name=selectDict,proto3" json:"selectDict,omitempty"`
 }
 

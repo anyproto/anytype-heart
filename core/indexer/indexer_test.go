@@ -60,7 +60,7 @@ func TestNewIndexer(t *testing.T) {
 		})
 
 		fx.ch <- core.SmartblockRecordWithThreadID{
-			SmartblockRecordWithLogID: core.SmartblockRecordWithLogID{
+			SmartblockRecordEnvelope: core.SmartblockRecordEnvelope{
 				SmartblockRecord: core.SmartblockRecord{
 					ID:      "snapshot",
 					Payload: payload,

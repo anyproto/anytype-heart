@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -95,17 +96,16 @@ type Service interface {
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
-	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
-
 	ObjectStore() localstore.ObjectStore
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
 	ObjectUpdateLastOpened(id string) error
 
 	SyncStatus() tcn.SyncInfo
-	FileStatus() FileInfo
-
+	FileStatus() pin.FilePinService
 	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error)
+
+	ProfileInfo
 }
 
 var _ Service = (*Anytype)(nil)
@@ -118,7 +118,7 @@ type Anytype struct {
 	localStore         localstore.LocalStore
 	predefinedBlockIds threads.DerivedSmartblockIds
 	threadService      threads.Service
-	pinRegistry        *filePinRegistry
+	pinService         pin.FilePinService
 
 	logLevels map[string]string
 
@@ -152,7 +152,6 @@ func New(options ...ServiceOption) (*Anytype, error) {
 		opts:             opts,
 		shutdownStartsCh: make(chan struct{}),
 		onlineCh:         make(chan struct{}),
-		pinRegistry:      newFilePinRegistry(),
 	}
 
 	if opts.CafeGrpcHost != "" {
@@ -186,8 +185,8 @@ func (a *Anytype) SyncStatus() tcn.SyncInfo {
 	return a.t
 }
 
-func (a *Anytype) FileStatus() FileInfo {
-	return a.pinRegistry
+func (a *Anytype) FileStatus() pin.FilePinService {
+	return a.pinService
 }
 
 func (a *Anytype) Ipfs() ipfs.IPFS {
@@ -311,7 +310,13 @@ func (a *Anytype) start() error {
 		log.Errorf("can't start fulltext search service: %v", err)
 	}
 	a.localStore = localstore.NewLocalStore(a.t.Datastore(), fts)
-	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.cafe)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { <-a.shutdownStartsCh; cancel() }()
+	a.pinService = pin.NewFilePinService(ctx, a.cafe, a.localStore.Files)
+	a.pinService.Start()
+
+	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.pinService)
 	a.threadService = threads.New(a.t, a.t.Logstore(), a.opts.Repo, a.opts.Device, a.opts.Account, func(id thread.ID) error {
 		err := a.migratePageToChanges(id)
 		if err != nil && err != ErrAlreadyMigrated {
@@ -319,9 +324,6 @@ func (a *Anytype) start() error {
 		}
 		return nil
 	}, a.opts.NewSmartblockChan, a.opts.CafeP2PAddr)
-
-	// find and retry failed pins
-	go a.checkPins()
 
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {
@@ -376,6 +378,7 @@ func (a *Anytype) Stop() error {
 		close(a.shutdownStartsCh)
 	}
 
+	// fixme useless!
 	a.replicationWG.Wait()
 
 	if a.mdns != nil {
@@ -421,7 +424,7 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 		litenet.WithOffline(a.opts.Offline),
 		litenet.WithInMemoryDS(a.opts.InMemoryDS),
 		litenet.WithNetPubSub(true), // TODO control with env var
-		litenet.WithNetSyncTracking(),
+		litenet.WithNetSyncTracking(true),
 		litenet.WithNetGRPCServerOptions(
 			grpc.MaxRecvMsgSize(1024 * 1024 * 20),
 		),
@@ -468,7 +471,7 @@ func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID
 						smartBlocksCache[id] = block
 					}
 				}
-				rec, err := block.decodeRecord(ctx, val.Value())
+				rec, err := block.decodeRecord(ctx, val.Value(), true)
 				if err != nil {
 					log.Errorf("failed to decode thread record: %s", err.Error())
 					continue
@@ -476,10 +479,7 @@ func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID
 				select {
 
 				case ch <- SmartblockRecordWithThreadID{
-					SmartblockRecordWithLogID: SmartblockRecordWithLogID{
-						SmartblockRecord: *rec,
-						LogID:            val.LogID().String(),
-					},
+					SmartblockRecordEnvelope: *rec,
 					ThreadID: id,
 				}:
 					// everything is ok

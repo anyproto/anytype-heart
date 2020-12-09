@@ -106,6 +106,7 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 		return nil, err
 	}
 
+	// todo: there is no timeout for reader
 	var exif mill.ImageExifSchema
 	err = json.NewDecoder(r).Decode(&exif)
 	if err != nil {
@@ -122,7 +123,7 @@ func (i *image) Details() (*types.Struct, error) {
 		},
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*1)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	largest, err := i.GetFileForLargestWidth(ctx)

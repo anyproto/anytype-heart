@@ -97,14 +97,23 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 		textSlot = strings.Join(texts, "\n")
 	}
 
-	firstBlock := s.Get(req.Blocks[0].Id)
+	var firstTextBlock, lastTextBlock *model.Block
+	for _, b := range req.Blocks {
+		if b.GetText() != nil {
+			if firstTextBlock == nil {
+				firstTextBlock = b
+			} else {
+				lastTextBlock = b
+			}
+		}
+	}
 
 	// scenario: rangeCopy
-	if firstBlockText, isText := firstBlock.(text.Block); isText &&
+	if firstTextBlock != nil &&
 		req.SelectedTextRange != nil &&
 		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
-		len(req.Blocks) == 1 {
-		cutBlock, _, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+		lastTextBlock == nil {
+		cutBlock, _, err := simple.New(firstTextBlock).(text.Block).RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 		if err != nil {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
@@ -140,25 +149,34 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 		return textSlot, htmlSlot, anySlot, errors.New("nothing to cut")
 	}
 
-	if len(req.Blocks) == 1 && req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && req.Blocks[0].GetText() != nil {
-		req.SelectedTextRange.To = int32(utf8.RuneCountInString(req.Blocks[0].GetText().Text))
+	var firstTextBlock, lastTextBlock *model.Block
+	for _, b := range req.Blocks {
+		if b.GetText() != nil {
+			if firstTextBlock == nil {
+				firstTextBlock = b
+			} else {
+				lastTextBlock = b
+			}
+		}
 	}
 
-	firstBlock := s.Get(req.Blocks[0].Id)
+	if req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && firstTextBlock != nil && lastTextBlock == nil {
+		req.SelectedTextRange.To = int32(utf8.RuneCountInString(firstTextBlock.GetText().Text))
+	}
 
 	// scenario: rangeCut
-	if firstBlockText, isText := firstBlock.(text.Block); isText &&
+	if firstTextBlock != nil &&
+		lastTextBlock == nil &&
 		req.SelectedTextRange != nil &&
-		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) &&
-		len(req.Blocks) == 1 {
-
-		cutBlock, initialBlock, err := firstBlockText.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
+		!(req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0) {
+		first := s.Get(firstTextBlock.Id).(text.Block)
+		cutBlock, initialBlock, err := first.RangeCut(req.SelectedTextRange.From, req.SelectedTextRange.To)
 
 		if err != nil {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("error while cut: %s", err)
 		}
 
-		firstBlock.(text.Block).SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
+		first.SetText(initialBlock.GetText().Text, initialBlock.GetText().Marks)
 
 		if cutBlock.GetText() != nil && cutBlock.GetText().Marks != nil {
 			for i, m := range cutBlock.GetText().Marks.Marks {
@@ -189,10 +207,13 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 	htmlSlot = html.NewHTMLConverter(cb.Anytype(), cb.blocksToState(req.Blocks)).Convert()
 	anySlot = req.Blocks
 
-	for i, _ := range req.Blocks {
-		ok := s.Unlink(req.Blocks[i].Id)
+	for _, b := range req.Blocks {
+		if b.GetLayout() != nil {
+			continue
+		}
+		ok := s.Unlink(b.Id)
 		if !ok {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block with id: %s", req.Blocks[i].Id)
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block with id: %s", b.Id)
 		}
 	}
 

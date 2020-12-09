@@ -12,7 +12,6 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/globalsign/mgo/bson"
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
@@ -44,6 +43,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 var (
@@ -118,6 +118,7 @@ type Service interface {
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	TurnInto(ctx *state.Context, id string, style model.BlockContentTextStyle, ids ...string) error
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
 
@@ -170,6 +171,30 @@ type Service interface {
 	Close() error
 }
 
+func newOpenedBlock(sb smartblock.SmartBlock, setLastUsage bool) *openedBlock {
+	var ob = openedBlock{SmartBlock: sb}
+	if setLastUsage {
+		ob.lastUsage = time.Now()
+	}
+	if sb.Type() != pb.SmartBlockType_Breadcrumbs {
+		// decode and store corresponding threadID for appropriate block
+		if tid, err := thread.Decode(sb.Id()); err != nil {
+			log.Warnf("can't restore thread ID: %v", err)
+		} else {
+			ob.threadId = tid
+		}
+	}
+	return &ob
+}
+
+type openedBlock struct {
+	smartblock.SmartBlock
+	threadId  thread.ID
+	lastUsage time.Time
+	locked    bool
+	refs      int32
+}
+
 func NewService(
 	accountId string,
 	a anytype.Service,
@@ -181,7 +206,7 @@ func NewService(
 		accountId: accountId,
 		anytype:   a,
 		status:    ss,
-		meta:      meta.NewService(a),
+		meta:      meta.NewService(a, ss),
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
@@ -195,14 +220,6 @@ func NewService(
 	s.init()
 	log.Info("block service started")
 	return s
-}
-
-type openedBlock struct {
-	smartblock.SmartBlock
-	threadId  thread.ID
-	lastUsage time.Time
-	locked    bool
-	refs      int32
 }
 
 type service struct {
@@ -242,10 +259,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 			s.m.Unlock()
 			return e
 		}
-		ob = &openedBlock{
-			SmartBlock: sb,
-			lastUsage:  time.Now(),
-		}
+		ob = newOpenedBlock(sb, true)
 		s.openedBlocks[id] = ob
 	}
 	s.m.Unlock()
@@ -260,22 +274,25 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if e := s.anytype.ObjectUpdateLastOpened(id); e != nil {
 		log.Warnf("can't update last opened id: %v", e)
 	}
-
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
 	}
+	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
+		var (
+			bs    = ob.NewState()
+			fList = func() []string {
+				ob.Lock()
+				ob.Relations()
+				fs := bs.GetAllFileHashes(ob.FileRelationKeys())
+				ob.Unlock()
+				return fs
+			}
+		)
 
-	if s.status != nil &&
-		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
-		ob.threadId == thread.Undef {
-		if tid, err := thread.Decode(ob.Id()); err == nil {
-			ob.threadId = tid
-			s.status.Watch(tid, ob.Id())
-		} else {
-			log.Warnf("can't restore thread ID: %v", err)
+		if newWatcher := s.status.Watch(tid, fList); newWatcher {
+			ob.AddHook(func() { s.status.Unwatch(tid) }, smartblock.HookOnClose)
 		}
 	}
-
 	return nil
 }
 
@@ -289,11 +306,9 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	bs.Lock()
 	defer bs.Unlock()
 	bs.SetEventFunc(s.sendEvent)
-	s.openedBlocks[bs.Id()] = &openedBlock{
-		SmartBlock: bs,
-		lastUsage:  time.Now(),
-		refs:       1,
-	}
+	ob := newOpenedBlock(bs, true)
+	ob.refs = 1
+	s.openedBlocks[bs.Id()] = ob
 	if err = bs.Show(ctx); err != nil {
 		return
 	}
@@ -311,15 +326,8 @@ func (s *service) CloseBlock(id string) error {
 
 	ob.Lock()
 	defer ob.Unlock()
-	ob.SetEventFunc(nil)
+	ob.BlockClose()
 	ob.locked = false
-
-	if s.status != nil &&
-		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
-		ob.threadId == thread.Undef {
-		s.status.Unwatch(ob.threadId)
-	}
-
 	return nil
 }
 
@@ -566,6 +574,12 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 			}
 			return tb.InternalPaste(blocks)
 		})
+	})
+}
+
+func (s *service) TurnInto(ctx *state.Context, contextId string, style model.BlockContentTextStyle, ids ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.TurnInto(ctx, style, ids...)
 	})
 }
 
@@ -1098,9 +1112,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 		if err != nil {
 			return
 		}
-		ob = &openedBlock{
-			SmartBlock: sb,
-		}
+		ob = newOpenedBlock(sb, false)
 		s.openedBlocks[id] = ob
 	}
 	ob.refs++
@@ -1113,7 +1125,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectTypeUrls []string) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, id)
+	sc, err := source.NewSource(s.anytype, s.status, id)
 	if err != nil {
 		return
 	}
@@ -1136,6 +1148,8 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
+	sb.Lock()
+	defer sb.Unlock()
 	err = sb.Init(sc, initEmpty, initWithObjectTypeUrls)
 	return
 }

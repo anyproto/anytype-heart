@@ -40,7 +40,9 @@ var migrations = []migration{
 	skipMigration,        // 3
 	skipMigration,        // 4
 	snapshotToChanges,    // 5
-	addFilesToObjects,    // 6
+	skipMigration,        // 6
+	addFilesMetaHash,     // 7
+	addFilesToObjects,    // 8
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -259,6 +261,44 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 	return nil
 }
 
+func addFilesMetaHash(a *Anytype, lastMigration bool) error {
+	// todo: better split into 2 migrations
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		files, err := a.localStore.Files.List()
+		if err != nil {
+			return err
+		}
+		var (
+			ctx       context.Context
+			cancel    context.CancelFunc
+			toMigrate int
+			migrated  int
+		)
+		for _, file := range files {
+			if file.MetaHash == "" {
+				toMigrate++
+				for _, target := range file.Targets {
+					ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+					// reindex file to add metaHash
+					_, err = a.files.FileIndexInfo(ctx, target, true)
+					if err != nil {
+						log.Errorf("FileIndexInfo error: %s", err.Error())
+					} else {
+						migrated++
+					}
+					cancel()
+				}
+			}
+		}
+		if migrated != toMigrate {
+			log.Errorf("addFilesMetaHash migration not completed for all files: %d/%d completed", migrated, toMigrate)
+		} else {
+			log.Debugf("addFilesMetaHash migration completed for %d files", migrated)
+		}
+		return nil
+	})
+}
+
 func addFilesToObjects(a *Anytype, lastMigration bool) error {
 	// todo: better split into 2 migrations
 	return doWithRunningNode(a, true, !lastMigration, func() error {
@@ -276,23 +316,17 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 			return err
 		}
 		log.Debugf("migrating %d files", len(files))
+		var (
+			ctx      context.Context
+			cancel   context.CancelFunc
+			migrated int
+		)
 
 		for _, file := range files {
-			if file.MetaHash == "" {
-				for _, target := range file.Targets {
-					ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-					defer cancel()
-					// reindex file to add metaHash
-					_, err = a.files.FileIndexInfo(ctx, target, true)
-					if err != nil {
-						log.Errorf("FileIndexInfo error: %s", err.Error())
-					}
-				}
-			}
-
 			if file.Mill == "/image/resize" {
 				if len(file.Targets) == 0 {
-					return fmt.Errorf("got image with empty targets list")
+					log.Errorf("addFilesToObjects migration: got image with empty targets list")
+					continue
 				}
 
 				for _, target := range file.Targets {
@@ -300,21 +334,29 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 					targetsProceed[target] = struct{}{}
-					img, err := a.ImageByHash(context.Background(), target)
+					ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
+					img, err := a.ImageByHash(ctx, target)
 					if err != nil {
-						return err
+						log.Errorf("addFilesToObjects migration: ImageByHash failed: %s", err.Error())
+						cancel()
+						continue
 					}
 
 					details, err := img.Details()
 					if err != nil {
-						log.Errorf("failed to fetch details for img %s: %w", img.Hash(), err)
+						log.Errorf("addFilesToObjects migration: img.Details() failed: %s", err.Error())
+						cancel()
 						continue
 					}
 
 					err = a.localStore.Objects.UpdateObject(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations}, nil, "")
 					if err != nil {
+						// this shouldn't fail
+						cancel()
 						return err
 					}
+					migrated++
+					cancel()
 				}
 
 			} else if file.Mill == "/blob" {
@@ -326,25 +368,37 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 					targetsProceed[target] = struct{}{}
-					file, err := a.FileByHash(context.Background(), target)
+					ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
+
+					file, err := a.FileByHash(ctx, target)
 					if err != nil {
-						return err
+						log.Errorf("addFilesToObjects migration: FileByHash failed: %s", err.Error())
+						cancel()
+						continue
 					}
 
 					details, err := file.Details()
 					if err != nil {
 						log.Errorf("failed to fetch details for file %s: %w", file.Hash(), err)
+						cancel()
 						continue
 					}
 
 					err = a.localStore.Objects.UpdateObject(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations}, nil, "")
 					if err != nil {
+						cancel()
 						return err
 					}
+					cancel()
+					migrated++
 				}
 			}
 		}
-
+		if migrated != len(files) {
+			log.Errorf("addFilesToObjects migration not completed for all files: %d/%d completed", migrated, len(files))
+		} else {
+			log.Debugf("addFilesToObjects migration completed for %d files", migrated)
+		}
 		return nil
 	})
 }

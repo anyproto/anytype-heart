@@ -9,12 +9,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/cheggaaa/mb"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 var log = logging.Logger("anytype-mw-source")
@@ -38,23 +40,32 @@ type Source interface {
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-func NewSource(a anytype.Service, id string) (s Source, err error) {
+func NewSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
 	st, err := smartblock.SmartBlockTypeFromID(id)
 	if st == smartblock.SmartBlockTypeFile {
 		return NewFiles(a, id), nil
 	}
-	return newSource(a, id)
+	return newSource(a, ss, id)
 }
 
-func newSource(a anytype.Service, id string) (s Source, err error) {
+func newSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
-		err = fmt.Errorf("anytype.GetBlock error: %v", err)
+		err = fmt.Errorf("anytype.GetBlock error: %w", err)
 		return
 	}
+
+	tid, err := thread.Decode(id)
+	if err != nil {
+		err = fmt.Errorf("can't restore thread ID: %w", err)
+		return
+	}
+
 	s = &source{
 		id:    id,
+		tid:   tid,
 		a:     a,
+		ss:    ss,
 		sb:    sb,
 		logId: a.Device(),
 	}
@@ -63,11 +74,13 @@ func newSource(a anytype.Service, id string) (s Source, err error) {
 
 type source struct {
 	id, logId      string
+	tid            thread.ID
 	a              anytype.Service
+	ss             status.Service
 	sb             core.SmartBlock
 	tree           *change.Tree
 	lastSnapshotId string
-	logHeads       map[string]string
+	logHeads       map[string]*change.Change
 	receiver       ChangeReceiver
 	unsubscribe    func()
 	metaOnly       bool
@@ -100,10 +113,10 @@ func (s *source) ReadDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 }
 
 func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
-	var ch chan core.SmartblockRecordWithLogID
+	var ch chan core.SmartblockRecordEnvelope
 	if receiver != nil {
 		s.receiver = receiver
-		ch = make(chan core.SmartblockRecordWithLogID)
+		ch = make(chan core.SmartblockRecordEnvelope)
 		if s.unsubscribe, err = s.sb.SubscribeForRecords(ch); err != nil {
 			return
 		}
@@ -124,10 +137,16 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 		s.tree = new(change.Tree)
 		doc = state.NewDoc(s.id, nil)
 	} else if err != nil {
-		return nil, err
+		return
 	} else if doc, err = s.buildState(); err != nil {
 		return
 	}
+
+	if s.ss != nil {
+		// update timeline with recent information about heads
+		s.ss.UpdateTimeline(s.tid, s.timeline())
+	}
+
 	if s.unsubscribe != nil {
 		s.closed = make(chan struct{})
 		go s.changeListener(ch)
@@ -178,7 +197,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
-			LogHeads: s.logHeads,
+			LogHeads: s.logHeadIDs(),
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:         params.State.Blocks(),
 				Details:        params.State.ObjectScopedDetails(),
@@ -196,7 +215,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	ch := &change.Change{Id: id, Change: c}
 	s.tree.Add(ch)
-	s.logHeads[s.logId] = id
+	s.logHeads[s.logId] = ch
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
 		log.Infof("%s: pushed snapshot", s.id)
@@ -215,12 +234,12 @@ func (s *source) needSnapshot() bool {
 	return rand.Intn(500) == 42
 }
 
-func (s *source) changeListener(recordsCh chan core.SmartblockRecordWithLogID) {
+func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
 	batch := mb.New(0)
 	defer batch.Close()
 	go func() {
 		defer close(s.closed)
-		var records []core.SmartblockRecordWithLogID
+		var records []core.SmartblockRecordEnvelope
 		for {
 			msgs := batch.Wait()
 			if len(msgs) == 0 {
@@ -228,11 +247,20 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordWithLogID) {
 			}
 			records = records[:0]
 			for _, msg := range msgs {
-				records = append(records, msg.(core.SmartblockRecordWithLogID))
+				records = append(records, msg.(core.SmartblockRecordEnvelope))
 			}
+
+			s.receiver.Lock()
 			if err := s.applyRecords(records); err != nil {
 				log.Errorf("can't handle records: %v; records: %v", err, records)
+			} else if s.ss != nil {
+				// notify about probably updated timeline
+				if tl := s.timeline(); len(tl) > 0 {
+					s.ss.UpdateTimeline(s.tid, tl)
+				}
 			}
+			s.receiver.Unlock()
+
 			// wait 100 millisecond for better batching
 			time.Sleep(100 * time.Millisecond)
 		}
@@ -242,9 +270,7 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordWithLogID) {
 	}
 }
 
-func (s *source) applyRecords(records []core.SmartblockRecordWithLogID) (err error) {
-	s.receiver.Lock()
-	defer s.receiver.Unlock()
+func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	var changes = make([]*change.Change, 0, len(records))
 	for _, record := range records {
 		if record.LogID == s.a.Device() {
@@ -259,16 +285,17 @@ func (s *source) applyRecords(records []core.SmartblockRecordWithLogID) (err err
 			continue
 		}
 		changes = append(changes, ch)
-		s.logHeads[record.LogID] = record.ID
+		s.logHeads[record.LogID] = ch
 	}
 	log.With("thread", s.id).Infof("received %d records; changes count: %d", len(records), len(changes))
 	if len(changes) == 0 {
-		return
+		return nil
 	}
+
 	switch s.tree.Add(changes...) {
 	case change.Nothing:
 		// existing or not complete
-		return
+		return nil
 	case change.Append:
 		s.lastSnapshotId = s.tree.LastSnapshotId()
 		return s.receiver.StateAppend(func(d state.Doc) (*state.State, error) {
@@ -281,8 +308,9 @@ func (s *source) applyRecords(records []core.SmartblockRecordWithLogID) (err err
 			return err
 		}
 		return s.receiver.StateRebuild(doc.(*state.State))
+	default:
+		return fmt.Errorf("unsupported tree mode")
 	}
-	return
 }
 
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
@@ -299,6 +327,30 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 		})
 	}
 	return fileKeys
+}
+
+func (s *source) logHeadIDs() map[string]string {
+	var hs = make(map[string]string)
+	for id, ch := range s.logHeads {
+		if ch != nil {
+			hs[id] = ch.Id
+		}
+	}
+	return hs
+}
+
+func (s *source) timeline() []status.LogTime {
+	var timeline = make([]status.LogTime, 0, len(s.logHeads))
+	for _, ch := range s.logHeads {
+		if ch != nil && len(ch.Account) > 0 && len(ch.Device) > 0 {
+			timeline = append(timeline, status.LogTime{
+				AccountID: ch.Account,
+				DeviceID:  ch.Device,
+				LastEdit:  ch.Timestamp,
+			})
+		}
+	}
+	return timeline
 }
 
 func (s *source) Close() (err error) {

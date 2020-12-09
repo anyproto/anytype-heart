@@ -178,10 +178,16 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	newAcc.Name = req.Name
 
 	var (
-		cafePid, _ = peer.Decode(cafePeerId)
-		details    = []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
-		ss         = status.NewService(mw.Anytype.SyncStatus(), mw.Anytype.FileStatus(), mw.EventSender.Send, cafePid)
-		bs         = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, mw.EventSender.Send)
+		cafePid, _  = peer.Decode(cafePeerId)
+		ownDevice   = mw.Anytype.Device()
+		profileInfo = mw.Anytype
+		fileStatus  = mw.Anytype.FileStatus()
+		syncStatus  = mw.Anytype.SyncStatus()
+		eventSender = mw.EventSender.Send
+		details     = []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
+
+		ss = status.NewService(syncStatus, fileStatus, profileInfo, eventSender, cafePid.String(), ownDevice)
+		bs = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, eventSender)
 	)
 
 	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)
@@ -508,10 +514,16 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	}
 
 	var (
-		acc        = model.Account{Id: req.Id}
-		cafePid, _ = peer.Decode(cafePeerId)
-		ss         = status.NewService(mw.Anytype.SyncStatus(), mw.Anytype.FileStatus(), mw.EventSender.Send, cafePid)
-		bs         = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, mw.EventSender.Send)
+		acc         = model.Account{Id: req.Id}
+		cafePid, _  = peer.Decode(cafePeerId)
+		ownDevice   = mw.Anytype.Device()
+		profileInfo = mw.Anytype
+		fileStatus  = mw.Anytype.FileStatus()
+		syncStatus  = mw.Anytype.SyncStatus()
+		eventSender = mw.EventSender.Send
+
+		ss = status.NewService(syncStatus, fileStatus, profileInfo, eventSender, cafePid.String(), ownDevice)
+		bs = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, eventSender)
 	)
 
 	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)

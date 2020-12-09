@@ -53,7 +53,7 @@ func (d *doc) meta() core.SmartBlockMeta {
 	}
 }
 
-func (d *doc) addRecords(records ...core.SmartblockRecordWithLogID) (hasChanges bool) {
+func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (hasChanges bool) {
 	d.lastUsage = time.Now()
 	var changes = d.changesBuf[:0]
 	for _, rec := range records {

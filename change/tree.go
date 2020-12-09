@@ -95,6 +95,9 @@ func (t *Tree) Add(changes ...*Change) (mode Mode) {
 }
 
 func (t *Tree) add(c *Change) (attached bool) {
+	if c == nil {
+		return false
+	}
 	if t.metaOnly {
 		c.PreviousIds = c.PreviousMetaIds
 	}
@@ -323,7 +326,7 @@ func (t *Tree) Get(id string) *Change {
 func (t *Tree) LastSnapshotId() string {
 	var sIds []string
 	for _, hid := range t.headIds {
-		hd := t.Get(hid)
+		hd := t.attached[hid]
 		sId := hd.Id
 		if hd.Snapshot == nil {
 			sId = hd.LastSnapshotId

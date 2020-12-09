@@ -5,6 +5,7 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -12,8 +13,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
-	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	symmetric "github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
@@ -26,6 +25,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -35,12 +35,14 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
+const maxPinAttempts = 10
+
 var log = logging.Logger("anytype-files")
 
 type Service struct {
 	store localstore.FileStore
 	ipfs  ipfs.IPFS
-	cafe  cafe.Client
+	pins  pin.FilePinService
 }
 
 type FileKeys struct {
@@ -48,11 +50,11 @@ type FileKeys struct {
 	Keys map[string]string
 }
 
-func New(store localstore.FileStore, ipfs ipfs.IPFS, cafe cafe.Client) *Service {
+func New(store localstore.FileStore, ipfs ipfs.IPFS, pins pin.FilePinService) *Service {
 	return &Service{
 		store: store,
 		ipfs:  ipfs,
-		cafe:  cafe,
+		pins:  pins,
 	}
 }
 
@@ -91,21 +93,22 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
-	if s.cafe != nil {
-		go func() {
-			for i := 0; i <= 10; i++ {
-				_, err := s.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: nodeHash})
-				if err != nil {
-					log.Errorf("failed to pin file %s on the cafe: %s", nodeHash, err.Error())
-					time.Sleep(time.Minute * time.Duration(i+1))
-					continue
+	go func() {
+		for attempt := 1; attempt <= maxPinAttempts; attempt++ {
+			if err := s.pins.FilePin(nodeHash); err != nil {
+				if errors.Is(err, pin.ErrNoCafe) {
+					return
 				}
 
-				log.Debugf("pinning file %s started on the cafe", nodeHash)
-				break
+				log.Errorf("failed to pin file %s on the cafe (attempt %d): %s", nodeHash, attempt, err.Error())
+				time.Sleep(time.Minute * time.Duration(attempt))
+				continue
 			}
-		}()
-	}
+
+			log.Debugf("pinning file %s started on the cafe", nodeHash)
+			break
+		}
+	}()
 
 	return nodeHash, fileInfo, nil
 }
@@ -411,7 +414,6 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 	}
 	file.MetaHash = cid.String()
 	file.Targets = []string{target}
-	log.Debugf("fileInfoFromPath %s", path)
 	return &file, nil
 }
 
@@ -477,11 +479,9 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	}
 
 	if efile, _ := s.store.GetBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
-		log.Errorf("mill:%s, source:%s, opts:%s, efile found: %s", mill.ID(), source, opts, efile.Hash)
 		efile.Targets = nil
 		return efile, nil
 	}
-	log.Errorf("mill:%s, source:%s, opts:%s, efile NOT found", mill.ID(), source, opts)
 
 	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
@@ -496,7 +496,6 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	}
 
 	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
-		log.Errorf("mill:%s, check:%s, efile found", mill.ID(), check)
 		efile.Targets = nil
 		return efile, nil
 	}
@@ -578,7 +577,6 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 	if err != nil {
 		return nil, err
 	}
-	log.Errorf("mill:%s, check:%s, efile NOT found and added %s", mill.ID(), check, fileInfo.Hash)
 
 	return fileInfo, nil
 }

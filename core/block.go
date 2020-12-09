@@ -1115,3 +1115,23 @@ func (mw *Middleware) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.R
 
 	return response(pb.RpcBlockRelationAddResponseError_NULL, nil)
 }
+
+func (mw *Middleware) BlockListTurnInto(req *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockListTurnIntoResponseErrorCode, err error) *pb.RpcBlockListTurnIntoResponse {
+		m := &pb.RpcBlockListTurnIntoResponse{Error: &pb.RpcBlockListTurnIntoResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.TurnInto(ctx, req.ContextId, req.Style, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListTurnIntoResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListTurnIntoResponseError_NULL, nil)
+}
