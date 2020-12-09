@@ -26,124 +26,148 @@ const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 func init() { proto.RegisterFile("pb/protos/service/service.proto", fileDescriptor_93a29dc403579097) }
 
 var fileDescriptor_93a29dc403579097 = []byte{
-	// 1862 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x9a, 0xdd, 0x6e, 0x1c, 0x49,
-	0x15, 0xc7, 0x33, 0x12, 0x22, 0x4b, 0xad, 0x31, 0x6c, 0x03, 0xcb, 0xae, 0x11, 0xe3, 0x75, 0x36,
-	0x4b, 0x62, 0x27, 0x6e, 0x07, 0x87, 0xe5, 0x8e, 0x0b, 0x7b, 0xfc, 0x11, 0x0b, 0xc7, 0x31, 0x33,
-	0xfe, 0x90, 0x22, 0x10, 0xb4, 0xbb, 0x8f, 0x67, 0x8a, 0xe9, 0xa9, 0xea, 0x74, 0xd7, 0x8c, 0x63,
-	0x09, 0x6e, 0x90, 0xe0, 0x0e, 0x29, 0xcf, 0xc3, 0x13, 0x70, 0x99, 0x4b, 0x2e, 0x51, 0xf2, 0x22,
-	0xab, 0xaa, 0x3e, 0xfd, 0x55, 0x53, 0x55, 0xd3, 0xbe, 0x48, 0xa2, 0xf4, 0xf9, 0x9d, 0xff, 0x39,
-	0x55, 0x5d, 0xa7, 0xfa, 0x54, 0xd9, 0x64, 0x35, 0xb9, 0xda, 0x4a, 0x52, 0x2e, 0x78, 0xb6, 0x95,
-	0x41, 0x3a, 0xa3, 0x21, 0x14, 0xff, 0xfa, 0xea, 0xb1, 0x77, 0x3f, 0x60, 0xb7, 0xe2, 0x36, 0x81,
-	0x95, 0x2f, 0x2a, 0x32, 0xe4, 0x93, 0x49, 0xc0, 0xa2, 0x2c, 0x47, 0x56, 0x3e, 0xaf, 0x2c, 0x30,
-	0x03, 0x26, 0xf0, 0xf9, 0xf6, 0x7f, 0x7a, 0x64, 0xb9, 0x17, 0x53, 0x60, 0xa2, 0x87, 0x0e, 0xde,
-	0x25, 0x59, 0xba, 0x0c, 0xe2, 0x18, 0x44, 0x2f, 0x85, 0x40, 0x80, 0xf7, 0xc0, 0x47, 0x79, 0xbf,
-	0x9f, 0x84, 0x7e, 0x6e, 0xf2, 0x73, 0x9b, 0xdf, 0x87, 0x37, 0x53, 0xc8, 0xc4, 0xca, 0xd7, 0x4e,
-	0x26, 0x4b, 0x38, 0xcb, 0xc0, 0x7b, 0x4d, 0x7e, 0x98, 0x5b, 0xfa, 0x10, 0xf2, 0x19, 0xa4, 0x9e,
-	0xd1, 0x0b, 0x8d, 0xa5, 0xf4, 0x43, 0x37, 0xa4, 0x6b, 0xf7, 0x38, 0x9b, 0x41, 0x2a, 0xcc, 0xda,
-	0x68, 0x74, 0x6b, 0x57, 0x10, 0x6a, 0xff, 0x89, 0x2c, 0xef, 0x84, 0x21, 0x9f, 0xb2, 0x32, 0xf1,
-	0xa6, 0x1f, 0x1a, 0xe7, 0x32, 0xff, 0x66, 0x01, 0x55, 0xa5, 0x8e, 0x36, 0x9c, 0xf0, 0xaf, 0x8d,
-	0x7e, 0xda, 0x8c, 0x3f, 0x74, 0x43, 0x73, 0xda, 0x03, 0x88, 0x21, 0x14, 0x16, 0xed, 0xdc, 0xb8,
-	0x40, 0xbb, 0x84, 0x50, 0xfb, 0x8c, 0x7c, 0x5a, 0x68, 0x0b, 0x9e, 0x78, 0x6b, 0x66, 0x27, 0xc1,
-	0x93, 0x52, 0xf7, 0x81, 0x0b, 0x41, 0xd5, 0x90, 0x2c, 0x1d, 0x4d, 0x82, 0x21, 0x1c, 0x82, 0xd8,
-	0x8d, 0xf9, 0x95, 0xf7, 0xb8, 0xe1, 0x73, 0x94, 0x5c, 0x67, 0xbe, 0xb2, 0xfb, 0x87, 0x20, 0x7c,
-	0x49, 0x94, 0xea, 0xeb, 0x2d, 0x48, 0x0c, 0xf2, 0x07, 0x42, 0x2e, 0x20, 0xcd, 0x28, 0x67, 0x87,
-	0x20, 0xbc, 0xaf, 0x1a, 0x8e, 0x68, 0x50, 0x5e, 0x85, 0xf4, 0x9a, 0x83, 0x40, 0xc9, 0x17, 0xe4,
-	0xfe, 0x31, 0x1f, 0x0e, 0x80, 0x45, 0xde, 0x2f, 0x1b, 0xf4, 0x31, 0x1f, 0xfa, 0xf2, 0x71, 0x29,
-	0xd6, 0xb5, 0x99, 0x51, 0xe9, 0x84, 0xfc, 0xa0, 0xc7, 0xd9, 0x35, 0x1d, 0xca, 0xdc, 0x56, 0x1b,
-	0x70, 0xfe, 0xbc, 0x91, 0xda, 0x57, 0x76, 0x00, 0xf5, 0x8e, 0xc8, 0x27, 0x83, 0xd1, 0x54, 0x44,
-	0xfc, 0x86, 0x69, 0xa9, 0x15, 0x8f, 0x2d, 0xa9, 0xd5, 0xcc, 0x28, 0x75, 0x4d, 0x3e, 0xdb, 0x7f,
-	0x2b, 0x20, 0x65, 0x41, 0xbc, 0x97, 0xf2, 0xe4, 0x80, 0xc6, 0x90, 0x79, 0x8f, 0x1a, 0x4e, 0x75,
-	0xbb, 0xaf, 0x80, 0x52, 0xfd, 0xf1, 0x62, 0x10, 0xe3, 0xc4, 0xe4, 0x27, 0x75, 0x73, 0x8f, 0x33,
-	0x01, 0x4c, 0x78, 0xeb, 0x76, 0x01, 0x44, 0xca, 0x58, 0x1b, 0x6d, 0x50, 0x8c, 0xd6, 0x27, 0x9f,
-	0x1e, 0x53, 0x36, 0x3e, 0x4d, 0x61, 0x46, 0xe1, 0x46, 0x5b, 0x0e, 0x35, 0x8b, 0x65, 0x39, 0x34,
-	0x09, 0xd4, 0x7c, 0x45, 0xc8, 0x79, 0x12, 0xf3, 0x20, 0x92, 0x23, 0xd3, 0xde, 0x62, 0x65, 0xb0,
-	0xbc, 0xc5, 0x06, 0x50, 0x55, 0xdb, 0x6e, 0xcc, 0xc3, 0x71, 0x6e, 0xd3, 0xaa, 0x4d, 0x59, 0xd0,
-	0xcd, 0x52, 0x6d, 0x1a, 0x82, 0xaa, 0x97, 0x64, 0x49, 0x19, 0xfa, 0x90, 0xc4, 0x41, 0xa8, 0xef,
-	0xf5, 0xb9, 0x0f, 0xda, 0x2c, 0x7b, 0xbd, 0xce, 0x54, 0x8b, 0x58, 0x59, 0x5e, 0x25, 0xc0, 0xb4,
-	0xe1, 0xe7, 0x1e, 0xd2, 0x60, 0x19, 0x7e, 0x03, 0x40, 0x3d, 0x4e, 0x7e, 0xaa, 0x1e, 0x1f, 0x82,
-	0x38, 0x9d, 0x5e, 0xc5, 0x34, 0xbc, 0x84, 0xab, 0xf3, 0xfe, 0xb1, 0xb7, 0x61, 0xf0, 0xd4, 0x98,
-	0x32, 0xca, 0x93, 0x56, 0xac, 0x16, 0x50, 0xa6, 0xb1, 0x9b, 0x42, 0x10, 0x85, 0xe9, 0x74, 0x72,
-	0x95, 0x19, 0x03, 0x6a, 0x8c, 0x33, 0xe0, 0x3c, 0x5b, 0xad, 0x79, 0x45, 0x0c, 0x40, 0xd4, 0xe3,
-	0xad, 0x1b, 0x34, 0x9a, 0x88, 0x65, 0xcd, 0x5b, 0x50, 0x6d, 0x39, 0xe1, 0x27, 0xc7, 0xb4, 0x9c,
-	0xb4, 0x0f, 0xce, 0x03, 0x17, 0x82, 0xaa, 0x7f, 0x21, 0x3f, 0xaa, 0xa9, 0x9e, 0x06, 0x43, 0xf0,
-	0xbe, 0xb1, 0xba, 0x49, 0x73, 0xa9, 0xfe, 0xab, 0x45, 0x98, 0x5e, 0x06, 0x2c, 0xa6, 0x6c, 0x6c,
-	0x2e, 0x03, 0x65, 0x72, 0x97, 0x41, 0x81, 0x54, 0xdf, 0x83, 0x3c, 0xef, 0x98, 0x67, 0xe0, 0x99,
-	0x56, 0xa3, 0xb2, 0x58, 0x36, 0x80, 0x26, 0x51, 0x7d, 0x79, 0xd5, 0xf3, 0x3d, 0x7e, 0xc3, 0x54,
-	0xc5, 0x9a, 0xca, 0xa6, 0x30, 0x5a, 0xbe, 0xbc, 0x73, 0x10, 0x6a, 0xff, 0x11, 0xb5, 0x0f, 0x41,
-	0xbc, 0x0c, 0xd2, 0x71, 0xe6, 0x3d, 0x34, 0xaf, 0x6c, 0x5f, 0x59, 0x2d, 0xfd, 0xc8, 0x3c, 0xa5,
-	0x95, 0xee, 0x39, 0x8b, 0xb8, 0xb1, 0x74, 0xa5, 0xc1, 0x59, 0xba, 0x08, 0x68, 0x7a, 0x7d, 0xb0,
-	0xe8, 0x49, 0x83, 0x53, 0x0f, 0x01, 0xd4, 0xfb, 0x33, 0x59, 0x2e, 0x0a, 0xe5, 0x80, 0x42, 0x1c,
-	0x65, 0xc6, 0x35, 0x36, 0x00, 0xe1, 0xe7, 0x66, 0xe7, 0x1a, 0x6b, 0x60, 0x18, 0xe0, 0x0d, 0x96,
-	0xfe, 0x40, 0x76, 0xaa, 0x99, 0x48, 0x69, 0x28, 0x28, 0x67, 0x99, 0xf7, 0xc4, 0xe2, 0x5f, 0x87,
-	0xca, 0x60, 0x4f, 0xdb, 0xc1, 0x18, 0xf2, 0x0a, 0x0b, 0x67, 0x00, 0x62, 0x0f, 0x44, 0x40, 0xe3,
-	0xcc, 0xb3, 0x65, 0x8b, 0xf6, 0x32, 0xd0, 0xa3, 0x85, 0x1c, 0xc6, 0xb8, 0x25, 0x9f, 0x17, 0x31,
-	0x64, 0x4d, 0x1d, 0x65, 0x3b, 0x69, 0x38, 0xa2, 0x33, 0x88, 0x3c, 0xdf, 0x22, 0xa1, 0x4a, 0xaf,
-	0xe2, 0xca, 0x90, 0x5b, 0xad, 0x79, 0xad, 0x18, 0x8e, 0x69, 0x26, 0x5e, 0xf2, 0x19, 0x98, 0x8a,
-	0x41, 0xda, 0x7c, 0x69, 0x74, 0x15, 0x43, 0x1d, 0x42, 0xed, 0x29, 0x0e, 0xab, 0xd0, 0x3e, 0xe3,
-	0x27, 0x70, 0xa3, 0xb6, 0x9e, 0xa7, 0x0e, 0xff, 0x92, 0x2a, 0xa3, 0x6d, 0xb6, 0xa4, 0x31, 0xec,
-	0xbb, 0x0e, 0x59, 0x2d, 0x21, 0x3c, 0x32, 0xf4, 0x46, 0x34, 0x8e, 0x52, 0x60, 0x67, 0x5c, 0xb2,
-	0x99, 0xf7, 0xad, 0x45, 0xd2, 0x8c, 0x97, 0x99, 0xfc, 0xf6, 0xae, 0x6e, 0x98, 0xd2, 0x98, 0x78,
-	0x25, 0x5c, 0x15, 0xc7, 0xba, 0x45, 0xcd, 0x50, 0x20, 0x1b, 0x6d, 0x50, 0x0c, 0x36, 0x23, 0x3f,
-	0xab, 0x07, 0x3b, 0x83, 0xb7, 0x62, 0x20, 0x6e, 0x63, 0xf0, 0x36, 0x1d, 0x22, 0x92, 0xf2, 0x15,
-	0x56, 0xc6, 0xf4, 0xdb, 0xe2, 0x18, 0x97, 0xd6, 0x06, 0xb9, 0x37, 0x4d, 0x62, 0x1a, 0xca, 0xef,
-	0xd7, 0x63, 0x8b, 0x4a, 0x49, 0x58, 0x4e, 0x09, 0x66, 0x12, 0x43, 0xfd, 0xab, 0x43, 0x7e, 0x51,
-	0x1f, 0xe3, 0x6e, 0x10, 0x8e, 0x87, 0x29, 0x9f, 0xb2, 0xa8, 0xc7, 0x63, 0x9e, 0x7a, 0xdb, 0x8e,
-	0xd4, 0x35, 0xb6, 0x0c, 0xff, 0xfc, 0x4e, 0x3e, 0x98, 0xc8, 0x88, 0x7c, 0x56, 0xcf, 0x63, 0x27,
-	0xa6, 0x43, 0x66, 0x1d, 0xb2, 0x54, 0x52, 0xc4, 0xc2, 0x21, 0xd7, 0x49, 0x8c, 0x94, 0xe1, 0xd6,
-	0x87, 0x91, 0xf6, 0xe8, 0x2c, 0x7f, 0xa9, 0x4f, 0x1d, 0x12, 0x7b, 0x74, 0xa6, 0xbd, 0xd3, 0xcd,
-	0x96, 0x34, 0x06, 0xfd, 0x67, 0x87, 0xac, 0xd4, 0xa3, 0x6a, 0xbb, 0x93, 0x6b, 0x9a, 0x6d, 0x3b,
-	0xd4, 0xf3, 0x3b, 0xf9, 0x60, 0x1e, 0x0c, 0x3b, 0x30, 0xb5, 0xb4, 0x20, 0x06, 0xec, 0x60, 0x6c,
-	0x55, 0x91, 0x23, 0x7e, 0x63, 0x13, 0x79, 0xd2, 0x8a, 0xad, 0x4e, 0x53, 0x25, 0x71, 0x36, 0x4d,
-	0xd9, 0x11, 0x13, 0xdc, 0x7b, 0x64, 0x51, 0x28, 0x00, 0xcb, 0x69, 0xca, 0x08, 0x62, 0x9c, 0x21,
-	0xf9, 0x71, 0xb1, 0xf1, 0xcb, 0x8a, 0x92, 0x7f, 0x4c, 0xab, 0xa7, 0x2a, 0x39, 0xf5, 0x97, 0x63,
-	0xf5, 0xcc, 0x91, 0x18, 0xe8, 0xaf, 0x38, 0x20, 0x0c, 0x94, 0x57, 0x89, 0xd3, 0xbf, 0x59, 0x1c,
-	0x1b, 0x6d, 0x50, 0xfb, 0xfe, 0x93, 0xc7, 0x5b, 0xb8, 0xff, 0x34, 0x63, 0xfa, 0x6d, 0x71, 0x73,
-	0x85, 0x48, 0x44, 0xf6, 0x4f, 0xce, 0x0a, 0x51, 0x3a, 0x92, 0x6a, 0x55, 0x21, 0x75, 0xda, 0x3c,
-	0xb1, 0x79, 0x4d, 0x3a, 0x27, 0xb6, 0x59, 0x90, 0x1b, 0x6d, 0x50, 0x8c, 0x95, 0x54, 0xe7, 0x10,
-	0x35, 0xa9, 0x23, 0x08, 0xc7, 0x10, 0x59, 0x9b, 0x9f, 0x7c, 0x8e, 0x72, 0x68, 0x61, 0xf3, 0xa3,
-	0xc1, 0x5a, 0xf7, 0x3d, 0x48, 0x62, 0x2a, 0x8c, 0xdd, 0xb7, 0xb2, 0x38, 0xbb, 0xef, 0x82, 0xd0,
-	0x24, 0x5f, 0x42, 0x3a, 0x34, 0x37, 0xf4, 0xca, 0xe2, 0x94, 0x2c, 0x08, 0xad, 0x8d, 0xed, 0xf1,
-	0xe4, 0xd6, 0xd8, 0xc6, 0x4a, 0x83, 0xb3, 0x8d, 0x45, 0x40, 0x4b, 0xf1, 0x34, 0xc8, 0x84, 0x39,
-	0x45, 0x65, 0x71, 0xa6, 0x58, 0x10, 0x28, 0xf9, 0x7b, 0xf2, 0x49, 0x9e, 0xe2, 0x54, 0x78, 0x5d,
-	0x53, 0x02, 0xd3, 0x6a, 0x12, 0x57, 0xad, 0x76, 0xed, 0xa4, 0xb5, 0xff, 0x36, 0xe1, 0xa9, 0x30,
-	0x9e, 0xb4, 0x72, 0x93, 0xf3, 0xa4, 0x55, 0x22, 0xda, 0x29, 0xf7, 0x68, 0x22, 0x9f, 0xcb, 0x55,
-	0xae, 0xee, 0xa5, 0x4c, 0x6b, 0xb9, 0x89, 0x38, 0xd7, 0xf2, 0x1c, 0x3a, 0xbf, 0xf3, 0x1d, 0xd0,
-	0x18, 0x4e, 0x82, 0x09, 0x58, 0x77, 0x3e, 0x75, 0xdd, 0x22, 0x89, 0x85, 0x3b, 0x5f, 0x9d, 0x9c,
-	0x2f, 0x50, 0x75, 0xe7, 0xa8, 0x22, 0xd9, 0xfc, 0xf3, 0x5b, 0xc9, 0x46, 0xa8, 0x8d, 0x36, 0x28,
-	0xc6, 0x9a, 0x60, 0x07, 0x54, 0xc4, 0xba, 0xa4, 0x91, 0x18, 0x79, 0x6e, 0x05, 0xc5, 0x38, 0xef,
-	0x25, 0xe6, 0xd9, 0xf9, 0xa1, 0x5d, 0xd0, 0x08, 0xb8, 0x73, 0x68, 0x8a, 0x68, 0x37, 0xb4, 0x06,
-	0x3a, 0x3f, 0x34, 0x65, 0x76, 0x0f, 0x2d, 0x57, 0x68, 0x37, 0xb4, 0x26, 0x8b, 0xe1, 0xfe, 0xd1,
-	0x21, 0x5f, 0x16, 0xf1, 0x8e, 0x29, 0x1b, 0x9f, 0x05, 0xe9, 0x50, 0x5d, 0x3b, 0x87, 0xe3, 0xa3,
-	0xc8, 0xfb, 0xb5, 0x45, 0x4a, 0x92, 0x7e, 0x03, 0x2d, 0xa3, 0x6f, 0xdf, 0xc5, 0x45, 0xfb, 0xa0,
-	0xc8, 0x76, 0x2b, 0x10, 0xc1, 0x8c, 0xc2, 0xcd, 0x05, 0x85, 0x1b, 0xcf, 0xb6, 0x87, 0x16, 0x90,
-	0x7f, 0x51, 0xbf, 0x92, 0xdc, 0x6c, 0x49, 0xeb, 0x2d, 0x57, 0x2d, 0xea, 0x4e, 0x28, 0xe8, 0x0c,
-	0x54, 0xec, 0xed, 0x45, 0x6a, 0x15, 0xeb, 0x6a, 0xb9, 0x1c, 0x3e, 0x98, 0xc7, 0xdf, 0xc8, 0xcf,
-	0x6b, 0x17, 0x46, 0x8d, 0xf1, 0x6f, 0xd9, 0xef, 0x9b, 0xcc, 0x53, 0xf0, 0xac, 0xbd, 0x83, 0x16,
-	0x3d, 0xef, 0xce, 0x16, 0x46, 0xc7, 0x26, 0xae, 0x7d, 0x74, 0x8b, 0x83, 0xbe, 0xfa, 0x9a, 0x83,
-	0xef, 0x43, 0xc8, 0x53, 0xf3, 0xea, 0xd3, 0x47, 0x93, 0xa3, 0xce, 0xd5, 0x67, 0x75, 0xd1, 0x93,
-	0x38, 0x4f, 0xa2, 0x76, 0x49, 0xe4, 0xe0, 0x9d, 0x92, 0xb0, 0xba, 0xe8, 0x49, 0x34, 0x5f, 0x84,
-	0x23, 0x09, 0x7d, 0x66, 0x5b, 0x24, 0x61, 0x75, 0xd1, 0x4e, 0xcf, 0xbb, 0x9c, 0x8f, 0x27, 0x41,
-	0x3a, 0x3e, 0x00, 0x11, 0x8e, 0x8c, 0x1b, 0x5d, 0x41, 0xf8, 0x0a, 0x71, 0x6e, 0x74, 0x73, 0xa8,
-	0x7e, 0xb4, 0x2c, 0x80, 0xfc, 0x3d, 0xed, 0xb0, 0x28, 0x0f, 0xbb, 0xed, 0xd2, 0x6a, 0xb2, 0xce,
-	0x02, 0xb4, 0xfb, 0x60, 0x22, 0x7f, 0x27, 0x5f, 0x28, 0x52, 0x7e, 0xd3, 0x4a, 0x06, 0x7f, 0xc6,
-	0x60, 0xaa, 0x01, 0xf5, 0xed, 0xd3, 0x40, 0x67, 0x0d, 0x58, 0x1c, 0xaa, 0x76, 0xe0, 0x24, 0x98,
-	0xd1, 0x61, 0x20, 0x28, 0x67, 0xb2, 0x03, 0xce, 0x2f, 0x4e, 0x9a, 0xb3, 0x5e, 0x11, 0x7e, 0x89,
-	0x58, 0x66, 0xdd, 0x82, 0x62, 0xb4, 0x7f, 0x77, 0x48, 0xb7, 0x22, 0x0e, 0xf1, 0xa4, 0xc9, 0xae,
-	0xf9, 0x25, 0x15, 0x23, 0xb9, 0x47, 0x67, 0xde, 0x6f, 0x6c, 0x72, 0x26, 0xba, 0x4c, 0xe2, 0xdb,
-	0x3b, 0x7a, 0x55, 0x2d, 0xa0, 0xb4, 0xe2, 0x1d, 0x7c, 0xb3, 0x05, 0x54, 0x47, 0x45, 0xed, 0x0a,
-	0x7e, 0xcd, 0x41, 0xa0, 0xe4, 0xef, 0xc8, 0xf7, 0x4e, 0x29, 0x1b, 0x7a, 0x5f, 0x36, 0x51, 0xca,
-	0x86, 0xa5, 0xca, 0x8a, 0xc9, 0x54, 0x5d, 0xd4, 0x9d, 0xa6, 0x3c, 0x84, 0x2c, 0xeb, 0x05, 0x2c,
-	0x84, 0x58, 0xbb, 0xa8, 0x43, 0x9b, 0x9f, 0x1b, 0x2d, 0x17, 0x75, 0x73, 0x50, 0xd5, 0x50, 0xbe,
-	0xa0, 0x99, 0xe0, 0xe9, 0xed, 0x60, 0xc4, 0x6f, 0xb4, 0x86, 0x12, 0x2d, 0xbe, 0x34, 0x59, 0x1a,
-	0x4a, 0x0d, 0xa9, 0x7e, 0xe4, 0x80, 0x06, 0xfc, 0xb1, 0xac, 0x7e, 0x1d, 0x5c, 0xb8, 0x15, 0x66,
-	0xcb, 0x75, 0xb0, 0x01, 0xab, 0x8e, 0xe9, 0x45, 0xde, 0x20, 0xd0, 0xac, 0x1d, 0xd3, 0xcb, 0xd4,
-	0x4a, 0xc0, 0x72, 0x4c, 0x37, 0x82, 0x18, 0xe7, 0x19, 0x59, 0x92, 0x6b, 0x16, 0xd8, 0xbe, 0xfa,
-	0x05, 0x0d, 0x6f, 0xb9, 0xf4, 0xdc, 0x9f, 0x24, 0xe2, 0x76, 0xa5, 0xf6, 0x7f, 0x09, 0x3c, 0xeb,
-	0xec, 0xae, 0xfd, 0xf7, 0x43, 0xb7, 0xf3, 0xfe, 0x43, 0xb7, 0xf3, 0xff, 0x0f, 0xdd, 0xce, 0xbb,
-	0x8f, 0xdd, 0x7b, 0xef, 0x3f, 0x76, 0xef, 0xfd, 0xef, 0x63, 0xf7, 0xde, 0xeb, 0xfb, 0xf8, 0x0b,
-	0x22, 0x57, 0xdf, 0x57, 0xbf, 0xe6, 0xf1, 0xfc, 0xbb, 0x00, 0x00, 0x00, 0xff, 0xff, 0x27, 0x27,
-	0xc5, 0x39, 0x44, 0x22, 0x00, 0x00,
+	// 2249 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x9c, 0x9a, 0xcf, 0x6f, 0xdc, 0xc6,
+	0x15, 0xc7, 0xbd, 0x40, 0x51, 0xa7, 0x13, 0xd7, 0x4d, 0xd8, 0xc6, 0x4d, 0x54, 0x54, 0xfe, 0x11,
+	0x3b, 0xb6, 0x65, 0x9b, 0x96, 0x25, 0x34, 0x45, 0x7f, 0x06, 0xd2, 0xca, 0x56, 0x84, 0xc8, 0xb6,
+	0xaa, 0x95, 0x2d, 0x20, 0x68, 0xd1, 0x52, 0xdc, 0xe7, 0xdd, 0xc9, 0x72, 0x39, 0x0c, 0x39, 0xbb,
+	0xb2, 0x0a, 0x14, 0x28, 0x5a, 0xb4, 0xe7, 0x00, 0x3d, 0xf6, 0xd4, 0x6b, 0xff, 0x92, 0x1e, 0x73,
+	0xec, 0xb1, 0xb5, 0xff, 0x91, 0x60, 0x86, 0x8f, 0x33, 0xe4, 0xec, 0xcc, 0x90, 0xeb, 0x83, 0x6d,
+	0x78, 0xdf, 0xe7, 0x7d, 0xdf, 0x1b, 0xf2, 0xbd, 0xe1, 0xcc, 0x90, 0xe4, 0x72, 0x76, 0x72, 0x3f,
+	0xcb, 0x19, 0x67, 0xc5, 0xfd, 0x02, 0xf2, 0x39, 0x8d, 0xa1, 0xfa, 0x37, 0x94, 0x3f, 0x07, 0xe7,
+	0xa3, 0xf4, 0x8c, 0x9f, 0x65, 0xb0, 0xf2, 0xbe, 0x26, 0x63, 0x36, 0x9d, 0x46, 0xe9, 0xb0, 0x28,
+	0x91, 0x95, 0x4b, 0xda, 0x02, 0x73, 0x48, 0x39, 0xfe, 0xbe, 0xf1, 0xff, 0xe7, 0xe4, 0x62, 0x3f,
+	0xa1, 0x90, 0xf2, 0x3e, 0x3a, 0x04, 0xc7, 0xe4, 0xc2, 0x71, 0x94, 0x24, 0xc0, 0xfb, 0x39, 0x44,
+	0x1c, 0x82, 0x6b, 0x21, 0xca, 0x87, 0x87, 0x59, 0x1c, 0x96, 0xa6, 0xb0, 0xb4, 0x85, 0x87, 0xf0,
+	0xe5, 0x0c, 0x0a, 0xbe, 0xf2, 0xa1, 0x97, 0x29, 0x32, 0x96, 0x16, 0x10, 0x7c, 0x4e, 0xbe, 0x5b,
+	0x5a, 0x0e, 0x21, 0x66, 0x73, 0xc8, 0x03, 0xab, 0x17, 0x1a, 0x95, 0xf4, 0x75, 0x3f, 0x64, 0x6a,
+	0xf7, 0x59, 0x3a, 0x87, 0x9c, 0xdb, 0xb5, 0xd1, 0xe8, 0xd7, 0xd6, 0x10, 0x6a, 0xff, 0x8e, 0x5c,
+	0xdc, 0x8a, 0x63, 0x36, 0x4b, 0x55, 0xe2, 0x4d, 0x3f, 0x34, 0x2e, 0x64, 0x7e, 0xa3, 0x85, 0xd2,
+	0xa9, 0xa3, 0x0d, 0x2f, 0xf8, 0x87, 0x56, 0x3f, 0xe3, 0x8a, 0x5f, 0xf7, 0x43, 0x0b, 0xda, 0x03,
+	0x48, 0x20, 0xe6, 0x0e, 0xed, 0xd2, 0xd8, 0xa2, 0xad, 0x20, 0xd4, 0x3e, 0x22, 0x6f, 0x57, 0xda,
+	0x9c, 0x65, 0xc1, 0x55, 0xbb, 0x13, 0x67, 0x99, 0xd2, 0xbd, 0xe6, 0x43, 0x50, 0x35, 0x26, 0x17,
+	0xf6, 0xa6, 0xd1, 0x08, 0x76, 0x81, 0x6f, 0x27, 0xec, 0x24, 0xb8, 0xd5, 0xf0, 0xd9, 0xcb, 0x5e,
+	0x14, 0xa1, 0xb4, 0x87, 0xbb, 0xc0, 0x43, 0x41, 0x28, 0xf5, 0xdb, 0x1d, 0x48, 0x0c, 0xf2, 0x1b,
+	0x42, 0x9e, 0x43, 0x5e, 0x50, 0x96, 0xee, 0x02, 0x0f, 0xae, 0x34, 0x1c, 0xd1, 0x20, 0xbd, 0x2a,
+	0xe9, 0xab, 0x1e, 0x02, 0x25, 0x3f, 0x25, 0xe7, 0xf7, 0xd9, 0x68, 0x00, 0xe9, 0x30, 0xf8, 0x71,
+	0x83, 0xde, 0x67, 0xa3, 0x50, 0xfc, 0xac, 0xc4, 0x56, 0x5d, 0x66, 0x54, 0x7a, 0x42, 0xbe, 0xd3,
+	0x67, 0xe9, 0x0b, 0x3a, 0x12, 0xb9, 0x5d, 0x6e, 0xc0, 0xe5, 0xef, 0x8d, 0xd4, 0xae, 0xb8, 0x01,
+	0xd4, 0xdb, 0x23, 0x6f, 0x0d, 0xc6, 0x33, 0x3e, 0x64, 0xa7, 0xa9, 0x91, 0x5a, 0xf5, 0xb3, 0x23,
+	0xb5, 0x9a, 0x19, 0xa5, 0x5e, 0x90, 0x77, 0x1f, 0xbe, 0xe4, 0x90, 0xa7, 0x51, 0xb2, 0x93, 0xb3,
+	0xec, 0x11, 0x4d, 0xa0, 0x08, 0x6e, 0x36, 0x9c, 0xea, 0xf6, 0x50, 0x02, 0x4a, 0xfd, 0x56, 0x3b,
+	0x88, 0x71, 0x12, 0xf2, 0xfd, 0xba, 0xb9, 0xcf, 0x52, 0x0e, 0x29, 0x0f, 0x6e, 0xbb, 0x05, 0x10,
+	0x51, 0xb1, 0xd6, 0xba, 0xa0, 0x18, 0xed, 0x90, 0xbc, 0xbd, 0x4f, 0xd3, 0xc9, 0x41, 0x0e, 0x73,
+	0x0a, 0xa7, 0x46, 0x39, 0xd4, 0x2c, 0x8e, 0x72, 0x68, 0x12, 0xa8, 0xf9, 0x94, 0x90, 0x67, 0x59,
+	0xc2, 0xa2, 0xa1, 0x18, 0x99, 0x71, 0x17, 0xb5, 0xc1, 0x71, 0x17, 0x1b, 0x80, 0xee, 0xb6, 0xed,
+	0x84, 0xc5, 0x93, 0xd2, 0x66, 0x74, 0x9b, 0xb4, 0xa0, 0x9b, 0xa3, 0xdb, 0x0c, 0x04, 0x55, 0x8f,
+	0xc9, 0x05, 0x69, 0x38, 0x84, 0x2c, 0x89, 0x62, 0x73, 0xae, 0x2f, 0x7d, 0xd0, 0xe6, 0x98, 0xeb,
+	0x4d, 0x46, 0x17, 0xb1, 0xb4, 0x3c, 0xcd, 0x20, 0x35, 0x86, 0x5f, 0x7a, 0x08, 0x83, 0x63, 0xf8,
+	0x0d, 0x00, 0xf5, 0x18, 0xf9, 0x81, 0xfc, 0x79, 0x17, 0xf8, 0xc1, 0xec, 0x24, 0xa1, 0xf1, 0x31,
+	0x9c, 0x3c, 0x3b, 0xdc, 0x0f, 0xd6, 0x2c, 0x9e, 0x06, 0xa3, 0xa2, 0xdc, 0xe9, 0xc4, 0x1a, 0x01,
+	0x45, 0x1a, 0xdb, 0x39, 0x44, 0xc3, 0x38, 0x9f, 0x4d, 0x4f, 0x0a, 0x6b, 0x40, 0x83, 0xf1, 0x06,
+	0x5c, 0x64, 0x75, 0xcd, 0x4b, 0x62, 0x00, 0xbc, 0x1e, 0xef, 0xb6, 0x45, 0xa3, 0x89, 0x38, 0x6a,
+	0xde, 0x81, 0x1a, 0xe5, 0x84, 0x8f, 0x1c, 0x5b, 0x39, 0x19, 0x0f, 0x9c, 0x6b, 0x3e, 0x04, 0x55,
+	0xff, 0x40, 0xbe, 0x57, 0x53, 0x3d, 0x88, 0x46, 0x10, 0xdc, 0x70, 0xba, 0x09, 0xb3, 0x52, 0xff,
+	0xa8, 0x0d, 0xd3, 0xcf, 0xe2, 0x5a, 0x84, 0x01, 0x70, 0xe3, 0x59, 0x5c, 0xf7, 0x1c, 0xd4, 0xa6,
+	0xc9, 0x1b, 0x2d, 0x94, 0xd9, 0x65, 0x69, 0x42, 0xd3, 0x89, 0xbd, 0xcb, 0xa4, 0xc9, 0xdf, 0x65,
+	0x15, 0xa2, 0x1f, 0x37, 0x65, 0xd2, 0x09, 0x2b, 0x20, 0xb0, 0x15, 0xbb, 0xb4, 0x38, 0xe6, 0x97,
+	0x26, 0xa1, 0x1f, 0xec, 0xf2, 0xf7, 0x1d, 0x76, 0x9a, 0xca, 0x09, 0xc1, 0xd6, 0x95, 0x95, 0xd1,
+	0xf1, 0x60, 0x5f, 0x80, 0x50, 0xfb, 0xb7, 0xa8, 0xbd, 0x0b, 0xfc, 0x71, 0x94, 0x4f, 0x0a, 0xeb,
+	0x25, 0x16, 0x8f, 0x18, 0x69, 0xf5, 0x5e, 0xe2, 0x3a, 0x65, 0xcc, 0x0c, 0xcf, 0xd2, 0x21, 0xb3,
+	0xce, 0x0c, 0xc2, 0xe0, 0x9d, 0x19, 0x10, 0x30, 0xf4, 0x0e, 0xc1, 0xa1, 0x27, 0x0c, 0x5e, 0x3d,
+	0x04, 0x50, 0xef, 0xf7, 0x58, 0x61, 0x03, 0xe0, 0x8f, 0x28, 0x24, 0xc3, 0xc2, 0x5a, 0xc2, 0xa2,
+	0x6a, 0x4a, 0xb3, 0xb7, 0x84, 0x1b, 0x18, 0x06, 0xf8, 0x12, 0x67, 0x96, 0x81, 0x58, 0x08, 0x17,
+	0x3c, 0xa7, 0x31, 0xa7, 0x2c, 0x2d, 0x82, 0x3b, 0x0e, 0xff, 0x3a, 0xa4, 0x82, 0xdd, 0xed, 0x06,
+	0x63, 0xc8, 0x33, 0x72, 0xa9, 0x0a, 0x29, 0xda, 0x69, 0xaf, 0xd8, 0xca, 0xe3, 0x31, 0x9d, 0xc3,
+	0x30, 0x08, 0x1d, 0x3a, 0xb2, 0xeb, 0x34, 0xa7, 0xe2, 0xde, 0xef, 0xcc, 0x1b, 0x85, 0xba, 0x4f,
+	0x0b, 0xfe, 0x98, 0xcd, 0xc1, 0x56, 0xa8, 0xc2, 0x16, 0x0a, 0xa3, 0xaf, 0x50, 0xeb, 0x10, 0x6a,
+	0xcf, 0x70, 0x58, 0x95, 0xf6, 0x11, 0x7b, 0x02, 0xa7, 0x72, 0xd6, 0xb9, 0xeb, 0xf1, 0x57, 0x94,
+	0x8a, 0x76, 0xaf, 0x23, 0x8d, 0x61, 0xbf, 0xea, 0x91, 0xcb, 0x0a, 0xc2, 0xdd, 0x42, 0x7f, 0x4c,
+	0x93, 0x61, 0x0e, 0xe9, 0x11, 0x13, 0x6c, 0x11, 0xfc, 0xc4, 0x21, 0x69, 0xc7, 0x55, 0x26, 0x1f,
+	0x2f, 0xeb, 0x86, 0x29, 0x4d, 0x48, 0xa0, 0x60, 0x5d, 0xb8, 0xb7, 0x1d, 0x6a, 0x96, 0xe2, 0x5d,
+	0xeb, 0x82, 0x62, 0xb0, 0x39, 0x79, 0xaf, 0x1e, 0xec, 0x08, 0x5e, 0xf2, 0x01, 0x3f, 0x4b, 0x20,
+	0xb8, 0xe7, 0x11, 0x11, 0x54, 0x28, 0x31, 0x15, 0x33, 0xec, 0x8a, 0x63, 0x5c, 0x5a, 0x1b, 0xe4,
+	0xce, 0x2c, 0x4b, 0x68, 0x2c, 0x1e, 0x5d, 0xb7, 0x1c, 0x2a, 0x8a, 0x70, 0x6c, 0x10, 0xec, 0x24,
+	0x86, 0xfa, 0x7b, 0x8f, 0xfc, 0xa8, 0x3e, 0xc6, 0xed, 0x28, 0x9e, 0x8c, 0x72, 0x36, 0x4b, 0x87,
+	0x7d, 0x96, 0xb0, 0x3c, 0xd8, 0xf0, 0xa4, 0x6e, 0xb0, 0x2a, 0xfc, 0xe6, 0x52, 0x3e, 0x98, 0xc8,
+	0x98, 0xbc, 0x5b, 0xcf, 0x63, 0x2b, 0xa1, 0xa3, 0xd4, 0x39, 0x64, 0xa1, 0x24, 0x89, 0xd6, 0x21,
+	0xd7, 0x49, 0x8c, 0x54, 0xe0, 0xb4, 0x84, 0x91, 0x76, 0xe8, 0xbc, 0xbc, 0xa9, 0x77, 0x3d, 0x12,
+	0x3b, 0x74, 0x6e, 0xdc, 0xd3, 0x7b, 0x1d, 0x69, 0x0c, 0xfa, 0xb7, 0x1e, 0x59, 0xa9, 0x47, 0x35,
+	0x66, 0x27, 0xdf, 0x65, 0x76, 0xcd, 0x50, 0x9b, 0x4b, 0xf9, 0x60, 0x1e, 0x29, 0x2e, 0xbe, 0x64,
+	0x69, 0x41, 0x02, 0xb8, 0x78, 0x71, 0x75, 0x45, 0x89, 0x84, 0x8d, 0x49, 0xe4, 0x4e, 0x27, 0x56,
+	0x6f, 0xa4, 0x14, 0x71, 0x34, 0xcb, 0xd3, 0xbd, 0x94, 0x33, 0x63, 0x23, 0xa5, 0x15, 0x2a, 0xc0,
+	0xb1, 0x91, 0xb2, 0x82, 0x18, 0x67, 0x44, 0xde, 0xa9, 0x26, 0x7e, 0xd1, 0x51, 0xe2, 0x8f, 0xad,
+	0x7a, 0x74, 0xcb, 0xc9, 0xbf, 0x3c, 0xd5, 0xb3, 0x40, 0x62, 0xa0, 0x2f, 0x70, 0x40, 0x18, 0xa8,
+	0xec, 0x12, 0xaf, 0x7f, 0xb3, 0x39, 0xd6, 0xba, 0xa0, 0xee, 0xf9, 0xa7, 0x8c, 0xd7, 0x3a, 0xff,
+	0x34, 0x63, 0x86, 0x5d, 0x71, 0x7b, 0x87, 0x08, 0x44, 0xac, 0x6d, 0xbc, 0x1d, 0x22, 0x75, 0x04,
+	0xd5, 0xa9, 0x43, 0xea, 0xb4, 0xfd, 0xc2, 0x96, 0x3d, 0xe9, 0xbd, 0xb0, 0xcd, 0x86, 0x5c, 0xeb,
+	0x82, 0x62, 0xac, 0x4c, 0x6f, 0x41, 0xe4, 0x45, 0x1d, 0x43, 0x3c, 0x81, 0xa1, 0x73, 0x61, 0x52,
+	0x5e, 0xa3, 0x12, 0x6a, 0x5d, 0x98, 0x18, 0xb0, 0xb1, 0x32, 0x1e, 0x64, 0x09, 0xe5, 0xd6, 0x95,
+	0xb1, 0xb4, 0x78, 0x57, 0xc6, 0x15, 0x61, 0x48, 0x3e, 0x86, 0x7c, 0x64, 0x5f, 0x6c, 0x4b, 0x8b,
+	0x57, 0xb2, 0x22, 0x8c, 0x25, 0x66, 0x9f, 0x65, 0x67, 0xd6, 0x25, 0xa6, 0x30, 0x78, 0x97, 0x98,
+	0x08, 0x18, 0x29, 0x1e, 0x44, 0x05, 0xb7, 0xa7, 0x28, 0x2d, 0xde, 0x14, 0x2b, 0x02, 0x25, 0x3f,
+	0x23, 0x6f, 0x95, 0x29, 0xce, 0x78, 0xb0, 0x6a, 0x4b, 0x60, 0xa6, 0x2f, 0xe2, 0x65, 0xa7, 0xdd,
+	0xd8, 0x05, 0x3d, 0x7c, 0x99, 0xb1, 0x9c, 0x5b, 0x77, 0x41, 0xa5, 0xc9, 0xbb, 0x0b, 0x52, 0x88,
+	0xb1, 0xc1, 0xdd, 0x9b, 0x8a, 0xdf, 0x45, 0x95, 0xcb, 0x23, 0x29, 0x5b, 0x2d, 0x37, 0x11, 0x6f,
+	0x2d, 0x2f, 0xa0, 0x8b, 0x33, 0xdf, 0x23, 0x9a, 0xc0, 0x93, 0x68, 0x0a, 0xce, 0x99, 0x4f, 0x9e,
+	0xb4, 0x08, 0xa2, 0x75, 0xe6, 0xab, 0x93, 0x8b, 0x0d, 0x2a, 0x8f, 0x1b, 0x65, 0x24, 0x97, 0x7f,
+	0x79, 0x20, 0xd9, 0x08, 0xb5, 0xd6, 0x05, 0xc5, 0x58, 0x53, 0x5c, 0x01, 0x55, 0xb1, 0x8e, 0xe9,
+	0x90, 0x8f, 0x03, 0xbf, 0x82, 0x64, 0xbc, 0x47, 0x12, 0x8b, 0xec, 0xe2, 0xd0, 0x9e, 0xd3, 0x21,
+	0x30, 0xef, 0xd0, 0x24, 0xd1, 0x6d, 0x68, 0x0d, 0x74, 0x71, 0x68, 0xd2, 0xec, 0x1f, 0x5a, 0xa9,
+	0xd0, 0x6d, 0x68, 0x4d, 0x16, 0xc3, 0xfd, 0xa5, 0x47, 0x3e, 0xa8, 0xe2, 0xed, 0xd3, 0x74, 0x72,
+	0x14, 0xe5, 0x23, 0x79, 0xe2, 0x1c, 0x4f, 0xf6, 0x86, 0xc1, 0x03, 0x87, 0x94, 0x20, 0xc3, 0x06,
+	0xaa, 0xa2, 0x6f, 0x2c, 0xe3, 0x62, 0xac, 0xda, 0xb7, 0x19, 0x9b, 0x4c, 0xa3, 0x7c, 0xf2, 0x08,
+	0x78, 0x3c, 0xb6, 0x5e, 0xe0, 0x8a, 0x08, 0x25, 0xe2, 0xbd, 0xc0, 0x0b, 0xa8, 0xb9, 0xa4, 0xad,
+	0x80, 0xf2, 0xf8, 0x63, 0x2b, 0x1d, 0x96, 0x61, 0x37, 0x7c, 0x5a, 0x4d, 0xd6, 0xb7, 0xd6, 0xf2,
+	0xf8, 0x60, 0x22, 0x7f, 0x22, 0xef, 0x4b, 0x52, 0xf4, 0x92, 0x62, 0xf0, 0x58, 0xd3, 0xb6, 0xbd,
+	0x94, 0x3d, 0x67, 0x80, 0x2a, 0x83, 0xf5, 0xee, 0x0e, 0x18, 0xfe, 0x8f, 0xe4, 0x87, 0xe5, 0xc9,
+	0x49, 0xc4, 0xa3, 0x39, 0x85, 0xd3, 0xe7, 0x14, 0x4e, 0xf1, 0x14, 0xcc, 0xb6, 0x19, 0xae, 0xb0,
+	0x50, 0x73, 0xde, 0xcd, 0xb0, 0x9d, 0xf7, 0xc4, 0x2e, 0xd7, 0x87, 0xed, 0xb1, 0x71, 0x1d, 0xd9,
+	0x39, 0xb6, 0xe2, 0x3d, 0xb1, 0x9f, 0x65, 0xc3, 0x4e, 0xe3, 0x2e, 0xb9, 0xee, 0xb1, 0x15, 0x8f,
+	0xb1, 0xff, 0x5a, 0x2d, 0xf3, 0xeb, 0xc1, 0xc5, 0x76, 0x26, 0xe6, 0x74, 0x0e, 0xd6, 0x76, 0x6b,
+	0xe8, 0x29, 0xd4, 0xdb, 0x6e, 0x4e, 0x17, 0xa3, 0xf0, 0x2a, 0xee, 0x10, 0x92, 0x88, 0x53, 0x96,
+	0x6e, 0x0d, 0xed, 0x85, 0xa7, 0xf4, 0x6a, 0xa0, 0xb7, 0xf0, 0x1c, 0x0e, 0x66, 0x03, 0x9a, 0xf1,
+	0xf1, 0x2e, 0x6c, 0x74, 0x51, 0x34, 0xee, 0xc4, 0xe6, 0x52, 0x3e, 0x6d, 0x89, 0x60, 0x29, 0x76,
+	0x4a, 0xc4, 0x28, 0xc7, 0xcd, 0xa5, 0x7c, 0x30, 0x91, 0x7f, 0xf5, 0xc8, 0x75, 0x6b, 0x22, 0xe5,
+	0xab, 0xc6, 0xa7, 0x59, 0x75, 0x77, 0x7e, 0xd1, 0x45, 0xdd, 0x70, 0x52, 0xa9, 0xfd, 0xf2, 0xcd,
+	0x9c, 0x31, 0xc7, 0x7f, 0xf7, 0xc8, 0xcd, 0xd6, 0x1c, 0xf1, 0x0e, 0xfe, 0x7a, 0xd9, 0x48, 0xc6,
+	0xdd, 0xfc, 0xe4, 0x8d, 0xfd, 0x97, 0x49, 0x16, 0xef, 0xf2, 0xd2, 0xc9, 0x1a, 0x77, 0xfc, 0x93,
+	0x37, 0xf6, 0xc7, 0x64, 0xff, 0xd9, 0x23, 0xd7, 0xac, 0xc9, 0x8a, 0xed, 0xd0, 0xd6, 0x3c, 0xa2,
+	0x49, 0x74, 0x92, 0x40, 0xf0, 0xb3, 0x2e, 0x71, 0x1a, 0x2e, 0x2a, 0xc5, 0x9f, 0xbf, 0x89, 0x2b,
+	0x66, 0xf7, 0xe7, 0x6a, 0x81, 0xa0, 0xb3, 0x8b, 0x59, 0x3e, 0xc4, 0x27, 0x45, 0x4b, 0xf7, 0x6b,
+	0x52, 0xe5, 0xf2, 0x60, 0x09, 0x0f, 0x7f, 0x0a, 0x58, 0x6c, 0x1d, 0x52, 0x30, 0xca, 0xeb, 0xc1,
+	0x12, 0x1e, 0xfe, 0x14, 0xb0, 0x84, 0x3a, 0xa4, 0x60, 0x14, 0xcd, 0x83, 0x25, 0x3c, 0x8c, 0xa3,
+	0x19, 0x5d, 0x52, 0xfc, 0x33, 0x38, 0xb3, 0xae, 0x0c, 0x2b, 0x24, 0x2c, 0x19, 0xef, 0xca, 0x70,
+	0x91, 0xc5, 0x78, 0x80, 0x1b, 0x87, 0xfa, 0xd3, 0xe1, 0xa6, 0x4f, 0xa0, 0x3e, 0xd7, 0xdc, 0x6a,
+	0x07, 0x31, 0x4c, 0x4e, 0xde, 0x7b, 0x12, 0xcd, 0xe9, 0x48, 0xd5, 0xe0, 0xd3, 0x93, 0x2f, 0x20,
+	0xe6, 0xe6, 0x6b, 0x00, 0xcd, 0x84, 0x35, 0xc8, 0xb1, 0xdb, 0x76, 0xc2, 0x18, 0xf3, 0x1f, 0x3d,
+	0x72, 0x45, 0x33, 0xbb, 0x80, 0xc4, 0x5e, 0xfa, 0x82, 0x1d, 0x53, 0x3e, 0x16, 0x4b, 0xd5, 0x22,
+	0xf8, 0xd8, 0x25, 0x69, 0xe7, 0x55, 0x2a, 0x3f, 0x5d, 0xda, 0x4f, 0xbf, 0x83, 0x2e, 0xed, 0x03,
+	0x88, 0xf2, 0x78, 0x6c, 0xbc, 0x83, 0x2e, 0x4d, 0x61, 0x69, 0x73, 0xbc, 0x83, 0x36, 0x19, 0x14,
+	0x3e, 0xc1, 0xb7, 0x91, 0x03, 0xe0, 0x3b, 0xc0, 0x23, 0x9a, 0x14, 0x81, 0xeb, 0x1d, 0x0d, 0xda,
+	0x95, 0xfe, 0xcd, 0x56, 0xce, 0x58, 0xc2, 0x97, 0x29, 0x1c, 0x9d, 0x65, 0x20, 0xea, 0xc5, 0xb6,
+	0x84, 0xd7, 0x44, 0xa3, 0x62, 0xd6, 0xba, 0xa0, 0x18, 0x8c, 0xe3, 0xc1, 0x97, 0xb6, 0x1f, 0xc2,
+	0x94, 0xcd, 0xad, 0x67, 0xb4, 0x75, 0x91, 0x92, 0xf2, 0x9d, 0x40, 0x59, 0x69, 0x7d, 0x5a, 0x71,
+	0x10, 0x8d, 0x70, 0xa9, 0x6e, 0x9c, 0x56, 0xc8, 0x53, 0x4d, 0x63, 0xa6, 0xbb, 0xea, 0x21, 0xf4,
+	0x81, 0xca, 0x40, 0x7d, 0x5f, 0xd6, 0x3c, 0x8e, 0x18, 0x2c, 0x7e, 0x5c, 0x76, 0xc5, 0x0d, 0xa8,
+	0x8f, 0x86, 0xde, 0xd1, 0x03, 0x40, 0xd9, 0x8f, 0x2c, 0x25, 0x22, 0xc7, 0x67, 0xa8, 0xdf, 0x6c,
+	0xe5, 0xf4, 0xab, 0x67, 0x6d, 0x15, 0xfd, 0x65, 0xbc, 0x17, 0xad, 0xb9, 0xca, 0x03, 0x3d, 0xfb,
+	0x7b, 0xd1, 0x45, 0x0a, 0xe5, 0x4f, 0xc9, 0xa5, 0xfa, 0x7d, 0xd5, 0x0f, 0x27, 0xe3, 0x58, 0xb3,
+	0x71, 0xa7, 0x12, 0xdd, 0xed, 0x8e, 0x63, 0x4d, 0x0f, 0xae, 0xab, 0x6a, 0x31, 0xb0, 0xa8, 0xe2,
+	0xbb, 0xad, 0x42, 0xf5, 0x42, 0xbe, 0xd7, 0x91, 0xd6, 0x8b, 0xf1, 0xc5, 0xa8, 0xf8, 0x68, 0xbb,
+	0xdf, 0x2a, 0x65, 0x3c, 0xd9, 0xd6, 0xbb, 0x3b, 0xf8, 0xc2, 0x63, 0x37, 0xb5, 0x87, 0x37, 0x1a,
+	0x6a, 0xbd, 0xbb, 0x03, 0x86, 0xff, 0x15, 0xf9, 0xd6, 0x01, 0x4d, 0x47, 0xc1, 0x07, 0xcd, 0x5e,
+	0xa1, 0xe9, 0x48, 0x89, 0xae, 0xd8, 0x4c, 0xfa, 0xa5, 0xea, 0x41, 0xce, 0x62, 0x28, 0x8a, 0x7e,
+	0x94, 0xc6, 0x90, 0x18, 0x2f, 0x55, 0xd1, 0x16, 0x96, 0x46, 0xc7, 0x4b, 0xd5, 0x05, 0x48, 0x1f,
+	0xfe, 0x7d, 0x4a, 0x0b, 0xce, 0xf2, 0xb3, 0xc1, 0x98, 0x9d, 0x1a, 0x87, 0x7f, 0x68, 0x09, 0x85,
+	0xc9, 0x71, 0xf8, 0x67, 0x20, 0xfa, 0xcb, 0x10, 0x34, 0xe0, 0xd7, 0x73, 0xe6, 0x6b, 0xf5, 0xca,
+	0xad, 0x32, 0x3b, 0x5e, 0xab, 0x5b, 0x30, 0xfd, 0x4a, 0xa5, 0xca, 0x1b, 0x38, 0x9a, 0x8d, 0x07,
+	0xb7, 0x4a, 0x4d, 0x01, 0x8e, 0x07, 0xb7, 0x15, 0xc4, 0x38, 0xeb, 0xe4, 0x82, 0xe8, 0x1f, 0x48,
+	0x1f, 0xca, 0xef, 0x68, 0x83, 0x8b, 0xca, 0xf3, 0xe1, 0x34, 0xe3, 0x67, 0x2b, 0xb5, 0xff, 0x0b,
+	0x60, 0xbd, 0xb7, 0x7d, 0xf5, 0x3f, 0xaf, 0x56, 0x7b, 0x5f, 0xbf, 0x5a, 0xed, 0xfd, 0xef, 0xd5,
+	0x6a, 0xef, 0xab, 0xd7, 0xab, 0xe7, 0xbe, 0x7e, 0xbd, 0x7a, 0xee, 0xbf, 0xaf, 0x57, 0xcf, 0x7d,
+	0x7e, 0x1e, 0xbf, 0xe3, 0x3d, 0xf9, 0xb6, 0xfc, 0x1a, 0x77, 0xf3, 0x9b, 0x00, 0x00, 0x00, 0xff,
+	0xff, 0xf0, 0x96, 0x2d, 0xf4, 0xeb, 0x2b, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -182,6 +206,7 @@ type ClientCommandsClient interface {
 	BlockSetBreadcrumbs(ctx context.Context, in *pb.RpcBlockSetBreadcrumbsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetBreadcrumbsResponse, error)
 	BlockCreate(ctx context.Context, in *pb.RpcBlockCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateResponse, error)
 	BlockCreatePage(ctx context.Context, in *pb.RpcBlockCreatePageRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreatePageResponse, error)
+	BlockCreateSet(ctx context.Context, in *pb.RpcBlockCreateSetRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateSetResponse, error)
 	BlockUnlink(ctx context.Context, in *pb.RpcBlockUnlinkRequest, opts ...grpc.CallOption) (*pb.RpcBlockUnlinkResponse, error)
 	BlockClose(ctx context.Context, in *pb.RpcBlockCloseRequest, opts ...grpc.CallOption) (*pb.RpcBlockCloseResponse, error)
 	BlockDownload(ctx context.Context, in *pb.RpcBlockDownloadRequest, opts ...grpc.CallOption) (*pb.RpcBlockDownloadResponse, error)
@@ -190,7 +215,6 @@ type ClientCommandsClient interface {
 	BlockRedo(ctx context.Context, in *pb.RpcBlockRedoRequest, opts ...grpc.CallOption) (*pb.RpcBlockRedoResponse, error)
 	BlockSetFields(ctx context.Context, in *pb.RpcBlockSetFieldsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetFieldsResponse, error)
 	BlockSetRestrictions(ctx context.Context, in *pb.RpcBlockSetRestrictionsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetRestrictionsResponse, error)
-	BlockSetDetails(ctx context.Context, in *pb.RpcBlockSetDetailsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDetailsResponse, error)
 	BlockSetPageIsArchived(ctx context.Context, in *pb.RpcBlockSetPageIsArchivedRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetPageIsArchivedResponse, error)
 	BlockListMove(ctx context.Context, in *pb.RpcBlockListMoveRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveResponse, error)
 	BlockListMoveToNewPage(ctx context.Context, in *pb.RpcBlockListMoveToNewPageRequest, opts ...grpc.CallOption) (*pb.RpcBlockListMoveToNewPageResponse, error)
@@ -223,20 +247,52 @@ type ClientCommandsClient interface {
 	BlockSetVideoName(ctx context.Context, in *pb.RpcBlockSetVideoNameRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoNameResponse, error)
 	BlockSetVideoWidth(ctx context.Context, in *pb.RpcBlockSetVideoWidthRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetVideoWidthResponse, error)
 	BlockSetLinkTargetBlockId(ctx context.Context, in *pb.RpcBlockSetLinkTargetBlockIdRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetLinkTargetBlockIdResponse, error)
-	BlockSetDataviewView(ctx context.Context, in *pb.RpcBlockSetDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewViewResponse, error)
-	BlockSetDataviewActiveView(ctx context.Context, in *pb.RpcBlockSetDataviewActiveViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewActiveViewResponse, error)
-	BlockCreateDataviewView(ctx context.Context, in *pb.RpcBlockCreateDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewViewResponse, error)
-	BlockDeleteDataviewView(ctx context.Context, in *pb.RpcBlockDeleteDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockDeleteDataviewViewResponse, error)
-	BlockCreateDataviewRecord(ctx context.Context, in *pb.RpcBlockCreateDataviewRecordRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewRecordResponse, error)
-	BlockUpdateDataviewRecord(ctx context.Context, in *pb.RpcBlockUpdateDataviewRecordRequest, opts ...grpc.CallOption) (*pb.RpcBlockUpdateDataviewRecordResponse, error)
-	BlockDeleteDataviewRecord(ctx context.Context, in *pb.RpcBlockDeleteDataviewRecordRequest, opts ...grpc.CallOption) (*pb.RpcBlockDeleteDataviewRecordResponse, error)
 	BlockBookmarkFetch(ctx context.Context, in *pb.RpcBlockBookmarkFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkFetchResponse, error)
 	BlockBookmarkCreateAndFetch(ctx context.Context, in *pb.RpcBlockBookmarkCreateAndFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkCreateAndFetchResponse, error)
 	BlockFileCreateAndUpload(ctx context.Context, in *pb.RpcBlockFileCreateAndUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockFileCreateAndUploadResponse, error)
-	NavigationListPages(ctx context.Context, in *pb.RpcNavigationListPagesRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListPagesResponse, error)
-	NavigationGetPageInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetPageInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetPageInfoWithLinksResponse, error)
+	// ## Dataview
+	// # View
+	BlockDataviewViewCreate(ctx context.Context, in *pb.RpcBlockDataviewViewCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewCreateResponse, error)
+	BlockDataviewViewDelete(ctx context.Context, in *pb.RpcBlockDataviewViewDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewDeleteResponse, error)
+	BlockDataviewViewUpdate(ctx context.Context, in *pb.RpcBlockDataviewViewUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewUpdateResponse, error)
+	BlockDataviewViewSetActive(ctx context.Context, in *pb.RpcBlockDataviewViewSetActiveRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewSetActiveResponse, error)
+	// # Relation
+	BlockDataviewRelationAdd(ctx context.Context, in *pb.RpcBlockDataviewRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationAddResponse, error)
+	BlockDataviewRelationUpdate(ctx context.Context, in *pb.RpcBlockDataviewRelationUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationUpdateResponse, error)
+	BlockDataviewRelationDelete(ctx context.Context, in *pb.RpcBlockDataviewRelationDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationDeleteResponse, error)
+	BlockDataviewRelationSelectOptionAdd(ctx context.Context, in *pb.RpcBlockDataviewRelationSelectOptionAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationSelectOptionAddResponse, error)
+	BlockDataviewRelationSelectOptionUpdate(ctx context.Context, in *pb.RpcBlockDataviewRelationSelectOptionUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationSelectOptionUpdateResponse, error)
+	BlockDataviewRelationSelectOptionDelete(ctx context.Context, in *pb.RpcBlockDataviewRelationSelectOptionDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationSelectOptionDeleteResponse, error)
+	BlockDataviewRelationListAvailable(ctx context.Context, in *pb.RpcBlockDataviewRelationListAvailableRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationListAvailableResponse, error)
+	// # Record
+	BlockDataviewRecordCreate(ctx context.Context, in *pb.RpcBlockDataviewRecordCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRecordCreateResponse, error)
+	BlockDataviewRecordUpdate(ctx context.Context, in *pb.RpcBlockDataviewRecordUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRecordUpdateResponse, error)
+	BlockDataviewRecordDelete(ctx context.Context, in *pb.RpcBlockDataviewRecordDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRecordDeleteResponse, error)
+	// ## Object's relations
+	// add existing object type to the object so it will appear in sets and offer relations from this object
+	BlockRelationSetKey(ctx context.Context, in *pb.RpcBlockRelationSetKeyRequest, opts ...grpc.CallOption) (*pb.RpcBlockRelationSetKeyResponse, error)
+	BlockRelationAdd(ctx context.Context, in *pb.RpcBlockRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockRelationAddResponse, error)
+	NavigationListObjects(ctx context.Context, in *pb.RpcNavigationListObjectsRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListObjectsResponse, error)
+	NavigationGetObjectInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetObjectInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetObjectInfoWithLinksResponse, error)
+	ObjectSearch(ctx context.Context, in *pb.RpcObjectSearchRequest, opts ...grpc.CallOption) (*pb.RpcObjectSearchResponse, error)
+	// BlockSetDetails will be renamed to ObjectSetDetails
+	BlockSetDetails(ctx context.Context, in *pb.RpcBlockSetDetailsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDetailsResponse, error)
+	// BlockObjectTypeAdd will be renamed to ObjectObjectTypeAdd
+	BlockObjectTypeAdd(ctx context.Context, in *pb.RpcBlockObjectTypeAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockObjectTypeAddResponse, error)
+	// BlockObjectTypeRemove will be renamed to ObjectObjectTypeRemove
+	BlockObjectTypeRemove(ctx context.Context, in *pb.RpcBlockObjectTypeRemoveRequest, opts ...grpc.CallOption) (*pb.RpcBlockObjectTypeRemoveResponse, error)
 	// PageCreate just creates the new page, without adding the link to it from some other page
 	PageCreate(ctx context.Context, in *pb.RpcPageCreateRequest, opts ...grpc.CallOption) (*pb.RpcPageCreateResponse, error)
+	// SetCreate just creates the new set, without adding the link to it from some other page
+	SetCreate(ctx context.Context, in *pb.RpcSetCreateRequest, opts ...grpc.CallOption) (*pb.RpcSetCreateResponse, error)
+	// ## ObjectType
+	ObjectTypeCreate(ctx context.Context, in *pb.RpcObjectTypeCreateRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeCreateResponse, error)
+	// ObjectTypeList lists all object types both bundled and created by user
+	ObjectTypeList(ctx context.Context, in *pb.RpcObjectTypeListRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeListResponse, error)
+	ObjectTypeRelationList(ctx context.Context, in *pb.RpcObjectTypeRelationListRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationListResponse, error)
+	ObjectTypeRelationAdd(ctx context.Context, in *pb.RpcObjectTypeRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationAddResponse, error)
+	ObjectTypeRelationUpdate(ctx context.Context, in *pb.RpcObjectTypeRelationUpdateRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationUpdateResponse, error)
+	ObjectTypeRelationRemove(ctx context.Context, in *pb.RpcObjectTypeRelationRemoveRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationRemoveResponse, error)
 	Ping(ctx context.Context, in *pb.RpcPingRequest, opts ...grpc.CallOption) (*pb.RpcPingResponse, error)
 	ProcessCancel(ctx context.Context, in *pb.RpcProcessCancelRequest, opts ...grpc.CallOption) (*pb.RpcProcessCancelResponse, error)
 	HistoryShow(ctx context.Context, in *pb.RpcHistoryShowRequest, opts ...grpc.CallOption) (*pb.RpcHistoryShowResponse, error)
@@ -470,6 +526,15 @@ func (c *clientCommandsClient) BlockCreatePage(ctx context.Context, in *pb.RpcBl
 	return out, nil
 }
 
+func (c *clientCommandsClient) BlockCreateSet(ctx context.Context, in *pb.RpcBlockCreateSetRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateSetResponse, error) {
+	out := new(pb.RpcBlockCreateSetResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCreateSet", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clientCommandsClient) BlockUnlink(ctx context.Context, in *pb.RpcBlockUnlinkRequest, opts ...grpc.CallOption) (*pb.RpcBlockUnlinkResponse, error) {
 	out := new(pb.RpcBlockUnlinkResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockUnlink", in, out, opts...)
@@ -536,15 +601,6 @@ func (c *clientCommandsClient) BlockSetFields(ctx context.Context, in *pb.RpcBlo
 func (c *clientCommandsClient) BlockSetRestrictions(ctx context.Context, in *pb.RpcBlockSetRestrictionsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetRestrictionsResponse, error) {
 	out := new(pb.RpcBlockSetRestrictionsResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetRestrictions", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientCommandsClient) BlockSetDetails(ctx context.Context, in *pb.RpcBlockSetDetailsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDetailsResponse, error) {
-	out := new(pb.RpcBlockSetDetailsResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDetails", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -839,69 +895,6 @@ func (c *clientCommandsClient) BlockSetLinkTargetBlockId(ctx context.Context, in
 	return out, nil
 }
 
-func (c *clientCommandsClient) BlockSetDataviewView(ctx context.Context, in *pb.RpcBlockSetDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewViewResponse, error) {
-	out := new(pb.RpcBlockSetDataviewViewResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDataviewView", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientCommandsClient) BlockSetDataviewActiveView(ctx context.Context, in *pb.RpcBlockSetDataviewActiveViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDataviewActiveViewResponse, error) {
-	out := new(pb.RpcBlockSetDataviewActiveViewResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDataviewActiveView", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientCommandsClient) BlockCreateDataviewView(ctx context.Context, in *pb.RpcBlockCreateDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewViewResponse, error) {
-	out := new(pb.RpcBlockCreateDataviewViewResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCreateDataviewView", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientCommandsClient) BlockDeleteDataviewView(ctx context.Context, in *pb.RpcBlockDeleteDataviewViewRequest, opts ...grpc.CallOption) (*pb.RpcBlockDeleteDataviewViewResponse, error) {
-	out := new(pb.RpcBlockDeleteDataviewViewResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDeleteDataviewView", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientCommandsClient) BlockCreateDataviewRecord(ctx context.Context, in *pb.RpcBlockCreateDataviewRecordRequest, opts ...grpc.CallOption) (*pb.RpcBlockCreateDataviewRecordResponse, error) {
-	out := new(pb.RpcBlockCreateDataviewRecordResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockCreateDataviewRecord", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientCommandsClient) BlockUpdateDataviewRecord(ctx context.Context, in *pb.RpcBlockUpdateDataviewRecordRequest, opts ...grpc.CallOption) (*pb.RpcBlockUpdateDataviewRecordResponse, error) {
-	out := new(pb.RpcBlockUpdateDataviewRecordResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockUpdateDataviewRecord", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clientCommandsClient) BlockDeleteDataviewRecord(ctx context.Context, in *pb.RpcBlockDeleteDataviewRecordRequest, opts ...grpc.CallOption) (*pb.RpcBlockDeleteDataviewRecordResponse, error) {
-	out := new(pb.RpcBlockDeleteDataviewRecordResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDeleteDataviewRecord", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 func (c *clientCommandsClient) BlockBookmarkFetch(ctx context.Context, in *pb.RpcBlockBookmarkFetchRequest, opts ...grpc.CallOption) (*pb.RpcBlockBookmarkFetchResponse, error) {
 	out := new(pb.RpcBlockBookmarkFetchResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockBookmarkFetch", in, out, opts...)
@@ -929,18 +922,198 @@ func (c *clientCommandsClient) BlockFileCreateAndUpload(ctx context.Context, in 
 	return out, nil
 }
 
-func (c *clientCommandsClient) NavigationListPages(ctx context.Context, in *pb.RpcNavigationListPagesRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListPagesResponse, error) {
-	out := new(pb.RpcNavigationListPagesResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationListPages", in, out, opts...)
+func (c *clientCommandsClient) BlockDataviewViewCreate(ctx context.Context, in *pb.RpcBlockDataviewViewCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewCreateResponse, error) {
+	out := new(pb.RpcBlockDataviewViewCreateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewViewCreate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *clientCommandsClient) NavigationGetPageInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetPageInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetPageInfoWithLinksResponse, error) {
-	out := new(pb.RpcNavigationGetPageInfoWithLinksResponse)
-	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationGetPageInfoWithLinks", in, out, opts...)
+func (c *clientCommandsClient) BlockDataviewViewDelete(ctx context.Context, in *pb.RpcBlockDataviewViewDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewDeleteResponse, error) {
+	out := new(pb.RpcBlockDataviewViewDeleteResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewViewDelete", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewViewUpdate(ctx context.Context, in *pb.RpcBlockDataviewViewUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewUpdateResponse, error) {
+	out := new(pb.RpcBlockDataviewViewUpdateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewViewUpdate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewViewSetActive(ctx context.Context, in *pb.RpcBlockDataviewViewSetActiveRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewViewSetActiveResponse, error) {
+	out := new(pb.RpcBlockDataviewViewSetActiveResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewViewSetActive", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRelationAdd(ctx context.Context, in *pb.RpcBlockDataviewRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationAddResponse, error) {
+	out := new(pb.RpcBlockDataviewRelationAddResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRelationAdd", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRelationUpdate(ctx context.Context, in *pb.RpcBlockDataviewRelationUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationUpdateResponse, error) {
+	out := new(pb.RpcBlockDataviewRelationUpdateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRelationUpdate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRelationDelete(ctx context.Context, in *pb.RpcBlockDataviewRelationDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationDeleteResponse, error) {
+	out := new(pb.RpcBlockDataviewRelationDeleteResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRelationDelete", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRelationSelectOptionAdd(ctx context.Context, in *pb.RpcBlockDataviewRelationSelectOptionAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationSelectOptionAddResponse, error) {
+	out := new(pb.RpcBlockDataviewRelationSelectOptionAddResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRelationSelectOptionAdd", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRelationSelectOptionUpdate(ctx context.Context, in *pb.RpcBlockDataviewRelationSelectOptionUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationSelectOptionUpdateResponse, error) {
+	out := new(pb.RpcBlockDataviewRelationSelectOptionUpdateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRelationSelectOptionUpdate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRelationSelectOptionDelete(ctx context.Context, in *pb.RpcBlockDataviewRelationSelectOptionDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationSelectOptionDeleteResponse, error) {
+	out := new(pb.RpcBlockDataviewRelationSelectOptionDeleteResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRelationSelectOptionDelete", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRelationListAvailable(ctx context.Context, in *pb.RpcBlockDataviewRelationListAvailableRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRelationListAvailableResponse, error) {
+	out := new(pb.RpcBlockDataviewRelationListAvailableResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRelationListAvailable", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRecordCreate(ctx context.Context, in *pb.RpcBlockDataviewRecordCreateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRecordCreateResponse, error) {
+	out := new(pb.RpcBlockDataviewRecordCreateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRecordCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRecordUpdate(ctx context.Context, in *pb.RpcBlockDataviewRecordUpdateRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRecordUpdateResponse, error) {
+	out := new(pb.RpcBlockDataviewRecordUpdateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRecordUpdate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockDataviewRecordDelete(ctx context.Context, in *pb.RpcBlockDataviewRecordDeleteRequest, opts ...grpc.CallOption) (*pb.RpcBlockDataviewRecordDeleteResponse, error) {
+	out := new(pb.RpcBlockDataviewRecordDeleteResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockDataviewRecordDelete", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockRelationSetKey(ctx context.Context, in *pb.RpcBlockRelationSetKeyRequest, opts ...grpc.CallOption) (*pb.RpcBlockRelationSetKeyResponse, error) {
+	out := new(pb.RpcBlockRelationSetKeyResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockRelationSetKey", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockRelationAdd(ctx context.Context, in *pb.RpcBlockRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockRelationAddResponse, error) {
+	out := new(pb.RpcBlockRelationAddResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockRelationAdd", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) NavigationListObjects(ctx context.Context, in *pb.RpcNavigationListObjectsRequest, opts ...grpc.CallOption) (*pb.RpcNavigationListObjectsResponse, error) {
+	out := new(pb.RpcNavigationListObjectsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationListObjects", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) NavigationGetObjectInfoWithLinks(ctx context.Context, in *pb.RpcNavigationGetObjectInfoWithLinksRequest, opts ...grpc.CallOption) (*pb.RpcNavigationGetObjectInfoWithLinksResponse, error) {
+	out := new(pb.RpcNavigationGetObjectInfoWithLinksResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/NavigationGetObjectInfoWithLinks", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ObjectSearch(ctx context.Context, in *pb.RpcObjectSearchRequest, opts ...grpc.CallOption) (*pb.RpcObjectSearchResponse, error) {
+	out := new(pb.RpcObjectSearchResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ObjectSearch", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockSetDetails(ctx context.Context, in *pb.RpcBlockSetDetailsRequest, opts ...grpc.CallOption) (*pb.RpcBlockSetDetailsResponse, error) {
+	out := new(pb.RpcBlockSetDetailsResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockSetDetails", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockObjectTypeAdd(ctx context.Context, in *pb.RpcBlockObjectTypeAddRequest, opts ...grpc.CallOption) (*pb.RpcBlockObjectTypeAddResponse, error) {
+	out := new(pb.RpcBlockObjectTypeAddResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockObjectTypeAdd", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) BlockObjectTypeRemove(ctx context.Context, in *pb.RpcBlockObjectTypeRemoveRequest, opts ...grpc.CallOption) (*pb.RpcBlockObjectTypeRemoveResponse, error) {
+	out := new(pb.RpcBlockObjectTypeRemoveResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/BlockObjectTypeRemove", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -950,6 +1123,69 @@ func (c *clientCommandsClient) NavigationGetPageInfoWithLinks(ctx context.Contex
 func (c *clientCommandsClient) PageCreate(ctx context.Context, in *pb.RpcPageCreateRequest, opts ...grpc.CallOption) (*pb.RpcPageCreateResponse, error) {
 	out := new(pb.RpcPageCreateResponse)
 	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/PageCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) SetCreate(ctx context.Context, in *pb.RpcSetCreateRequest, opts ...grpc.CallOption) (*pb.RpcSetCreateResponse, error) {
+	out := new(pb.RpcSetCreateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/SetCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ObjectTypeCreate(ctx context.Context, in *pb.RpcObjectTypeCreateRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeCreateResponse, error) {
+	out := new(pb.RpcObjectTypeCreateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ObjectTypeCreate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ObjectTypeList(ctx context.Context, in *pb.RpcObjectTypeListRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeListResponse, error) {
+	out := new(pb.RpcObjectTypeListResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ObjectTypeList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ObjectTypeRelationList(ctx context.Context, in *pb.RpcObjectTypeRelationListRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationListResponse, error) {
+	out := new(pb.RpcObjectTypeRelationListResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ObjectTypeRelationList", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ObjectTypeRelationAdd(ctx context.Context, in *pb.RpcObjectTypeRelationAddRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationAddResponse, error) {
+	out := new(pb.RpcObjectTypeRelationAddResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ObjectTypeRelationAdd", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ObjectTypeRelationUpdate(ctx context.Context, in *pb.RpcObjectTypeRelationUpdateRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationUpdateResponse, error) {
+	out := new(pb.RpcObjectTypeRelationUpdateResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ObjectTypeRelationUpdate", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clientCommandsClient) ObjectTypeRelationRemove(ctx context.Context, in *pb.RpcObjectTypeRelationRemoveRequest, opts ...grpc.CallOption) (*pb.RpcObjectTypeRelationRemoveResponse, error) {
+	out := new(pb.RpcObjectTypeRelationRemoveResponse)
+	err := c.cc.Invoke(ctx, "/anytype.ClientCommands/ObjectTypeRelationRemove", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1059,6 +1295,7 @@ type ClientCommandsServer interface {
 	BlockSetBreadcrumbs(*pb.RpcBlockSetBreadcrumbsRequest) *pb.RpcBlockSetBreadcrumbsResponse
 	BlockCreate(*pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse
 	BlockCreatePage(*pb.RpcBlockCreatePageRequest) *pb.RpcBlockCreatePageResponse
+	BlockCreateSet(*pb.RpcBlockCreateSetRequest) *pb.RpcBlockCreateSetResponse
 	BlockUnlink(*pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnlinkResponse
 	BlockClose(*pb.RpcBlockCloseRequest) *pb.RpcBlockCloseResponse
 	BlockDownload(*pb.RpcBlockDownloadRequest) *pb.RpcBlockDownloadResponse
@@ -1067,7 +1304,6 @@ type ClientCommandsServer interface {
 	BlockRedo(*pb.RpcBlockRedoRequest) *pb.RpcBlockRedoResponse
 	BlockSetFields(*pb.RpcBlockSetFieldsRequest) *pb.RpcBlockSetFieldsResponse
 	BlockSetRestrictions(*pb.RpcBlockSetRestrictionsRequest) *pb.RpcBlockSetRestrictionsResponse
-	BlockSetDetails(*pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse
 	BlockSetPageIsArchived(*pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse
 	BlockListMove(*pb.RpcBlockListMoveRequest) *pb.RpcBlockListMoveResponse
 	BlockListMoveToNewPage(*pb.RpcBlockListMoveToNewPageRequest) *pb.RpcBlockListMoveToNewPageResponse
@@ -1100,20 +1336,52 @@ type ClientCommandsServer interface {
 	BlockSetVideoName(*pb.RpcBlockSetVideoNameRequest) *pb.RpcBlockSetVideoNameResponse
 	BlockSetVideoWidth(*pb.RpcBlockSetVideoWidthRequest) *pb.RpcBlockSetVideoWidthResponse
 	BlockSetLinkTargetBlockId(*pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse
-	BlockSetDataviewView(*pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse
-	BlockSetDataviewActiveView(*pb.RpcBlockSetDataviewActiveViewRequest) *pb.RpcBlockSetDataviewActiveViewResponse
-	BlockCreateDataviewView(*pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse
-	BlockDeleteDataviewView(*pb.RpcBlockDeleteDataviewViewRequest) *pb.RpcBlockDeleteDataviewViewResponse
-	BlockCreateDataviewRecord(*pb.RpcBlockCreateDataviewRecordRequest) *pb.RpcBlockCreateDataviewRecordResponse
-	BlockUpdateDataviewRecord(*pb.RpcBlockUpdateDataviewRecordRequest) *pb.RpcBlockUpdateDataviewRecordResponse
-	BlockDeleteDataviewRecord(*pb.RpcBlockDeleteDataviewRecordRequest) *pb.RpcBlockDeleteDataviewRecordResponse
 	BlockBookmarkFetch(*pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse
 	BlockBookmarkCreateAndFetch(*pb.RpcBlockBookmarkCreateAndFetchRequest) *pb.RpcBlockBookmarkCreateAndFetchResponse
 	BlockFileCreateAndUpload(*pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse
-	NavigationListPages(*pb.RpcNavigationListPagesRequest) *pb.RpcNavigationListPagesResponse
-	NavigationGetPageInfoWithLinks(*pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse
+	// ## Dataview
+	// # View
+	BlockDataviewViewCreate(*pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse
+	BlockDataviewViewDelete(*pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse
+	BlockDataviewViewUpdate(*pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse
+	BlockDataviewViewSetActive(*pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse
+	// # Relation
+	BlockDataviewRelationAdd(*pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse
+	BlockDataviewRelationUpdate(*pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse
+	BlockDataviewRelationDelete(*pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse
+	BlockDataviewRelationSelectOptionAdd(*pb.RpcBlockDataviewRelationSelectOptionAddRequest) *pb.RpcBlockDataviewRelationSelectOptionAddResponse
+	BlockDataviewRelationSelectOptionUpdate(*pb.RpcBlockDataviewRelationSelectOptionUpdateRequest) *pb.RpcBlockDataviewRelationSelectOptionUpdateResponse
+	BlockDataviewRelationSelectOptionDelete(*pb.RpcBlockDataviewRelationSelectOptionDeleteRequest) *pb.RpcBlockDataviewRelationSelectOptionDeleteResponse
+	BlockDataviewRelationListAvailable(*pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse
+	// # Record
+	BlockDataviewRecordCreate(*pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse
+	BlockDataviewRecordUpdate(*pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse
+	BlockDataviewRecordDelete(*pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse
+	// ## Object's relations
+	// add existing object type to the object so it will appear in sets and offer relations from this object
+	BlockRelationSetKey(*pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse
+	BlockRelationAdd(*pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse
+	NavigationListObjects(*pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse
+	NavigationGetObjectInfoWithLinks(*pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse
+	ObjectSearch(*pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse
+	// BlockSetDetails will be renamed to ObjectSetDetails
+	BlockSetDetails(*pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse
+	// BlockObjectTypeAdd will be renamed to ObjectObjectTypeAdd
+	BlockObjectTypeAdd(*pb.RpcBlockObjectTypeAddRequest) *pb.RpcBlockObjectTypeAddResponse
+	// BlockObjectTypeRemove will be renamed to ObjectObjectTypeRemove
+	BlockObjectTypeRemove(*pb.RpcBlockObjectTypeRemoveRequest) *pb.RpcBlockObjectTypeRemoveResponse
 	// PageCreate just creates the new page, without adding the link to it from some other page
 	PageCreate(*pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse
+	// SetCreate just creates the new set, without adding the link to it from some other page
+	SetCreate(*pb.RpcSetCreateRequest) *pb.RpcSetCreateResponse
+	// ## ObjectType
+	ObjectTypeCreate(*pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse
+	// ObjectTypeList lists all object types both bundled and created by user
+	ObjectTypeList(*pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse
+	ObjectTypeRelationList(*pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse
+	ObjectTypeRelationAdd(*pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse
+	ObjectTypeRelationUpdate(*pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse
+	ObjectTypeRelationRemove(*pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse
 	Ping(*pb.RpcPingRequest) *pb.RpcPingResponse
 	ProcessCancel(*pb.RpcProcessCancelRequest) *pb.RpcProcessCancelResponse
 	HistoryShow(*pb.RpcHistoryShowRequest) *pb.RpcHistoryShowResponse
@@ -1199,6 +1467,9 @@ func (*UnimplementedClientCommandsServer) BlockCreate(req *pb.RpcBlockCreateRequ
 func (*UnimplementedClientCommandsServer) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.RpcBlockCreatePageResponse {
 	return nil
 }
+func (*UnimplementedClientCommandsServer) BlockCreateSet(req *pb.RpcBlockCreateSetRequest) *pb.RpcBlockCreateSetResponse {
+	return nil
+}
 func (*UnimplementedClientCommandsServer) BlockUnlink(req *pb.RpcBlockUnlinkRequest) *pb.RpcBlockUnlinkResponse {
 	return nil
 }
@@ -1221,9 +1492,6 @@ func (*UnimplementedClientCommandsServer) BlockSetFields(req *pb.RpcBlockSetFiel
 	return nil
 }
 func (*UnimplementedClientCommandsServer) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsRequest) *pb.RpcBlockSetRestrictionsResponse {
-	return nil
-}
-func (*UnimplementedClientCommandsServer) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse {
@@ -1322,27 +1590,6 @@ func (*UnimplementedClientCommandsServer) BlockSetVideoWidth(req *pb.RpcBlockSet
 func (*UnimplementedClientCommandsServer) BlockSetLinkTargetBlockId(req *pb.RpcBlockSetLinkTargetBlockIdRequest) *pb.RpcBlockSetLinkTargetBlockIdResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) BlockSetDataviewView(req *pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse {
-	return nil
-}
-func (*UnimplementedClientCommandsServer) BlockSetDataviewActiveView(req *pb.RpcBlockSetDataviewActiveViewRequest) *pb.RpcBlockSetDataviewActiveViewResponse {
-	return nil
-}
-func (*UnimplementedClientCommandsServer) BlockCreateDataviewView(req *pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse {
-	return nil
-}
-func (*UnimplementedClientCommandsServer) BlockDeleteDataviewView(req *pb.RpcBlockDeleteDataviewViewRequest) *pb.RpcBlockDeleteDataviewViewResponse {
-	return nil
-}
-func (*UnimplementedClientCommandsServer) BlockCreateDataviewRecord(req *pb.RpcBlockCreateDataviewRecordRequest) *pb.RpcBlockCreateDataviewRecordResponse {
-	return nil
-}
-func (*UnimplementedClientCommandsServer) BlockUpdateDataviewRecord(req *pb.RpcBlockUpdateDataviewRecordRequest) *pb.RpcBlockUpdateDataviewRecordResponse {
-	return nil
-}
-func (*UnimplementedClientCommandsServer) BlockDeleteDataviewRecord(req *pb.RpcBlockDeleteDataviewRecordRequest) *pb.RpcBlockDeleteDataviewRecordResponse {
-	return nil
-}
 func (*UnimplementedClientCommandsServer) BlockBookmarkFetch(req *pb.RpcBlockBookmarkFetchRequest) *pb.RpcBlockBookmarkFetchResponse {
 	return nil
 }
@@ -1352,13 +1599,94 @@ func (*UnimplementedClientCommandsServer) BlockBookmarkCreateAndFetch(req *pb.Rp
 func (*UnimplementedClientCommandsServer) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUploadRequest) *pb.RpcBlockFileCreateAndUploadResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) NavigationListPages(req *pb.RpcNavigationListPagesRequest) *pb.RpcNavigationListPagesResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewViewCreate(req *pb.RpcBlockDataviewViewCreateRequest) *pb.RpcBlockDataviewViewCreateResponse {
 	return nil
 }
-func (*UnimplementedClientCommandsServer) NavigationGetPageInfoWithLinks(req *pb.RpcNavigationGetPageInfoWithLinksRequest) *pb.RpcNavigationGetPageInfoWithLinksResponse {
+func (*UnimplementedClientCommandsServer) BlockDataviewViewDelete(req *pb.RpcBlockDataviewViewDeleteRequest) *pb.RpcBlockDataviewViewDeleteResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewViewUpdate(req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewViewSetActive(req *pb.RpcBlockDataviewViewSetActiveRequest) *pb.RpcBlockDataviewViewSetActiveResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationUpdate(req *pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationDelete(req *pb.RpcBlockDataviewRelationDeleteRequest) *pb.RpcBlockDataviewRelationDeleteResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationSelectOptionAdd(req *pb.RpcBlockDataviewRelationSelectOptionAddRequest) *pb.RpcBlockDataviewRelationSelectOptionAddResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationSelectOptionUpdate(req *pb.RpcBlockDataviewRelationSelectOptionUpdateRequest) *pb.RpcBlockDataviewRelationSelectOptionUpdateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationSelectOptionDelete(req *pb.RpcBlockDataviewRelationSelectOptionDeleteRequest) *pb.RpcBlockDataviewRelationSelectOptionDeleteResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRelationListAvailable(req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordCreate(req *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordUpdate(req *pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockDataviewRecordDelete(req *pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockRelationSetKey(req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) NavigationListObjects(req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetObjectInfoWithLinksRequest) *pb.RpcNavigationGetObjectInfoWithLinksResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockObjectTypeAdd(req *pb.RpcBlockObjectTypeAddRequest) *pb.RpcBlockObjectTypeAddResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) BlockObjectTypeRemove(req *pb.RpcBlockObjectTypeRemoveRequest) *pb.RpcBlockObjectTypeRemoveResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.RpcObjectTypeCreateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ObjectTypeList(req *pb.RpcObjectTypeListRequest) *pb.RpcObjectTypeListResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequest) *pb.RpcObjectTypeRelationAddResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpdateRequest) *pb.RpcObjectTypeRelationUpdateResponse {
+	return nil
+}
+func (*UnimplementedClientCommandsServer) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemoveRequest) *pb.RpcObjectTypeRelationRemoveResponse {
 	return nil
 }
 func (*UnimplementedClientCommandsServer) Ping(req *pb.RpcPingRequest) *pb.RpcPingResponse {
@@ -1816,6 +2144,24 @@ func _ClientCommands_BlockCreatePage_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClientCommands_BlockCreateSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockCreateSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockCreateSet(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockCreateSet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockCreateSet(req.(*pb.RpcBlockCreateSetRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClientCommands_BlockUnlink_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(pb.RpcBlockUnlinkRequest)
 	if err := dec(in); err != nil {
@@ -1956,24 +2302,6 @@ func _ClientCommands_BlockSetRestrictions_Handler(srv interface{}, ctx context.C
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClientCommandsServer).BlockSetRestrictions(req.(*pb.RpcBlockSetRestrictionsRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientCommands_BlockSetDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockSetDetailsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockSetDetails(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockSetDetails",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockSetDetails(req.(*pb.RpcBlockSetDetailsRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2554,132 +2882,6 @@ func _ClientCommands_BlockSetLinkTargetBlockId_Handler(srv interface{}, ctx cont
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ClientCommands_BlockSetDataviewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockSetDataviewViewRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockSetDataviewView(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockSetDataviewView",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockSetDataviewView(req.(*pb.RpcBlockSetDataviewViewRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientCommands_BlockSetDataviewActiveView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockSetDataviewActiveViewRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockSetDataviewActiveView(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockSetDataviewActiveView",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockSetDataviewActiveView(req.(*pb.RpcBlockSetDataviewActiveViewRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientCommands_BlockCreateDataviewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockCreateDataviewViewRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockCreateDataviewView(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockCreateDataviewView",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockCreateDataviewView(req.(*pb.RpcBlockCreateDataviewViewRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientCommands_BlockDeleteDataviewView_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockDeleteDataviewViewRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDeleteDataviewView(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockDeleteDataviewView",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDeleteDataviewView(req.(*pb.RpcBlockDeleteDataviewViewRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientCommands_BlockCreateDataviewRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockCreateDataviewRecordRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockCreateDataviewRecord(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockCreateDataviewRecord",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockCreateDataviewRecord(req.(*pb.RpcBlockCreateDataviewRecordRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientCommands_BlockUpdateDataviewRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockUpdateDataviewRecordRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockUpdateDataviewRecord(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockUpdateDataviewRecord",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockUpdateDataviewRecord(req.(*pb.RpcBlockUpdateDataviewRecordRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClientCommands_BlockDeleteDataviewRecord_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcBlockDeleteDataviewRecordRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClientCommandsServer).BlockDeleteDataviewRecord(in), nil
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/BlockDeleteDataviewRecord",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).BlockDeleteDataviewRecord(req.(*pb.RpcBlockDeleteDataviewRecordRequest)), nil
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
 func _ClientCommands_BlockBookmarkFetch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(pb.RpcBlockBookmarkFetchRequest)
 	if err := dec(in); err != nil {
@@ -2734,38 +2936,398 @@ func _ClientCommands_BlockFileCreateAndUpload_Handler(srv interface{}, ctx conte
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ClientCommands_NavigationListPages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcNavigationListPagesRequest)
+func _ClientCommands_BlockDataviewViewCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewViewCreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).NavigationListPages(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewCreate(in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/NavigationListPages",
+		FullMethod: "/anytype.ClientCommands/BlockDataviewViewCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).NavigationListPages(req.(*pb.RpcNavigationListPagesRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewCreate(req.(*pb.RpcBlockDataviewViewCreateRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _ClientCommands_NavigationGetPageInfoWithLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(pb.RpcNavigationGetPageInfoWithLinksRequest)
+func _ClientCommands_BlockDataviewViewDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewViewDeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(ClientCommandsServer).NavigationGetPageInfoWithLinks(in), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewDelete(in), nil
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/anytype.ClientCommands/NavigationGetPageInfoWithLinks",
+		FullMethod: "/anytype.ClientCommands/BlockDataviewViewDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClientCommandsServer).NavigationGetPageInfoWithLinks(req.(*pb.RpcNavigationGetPageInfoWithLinksRequest)), nil
+		return srv.(ClientCommandsServer).BlockDataviewViewDelete(req.(*pb.RpcBlockDataviewViewDeleteRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewViewUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewViewUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewViewUpdate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewViewUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewViewUpdate(req.(*pb.RpcBlockDataviewViewUpdateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewViewSetActive_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewViewSetActiveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewViewSetActive(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewViewSetActive",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewViewSetActive(req.(*pb.RpcBlockDataviewViewSetActiveRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRelationAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRelationAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRelationAdd(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRelationAdd(req.(*pb.RpcBlockDataviewRelationAddRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRelationUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRelationUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRelationUpdate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRelationUpdate(req.(*pb.RpcBlockDataviewRelationUpdateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRelationDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRelationDeleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRelationDelete(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationDelete",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRelationDelete(req.(*pb.RpcBlockDataviewRelationDeleteRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRelationSelectOptionAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRelationSelectOptionAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRelationSelectOptionAdd(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationSelectOptionAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRelationSelectOptionAdd(req.(*pb.RpcBlockDataviewRelationSelectOptionAddRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRelationSelectOptionUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRelationSelectOptionUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRelationSelectOptionUpdate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationSelectOptionUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRelationSelectOptionUpdate(req.(*pb.RpcBlockDataviewRelationSelectOptionUpdateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRelationSelectOptionDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRelationSelectOptionDeleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRelationSelectOptionDelete(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationSelectOptionDelete",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRelationSelectOptionDelete(req.(*pb.RpcBlockDataviewRelationSelectOptionDeleteRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRelationListAvailable_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRelationListAvailableRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRelationListAvailable(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRelationListAvailable",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRelationListAvailable(req.(*pb.RpcBlockDataviewRelationListAvailableRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRecordCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRecordCreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRecordCreate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordCreate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRecordCreate(req.(*pb.RpcBlockDataviewRecordCreateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRecordUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRecordUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRecordUpdate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRecordUpdate(req.(*pb.RpcBlockDataviewRecordUpdateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockDataviewRecordDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockDataviewRecordDeleteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockDataviewRecordDelete(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockDataviewRecordDelete",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockDataviewRecordDelete(req.(*pb.RpcBlockDataviewRecordDeleteRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockRelationSetKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockRelationSetKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockRelationSetKey(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockRelationSetKey",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockRelationSetKey(req.(*pb.RpcBlockRelationSetKeyRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockRelationAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockRelationAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockRelationAdd(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockRelationAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockRelationAdd(req.(*pb.RpcBlockRelationAddRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_NavigationListObjects_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcNavigationListObjectsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).NavigationListObjects(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/NavigationListObjects",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).NavigationListObjects(req.(*pb.RpcNavigationListObjectsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_NavigationGetObjectInfoWithLinks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcNavigationGetObjectInfoWithLinksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).NavigationGetObjectInfoWithLinks(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/NavigationGetObjectInfoWithLinks",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).NavigationGetObjectInfoWithLinks(req.(*pb.RpcNavigationGetObjectInfoWithLinksRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ObjectSearch_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcObjectSearchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ObjectSearch(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ObjectSearch",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ObjectSearch(req.(*pb.RpcObjectSearchRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockSetDetails_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockSetDetailsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockSetDetails(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockSetDetails",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockSetDetails(req.(*pb.RpcBlockSetDetailsRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockObjectTypeAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockObjectTypeAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockObjectTypeAdd(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockObjectTypeAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockObjectTypeAdd(req.(*pb.RpcBlockObjectTypeAddRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_BlockObjectTypeRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcBlockObjectTypeRemoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).BlockObjectTypeRemove(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/BlockObjectTypeRemove",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).BlockObjectTypeRemove(req.(*pb.RpcBlockObjectTypeRemoveRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2784,6 +3346,132 @@ func _ClientCommands_PageCreate_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClientCommandsServer).PageCreate(req.(*pb.RpcPageCreateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_SetCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcSetCreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).SetCreate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/SetCreate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).SetCreate(req.(*pb.RpcSetCreateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ObjectTypeCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcObjectTypeCreateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ObjectTypeCreate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ObjectTypeCreate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ObjectTypeCreate(req.(*pb.RpcObjectTypeCreateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ObjectTypeList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcObjectTypeListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ObjectTypeList(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ObjectTypeList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ObjectTypeList(req.(*pb.RpcObjectTypeListRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ObjectTypeRelationList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcObjectTypeRelationListRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ObjectTypeRelationList(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationList",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ObjectTypeRelationList(req.(*pb.RpcObjectTypeRelationListRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ObjectTypeRelationAdd_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcObjectTypeRelationAddRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ObjectTypeRelationAdd(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationAdd",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ObjectTypeRelationAdd(req.(*pb.RpcObjectTypeRelationAddRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ObjectTypeRelationUpdate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcObjectTypeRelationUpdateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ObjectTypeRelationUpdate(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationUpdate",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ObjectTypeRelationUpdate(req.(*pb.RpcObjectTypeRelationUpdateRequest)), nil
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClientCommands_ObjectTypeRelationRemove_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(pb.RpcObjectTypeRelationRemoveRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClientCommandsServer).ObjectTypeRelationRemove(in), nil
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/anytype.ClientCommands/ObjectTypeRelationRemove",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClientCommandsServer).ObjectTypeRelationRemove(req.(*pb.RpcObjectTypeRelationRemoveRequest)), nil
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3001,6 +3689,10 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockCreatePage_Handler,
 		},
 		{
+			MethodName: "BlockCreateSet",
+			Handler:    _ClientCommands_BlockCreateSet_Handler,
+		},
+		{
 			MethodName: "BlockUnlink",
 			Handler:    _ClientCommands_BlockUnlink_Handler,
 		},
@@ -3031,10 +3723,6 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "BlockSetRestrictions",
 			Handler:    _ClientCommands_BlockSetRestrictions_Handler,
-		},
-		{
-			MethodName: "BlockSetDetails",
-			Handler:    _ClientCommands_BlockSetDetails_Handler,
 		},
 		{
 			MethodName: "BlockSetPageIsArchived",
@@ -3165,34 +3853,6 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockSetLinkTargetBlockId_Handler,
 		},
 		{
-			MethodName: "BlockSetDataviewView",
-			Handler:    _ClientCommands_BlockSetDataviewView_Handler,
-		},
-		{
-			MethodName: "BlockSetDataviewActiveView",
-			Handler:    _ClientCommands_BlockSetDataviewActiveView_Handler,
-		},
-		{
-			MethodName: "BlockCreateDataviewView",
-			Handler:    _ClientCommands_BlockCreateDataviewView_Handler,
-		},
-		{
-			MethodName: "BlockDeleteDataviewView",
-			Handler:    _ClientCommands_BlockDeleteDataviewView_Handler,
-		},
-		{
-			MethodName: "BlockCreateDataviewRecord",
-			Handler:    _ClientCommands_BlockCreateDataviewRecord_Handler,
-		},
-		{
-			MethodName: "BlockUpdateDataviewRecord",
-			Handler:    _ClientCommands_BlockUpdateDataviewRecord_Handler,
-		},
-		{
-			MethodName: "BlockDeleteDataviewRecord",
-			Handler:    _ClientCommands_BlockDeleteDataviewRecord_Handler,
-		},
-		{
 			MethodName: "BlockBookmarkFetch",
 			Handler:    _ClientCommands_BlockBookmarkFetch_Handler,
 		},
@@ -3205,16 +3865,124 @@ var _ClientCommands_serviceDesc = grpc.ServiceDesc{
 			Handler:    _ClientCommands_BlockFileCreateAndUpload_Handler,
 		},
 		{
-			MethodName: "NavigationListPages",
-			Handler:    _ClientCommands_NavigationListPages_Handler,
+			MethodName: "BlockDataviewViewCreate",
+			Handler:    _ClientCommands_BlockDataviewViewCreate_Handler,
 		},
 		{
-			MethodName: "NavigationGetPageInfoWithLinks",
-			Handler:    _ClientCommands_NavigationGetPageInfoWithLinks_Handler,
+			MethodName: "BlockDataviewViewDelete",
+			Handler:    _ClientCommands_BlockDataviewViewDelete_Handler,
+		},
+		{
+			MethodName: "BlockDataviewViewUpdate",
+			Handler:    _ClientCommands_BlockDataviewViewUpdate_Handler,
+		},
+		{
+			MethodName: "BlockDataviewViewSetActive",
+			Handler:    _ClientCommands_BlockDataviewViewSetActive_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRelationAdd",
+			Handler:    _ClientCommands_BlockDataviewRelationAdd_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRelationUpdate",
+			Handler:    _ClientCommands_BlockDataviewRelationUpdate_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRelationDelete",
+			Handler:    _ClientCommands_BlockDataviewRelationDelete_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRelationSelectOptionAdd",
+			Handler:    _ClientCommands_BlockDataviewRelationSelectOptionAdd_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRelationSelectOptionUpdate",
+			Handler:    _ClientCommands_BlockDataviewRelationSelectOptionUpdate_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRelationSelectOptionDelete",
+			Handler:    _ClientCommands_BlockDataviewRelationSelectOptionDelete_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRelationListAvailable",
+			Handler:    _ClientCommands_BlockDataviewRelationListAvailable_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRecordCreate",
+			Handler:    _ClientCommands_BlockDataviewRecordCreate_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRecordUpdate",
+			Handler:    _ClientCommands_BlockDataviewRecordUpdate_Handler,
+		},
+		{
+			MethodName: "BlockDataviewRecordDelete",
+			Handler:    _ClientCommands_BlockDataviewRecordDelete_Handler,
+		},
+		{
+			MethodName: "BlockRelationSetKey",
+			Handler:    _ClientCommands_BlockRelationSetKey_Handler,
+		},
+		{
+			MethodName: "BlockRelationAdd",
+			Handler:    _ClientCommands_BlockRelationAdd_Handler,
+		},
+		{
+			MethodName: "NavigationListObjects",
+			Handler:    _ClientCommands_NavigationListObjects_Handler,
+		},
+		{
+			MethodName: "NavigationGetObjectInfoWithLinks",
+			Handler:    _ClientCommands_NavigationGetObjectInfoWithLinks_Handler,
+		},
+		{
+			MethodName: "ObjectSearch",
+			Handler:    _ClientCommands_ObjectSearch_Handler,
+		},
+		{
+			MethodName: "BlockSetDetails",
+			Handler:    _ClientCommands_BlockSetDetails_Handler,
+		},
+		{
+			MethodName: "BlockObjectTypeAdd",
+			Handler:    _ClientCommands_BlockObjectTypeAdd_Handler,
+		},
+		{
+			MethodName: "BlockObjectTypeRemove",
+			Handler:    _ClientCommands_BlockObjectTypeRemove_Handler,
 		},
 		{
 			MethodName: "PageCreate",
 			Handler:    _ClientCommands_PageCreate_Handler,
+		},
+		{
+			MethodName: "SetCreate",
+			Handler:    _ClientCommands_SetCreate_Handler,
+		},
+		{
+			MethodName: "ObjectTypeCreate",
+			Handler:    _ClientCommands_ObjectTypeCreate_Handler,
+		},
+		{
+			MethodName: "ObjectTypeList",
+			Handler:    _ClientCommands_ObjectTypeList_Handler,
+		},
+		{
+			MethodName: "ObjectTypeRelationList",
+			Handler:    _ClientCommands_ObjectTypeRelationList_Handler,
+		},
+		{
+			MethodName: "ObjectTypeRelationAdd",
+			Handler:    _ClientCommands_ObjectTypeRelationAdd_Handler,
+		},
+		{
+			MethodName: "ObjectTypeRelationUpdate",
+			Handler:    _ClientCommands_ObjectTypeRelationUpdate_Handler,
+		},
+		{
+			MethodName: "ObjectTypeRelationRemove",
+			Handler:    _ClientCommands_ObjectTypeRelationRemove_Handler,
 		},
 		{
 			MethodName: "Ping",

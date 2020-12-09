@@ -71,6 +71,8 @@ type Service interface {
 	IsStarted() bool
 	BecameOnline(ch chan<- error)
 
+	ThreadService() threads.Service
+
 	// InitNewSmartblocksChan allows to init the chan to inform when there is a new smartblock becomes available
 	// Can be called only once. Returns error if called more than once
 	InitNewSmartblocksChan(ch chan<- string) error
@@ -84,18 +86,18 @@ type Service interface {
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
 	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated
 	FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) // deprecated
-	FileGetKeys(hash string) (*FileKeys, error)
-	FileStoreKeys(fileKeys ...FileKeys) error
+	FileGetKeys(hash string) (*files.FileKeys, error)
+	FileStoreKeys(fileKeys ...files.FileKeys) error
 
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
-	PageStore() localstore.PageStore
-	PageInfoWithLinks(id string) (*model.PageInfoWithLinks, error)
-	PageList() ([]*model.PageInfo, error)
-	PageUpdateLastOpened(id string) error
+	ObjectStore() localstore.ObjectStore
+	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
+	ObjectList() ([]*model.ObjectInfo, error)
+	ObjectUpdateLastOpened(id string) error
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
@@ -214,7 +216,7 @@ func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 		return nil, err
 	}
 	sb := &smartBlock{thread: thrd, node: a}
-	err = sb.indexSnapshot(nil, nil)
+	err = sb.indexSnapshot(nil, nil, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to index new block %s: %s", thrd.ID.String(), err.Error())
 	}
@@ -406,6 +408,10 @@ func (a *Anytype) Stop() error {
 	return nil
 }
 
+func (a *Anytype) ThreadService() threads.Service {
+	return a.threadService
+}
+
 func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 	if a.threadService == nil {
 		return fmt.Errorf("thread service not ready yet")
@@ -419,6 +425,7 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 		litenet.WithNetHostAddr(hostAddr),
 		litenet.WithNetDebug(false),
 		litenet.WithOffline(a.opts.Offline),
+		litenet.WithInMemoryDS(a.opts.InMemoryDS),
 		litenet.WithNetPubSub(true), // TODO control with env var
 		litenet.WithNetSyncTracking(true),
 		litenet.WithNetGRPCServerOptions(

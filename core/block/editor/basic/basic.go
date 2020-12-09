@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
@@ -24,6 +25,8 @@ type Basic interface {
 	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
 	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
+	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
+	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -241,6 +244,42 @@ func (bs *basic) SetDivStyle(ctx *state.Context, style model.BlockContentDivStyl
 		} else {
 			return fmt.Errorf("unexpected block type: %T (want Div)", b)
 		}
+	}
+	return bs.Apply(s)
+}
+
+func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) (err error) {
+	s := bs.NewStateCtx(ctx)
+	b := s.Get(req.BlockId)
+	if b == nil {
+		return smartblock.ErrSimpleBlockNotFound
+	}
+	if !bs.HasRelation(req.Key) {
+		return fmt.Errorf("relation with given key not found")
+	}
+	if rel, ok := b.(relation.Block); ok {
+		rel.SetKey(req.Key)
+	} else {
+		return fmt.Errorf("unexpected block type: %T (want Relation)", b)
+	}
+	return bs.Apply(s)
+}
+
+func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) (err error) {
+	s := bs.NewStateCtx(ctx)
+	b := s.Get(req.BlockId)
+	if b == nil {
+		return smartblock.ErrSimpleBlockNotFound
+	}
+	key := req.Relation.Key
+	if !s.HasRelation(key) {
+		req.Relation.Key = bson.NewObjectId().Hex()
+		s.AddRelation(req.Relation)
+	}
+	if rel, ok := b.(relation.Block); ok {
+		rel.SetKey(req.Relation.Key)
+	} else {
+		return fmt.Errorf("unexpected block type: %T (want Relation)", b)
 	}
 	return bs.Apply(s)
 }

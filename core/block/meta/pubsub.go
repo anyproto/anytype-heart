@@ -274,10 +274,20 @@ func copyMeta(m Meta) Meta {
 	if d != nil {
 		d = pbtypes.CopyStruct(m.Details)
 	}
+	r := m.Relations
+	if r != nil {
+		r = pbtypes.CopyRelations(m.Relations)
+	}
+
+	var o = make([]string, len(m.ObjectTypes))
+	copy(o, m.ObjectTypes)
+
 	return Meta{
 		BlockId: m.BlockId,
 		SmartBlockMeta: core.SmartBlockMeta{
-			Details: d,
+			Details:     d,
+			Relations:   r,
+			ObjectTypes: o,
 		},
 	}
 }

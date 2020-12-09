@@ -126,7 +126,7 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 }
 
 // AddMulti add multiple files and ignores possible duplicate errors, tx with all inserts discarded in case of other errors
-func (m *dsFileStore) AddMulti(files ...*storage.FileInfo) error {
+func (m *dsFileStore) AddMulti(upsert bool, files ...*storage.FileInfo) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error when creating txn in datastore: %w", err)
@@ -139,7 +139,7 @@ func (m *dsFileStore) AddMulti(files ...*storage.FileInfo) error {
 		if err != nil {
 			return err
 		}
-		if exists {
+		if exists && !upsert {
 			continue
 		}
 
@@ -429,6 +429,30 @@ func (m *dsFileStore) Count() (int, error) {
 	}
 
 	return count, nil
+}
+
+func (m *dsFileStore) List() ([]*storage.FileInfo, error) {
+	var infos []*storage.FileInfo
+	res, err := GetKeys(m.ds, filesInfoBase.String(), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	hashes, err := GetLeavesFromResults(res)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, hash := range hashes {
+		info, err := m.GetByHash(hash)
+		if err != nil {
+			return nil, err
+		}
+
+		infos = append(infos, info)
+	}
+
+	return infos, nil
 }
 
 func (m *dsFileStore) DeleteByHash(hash string) error {

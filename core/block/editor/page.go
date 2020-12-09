@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -21,7 +22,7 @@ func NewPage(
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
 ) *Page {
-	sb := smartblock.New(m)
+	sb := smartblock.New(m, objects.BundledObjectTypeURLPrefix+"page")
 	f := file.NewFile(sb, fileSource)
 	return &Page{
 		SmartBlock: sb,
@@ -46,9 +47,12 @@ type Page struct {
 	_import.Import
 }
 
-func (p *Page) Init(s source.Source, _ bool) (err error) {
-	if err = p.SmartBlock.Init(s, true); err != nil {
+func (p *Page) Init(s source.Source, _ bool, objectTypeUrls []string) (err error) {
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
 		return
 	}
-	return template.ApplyTemplate(p, template.WithTitle, nil)
+	if objectTypeUrls == nil {
+		objectTypeUrls = []string{p.DefaultObjectTypeUrl()}
+	}
+	return template.ApplyTemplate(p, nil, template.WithTitle, template.WithObjectTypes(objectTypeUrls))
 }

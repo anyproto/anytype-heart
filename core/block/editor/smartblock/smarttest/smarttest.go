@@ -1,6 +1,7 @@
 package smarttest
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -13,7 +14,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -46,6 +50,72 @@ func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
 	return
 }
 
+func (st *SmartTest) HasRelation(relationKey string) bool {
+	return st.NewState().HasRelation(relationKey)
+}
+
+func (st *SmartTest) Relations() []*pbrelation.Relation {
+	return nil
+}
+
+func (st *SmartTest) DefaultObjectTypeUrl() string {
+	return ""
+}
+
+func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	if st.meta == nil {
+		st.meta = &core.SmartBlockMeta{
+			Details: &types.Struct{
+				Fields: make(map[string]*types.Value),
+			}}
+	}
+	for _, d := range relations {
+		if d.Key == "" {
+			d.Key = bson.NewObjectId().Hex()
+		}
+		st.meta.Relations = append(st.meta.Relations, pbtypes.CopyRelation(d))
+	}
+	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
+	return st.meta.Relations, nil
+}
+
+func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+	if st.meta == nil {
+		st.meta = &core.SmartBlockMeta{
+			Details: &types.Struct{
+				Fields: make(map[string]*types.Value),
+			}}
+	}
+	for _, d := range relations {
+		var found bool
+		for i, rel := range st.meta.Relations {
+			if rel.Key != d.Key {
+				continue
+			}
+			found = true
+			st.meta.Relations[i] = d
+		}
+		if !found && !createIfMissing {
+			return fmt.Errorf("relation not found")
+		}
+	}
+
+	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
+	return nil
+}
+
+func (st *SmartTest) RemoveExtraRelations(relationKeys []string) (err error) {
+	return nil
+}
+
+func (st *SmartTest) AddObjectTypes(objectTypes []string) (err error) {
+	return nil
+}
+
+func (st *SmartTest) RemoveObjectTypes(objectTypes []string) (err error) {
+	return nil
+}
+
 func (st *SmartTest) DisableLayouts() {
 	return
 }
@@ -60,9 +130,11 @@ func (st *SmartTest) Reindex() error {
 
 func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
 	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{Details: &types.Struct{
-			Fields: make(map[string]*types.Value),
-		}}
+		st.meta = &core.SmartBlockMeta{
+			Relations: st.ExtraRelations(),
+			Details: &types.Struct{
+				Fields: make(map[string]*types.Value),
+			}}
 	}
 	for _, d := range details {
 		st.meta.Details.Fields[d.Key] = d.Value
@@ -71,7 +143,7 @@ func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDet
 	return
 }
 
-func (st *SmartTest) Init(_ source.Source, _ bool) (err error) {
+func (st *SmartTest) Init(_ source.Source, _ bool, _ []string) (err error) {
 	return
 }
 
@@ -143,6 +215,10 @@ func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 
 func (st *SmartTest) MetaService() meta.Service {
 	return st.ms
+}
+
+func (st *SmartTest) FileRelationKeys() []string {
+	return nil
 }
 
 func (st *SmartTest) BlockClose() {

@@ -5,7 +5,9 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 )
@@ -39,22 +41,33 @@ func (ch *Change) GetLastSnapshotId() string {
 	return ch.LastSnapshotId
 }
 
-func (ch *Change) HasDetails() bool {
+func (ch *Change) HasMeta() bool {
 	if ch.Snapshot != nil {
 		return true
 	}
 	for _, ct := range ch.Content {
-		if ct.GetDetailsSet() != nil {
+		switch ct.Value.(type) {
+		case *pb.ChangeContentValueOfDetailsSet:
 			return true
-		}
-		if ct.GetDetailsUnset() != nil {
+		case *pb.ChangeContentValueOfDetailsUnset:
+			return true
+
+		case *pb.ChangeContentValueOfRelationAdd:
+			return true
+		case *pb.ChangeContentValueOfRelationRemove:
+			return true
+		case *pb.ChangeContentValueOfRelationUpdate:
+			return true
+		case *pb.ChangeContentValueOfObjectTypeAdd:
+			return true
+		case *pb.ChangeContentValueOfObjectTypeRemove:
 			return true
 		}
 	}
 	return false
 }
 
-func NewSnapshotChange(blocks []*model.Block, details *types.Struct, fileKeys []*core.FileKeys) proto.Marshaler {
+func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler {
 	fkeys := make([]*pb.ChangeFileKeys, len(fileKeys))
 	for i, k := range fileKeys {
 		fkeys[i] = &pb.ChangeFileKeys{
@@ -65,8 +78,10 @@ func NewSnapshotChange(blocks []*model.Block, details *types.Struct, fileKeys []
 	return &pb.Change{
 		Snapshot: &pb.ChangeSnapshot{
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:  blocks,
-				Details: details,
+				Blocks:         blocks,
+				Details:        details,
+				ExtraRelations: relations,
+				ObjectTypes:    objectTypes,
 			},
 			FileKeys: fkeys,
 		},

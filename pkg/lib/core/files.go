@@ -4,43 +4,20 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
 
-func (a *Anytype) FileGetKeys(hash string) (*FileKeys, error) {
-	m, err := a.localStore.Files.GetFileKeys(hash)
-	if err != nil {
-		if err != localstore.ErrNotFound {
-			return nil, err
-		}
-	} else {
-		return &FileKeys{
-			Hash: hash,
-			Keys: m,
-		}, nil
-	}
-
-	// in case we don't have keys cached fot this file
-	// we should have all the CIDs locally, so 5s is more than enough
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	fileKeysRestored, err := a.files.FileRestoreKeys(ctx, hash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to restore file keys: %w", err)
-	}
-
-	return &FileKeys{
-		Hash: hash,
-		Keys: fileKeysRestored,
-	}, nil
+func (a *Anytype) FileGetKeys(hash string) (*files.FileKeys, error) {
+	return a.files.FileGetKeys(hash)
 }
 
-func (a *Anytype) FileStoreKeys(fileKeys ...FileKeys) error {
+func (a *Anytype) FileStoreKeys(fileKeys ...files.FileKeys) error {
 	var fks []localstore.FileKeys
 
 	for _, fk := range fileKeys {
@@ -59,9 +36,9 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 		return nil, err
 	}
 
-	if len(fileList) == 0 {
+	if len(fileList) == 0 || fileList[0].MetaHash == "" {
 		// info from ipfs
-		fileList, err = a.files.FileIndexInfo(ctx, hash)
+		fileList, err = a.files.FileIndexInfo(ctx, hash, false)
 		if err != nil {
 			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
@@ -92,11 +69,23 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 		return nil, err
 	}
 
-	return &file{
+	f := &file{
 		hash: hash,
 		info: info,
 		node: a.files,
-	}, nil
+	}
+
+	details, err := f.Details()
+	if err != nil {
+		return nil, err
+	}
+
+	err = a.localStore.Objects.UpdateObject(f.hash, details, &pbrelation.Relations{Relations: relation.BundledObjectTypes["file"].Relations}, nil, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return f, nil
 }
 
 func (a *Anytype) FileAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (File, error) {

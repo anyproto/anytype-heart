@@ -13,6 +13,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -38,8 +40,11 @@ type Doc interface {
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
-	Append(targetId string, id string) (ok bool)
 	Details() *types.Struct
+	ExtraRelations() []*pbrelation.Relation
+
+	ObjectTypes() []string
+
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
 	GetFileKeys() []pb.ChangeFileKeys
@@ -58,15 +63,17 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx      *Context
-	parent   *State
-	blocks   map[string]simple.Block
-	rootId   string
-	newIds   []string
-	changeId string
-	changes  []*pb.ChangeContent
-	fileKeys []pb.ChangeFileKeys
-	details  *types.Struct
+	ctx            *Context
+	parent         *State
+	blocks         map[string]simple.Block
+	rootId         string
+	newIds         []string
+	changeId       string
+	changes        []*pb.ChangeContent
+	fileKeys       []pb.ChangeFileKeys
+	details        *types.Struct
+	extraRelations []*pbrelation.Relation
+	objectTypes    []string
 
 	changesStructureIgnoreIds []string
 
@@ -179,12 +186,6 @@ func (s *State) Unlink(id string) (ok bool) {
 		return true
 	}
 	return
-}
-
-func (s *State) Append(targetId string, id string) (ok bool) {
-	parent := s.Get(targetId).Model()
-	parent.ChildrenIds = append(parent.ChildrenIds, id)
-	return true
 }
 
 func (s *State) GetParentOf(id string) (res simple.Block) {
@@ -424,6 +425,32 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			})
 		}
 	}
+	if s.parent != nil && s.extraRelations != nil {
+		prev := s.parent.ExtraRelations()
+
+		if !pbtypes.RelationsEqual(prev, s.extraRelations) {
+			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
+			s.parent.extraRelations = s.extraRelations
+			msgs = append(msgs, simple.EventMessage{
+				Msg: &pb.EventMessage{
+					Value: &pb.EventMessageValueOfBlockSetRelations{
+						BlockSetRelations: &pb.EventBlockSetRelations{
+							Id:        s.RootId(),
+							Relations: pbtypes.CopyRelations(s.extraRelations),
+						},
+					},
+				},
+			})
+		}
+	}
+
+	if s.parent != nil && s.objectTypes != nil {
+		prev := s.parent.ObjectTypes()
+		if !slice.UnsortedEquals(prev, s.objectTypes) {
+			action.ObjectTypes = &undo.ObjectType{Before: prev, After: s.ObjectTypes()}
+			s.parent.objectTypes = s.objectTypes
+		}
+	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
@@ -440,6 +467,12 @@ func (s *State) intermediateApply() {
 	}
 	if s.details != nil {
 		s.parent.details = s.details
+	}
+	if s.extraRelations != nil {
+		s.parent.extraRelations = s.extraRelations
+	}
+	if s.objectTypes != nil {
+		s.parent.objectTypes = s.objectTypes
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
@@ -563,7 +596,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 }
 
 func (s *State) SetDetail(key string, value *types.Value) {
-	if s.details == nil {
+	if s.details == nil && s.parent != nil {
 		s.details = pbtypes.CopyStruct(s.parent.Details())
 	}
 	if s.details == nil || s.details.Fields == nil {
@@ -573,11 +606,79 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	return
 }
 
+func (s *State) AddRelation(relation *pbrelation.Relation) *State {
+	for _, rel := range s.ExtraRelations() {
+		if rel.Key == relation.Key {
+			return s
+		}
+	}
+	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
+		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+	}
+
+	s.extraRelations = append(s.ExtraRelations(), relation)
+	return s
+}
+
+func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
+	s.extraRelations = relations
+	return s
+}
+
+func (s *State) SetObjectTypes(objectTypes []string) *State {
+	s.objectTypes = objectTypes
+	return s
+}
+
+func (s *State) fillLocalScopeDetails() {
+	s.SetDetail("id", pbtypes.String(s.rootId))
+	s.SetDetail("type", pbtypes.StringList(s.ObjectTypes()))
+	// todo: lastModifiedDate
+}
+
+// ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
+func (s *State) ObjectScopedDetails() *types.Struct {
+	if s.details == nil && s.parent != nil {
+		return s.parent.ObjectScopedDetails()
+	}
+
+	return s.objectScopedDetailsForCurrentState()
+}
+
+// objectScopedDetailsForCurrentState clears current state details from local-only relations
+func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
+	if s.details == nil || s.details.Fields == nil {
+		return nil
+	}
+	d := pbtypes.CopyStruct(s.details)
+	for key, _ := range d.Fields {
+		if slice.FindPos(relationCol.LocalOnlyRelationsKeys, key) != -1 {
+			delete(d.Fields, key)
+		}
+	}
+	return d
+}
+
 func (s *State) Details() *types.Struct {
 	if s.details == nil && s.parent != nil {
 		return s.parent.Details()
 	}
+
 	return s.details
+}
+
+func (s *State) ExtraRelations() []*pbrelation.Relation {
+	if s.extraRelations == nil && s.parent != nil {
+		return s.parent.ExtraRelations()
+	}
+	return s.extraRelations
+}
+
+func (s *State) ObjectTypes() []string {
+	if s.objectTypes == nil && s.parent != nil {
+		return s.parent.ObjectTypes()
+	}
+	return s.objectTypes
 }
 
 func (s *State) Snippet() (snippet string) {
@@ -596,7 +697,7 @@ func (s *State) Snippet() (snippet string) {
 	return text.Truncate(snippet, snippetMaxSize)
 }
 
-func (s *State) GetAllFileHashes() (hashes []string) {
+func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
@@ -607,9 +708,14 @@ func (s *State) GetAllFileHashes() (hashes []string) {
 	if det == nil || det.Fields == nil {
 		return
 	}
-	for _, field := range DetailsFileFields {
-		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
-			hashes = append(hashes, v.GetStringValue())
+
+	for _, key := range detailsKeys {
+		if v := pbtypes.GetStringList(det, key); v != nil {
+			for _, hash := range v {
+				if slice.FindPos(hashes, hash) == -1 {
+					hashes = append(hashes, hash)
+				}
+			}
 		}
 	}
 	return
@@ -689,18 +795,55 @@ func (s *State) Validate() (err error) {
 	return err2
 }
 
+// IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
+func (s *State) IsEmpty() bool {
+	i := 0
+	blocksToTraverse := []string{"header"}
+	ignoredTemplateBlocksMap := map[string]struct{}{s.rootId: {}}
+	for i < len(blocksToTraverse) {
+		id := blocksToTraverse[i]
+		i++
+		b := s.Pick(id)
+		if b == nil {
+			continue
+		}
+		blocksToTraverse = append(blocksToTraverse, b.Model().ChildrenIds...)
+		ignoredTemplateBlocksMap[id] = struct{}{}
+	}
+
+	if len(s.blocks) <= len(ignoredTemplateBlocksMap) {
+		return true
+	}
+
+	return false
+}
+
 func (s *State) Copy() *State {
 	blocks := make(map[string]simple.Block, len(s.blocks))
 	for k, v := range s.blocks {
 		blocks[k] = v.Copy()
 	}
+	objTypes := make([]string, len(s.objectTypes))
+	copy(objTypes, s.objectTypes)
+
 	copy := &State{
-		ctx:     s.ctx,
-		blocks:  blocks,
-		rootId:  s.rootId,
-		details: pbtypes.CopyStruct(s.details),
+		ctx:            s.ctx,
+		blocks:         blocks,
+		rootId:         s.rootId,
+		details:        pbtypes.CopyStruct(s.details),
+		extraRelations: pbtypes.CopyRelations(s.extraRelations),
+		objectTypes:    objTypes,
 	}
 	return copy
+}
+
+func (s *State) HasRelation(key string) bool {
+	for _, rel := range s.ExtraRelations() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 type linkSource interface {

@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -26,10 +28,11 @@ type ServiceOptions struct {
 	CafeP2PAddr           ma.Multiaddr
 	WebGatewayBaseUrl     string
 	Offline               bool
+	InMemoryDS            bool
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
 	ReindexFunc           func(smartblockId string) error
-	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler
+	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler
 	WebGatewaySnapshotUri string
 	NewSmartblockChan     chan string
 }
@@ -76,6 +79,16 @@ func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
 		// "-" or any other single char assumes as empty for env var compatability
 		if len(cfg.CafeP2PAddr) > 1 {
 			opts = append(opts, WithCafeP2PAddr(cfg.CafeP2PAddr))
+		} else if cfg.CafeP2PAddr == "-" {
+			opts = append(opts, WithoutCafe())
+		}
+
+		if cfg.Offline {
+			opts = append(opts, WithOfflineMode(true))
+		}
+
+		if cfg.InMemoryDS {
+			opts = append(opts, WithInMemoryDS(true))
 		}
 
 		if len(cfg.CafeGRPCAddr) > 1 {
@@ -97,6 +110,13 @@ func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
 func WithNewSmartblockChan(ch chan string) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.NewSmartblockChan = ch
+		return nil
+	}
+}
+
+func WithInMemoryDS(inMemoryDs bool) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.InMemoryDS = inMemoryDs
 		return nil
 	}
 }
@@ -201,7 +221,7 @@ func WithReindexFunc(f func(smartblockId string) error) ServiceOption {
 	}
 }
 
-func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, fileKeys []*FileKeys) proto.Marshaler) ServiceOption {
+func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.SnapshotMarshalerFunc = f
 		return nil

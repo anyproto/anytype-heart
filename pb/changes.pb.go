@@ -6,6 +6,7 @@ package pb
 import (
 	fmt "fmt"
 	model "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	relation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	proto "github.com/gogo/protobuf/proto"
 	types "github.com/gogo/protobuf/types"
 	io "io"
@@ -30,11 +31,11 @@ type Change struct {
 	PreviousIds []string `protobuf:"bytes,1,rep,name=previous_ids,json=previousIds,proto3" json:"previous_ids,omitempty"`
 	// id of the last snapshot
 	LastSnapshotId string `protobuf:"bytes,2,opt,name=last_snapshot_id,json=lastSnapshotId,proto3" json:"last_snapshot_id,omitempty"`
-	// ids of the last changes with details content
-	PreviousDetailsIds []string `protobuf:"bytes,5,rep,name=previous_details_ids,json=previousDetailsIds,proto3" json:"previous_details_ids,omitempty"`
+	// ids of the last changes with details/relations content
+	PreviousMetaIds []string `protobuf:"bytes,5,rep,name=previous_meta_ids,json=previousMetaIds,proto3" json:"previous_meta_ids,omitempty"`
 	// set of actions to apply
 	Content []*ChangeContent `protobuf:"bytes,3,rep,name=content,proto3" json:"content,omitempty"`
-	// snapshot - when not null, the content will ignoring
+	// snapshot - when not null, the Content will be ignored
 	Snapshot *ChangeSnapshot `protobuf:"bytes,4,opt,name=snapshot,proto3" json:"snapshot,omitempty"`
 	// file keys related to changes content
 	FileKeys []*ChangeFileKeys `protobuf:"bytes,6,rep,name=fileKeys,proto3" json:"fileKeys,omitempty"`
@@ -89,9 +90,9 @@ func (m *Change) GetLastSnapshotId() string {
 	return ""
 }
 
-func (m *Change) GetPreviousDetailsIds() []string {
+func (m *Change) GetPreviousMetaIds() []string {
 	if m != nil {
-		return m.PreviousDetailsIds
+		return m.PreviousMetaIds
 	}
 	return nil
 }
@@ -248,6 +249,11 @@ type ChangeContent struct {
 	//	*ChangeContentValueOfBlockDuplicate
 	//	*ChangeContentValueOfDetailsSet
 	//	*ChangeContentValueOfDetailsUnset
+	//	*ChangeContentValueOfRelationAdd
+	//	*ChangeContentValueOfRelationRemove
+	//	*ChangeContentValueOfRelationUpdate
+	//	*ChangeContentValueOfObjectTypeAdd
+	//	*ChangeContentValueOfObjectTypeRemove
 	Value IsChangeContentValue `protobuf_oneof:"value"`
 }
 
@@ -311,14 +317,34 @@ type ChangeContentValueOfDetailsSet struct {
 type ChangeContentValueOfDetailsUnset struct {
 	DetailsUnset *ChangeDetailsUnset `protobuf:"bytes,101,opt,name=detailsUnset,proto3,oneof" json:"detailsUnset,omitempty"`
 }
+type ChangeContentValueOfRelationAdd struct {
+	RelationAdd *ChangeRelationAdd `protobuf:"bytes,102,opt,name=relationAdd,proto3,oneof" json:"relationAdd,omitempty"`
+}
+type ChangeContentValueOfRelationRemove struct {
+	RelationRemove *ChangeRelationRemove `protobuf:"bytes,103,opt,name=relationRemove,proto3,oneof" json:"relationRemove,omitempty"`
+}
+type ChangeContentValueOfRelationUpdate struct {
+	RelationUpdate *ChangeRelationUpdate `protobuf:"bytes,104,opt,name=relationUpdate,proto3,oneof" json:"relationUpdate,omitempty"`
+}
+type ChangeContentValueOfObjectTypeAdd struct {
+	ObjectTypeAdd *ChangeObjectTypeAdd `protobuf:"bytes,105,opt,name=objectTypeAdd,proto3,oneof" json:"objectTypeAdd,omitempty"`
+}
+type ChangeContentValueOfObjectTypeRemove struct {
+	ObjectTypeRemove *ChangeObjectTypeRemove `protobuf:"bytes,106,opt,name=objectTypeRemove,proto3,oneof" json:"objectTypeRemove,omitempty"`
+}
 
-func (*ChangeContentValueOfBlockCreate) IsChangeContentValue()    {}
-func (*ChangeContentValueOfBlockUpdate) IsChangeContentValue()    {}
-func (*ChangeContentValueOfBlockRemove) IsChangeContentValue()    {}
-func (*ChangeContentValueOfBlockMove) IsChangeContentValue()      {}
-func (*ChangeContentValueOfBlockDuplicate) IsChangeContentValue() {}
-func (*ChangeContentValueOfDetailsSet) IsChangeContentValue()     {}
-func (*ChangeContentValueOfDetailsUnset) IsChangeContentValue()   {}
+func (*ChangeContentValueOfBlockCreate) IsChangeContentValue()      {}
+func (*ChangeContentValueOfBlockUpdate) IsChangeContentValue()      {}
+func (*ChangeContentValueOfBlockRemove) IsChangeContentValue()      {}
+func (*ChangeContentValueOfBlockMove) IsChangeContentValue()        {}
+func (*ChangeContentValueOfBlockDuplicate) IsChangeContentValue()   {}
+func (*ChangeContentValueOfDetailsSet) IsChangeContentValue()       {}
+func (*ChangeContentValueOfDetailsUnset) IsChangeContentValue()     {}
+func (*ChangeContentValueOfRelationAdd) IsChangeContentValue()      {}
+func (*ChangeContentValueOfRelationRemove) IsChangeContentValue()   {}
+func (*ChangeContentValueOfRelationUpdate) IsChangeContentValue()   {}
+func (*ChangeContentValueOfObjectTypeAdd) IsChangeContentValue()    {}
+func (*ChangeContentValueOfObjectTypeRemove) IsChangeContentValue() {}
 
 func (m *ChangeContent) GetValue() IsChangeContentValue {
 	if m != nil {
@@ -376,6 +402,41 @@ func (m *ChangeContent) GetDetailsUnset() *ChangeDetailsUnset {
 	return nil
 }
 
+func (m *ChangeContent) GetRelationAdd() *ChangeRelationAdd {
+	if x, ok := m.GetValue().(*ChangeContentValueOfRelationAdd); ok {
+		return x.RelationAdd
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetRelationRemove() *ChangeRelationRemove {
+	if x, ok := m.GetValue().(*ChangeContentValueOfRelationRemove); ok {
+		return x.RelationRemove
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetRelationUpdate() *ChangeRelationUpdate {
+	if x, ok := m.GetValue().(*ChangeContentValueOfRelationUpdate); ok {
+		return x.RelationUpdate
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetObjectTypeAdd() *ChangeObjectTypeAdd {
+	if x, ok := m.GetValue().(*ChangeContentValueOfObjectTypeAdd); ok {
+		return x.ObjectTypeAdd
+	}
+	return nil
+}
+
+func (m *ChangeContent) GetObjectTypeRemove() *ChangeObjectTypeRemove {
+	if x, ok := m.GetValue().(*ChangeContentValueOfObjectTypeRemove); ok {
+		return x.ObjectTypeRemove
+	}
+	return nil
+}
+
 // XXX_OneofWrappers is for the internal use of the proto package.
 func (*ChangeContent) XXX_OneofWrappers() []interface{} {
 	return []interface{}{
@@ -386,6 +447,11 @@ func (*ChangeContent) XXX_OneofWrappers() []interface{} {
 		(*ChangeContentValueOfBlockDuplicate)(nil),
 		(*ChangeContentValueOfDetailsSet)(nil),
 		(*ChangeContentValueOfDetailsUnset)(nil),
+		(*ChangeContentValueOfRelationAdd)(nil),
+		(*ChangeContentValueOfRelationRemove)(nil),
+		(*ChangeContentValueOfRelationUpdate)(nil),
+		(*ChangeContentValueOfObjectTypeAdd)(nil),
+		(*ChangeContentValueOfObjectTypeRemove)(nil),
 	}
 }
 
@@ -753,6 +819,415 @@ func (m *ChangeDetailsUnset) GetKey() string {
 	return ""
 }
 
+type ChangeRelationAdd struct {
+	Relation *relation.Relation `protobuf:"bytes,2,opt,name=relation,proto3" json:"relation,omitempty"`
+}
+
+func (m *ChangeRelationAdd) Reset()         { *m = ChangeRelationAdd{} }
+func (m *ChangeRelationAdd) String() string { return proto.CompactTextString(m) }
+func (*ChangeRelationAdd) ProtoMessage()    {}
+func (*ChangeRelationAdd) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 10}
+}
+func (m *ChangeRelationAdd) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeRelationAdd) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeRelationAdd.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeRelationAdd) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeRelationAdd.Merge(m, src)
+}
+func (m *ChangeRelationAdd) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeRelationAdd) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeRelationAdd.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeRelationAdd proto.InternalMessageInfo
+
+func (m *ChangeRelationAdd) GetRelation() *relation.Relation {
+	if m != nil {
+		return m.Relation
+	}
+	return nil
+}
+
+type ChangeRelationUpdate struct {
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+	// Types that are valid to be assigned to Value:
+	//	*ChangeRelationUpdateValueOfFormat
+	//	*ChangeRelationUpdateValueOfName
+	//	*ChangeRelationUpdateValueOfDefaultValue
+	//	*ChangeRelationUpdateValueOfObjectTypes
+	//	*ChangeRelationUpdateValueOfMulti
+	//	*ChangeRelationUpdateValueOfSelectDict
+	Value IsChangeRelationUpdateValue `protobuf_oneof:"value"`
+}
+
+func (m *ChangeRelationUpdate) Reset()         { *m = ChangeRelationUpdate{} }
+func (m *ChangeRelationUpdate) String() string { return proto.CompactTextString(m) }
+func (*ChangeRelationUpdate) ProtoMessage()    {}
+func (*ChangeRelationUpdate) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 11}
+}
+func (m *ChangeRelationUpdate) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeRelationUpdate) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeRelationUpdate.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeRelationUpdate) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeRelationUpdate.Merge(m, src)
+}
+func (m *ChangeRelationUpdate) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeRelationUpdate) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeRelationUpdate.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeRelationUpdate proto.InternalMessageInfo
+
+type IsChangeRelationUpdateValue interface {
+	IsChangeRelationUpdateValue()
+	MarshalTo([]byte) (int, error)
+	Size() int
+}
+
+type ChangeRelationUpdateValueOfFormat struct {
+	Format relation.RelationFormat `protobuf:"varint,2,opt,name=format,proto3,enum=anytype.relation.RelationFormat,oneof" json:"format,omitempty"`
+}
+type ChangeRelationUpdateValueOfName struct {
+	Name string `protobuf:"bytes,3,opt,name=name,proto3,oneof" json:"name,omitempty"`
+}
+type ChangeRelationUpdateValueOfDefaultValue struct {
+	DefaultValue *types.Value `protobuf:"bytes,4,opt,name=defaultValue,proto3,oneof" json:"defaultValue,omitempty"`
+}
+type ChangeRelationUpdateValueOfObjectTypes struct {
+	ObjectTypes *ChangeRelationUpdateObjectTypes `protobuf:"bytes,5,opt,name=objectTypes,proto3,oneof" json:"objectTypes,omitempty"`
+}
+type ChangeRelationUpdateValueOfMulti struct {
+	Multi bool `protobuf:"varint,6,opt,name=multi,proto3,oneof" json:"multi,omitempty"`
+}
+type ChangeRelationUpdateValueOfSelectDict struct {
+	SelectDict *ChangeRelationUpdateDict `protobuf:"bytes,7,opt,name=selectDict,proto3,oneof" json:"selectDict,omitempty"`
+}
+
+func (*ChangeRelationUpdateValueOfFormat) IsChangeRelationUpdateValue()       {}
+func (*ChangeRelationUpdateValueOfName) IsChangeRelationUpdateValue()         {}
+func (*ChangeRelationUpdateValueOfDefaultValue) IsChangeRelationUpdateValue() {}
+func (*ChangeRelationUpdateValueOfObjectTypes) IsChangeRelationUpdateValue()  {}
+func (*ChangeRelationUpdateValueOfMulti) IsChangeRelationUpdateValue()        {}
+func (*ChangeRelationUpdateValueOfSelectDict) IsChangeRelationUpdateValue()   {}
+
+func (m *ChangeRelationUpdate) GetValue() IsChangeRelationUpdateValue {
+	if m != nil {
+		return m.Value
+	}
+	return nil
+}
+
+func (m *ChangeRelationUpdate) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+func (m *ChangeRelationUpdate) GetFormat() relation.RelationFormat {
+	if x, ok := m.GetValue().(*ChangeRelationUpdateValueOfFormat); ok {
+		return x.Format
+	}
+	return relation.RelationFormat_description
+}
+
+func (m *ChangeRelationUpdate) GetName() string {
+	if x, ok := m.GetValue().(*ChangeRelationUpdateValueOfName); ok {
+		return x.Name
+	}
+	return ""
+}
+
+func (m *ChangeRelationUpdate) GetDefaultValue() *types.Value {
+	if x, ok := m.GetValue().(*ChangeRelationUpdateValueOfDefaultValue); ok {
+		return x.DefaultValue
+	}
+	return nil
+}
+
+func (m *ChangeRelationUpdate) GetObjectTypes() *ChangeRelationUpdateObjectTypes {
+	if x, ok := m.GetValue().(*ChangeRelationUpdateValueOfObjectTypes); ok {
+		return x.ObjectTypes
+	}
+	return nil
+}
+
+func (m *ChangeRelationUpdate) GetMulti() bool {
+	if x, ok := m.GetValue().(*ChangeRelationUpdateValueOfMulti); ok {
+		return x.Multi
+	}
+	return false
+}
+
+func (m *ChangeRelationUpdate) GetSelectDict() *ChangeRelationUpdateDict {
+	if x, ok := m.GetValue().(*ChangeRelationUpdateValueOfSelectDict); ok {
+		return x.SelectDict
+	}
+	return nil
+}
+
+// XXX_OneofWrappers is for the internal use of the proto package.
+func (*ChangeRelationUpdate) XXX_OneofWrappers() []interface{} {
+	return []interface{}{
+		(*ChangeRelationUpdateValueOfFormat)(nil),
+		(*ChangeRelationUpdateValueOfName)(nil),
+		(*ChangeRelationUpdateValueOfDefaultValue)(nil),
+		(*ChangeRelationUpdateValueOfObjectTypes)(nil),
+		(*ChangeRelationUpdateValueOfMulti)(nil),
+		(*ChangeRelationUpdateValueOfSelectDict)(nil),
+	}
+}
+
+type ChangeRelationUpdateDict struct {
+	Dict []*relation.RelationSelectOption `protobuf:"bytes,2,rep,name=dict,proto3" json:"dict,omitempty"`
+}
+
+func (m *ChangeRelationUpdateDict) Reset()         { *m = ChangeRelationUpdateDict{} }
+func (m *ChangeRelationUpdateDict) String() string { return proto.CompactTextString(m) }
+func (*ChangeRelationUpdateDict) ProtoMessage()    {}
+func (*ChangeRelationUpdateDict) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 11, 0}
+}
+func (m *ChangeRelationUpdateDict) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeRelationUpdateDict) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeRelationUpdateDict.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeRelationUpdateDict) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeRelationUpdateDict.Merge(m, src)
+}
+func (m *ChangeRelationUpdateDict) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeRelationUpdateDict) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeRelationUpdateDict.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeRelationUpdateDict proto.InternalMessageInfo
+
+func (m *ChangeRelationUpdateDict) GetDict() []*relation.RelationSelectOption {
+	if m != nil {
+		return m.Dict
+	}
+	return nil
+}
+
+type ChangeRelationUpdateObjectTypes struct {
+	ObjectTypes []string `protobuf:"bytes,1,rep,name=objectTypes,proto3" json:"objectTypes,omitempty"`
+}
+
+func (m *ChangeRelationUpdateObjectTypes) Reset()         { *m = ChangeRelationUpdateObjectTypes{} }
+func (m *ChangeRelationUpdateObjectTypes) String() string { return proto.CompactTextString(m) }
+func (*ChangeRelationUpdateObjectTypes) ProtoMessage()    {}
+func (*ChangeRelationUpdateObjectTypes) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 11, 1}
+}
+func (m *ChangeRelationUpdateObjectTypes) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeRelationUpdateObjectTypes) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeRelationUpdateObjectTypes.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeRelationUpdateObjectTypes) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeRelationUpdateObjectTypes.Merge(m, src)
+}
+func (m *ChangeRelationUpdateObjectTypes) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeRelationUpdateObjectTypes) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeRelationUpdateObjectTypes.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeRelationUpdateObjectTypes proto.InternalMessageInfo
+
+func (m *ChangeRelationUpdateObjectTypes) GetObjectTypes() []string {
+	if m != nil {
+		return m.ObjectTypes
+	}
+	return nil
+}
+
+type ChangeRelationRemove struct {
+	Key string `protobuf:"bytes,1,opt,name=key,proto3" json:"key,omitempty"`
+}
+
+func (m *ChangeRelationRemove) Reset()         { *m = ChangeRelationRemove{} }
+func (m *ChangeRelationRemove) String() string { return proto.CompactTextString(m) }
+func (*ChangeRelationRemove) ProtoMessage()    {}
+func (*ChangeRelationRemove) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 12}
+}
+func (m *ChangeRelationRemove) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeRelationRemove) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeRelationRemove.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeRelationRemove) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeRelationRemove.Merge(m, src)
+}
+func (m *ChangeRelationRemove) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeRelationRemove) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeRelationRemove.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeRelationRemove proto.InternalMessageInfo
+
+func (m *ChangeRelationRemove) GetKey() string {
+	if m != nil {
+		return m.Key
+	}
+	return ""
+}
+
+type ChangeObjectTypeAdd struct {
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+}
+
+func (m *ChangeObjectTypeAdd) Reset()         { *m = ChangeObjectTypeAdd{} }
+func (m *ChangeObjectTypeAdd) String() string { return proto.CompactTextString(m) }
+func (*ChangeObjectTypeAdd) ProtoMessage()    {}
+func (*ChangeObjectTypeAdd) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 13}
+}
+func (m *ChangeObjectTypeAdd) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeObjectTypeAdd) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeObjectTypeAdd.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeObjectTypeAdd) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeObjectTypeAdd.Merge(m, src)
+}
+func (m *ChangeObjectTypeAdd) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeObjectTypeAdd) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeObjectTypeAdd.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeObjectTypeAdd proto.InternalMessageInfo
+
+func (m *ChangeObjectTypeAdd) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
+type ChangeObjectTypeRemove struct {
+	Url string `protobuf:"bytes,1,opt,name=url,proto3" json:"url,omitempty"`
+}
+
+func (m *ChangeObjectTypeRemove) Reset()         { *m = ChangeObjectTypeRemove{} }
+func (m *ChangeObjectTypeRemove) String() string { return proto.CompactTextString(m) }
+func (*ChangeObjectTypeRemove) ProtoMessage()    {}
+func (*ChangeObjectTypeRemove) Descriptor() ([]byte, []int) {
+	return fileDescriptor_2b02bba284ea1e46, []int{0, 14}
+}
+func (m *ChangeObjectTypeRemove) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ChangeObjectTypeRemove) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ChangeObjectTypeRemove.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ChangeObjectTypeRemove) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ChangeObjectTypeRemove.Merge(m, src)
+}
+func (m *ChangeObjectTypeRemove) XXX_Size() int {
+	return m.Size()
+}
+func (m *ChangeObjectTypeRemove) XXX_DiscardUnknown() {
+	xxx_messageInfo_ChangeObjectTypeRemove.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ChangeObjectTypeRemove proto.InternalMessageInfo
+
+func (m *ChangeObjectTypeRemove) GetUrl() string {
+	if m != nil {
+		return m.Url
+	}
+	return ""
+}
+
 func init() {
 	proto.RegisterType((*Change)(nil), "anytype.Change")
 	proto.RegisterType((*ChangeSnapshot)(nil), "anytype.Change.Snapshot")
@@ -767,62 +1242,88 @@ func init() {
 	proto.RegisterType((*ChangeBlockDuplicate)(nil), "anytype.Change.BlockDuplicate")
 	proto.RegisterType((*ChangeDetailsSet)(nil), "anytype.Change.DetailsSet")
 	proto.RegisterType((*ChangeDetailsUnset)(nil), "anytype.Change.DetailsUnset")
+	proto.RegisterType((*ChangeRelationAdd)(nil), "anytype.Change.RelationAdd")
+	proto.RegisterType((*ChangeRelationUpdate)(nil), "anytype.Change.RelationUpdate")
+	proto.RegisterType((*ChangeRelationUpdateDict)(nil), "anytype.Change.RelationUpdate.Dict")
+	proto.RegisterType((*ChangeRelationUpdateObjectTypes)(nil), "anytype.Change.RelationUpdate.ObjectTypes")
+	proto.RegisterType((*ChangeRelationRemove)(nil), "anytype.Change.RelationRemove")
+	proto.RegisterType((*ChangeObjectTypeAdd)(nil), "anytype.Change.ObjectTypeAdd")
+	proto.RegisterType((*ChangeObjectTypeRemove)(nil), "anytype.Change.ObjectTypeRemove")
 }
 
 func init() { proto.RegisterFile("pb/protos/changes.proto", fileDescriptor_2b02bba284ea1e46) }
 
 var fileDescriptor_2b02bba284ea1e46 = []byte{
-	// 786 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x55, 0x4d, 0x6f, 0xdb, 0x46,
-	0x10, 0x15, 0x45, 0x59, 0x1f, 0x43, 0x57, 0x30, 0x16, 0x86, 0xcd, 0xb2, 0xaa, 0xaa, 0x1a, 0x6d,
-	0xa1, 0x83, 0x41, 0xb5, 0x6a, 0x90, 0xc4, 0xf9, 0x40, 0x00, 0xd9, 0x0e, 0x64, 0xc4, 0x06, 0x82,
-	0x35, 0x9c, 0x43, 0x2e, 0xc6, 0x4a, 0x5c, 0x4b, 0x84, 0x28, 0x92, 0xd0, 0xae, 0x04, 0xe8, 0x2f,
-	0xe4, 0x92, 0x20, 0xbf, 0x2a, 0x47, 0x1f, 0x73, 0xc8, 0x21, 0xb0, 0xff, 0x46, 0x0e, 0x01, 0x77,
-	0x97, 0xab, 0x0f, 0xcb, 0x46, 0x72, 0x48, 0x2e, 0x02, 0x67, 0xe6, 0xbd, 0xb7, 0x8f, 0x33, 0xb3,
-	0x14, 0x6c, 0xc7, 0x9d, 0x46, 0x3c, 0x8a, 0x78, 0xc4, 0x1a, 0xdd, 0x3e, 0x09, 0x7b, 0x94, 0xb9,
-	0x22, 0x44, 0x05, 0x12, 0x4e, 0xf9, 0x34, 0xa6, 0xce, 0x5f, 0xf1, 0xa0, 0xd7, 0x08, 0xfc, 0x4e,
-	0x23, 0xee, 0x34, 0x86, 0x91, 0x47, 0x83, 0x14, 0x2f, 0x02, 0x05, 0x77, 0xb6, 0x66, 0x3a, 0x74,
-	0x42, 0x43, 0x9e, 0xe6, 0x2b, 0xbd, 0x28, 0xea, 0x05, 0x54, 0xd6, 0x3a, 0xe3, 0x8b, 0x06, 0xe3,
-	0xa3, 0x71, 0x97, 0xcb, 0xea, 0xce, 0x9b, 0x32, 0xe4, 0xf7, 0xc5, 0xb1, 0xe8, 0x4f, 0x58, 0x8f,
-	0x47, 0x74, 0xe2, 0x47, 0x63, 0x76, 0xee, 0x7b, 0xcc, 0x36, 0x6a, 0x66, 0xbd, 0x84, 0xad, 0x34,
-	0x77, 0xe4, 0x31, 0x54, 0x87, 0x8d, 0x80, 0x30, 0x7e, 0xce, 0x42, 0x12, 0xb3, 0x7e, 0xc4, 0xcf,
-	0x7d, 0xcf, 0xce, 0xd6, 0x8c, 0x7a, 0x09, 0x97, 0x93, 0xfc, 0xa9, 0x4a, 0x1f, 0x79, 0xe8, 0x5f,
-	0xd8, 0xd4, 0x62, 0x1e, 0xe5, 0xc4, 0x0f, 0xa4, 0xe8, 0x9a, 0x10, 0x45, 0x69, 0xed, 0x40, 0x96,
-	0x12, 0xed, 0xff, 0xa0, 0xd0, 0x8d, 0x42, 0x4e, 0x43, 0x6e, 0x9b, 0x35, 0xb3, 0x6e, 0x35, 0xb7,
-	0x5d, 0xd5, 0x00, 0x57, 0x1a, 0x74, 0xf7, 0x65, 0x19, 0xa7, 0x38, 0x74, 0x0f, 0x8a, 0xa9, 0x13,
-	0x3b, 0x57, 0x33, 0xea, 0x56, 0xd3, 0x5e, 0xe6, 0xa4, 0x96, 0xb0, 0x46, 0x26, 0xac, 0x0b, 0x3f,
-	0xa0, 0x2f, 0xe8, 0x94, 0xd9, 0x79, 0x71, 0xd2, 0x0d, 0xd6, 0x73, 0x55, 0xc7, 0x1a, 0x89, 0x2a,
-	0x50, 0xe2, 0xfe, 0x90, 0x32, 0x4e, 0x86, 0xb1, 0x5d, 0xa8, 0x19, 0x75, 0x13, 0xcf, 0x12, 0xce,
-	0x17, 0x03, 0x8a, 0xe9, 0x51, 0xa8, 0x05, 0xc5, 0x20, 0xea, 0xb5, 0x29, 0x51, 0x4d, 0xb4, 0x9a,
-	0xff, 0xdc, 0x66, 0xcb, 0x3d, 0x56, 0xc0, 0xc3, 0x90, 0x8f, 0xa6, 0x58, 0xf3, 0xd0, 0x1e, 0xe4,
-	0x3c, 0xc2, 0x89, 0xe8, 0xae, 0xd5, 0xfc, 0x5b, 0xf3, 0xc5, 0xc8, 0xdd, 0xd3, 0x21, 0x19, 0xf1,
-	0x56, 0x10, 0x75, 0x07, 0xa9, 0x50, 0x8b, 0x30, 0x8a, 0x05, 0x65, 0xe1, 0xfd, 0xcc, 0x6f, 0x7d,
-	0x3f, 0xe7, 0x31, 0xfc, 0xb2, 0xe0, 0x05, 0x6d, 0x80, 0x39, 0xa0, 0x53, 0xdb, 0x10, 0xe3, 0x4d,
-	0x1e, 0xd1, 0x26, 0xac, 0x4d, 0x48, 0x30, 0xa6, 0x6a, 0xe4, 0x32, 0x78, 0x94, 0x7d, 0x68, 0x38,
-	0x6f, 0x0d, 0x28, 0xa6, 0x9a, 0x08, 0x41, 0xae, 0x4f, 0x58, 0x5f, 0x31, 0xc5, 0x33, 0xba, 0x0f,
-	0xb9, 0x41, 0xe2, 0x27, 0x2b, 0xfc, 0xec, 0xdc, 0xe6, 0xc7, 0x4d, 0x7e, 0x64, 0x2b, 0x04, 0xde,
-	0x79, 0x00, 0x25, 0x9d, 0xfa, 0x2e, 0x47, 0x9f, 0x4c, 0x28, 0xa8, 0x7d, 0x41, 0xcf, 0xc0, 0xea,
-	0x24, 0xbd, 0xda, 0x1f, 0x51, 0xc2, 0xa9, 0xe0, 0x5b, 0xcd, 0xdf, 0x96, 0x3d, 0xb4, 0x66, 0x90,
-	0x76, 0x06, 0xcf, 0x33, 0xb4, 0xc0, 0x59, 0xec, 0x25, 0x02, 0xd9, 0x3b, 0x04, 0x24, 0x44, 0x0b,
-	0xc8, 0x50, 0x0b, 0x60, 0x3a, 0x8c, 0x26, 0xd4, 0x36, 0xef, 0x10, 0x90, 0x10, 0x2d, 0x20, 0x43,
-	0xb4, 0x07, 0x25, 0x11, 0x9e, 0x24, 0x74, 0xb9, 0xea, 0xbf, 0xae, 0xa4, 0x9f, 0x48, 0xf2, 0x0c,
-	0x8d, 0xda, 0x50, 0x16, 0xc1, 0xc1, 0x38, 0x0e, 0xfc, 0x6e, 0xe2, 0x7f, 0x4d, 0xf0, 0xab, 0x2b,
-	0xf9, 0x1a, 0xd5, 0xce, 0xe0, 0x25, 0x1e, 0x7a, 0x02, 0xa0, 0xae, 0xf2, 0x29, 0xe5, 0xb6, 0x27,
-	0x54, 0x9c, 0x65, 0x95, 0x03, 0x8d, 0x68, 0x67, 0xf0, 0x1c, 0x1e, 0xb5, 0x60, 0x5d, 0x45, 0x67,
-	0x21, 0xa3, 0xdc, 0xa6, 0x82, 0x5f, 0xb9, 0x85, 0x2f, 0x30, 0xed, 0x0c, 0x5e, 0xe0, 0xb4, 0x0a,
-	0x6a, 0xde, 0xce, 0x7b, 0x03, 0xac, 0xb9, 0x81, 0x21, 0x07, 0x8a, 0x9c, 0x8c, 0x7a, 0x94, 0x1f,
-	0x79, 0x6a, 0x3f, 0x74, 0x8c, 0xf6, 0xa0, 0x18, 0x47, 0xcc, 0xe7, 0x7e, 0x14, 0x8a, 0xd1, 0x95,
-	0x9b, 0xbf, 0x2f, 0x5d, 0x27, 0xa1, 0xe4, 0xbe, 0x54, 0x20, 0xac, 0xe1, 0x68, 0x17, 0xf2, 0xa2,
-	0x07, 0xe9, 0x45, 0xda, 0x5c, 0x45, 0xc4, 0x0a, 0xe3, 0x3c, 0x55, 0x9e, 0xd4, 0xd0, 0x5d, 0xc8,
-	0xcb, 0x0f, 0xb1, 0xda, 0xfa, 0x2d, 0x4d, 0x3e, 0x4c, 0xd2, 0xee, 0x09, 0x65, 0x8c, 0xf4, 0x28,
-	0x56, 0x28, 0xe7, 0x0f, 0x45, 0x57, 0x23, 0xdf, 0x00, 0x73, 0xf6, 0x15, 0x4e, 0x1e, 0x1d, 0x0e,
-	0x25, 0x3d, 0xe3, 0x1f, 0xf5, 0xc6, 0xea, 0x54, 0x73, 0x76, 0xea, 0x14, 0xca, 0x8b, 0x9b, 0xf1,
-	0xf3, 0x8e, 0x3e, 0x06, 0x98, 0xad, 0xd3, 0x8a, 0xeb, 0xbf, 0x3b, 0x7f, 0xfd, 0x93, 0x06, 0xcb,
-	0xbf, 0x3a, 0x37, 0xfd, 0xab, 0x73, 0x5f, 0x25, 0x55, 0xf5, 0x59, 0x70, 0x6a, 0xb0, 0x3e, 0xbf,
-	0x5c, 0x37, 0xf5, 0x5a, 0x95, 0x0f, 0x57, 0x55, 0xe3, 0xf2, 0xaa, 0x6a, 0x7c, 0xbe, 0xaa, 0x1a,
-	0xef, 0xae, 0xab, 0x99, 0xcb, 0xeb, 0x6a, 0xe6, 0xe3, 0x75, 0x35, 0xf3, 0x3a, 0x1b, 0x77, 0x3a,
-	0x79, 0x21, 0xfb, 0xff, 0xd7, 0x00, 0x00, 0x00, 0xff, 0xff, 0x8f, 0x03, 0x15, 0x6a, 0xb1, 0x07,
-	0x00, 0x00,
+	// 1100 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xbc, 0x56, 0x41, 0x73, 0xdb, 0x44,
+	0x14, 0x96, 0x62, 0xc7, 0xb1, 0x9f, 0x92, 0x10, 0x76, 0x32, 0xa9, 0x10, 0xc1, 0xb8, 0xa1, 0x80,
+	0xe9, 0x74, 0xe4, 0xc1, 0x30, 0x85, 0xb4, 0x65, 0x18, 0x9c, 0xa4, 0xe3, 0x0c, 0x4d, 0xcb, 0x6c,
+	0x28, 0x07, 0x2e, 0x99, 0xb5, 0xb5, 0xb1, 0xd5, 0xc8, 0x92, 0x46, 0xbb, 0xce, 0x8c, 0x7f, 0x01,
+	0x47, 0x18, 0x7e, 0x55, 0x8f, 0x3d, 0x72, 0xec, 0x24, 0x7f, 0x83, 0x03, 0xb3, 0xab, 0xd5, 0x4a,
+	0x72, 0xec, 0x00, 0x07, 0xb8, 0x24, 0x7a, 0xbb, 0xdf, 0xf7, 0xed, 0xdb, 0xb7, 0xfb, 0x3e, 0x2f,
+	0xdc, 0x89, 0x07, 0x9d, 0x38, 0x89, 0x78, 0xc4, 0x3a, 0xc3, 0x31, 0x09, 0x47, 0x94, 0xb9, 0x32,
+	0x44, 0x6b, 0x24, 0x9c, 0xf1, 0x59, 0x4c, 0x9d, 0x7b, 0xf1, 0xc5, 0xa8, 0x13, 0xf8, 0x83, 0x4e,
+	0x3c, 0xe8, 0x4c, 0x22, 0x8f, 0x06, 0x19, 0x5e, 0x06, 0x0a, 0xee, 0x7c, 0x56, 0x40, 0x25, 0x34,
+	0x20, 0xdc, 0x8f, 0xc2, 0x0c, 0x98, 0xc5, 0x0a, 0xba, 0x93, 0x2f, 0x49, 0x2f, 0x69, 0xc8, 0x33,
+	0x89, 0xdd, 0x51, 0x14, 0x8d, 0x02, 0x9a, 0xce, 0x0d, 0xa6, 0xe7, 0x1d, 0xc6, 0x93, 0xe9, 0x90,
+	0xa7, 0xb3, 0x7b, 0xbf, 0xec, 0x40, 0xed, 0x40, 0x66, 0x88, 0xee, 0xc2, 0x7a, 0x9c, 0xd0, 0x4b,
+	0x3f, 0x9a, 0xb2, 0x33, 0xdf, 0x63, 0xb6, 0xd9, 0xaa, 0xb4, 0x1b, 0xd8, 0xca, 0xc6, 0x8e, 0x3d,
+	0x86, 0xda, 0xb0, 0x15, 0x10, 0xc6, 0xcf, 0x58, 0x48, 0x62, 0x36, 0x8e, 0xf8, 0x99, 0xef, 0xd9,
+	0x2b, 0x2d, 0xb3, 0xdd, 0xc0, 0x9b, 0x62, 0xfc, 0x54, 0x0d, 0x1f, 0x7b, 0xe8, 0x3e, 0xbc, 0xab,
+	0xc5, 0x26, 0x94, 0x13, 0xa9, 0xb8, 0x2a, 0x15, 0xdf, 0xc9, 0x26, 0x4e, 0x28, 0x27, 0x42, 0xf5,
+	0x73, 0x58, 0x1b, 0x46, 0x21, 0xa7, 0x21, 0xb7, 0x2b, 0xad, 0x4a, 0xdb, 0xea, 0xde, 0x71, 0x55,
+	0x95, 0xdc, 0x34, 0x35, 0xf7, 0x20, 0x9d, 0xc6, 0x19, 0x0e, 0x7d, 0x09, 0xf5, 0x2c, 0x07, 0xbb,
+	0xda, 0x32, 0xdb, 0x56, 0xd7, 0x9e, 0xe7, 0x64, 0xc9, 0x60, 0x8d, 0x14, 0xac, 0x73, 0x3f, 0xa0,
+	0xdf, 0xd3, 0x19, 0xb3, 0x6b, 0x72, 0xa5, 0x1b, 0xac, 0xa7, 0x6a, 0x1e, 0x6b, 0x24, 0xda, 0x85,
+	0x06, 0xf7, 0x27, 0x94, 0x71, 0x32, 0x89, 0xed, 0xb5, 0x96, 0xd9, 0xae, 0xe0, 0x7c, 0xc0, 0xf9,
+	0xd3, 0x84, 0x7a, 0xb6, 0x14, 0xea, 0x41, 0x3d, 0x88, 0x46, 0x7d, 0x4a, 0x54, 0xf9, 0xac, 0xee,
+	0x27, 0xcb, 0xd2, 0x72, 0x9f, 0x29, 0xe0, 0x51, 0xc8, 0x93, 0x19, 0xd6, 0x3c, 0xb4, 0x0f, 0x55,
+	0x8f, 0x70, 0x22, 0xeb, 0x6a, 0x75, 0x3f, 0xd6, 0x7c, 0x79, 0x2f, 0xdc, 0xd3, 0x09, 0x49, 0x78,
+	0x2f, 0x88, 0x86, 0x17, 0x99, 0x50, 0x8f, 0x30, 0x8a, 0x25, 0xa5, 0xb4, 0xbf, 0xca, 0x3f, 0xdd,
+	0x9f, 0xf3, 0x18, 0x36, 0x4a, 0xb9, 0xa0, 0x2d, 0xa8, 0x5c, 0xd0, 0x99, 0x6d, 0xca, 0x83, 0x15,
+	0x9f, 0x68, 0x1b, 0x56, 0x2f, 0x49, 0x30, 0xa5, 0xea, 0xb0, 0xd3, 0xe0, 0xd1, 0xca, 0xd7, 0xa6,
+	0xf3, 0xab, 0x09, 0xf5, 0x4c, 0x13, 0x21, 0xa8, 0x8e, 0x09, 0x1b, 0x2b, 0xa6, 0xfc, 0x46, 0x0f,
+	0xa1, 0x7a, 0x21, 0xf2, 0x59, 0x91, 0xf9, 0xec, 0x2d, 0xcb, 0xc7, 0x15, 0x7f, 0xd2, 0x52, 0x48,
+	0xbc, 0xf3, 0x15, 0x34, 0xf4, 0xd0, 0xbf, 0xca, 0xe8, 0x75, 0x0d, 0xd6, 0xd4, 0x7d, 0x41, 0xdf,
+	0x82, 0x35, 0x10, 0xb5, 0x3a, 0x48, 0x28, 0xe1, 0x54, 0xf2, 0xad, 0xee, 0xfb, 0xf3, 0x39, 0xf4,
+	0x72, 0x48, 0xdf, 0xc0, 0x45, 0x86, 0x16, 0x78, 0x19, 0x7b, 0x42, 0x60, 0xe5, 0x16, 0x81, 0x14,
+	0xa2, 0x05, 0xd2, 0x50, 0x0b, 0x60, 0x3a, 0x89, 0x2e, 0xa9, 0x5d, 0xb9, 0x45, 0x20, 0x85, 0x68,
+	0x81, 0x34, 0x44, 0xfb, 0xd0, 0x90, 0xe1, 0x89, 0xa0, 0xa7, 0x57, 0xfd, 0xbd, 0x85, 0xf4, 0x93,
+	0x94, 0x9c, 0xa3, 0x51, 0x1f, 0x36, 0x65, 0x70, 0x38, 0x8d, 0x03, 0x7f, 0x28, 0xf2, 0x5f, 0x95,
+	0xfc, 0xe6, 0x42, 0xbe, 0x46, 0xf5, 0x0d, 0x3c, 0xc7, 0x43, 0x4f, 0x00, 0x3c, 0xca, 0x89, 0x1f,
+	0xb0, 0x53, 0xca, 0x6d, 0x4f, 0xaa, 0x38, 0xf3, 0x2a, 0x87, 0x1a, 0xd1, 0x37, 0x70, 0x01, 0x8f,
+	0x7a, 0xb0, 0xae, 0xa2, 0x97, 0x21, 0xa3, 0xdc, 0xa6, 0x92, 0xbf, 0xbb, 0x84, 0x2f, 0x31, 0x7d,
+	0x03, 0x97, 0x38, 0xa2, 0x8e, 0x99, 0xdf, 0x7d, 0xe7, 0x79, 0xf6, 0xf9, 0xe2, 0x3a, 0xe2, 0x1c,
+	0x22, 0xea, 0x58, 0x60, 0x88, 0x62, 0x64, 0xa1, 0x3a, 0x8b, 0xd1, 0xe2, 0x62, 0xe0, 0x12, 0x4a,
+	0x14, 0xa3, 0xcc, 0x2b, 0x2a, 0xa9, 0x6b, 0x31, 0xbe, 0x5d, 0x49, 0xdf, 0x8c, 0x39, 0x1e, 0x3a,
+	0x82, 0x8d, 0x68, 0xf0, 0x8a, 0x0e, 0xf9, 0x8f, 0xb3, 0x98, 0x8a, 0x6d, 0xf9, 0x52, 0xe8, 0x83,
+	0x79, 0xa1, 0x17, 0x45, 0x50, 0xdf, 0xc0, 0x65, 0x16, 0x7a, 0x0e, 0x5b, 0xf9, 0x80, 0xda, 0xdc,
+	0x2b, 0xa9, 0xd4, 0x5a, 0xae, 0xa4, 0xb7, 0x77, 0x83, 0xdb, 0x5b, 0x53, 0xbd, 0xe5, 0xfc, 0x6e,
+	0x82, 0x55, 0x68, 0x0e, 0xe4, 0x40, 0x9d, 0x93, 0x64, 0x44, 0xf9, 0xb1, 0xa7, 0x7a, 0x51, 0xc7,
+	0x68, 0x1f, 0xea, 0x71, 0xc4, 0x7c, 0xb1, 0x3b, 0xd9, 0x26, 0x9b, 0x85, 0x6d, 0xa4, 0xd6, 0x25,
+	0x95, 0xdc, 0x1f, 0x14, 0x08, 0x6b, 0x38, 0x7a, 0x00, 0x35, 0x79, 0xdf, 0x32, 0xd3, 0xda, 0x5e,
+	0x44, 0xc4, 0x0a, 0xe3, 0x7c, 0xa3, 0x72, 0x52, 0x35, 0x74, 0xa1, 0x96, 0xfe, 0xdc, 0x29, 0x87,
+	0xd9, 0xd1, 0xe4, 0x23, 0x31, 0xec, 0x9e, 0x50, 0xc6, 0xc8, 0x88, 0x62, 0x85, 0x72, 0x3e, 0x54,
+	0x74, 0x75, 0x98, 0x5b, 0x50, 0xc9, 0x7f, 0xeb, 0xc4, 0xa7, 0xc3, 0xa1, 0xa1, 0xfb, 0xe9, 0xbf,
+	0xda, 0xb1, 0x5a, 0xb5, 0x92, 0xaf, 0x3a, 0x83, 0xcd, 0x72, 0x17, 0xfe, 0x7f, 0x4b, 0x3f, 0x03,
+	0xc8, 0x5b, 0x77, 0x81, 0xd5, 0x3e, 0x28, 0x5a, 0xad, 0x28, 0x70, 0xfa, 0xa0, 0x70, 0xb3, 0x07,
+	0x85, 0xfb, 0x93, 0x98, 0x55, 0x16, 0xec, 0xb4, 0x60, 0xbd, 0xd8, 0xc8, 0x37, 0xf5, 0x9c, 0x23,
+	0xb0, 0x0a, 0x7d, 0x8a, 0x1e, 0x42, 0x3d, 0x6b, 0x0b, 0xb5, 0x42, 0xee, 0x2c, 0xfa, 0x89, 0xa3,
+	0x9b, 0x52, 0x63, 0x9d, 0xb7, 0x15, 0xd8, 0x2c, 0x77, 0xd8, 0x82, 0xdc, 0x1f, 0x41, 0xed, 0x3c,
+	0x4a, 0x26, 0x84, 0xab, 0x32, 0xb5, 0x96, 0x4b, 0x3f, 0x95, 0xb8, 0xbe, 0x81, 0x15, 0x03, 0x6d,
+	0x43, 0x35, 0x24, 0x93, 0xd4, 0xb3, 0x1b, 0x7d, 0x03, 0xcb, 0x08, 0x3d, 0x11, 0x66, 0x76, 0x4e,
+	0xa6, 0x01, 0x97, 0xdb, 0x56, 0x96, 0xbc, 0xa4, 0x28, 0xa9, 0x8d, 0xe5, 0x68, 0xf4, 0x1c, 0xac,
+	0xbc, 0xdd, 0x98, 0xf2, 0xe3, 0xfb, 0xb7, 0x1b, 0x47, 0xa1, 0x69, 0x99, 0x70, 0xb5, 0x82, 0x00,
+	0xda, 0x81, 0xd5, 0xc9, 0x34, 0xe0, 0xbe, 0x5d, 0x6b, 0x99, 0xed, 0x7a, 0xdf, 0xc0, 0x69, 0x88,
+	0x8e, 0x00, 0x18, 0x0d, 0xe8, 0x90, 0x1f, 0xfa, 0x43, 0x2e, 0x1f, 0x2d, 0x56, 0xf7, 0xa3, 0xbf,
+	0x59, 0x46, 0x40, 0x85, 0x73, 0xe7, 0x44, 0xe7, 0x00, 0xaa, 0xe2, 0x3f, 0x7a, 0x0c, 0x55, 0x4f,
+	0x08, 0xa5, 0x2d, 0xf6, 0xe9, 0xf2, 0x22, 0xba, 0xa7, 0x92, 0xfc, 0x22, 0x96, 0x87, 0x25, 0x49,
+	0x4e, 0x07, 0xac, 0xc2, 0x0e, 0x50, 0xab, 0x5c, 0x02, 0xf5, 0xca, 0x2c, 0x0c, 0xe5, 0xfe, 0xb3,
+	0x97, 0x9f, 0x70, 0xde, 0xae, 0x73, 0xb7, 0xe9, 0x2e, 0x6c, 0x94, 0xec, 0x51, 0x40, 0xa6, 0x49,
+	0x90, 0x41, 0xa6, 0x49, 0xe0, 0xdc, 0x83, 0xad, 0x79, 0xdf, 0xbb, 0x89, 0xea, 0xed, 0xbe, 0xbe,
+	0x6a, 0x9a, 0x6f, 0xae, 0x9a, 0xe6, 0xdb, 0xab, 0xa6, 0xf9, 0xdb, 0x75, 0xd3, 0x78, 0x73, 0xdd,
+	0x34, 0xfe, 0xb8, 0x6e, 0x1a, 0x3f, 0xaf, 0xc4, 0x83, 0x41, 0x4d, 0x1e, 0xec, 0x17, 0x7f, 0x05,
+	0x00, 0x00, 0xff, 0xff, 0x6a, 0x4a, 0x6b, 0xdc, 0xd9, 0x0b, 0x00, 0x00,
 }
 
 func (m *Change) Marshal() (dAtA []byte, err error) {
@@ -864,11 +1365,11 @@ func (m *Change) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 			dAtA[i] = 0x32
 		}
 	}
-	if len(m.PreviousDetailsIds) > 0 {
-		for iNdEx := len(m.PreviousDetailsIds) - 1; iNdEx >= 0; iNdEx-- {
-			i -= len(m.PreviousDetailsIds[iNdEx])
-			copy(dAtA[i:], m.PreviousDetailsIds[iNdEx])
-			i = encodeVarintChanges(dAtA, i, uint64(len(m.PreviousDetailsIds[iNdEx])))
+	if len(m.PreviousMetaIds) > 0 {
+		for iNdEx := len(m.PreviousMetaIds) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.PreviousMetaIds[iNdEx])
+			copy(dAtA[i:], m.PreviousMetaIds[iNdEx])
+			i = encodeVarintChanges(dAtA, i, uint64(len(m.PreviousMetaIds[iNdEx])))
 			i--
 			dAtA[i] = 0x2a
 		}
@@ -1218,6 +1719,121 @@ func (m *ChangeContentValueOfDetailsUnset) MarshalToSizedBuffer(dAtA []byte) (in
 	}
 	return len(dAtA) - i, nil
 }
+func (m *ChangeContentValueOfRelationAdd) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfRelationAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.RelationAdd != nil {
+		{
+			size, err := m.RelationAdd.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xb2
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfRelationRemove) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfRelationRemove) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.RelationRemove != nil {
+		{
+			size, err := m.RelationRemove.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xba
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfRelationUpdate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfRelationUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.RelationUpdate != nil {
+		{
+			size, err := m.RelationUpdate.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xc2
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfObjectTypeAdd) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfObjectTypeAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.ObjectTypeAdd != nil {
+		{
+			size, err := m.ObjectTypeAdd.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xca
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeContentValueOfObjectTypeRemove) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeContentValueOfObjectTypeRemove) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.ObjectTypeRemove != nil {
+		{
+			size, err := m.ObjectTypeRemove.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x6
+		i--
+		dAtA[i] = 0xd2
+	}
+	return len(dAtA) - i, nil
+}
 func (m *ChangeBlockCreate) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
@@ -1496,6 +2112,345 @@ func (m *ChangeDetailsUnset) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
+func (m *ChangeRelationAdd) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeRelationAdd) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Relation != nil {
+		{
+			size, err := m.Relation.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x12
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeRelationUpdate) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeRelationUpdate) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdate) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.Value != nil {
+		{
+			size := m.Value.Size()
+			i -= size
+			if _, err := m.Value.MarshalTo(dAtA[i:]); err != nil {
+				return 0, err
+			}
+		}
+	}
+	if len(m.Key) > 0 {
+		i -= len(m.Key)
+		copy(dAtA[i:], m.Key)
+		i = encodeVarintChanges(dAtA, i, uint64(len(m.Key)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeRelationUpdateValueOfFormat) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateValueOfFormat) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i = encodeVarintChanges(dAtA, i, uint64(m.Format))
+	i--
+	dAtA[i] = 0x10
+	return len(dAtA) - i, nil
+}
+func (m *ChangeRelationUpdateValueOfName) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateValueOfName) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i -= len(m.Name)
+	copy(dAtA[i:], m.Name)
+	i = encodeVarintChanges(dAtA, i, uint64(len(m.Name)))
+	i--
+	dAtA[i] = 0x1a
+	return len(dAtA) - i, nil
+}
+func (m *ChangeRelationUpdateValueOfDefaultValue) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateValueOfDefaultValue) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.DefaultValue != nil {
+		{
+			size, err := m.DefaultValue.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x22
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeRelationUpdateValueOfObjectTypes) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateValueOfObjectTypes) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.ObjectTypes != nil {
+		{
+			size, err := m.ObjectTypes.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x2a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeRelationUpdateValueOfMulti) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateValueOfMulti) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	i--
+	if m.Multi {
+		dAtA[i] = 1
+	} else {
+		dAtA[i] = 0
+	}
+	i--
+	dAtA[i] = 0x30
+	return len(dAtA) - i, nil
+}
+func (m *ChangeRelationUpdateValueOfSelectDict) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateValueOfSelectDict) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	if m.SelectDict != nil {
+		{
+			size, err := m.SelectDict.MarshalToSizedBuffer(dAtA[:i])
+			if err != nil {
+				return 0, err
+			}
+			i -= size
+			i = encodeVarintChanges(dAtA, i, uint64(size))
+		}
+		i--
+		dAtA[i] = 0x3a
+	}
+	return len(dAtA) - i, nil
+}
+func (m *ChangeRelationUpdateDict) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeRelationUpdateDict) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateDict) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Dict) > 0 {
+		for iNdEx := len(m.Dict) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Dict[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintChanges(dAtA, i, uint64(size))
+			}
+			i--
+			dAtA[i] = 0x12
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeRelationUpdateObjectTypes) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeRelationUpdateObjectTypes) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationUpdateObjectTypes) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.ObjectTypes) > 0 {
+		for iNdEx := len(m.ObjectTypes) - 1; iNdEx >= 0; iNdEx-- {
+			i -= len(m.ObjectTypes[iNdEx])
+			copy(dAtA[i:], m.ObjectTypes[iNdEx])
+			i = encodeVarintChanges(dAtA, i, uint64(len(m.ObjectTypes[iNdEx])))
+			i--
+			dAtA[i] = 0xa
+		}
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeRelationRemove) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeRelationRemove) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeRelationRemove) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Key) > 0 {
+		i -= len(m.Key)
+		copy(dAtA[i:], m.Key)
+		i = encodeVarintChanges(dAtA, i, uint64(len(m.Key)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeObjectTypeAdd) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeObjectTypeAdd) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeObjectTypeAdd) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Url) > 0 {
+		i -= len(m.Url)
+		copy(dAtA[i:], m.Url)
+		i = encodeVarintChanges(dAtA, i, uint64(len(m.Url)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
+func (m *ChangeObjectTypeRemove) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ChangeObjectTypeRemove) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ChangeObjectTypeRemove) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if len(m.Url) > 0 {
+		i -= len(m.Url)
+		copy(dAtA[i:], m.Url)
+		i = encodeVarintChanges(dAtA, i, uint64(len(m.Url)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintChanges(dAtA []byte, offset int, v uint64) int {
 	offset -= sovChanges(v)
 	base := offset
@@ -1533,8 +2488,8 @@ func (m *Change) Size() (n int) {
 		l = m.Snapshot.Size()
 		n += 1 + l + sovChanges(uint64(l))
 	}
-	if len(m.PreviousDetailsIds) > 0 {
-		for _, s := range m.PreviousDetailsIds {
+	if len(m.PreviousMetaIds) > 0 {
+		for _, s := range m.PreviousMetaIds {
 			l = len(s)
 			n += 1 + l + sovChanges(uint64(l))
 		}
@@ -1695,6 +2650,66 @@ func (m *ChangeContentValueOfDetailsUnset) Size() (n int) {
 	}
 	return n
 }
+func (m *ChangeContentValueOfRelationAdd) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.RelationAdd != nil {
+		l = m.RelationAdd.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfRelationRemove) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.RelationRemove != nil {
+		l = m.RelationRemove.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfRelationUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.RelationUpdate != nil {
+		l = m.RelationUpdate.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfObjectTypeAdd) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.ObjectTypeAdd != nil {
+		l = m.ObjectTypeAdd.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeContentValueOfObjectTypeRemove) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.ObjectTypeRemove != nil {
+		l = m.ObjectTypeRemove.Size()
+		n += 2 + l + sovChanges(uint64(l))
+	}
+	return n
+}
 func (m *ChangeBlockCreate) Size() (n int) {
 	if m == nil {
 		return 0
@@ -1815,6 +2830,168 @@ func (m *ChangeDetailsUnset) Size() (n int) {
 	var l int
 	_ = l
 	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangeRelationAdd) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.Relation != nil {
+		l = m.Relation.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangeRelationUpdate) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	if m.Value != nil {
+		n += m.Value.Size()
+	}
+	return n
+}
+
+func (m *ChangeRelationUpdateValueOfFormat) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += 1 + sovChanges(uint64(m.Format))
+	return n
+}
+func (m *ChangeRelationUpdateValueOfName) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Name)
+	n += 1 + l + sovChanges(uint64(l))
+	return n
+}
+func (m *ChangeRelationUpdateValueOfDefaultValue) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.DefaultValue != nil {
+		l = m.DefaultValue.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeRelationUpdateValueOfObjectTypes) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.ObjectTypes != nil {
+		l = m.ObjectTypes.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeRelationUpdateValueOfMulti) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	n += 2
+	return n
+}
+func (m *ChangeRelationUpdateValueOfSelectDict) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if m.SelectDict != nil {
+		l = m.SelectDict.Size()
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+func (m *ChangeRelationUpdateDict) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.Dict) > 0 {
+		for _, e := range m.Dict {
+			l = e.Size()
+			n += 1 + l + sovChanges(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *ChangeRelationUpdateObjectTypes) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	if len(m.ObjectTypes) > 0 {
+		for _, s := range m.ObjectTypes {
+			l = len(s)
+			n += 1 + l + sovChanges(uint64(l))
+		}
+	}
+	return n
+}
+
+func (m *ChangeRelationRemove) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Key)
+	if l > 0 {
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangeObjectTypeAdd) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Url)
+	if l > 0 {
+		n += 1 + l + sovChanges(uint64(l))
+	}
+	return n
+}
+
+func (m *ChangeObjectTypeRemove) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.Url)
 	if l > 0 {
 		n += 1 + l + sovChanges(uint64(l))
 	}
@@ -1992,7 +3169,7 @@ func (m *Change) Unmarshal(dAtA []byte) error {
 			iNdEx = postIndex
 		case 5:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field PreviousDetailsIds", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field PreviousMetaIds", wireType)
 			}
 			var stringLen uint64
 			for shift := uint(0); ; shift += 7 {
@@ -2020,7 +3197,7 @@ func (m *Change) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			m.PreviousDetailsIds = append(m.PreviousDetailsIds, string(dAtA[iNdEx:postIndex]))
+			m.PreviousMetaIds = append(m.PreviousMetaIds, string(dAtA[iNdEx:postIndex]))
 			iNdEx = postIndex
 		case 6:
 			if wireType != 2 {
@@ -2835,6 +4012,181 @@ func (m *ChangeContent) Unmarshal(dAtA []byte) error {
 			}
 			m.Value = &ChangeContentValueOfDetailsUnset{v}
 			iNdEx = postIndex
+		case 102:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RelationAdd", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeRelationAdd{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfRelationAdd{v}
+			iNdEx = postIndex
+		case 103:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RelationRemove", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeRelationRemove{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfRelationRemove{v}
+			iNdEx = postIndex
+		case 104:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field RelationUpdate", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeRelationUpdate{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfRelationUpdate{v}
+			iNdEx = postIndex
+		case 105:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectTypeAdd", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeObjectTypeAdd{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfObjectTypeAdd{v}
+			iNdEx = postIndex
+		case 106:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectTypeRemove", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeObjectTypeRemove{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeContentValueOfObjectTypeRemove{v}
+			iNdEx = postIndex
 		default:
 			iNdEx = preIndex
 			skippy, err := skipChanges(dAtA[iNdEx:])
@@ -3622,6 +4974,785 @@ func (m *ChangeDetailsUnset) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeRelationAdd) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RelationAdd: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RelationAdd: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Relation", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			if m.Relation == nil {
+				m.Relation = &relation.Relation{}
+			}
+			if err := m.Relation.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeRelationUpdate) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RelationUpdate: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RelationUpdate: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Format", wireType)
+			}
+			var v relation.RelationFormat
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= relation.RelationFormat(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			m.Value = &ChangeRelationUpdateValueOfFormat{v}
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Name", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Value = &ChangeRelationUpdateValueOfName{string(dAtA[iNdEx:postIndex])}
+			iNdEx = postIndex
+		case 4:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field DefaultValue", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &types.Value{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeRelationUpdateValueOfDefaultValue{v}
+			iNdEx = postIndex
+		case 5:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectTypes", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeRelationUpdateObjectTypes{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeRelationUpdateValueOfObjectTypes{v}
+			iNdEx = postIndex
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Multi", wireType)
+			}
+			var v int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				v |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			b := bool(v != 0)
+			m.Value = &ChangeRelationUpdateValueOfMulti{b}
+		case 7:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field SelectDict", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			v := &ChangeRelationUpdateDict{}
+			if err := v.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			m.Value = &ChangeRelationUpdateValueOfSelectDict{v}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeRelationUpdateDict) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: Dict: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: Dict: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Dict", wireType)
+			}
+			var msglen int
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				msglen |= int(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			if msglen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + msglen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Dict = append(m.Dict, &relation.RelationSelectOption{})
+			if err := m.Dict[len(m.Dict)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+				return err
+			}
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeRelationUpdateObjectTypes) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ObjectTypes: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ObjectTypes: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectTypes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.ObjectTypes = append(m.ObjectTypes, string(dAtA[iNdEx:postIndex]))
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeRelationRemove) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: RelationRemove: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: RelationRemove: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Key", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Key = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeObjectTypeAdd) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ObjectTypeAdd: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ObjectTypeAdd: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Url = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		default:
+			iNdEx = preIndex
+			skippy, err := skipChanges(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ChangeObjectTypeRemove) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowChanges
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ObjectTypeRemove: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ObjectTypeRemove: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field Url", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowChanges
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthChanges
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.Url = string(dAtA[iNdEx:postIndex])
 			iNdEx = postIndex
 		default:
 			iNdEx = preIndex

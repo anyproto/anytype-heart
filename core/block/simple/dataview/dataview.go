@@ -2,12 +2,16 @@ package dataview
 
 import (
 	"fmt"
+	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
 )
@@ -34,6 +38,14 @@ type Block interface {
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
+
+	AddRelation(relation pbrelation.Relation)
+	UpdateRelation(relationKey string, relation pbrelation.Relation) error
+
+	DeleteRelation(relationKey string) error
+
+	GetSource() string
+	SetSource(source string) error
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -65,6 +77,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		return
 	}
 
+	// @TODO: rewrite for optimised compare
 	for _, view2 := range dv.content.Views {
 		var found bool
 		var changed bool
@@ -79,8 +92,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		if !found || changed {
 			msgs = append(msgs,
 				simple.EventMessage{
-					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewView{
-						&pb.EventBlockSetDataviewView{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewSet{
+						&pb.EventBlockDataviewViewSet{
 							Id:     dv.Id,
 							ViewId: view2.Id,
 							View:   view2,
@@ -89,7 +102,6 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 						}}}})
 		}
 	}
-
 	for _, view1 := range d.content.Views {
 		var found bool
 		for _, view2 := range dv.content.Views {
@@ -101,15 +113,54 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 		if !found {
 			msgs = append(msgs,
-				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewView{
-					&pb.EventBlockDeleteDataviewView{
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewDelete{
+					&pb.EventBlockDataviewViewDelete{
 						Id:     dv.Id,
 						ViewId: view1.Id,
 					}}}})
 		}
 	}
 
-	// @TODO: rewrite for optimised compare
+	for _, rel2 := range dv.content.Relations {
+		var found bool
+		var changed bool
+		for _, rel1 := range d.content.Relations {
+			if rel1.Key == rel2.Key {
+				found = true
+				changed = !pbtypes.RelationEqual(rel1, rel2)
+				break
+			}
+		}
+
+		if !found || changed {
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
+						&pb.EventBlockDataviewRelationSet{
+							Id:          dv.Id,
+							RelationKey: rel2.Key,
+							Relation:    rel2,
+						}}}})
+		}
+	}
+	for _, rel1 := range d.content.Relations {
+		var found bool
+		for _, rel2 := range dv.content.Relations {
+			if rel1.Key == rel2.Key {
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			msgs = append(msgs,
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
+					&pb.EventBlockDataviewRelationDelete{
+						Id:          dv.Id,
+						RelationKey: rel1.Key,
+					}}}})
+		}
+	}
 
 	return
 }
@@ -173,6 +224,49 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	return nil
 }
 
+func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) error {
+	var found bool
+	if relationKey != rel.Key {
+		return fmt.Errorf("changing key of existing relation is retricted")
+	}
+
+	for i, v := range s.content.Relations {
+		if v.Key == relationKey {
+			found = true
+
+			if v.Format != rel.Format {
+				return fmt.Errorf("changing format of existing relation is retricted")
+			}
+
+			if v.DataSource != rel.DataSource {
+				return fmt.Errorf("changing data source of existing relation is retricted")
+			}
+
+			if v.Hidden != rel.Hidden {
+				return fmt.Errorf("changing hidden flag of existing relation is retricted")
+			}
+
+			if rel.Format == pbrelation.RelationFormat_select {
+				for i := range rel.SelectDict {
+					if rel.SelectDict[i].Id == "" {
+						rel.SelectDict[i].Id = bson.NewObjectId().Hex()
+					}
+				}
+			}
+
+			s.content.Relations[i] = &rel
+
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("relation not found")
+	}
+
+	return nil
+}
+
 func (l *Dataview) FillSmartIds(ids []string) []string {
 	//@todo: fill from recordIDs
 	return ids
@@ -180,4 +274,50 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 
 func (l *Dataview) HasSmartIds() bool {
 	return len(l.recordIDs) > 0
+}
+
+func (d *Dataview) SetSource(source string) error {
+	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, objects.CustomObjectTypeURLPrefix) {
+		return fmt.Errorf("invalid source URL")
+	}
+
+	d.content.Source = source
+	return nil
+}
+
+func (d *Dataview) GetSource() string {
+	return d.content.Source
+}
+
+func (d *Dataview) AddRelation(relation pbrelation.Relation) {
+	if relation.Key == "" {
+		relation.Key = bson.NewObjectId().Hex()
+	}
+
+	if relation.Format == pbrelation.RelationFormat_select {
+		for i := range relation.SelectDict {
+			if relation.SelectDict[i].Id == "" {
+				relation.SelectDict[i].Id = bson.NewObjectId().Hex()
+			}
+		}
+	}
+
+	d.content.Relations = append(d.content.Relations, &relation)
+}
+
+func (d *Dataview) DeleteRelation(relationKey string) error {
+	var found bool
+	for i, r := range d.content.Relations {
+		if r.Key == relationKey {
+			found = true
+			d.content.Relations = append(d.content.Relations[:i], d.content.Relations[i+1:]...)
+			break
+		}
+	}
+
+	if !found {
+		return fmt.Errorf("relation not found")
+	}
+
+	return nil
 }

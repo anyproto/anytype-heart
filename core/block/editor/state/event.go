@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -87,11 +88,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockSetDataviewView:
-		if err = apply(o.BlockSetDataviewView.Id, func(b simple.Block) error {
-			if f, ok := b.(dataview.Block); ok && o.BlockSetDataviewView.View != nil {
-				if f.SetView(o.BlockSetDataviewView.ViewId, *o.BlockSetDataviewView.View) != nil {
-					f.AddView(*o.BlockSetDataviewView.View)
+	case *pb.EventMessageValueOfBlockDataviewViewSet:
+		if err = apply(o.BlockDataviewViewSet.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok && o.BlockDataviewViewSet.View != nil {
+				if f.SetView(o.BlockDataviewViewSet.ViewId, *o.BlockDataviewViewSet.View) != nil {
+					f.AddView(*o.BlockDataviewViewSet.View)
 				}
 				return nil
 			}
@@ -99,12 +100,43 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockDeleteDataviewView:
-		if err = apply(o.BlockDeleteDataviewView.Id, func(b simple.Block) error {
+	case *pb.EventMessageValueOfBlockDataviewViewDelete:
+		if err = apply(o.BlockDataviewViewDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				return f.DeleteView(o.BlockDeleteDataviewView.Id)
+				return f.DeleteView(o.BlockDataviewViewDelete.ViewId)
 			}
 			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDataviewRelationSet:
+		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok && o.BlockDataviewRelationSet.Relation != nil {
+				if f.UpdateRelation(o.BlockDataviewRelationSet.RelationKey, *o.BlockDataviewRelationSet.Relation) != nil {
+					f.AddRelation(*o.BlockDataviewRelationSet.Relation)
+				}
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDataviewRelationDelete:
+		if err = apply(o.BlockDataviewRelationDelete.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				return f.DeleteRelation(o.BlockDataviewRelationDelete.RelationKey)
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+
+	case *pb.EventMessageValueOfBlockSetRelation:
+		if err = apply(o.BlockSetRelation.Id, func(b simple.Block) error {
+			if f, ok := b.(relation.Block); ok {
+				return f.ApplyEvent(o.BlockSetRelation)
+			}
+			return fmt.Errorf("not a relation block")
 		}); err != nil {
 			return
 		}

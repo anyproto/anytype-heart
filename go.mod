@@ -54,12 +54,12 @@ require (
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/otiai10/opengraph v1.1.2
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
-	github.com/santhosh-tekuri/jsonschema/v2 v2.2.0
 	github.com/stretchr/testify v1.6.1
 	github.com/textileio/go-threads v1.0.2-0.20201207162022-b26c14c7ba54
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/yuin/goldmark v1.1.30
 	go.uber.org/zap v1.16.0
+	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/text v0.3.4
 	google.golang.org/grpc v1.32.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f

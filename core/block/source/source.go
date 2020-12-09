@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/cheggaaa/mb"
@@ -32,14 +33,22 @@ type Source interface {
 	Type() pb.SmartBlockType
 	Virtual() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
-	ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error)
-	PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error)
+	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
+	PushChange(params PushChangeParams) (id string, err error)
 	Close() (err error)
 }
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
 func NewSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
+	st, err := smartblock.SmartBlockTypeFromID(id)
+	if st == smartblock.SmartBlockTypeFile {
+		return NewFiles(a, id), nil
+	}
+	return newSource(a, ss, id)
+}
+
+func newSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %w", err)
@@ -74,7 +83,7 @@ type source struct {
 	logHeads       map[string]*change.Change
 	receiver       ChangeReceiver
 	unsubscribe    func()
-	detailsOnly    bool
+	metaOnly       bool
 	closed         chan struct{}
 }
 
@@ -94,8 +103,8 @@ func (s *source) Virtual() bool {
 	return false
 }
 
-func (s *source) ReadDetails(receiver ChangeReceiver) (doc state.Doc, err error) {
-	s.detailsOnly = true
+func (s *source) ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error) {
+	s.metaOnly = true
 	return s.readDoc(receiver, false)
 }
 
@@ -118,8 +127,8 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 			}
 		}()
 	}
-	if s.detailsOnly {
-		s.tree, s.logHeads, err = change.BuildDetailsTree(s.sb)
+	if s.metaOnly {
+		s.tree, s.logHeads, err = change.BuildMetaTree(s.sb)
 	} else {
 		s.tree, s.logHeads, err = change.BuildTree(s.sb)
 	}
@@ -157,37 +166,49 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	if err != nil {
 		return
 	}
+
 	if verr := st.Validate(); verr != nil {
 		log.With("thread", s.id).Errorf("not valid state: %v", verr)
 	}
 	if err = st.Normalize(false); err != nil {
 		return
 	}
+
 	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
 	}
 	return
 }
 
-func (s *source) PushChange(st *state.State, changes []*pb.ChangeContent, fileChangedHashes []string, doSnapshot bool) (id string, err error) {
+type PushChangeParams struct {
+	State             *state.State
+	Changes           []*pb.ChangeContent
+	FileChangedHashes []string
+	DoSnapshot        bool
+	GetAllFileHashes  func() []string
+}
+
+func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	var c = &pb.Change{
-		PreviousIds:        s.tree.Heads(),
-		LastSnapshotId:     s.lastSnapshotId,
-		PreviousDetailsIds: s.tree.DetailsHeads(),
-		Timestamp:          time.Now().Unix(),
+		PreviousIds:     s.tree.Heads(),
+		LastSnapshotId:  s.lastSnapshotId,
+		PreviousMetaIds: s.tree.MetaHeads(),
+		Timestamp:       time.Now().Unix(),
 	}
-	if doSnapshot || s.needSnapshot() || len(changes) == 0 {
+	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.logHeadIDs(),
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:  st.BlocksToSave(),
-				Details: st.Details(),
+				Blocks:         params.State.Blocks(),
+				Details:        params.State.ObjectScopedDetails(),
+				ExtraRelations: params.State.ExtraRelations(),
+				ObjectTypes:    params.State.ObjectTypes(),
 			},
-			FileKeys: s.getFileKeysByHashes(st.GetAllFileHashes()),
+			FileKeys: s.getFileKeysByHashes(params.GetAllFileHashes()),
 		}
 	}
-	c.Content = changes
-	c.FileKeys = s.getFileKeysByHashes(fileChangedHashes)
+	c.Content = params.Changes
+	c.FileKeys = s.getFileKeysByHashes(params.FileChangedHashes)
 
 	if id, err = s.sb.PushRecord(c); err != nil {
 		return
@@ -260,7 +281,7 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 		if e != nil {
 			return e
 		}
-		if s.detailsOnly && !ch.HasDetails() {
+		if s.metaOnly && !ch.HasMeta() {
 			continue
 		}
 		changes = append(changes, ch)

@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
@@ -29,14 +30,14 @@ var (
 )
 
 type LocalStore struct {
-	Files FileStore
-	Pages PageStore
+	Files   FileStore
+	Objects ObjectStore
 }
 
 type FileStore interface {
 	Indexable
 	Add(file *storage.FileInfo) error
-	AddMulti(files ...*storage.FileInfo) error
+	AddMulti(upsert bool, files ...*storage.FileInfo) error
 	AddFileKeys(fileKeys ...FileKeys) error
 	GetFileKeys(hash string) (map[string]string, error)
 	GetByHash(hash string) (*storage.FileInfo, error)
@@ -49,29 +50,29 @@ type FileStore interface {
 	Count() (int, error)
 	DeleteByHash(hash string) error
 	DeleteFileKeys(hash string) error
+	List() ([]*storage.FileInfo, error)
 }
 
-type PageStore interface {
+type ObjectStore interface {
 	Indexable
 	database.Reader
 
-	AddPage(page *model.PageInfoWithOutboundLinksIDs) error
-	UpdatePage(id string, details *types.Struct, links []string, snippet string) error
+	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	UpdateLastModified(id string, time time.Time) error
 	UpdateLastOpened(id string, time time.Time) error
-	DeletePage(id string) error
+	DeleteObject(id string) error
 
-	GetWithLinksInfoByID(id string) (*model.PageInfoWithLinks, error)
-	GetWithOutboundLinksInfoById(id string) (*model.PageInfoWithOutboundLinks, error)
-	GetDetails(id string) (*model.PageDetails, error)
-	GetByIDs(ids ...string) ([]*model.PageInfo, error)
-	List() ([]*model.PageInfo, error)
+	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
+	GetDetails(id string) (*model.ObjectDetails, error)
+	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
+	List() ([]*model.ObjectInfo, error)
 }
 
 func NewLocalStore(store ds.Batching) LocalStore {
 	return LocalStore{
-		Files: NewFileStore(store.(ds.TxnDatastore)),
-		Pages: NewPageStore(store.(ds.TxnDatastore)),
+		Files:   NewFileStore(store.(ds.TxnDatastore)),
+		Objects: NewObjectStore(store.(ds.TxnDatastore)),
 	}
 }
 
