@@ -2,7 +2,6 @@ package ftsearch
 
 import (
 	"strings"
-	"unicode/utf8"
 
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/search/query"
@@ -53,16 +52,32 @@ func (f *ftSearch) Index(d SearchDoc) (err error) {
 }
 
 func (f *ftSearch) Search(text string) (results []string, err error) {
-	var q query.Query
 	text = strings.TrimSpace(text)
-	if utf8.RuneCountInString(text) <= 3 {
-		q = bleve.NewPrefixQuery(text)
-	} else {
-		fq := bleve.NewFuzzyQuery(text)
-		fq.SetFuzziness(2)
-		q = fq
-	}
-	sr := bleve.NewSearchRequest(q)
+	var queries = make([]query.Query, 0, 4)
+
+	// title prefix
+	tp := bleve.NewPrefixQuery(text)
+	tp.SetField("Title")
+	tp.SetBoost(10)
+	queries = append(queries, tp)
+	// title substr
+	tss := bleve.NewWildcardQuery("*" + strings.ReplaceAll(text, "*", `\*`) + "*")
+	tss.SetField("Title")
+	tss.SetBoost(8)
+	queries = append(queries, tss)
+	// title match
+	tm := bleve.NewMatchQuery(text)
+	tm.SetFuzziness(2)
+	tm.SetField("Title")
+	tm.SetBoost(7)
+	queries = append(queries, tm)
+	// text match
+	txtm := bleve.NewMatchQuery(text)
+	txtm.SetFuzziness(1)
+	txtm.SetField("Text")
+	queries = append(queries, txtm)
+
+	sr := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(queries...))
 	res, err := f.index.Search(sr)
 	if err != nil {
 		return
