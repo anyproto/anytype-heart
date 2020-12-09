@@ -1,0 +1,80 @@
+syntax = "proto3";
+package anytype.relation;
+option go_package = "pkg/lib/pb/relation";
+
+import "google/protobuf/struct.proto";
+
+message ObjectType {
+    string url = 1; // leave empty in case you want to create the new one
+    string name = 2; // name of objectType (can be localized for bundled types)
+    repeated Relation relations = 3; // cannot contain more than one Relation with the same RelationType
+    Layout layout = 4;
+    string iconEmoji = 5; // emoji symbol
+
+    enum Layout {
+        page = 0;
+        contact = 1;
+        task = 2;
+        set = 3;
+        objectType = 4;
+        file = 5;
+    }
+}
+
+message RelationWithValue {
+    Relation relation = 1;
+    google.protobuf.Value value = 2;
+}
+
+// Relation describe the human-interpreted relation type. It may be something like "Date of creation, format=date" or "Assignee, format=objectId, objectType=person"
+message Relation {
+    // Key under which the value is stored in the map. Must be unique for the object type.
+    // It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types.
+    string key = 1;
+
+    RelationFormat format = 2; // format of the underlying data
+    string name = 3; // name to show (can be localized for bundled types)
+    google.protobuf.Value defaultValue = 4;
+    RelationDataSource dataSource = 5; // where the data is stored
+
+    bool hidden = 6; // internal, not displayed to user (e.g. coverX, coverY)
+    bool readOnly = 7; // not editable by user
+    bool multi = 8; // allow multiple values (stored in pb list)
+
+    repeated string objectTypes = 9; // URL of object type, empty to allow link to any object
+    // index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
+    repeated SelectOption selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
+
+    message SelectOption {
+        string id = 1; // id generated automatically if omitted
+        string text = 2;
+        string color = 3; // stored
+    }
+
+    enum RelationDataSource {
+        details = 0; // default, stored inside the object's details
+        local = 1; // stored locally, e.g. in badger or generated on the fly
+        account = 2; // stored in the account DB. means existing only for specific anytype account
+    }
+}
+
+// RelationFormat describes how the underlying data is stored in the google.protobuf.Value and how it should be validated/sanitized
+enum RelationFormat {
+    description = 0; // plain string
+    title = 1; // string, usually short enough. May be truncated
+    number = 2; // double
+    select = 3; // string
+    date = 4; // int64(pb.Value doesn't have int64) or string
+    file = 5; // relation can has objects of specific types: file, image, audio, video
+    checkbox = 6; // boolean
+    url = 7; // string with sanity check
+    email = 8; // string with sanity check
+    phone = 9; // string with sanity check
+    emoji = 10; // one emoji, can contains multiple utf-8 symbols
+
+    object = 100; // relation can has objectType to specify objectType
+}
+
+message Relations {
+    repeated Relation relations = 1;
+}

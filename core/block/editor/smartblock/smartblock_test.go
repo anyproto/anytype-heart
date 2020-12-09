@@ -63,6 +63,7 @@ func TestSmartBlock_Show(t *testing.T) {
 			}
 		}()
 	})
+	fx.metaService.EXPECT().FetchObjectTypes(gomock.Any()).AnyTimes()
 
 	ctx := state.NewContext(nil)
 	err := fx.Show(ctx)
@@ -73,7 +74,6 @@ func TestSmartBlock_Show(t *testing.T) {
 	msg := msgs[0].GetBlockShow()
 	require.NotNil(t, msg)
 	assert.Len(t, msg.Blocks, 3)
-	//assert.Len(t, msg.Details, 3)
 	assert.Equal(t, "1", msg.RootId)
 }
 
@@ -85,8 +85,8 @@ func TestSmartBlock_Apply(t *testing.T) {
 		s := fx.NewState()
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
-
-		fx.source.EXPECT().PushChange(gomock.Any(), gomock.Any(), gomock.Any(), false)
+		fx.metaService.EXPECT().FetchObjectTypes(gomock.Any())
+		fx.source.EXPECT().PushChange(gomock.Any())
 		var event *pb.Event
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e
@@ -120,7 +120,7 @@ func newFixture(t *testing.T) *fixture {
 	metaService.EXPECT().PubSub().AnyTimes().Return(metaPubSub)
 	metaPubSub.EXPECT().NewSubscriber().AnyTimes().Return(metaSubscriber)
 	return &fixture{
-		SmartBlock:     New(metaService),
+		SmartBlock:     New(metaService, "test"),
 		t:              t,
 		ctrl:           ctrl,
 		source:         source,
@@ -143,6 +143,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.source.EXPECT().ReadDoc(gomock.Any(), true).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.Init(fx.source, true)
+	err := fx.Init(fx.source, true, nil)
 	require.NoError(fx.t, err)
 }

@@ -4,30 +4,10 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/santhosh-tekuri/jsonschema/v2"
 	"github.com/stretchr/testify/require"
 )
-
-func Test_getDefaultRelations(t *testing.T) {
-	compiler := jsonschema.NewCompiler()
-	compiler.ExtractAnnotations = true
-	sch, err := schema.Get("https://anytype.io/schemas/page")
-	require.NoError(t, err)
-
-	relations := getDefaultRelations(sch)
-	require.Len(t, relations, 3)
-
-	require.Equal(t, relations[0].Id, "name")
-	require.Equal(t, relations[0].IsVisible, true)
-	require.Equal(t, relations[1].Id, "lastOpened")
-	require.Equal(t, relations[1].IsVisible, true)
-
-	require.Equal(t, relations[2].Id, "lastModified")
-	require.Equal(t, relations[1].IsVisible, true)
-}
 
 func Test_calculateEntriesDiff(t *testing.T) {
 	a := []database.Record{

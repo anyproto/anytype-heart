@@ -27,6 +27,7 @@ message FileInfo {
     google.protobuf.Struct meta = 11;
     repeated string targets = 12;
     EncryptionMode encMode = 13;
+    string metaHash = 14;
 
     enum EncryptionMode {
         AES_GCM = 0;

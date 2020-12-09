@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -9,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 )
 
 func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCreateResponse {
@@ -56,6 +56,33 @@ func (mw *Middleware) BlockCreatePage(req *pb.RpcBlockCreatePageRequest) *pb.Rpc
 	return response(pb.RpcBlockCreatePageResponseError_NULL, id, targetId, nil)
 }
 
+func (mw *Middleware) BlockCreateSet(req *pb.RpcBlockCreateSetRequest) *pb.RpcBlockCreateSetResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockCreateSetResponseErrorCode, id, targetId string, err error) *pb.RpcBlockCreateSetResponse {
+		m := &pb.RpcBlockCreateSetResponse{Error: &pb.RpcBlockCreateSetResponseError{Code: code}, BlockId: id, TargetId: targetId}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id, targetId string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		id, targetId, err = bs.CreateSet(ctx, *req)
+		return
+	})
+
+	if err != nil {
+		if err == block.ErrUnknownObjectType {
+			return response(pb.RpcBlockCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", "", err)
+		}
+
+		return response(pb.RpcBlockCreateSetResponseError_UNKNOWN_ERROR, "", "", err)
+	}
+	return response(pb.RpcBlockCreateSetResponseError_NULL, id, targetId, nil)
+}
+
 func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockOpenResponseErrorCode, err error) *pb.RpcBlockOpenResponse {
@@ -78,7 +105,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
-	err = mw.Anytype.PageUpdateLastOpened(req.BlockId)
+	err = mw.Anytype.ObjectStore().UpdateLastOpened(req.BlockId, time.Now())
 	if err != nil {
 		log.Errorf("failed to update last opened for the page %s: %s", req.BlockId, err.Error())
 	}
@@ -434,26 +461,6 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 		return response(pb.RpcBlockSetFieldsResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockSetDetailsResponseErrorCode, err error) *pb.RpcBlockSetDetailsResponse {
-		m := &pb.RpcBlockSetDetailsResponse{Error: &pb.RpcBlockSetDetailsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetDetails(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcBlockSetDetailsResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
@@ -1059,134 +1066,18 @@ func (mw *Middleware) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUplo
 	return response(pb.RpcBlockFileCreateAndUploadResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockSetDataviewView(req *pb.RpcBlockSetDataviewViewRequest) *pb.RpcBlockSetDataviewViewResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockSetDataviewViewResponseErrorCode, err error) *pb.RpcBlockSetDataviewViewResponse {
-		m := &pb.RpcBlockSetDataviewViewResponse{Error: &pb.RpcBlockSetDataviewViewResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetDataviewView(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcBlockSetDataviewViewResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockSetDataviewViewResponseError_NULL, nil)
+func (mw *Middleware) BlockObjectTypeAdd(req *pb.RpcBlockObjectTypeAddRequest) *pb.RpcBlockObjectTypeAddResponse {
+	panic("implement me")
 }
 
-func (mw *Middleware) BlockCreateDataviewView(req *pb.RpcBlockCreateDataviewViewRequest) *pb.RpcBlockCreateDataviewViewResponse {
-	ctx := state.NewContext(nil)
-	response := func(viewId string, code pb.RpcBlockCreateDataviewViewResponseErrorCode, err error) *pb.RpcBlockCreateDataviewViewResponse {
-		m := &pb.RpcBlockCreateDataviewViewResponse{ViewId: viewId, Error: &pb.RpcBlockCreateDataviewViewResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	var viewId string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		viewId, err = bs.CreateDataviewView(ctx, *req)
-		return err
-	})
-	if err != nil {
-		return response("", pb.RpcBlockCreateDataviewViewResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(viewId, pb.RpcBlockCreateDataviewViewResponseError_NULL, nil)
+func (mw *Middleware) BlockObjectTypeRemove(req *pb.RpcBlockObjectTypeRemoveRequest) *pb.RpcBlockObjectTypeRemoveResponse {
+	panic("implement me")
 }
 
-func (mw *Middleware) BlockDeleteDataviewView(req *pb.RpcBlockDeleteDataviewViewRequest) *pb.RpcBlockDeleteDataviewViewResponse {
+func (mw *Middleware) BlockRelationSetKey(req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockDeleteDataviewViewResponseErrorCode, err error) *pb.RpcBlockDeleteDataviewViewResponse {
-		m := &pb.RpcBlockDeleteDataviewViewResponse{Error: &pb.RpcBlockDeleteDataviewViewResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DeleteDataviewView(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcBlockDeleteDataviewViewResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockDeleteDataviewViewResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockSetDataviewActiveView(req *pb.RpcBlockSetDataviewActiveViewRequest) *pb.RpcBlockSetDataviewActiveViewResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockSetDataviewActiveViewResponseErrorCode, err error) *pb.RpcBlockSetDataviewActiveViewResponse {
-		m := &pb.RpcBlockSetDataviewActiveViewResponse{Error: &pb.RpcBlockSetDataviewActiveViewResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetDataviewActiveView(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcBlockSetDataviewActiveViewResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockSetDataviewActiveViewResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockCreateDataviewRecord(req *pb.RpcBlockCreateDataviewRecordRequest) *pb.RpcBlockCreateDataviewRecordResponse {
-	ctx := state.NewContext(nil)
-	response := func(details *types.Struct, code pb.RpcBlockCreateDataviewRecordResponseErrorCode, err error) *pb.RpcBlockCreateDataviewRecordResponse {
-		m := &pb.RpcBlockCreateDataviewRecordResponse{Record: details, Error: &pb.RpcBlockCreateDataviewRecordResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		// no events generated
-		return m
-	}
-
-	var details *types.Struct
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		details, err = bs.CreateDataviewRecord(ctx, *req)
-		return err
-	}); err != nil {
-		return response(nil, pb.RpcBlockCreateDataviewRecordResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(details, pb.RpcBlockCreateDataviewRecordResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockUpdateDataviewRecord(req *pb.RpcBlockUpdateDataviewRecordRequest) *pb.RpcBlockUpdateDataviewRecordResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockUpdateDataviewRecordResponseErrorCode, err error) *pb.RpcBlockUpdateDataviewRecordResponse {
-		m := &pb.RpcBlockUpdateDataviewRecordResponse{Error: &pb.RpcBlockUpdateDataviewRecordResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		// no events generated
-		return m
-	}
-
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateDataviewRecord(ctx, *req)
-	}); err != nil {
-		return response(pb.RpcBlockUpdateDataviewRecordResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcBlockUpdateDataviewRecordResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockDeleteDataviewRecord(req *pb.RpcBlockDeleteDataviewRecordRequest) *pb.RpcBlockDeleteDataviewRecordResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockDeleteDataviewRecordResponseErrorCode, err error) *pb.RpcBlockDeleteDataviewRecordResponse {
-		m := &pb.RpcBlockDeleteDataviewRecordResponse{Error: &pb.RpcBlockDeleteDataviewRecordResponseError{Code: code}}
+	response := func(code pb.RpcBlockRelationSetKeyResponseErrorCode, err error) *pb.RpcBlockRelationSetKeyResponse {
+		m := &pb.RpcBlockRelationSetKeyResponse{Error: &pb.RpcBlockRelationSetKeyResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -1196,12 +1087,33 @@ func (mw *Middleware) BlockDeleteDataviewRecord(req *pb.RpcBlockDeleteDataviewRe
 	}
 
 	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DeleteDataviewRecord(ctx, *req)
+		return bs.SetRelationKey(ctx, *req)
 	}); err != nil {
-		return response(pb.RpcBlockDeleteDataviewRecordResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcBlockRelationSetKeyResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(pb.RpcBlockDeleteDataviewRecordResponseError_NULL, nil)
+	return response(pb.RpcBlockRelationSetKeyResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.RpcBlockRelationAddResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockRelationAddResponseErrorCode, err error) *pb.RpcBlockRelationAddResponse {
+		m := &pb.RpcBlockRelationAddResponse{Error: &pb.RpcBlockRelationAddResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.AddRelationBlock(ctx, *req)
+	}); err != nil {
+		return response(pb.RpcBlockRelationAddResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockListTurnInto(req *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse {

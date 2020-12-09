@@ -2,6 +2,7 @@ package smartblock
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -14,14 +15,18 @@ const (
 	SmartBlockTypeArchive     SmartBlockType = 0x30
 	SmartBlockTypeDatabase    SmartBlockType = 0x40
 	SmartBlockTypeSet         SmartBlockType = 0x41
+	SmartBlockTypeObjectType  SmartBlockType = 0x60
+	SmartBlockTypeFile        SmartBlockType = 0x100
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	tid, err := thread.Decode(id)
-	if err != nil {
-		return 0, err
+	if err != nil || tid.Variant() != thread.Raw {
+		_, err := cid.Decode(id)
+		if err == nil {
+			return SmartBlockTypeFile, nil
+		}
 	}
-
 	return SmartBlockTypeFromThreadID(tid)
 }
 
@@ -36,20 +41,20 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	return SmartBlockType(blockType), nil
 }
 
-func (sbt SmartBlockType) ToProto() model.PageInfoType {
+func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 	switch sbt {
 	case SmartBlockTypePage:
-		return model.PageInfo_Page
+		return model.ObjectInfo_Page
 	case SmartBlockTypeProfilePage:
-		return model.PageInfo_ProfilePage
+		return model.ObjectInfo_ProfilePage
 	case SmartBlockTypeHome:
-		return model.PageInfo_Home
+		return model.ObjectInfo_Home
 	case SmartBlockTypeArchive:
-		return model.PageInfo_Archive
+		return model.ObjectInfo_Archive
 	case SmartBlockTypeSet:
-		return model.PageInfo_Set
+		return model.ObjectInfo_Set
 	default:
-		return model.PageInfo_Page
+		return model.ObjectInfo_Page
 	}
 }
 

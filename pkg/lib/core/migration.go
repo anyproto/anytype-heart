@@ -9,8 +9,13 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -35,6 +40,9 @@ var migrations = []migration{
 	skipMigration,        // 3
 	skipMigration,        // 4
 	snapshotToChanges,    // 5
+	skipMigration,        // 6
+	addFilesMetaHash,     // 7
+	addFilesToObjects,    // 8
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -70,7 +78,9 @@ func (a *Anytype) runMigrationsUnsafe() error {
 	}
 
 	if len(migrations) == version {
-		return nil
+		// TODO: TEMP FIX to run last migration every time, remove with release
+		version--
+		//return nil
 	} else if len(migrations) < version {
 		log.Errorf("repo version(%d) is higher than the total migrations number(%d)", version, len(migrations))
 		return nil
@@ -152,9 +162,9 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 	}
 
 	snap := snapshotsPB[0]
-	var keys []*FileKeys
+	var keys []*files.FileKeys
 	for fileHash, fileKeys := range snap.KeysByHash {
-		keys = append(keys, &FileKeys{
+		keys = append(keys, &files.FileKeys{
 			Hash: fileHash,
 			Keys: fileKeys.KeysByPath,
 		})
@@ -165,7 +175,7 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 		for _, fileField := range detailsFileFields {
 			if v, exists := snap.Details.Fields[fileField]; exists {
 				hash := v.GetStringValue()
-				keysForFile, err := a.FileGetKeys(hash)
+				keysForFile, err := a.files.FileGetKeys(hash)
 				if err != nil {
 					log.With(zap.String("hash", hash)).Error("failed to get file key", err.Error())
 				} else {
@@ -175,7 +185,7 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 		}
 	}
 
-	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, keys)
+	record := a.opts.SnapshotMarshalerFunc(snap.Blocks, snap.Details, nil, nil, keys)
 	sb, err := a.GetSmartBlock(id.String())
 
 	log.With("thread", id.String()).Debugf("thread migrated")
@@ -249,4 +259,146 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 	log.Infof("migration alterThreadsDbSchema: schema updated")
 
 	return nil
+}
+
+func addFilesMetaHash(a *Anytype, lastMigration bool) error {
+	// todo: better split into 2 migrations
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		files, err := a.localStore.Files.List()
+		if err != nil {
+			return err
+		}
+		var (
+			ctx       context.Context
+			cancel    context.CancelFunc
+			toMigrate int
+			migrated  int
+		)
+		for _, file := range files {
+			if file.MetaHash == "" {
+				toMigrate++
+				for _, target := range file.Targets {
+					ctx, cancel = context.WithTimeout(context.Background(), time.Second)
+					// reindex file to add metaHash
+					_, err = a.files.FileIndexInfo(ctx, target, true)
+					if err != nil {
+						log.Errorf("FileIndexInfo error: %s", err.Error())
+					} else {
+						migrated++
+					}
+					cancel()
+				}
+			}
+		}
+		if migrated != toMigrate {
+			log.Errorf("addFilesMetaHash migration not completed for all files: %d/%d completed", migrated, toMigrate)
+		} else {
+			log.Debugf("addFilesMetaHash migration completed for %d files", migrated)
+		}
+		return nil
+	})
+}
+
+func addFilesToObjects(a *Anytype, lastMigration bool) error {
+	// todo: better split into 2 migrations
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		files, err := a.localStore.Files.List()
+		if err != nil {
+			return err
+		}
+		targetsProceed := map[string]struct{}{}
+		imgObjType, err := relation.GetObjectType(objects.BundledObjectTypeURLPrefix + "file")
+		if err != nil {
+			return err
+		}
+		fileObjType, err := relation.GetObjectType(objects.BundledObjectTypeURLPrefix + "image")
+		if err != nil {
+			return err
+		}
+		log.Debugf("migrating %d files", len(files))
+		var (
+			ctx      context.Context
+			cancel   context.CancelFunc
+			migrated int
+		)
+
+		for _, file := range files {
+			if file.Mill == "/image/resize" {
+				if len(file.Targets) == 0 {
+					log.Errorf("addFilesToObjects migration: got image with empty targets list")
+					continue
+				}
+
+				for _, target := range file.Targets {
+					if _, exists := targetsProceed[target]; exists {
+						continue
+					}
+					targetsProceed[target] = struct{}{}
+					ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
+					img, err := a.ImageByHash(ctx, target)
+					if err != nil {
+						log.Errorf("addFilesToObjects migration: ImageByHash failed: %s", err.Error())
+						cancel()
+						continue
+					}
+
+					details, err := img.Details()
+					if err != nil {
+						log.Errorf("addFilesToObjects migration: img.Details() failed: %s", err.Error())
+						cancel()
+						continue
+					}
+
+					err = a.localStore.Objects.UpdateObject(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations}, nil, "")
+					if err != nil {
+						// this shouldn't fail
+						cancel()
+						return err
+					}
+					migrated++
+					cancel()
+				}
+
+			} else if file.Mill == "/blob" {
+				if len(file.Targets) == 0 {
+					return fmt.Errorf("got file with empty targets list")
+				}
+				for _, target := range file.Targets {
+					if _, exists := targetsProceed[target]; exists {
+						continue
+					}
+					targetsProceed[target] = struct{}{}
+					ctx, cancel = context.WithTimeout(context.Background(), time.Second*3)
+
+					file, err := a.FileByHash(ctx, target)
+					if err != nil {
+						log.Errorf("addFilesToObjects migration: FileByHash failed: %s", err.Error())
+						cancel()
+						continue
+					}
+
+					details, err := file.Details()
+					if err != nil {
+						log.Errorf("failed to fetch details for file %s: %w", file.Hash(), err)
+						cancel()
+						continue
+					}
+
+					err = a.localStore.Objects.UpdateObject(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations}, nil, "")
+					if err != nil {
+						cancel()
+						return err
+					}
+					cancel()
+					migrated++
+				}
+			}
+		}
+		if migrated != len(files) {
+			log.Errorf("addFilesToObjects migration not completed for all files: %d/%d completed", migrated, len(files))
+		} else {
+			log.Debugf("addFilesToObjects migration completed for %d files", migrated)
+		}
+		return nil
+	})
 }

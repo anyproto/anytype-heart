@@ -4,10 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -15,9 +17,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -45,8 +52,8 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New(ms meta.Service) SmartBlock {
-	return &smartBlock{meta: ms}
+func New(ms meta.Service, defaultObjectTypeUrl string) SmartBlock {
+	return &smartBlock{meta: ms, defaultObjectTypeUrl: defaultObjectTypeUrl}
 }
 
 type SmartblockOpenListner interface {
@@ -54,8 +61,9 @@ type SmartblockOpenListner interface {
 }
 
 type SmartBlock interface {
-	Init(s source.Source, allowEmpty bool) (err error)
+	Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error)
 	Id() string
+	DefaultObjectTypeUrl() string
 	Type() pb.SmartBlockType
 	Meta() *core.SmartBlockMeta
 	Show(*state.Context) (err error)
@@ -64,6 +72,15 @@ type SmartBlock interface {
 	History() undo.History
 	Anytype() anytype.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
+	Relations() []*pbrelation.Relation
+	HasRelation(relationKey string) bool
+	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error)
+	RemoveExtraRelations(relationKeys []string) (err error)
+	AddObjectTypes(objectTypes []string) (err error)
+	RemoveObjectTypes(objectTypes []string) (err error)
+	FileRelationKeys() []string
+
 	Reindex() error
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
@@ -84,17 +101,27 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds            []string
-	sendEvent         func(e *pb.Event)
-	undo              undo.History
-	source            source.Source
-	meta              meta.Service
-	metaSub           meta.Subscriber
-	metaData          *core.SmartBlockMeta
-	disableLayouts    bool
-	onNewStateHooks   []func()
-	onCloseHooks      []func()
-	onBlockCloseHooks []func()
+	depIds               []string
+	sendEvent            func(e *pb.Event)
+	undo                 undo.History
+	source               source.Source
+	meta                 meta.Service
+	metaSub              meta.Subscriber
+	metaData             *core.SmartBlockMeta
+	disableLayouts       bool
+	defaultObjectTypeUrl string
+	onNewStateHooks      []func()
+	onCloseHooks         []func()
+	onBlockCloseHooks    []func()
+}
+
+func (sb *smartBlock) HasRelation(key string) bool {
+	for _, rel := range sb.Relations() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (sb *smartBlock) Id() string {
@@ -103,15 +130,21 @@ func (sb *smartBlock) Id() string {
 
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{
-		Details: sb.Details(),
+		ObjectTypes: sb.ObjectTypes(),
+		Details:     sb.Details(),
+		Relations:   sb.ExtraRelations(),
 	}
+}
+
+func (sb *smartBlock) DefaultObjectTypeUrl() string {
+	return sb.defaultObjectTypeUrl
 }
 
 func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool) (err error) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -134,17 +167,44 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, err := sb.fetchDetails()
+		details, objectTypeUrlByObject, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
 		}
+
+		// omit relations
+		// todo: switch to other pb type
+		for _, ot := range objectTypes {
+			ot.Relations = nil
+		}
+
+		var layout pbrelation.ObjectTypeLayout
+		for _, objectTypesUrlForObject := range objectTypeUrlByObject {
+			if objectTypesUrlForObject.ObjectId != sb.Id() {
+				continue
+			}
+
+			for _, ot := range objectTypes {
+				if ot.Url == objectTypesUrlForObject.ObjectType {
+					layout = ot.Layout
+					break
+				}
+			}
+		}
+
+		// todo: sb.Relations() makes extra query to read objectType which we already have here
+		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-					RootId:  sb.RootId(),
-					Blocks:  sb.Blocks(),
-					Details: details,
-					Type:    sb.Type(),
+					RootId:              sb.RootId(),
+					Type:                sb.Type(),
+					Blocks:              sb.Blocks(),
+					Details:             details,
+					Relations:           sb.Relations(),
+					ObjectTypePerObject: objectTypeUrlByObject,
+					ObjectTypes:         objectTypes,
+					Layout:              layout,
 				}},
 			},
 		})
@@ -152,7 +212,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypeUrlByObject []*pb.EventBlockShowObjectTypePerObject, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -167,6 +227,64 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 		SmartBlockMeta: *sb.Meta(),
 	})
 
+	var uniqueObjTypes []string
+
+	if sb.Type() == pb.SmartBlockType_Set {
+		// add the object type from the dataview source
+		if b := sb.Doc.Pick("dataview"); b != nil {
+			if dv := b.Model().GetDataview(); dv != nil {
+				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
+				for _, rel := range dv.Relations {
+					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+						for _, ot := range rel.ObjectTypes {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								uniqueObjTypes = append(uniqueObjTypes, ot)
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	// todo: should we use badger here?
+	timeout := time.After(time.Second)
+	var objectTypeUrlByObjectMap = map[string]string{}
+
+	for i := 0; i < len(sb.depIds); i++ {
+		select {
+		case <-timeout:
+			return
+		case d := <-ch:
+			if d.Details != nil {
+				details = append(details, &pb.EventBlockSetDetails{
+					Id:      d.BlockId,
+					Details: d.SmartBlockMeta.Details,
+				})
+			}
+			if d.ObjectTypes != nil {
+				if len(d.SmartBlockMeta.ObjectTypes) > 0 {
+					if len(d.SmartBlockMeta.ObjectTypes) > 1 {
+						log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
+					}
+					trimedType := d.SmartBlockMeta.ObjectTypes[0]
+					if slice.FindPos(uniqueObjTypes, trimedType) == -1 {
+						uniqueObjTypes = append(uniqueObjTypes, trimedType)
+					}
+					objectTypeUrlByObjectMap[d.BlockId] = trimedType
+				}
+			}
+		}
+	}
+
+	objectTypes = sb.meta.FetchObjectTypes(uniqueObjTypes)
+	for id, ot := range objectTypeUrlByObjectMap {
+		objectTypeUrlByObject = append(objectTypeUrlByObject, &pb.EventBlockShowObjectTypePerObject{
+			ObjectId:   id,
+			ObjectType: ot,
+		})
+	}
+
 	defer func() {
 		go func() {
 			for d := range ch {
@@ -176,19 +294,6 @@ func (sb *smartBlock) fetchDetails() (details []*pb.EventBlockSetDetails, err er
 		subscriber.Callback(sb.onMetaChange)
 		close(ch)
 	}()
-
-	timeout := time.After(time.Second)
-	for i := 0; i < len(sb.depIds); i++ {
-		select {
-		case <-timeout:
-			return
-		case d := <-ch:
-			details = append(details, &pb.EventBlockSetDetails{
-				Id:      d.BlockId,
-				Details: d.SmartBlockMeta.Details,
-			})
-		}
-	}
 	return
 }
 
@@ -196,17 +301,35 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	sb.Lock()
 	defer sb.Unlock()
 	if sb.sendEvent != nil && d.BlockId != sb.Id() {
-		sb.sendEvent(&pb.Event{
-			Messages: []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfBlockSetDetails{
-						BlockSetDetails: &pb.EventBlockSetDetails{
-							Id:      d.BlockId,
-							Details: d.Details,
-						},
+		msgs := []*pb.EventMessage{}
+		if d.Details != nil {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfBlockSetDetails{
+					BlockSetDetails: &pb.EventBlockSetDetails{
+						Id:      d.BlockId,
+						Details: d.Details,
 					},
 				},
-			},
+			})
+		}
+
+		if d.Relations != nil {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfBlockSetRelations{
+					BlockSetRelations: &pb.EventBlockSetRelations{
+						Id:        d.BlockId,
+						Relations: d.Relations,
+					},
+				},
+			})
+		}
+
+		if len(msgs) == 0 {
+			return
+		}
+
+		sb.sendEvent(&pb.Event{
+			Messages:  msgs,
 			ContextId: sb.Id(),
 		})
 	}
@@ -216,8 +339,41 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
+
+		for _, ot := range sb.ObjectTypes() {
+			if strings.HasSuffix(ot, objects.CustomObjectTypeURLPrefix) {
+				ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
+			}
+		}
+
+		details := sb.Doc.(*state.State).Details()
+
+		for _, rel := range sb.Relations() {
+			if rel.Format != pbrelation.RelationFormat_object && rel.Format != pbrelation.RelationFormat_file {
+				continue
+			}
+			// add all custom object types as dependents
+			for _, ot := range rel.ObjectTypes {
+				if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
+					ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
+				}
+			}
+
+			if rel.Key == "id" || rel.Key == "type" {
+				continue
+			}
+
+			// add all object relation values as dependents
+			for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
+				if targetId != "" {
+					ids = append(ids, targetId)
+				}
+			}
+		}
 	}
+	util.UniqueStrings(ids)
 	sort.Strings(ids)
+
 	return
 }
 
@@ -257,9 +413,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if act.IsEmpty() {
 		return nil
 	}
-	changes := sb.Doc.(*state.State).GetChanges()
-	fileHashes := getChangedFileHashes(act)
-	id, err := sb.source.PushChange(sb.Doc.(*state.State), changes, fileHashes, doSnapshot)
+	st := sb.Doc.(*state.State)
+	fileDetailsKeys := sb.FileRelationKeys()
+	pushChangeParams := source.PushChangeParams{
+		State:             st,
+		Changes:           st.GetChanges(),
+		FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
+		DoSnapshot:        doSnapshot,
+		GetAllFileHashes: func() []string {
+			return st.GetAllFileHashes(sb.FileRelationKeys())
+		},
+	}
+	id, err := sb.source.PushChange(pushChangeParams)
 	if err != nil {
 		return
 	}
@@ -280,12 +445,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if act.Details != nil {
+	if act.Details != nil || act.ObjectTypes != nil || act.Relations != nil {
 		sb.meta.ReportChange(meta.Meta{
 			BlockId:        sb.Id(),
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
+	s.SetDetail("lastModifiedDate", pbtypes.Float64(float64(time.Now().Unix())))
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return
 }
@@ -314,13 +480,28 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 	}
 
 	var storeInfo struct {
-		details *types.Struct
-		snippet string
-		links   []string
+		details   *types.Struct
+		relations *pbrelation.Relations
+		snippet   string
+		links     []string
 	}
 
 	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
+		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
+	}
+
+	if act == nil || act.Relations != nil {
+		storeInfo.relations = &pbrelation.Relations{Relations: pbtypes.CopyRelations(sb.ExtraRelations())}
+	}
+
+	if act == nil || act.ObjectTypes != nil {
+		storeInfo.details = pbtypes.CopyStruct(sb.Details())
+		if storeInfo.details == nil || storeInfo.details.Fields == nil {
+			storeInfo.details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
+
+		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
 	}
 
 	if hasDepIds(act) {
@@ -337,7 +518,7 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 
 	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
 		if storeInfo.links != nil || storeInfo.details != nil || len(storeInfo.snippet) > 0 {
-			return at.PageStore().UpdatePage(sb.Id(), storeInfo.details, storeInfo.links, storeInfo.snippet)
+			return at.ObjectStore().UpdateObject(sb.Id(), storeInfo.details, storeInfo.relations, storeInfo.links, storeInfo.snippet)
 		}
 	}
 
@@ -394,6 +575,142 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	}
 	s.SetDetails(copy)
 	if err = sb.Apply(s); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	copy := pbtypes.CopyRelations(sb.Relations())
+
+	var existsMap = map[string]struct{}{}
+	for _, rel := range copy {
+		existsMap[rel.Key] = struct{}{}
+	}
+	for _, rel := range relations {
+		if rel.Key == "" {
+			rel.Key = bson.NewObjectId().Hex()
+		}
+		if _, exists := existsMap[rel.Key]; !exists {
+			// we return the pointers slice here just for clarity
+			relationsWithKeys = append(relationsWithKeys, rel)
+			copy = append(copy, pbtypes.CopyRelation(rel))
+		} else {
+			return nil, fmt.Errorf("relation with the same key already exists")
+		}
+	}
+
+	s := sb.NewState().SetExtraRelations(copy)
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) AddObjectTypes(objectTypes []string) (err error) {
+	c := make([]string, len(sb.ObjectTypes()))
+	copy(c, sb.ObjectTypes())
+
+	c = append(c, objectTypes...)
+	s := sb.NewState().SetObjectTypes(c)
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) RemoveObjectTypes(objectTypes []string) (err error) {
+	filtered := []string{}
+
+	for _, ot := range sb.ObjectTypes() {
+		var toBeRemoved bool
+		for _, OTToRemove := range objectTypes {
+			if ot == OTToRemove {
+				toBeRemoved = true
+				break
+			}
+		}
+		if !toBeRemoved {
+			filtered = append(filtered, ot)
+		}
+	}
+
+	s := sb.NewState().SetObjectTypes(filtered)
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+	objectTypeRelations := pbtypes.CopyRelations(sb.ObjectTypeRelations())
+	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
+	relationsToSet := pbtypes.CopyRelations(relations)
+
+	var somethingChanged bool
+	var newRelations []*pbrelation.Relation
+mainLoop:
+	for i := range relationsToSet {
+		for j := range objectTypeRelations {
+			if objectTypeRelations[j].Key == relationsToSet[i].Key {
+				if pbtypes.RelationEqual(objectTypeRelations[j], relationsToSet[i]) {
+					continue mainLoop
+				} else if !pbtypes.RelationCompatible(objectTypeRelations[j], relationsToSet[i]) {
+					return fmt.Errorf("can't set extraRelation incompatible with the same-key relation in the objectType")
+				}
+			}
+		}
+		for j := range extraRelations {
+			if extraRelations[j].Key == relationsToSet[i].Key {
+				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
+					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
+						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
+					}
+					extraRelations[j] = relationsToSet[i]
+					somethingChanged = true
+				}
+				continue mainLoop
+			}
+		}
+
+		if createIfMissing {
+			somethingChanged = true
+			newRelations = append(newRelations, relations[i])
+		}
+	}
+
+	if !somethingChanged {
+		return
+	}
+
+	s := sb.NewState().SetExtraRelations(append(extraRelations, newRelations...))
+	if err = sb.Apply(s); err != nil {
+		return
+	}
+	return
+}
+
+func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
+	copy := pbtypes.CopyRelations(sb.ExtraRelations())
+	filtered := []*pbrelation.Relation{}
+	for _, rel := range copy {
+		var toBeRemoved bool
+		for _, relationKey := range relationKeys {
+			if rel.Key == relationKey {
+				toBeRemoved = true
+				break
+			}
+		}
+		if !toBeRemoved {
+			filtered = append(filtered, rel)
+		}
+	}
+
+	s := sb.NewState().SetExtraRelations(filtered)
+	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
 	return
@@ -468,6 +785,10 @@ func hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
+	// todo: check details for exact object-relations changes
+	if act.Relations != nil || act.ObjectTypes != nil || act.Details != nil {
+		return true
+	}
 	for _, edit := range act.Change {
 		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
 			return true
@@ -489,7 +810,7 @@ func hasDepIds(act *undo.Action) bool {
 	return false
 }
 
-func getChangedFileHashes(act undo.Action) (hashes []string) {
+func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Action) (hashes []string) {
 	for _, nb := range act.Add {
 		if fh, ok := nb.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
@@ -503,7 +824,7 @@ func getChangedFileHashes(act undo.Action) (hashes []string) {
 	if act.Details != nil {
 		det := act.Details.After
 		if det != nil && det.Fields != nil {
-			for _, field := range state.DetailsFileFields {
+			for _, field := range fileDetailKeys {
 				if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
 					hashes = append(hashes, v.GetStringValue())
 				}
@@ -518,9 +839,9 @@ func (sb *smartBlock) storeFileKeys() {
 	if len(keys) == 0 {
 		return
 	}
-	fileKeys := make([]core.FileKeys, len(keys))
+	fileKeys := make([]files.FileKeys, len(keys))
 	for i, k := range keys {
-		fileKeys[i] = core.FileKeys{
+		fileKeys[i] = files.FileKeys{
 			Hash: k.Hash,
 			Keys: k.Keys,
 		}
@@ -543,6 +864,24 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 	}
 }
 
+func (sb *smartBlock) Relations() []*pbrelation.Relation {
+	return relation.MergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
+}
+
+func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
+	var relations []*pbrelation.Relation
+	if sb.meta != nil {
+		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
+		if !(len(objectTypes) == 1 && objectTypes[0].Url == objects.BundledObjectTypeURLPrefix+"objectType") {
+			// do not fetch objectTypes for object type type to avoid universe collapse
+			for _, objType := range objectTypes {
+				relations = append(relations, objType.Relations...)
+			}
+		}
+	}
+	return relations
+}
+
 func (sb *smartBlock) execHooks(event Hook) {
 	var hooks []func()
 	switch event {
@@ -558,6 +897,17 @@ func (sb *smartBlock) execHooks(event Hook) {
 			h()
 		}
 	}
+}
+
+func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
+	for _, rel := range sb.Relations() {
+		if rel.Format == pbrelation.RelationFormat_file {
+			if slice.FindPos(fileKeys, rel.Key) == -1 {
+				fileKeys = append(fileKeys, rel.Key)
+			}
+		}
+	}
+	return
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {

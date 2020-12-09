@@ -8,6 +8,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/gogo/protobuf/proto"
@@ -54,7 +55,9 @@ type SmartBlockContentChange struct {
 }
 
 type SmartBlockMeta struct {
-	Details *types.Struct
+	ObjectTypes []string
+	Relations   []*pbrelation.Relation
+	Details     *types.Struct
 }
 
 type SmartBlockMetaChange struct {
@@ -85,7 +88,6 @@ type SmartBlock interface {
 	ID() string
 	Type() smartblock.SmartBlockType
 	Creator() (string, error)
-	BaseSchema() SmartBlockSchema
 
 	GetLogs() ([]SmartblockLog, error)
 	GetRecord(ctx context.Context, recordID string) (*SmartblockRecordEnvelope, error)
@@ -139,10 +141,6 @@ func (block *smartBlock) Type() smartblock.SmartBlockType {
 	}
 
 	return t
-}
-
-func (block *smartBlock) BaseSchema() SmartBlockSchema {
-	return smartBlockBaseSchema(block.Type())
 }
 
 func (block *smartBlock) ID() string {
@@ -259,7 +257,7 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 		return "", err
 	}
 
-	err = block.node.localStore.Pages.UpdateLastModified(block.thread.ID.String(), time.Now())
+	err = block.node.localStore.Objects.UpdateLastModified(block.thread.ID.String(), time.Now())
 	if err != nil {
 		log.Errorf("failed to update lastModified: %w", err)
 	}
@@ -420,7 +418,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	return block.decodeRecord(ctx, rec, true)
 }
 
-func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Block) error {
+func (block *smartBlock) indexSnapshot(details *types.Struct, relations *pbrelation.Relations, blocks []*model.Block) error {
 	if block.Type() == smartblock.SmartBlockTypeArchive {
 		return nil
 	}
@@ -428,7 +426,7 @@ func (block *smartBlock) indexSnapshot(details *types.Struct, blocks []*model.Bl
 	outgoingLinks := findOutgoingLinks(blocks)
 	snippet := getSnippet(blocks)
 
-	return block.node.PageStore().UpdatePage(block.ID(), details, outgoingLinks, snippet)
+	return block.node.ObjectStore().UpdateObject(block.ID(), details, relations, outgoingLinks, snippet)
 }
 
 func findOutgoingLinks(blocks []*model.Block) []string {

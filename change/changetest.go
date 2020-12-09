@@ -20,10 +20,6 @@ type TestSmartblock struct {
 	changes map[string]*core.SmartblockRecordEnvelope
 }
 
-func (s *TestSmartblock) BaseSchema() core.SmartBlockSchema {
-	panic("implement me")
-}
-
 func (s *TestSmartblock) AddChanges(logId string, chs ...*Change) *TestSmartblock {
 	var id string
 	for _, ch := range chs {

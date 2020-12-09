@@ -4,29 +4,34 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/google/uuid"
 )
+
+var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
 func NewSet(
 	ms meta.Service,
 	dbCtrl database.Ctrl,
 ) *Set {
-	sb := &Set{SmartBlock: smartblock.New(ms)}
+	sb := &Set{
+		SmartBlock: smartblock.New(ms, objects.BundledObjectTypeURLPrefix+"set"),
+	}
 
 	sb.Basic = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)
-	sb.Dataview = dataview.NewDataview(sb)
+	sb.Dataview = dataview.NewDataview(sb, dbCtrl)
 	sb.Router = database.New(dbCtrl)
-
+	sb.Text = stext.NewText(sb.SmartBlock)
 	return sb
 }
 
@@ -36,35 +41,21 @@ type Set struct {
 	basic.IHistory
 	dataview.Dataview
 	database.Router
+	stext.Text
 }
 
-func (p *Set) Init(s source.Source, _ bool) (err error) {
-	if err = p.SmartBlock.Init(s, true); err != nil {
-		return
+func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+	err = p.SmartBlock.Init(s, true, nil)
+	if err != nil {
+		return err
 	}
-	return p.init()
-}
 
-func (p *Set) init() (err error) {
-	s := p.NewState()
-	if err = template.InitTemplate(template.WithTitle, s); err != nil {
-		return
-	}
-	root := s.Get(p.RootId())
-	setDetails := func() {
-		s.SetDetail("name", pbtypes.String("Pages"))
-		s.SetDetail("iconEmoji", pbtypes.String("📒"))
-	}
-	if len(root.Model().ChildrenIds) > 1 {
-		return
-	}
-	// init dataview
-	relations := []*model.BlockContentDataviewRelation{{Id: "id", IsVisible: false}, {Id: "name", IsVisible: true}, {Id: "lastOpened", IsVisible: true}, {Id: "lastModified", IsVisible: true}}
-	dataview := simple.New(&model.Block{
-		Content: &model.BlockContentOfDataview{
+	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypes([]string{p.DefaultObjectTypeUrl()})}
+	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
+		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				DatabaseId: "pages",
-				SchemaURL:  "https://anytype.io/schemas/page",
+				Source:    "https://anytype.io/schemas/object/bundled/page",
+				Relations: relation.BundledObjectTypes["page"].Relations,
 				Views: []*model.BlockContentDataviewView{
 					{
 						Id:   uuid.New().String(),
@@ -72,25 +63,27 @@ func (p *Set) init() (err error) {
 						Name: "All pages",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
-								RelationId: "name",
-								Type:       model.BlockContentDataviewSort_Asc,
+								RelationKey: "name",
+								Type:        model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: relations,
+						Relations: []*model.BlockContentDataviewRelation{{Key: "id", IsVisible: false}, {Key: "name", IsVisible: true}, {Key: "lastOpenedDate", IsVisible: true}, {Key: "lastModifiedDate", IsVisible: true}, {Key: "createdDate", IsVisible: true}},
 						Filters:   nil,
 					},
 				},
 			},
-		},
-	})
+		}
 
-	s.Add(dataview)
-
-	if err = s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, dataview.Model().Id); err != nil {
-		return fmt.Errorf("can't insert dataview: %v", err)
+		templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
 	}
 
-	setDetails()
-	log.Infof("create default structure for set: %v", s.RootId())
-	return p.Apply(s, smartblock.NoEvent, smartblock.NoHistory)
+	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
+		return
+	}
+	return
+}
+
+func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
+	s := p.NewState()
+	return template.ApplyTemplate(p, s, template.WithDetailName(name), template.WithDetailIconEmoji(icon), template.WithDataview(blockContent))
 }

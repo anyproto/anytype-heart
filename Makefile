@@ -131,18 +131,21 @@ protos-go:
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	@$(eval P_PROTOS := Mpkg/lib/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model)
 	@$(eval P_PROTOS2 := Mpkg/lib/pb/model/protos/localstore.proto=github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model)
-	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2))
+	@$(eval P_PROTOS3 := Mpkg/lib/pb/relation/protos/relation.proto=github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation)
+
+	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pkg/lib/pb/ pkg/lib/pb/model/protos/*.proto; mv pkg/lib/pb/pkg/lib/pb/model/*.go pkg/lib/pb/model/; rm -rf pkg/lib/pb/pkg
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pkg/lib/pb/ pkg/lib/pb/storage/protos/*.proto; mv pkg/lib/pb/pkg/lib/pb/storage/*.go pkg/lib/pb/storage/; rm -rf pkg/lib/pb/pkg
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pkg/lib/pb/ pkg/lib/pb/relation/protos/*.proto; mv pkg/lib/pb/pkg/lib/pb/relation/*.go pkg/lib/pb/relation/; rm -rf pkg/lib/pb/pkg
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP),plugins=grpc:./ pkg/lib/cafe/pb/*.proto
 	@echo 'Generating protobuf packages for mw (Go)...'
 	@$(eval P_TIMESTAMP := Mgoogle/protobuf/timestamp.proto=github.com/gogo/protobuf/types)
 	@$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
-	@$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2))
+	@$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
 	@GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc -I . --gogofaster_out=$(PKGMAP):. ./pb/protos/*.proto; mv ./pb/protos/*.pb.go ./pb/
-	@$(eval P_PROTOS3 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
-	@$(eval P_PROTOS4 := Mpb/protos/events.proto=github.com/anytypeio/go-anytype-middleware/pb)
-	@$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3),$$(P_PROTOS4))
+	@$(eval P_PROTOS4 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
+	@$(eval P_PROTOS5 := Mpb/protos/events.proto=github.com/anytypeio/go-anytype-middleware/pb)
+	@$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3),$$(P_PROTOS4),$$(P_PROTOS5))
 	@GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./clientlibrary/service/
 	@protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
@@ -156,22 +159,22 @@ protos-docs:
 	@$(eval P_PROTOS2 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
 	@$(eval P_PROTOS3 := Mpb/protos/events.proto=github.com/anytypeio/go-anytype-middleware/pb)
 	@$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
-	@protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto pkg/lib/pb/relation/protos/*.proto
 
 protos: protos-go protos-server protos-docs
 
 protos-swift:
 	@echo 'Generating protobuf packages (Swift)...'
-	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./dist/ios/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./dist/ios/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto pkg/lib/pb/relation/protos/*.proto
 
 protos-js:
 	@echo 'Generating protobuf packages (JS)...'
-	@protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
-	@protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@protoc -I ./  --js_out=import_style=commonjs,binary:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto pkg/lib/pb/relation/protos/*.proto
+	@protoc -I ./  --grpc-web_out=import_style=commonjs+dts,mode=grpcwebtext:./dist/js/pb pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto pkg/lib/pb/relation/protos/*.proto
 
 protos-java:
 	@echo 'Generating protobuf packages (Java)...'
-	@protoc -I ./ --java_out=./dist/android/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@protoc -I ./ --java_out=./dist/android/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto pkg/lib/pb/relation/protos/*.proto
 
 build-server: protos-server
 	@echo 'Building middleware server...'
@@ -197,8 +200,6 @@ install-dev-js: build-js
 	@cp -r dist/server ../js-anytype/dist/anytypeHelper
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
-	@cp -R pkg/lib/schema/* ../js-anytype/src/json/schema
-	@chmod -R 755 ../js-anytype/src/json/schema/*
 
 build-js: setup-go build-server protos-js
 	@echo "Run 'make install-dev-js' instead if you want to build&install into ../js-anytype"

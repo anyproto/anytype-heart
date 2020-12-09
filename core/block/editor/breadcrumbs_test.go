@@ -11,7 +11,7 @@ import (
 
 func TestBreadcrumbs_Init(t *testing.T) {
 	b := NewBreadcrumbs(nil)
-	err := b.Init(source.NewVirtual(nil, pb.SmartBlockType_Breadcrumbs), true)
+	err := b.Init(source.NewVirtual(nil, pb.SmartBlockType_Breadcrumbs), true, nil)
 	require.NoError(t, err)
 	assert.NotEmpty(t, b.Id())
 	assert.NotEmpty(t, b.RootId())
@@ -21,7 +21,7 @@ func TestBreadcrumbs_Init(t *testing.T) {
 func TestBreadcrumbs_SetCrumbs(t *testing.T) {
 	t.Run("set ids", func(t *testing.T) {
 		b := NewBreadcrumbs(nil)
-		err := b.Init(source.NewVirtual(nil, pb.SmartBlockType_Breadcrumbs), true)
+		err := b.Init(source.NewVirtual(nil, pb.SmartBlockType_Breadcrumbs), true, nil)
 		require.NoError(t, err)
 		require.NoError(t, b.SetCrumbs([]string{"one", "two"}))
 		require.Len(t, b.NewState().Pick(b.RootId()).Model().ChildrenIds, 2)

@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -23,16 +24,26 @@ type Details struct {
 	Before, After *types.Struct
 }
 
+type Relations struct {
+	Before, After []*pbrelation.Relation
+}
+
+type ObjectType struct {
+	Before, After []string
+}
+
 type Action struct {
-	Add     []simple.Block
-	Change  []Change
-	Remove  []simple.Block
-	Details *Details
-	Group   string
+	Add         []simple.Block
+	Change      []Change
+	Remove      []simple.Block
+	Details     *Details
+	Group       string
+	Relations   *Relations
+	ObjectTypes *ObjectType
 }
 
 func (a Action) IsEmpty() bool {
-	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil
+	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.Relations == nil && a.ObjectTypes == nil
 }
 
 func (a Action) Merge(b Action) (result Action) {

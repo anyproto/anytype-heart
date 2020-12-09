@@ -52,7 +52,7 @@ func newFixture(t *testing.T) *fixture {
 	a.EXPECT().PredefinedBlocks().Return(threads.DerivedSmartblockIds{
 		Profile: "profileId",
 	}).AnyTimes()
-	a.EXPECT().PageStore().Return(nil).AnyTimes()
+	a.EXPECT().ObjectStore().Return(nil).AnyTimes()
 	a.EXPECT().ProfileID().AnyTimes()
 	a.EXPECT().LocalProfile().AnyTimes()
 	return &fixture{

@@ -6,11 +6,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
 
-func Test_Anytype_PageInfoWithLinks(t *testing.T) {
+func Test_Anytype_ObjectInfoWithLinks(t *testing.T) {
 	s := getRunningService(t)
 	block1, err := s.CreateBlock(smartblock.SmartBlockTypePage)
 	require.NoError(t, err)
@@ -31,7 +32,7 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: blockContent1}},
 		},
 	}
-	err = block1.(*smartBlock).indexSnapshot(details1, blocks1)
+	err = block1.(*smartBlock).indexSnapshot(details1, nil, blocks1)
 	require.NoError(t, err)
 
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
@@ -49,24 +50,28 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 		},
 	}
 
-	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
+	err = block2.(*smartBlock).indexSnapshot(details2, nil, blocks2)
 	require.NoError(t, err)
 
-	info2, err := s.PageInfoWithLinks(block2.ID())
+	info2, err := s.ObjectInfoWithLinks(block2.ID())
 	require.NoError(t, err)
 	require.NotNil(t, info2.Links)
 	require.NotNil(t, info2.Links.Outbound)
 	require.Len(t, info2.Links.Outbound, 1)
 
 	require.Equal(t, block1.ID(), info2.Links.Outbound[0].Id)
+	details1.Fields["id"] = pbtypes.String(block1.ID())
+
 	require.True(t, info2.Links.Outbound[0].Details.Compare(details1) == 0)
 
-	info1, err := s.PageInfoWithLinks(block1.ID())
+	info1, err := s.ObjectInfoWithLinks(block1.ID())
 	require.NoError(t, err)
 	require.NotNil(t, info1.Links)
 	require.Len(t, info1.Links.Inbound, 1)
 
 	require.Equal(t, block2.ID(), info1.Links.Inbound[0].Id)
+	details2.Fields["id"] = pbtypes.String(block2.ID())
+
 	require.True(t, info1.Links.Inbound[0].Details.Compare(details2) == 0)
 	require.Equal(t, getSnippet(blocks1), info1.Info.Snippet)
 
@@ -80,13 +85,14 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 		},
 	}
 
-	err = block2.(*smartBlock).indexSnapshot(details2Modified, blocks2Modified)
+	details2Modified.Fields["id"] = pbtypes.String(block2.ID())
+	err = block2.(*smartBlock).indexSnapshot(details2Modified, nil, blocks2Modified)
 	require.NoError(t, err)
 
-	info2Modified, err := s.PageInfoWithLinks(block2.ID())
+	info2Modified, err := s.ObjectInfoWithLinks(block2.ID())
 	require.NoError(t, err)
 
-	info1Modified, err := s.PageInfoWithLinks(block1.ID())
+	info1Modified, err := s.ObjectInfoWithLinks(block1.ID())
 	require.NoError(t, err)
 
 	require.Len(t, info1Modified.Links.Inbound, 1)
@@ -97,11 +103,11 @@ func Test_Anytype_PageInfoWithLinks(t *testing.T) {
 	err = s.DeleteBlock(block1.ID())
 	require.NoError(t, err)
 
-	info1Modified, err = s.PageInfoWithLinks(block1.ID())
+	info1Modified, err = s.ObjectInfoWithLinks(block1.ID())
 	require.Error(t, err)
 	require.Nil(t, info1Modified)
 
-	info2Modified, err = s.PageInfoWithLinks(block2.ID())
+	info2Modified, err = s.ObjectInfoWithLinks(block2.ID())
 	require.NoError(t, err)
 	require.Len(t, info2Modified.Links.Outbound, 0)
 }
@@ -120,7 +126,7 @@ func Test_Anytype_PageList(t *testing.T) {
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "test"}},
 		},
 	}
-	err = block1.(*smartBlock).indexSnapshot(details1, blocks1)
+	err = block1.(*smartBlock).indexSnapshot(details1, nil, blocks1)
 
 	require.NoError(t, err)
 	block2, err := s.CreateBlock(smartblock.SmartBlockTypePage)
@@ -138,19 +144,22 @@ func Test_Anytype_PageList(t *testing.T) {
 		},
 	}
 
-	err = block2.(*smartBlock).indexSnapshot(details2, blocks2)
+	err = block2.(*smartBlock).indexSnapshot(details2, nil, blocks2)
 	require.NoError(t, err)
 
-	pages, err := s.PageList()
+	pages, err := s.ObjectList()
 	require.NoError(t, err)
 
-	var pageById = make(map[string]*model.PageInfo)
+	var pageById = make(map[string]*model.ObjectInfo)
 	for _, page := range pages {
 		pageById[page.Id] = page
 	}
 
 	require.NotNil(t, pageById[block1.ID()])
-	require.Equal(t, details1, pageById[block1.ID()].Details)
+	details1.Fields["id"] = pbtypes.String(block1.ID())
+	details2.Fields["id"] = pbtypes.String(block2.ID())
+
+	require.True(t, details1.Compare(pageById[block1.ID()].Details) == 0)
 	require.Equal(t, "test", pageById[block1.ID()].Snippet)
 
 	require.Equal(t, block2.ID(), pageById[block2.ID()].Id)

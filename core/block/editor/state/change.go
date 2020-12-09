@@ -7,6 +7,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -27,11 +29,15 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	pb2.StructDeleteEmptyFields(snapshot.Data.Details)
 
 	s := &State{
-		rootId:   rootId,
-		blocks:   blocks,
-		details:  snapshot.Data.Details,
-		fileKeys: fileKeys,
+		rootId:         rootId,
+		blocks:         blocks,
+		details:        snapshot.Data.Details,
+		extraRelations: snapshot.Data.ExtraRelations,
+		objectTypes:    snapshot.Data.ObjectTypes,
+		fileKeys:       fileKeys,
 	}
+
+	s.fillLocalScopeDetails()
 	return s
 }
 
@@ -111,6 +117,26 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
 			return
 		}
+	case ch.GetRelationAdd() != nil:
+		if err = s.changeRelationAdd(ch.GetRelationAdd()); err != nil {
+			return
+		}
+	case ch.GetRelationRemove() != nil:
+		if err = s.changeRelationRemove(ch.GetRelationRemove()); err != nil {
+			return
+		}
+	case ch.GetRelationUpdate() != nil:
+		if err = s.changeRelationUpdate(ch.GetRelationUpdate()); err != nil {
+			return
+		}
+	case ch.GetObjectTypeAdd() != nil:
+		if err = s.changeObjectTypeAdd(ch.GetObjectTypeAdd()); err != nil {
+			return
+		}
+	case ch.GetObjectTypeRemove() != nil:
+		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
+			return
+		}
 	default:
 		return fmt.Errorf("unexpected changes content type: %v", ch)
 	}
@@ -142,6 +168,82 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	}
 	s.details = pbtypes.CopyStruct(det)
 	delete(s.details.Fields, unset.Key)
+	return nil
+}
+
+func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
+	rels := s.ExtraRelations()
+	for _, rel := range rels {
+		if rel.Key == add.Relation.Key {
+			// todo: update?
+			log.Warnf("changeRelationAdd, relation already exists")
+			return nil
+		}
+	}
+
+	rel := add.Relation
+	if rel.Format == pbrelation.RelationFormat_file && rel.ObjectTypes == nil {
+		rel.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+	}
+
+	s.extraRelations = append(rels, rel)
+	return nil
+}
+
+func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
+	rels := s.ExtraRelations()
+	for i, rel := range rels {
+		if rel.Key == remove.Key {
+			s.extraRelations = append(rels[:i], rels[i+1:]...)
+			return nil
+		}
+	}
+
+	log.Warnf("changeRelationRemove: relation to remove not found")
+	return nil
+}
+
+func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
+	for _, rel := range s.ExtraRelations() {
+		// todo: copy slice?
+		if rel.Key != update.Key {
+			continue
+		}
+
+		switch val := update.Value.(type) {
+		case *pb.ChangeRelationUpdateValueOfFormat:
+			rel.Format = val.Format
+		case *pb.ChangeRelationUpdateValueOfName:
+			rel.Name = val.Name
+		case *pb.ChangeRelationUpdateValueOfDefaultValue:
+			rel.DefaultValue = val.DefaultValue
+		}
+		return nil
+	}
+
+	return fmt.Errorf("relation not found")
+}
+
+func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
+	for _, ot := range s.ObjectTypes() {
+		if ot == add.Url {
+			return nil
+		}
+	}
+
+	s.objectTypes = append(s.objectTypes, add.Url)
+	return nil
+}
+
+func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
+	for i, ot := range s.ObjectTypes() {
+		if ot == remove.Url {
+			s.objectTypes = append(s.objectTypes[:i], s.objectTypes[i+1:]...)
+			return nil
+		}
+	}
+
+	log.Warnf("changeObjectTypeRemove: type to remove not found")
 	return nil
 }
 
@@ -215,9 +317,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetLink:
 			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockSetDataviewView:
-			updMsgs = append(updMsgs, msg.Msg)
-		case *pb.EventMessageValueOfBlockDeleteDataviewView:
+		case *pb.EventMessageValueOfBlockSetRelation:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDelete:
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
@@ -230,6 +330,15 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 					})
 				}
 			}
+
+		case *pb.EventMessageValueOfBlockDataviewViewSet:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewViewDelete:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewRelationSet:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
+			updMsgs = append(updMsgs, msg.Msg)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %T", msg)
 		}
@@ -258,6 +367,9 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	}
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
+	s.changes = append(s.changes, s.makeRelationsChanges()...)
+	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
+
 }
 
 func (s *State) fillStructureChanges(cb *changeBuilder, msgs []*pb.EventBlockSetChildrenIds) {
@@ -327,12 +439,13 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	}
 	var prev *types.Struct
 	if s.parent != nil {
-		prev = s.parent.Details()
+		prev = s.parent.ObjectScopedDetails()
 	}
 	if prev == nil || prev.Fields == nil {
 		prev = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
-	for k, v := range s.details.Fields {
+	curDetails := s.objectScopedDetailsForCurrentState()
+	for k, v := range curDetails.Fields {
 		pv, ok := prev.Fields[k]
 		if !ok || !pv.Equal(v) {
 			ch = append(ch, &pb.ChangeContent{
@@ -343,10 +456,147 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 		}
 	}
 	for k := range prev.Fields {
-		if _, ok := s.details.Fields[k]; !ok {
+		if _, ok := curDetails.Fields[k]; !ok {
 			ch = append(ch, &pb.ChangeContent{
 				Value: &pb.ChangeContentValueOfDetailsUnset{
 					DetailsUnset: &pb.ChangeDetailsUnset{Key: k},
+				},
+			})
+		}
+	}
+	return
+}
+
+func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation) ([]*pb.ChangeRelationUpdate, error) {
+	var updates []*pb.ChangeRelationUpdate
+
+	if prev.Key != new.Key {
+		return nil, fmt.Errorf("key should be the same")
+	}
+
+	if prev.Name != new.Name {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfName{Name: new.Name},
+		})
+	}
+
+	if prev.Format != new.Format {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfFormat{Format: new.Format},
+		})
+	}
+
+	if !slice.UnsortedEquals(prev.ObjectTypes, new.ObjectTypes) {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfObjectTypes{ObjectTypes: &pb.ChangeRelationUpdateObjectTypes{ObjectTypes: new.ObjectTypes}},
+		})
+	}
+
+	if !prev.DefaultValue.Equal(new.DefaultValue) {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfDefaultValue{DefaultValue: new.DefaultValue},
+		})
+	}
+
+	if prev.Multi != new.Multi {
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfMulti{Multi: new.Multi},
+		})
+	}
+
+	if pbtypes.RelationSelectDictEqual(prev.SelectDict, new.SelectDict) {
+		// todo: CRDT SelectDict patches
+		updates = append(updates, &pb.ChangeRelationUpdate{
+			Key:   prev.Key,
+			Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: new.SelectDict}},
+		})
+	}
+
+	return updates, nil
+}
+
+func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
+	if s.extraRelations == nil {
+		return nil
+	}
+	var prev []*pbrelation.Relation
+	if s.parent != nil {
+		prev = s.parent.ExtraRelations()
+	}
+
+	var prevMap = pbtypes.CopyRelationsToMap(prev)
+	var curMap = pbtypes.CopyRelationsToMap(s.extraRelations)
+
+	for _, v := range s.extraRelations {
+		pv, ok := prevMap[v.Key]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationAdd{
+					RelationAdd: &pb.ChangeRelationAdd{Relation: v},
+				},
+			})
+		} else {
+			updates, err := diffRelationsIntoUpdates(*pv, *v)
+			if err != nil {
+				// bad input(not equal keys), return the fatal error
+				log.Fatal("diffRelationsIntoUpdates fatal error: %s", err.Error())
+			}
+
+			for _, update := range updates {
+				ch = append(ch, &pb.ChangeContent{
+					Value: &pb.ChangeContentValueOfRelationUpdate{
+						RelationUpdate: update,
+					},
+				})
+			}
+		}
+	}
+	for _, v := range prev {
+		_, ok := curMap[v.Key]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfRelationRemove{
+					RelationRemove: &pb.ChangeRelationRemove{Key: v.Key},
+				},
+			})
+		}
+	}
+	return
+}
+
+func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
+	if s.objectTypes == nil {
+		return nil
+	}
+	var prev []string
+	if s.parent != nil {
+		prev = s.parent.ObjectTypes()
+	}
+
+	var prevMap = make(map[string]struct{}, len(prev))
+	var curMap = make(map[string]struct{}, len(s.objectTypes))
+
+	for _, v := range s.objectTypes {
+		_, ok := prevMap[v]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfObjectTypeAdd{
+					ObjectTypeAdd: &pb.ChangeObjectTypeAdd{Url: v},
+				},
+			})
+		}
+	}
+	for _, v := range prev {
+		_, ok := curMap[v]
+		if !ok {
+			ch = append(ch, &pb.ChangeContent{
+				Value: &pb.ChangeContentValueOfObjectTypeRemove{
+					ObjectTypeRemove: &pb.ChangeObjectTypeRemove{Url: v},
 				},
 			})
 		}

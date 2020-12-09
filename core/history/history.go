@@ -10,10 +10,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 const versionGroupInterval = time.Minute * 5
+
+var log = logging.Logger("anytype-mw-history")
 
 func NewHistory(a anytype.Service, bs BlockService, m meta.Service) History {
 	return &history{
@@ -45,22 +50,43 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb
 		return
 	}
 
-	metaD := h.meta.FetchDetails(s.DepSmartIds())
+	metaD := h.meta.FetchMeta(s.DepSmartIds())
 	details := make([]*pb.EventBlockSetDetails, 0, len(metaD))
+	objectTypePerObject := make([]*pb.EventBlockShowObjectTypePerObject, 0, len(metaD))
+	var uniqueObjTypes []string
+	sbType, err := smartblock.SmartBlockTypeFromID(pageId)
+	if err != nil {
+		return nil, nil, fmt.Errorf("incorrect sb type: %w", err)
+	}
+	metaD = append(metaD, meta.Meta{BlockId: pageId, SmartBlockMeta: core.SmartBlockMeta{ObjectTypes: s.ObjectTypes(), Details: s.Details()}})
 	for _, m := range metaD {
 		details = append(details, &pb.EventBlockSetDetails{
 			Id:      m.BlockId,
 			Details: m.Details,
 		})
+		e := &pb.EventBlockShowObjectTypePerObject{
+			ObjectId: m.BlockId,
+		}
+		if len(m.ObjectTypes) > 0 {
+			if len(m.ObjectTypes) > 1 {
+				log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
+			}
+			e.ObjectType = m.ObjectTypes[0]
+		}
+		objectTypePerObject = append(objectTypePerObject, e)
+		if slice.FindPos(uniqueObjTypes, e.ObjectType) == -1 {
+			uniqueObjTypes = append(uniqueObjTypes, e.ObjectType)
+		}
 	}
-	details = append(details, &pb.EventBlockSetDetails{
-		Id:      pageId,
-		Details: s.Details(),
-	})
+
+	objectTypes := h.meta.FetchObjectTypes(uniqueObjTypes)
 	return &pb.EventBlockShow{
-		RootId:  pageId,
-		Blocks:  s.Blocks(),
-		Details: details,
+		RootId:              pageId,
+		Type:                anytype.SmartBlockTypeToProto(sbType),
+		Blocks:              s.Blocks(),
+		Details:             details,
+		ObjectTypePerObject: objectTypePerObject,
+		ObjectTypes:         objectTypes,
 	}, ver, nil
 }
 
@@ -187,7 +213,8 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 	}
 	switch sbType {
 	case smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeProfilePage, smartblock.SmartBlockTypeSet:
-		template.InitTemplate(template.WithTitle, s)
+		// todo: set case not handled
+		template.InitTemplate(s, template.WithTitle)
 	}
 	s.BlocksInit()
 	if ch := tree.Get(versionId); ch != nil {

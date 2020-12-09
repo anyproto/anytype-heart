@@ -305,7 +305,7 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 			if linkBlock, ok := b.(link.Block); ok {
 				var targetDetails *types.Struct
 				if targetId := linkBlock.Model().GetLink().TargetBlockId; targetId != "" {
-					result := t.MetaService().FetchDetails([]string{targetId})
+					result := t.MetaService().FetchMeta([]string{targetId})
 					if len(result) > 0 {
 						targetDetails = result[0].Details
 					}

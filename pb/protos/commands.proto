@@ -4,6 +4,7 @@ option go_package = "pb";
 
 import "pkg/lib/pb/model/protos/models.proto";
 import "pkg/lib/pb/model/protos/localstore.proto";
+import "pkg/lib/pb/relation/protos/relation.proto";
 
 import "pb/protos/events.proto";
 import "google/protobuf/struct.proto";
@@ -754,6 +755,7 @@ message Rpc {
                     }
                 }
             }
+
             message Details {
                 message Detail {
                     string key = 1;
@@ -780,6 +782,7 @@ message Rpc {
                     }
                 }
             }
+
             message Restrictions {
                 message Request {
                     string contextId = 1;
@@ -1088,64 +1091,105 @@ message Rpc {
                     }
                 }
             }
+        }
 
-            message Dataview {
-                message View {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2; // id of dataview block to update
-                        string viewId = 3; // id of view to update
-                        anytype.model.Block.Content.Dataview.View view = 4;
-                    }
+        message ObjectType {
+            message Add {
+                message Request {
+                    string contextId = 1;
+                    string objectTypeUrl = 3;
+                }
 
-                    message Response {
-                        Error error = 1;
-                        ResponseEvent event = 2;
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
 
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
 
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
                         }
                     }
                 }
-
-                // set the current active view (persisted only within a session)
-                message ActiveView {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2; // id of dataview block
-                        string viewId = 3; // id of active view
-                        uint32 offset = 4;
-                        uint32 limit = 5;
-                    }
-
-                    message Response {
-                        Error error = 1;
-                        ResponseEvent event = 2;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
-
             }
 
+            message Remove {
+                message Request {
+                    string contextId = 1;
+                    string objectTypeUrl = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
+                        }
+                    }
+                }
+            }
+        }
+
+        message Relation {
+            message SetKey {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    string key = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+            message Add {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    anytype.relation.Relation relation = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
         }
 
         message Bookmark {
@@ -1228,6 +1272,357 @@ message Rpc {
                     }
                 }
             }
+        }
+
+        message Dataview {
+            message ViewCreate {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to insert the new block
+                    anytype.model.Block.Content.Dataview.View view = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+                    string viewId = 3;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message ViewUpdate {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to update
+                    string viewId = 3; // id of view to update
+                    anytype.model.Block.Content.Dataview.View view = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message ViewDelete {
+                message Request {
+                    string contextId = 1; // id of the context block
+                    string blockId = 2; // id of the dataview
+                    string viewId = 4; // id of the view to remove
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+
+            // set the current active view (persisted only within a session)
+            message ViewSetActive {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block
+                    string viewId = 3; // id of active view
+                    uint32 offset = 4;
+                    uint32 limit = 5;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+
+            message RecordUpdate {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    string recordId = 3;
+                    google.protobuf.Struct record = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message RecordDelete {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    string recordId = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message RecordCreate {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    google.protobuf.Struct record = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    google.protobuf.Struct record = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+
+            message RelationAdd {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    anytype.relation.Relation relation = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+                    string relationKey = 3;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+            message RelationUpdate {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3; // key of relation to update
+                    anytype.relation.Relation relation = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+            message RelationDelete {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 3;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+
+            // RelationSelectOptionAdd may return existing option in case dataview already has one with the same text
+            message RelationSelectOptionAdd {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3; // relation key to add the option
+                    anytype.relation.Relation.SelectOption option = 4; // id of select options will be autogenerated
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+                    anytype.relation.Relation.SelectOption option = 3;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+            message RelationSelectOptionUpdate {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3; // relation key to add the option
+                    anytype.relation.Relation.SelectOption option = 4; // id of select options will be autogenerated
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+            message RelationSelectOptionDelete {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3; // relation key to add the option
+                    string optionId = 4; // id of select options to remove
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+
+            message RelationListAvailable {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                }
+
+                message Response {
+                    Error error = 1;
+                    repeated anytype.relation.Relation relations = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_A_DATAVIEW_BLOCK = 3;
+                            // ...
+                        }
+                    }
+                }
+            }
+
         }
 
         message Get {
@@ -1437,59 +1832,6 @@ message Rpc {
          *     3. Front <- MW: Event.Block.Show(newPage)
         */
         message Create {
-            message Dataview {
-                message View {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2; // id of dataview block to insert the new block
-                        anytype.model.Block.Content.Dataview.View view = 4;
-                    }
-
-                    message Response {
-                        Error error = 1;
-                        ResponseEvent event = 2;
-                        string viewId = 3;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
-
-                message Record {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2;
-                        google.protobuf.Struct record = 3;
-                    }
-
-                    message Response {
-                        Error error = 1;
-                        google.protobuf.Struct record = 2;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
-            }
-
             // common simple block command
             message Request {
                 string contextId = 1; // id of the context block
@@ -1545,6 +1887,36 @@ message Rpc {
             }
         }
 
+        message CreateSet {
+            message Request {
+                string contextId = 1; // id of the context block
+                string targetId = 2; // id of the closest block
+                string objectTypeUrl = 3;
+                google.protobuf.Struct details = 4; // details
+
+                anytype.model.Block.Position position = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;
+                string targetId = 3;
+                ResponseEvent event = 4;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_TYPE_URL = 3;
+                        // ...
+                    }
+                }
+            }
+        }
         /*
          * Remove blocks from the childrenIds of its parents
         */
@@ -1568,89 +1940,6 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         // ...
-                    }
-                }
-            }
-        }
-
-        message Update {
-            message Dataview {
-                message Record {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2;
-                        string recordId = 3;
-                        google.protobuf.Struct record = 4;
-                    }
-
-                    message Response {
-                        Error error = 1;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        message Delete {
-            message Dataview {
-                message View {
-                    message Request {
-                        string contextId = 1; // id of the context block
-                        string blockId = 2; // id of the dataview
-                        string viewId = 4; // id of the view to remove
-                    }
-
-                    message Response {
-                        Error error = 1;
-                        ResponseEvent event = 2;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
-
-                message Record {
-                    message Request {
-                        string contextId = 1;
-                        string blockId = 2;
-                        string recordId = 3;
-                    }
-
-                    message Response {
-                        Error error = 1;
-                        ResponseEvent event = 2;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
                     }
                 }
             }
@@ -2185,7 +2474,6 @@ message Rpc {
         }
     }
 
-
     message LinkPreview {
         message Request {
             string url = 1;
@@ -2240,14 +2528,14 @@ message Rpc {
             LinkTo = 2; // same for mention, do not show sets/archive
         }
 
-        message ListPages {
+        message ListObjects {
             message Request {
                 Context context = 1;
             }
 
             message Response {
                 Error error = 1;
-                repeated anytype.model.PageInfo pages = 2;
+                repeated anytype.model.ObjectInfo objects = 2;
 
                 message Error {
                     Code code = 1;
@@ -2266,15 +2554,15 @@ message Rpc {
         /*
           * Get the info for page alongside with info for all inbound and outbound links from/to this page
         */
-        message GetPageInfoWithLinks {
+        message GetObjectInfoWithLinks {
             message Request {
-                string pageId = 1;
+                string objectId = 1;
                 Context context = 2;
             }
 
             message Response {
                 Error error = 1;
-                anytype.model.PageInfoWithLinks page = 2;
+                anytype.model.ObjectInfoWithLinks object = 2;
 
                 message Error {
                     Code code = 1;
@@ -2405,6 +2693,209 @@ message Rpc {
         }
     }
 
+    message Set {
+        message Create {
+            message Request {
+                string objectTypeUrl = 1;
+                google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
+            }
+
+            message Response {
+                Error error = 1;
+                string id = 3;
+                ResponseEvent event = 4;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_TYPE_URL = 3;
+                    }
+                }
+            }
+        }
+    }
+
+    message ObjectType {
+        message List {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated anytype.relation.ObjectType objectTypes = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Create {
+            message Request {
+                anytype.relation.ObjectType objectType = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                anytype.relation.ObjectType objectType = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        UNKNOWN_OBJECT_TYPE_URL = 3;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Relation {
+            message Add {
+                message Request {
+                    string objectTypeUrl = 1;
+                    repeated anytype.relation.Relation relations = 2;
+                }
+
+                message Response {
+                    Error error = 1;
+                    repeated anytype.relation.Relation relations = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
+                            READONLY_OBJECT_TYPE = 4;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message Remove {
+                message Request {
+                    string objectTypeUrl = 1;
+                    string relationKey = 2;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
+                            READONLY_OBJECT_TYPE = 4;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message Update {
+                message Request {
+                    string objectTypeUrl = 1;
+                    anytype.relation.Relation relation = 2;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
+                            READONLY_OBJECT_TYPE = 4;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message List {
+                message Request {
+                    string objectTypeUrl = 1;
+                    bool appendRelationsFromOtherTypes = 2; // add relations from other object types in the end
+                }
+
+                message Response {
+                    Error error = 1;
+                    repeated anytype.relation.Relation relations = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            UNKNOWN_OBJECT_TYPE_URL = 3;
+                            // ...
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    message Object {
+        message Search {
+            message Request {
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 1;
+                repeated anytype.model.Block.Content.Dataview.Sort sorts = 2;
+                // 3 is reserved for the full text search
+                int32 offset = 4;
+                int32 limit = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                repeated google.protobuf.Struct records = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
 }
 
 message Empty {

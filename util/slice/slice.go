@@ -3,6 +3,7 @@ package slice
 import (
 	"hash/fnv"
 	"math/rand"
+	"sort"
 )
 
 func FindPos(s []string, v string) int {
@@ -56,4 +57,19 @@ func SortedEquals(s1, s2 []string) bool {
 		}
 	}
 	return true
+}
+
+func UnsortedEquals(s1, s2 []string) bool {
+	if len(s1) != len(s2) {
+		return false
+	}
+
+	s1Sorted := make([]string, len(s1))
+	s2Sorted := make([]string, len(s2))
+	copy(s1, s1Sorted)
+	copy(s2, s2Sorted)
+	sort.Strings(s1Sorted)
+	sort.Strings(s2Sorted)
+
+	return SortedEquals(s1Sorted, s2Sorted)
 }

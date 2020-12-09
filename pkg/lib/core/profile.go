@@ -83,7 +83,7 @@ func (a *Anytype) LocalProfile() (Profile, error) {
 		profileId = a.predefinedBlockIds.Profile
 	)
 
-	ps := a.localStore.Pages
+	ps := a.localStore.Objects
 	if ps == nil {
 		return profile, errors.New("no pagestore available")
 	}

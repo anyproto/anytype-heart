@@ -5,6 +5,12 @@ var Image = `
   "name": "image",
   "pin": true,
   "links": {
+    "original": {
+	  "use": ":file",
+	  "pin": true,
+	  "plaintext": false,
+	  "mill": "/blob"
+    },
     "large": {
       "use": ":file",
       "pin": true,
@@ -36,7 +42,7 @@ var Image = `
       }
     },
     "exif": {
-      "use": "large",
+      "use": ":file",
       "mill": "/image/exif"
     }
   }

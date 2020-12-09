@@ -350,7 +350,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 			}))
 		tb := NewText(sb)
 
-		ms.EXPECT().FetchDetails([]string{"targetId"}).Return([]meta.Meta{
+		ms.EXPECT().FetchMeta([]string{"targetId"}).Return([]meta.Meta{
 			{
 				BlockId: "targetId",
 				SmartBlockMeta: core.SmartBlockMeta{
