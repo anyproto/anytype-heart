@@ -104,6 +104,7 @@ message Event {
             string rootId = 1; // Root block id
             repeated anytype.model.Block blocks = 2; // dependent simple blocks (descendants)
             repeated Block.Set.Details details = 3; // details for the current and dependent objects
+            SmartBlockType type = 4;
 
             message RelationWithValuePerObject {
                 string objectId = 1;

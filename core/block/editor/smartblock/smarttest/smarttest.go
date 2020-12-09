@@ -217,6 +217,10 @@ func (st *SmartTest) MetaService() meta.Service {
 	return st.ms
 }
 
+func (st *SmartTest) FileRelationKeys() []string {
+	return nil
+}
+
 func (st *SmartTest) BlockClose() {
 	st.SetEventFunc(nil)
 }
