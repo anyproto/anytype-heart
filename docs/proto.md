@@ -1235,7 +1235,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| dict | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string dict = 1; // deprecated |
+| dict | [relation.Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated |  |
 
 
 
@@ -10875,13 +10875,12 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | rootId | [string](#string) |  | Root block id |
-| blocks | [model.Block](#anytype.model.Block) | repeated | dependent blocks (descendants) |
-| details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | deprecated, details for current and dependent smart blocks |
-| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
+| blocks | [model.Block](#anytype.model.Block) | repeated | dependent simple blocks (descendants) |
+| details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | details for the current and dependent objects |
 | objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
 | objectTypePerObject | [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject) | repeated | objectType URLs per object |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
-| layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
+| layout | [relation.ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  | layout extracted from the object type of the current object |
 
 
 
@@ -12267,7 +12266,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 | readOnly | [bool](#bool) |  | not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
 | objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
-| selectDict | [Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | repeated string selectDict = 11; // deprecated, do not use
+| selectDict | [Relation.SelectOption](#anytype.relation.Relation.SelectOption) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
 
 default dictionary with unique values to choose for select/multiSelect format |
 
@@ -12349,7 +12348,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| details | 0 | default, stored inside the smartblock&#39;s details |
+| details | 0 | default, stored inside the object&#39;s details |
 | local | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
 

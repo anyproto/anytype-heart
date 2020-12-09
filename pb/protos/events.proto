@@ -102,10 +102,8 @@ message Event {
         */
         message Show {
             string rootId = 1; // Root block id
-            repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
-            repeated Block.Set.Details details = 3; // deprecated, details for current and dependent smart blocks
-
-            SmartBlockType type = 4;
+            repeated anytype.model.Block blocks = 2; // dependent simple blocks (descendants)
+            repeated Block.Set.Details details = 3; // details for the current and dependent objects
 
             message RelationWithValuePerObject {
                 string objectId = 1;
@@ -121,7 +119,7 @@ message Event {
             repeated ObjectTypePerObject objectTypePerObject = 6; // objectType URLs per object
             repeated anytype.relation.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
 
-            anytype.relation.ObjectType.Layout layout = 8; //
+            anytype.relation.ObjectType.Layout layout = 8; // layout extracted from the object type of the current object
         }
 
         /**
