@@ -61,7 +61,7 @@ require (
 	go.uber.org/zap v1.16.0
 	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/text v0.3.4
-	google.golang.org/grpc v1.32.0
+	google.golang.org/grpc v1.34.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 )
