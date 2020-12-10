@@ -663,12 +663,12 @@ func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {
 	defer txn.Discard()
 
 	details, err := getDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
+	if err != nil {
 		return err
 	}
 
 	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.ObjectDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
+		return nil
 	}
 
 	details.Details.Fields[fieldLastOpened] = structs.Float64(float64(time.Unix()))
@@ -690,7 +690,7 @@ func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
 	defer txn.Discard()
 
 	details, err := getDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
+	if err != nil {
 		return err
 	}
 

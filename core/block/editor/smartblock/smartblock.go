@@ -237,6 +237,9 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
 				for _, rel := range dv.Relations {
 					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+						if rel.Key == "id" || rel.Key == "type" {
+							continue
+						}
 						for _, ot := range rel.ObjectTypes {
 							if slice.FindPos(uniqueObjTypes, ot) == -1 {
 								uniqueObjTypes = append(uniqueObjTypes, ot)
@@ -452,7 +455,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
-	s.SetDetail("lastModifiedDate", pbtypes.Float64(float64(time.Now().Unix())))
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return
 }

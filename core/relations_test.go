@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -321,7 +322,7 @@ func TestCustomType(t *testing.T) {
 			Name: "1",
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
-				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/pages"}},
+				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/page"}},
 				{Format: pbrelation.RelationFormat_description, Name: "bio"},
 			},
 		},
@@ -389,7 +390,7 @@ func TestCustomType(t *testing.T) {
 
 	require.NotNil(t, details.Fields[newRelation.Key])
 	require.Equal(t, "newRelationVal", details.Fields[newRelation.Key].GetStringValue())
-
+	time.Sleep(time.Second)
 	respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
 	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
 
@@ -415,7 +416,7 @@ func TestBundledType(t *testing.T) {
 
 	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
-
+	time.Sleep(time.Second)
 	respOpenPagesSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
 	require.Len(t, respOpenPagesSet.Event.Messages, 2)
@@ -428,11 +429,22 @@ func TestBundledType(t *testing.T) {
 	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 
+	time.Sleep(time.Second)
 	respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
 	require.Len(t, respOpenPagesSet.Event.Messages, 2)
 	show = respOpenPagesSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 2)
-	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[1].Fields["id"].GetStringValue())
+
+	require.True(t, hasRecordWithKeyAndVal(respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, "id", respCreatePage.PageId))
+}
+
+func hasRecordWithKeyAndVal(recs []*types2.Struct, key string, val string) bool {
+	for _, rec := range recs {
+		if pbtypes.GetString(rec, key) == val {
+			return true
+		}
+	}
+	return false
 }

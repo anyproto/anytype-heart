@@ -87,5 +87,5 @@ func (a *Anytype) ObjectUpdateLastOpened(id string) error {
 	a.lock.Lock()
 	defer a.lock.Unlock()
 
-	return a.localStore.Objects.UpdateLastModified(id, time.Now())
+	return a.localStore.Objects.UpdateLastOpened(id, time.Now())
 }

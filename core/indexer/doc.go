@@ -53,7 +53,7 @@ func (d *doc) meta() core.SmartBlockMeta {
 	}
 }
 
-func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (hasChanges bool) {
+func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (lastChangeTS int64, hasMetaChanges bool) {
 	d.lastUsage = time.Now()
 	var changes = d.changesBuf[:0]
 	for _, rec := range records {
@@ -62,6 +62,14 @@ func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (hasChanges b
 			log.Warnf("indexer: can't make change from record: %v", err)
 			continue
 		}
+		if n := time.Now().Unix(); c.Timestamp > n {
+			c.Timestamp = n
+		}
+
+		if c.Timestamp > lastChangeTS {
+			lastChangeTS = c.Timestamp
+		}
+
 		if c.HasMeta() {
 			changes = append(changes, c)
 		}
@@ -72,27 +80,29 @@ func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (hasChanges b
 
 	switch d.tree.Add(changes...) {
 	case change.Nothing:
-		return false
+		return
 	case change.Append:
 		s, err := change.BuildStateSimpleCRDT(d.st, d.tree)
 		if err != nil {
 			log.Warnf("indexer: can't build crdt state (append): %v", err)
-			return false
+			return
 		}
 		_, _, err = state.ApplyStateFast(s)
 		if err != nil {
 			log.Warnf("indexer: can't apply state: %v", err)
-			return false
+			return
 		}
-		return true
+		hasMetaChanges = true
+		return
 	case change.Rebuild:
 		doc, err := d.buildState()
 		if err != nil {
 			log.Warnf("indexer: can't build crdt state (rebuild): %v", err)
-			return false
+			return
 		}
 		d.st = doc
-		return true
+		hasMetaChanges = true
+		return
 	}
 	return
 }

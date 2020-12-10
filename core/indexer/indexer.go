@@ -147,14 +147,23 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 		log.Warnf("can't get doc '%s': %v", id, err)
 		return
 	}
-	if metaChanged := d.addRecords(records...); metaChanged {
-		meta := d.meta()
-		if err := i.store.UpdateObject(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}, nil, ""); err != nil {
-			log.With("thread", id).Errorf("can't update object store: %v", err)
-		} else {
-			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, "name"))
-		}
+	var rels *pbrelation.Relations
+	lastChangeTS, metaChanged := d.addRecords(records...)
+	meta := d.meta()
+	if metaChanged {
+		rels = &pbrelation.Relations{Relations: meta.Relations}
 	}
+
+	if meta.Details != nil && meta.Details.Fields != nil {
+		meta.Details.Fields["lastModifiedDate"] = pbtypes.Float64(float64(lastChangeTS))
+	}
+
+	if err := i.store.UpdateObject(id, meta.Details, rels, nil, ""); err != nil {
+		log.With("thread", id).Errorf("can't update object store: %v", err)
+	} else {
+		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, "name"))
+	}
+
 	if err := i.store.AddToIndexQueue(id); err != nil {
 		log.With("thread", id).Errorf("can't add id to index queue: %v", err)
 	} else {

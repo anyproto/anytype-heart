@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -255,11 +254,6 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 	if err != nil {
 		log.Errorf("failed to create record: %w", err)
 		return "", err
-	}
-
-	err = block.node.localStore.Objects.UpdateLastModified(block.thread.ID.String(), time.Now())
-	if err != nil {
-		log.Errorf("failed to update lastModified: %w", err)
 	}
 
 	log.Debugf("SmartBlock.PushRecord: blockId = %s", block.ID())
