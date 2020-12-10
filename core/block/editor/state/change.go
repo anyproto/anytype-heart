@@ -37,7 +37,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		fileKeys:       fileKeys,
 	}
 
-	s.fillLocalScopeDetails()
+	s.FillLocalScopeDetails()
 	return s
 }
 

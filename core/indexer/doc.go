@@ -93,6 +93,7 @@ func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (lastChangeTS
 			return
 		}
 		hasMetaChanges = true
+		s.FillLocalScopeDetails()
 		return
 	case change.Rebuild:
 		doc, err := d.buildState()
@@ -121,5 +122,6 @@ func (d *doc) buildState() (doc *state.State, err error) {
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
+	doc.FillLocalScopeDetails()
 	return
 }

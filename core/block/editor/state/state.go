@@ -641,7 +641,7 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 	return s
 }
 
-func (s *State) fillLocalScopeDetails() {
+func (s *State) FillLocalScopeDetails() {
 	s.SetDetail("id", pbtypes.String(s.rootId))
 	s.SetDetail("type", pbtypes.StringList(s.ObjectTypes()))
 	// todo: lastModifiedDate
