@@ -21,7 +21,7 @@ func TestFile(t *testing.T) {
 		require.NotNil(t, show)
 		require.Len(t, respOpenImage.Event.Messages[0].GetBlockShow().Details, 1)
 		require.Equal(t, "a.jpg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "name"))
-		require.Equal(t, "image/jpeg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "mimeType"))
+		require.Equal(t, "image/jpeg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "fileMimeType"))
 
 		b := getBlockById("file", respOpenImage.Event.Messages[0].GetBlockShow().Blocks)
 		require.NotNil(t, b)
