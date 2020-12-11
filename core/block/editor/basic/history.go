@@ -20,12 +20,11 @@ type history struct {
 }
 
 func (h *history) Undo(ctx *state.Context) (err error) {
+	s := h.NewStateCtx(ctx)
 	action, err := h.History().Previous()
 	if err != nil {
 		return
 	}
-
-	s := h.NewStateCtx(ctx)
 
 	for _, b := range action.Add {
 		s.Unlink(b.Model().Id)
@@ -43,12 +42,11 @@ func (h *history) Undo(ctx *state.Context) (err error) {
 }
 
 func (h *history) Redo(ctx *state.Context) (err error) {
+	s := h.NewStateCtx(ctx)
 	action, err := h.History().Next()
 	if err != nil {
 		return
 	}
-
-	s := h.NewStateCtx(ctx)
 
 	for _, b := range action.Add {
 		s.Set(b.Copy())

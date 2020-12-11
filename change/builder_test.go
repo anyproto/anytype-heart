@@ -193,9 +193,11 @@ func TestStateBuilder_Build(t *testing.T) {
 			"b",
 			newChange("c1", "s0", "s0"),
 		)
-		sb.changes["c1"] = &core.SmartblockRecord{
-			ID:      "c1",
-			Payload: []byte("invalid pb"),
+		sb.changes["c1"] = &core.SmartblockRecordEnvelope{
+			SmartblockRecord: core.SmartblockRecord{
+				ID:      "c1",
+				Payload: []byte("invalid pb"),
+			},
 		}
 		b := new(stateBuilder)
 		err := b.Build(sb)

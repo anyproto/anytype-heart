@@ -3,15 +3,19 @@ package files
 import (
 	"bytes"
 	"context"
+	"crypto/aes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"strconv"
+	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
-	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	symmetric "github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
@@ -21,28 +25,36 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/gogo/protobuf/proto"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	uio "github.com/ipfs/go-unixfs/io"
+	"github.com/miolini/datacounter"
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
-	"github.com/textileio/go-threads/crypto/symmetric"
 )
+
+const maxPinAttempts = 10
 
 var log = logging.Logger("anytype-files")
 
 type Service struct {
 	store localstore.FileStore
 	ipfs  ipfs.IPFS
-	cafe  cafe.Client
+	pins  pin.FilePinService
 }
 
-func New(store localstore.FileStore, ipfs ipfs.IPFS, cafe cafe.Client) *Service {
+type FileKeys struct {
+	Hash string
+	Keys map[string]string
+}
+
+func New(store localstore.FileStore, ipfs ipfs.IPFS, pins pin.FilePinService) *Service {
 	return &Service{
 		store: store,
 		ipfs:  ipfs,
-		cafe:  cafe,
+		pins:  pins,
 	}
 }
 
@@ -81,21 +93,22 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
-	if s.cafe != nil {
-		go func() {
-			for i := 0; i <= 10; i++ {
-				_, err := s.cafe.FilePin(context.Background(), &cafepb.FilePinRequest{Cid: nodeHash})
-				if err != nil {
-					log.Errorf("failed to pin file %s on the cafe: %s", nodeHash, err.Error())
-					time.Sleep(time.Minute * time.Duration(i+1))
-					continue
+	go func() {
+		for attempt := 1; attempt <= maxPinAttempts; attempt++ {
+			if err := s.pins.FilePin(nodeHash); err != nil {
+				if errors.Is(err, pin.ErrNoCafe) {
+					return
 				}
 
-				log.Debugf("pinning file %s started on the cafe", nodeHash)
-				break
+				log.Errorf("failed to pin file %s on the cafe (attempt %d): %s", nodeHash, attempt, err.Error())
+				time.Sleep(time.Minute * time.Duration(attempt))
+				continue
 			}
-		}()
-	}
+
+			log.Debugf("pinning file %s started on the cafe", nodeHash)
+			break
+		}
+	}()
 
 	return nodeHash, fileInfo, nil
 }
@@ -238,7 +251,53 @@ func (s *Service) fileAddNodeFromFiles(ctx context.Context, files []*storage.Fil
 }
 
 func (s *Service) FileGetInfoForPath(pth string) (*storage.FileInfo, error) {
-	return nil, fmt.Errorf("not implemented")
+	if !strings.HasPrefix(pth, "/ipfs/") {
+		return nil, fmt.Errorf("path should starts with '/ipfs/...'")
+	}
+
+	pthParts := strings.Split(pth, "/")
+	if len(pthParts) < 4 {
+		return nil, fmt.Errorf("path is too short: it should match '/ipfs/:hash/...'")
+	}
+
+	keys, err := s.FileGetKeys(pthParts[2])
+	if err != nil {
+		return nil, fmt.Errorf("failed to retrive file keys: %w", err)
+	}
+
+	if key, exists := keys.Keys["/"+strings.Join(pthParts[3:], "/")+"/"]; exists {
+		return s.fileInfoFromPath("", pth, key)
+	}
+
+	return nil, fmt.Errorf("key not found")
+}
+
+func (s *Service) FileGetKeys(hash string) (*FileKeys, error) {
+	m, err := s.store.GetFileKeys(hash)
+	if err != nil {
+		if err != localstore.ErrNotFound {
+			return nil, err
+		}
+	} else {
+		return &FileKeys{
+			Hash: hash,
+			Keys: m,
+		}, nil
+	}
+
+	// in case we don't have keys cached fot this file
+	// we should have all the CIDs locally, so 5s is more than enough
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+	fileKeysRestored, err := s.FileRestoreKeys(ctx, hash)
+	if err != nil {
+		return nil, fmt.Errorf("failed to restore file keys: %w", err)
+	}
+
+	return &FileKeys{
+		Hash: hash,
+		Keys: fileKeysRestored,
+	}, nil
 }
 
 // fileIndexData walks a file data node, indexing file links
@@ -291,32 +350,70 @@ func (s *Service) fileIndexLink(ctx context.Context, inode ipld.Node, data strin
 }
 
 func (s *Service) fileInfoFromPath(target string, path string, key string) (*storage.FileInfo, error) {
-	plaintext, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
+	cid, r, err := helpers.DataAtPath(context.TODO(), s.ipfs, path+"/"+MetaLinkName)
 	if err != nil {
 		return nil, err
 	}
+
+	var file storage.FileInfo
 
 	if key != "" {
 		key, err := symmetric.FromString(key)
 		if err != nil {
 			return nil, err
 		}
-		plaintext, err = key.Decrypt(plaintext)
+
+		modes := []storage.FileInfoEncryptionMode{storage.FileInfo_AES_CFB, storage.FileInfo_AES_GCM}
+		for i, mode := range modes {
+			if i > 0 {
+				_, err = r.Seek(0, io.SeekStart)
+				if err != nil {
+					return nil, fmt.Errorf("failed to seek ciphertext after enc mode try")
+				}
+			}
+			ed, err := getEncryptorDecryptor(key, mode)
+			if err != nil {
+				return nil, err
+			}
+			decryptedReader, err := ed.DecryptReader(r)
+			if err != nil {
+				return nil, err
+			}
+			b, err := ioutil.ReadAll(decryptedReader)
+			if err != nil {
+				if i == len(modes)-1 {
+					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
+				}
+
+				continue
+			}
+			err = proto.Unmarshal(b, &file)
+			if err != nil || file.Hash == "" {
+				if i == len(modes)-1 {
+					return nil, fmt.Errorf("failed to unmarshal file info proto with all encryption modes: %w", err)
+				}
+				continue
+			}
+			// save successful enc mode so it will be cached in the DB
+			file.EncMode = mode
+			break
+		}
+	} else {
+		b, err := ioutil.ReadAll(r)
 		if err != nil {
 			return nil, err
 		}
+		err = proto.Unmarshal(b, &file)
+		if err != nil || file.Hash == "" {
+			return nil, fmt.Errorf("failed to unmarshal unencrypted file info")
+		}
 	}
 
-	var file storage.FileInfo
-	err = proto.Unmarshal(plaintext, &file)
-	if err != nil {
-		log.Errorf("failed to decode proto: %s", string(plaintext))
-		// todo: get s fixed error if trying to unmarshal an encrypted file
-		return nil, err
+	if file.Hash == "" {
+		return nil, fmt.Errorf("failed to read file info proto with all encryption modes")
 	}
-
+	file.MetaHash = cid.String()
 	file.Targets = []string{target}
-
 	return &file, nil
 }
 
@@ -332,7 +429,7 @@ func (s *Service) fileContent(ctx context.Context, hash string) (io.ReadSeeker, 
 	return reader, file, err
 }
 
-func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo) (io.ReadSeeker, error) {
+func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo) (symmetric.ReadSeekCloser, error) {
 	fileCid, err := cid.Parse(file.Hash)
 	if err != nil {
 		return nil, err
@@ -341,39 +438,37 @@ func (s *Service) FileContentReader(ctx context.Context, file *storage.FileInfo)
 	if err != nil {
 		return nil, err
 	}
-
-	var plaintext []byte
-	if file.Key != "" {
-		key, err := symmetric.FromString(file.Key)
-		if err != nil {
-			return nil, err
-		}
-		defer fd.Close()
-		b, err := ioutil.ReadAll(fd)
-		if err != nil {
-			return nil, err
-		}
-		plaintext, err = key.Decrypt(b)
-		if err != nil {
-			return nil, err
-		}
-		return bytes.NewReader(plaintext), nil
+	if file.Key == "" {
+		return fd, nil
 	}
 
-	return fd, nil
-}
-
-func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
-	var source string
-	input, err := ioutil.ReadAll(conf.Reader)
+	key, err := symmetric.FromString(file.Key)
 	if err != nil {
 		return nil, err
 	}
 
+	dec, err := getEncryptorDecryptor(key, file.EncMode)
+	if err != nil {
+		return nil, err
+	}
+
+	return dec.DecryptReader(fd)
+}
+
+func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOptions) (*storage.FileInfo, error) {
+	var source string
 	if conf.Use != "" {
 		source = conf.Use
 	} else {
-		source = checksum(input, conf.Plaintext)
+		var err error
+		source, err = checksum(conf.Reader, conf.Plaintext)
+		if err != nil {
+			return nil, fmt.Errorf("failed to calculate checksum: %w", err)
+		}
+		_, err = conf.Reader.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, fmt.Errorf("failed to seek reader: %w", err)
+		}
 	}
 
 	opts, err := mill.Options(map[string]interface{}{
@@ -383,60 +478,107 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		return nil, err
 	}
 
-	if efile, _ := s.store.GetBySource(mill.ID(), source, opts); efile != nil {
+	if efile, _ := s.store.GetBySource(mill.ID(), source, opts); efile != nil && efile.MetaHash != "" {
+		efile.Targets = nil
 		return efile, nil
 	}
 
-	res, err := mill.Mill(input, conf.Name)
+	res, err := mill.Mill(conf.Reader, conf.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	check := checksum(res.File, conf.Plaintext)
-	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil {
+	// count the result size after the applied mill
+	readerWithCounter := datacounter.NewReaderCounter(res.File)
+	check, err := checksum(readerWithCounter, conf.Plaintext)
+	if err != nil {
+		return nil, err
+	}
+
+	if efile, _ := s.store.GetByChecksum(mill.ID(), check); efile != nil && efile.MetaHash != "" {
+		efile.Targets = nil
 		return efile, nil
 	}
 
-	model := &storage.FileInfo{
+	_, err = conf.Reader.Seek(0, io.SeekStart)
+	if err != nil {
+		return nil, err
+	}
+
+	// because mill result reader doesn't support seek we need to do the mill again
+	res, err = mill.Mill(conf.Reader, conf.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo := &storage.FileInfo{
 		Mill:     mill.ID(),
 		Checksum: check,
 		Source:   source,
 		Opts:     opts,
 		Media:    conf.Media,
 		Name:     conf.Name,
-		Size_:    int64(len(res.File)),
 		Added:    time.Now().Unix(),
 		Meta:     pb.ToStruct(res.Meta),
+		Size_:    int64(readerWithCounter.Count()),
 	}
 
-	var reader *bytes.Reader
+	var (
+		contentReader io.Reader
+		encryptor     symmetric.EncryptorDecryptor
+	)
 	if mill.Encrypt() && !conf.Plaintext {
 		key, err := symmetric.NewRandom()
 		if err != nil {
 			return nil, err
 		}
-		ciphertext, err := key.Encrypt(res.File)
+		encryptor = cfb.New(key, [aes.BlockSize]byte{})
+
+		contentReader, err = encryptor.EncryptReader(res.File)
 		if err != nil {
 			return nil, err
 		}
-		model.Key = key.String()
-		reader = bytes.NewReader(ciphertext)
+
+		fileInfo.Key = key.String()
+		fileInfo.EncMode = storage.FileInfo_AES_CFB
 	} else {
-		reader = bytes.NewReader(res.File)
+		contentReader = res.File
 	}
 
-	node, err := s.ipfs.AddFile(ctx, reader, nil)
-	if err != nil {
-		return nil, err
-	}
-	model.Hash = node.Cid().String()
-
-	err = s.store.Add(model)
+	contentNode, err := s.ipfs.AddFile(ctx, contentReader, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return model, nil
+	fileInfo.Hash = contentNode.Cid().String()
+	plaintext, err := proto.Marshal(fileInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	var metaReader io.Reader
+	if encryptor != nil {
+		metaReader, err = encryptor.EncryptReader(bytes.NewReader(plaintext))
+		if err != nil {
+			return nil, err
+		}
+	} else {
+		metaReader = bytes.NewReader(plaintext)
+	}
+
+	metaNode, err := s.ipfs.AddFile(ctx, metaReader, nil)
+	if err != nil {
+		return nil, err
+	}
+
+	fileInfo.MetaHash = metaNode.Cid().String()
+
+	err = s.store.Add(fileInfo)
+	if err != nil {
+		return nil, err
+	}
+
+	return fileInfo, nil
 }
 
 func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.Directory, link string) error {
@@ -445,39 +587,14 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 		return err
 	}
 
-	// remove locally indexed targets
-	file.Targets = nil
-
-	plaintext, err := proto.Marshal(file)
-	if err != nil {
-		return err
-	}
-
-	var reader io.Reader
-	if file.Key != "" {
-		key, err := symmetric.FromString(file.Key)
-		if err != nil {
-			return err
-		}
-
-		ciphertext, err := key.Encrypt(plaintext)
-		if err != nil {
-			return err
-		}
-
-		reader = bytes.NewReader(ciphertext)
-	} else {
-		reader = bytes.NewReader(plaintext)
-	}
-
 	pair := uio.NewDirectory(s.ipfs)
 	pair.SetCidBuilder(cidBuilder)
 
-	_, err = helpers.AddDataToDirectory(ctx, s.ipfs, pair, MetaLinkName, reader)
-	if err != nil {
-		return err
+	if file.MetaHash == "" {
+		return fmt.Errorf("metaHash is empty")
 	}
 
+	err = helpers.AddLinkToDirectory(ctx, s.ipfs, pair, MetaLinkName, file.MetaHash)
 	err = helpers.AddLinkToDirectory(ctx, s.ipfs, pair, ContentLinkName, file.Hash)
 	if err != nil {
 		return err
@@ -492,20 +609,14 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 		return err
 	}
 
-	/*err = helpers.PinNode(s.node, node, false)
-	if err != nil {
-		return err
-	}*/
-
 	return helpers.AddLinkToDirectory(ctx, s.ipfs, dir, link, node.Cid().String())
 }
 
-func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
 
-	reader := bytes.NewReader(content)
 	mil, err := anytype.GetMill(sch.Mill, sch.Opts)
 	if err != nil {
 		return nil, err
@@ -589,7 +700,7 @@ func (s *Service) fileBuildDirectory(ctx context.Context, content []byte, filena
 	return dir, nil
 }
 
-func (s *Service) FileIndexInfo(ctx context.Context, hash string) ([]*storage.FileInfo, error) {
+func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists bool) ([]*storage.FileInfo, error) {
 	links, err := helpers.LinksAtCid(ctx, s.ipfs, hash)
 	if err != nil {
 		return nil, err
@@ -634,7 +745,7 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string) ([]*storage.Fi
 		}
 	}
 
-	err = s.store.AddMulti(files...)
+	err = s.store.AddMulti(updateIfExists, files...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to add files to store: %w", err)
 	}
@@ -656,12 +767,32 @@ func looksLikeFileNode(node ipld.Node) bool {
 	return true
 }
 
-func checksum(plaintext []byte, wontEncrypt bool) string {
+func checksum(r io.Reader, wontEncrypt bool) (string, error) {
 	var add int
 	if wontEncrypt {
 		add = 1
 	}
-	plaintext = append(plaintext, byte(add))
-	sum := sha256.Sum256(plaintext)
-	return base32.RawHexEncoding.EncodeToString(sum[:])
+	h := sha256.New()
+	_, err := io.Copy(h, r)
+	if err != nil {
+		return "", err
+	}
+
+	_, err = h.Write([]byte{byte(add)})
+	if err != nil {
+		return "", err
+	}
+	checksum := h.Sum(nil)
+	return base32.RawHexEncoding.EncodeToString(checksum[:]), nil
+}
+
+func getEncryptorDecryptor(key symmetric.Key, mode storage.FileInfoEncryptionMode) (symmetric.EncryptorDecryptor, error) {
+	switch mode {
+	case storage.FileInfo_AES_GCM:
+		return gcm.New(key), nil
+	case storage.FileInfo_AES_CFB:
+		return cfb.New(key, [aes.BlockSize]byte{}), nil
+	default:
+		return nil, fmt.Errorf("unsupported encryption mode")
+	}
 }

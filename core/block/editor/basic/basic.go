@@ -254,7 +254,7 @@ func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKe
 	if b == nil {
 		return smartblock.ErrSimpleBlockNotFound
 	}
-	if !s.HasRelation(req.Key) {
+	if !bs.HasRelation(req.Key) {
 		return fmt.Errorf("relation with given key not found")
 	}
 	if rel, ok := b.(relation.Block); ok {
@@ -277,7 +277,7 @@ func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAd
 		s.AddRelation(req.Relation)
 	}
 	if rel, ok := b.(relation.Block); ok {
-		rel.SetKey(key)
+		rel.SetKey(req.Relation.Key)
 	} else {
 		return fmt.Errorf("unexpected block type: %T (want Relation)", b)
 	}

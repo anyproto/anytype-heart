@@ -8,6 +8,7 @@ import (
 	gopath "path"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/ipfs/go-cid"
 	files "github.com/ipfs/go-ipfs-files"
 	ipld "github.com/ipfs/go-ipld-format"
@@ -26,19 +27,18 @@ import (
 var log = logging.Logger("anytype-ipfs")
 
 // DataAtPath return bytes under an ipfs path
-func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) ([]byte, error) {
+func DataAtPath(ctx context.Context, node ipfs.IPFS, pth string) (cid.Cid, symmetric.ReadSeekCloser, error) {
 	resolvedPath, err := ResolvePath(ctx, node, path.New(pth))
 	if err != nil {
-		return nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
+		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
 
-	f, err := node.GetFile(ctx, resolvedPath.Cid())
+	r, err := node.GetFile(ctx, resolvedPath.Cid())
 	if err != nil {
-		return nil, err
+		return cid.Undef, nil, fmt.Errorf("failed to resolve path %s: %w", pth, err)
 	}
-	defer f.Close()
 
-	return ioutil.ReadAll(f)
+	return resolvedPath.Cid(), r, nil
 }
 
 // DataAtCid return bytes under an ipfs path
@@ -169,7 +169,6 @@ func AddDataToDirectory(ctx context.Context, node ipfs.IPFS, dir uio.Directory, 
 
 // AddLinkToDirectory adds a link to a virtual dir
 func AddLinkToDirectory(ctx context.Context, dag ipld.DAGService, dir uio.Directory, fname string, pth string) error {
-	log.Debugf("AddLinkToDirectory: %s %s\n", fname, pth)
 	id, err := cid.Decode(pth)
 	if err != nil {
 		return err

@@ -131,26 +131,23 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		return thread.Info{}, err
 	}
 
-	hasReplAddress := false
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
 		replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, thrdId)
 		if err != nil {
 			return thread.Info{}, err
 		}
-	}
+		hasReplAddress := util2.MultiAddressHasReplicator(thrd.Addrs, s.replicatorAddr)
 
-	var multiAddrs []ma.Multiaddr
-	hasReplAddress = util2.MultiAddressHasReplicator(thrd.Addrs, s.replicatorAddr)
-
-	if !hasReplAddress && replAddrWithThread != nil {
-		multiAddrs = append(multiAddrs, replAddrWithThread)
+		if !hasReplAddress && replAddrWithThread != nil {
+			thrd.Addrs = append(thrd.Addrs, replAddrWithThread)
+		}
 	}
 
 	threadInfo := threadInfo{
 		ID:    db2.InstanceID(thrd.ID.String()),
 		Key:   thrd.Key.String(),
-		Addrs: util2.MultiAddressesToStrings(multiAddrs),
+		Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
 	}
 
 	// todo: wait for threadsCollection to push?

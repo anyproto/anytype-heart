@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/sync"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
@@ -22,9 +23,11 @@ import (
 	"github.com/libp2p/go-libp2p-core/pnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	libp2ptls "github.com/libp2p/go-libp2p-tls"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/app"
 	"github.com/textileio/go-threads/core/logstore"
+	tlcore "github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	"github.com/textileio/go-threads/net"
 	"google.golang.org/grpc"
@@ -66,15 +69,21 @@ func DefaultNetwork(
 	if err := os.MkdirAll(ipfsLitePath, os.ModePerm); err != nil {
 		return nil, err
 	}
-	litestore, err := badger.NewDatastore(ipfsLitePath, &badger.DefaultOptions)
-	if err != nil {
-		return nil, err
+	var ds datastore.Batching
+	if config.InMemoryDS {
+		ds = sync.MutexWrap(datastore.NewMapDatastore())
+	} else {
+		var err error
+		ds, err = badger.NewDatastore(ipfsLitePath, &badger.DefaultOptions)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
-	pstore, err := pstoreds.NewPeerstore(ctx, litestore, pstoreds.DefaultOpts())
+	pstore, err := pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
 	if err != nil {
-		litestore.Close()
+		ds.Close()
 		cancel()
 		return nil, err
 	}
@@ -89,21 +98,22 @@ func DefaultNetwork(
 		privKey,
 		pnet,
 		[]ma.Multiaddr{config.HostAddr},
-		litestore,
+		ds,
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),
 		libp2p.Peerstore(pstore),
+		libp2p.Security(libp2ptls.ID, libp2ptls.New),
 	)
 
 	if err != nil {
 		cancel()
-		litestore.Close()
+		ds.Close()
 		return nil, err
 	}
 
-	lite, err := ipfslite.New(ctx, litestore, h, d, &ipfslite.Config{Offline: config.Offline})
+	lite, err := ipfslite.New(ctx, ds, h, d, &ipfslite.Config{Offline: config.Offline})
 	if err != nil {
 		cancel()
-		litestore.Close()
+		ds.Close()
 		return nil, err
 	}
 	// Build a logstore
@@ -114,7 +124,7 @@ func DefaultNetwork(
 	logstore, err := badger.NewDatastore(logstorePath, &badger.DefaultOptions)
 	if err != nil {
 		cancel()
-		litestore.Close()
+		ds.Close()
 		return nil, err
 	}
 	tstore, err := lstoreds.NewLogstore(ctx, logstore, lstoreds.DefaultOpts())
@@ -123,21 +133,28 @@ func DefaultNetwork(
 		if err := logstore.Close(); err != nil {
 			return nil, err
 		}
-		litestore.Close()
+		ds.Close()
 		return nil, err
+	}
+
+	// persistent sync tracking only
+	var syncBook tlcore.SyncBook
+	if config.SyncTracking {
+		syncBook = tstore
 	}
 
 	api, err := net.NewNetwork(ctx, h, lite.BlockStore(), lite, tstore, net.Config{
 		Debug:        config.Debug,
 		PubSub:       config.PubSub,
 		SyncTracking: config.SyncTracking,
+		SyncBook:     syncBook,
 	}, config.GRPCServerOptions, config.GRPCDialOptions)
 	if err != nil {
 		cancel()
 		if err := logstore.Close(); err != nil {
 			return nil, err
 		}
-		litestore.Close()
+		ds.Close()
 		return nil, err
 	}
 
@@ -148,7 +165,7 @@ func DefaultNetwork(
 		pstore:            pstore,
 		logstore:          tstore,
 		logstoreDatastore: logstore,
-		litestore:         litestore,
+		litestore:         ds,
 		host:              h,
 		lanDht:            d.LAN,
 		wanDht:            d.WAN,
@@ -162,7 +179,9 @@ type NetConfig struct {
 	SyncTracking      bool
 	Debug             bool
 	Offline           bool
-	PubSub            bool
+	InMemoryDS        bool // should be used for tests only
+
+	PubSub bool
 }
 
 type NetOption func(c *NetConfig) error
@@ -170,6 +189,13 @@ type NetOption func(c *NetConfig) error
 func WithNetHostAddr(addr ma.Multiaddr) NetOption {
 	return func(c *NetConfig) error {
 		c.HostAddr = addr
+		return nil
+	}
+}
+
+func WithInMemoryDS(inMemoryDS bool) NetOption {
+	return func(c *NetConfig) error {
+		c.InMemoryDS = inMemoryDS
 		return nil
 	}
 }
@@ -209,9 +235,9 @@ func WithNetGRPCDialOptions(opts ...grpc.DialOption) NetOption {
 	}
 }
 
-func WithNetSyncTracking() NetOption {
+func WithNetSyncTracking(enabled bool) NetOption {
 	return func(c *NetConfig) error {
-		c.SyncTracking = true
+		c.SyncTracking = enabled
 		return nil
 	}
 }

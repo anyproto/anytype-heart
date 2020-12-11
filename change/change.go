@@ -5,25 +5,30 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 )
 
-func NewChangeFromRecord(record core.SmartblockRecordWithLogID) (*Change, error) {
+func NewChangeFromRecord(record core.SmartblockRecordEnvelope) (*Change, error) {
 	var ch = &pb.Change{}
 	if err := record.Unmarshal(ch); err != nil {
 		return nil, err
 	}
 	return &Change{
-		Id:     record.ID,
-		Change: ch,
+		Id:      record.ID,
+		Account: record.AccountID,
+		Device:  record.LogID,
+		Change:  ch,
 	}, nil
 }
 
 type Change struct {
 	Id          string
+	Account     string
+	Device      string
 	Next        []*Change
 	detailsOnly bool
 	*pb.Change
@@ -62,7 +67,7 @@ func (ch *Change) HasMeta() bool {
 	return false
 }
 
-func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*core.FileKeys) proto.Marshaler {
+func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler {
 	fkeys := make([]*pb.ChangeFileKeys, len(fileKeys))
 	for i, k := range fileKeys {
 		fkeys[i] = &pb.ChangeFileKeys{

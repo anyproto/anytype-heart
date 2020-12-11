@@ -7,6 +7,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
@@ -26,9 +27,9 @@ type Service interface {
 	FetchObjectTypes(objectTypeUrls []string) []*pbrelation.ObjectType
 }
 
-func NewService(a anytype.Service) Service {
+func NewService(a anytype.Service, ss status.Service) Service {
 	s := &service{
-		ps: newPubSub(a),
+		ps: newPubSub(a, ss),
 	}
 	var newSmartblockCh = make(chan string)
 	if err := a.InitNewSmartblocksChan(newSmartblockCh); err != nil {

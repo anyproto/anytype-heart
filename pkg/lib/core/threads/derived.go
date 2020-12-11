@@ -60,6 +60,8 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
+	// FIXME: method refactoring required, racy vars (err)
+
 	s.Lock()
 	defer s.Unlock()
 
@@ -329,7 +331,7 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 			// if thread doesn't yet have s replicatorAddr this function will continuously try to add it in the background
 			err = s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
 			if err != nil {
-				log.Errorf("existing thread failed to add replicatorAddr: ", err.Error())
+				log.Errorf("existing thread failed to add replicatorAddr: %v", err)
 				return
 			}
 		}

@@ -25,13 +25,13 @@ func BuildTreeBefore(s core.SmartBlock, beforeLogId string, includeBeforeId bool
 	return sb.tree, err
 }
 
-func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
+func BuildTree(s core.SmartBlock) (t *Tree, logHeads map[string]*Change, err error) {
 	sb := new(stateBuilder)
 	err = sb.Build(s)
 	return sb.tree, sb.logHeads, err
 }
 
-func BuildMetaTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err error) {
+func BuildMetaTree(s core.SmartBlock) (t *Tree, logHeads map[string]*Change, err error) {
 	sb := &stateBuilder{onlyMeta: true}
 	err = sb.Build(s)
 	return sb.tree, sb.logHeads, err
@@ -39,7 +39,7 @@ func BuildMetaTree(s core.SmartBlock) (t *Tree, logHeads map[string]string, err 
 
 type stateBuilder struct {
 	cache           map[string]*Change
-	logHeads        map[string]string
+	logHeads        map[string]*Change
 	tree            *Tree
 	smartblock      core.SmartBlock
 	qt              time.Duration
@@ -90,19 +90,24 @@ func (sb *stateBuilder) getLogs() (logs []core.SmartblockLog, err error) {
 	}
 	logs, err = sb.smartblock.GetLogs()
 	if err != nil {
-		return nil, fmt.Errorf("GetLogs error: %v", err)
+		return nil, fmt.Errorf("GetLogs error: %w", err)
 	}
 	log.Debugf("build tree: logs: %v", logs)
-	sb.logHeads = make(map[string]string)
+	sb.logHeads = make(map[string]*Change)
 	if len(logs) == 0 || len(logs) == 1 && len(logs[0].Head) <= 1 {
 		return nil, ErrEmpty
 	}
 	var nonEmptyLogs = logs[:0]
 	for _, l := range logs {
-		sb.logHeads[l.ID] = l.Head
-		if l.Head != "" {
-			nonEmptyLogs = append(nonEmptyLogs, l)
+		if len(l.Head) == 0 {
+			continue
 		}
+		if ch, err := sb.loadChange(l.Head); err != nil {
+			log.Errorf("loading head %s of the log %s failed: %v", l.Head, l.ID, err)
+		} else {
+			sb.logHeads[l.ID] = ch
+		}
+		nonEmptyLogs = append(nonEmptyLogs, l)
 	}
 	return nonEmptyLogs, nil
 }
@@ -347,7 +352,7 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return ch, nil
 	}
 	if sb.smartblock == nil {
-		return
+		return nil, fmt.Errorf("no smarblock in builder")
 	}
 	st := time.Now()
 	sr, err := sb.smartblock.GetRecord(context.TODO(), id)
@@ -359,7 +364,13 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if err = sr.Unmarshal(chp); err != nil {
 		return
 	}
-	ch = &Change{Id: id, Change: chp}
+	ch = &Change{
+		Id:      id,
+		Account: sr.AccountID,
+		Device:  sr.LogID,
+		Change:  chp,
+	}
+
 	if sb.onlyMeta {
 		ch.PreviousIds = ch.PreviousMetaIds
 	}

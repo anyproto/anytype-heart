@@ -41,7 +41,7 @@ func newFixture(t *testing.T) (fx *fixture) {
 	fx = &fixture{
 		ctrl:    ctrl,
 		anytype: at,
-		Service: NewService(at),
+		Service: NewService(at, nil),
 		source:  s,
 	}
 	fx.PubSub().(*pubSub).newSource = func(id string) (source.Source, error) {

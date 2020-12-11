@@ -37,7 +37,7 @@ type LocalStore struct {
 type FileStore interface {
 	Indexable
 	Add(file *storage.FileInfo) error
-	AddMulti(files ...*storage.FileInfo) error
+	AddMulti(upsert bool, files ...*storage.FileInfo) error
 	AddFileKeys(fileKeys ...FileKeys) error
 	GetFileKeys(hash string) (map[string]string, error)
 	GetByHash(hash string) (*storage.FileInfo, error)
@@ -50,17 +50,17 @@ type FileStore interface {
 	Count() (int, error)
 	DeleteByHash(hash string) error
 	DeleteFileKeys(hash string) error
+	List() ([]*storage.FileInfo, error)
 }
 
 type ObjectStore interface {
 	Indexable
 	database.Reader
 
-	AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error
 	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	UpdateLastModified(id string, time time.Time) error
 	UpdateLastOpened(id string, time time.Time) error
-	DeletePage(id string) error
+	DeleteObject(id string) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)

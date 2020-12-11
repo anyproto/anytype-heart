@@ -18,9 +18,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -46,6 +48,7 @@ type Hook int
 const (
 	HookOnNewState Hook = iota
 	HookOnClose
+	HookOnBlockClose
 )
 
 var log = logging.Logger("anytype-mw-smartblock")
@@ -70,17 +73,22 @@ type SmartBlock interface {
 	History() undo.History
 	Anytype() anytype.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
+	Relations() []*pbrelation.Relation
+	HasRelation(relationKey string) bool
 	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	UpdateExtraRelations(relations []*pbrelation.Relation) (err error)
+	UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(relationKeys []string) (err error)
 	AddObjectTypes(objectTypes []string) (err error)
 	RemoveObjectTypes(objectTypes []string) (err error)
+	FileRelationKeys() []string
 
 	Reindex() error
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
+	MetaService() meta.Service
+	BlockClose()
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -105,6 +113,16 @@ type smartBlock struct {
 	defaultObjectTypeUrl string
 	onNewStateHooks      []func()
 	onCloseHooks         []func()
+	onBlockCloseHooks    []func()
+}
+
+func (sb *smartBlock) HasRelation(key string) bool {
+	for _, rel := range sb.Relations() {
+		if rel.Key == key {
+			return true
+		}
+	}
+	return false
 }
 
 func (sb *smartBlock) Id() string {
@@ -150,7 +168,7 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, objectTypesUrlByObject, objectTypes, err := sb.fetchMeta()
+		details, objectTypeUrlByObject, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
 		}
@@ -162,18 +180,17 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		}
 
 		var layout pbrelation.ObjectTypeLayout
-		for _, objectTypesUrlForObject := range objectTypesUrlByObject {
+		for _, objectTypesUrlForObject := range objectTypeUrlByObject {
 			if objectTypesUrlForObject.ObjectId != sb.Id() {
 				continue
 			}
-			for _, otUrl := range objectTypesUrlForObject.ObjectTypes {
-				for _, ot := range objectTypes {
-					if ot.Url == otUrl {
-						layout = ot.Layout
-					}
+
+			for _, ot := range objectTypes {
+				if ot.Url == objectTypesUrlForObject.ObjectType {
+					layout = ot.Layout
+					break
 				}
 			}
-
 		}
 
 		// todo: sb.Relations() makes extra query to read objectType which we already have here
@@ -181,14 +198,14 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-					RootId:               sb.RootId(),
-					Type:                 sb.Type(),
-					Blocks:               sb.Blocks(),
-					Details:              details,
-					Relations:            sb.Relations(),
-					ObjectTypesPerObject: objectTypesUrlByObject,
-					ObjectTypes:          objectTypes,
-					Layout:               layout,
+					RootId:              sb.RootId(),
+					Type:                sb.Type(),
+					Blocks:              sb.Blocks(),
+					Details:             details,
+					Relations:           sb.Relations(),
+					ObjectTypePerObject: objectTypeUrlByObject,
+					ObjectTypes:         objectTypes,
+					Layout:              layout,
 				}},
 			},
 		})
@@ -196,7 +213,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypesUrlByObject []*pb.EventBlockShowObjectTypesPerObject, objectTypes []*pbrelation.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypeUrlByObject []*pb.EventBlockShowObjectTypePerObject, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -211,22 +228,30 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 		SmartBlockMeta: *sb.Meta(),
 	})
 
-	var objectTypesMap = map[string]struct{}{}
-	for _, ot := range sb.ObjectTypes() {
-		objectTypesMap[ot] = struct{}{}
-	}
+	var uniqueObjTypes []string
 
 	if sb.Type() == pb.SmartBlockType_Set {
 		// add the object type from the dataview source
 		if b := sb.Doc.Pick("dataview"); b != nil {
 			if dv := b.Model().GetDataview(); dv != nil {
-				objectTypesMap[dv.Source] = struct{}{}
+				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
+				for _, rel := range dv.Relations {
+					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+						for _, ot := range rel.ObjectTypes {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								uniqueObjTypes = append(uniqueObjTypes, ot)
+							}
+						}
+					}
+				}
 			}
 		}
 	}
 
 	// todo: should we use badger here?
 	timeout := time.After(time.Second)
+	var objectTypeUrlByObjectMap = map[string]string{}
+
 	for i := 0; i < len(sb.depIds); i++ {
 		select {
 		case <-timeout:
@@ -239,23 +264,27 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 				})
 			}
 			if d.ObjectTypes != nil {
-				for _, ot := range d.ObjectTypes {
-					objectTypesMap[ot] = struct{}{}
+				if len(d.SmartBlockMeta.ObjectTypes) > 0 {
+					if len(d.SmartBlockMeta.ObjectTypes) > 1 {
+						log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
+					}
+					trimedType := d.SmartBlockMeta.ObjectTypes[0]
+					if slice.FindPos(uniqueObjTypes, trimedType) == -1 {
+						uniqueObjTypes = append(uniqueObjTypes, trimedType)
+					}
+					objectTypeUrlByObjectMap[d.BlockId] = trimedType
 				}
-
-				objectTypesUrlByObject = append(objectTypesUrlByObject, &pb.EventBlockShowObjectTypesPerObject{
-					ObjectId:    d.BlockId,
-					ObjectTypes: d.SmartBlockMeta.ObjectTypes,
-				})
 			}
 		}
 	}
 
-	var objectTypesUrls []string
-	for ot := range objectTypesMap {
-		objectTypesUrls = append(objectTypesUrls, ot)
+	objectTypes = sb.meta.FetchObjectTypes(uniqueObjTypes)
+	for id, ot := range objectTypeUrlByObjectMap {
+		objectTypeUrlByObject = append(objectTypeUrlByObject, &pb.EventBlockShowObjectTypePerObject{
+			ObjectId:   id,
+			ObjectType: ot,
+		})
 	}
-	objectTypes = sb.meta.FetchObjectTypes(objectTypesUrls)
 
 	defer func() {
 		go func() {
@@ -321,19 +350,31 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		details := sb.Doc.(*state.State).Details()
 
 		for _, rel := range sb.Relations() {
-			if rel.Format == pbrelation.RelationFormat_object {
-				if strings.HasPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix) {
-					ids = append(ids, strings.TrimPrefix(rel.ObjectType, objects.CustomObjectTypeURLPrefix))
+			if rel.Format != pbrelation.RelationFormat_object && rel.Format != pbrelation.RelationFormat_file {
+				continue
+			}
+			// add all custom object types as dependents
+			for _, ot := range rel.ObjectTypes {
+				if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
+					ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
 				}
+			}
 
-				if targetId := pbtypes.GetString(details, rel.Key); targetId != "" {
+			if rel.Key == "id" || rel.Key == "type" {
+				continue
+			}
+
+			// add all object relation values as dependents
+			for _, targetId := range pbtypes.GetStringList(details, rel.Key) {
+				if targetId != "" {
 					ids = append(ids, targetId)
 				}
 			}
 		}
-
 	}
+	util.UniqueStrings(ids)
 	sort.Strings(ids)
+
 	return
 }
 
@@ -380,14 +421,14 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		return nil
 	}
 	st := sb.Doc.(*state.State)
-	fileDetailsKeys := sb.fileDetailsKeys()
+	fileDetailsKeys := sb.FileRelationKeys()
 	pushChangeParams := source.PushChangeParams{
 		State:             st,
 		Changes:           st.GetChanges(),
 		FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
 		DoSnapshot:        doSnapshot,
 		GetAllFileHashes: func() []string {
-			return st.GetAllFileHashes(fileDetailsKeys)
+			return st.GetAllFileHashes(sb.FileRelationKeys())
 		},
 	}
 	id, err := sb.source.PushChange(pushChangeParams)
@@ -411,12 +452,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if act.Details != nil {
+	if act.Details != nil || act.ObjectTypes != nil || act.Relations != nil {
 		sb.meta.ReportChange(meta.Meta{
 			BlockId:        sb.Id(),
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
+	s.SetDetail("lastModifiedDate", pbtypes.Float64(float64(time.Now().Unix())))
 	sb.updatePageStoreNoErr(beforeSnippet, &act)
 	return
 }
@@ -473,17 +515,21 @@ func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (e
 
 	if act == nil || act.Details != nil {
 		storeInfo.details = pbtypes.CopyStruct(sb.Details())
+		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
 	}
 
 	if act == nil || act.Relations != nil {
 		storeInfo.relations = &pbrelation.Relations{Relations: pbtypes.CopyRelations(sb.ExtraRelations())}
 	}
 
-	if storeInfo.details == nil || storeInfo.details.Fields == nil {
-		storeInfo.details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
+	if act == nil || act.ObjectTypes != nil {
+		storeInfo.details = pbtypes.CopyStruct(sb.Details())
+		if storeInfo.details == nil || storeInfo.details.Fields == nil {
+			storeInfo.details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
 
-	storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
+		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
+	}
 
 	if hasDepIds(act) {
 		if sb.checkSubscriptions() {
@@ -545,7 +591,11 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 		}
 	}
 	for _, detail := range details {
-		copy.Fields[detail.Key] = detail.Value
+		if detail.Value != nil {
+			copy.Fields[detail.Key] = detail.Value
+		} else {
+			delete(copy.Fields, detail.Key)
+		}
 	}
 	if copy.Equal(sb.Details()) {
 		return
@@ -558,26 +608,26 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 }
 
 func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.ExtraRelations())
+	copy := pbtypes.CopyRelations(sb.Relations())
 
 	var existsMap = map[string]struct{}{}
 	for _, rel := range copy {
 		existsMap[rel.Key] = struct{}{}
 	}
 	for _, rel := range relations {
+		if rel.Key == "" {
+			rel.Key = bson.NewObjectId().Hex()
+		}
 		if _, exists := existsMap[rel.Key]; !exists {
-			if rel.Key == "" {
-				rel.Key = bson.NewObjectId().Hex()
-			}
 			// we return the pointers slice here just for clarity
 			relationsWithKeys = append(relationsWithKeys, rel)
-			copy = append(copy, rel)
+			copy = append(copy, pbtypes.CopyRelation(rel))
 		} else {
 			return nil, fmt.Errorf("relation with the same key already exists")
 		}
 	}
 
-	s := sb.NewState().SetRelations(copy)
+	s := sb.NewState().SetExtraRelations(copy)
 
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
@@ -622,19 +672,49 @@ func (sb *smartBlock) RemoveObjectTypes(objectTypes []string) (err error) {
 	return
 }
 
-func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation) (err error) {
-	copy := pbtypes.CopyRelations(sb.ExtraRelations())
+func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+	objectTypeRelations := pbtypes.CopyRelations(sb.ObjectTypeRelations())
+	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
+	relationsToSet := pbtypes.CopyRelations(relations)
 
-	for i, rel := range copy {
-		for _, relation := range relations {
-			if rel.Key == relation.Key {
-				copy[i] = relation
+	var somethingChanged bool
+	var newRelations []*pbrelation.Relation
+mainLoop:
+	for i := range relationsToSet {
+		for j := range objectTypeRelations {
+			if objectTypeRelations[j].Key == relationsToSet[i].Key {
+				if pbtypes.RelationEqual(objectTypeRelations[j], relationsToSet[i]) {
+					continue mainLoop
+				} else if !pbtypes.RelationCompatible(objectTypeRelations[j], relationsToSet[i]) {
+					return fmt.Errorf("can't set extraRelation incompatible with the same-key relation in the objectType")
+				}
 			}
+		}
+		for j := range extraRelations {
+			if extraRelations[j].Key == relationsToSet[i].Key {
+				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
+					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
+						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
+					}
+					extraRelations[j] = relationsToSet[i]
+					somethingChanged = true
+				}
+				continue mainLoop
+			}
+		}
+
+		if createIfMissing {
+			somethingChanged = true
+			newRelations = append(newRelations, relations[i])
 		}
 	}
 
-	s := sb.NewState().SetRelations(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if !somethingChanged {
+		return
+	}
+
+	s := sb.NewState().SetExtraRelations(append(extraRelations, newRelations...))
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return
@@ -656,7 +736,7 @@ func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
 		}
 	}
 
-	s := sb.NewState().SetRelations(filtered)
+	s := sb.NewState().SetExtraRelations(filtered)
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
@@ -709,6 +789,15 @@ func (sb *smartBlock) Reindex() (err error) {
 	return sb.updatePageStore("", nil)
 }
 
+func (sb *smartBlock) MetaService() meta.Service {
+	return sb.meta
+}
+
+func (sb *smartBlock) BlockClose() {
+	sb.execHooks(HookOnBlockClose)
+	sb.SetEventFunc(nil)
+}
+
 func (sb *smartBlock) Close() (err error) {
 	sb.execHooks(HookOnClose)
 	if sb.metaSub != nil {
@@ -723,7 +812,8 @@ func hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
-	if act.Relations != nil || act.ObjectTypes != nil {
+	// todo: check details for exact object-relations changes
+	if act.Relations != nil || act.ObjectTypes != nil || act.Details != nil {
 		return true
 	}
 	for _, edit := range act.Change {
@@ -776,9 +866,9 @@ func (sb *smartBlock) storeFileKeys() {
 	if len(keys) == 0 {
 		return
 	}
-	fileKeys := make([]core.FileKeys, len(keys))
+	fileKeys := make([]files.FileKeys, len(keys))
 	for i, k := range keys {
-		fileKeys[i] = core.FileKeys{
+		fileKeys[i] = files.FileKeys{
 			Hash: k.Hash,
 			Keys: k.Keys,
 		}
@@ -795,19 +885,28 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 			sb.onCloseHooks = append(sb.onCloseHooks, f)
 		case HookOnNewState:
 			sb.onNewStateHooks = append(sb.onNewStateHooks, f)
+		case HookOnBlockClose:
+			sb.onBlockCloseHooks = append(sb.onBlockCloseHooks, f)
 		}
 	}
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
+	return relation.MergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
+}
+
+func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
-		for _, objType := range objectTypes {
-			relations = append(relations, objType.Relations...)
+		if !(len(objectTypes) == 1 && objectTypes[0].Url == objects.BundledObjectTypeURLPrefix+"objectType") {
+			// do not fetch objectTypes for object type type to avoid universe collapse
+			for _, objType := range objectTypes {
+				relations = append(relations, objType.Relations...)
+			}
 		}
 	}
-	return relation.MergeAndSortRelations(relations, sb.ExtraRelations(), sb.Details())
+	return relations
 }
 
 func (sb *smartBlock) execHooks(event Hook) {
@@ -817,6 +916,8 @@ func (sb *smartBlock) execHooks(event Hook) {
 		hooks = sb.onNewStateHooks
 	case HookOnClose:
 		hooks = sb.onCloseHooks
+	case HookOnBlockClose:
+		hooks = sb.onBlockCloseHooks
 	}
 	for _, h := range hooks {
 		if h != nil {
@@ -825,7 +926,7 @@ func (sb *smartBlock) execHooks(event Hook) {
 	}
 }
 
-func (sb *smartBlock) fileDetailsKeys() (fileKeys []string) {
+func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
 	for _, rel := range sb.Relations() {
 		if rel.Format == pbrelation.RelationFormat_file {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {

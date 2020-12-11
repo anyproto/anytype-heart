@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -18,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
-	"github.com/golang/mock/gomock"
 )
 
 func New(id string) *SmartTest {
@@ -29,9 +29,9 @@ func New(id string) *SmartTest {
 	}
 }
 
-func NewWithAnytype(id string, ctrl *gomock.Controller) *SmartTest {
+func NewWithMeta(id string, ms meta.Service) *SmartTest {
 	st := New(id)
-	st.anytype = testMock.NewMockService(ctrl)
+	st.ms = ms
 	return st
 }
 
@@ -41,12 +41,21 @@ type SmartTest struct {
 	id      string
 	hist    undo.History
 	meta    *core.SmartBlockMeta
+	ms      meta.Service
 	sync.Mutex
 	state.Doc
 }
 
 func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
 	return
+}
+
+func (st *SmartTest) HasRelation(relationKey string) bool {
+	return st.NewState().HasRelation(relationKey)
+}
+
+func (st *SmartTest) Relations() []*pbrelation.Relation {
+	return nil
 }
 
 func (st *SmartTest) DefaultObjectTypeUrl() string {
@@ -66,11 +75,11 @@ func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relati
 		}
 		st.meta.Relations = append(st.meta.Relations, pbtypes.CopyRelation(d))
 	}
-	st.Doc.(*state.State).SetRelations(st.meta.Relations)
+	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
 	return st.meta.Relations, nil
 }
 
-func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation) (err error) {
+func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -86,12 +95,12 @@ func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation) (err
 			found = true
 			st.meta.Relations[i] = d
 		}
-		if !found {
+		if !found && !createIfMissing {
 			return fmt.Errorf("relation not found")
 		}
 	}
 
-	st.Doc.(*state.State).SetRelations(st.meta.Relations)
+	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
 	return nil
 }
 
@@ -202,6 +211,18 @@ func (st *SmartTest) AddBlock(b simple.Block) *SmartTest {
 
 func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 	return nil
+}
+
+func (st *SmartTest) MetaService() meta.Service {
+	return st.ms
+}
+
+func (st *SmartTest) FileRelationKeys() []string {
+	return nil
+}
+
+func (st *SmartTest) BlockClose() {
+	st.SetEventFunc(nil)
 }
 
 func (st *SmartTest) Close() (err error) {

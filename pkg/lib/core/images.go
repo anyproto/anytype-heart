@@ -6,7 +6,9 @@ import (
 	"io"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
@@ -18,9 +20,9 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}
 
 	// check the image files count explicitly because we have a bug when the info can be cached not fully(only for some files)
-	if len(files) < 4 {
+	if len(files) < 4 || files[0].MetaHash == "" {
 		// index image files info from ipfs
-		files, err = a.files.FileIndexInfo(ctx, hash)
+		files, err = a.files.FileIndexInfo(ctx, hash, true)
 		if err != nil {
 			log.Errorf("ImageByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrImageNotFound
@@ -61,17 +63,29 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		return nil, err
 	}
 
-	return &image{
+	img := &image{
 		hash:            hash,
 		variantsByWidth: variants,
 		service:         a.files,
-	}, nil
+	}
+
+	details, err := img.Details()
+	if err != nil {
+		return nil, err
+	}
+
+	err = a.localStore.Objects.UpdateObject(img.hash, details, &pbrelation.Relations{Relations: relation.BundledObjectTypes["image"].Relations}, nil, "")
+	if err != nil {
+		return nil, err
+	}
+
+	return img, nil
 }
 
 func (a *Anytype) ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error) {
 	return a.ImageAdd(ctx, files.WithBytes(content), files.WithName(filename))
 }
 
-func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.Reader, filename string) (Image, error) {
+func (a *Anytype) ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) {
 	return a.ImageAdd(ctx, files.WithReader(content), files.WithName(filename))
 }

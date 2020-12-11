@@ -23,15 +23,21 @@ type Record struct {
 
 type Reader interface {
 	Query(schema *schema.Schema, q Query) (records []Record, total int, err error)
+	QueryAndSubscribeForChanges(schema *schema.Schema, q Query, subscription Subscription) (records []Record, close func(), total int, err error)
+
+	QueryById(ids []string) (records []Record, err error)
+	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
+
 	AggregateRelations(schema *schema.Schema) (relations []*pbrelation.Relation, err error)
 }
 
 type Writer interface {
 	// Creating record involves some additional operations that may change
 	// the record. So we return potentially modified record as a result.
-	Create(rec Record) (Record, error)
+	// in case subscription is not nil it will be subscribed to the record updates
+	Create(relations []*pbrelation.Relation, rec Record, sub Subscription) (Record, error)
 
-	Update(id string, rec Record) error
+	Update(id string, relations []*pbrelation.Relation, rec Record) error
 	Delete(id string) error
 }
 
@@ -107,24 +113,26 @@ func (filters filters) Filter(e query.Entry) bool {
 	}
 
 	var foundType bool
-	if t, ok := details.Details.Fields["type"]; ok {
-		if list := t.GetListValue(); list != nil {
-			for _, val := range list.Values {
-				if val.GetStringValue() == filters.Schema.ObjType.Url {
-					foundType = true
-					break
+	if filters.Schema != nil {
+		if t, ok := details.Details.Fields["type"]; ok {
+			if list := t.GetListValue(); list != nil {
+				for _, val := range list.Values {
+					if val.GetStringValue() == filters.Schema.ObjType.Url {
+						foundType = true
+						break
+					}
 				}
 			}
+		} else {
+			if filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+				// backward compatibility in case we don't have type indexed for pages
+				foundType = true
+			}
 		}
-	} else {
-		if filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
-			// backward compatibility in case we don't have type indexed for pages
-			foundType = true
-		}
-	}
 
-	if !foundType {
-		return false
+		if !foundType {
+			return false
+		}
 	}
 
 	if len(filters.Filters) == 0 {
@@ -133,21 +141,22 @@ func (filters filters) Filter(e query.Entry) bool {
 
 	total := true
 	for _, filter := range filters.Filters {
-		var res bool
-		rel, err := filters.Schema.GetRelationByKey(filter.RelationKey)
-		if err != nil {
-			log.Errorf("failed to find relation %s for the filter: %s", filter.RelationKey, err.Error())
-			continue
-		}
-		isDate := rel.Format == pbrelation.RelationFormat_date
+		var res, isDate, dateIncludeTime bool
+		if filters.Schema != nil {
+			rel, err := filters.Schema.GetRelationByKey(filter.RelationKey)
+			if err != nil {
+				log.Errorf("failed to find relation %s for the filter: %s", filter.RelationKey, err.Error())
+				continue
+			}
+			isDate = rel.Format == pbrelation.RelationFormat_date
 
-		var dateIncludeTime = false
-		if isDate {
-			relation := getRelationByKey(filters.Relations, filter.RelationKey)
-			if relation == nil {
-				log.Debugf("failed to get relation options for %s: %s", filter.RelationKey)
-			} else {
-				dateIncludeTime = relation.GetDateOptions() != nil && relation.GetDateOptions().IncludeTime
+			if isDate {
+				relation := getRelationByKey(filters.Relations, filter.RelationKey)
+				if relation == nil {
+					log.Debugf("failed to get relation options for %s: %s", filter.RelationKey)
+				} else {
+					dateIncludeTime = relation.DateIncludeTime
+				}
 			}
 		}
 
@@ -156,9 +165,15 @@ func (filters filters) Filter(e query.Entry) bool {
 		case model.BlockContentDataviewFilter_Equal:
 			if v1, ok := filter.Value.Kind.(*types.Value_StringValue); ok {
 				if details.Details == nil || details.Details.Fields == nil || details.Details.Fields[filter.RelationKey] == nil {
-					res = v1.String() == ""
+					res = v1.StringValue == ""
 				} else if v2, ok := details.Details.Fields[filter.RelationKey].Kind.(*types.Value_StringValue); ok {
-					res = strings.EqualFold(v1.String(), v2.String())
+					res = strings.EqualFold(v1.StringValue, v2.StringValue)
+				} else if v2, ok := details.Details.Fields[filter.RelationKey].Kind.(*types.Value_ListValue); ok {
+					if len(v2.ListValue.Values) != 1 {
+						res = false
+					} else {
+						res = strings.EqualFold(v1.StringValue, v2.ListValue.Values[0].GetStringValue())
+					}
 				}
 			} else {
 				if isDate {
@@ -252,12 +267,25 @@ func (filters filters) Filter(e query.Entry) bool {
 				break
 			}
 
+			if len(list.Values) == 0 {
+				// true in case client send an empty IN request
+				res = true
+				break
+			}
+
 			detail := details.Details.Fields[filter.RelationKey]
 			if detail == nil {
 				res = false
 				break
 			}
-
+			if v, isList := detail.Kind.(*types.Value_ListValue); isList {
+				if len(v.ListValue.Values) != 1 {
+					// IN query can work only on single item value
+					res = false
+					break
+				}
+				detail = v.ListValue.Values[0]
+			}
 			var matchFound bool
 			for _, item := range list.Values {
 				if item.Equal(detail) {

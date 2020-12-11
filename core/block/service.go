@@ -11,7 +11,6 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/globalsign/mgo/bson"
-	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
@@ -43,6 +42,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 var (
@@ -91,9 +91,11 @@ type Service interface {
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
-	UpdateRelations(id string, relations []*pbrelation.Relation) (err error)
-	AddRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	RemoveRelations(id string, relationKeys []string) (err error)
+
+	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
+	UpdateExtraRelations(id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
+	AddExtraRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveExtraRelations(id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 
 	AddObjectTypes(objectId string, objectTypes []string) (err error)
@@ -115,6 +117,7 @@ type Service interface {
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	TurnInto(ctx *state.Context, id string, style model.BlockContentTextStyle, ids ...string) error
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
 
@@ -131,18 +134,22 @@ type Service interface {
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
 	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
-	GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockGetDataviewAvailableRelationsRequest) (relations []*pbrelation.Relation, err error)
+	GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error)
 	GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (string, error)
-	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error
-	SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error
-	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error
-	CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error)
+	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error
+	UpdateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewUpdateRequest) error
+	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error
+	CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewCreateRequest) (id string, err error)
 	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (id string, err error)
+	UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationUpdateRequest) error
 	DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
+	AddDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error)
+	UpdateDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionUpdateRequest) error
+	DeleteDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionDeleteRequest) error
 
-	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (*types.Struct, error)
-	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) error
-	DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) error
+	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (*types.Struct, error)
+	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRequest) error
+	DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordDeleteRequest) error
 
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
@@ -163,6 +170,30 @@ type Service interface {
 	Close() error
 }
 
+func newOpenedBlock(sb smartblock.SmartBlock, setLastUsage bool) *openedBlock {
+	var ob = openedBlock{SmartBlock: sb}
+	if setLastUsage {
+		ob.lastUsage = time.Now()
+	}
+	if sb.Type() != pb.SmartBlockType_Breadcrumbs {
+		// decode and store corresponding threadID for appropriate block
+		if tid, err := thread.Decode(sb.Id()); err != nil {
+			log.Warnf("can't restore thread ID: %v", err)
+		} else {
+			ob.threadId = tid
+		}
+	}
+	return &ob
+}
+
+type openedBlock struct {
+	smartblock.SmartBlock
+	threadId  thread.ID
+	lastUsage time.Time
+	locked    bool
+	refs      int32
+}
+
 func NewService(
 	accountId string,
 	a anytype.Service,
@@ -174,7 +205,7 @@ func NewService(
 		accountId: accountId,
 		anytype:   a,
 		status:    ss,
-		meta:      meta.NewService(a),
+		meta:      meta.NewService(a, ss),
 		sendEvent: func(event *pb.Event) {
 			sendEvent(event)
 		},
@@ -188,14 +219,6 @@ func NewService(
 	s.init()
 	log.Info("block service started")
 	return s
-}
-
-type openedBlock struct {
-	smartblock.SmartBlock
-	threadId  thread.ID
-	lastUsage time.Time
-	locked    bool
-	refs      int32
 }
 
 type service struct {
@@ -235,10 +258,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 			s.m.Unlock()
 			return e
 		}
-		ob = &openedBlock{
-			SmartBlock: sb,
-			lastUsage:  time.Now(),
-		}
+		ob = newOpenedBlock(sb, true)
 		s.openedBlocks[id] = ob
 	}
 	s.m.Unlock()
@@ -253,22 +273,25 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if e := s.anytype.ObjectUpdateLastOpened(id); e != nil {
 		log.Warnf("can't update last opened id: %v", e)
 	}
-
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
 	}
+	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
+		var (
+			bs    = ob.NewState()
+			fList = func() []string {
+				ob.Lock()
+				ob.Relations()
+				fs := bs.GetAllFileHashes(ob.FileRelationKeys())
+				ob.Unlock()
+				return fs
+			}
+		)
 
-	if s.status != nil &&
-		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
-		ob.threadId == thread.Undef {
-		if tid, err := thread.Decode(ob.Id()); err == nil {
-			ob.threadId = tid
-			s.status.Watch(tid, ob.Id())
-		} else {
-			log.Warnf("can't restore thread ID: %v", err)
+		if newWatcher := s.status.Watch(tid, fList); newWatcher {
+			ob.AddHook(func() { s.status.Unwatch(tid) }, smartblock.HookOnClose)
 		}
 	}
-
 	return nil
 }
 
@@ -282,11 +305,9 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	bs.Lock()
 	defer bs.Unlock()
 	bs.SetEventFunc(s.sendEvent)
-	s.openedBlocks[bs.Id()] = &openedBlock{
-		SmartBlock: bs,
-		lastUsage:  time.Now(),
-		refs:       1,
-	}
+	ob := newOpenedBlock(bs, true)
+	ob.refs = 1
+	s.openedBlocks[bs.Id()] = ob
 	if err = bs.Show(ctx); err != nil {
 		return
 	}
@@ -304,15 +325,8 @@ func (s *service) CloseBlock(id string) error {
 
 	ob.Lock()
 	defer ob.Unlock()
-	ob.SetEventFunc(nil)
+	ob.BlockClose()
 	ob.locked = false
-
-	if s.status != nil &&
-		ob.Type() != pb.SmartBlockType_Breadcrumbs &&
-		ob.threadId == thread.Undef {
-		s.status.Unwatch(ob.threadId)
-	}
-
 	return nil
 }
 
@@ -461,7 +475,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
-		if _, err = s.AddRelations(id, relations); err != nil {
+		if _, err = s.AddExtraRelations(id, relations); err != nil {
 			return id, fmt.Errorf("can't add relations to object: %v", err)
 		}
 	}
@@ -559,6 +573,12 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 			}
 			return tb.InternalPaste(blocks)
 		})
+	})
+}
+
+func (s *service) TurnInto(ctx *state.Context, contextId string, style model.BlockContentTextStyle, ids ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.TurnInto(ctx, style, ids...)
 	})
 }
 
@@ -672,7 +692,7 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	})
 }
 
-func (s *service) GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockGetDataviewAvailableRelationsRequest) (relations []*pbrelation.Relation, err error) {
+func (s *service) GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		relations, err = b.GetAggregatedRelations(ctx, req.BlockId)
 		return err
@@ -690,25 +710,25 @@ func (s *service) GetDataviewObjectType(ctx *state.Context, contextId string, bl
 	return
 }
 
-func (s *service) SetDataviewView(ctx *state.Context, req pb.RpcBlockSetDataviewViewRequest) error {
+func (s *service) UpdateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewUpdateRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.UpdateView(ctx, req.BlockId, req.ViewId, *req.View, true)
 	})
 }
 
-func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDeleteDataviewViewRequest) error {
+func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.DeleteView(ctx, req.BlockId, req.ViewId, true)
 	})
 }
 
-func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockSetDataviewActiveViewRequest) error {
+func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.SetActiveView(ctx, req.BlockId, req.ViewId, int(req.Limit), int(req.Offset))
 	})
 }
 
-func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDataviewViewRequest) (id string, err error) {
+func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewCreateRequest) (id string, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		if req.View == nil {
 			req.View = &model.BlockContentDataviewView{}
@@ -721,7 +741,7 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockCreateDa
 	return
 }
 
-func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreateDataviewRecordRequest) (rec *types.Struct, err error) {
+func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (rec *types.Struct, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		cr, err := b.CreateRecord(ctx, req.BlockId, model.ObjectDetails{Details: req.Record})
 		if err != nil {
@@ -734,7 +754,7 @@ func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockCreate
 	return
 }
 
-func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdateDataviewRecordRequest) (err error) {
+func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRequest) (err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.UpdateRecord(ctx, req.BlockId, req.RecordId, model.ObjectDetails{Details: req.Record})
 	})
@@ -742,12 +762,18 @@ func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockUpdate
 	return
 }
 
-func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDeleteDataviewRecordRequest) (err error) {
+func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordDeleteRequest) (err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.DeleteRecord(ctx, req.BlockId, req.RecordId)
 	})
 
 	return
+}
+
+func (s *service) UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationUpdateRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateRelation(ctx, req.BlockId, req.RelationKey, *req.Relation, true)
+	})
 }
 
 func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (key string, err error) {
@@ -767,6 +793,42 @@ func (s *service) DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockData
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.DeleteRelation(ctx, req.BlockId, req.RelationKey, true)
 	})
+}
+
+func (s *service) AddDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error) {
+	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		opt, err = b.AddRelationSelectOption(ctx, req.BlockId, req.RelationKey, *req.Option, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return
+}
+
+func (s *service) UpdateDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionUpdateRequest) error {
+	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		err := b.UpdateRelationSelectOption(ctx, req.BlockId, req.RelationKey, *req.Option, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return err
+}
+
+func (s *service) DeleteDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionDeleteRequest) error {
+	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		err := b.DeleteRelationSelectOption(ctx, req.BlockId, req.RelationKey, req.OptionId, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return err
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
@@ -1045,9 +1107,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 		if err != nil {
 			return
 		}
-		ob = &openedBlock{
-			SmartBlock: sb,
-		}
+		ob = newOpenedBlock(sb, false)
 		s.openedBlocks[id] = ob
 	}
 	ob.refs++
@@ -1060,7 +1120,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectTypeUrls []string) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, id)
+	sc, err := source.NewSource(s.anytype, s.status, id)
 	if err != nil {
 		return
 	}
@@ -1075,10 +1135,16 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
+	case pb.SmartBlockType_ObjectType:
+		sb = editor.NewObjectType(s.meta)
+	case pb.SmartBlockType_File:
+		sb = editor.NewFiles(s.meta)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
 
+	sb.Lock()
+	defer sb.Unlock()
 	err = sb.Init(sc, initEmpty, initWithObjectTypeUrls)
 	return
 }
@@ -1272,13 +1338,21 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 	return objectType, err
 }
 
-func (s *service) UpdateRelations(objectId string, relations []*pbrelation.Relation) (err error) {
+func (s *service) GetRelations(objectId string) (relations []*pbrelation.Relation, err error) {
+	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
+		relations = b.Relations()
+		return nil
+	})
+	return
+}
+
+func (s *service) UpdateExtraRelations(objectId string, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.UpdateExtraRelations(relations)
+		return b.UpdateExtraRelations(relations, createIfMissing)
 	})
 }
 
-func (s *service) AddRelations(objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (s *service) AddExtraRelations(objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		var err2 error
 		relationsWithKeys, err2 = b.AddExtraRelations(relations)
@@ -1327,7 +1401,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 
 	var relations []*model.BlockContentDataviewRelation
 	for _, rel := range objType.Relations {
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden, IsReadOnly: rel.ReadOnly})
+		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
 	}
 
 	dataview := model.BlockContentOfDataview{
@@ -1385,7 +1459,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
 						TargetBlockId: setId,
-						Style:         model.BlockContentLink_Page,
+						Style:         model.BlockContentLink_Dataview,
 					},
 				},
 			},
@@ -1400,7 +1474,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	return linkId, setId, nil
 }
 
-func (s *service) RemoveRelations(objectTypeId string, relationKeys []string) (err error) {
+func (s *service) RemoveExtraRelations(objectTypeId string, relationKeys []string) (err error) {
 	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
 		return b.RemoveExtraRelations(relationKeys)
 	})

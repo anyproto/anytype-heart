@@ -198,7 +198,7 @@ message Block {
         message Dataview {
             string source = 1;
             repeated View views = 2;
-            string schemaURL = 3; // deprecated
+            // index 3 is deprecated, was used for schemaURL in old-format sets
             repeated anytype.relation.Relation relations = 4;
 
             message View {
@@ -221,21 +221,11 @@ message Block {
                 string key = 1;
                 bool isVisible = 2;
                 int32 width = 3; // the displayed column % calculated based on other visible relations
-                bool isReadOnly = 4; // can't be edited
+                // bool isReadOnly = 4; // deprecated
 
-                oneof options {
-                    EmptyOptions emptyOptions = 10;
-                    DateOptions dateOptions = 11;
-                }
-
-                message EmptyOptions {
-                }
-
-                message DateOptions {
-                    bool includeTime = 1;
-                    TimeFormat timeFormat = 2;
-                    DateFormat dateFormat = 3;
-                }
+                bool dateIncludeTime = 5;
+                TimeFormat timeFormat = 6;
+                DateFormat dateFormat = 7;
 
                 enum DateFormat {
                     MonthAbbrBeforeDay = 0; // Jul 30, 2020

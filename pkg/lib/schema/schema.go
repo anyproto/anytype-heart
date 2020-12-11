@@ -10,19 +10,29 @@ import (
 var log = logging.Logger("anytype-core-schema")
 
 type Schema struct {
-	ObjType *pbrelation.ObjectType
+	ObjType   *pbrelation.ObjectType
+	Relations []*pbrelation.Relation
 }
 
-func New(objType *pbrelation.ObjectType) Schema {
-	return Schema{ObjType: objType}
+func New(objType *pbrelation.ObjectType, relations []*pbrelation.Relation) Schema {
+	return Schema{ObjType: objType, Relations: relations}
 }
 
 func (sch *Schema) GetRelationByKey(key string) (*pbrelation.Relation, error) {
+	if sch.Relations != nil {
+		for _, rel := range sch.Relations {
+			if rel.Key == key {
+				return rel, nil
+			}
+		}
+	}
+
 	for _, rel := range sch.ObjType.Relations {
 		if rel.Key == key {
 			return rel, nil
 		}
 	}
+
 	return nil, fmt.Errorf("not found")
 }
 

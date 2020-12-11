@@ -463,26 +463,6 @@ func (mw *Middleware) BlockSetFields(req *pb.RpcBlockSetFieldsRequest) *pb.RpcBl
 	return response(pb.RpcBlockSetFieldsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockSetDetailsResponseErrorCode, err error) *pb.RpcBlockSetDetailsResponse {
-		m := &pb.RpcBlockSetDetailsResponse{Error: &pb.RpcBlockSetDetailsResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetDetails(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcBlockSetDetailsResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockListSetFields(req *pb.RpcBlockListSetFieldsRequest) *pb.RpcBlockListSetFieldsResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetFieldsResponseErrorCode, err error) *pb.RpcBlockListSetFieldsResponse {
@@ -1134,4 +1114,24 @@ func (mw *Middleware) BlockRelationAdd(req *pb.RpcBlockRelationAddRequest) *pb.R
 	}
 
 	return response(pb.RpcBlockRelationAddResponseError_NULL, nil)
+}
+
+func (mw *Middleware) BlockListTurnInto(req *pb.RpcBlockListTurnIntoRequest) *pb.RpcBlockListTurnIntoResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockListTurnIntoResponseErrorCode, err error) *pb.RpcBlockListTurnIntoResponse {
+		m := &pb.RpcBlockListTurnIntoResponse{Error: &pb.RpcBlockListTurnIntoResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.TurnInto(ctx, req.ContextId, req.Style, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListTurnIntoResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListTurnIntoResponseError_NULL, nil)
 }

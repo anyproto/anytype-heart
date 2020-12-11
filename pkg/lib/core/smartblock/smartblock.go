@@ -2,6 +2,7 @@ package smartblock
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/ipfs/go-cid"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -15,14 +16,17 @@ const (
 	SmartBlockTypeDatabase    SmartBlockType = 0x40
 	SmartBlockTypeSet         SmartBlockType = 0x41
 	SmartBlockTypeObjectType  SmartBlockType = 0x60
+	SmartBlockTypeFile        SmartBlockType = 0x100
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	tid, err := thread.Decode(id)
-	if err != nil {
-		return 0, err
+	if err != nil || tid.Variant() != thread.Raw {
+		_, err := cid.Decode(id)
+		if err == nil {
+			return SmartBlockTypeFile, nil
+		}
 	}
-
 	return SmartBlockTypeFromThreadID(tid)
 }
 

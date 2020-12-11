@@ -38,14 +38,17 @@ message Event {
             Block.Set.Details blockSetDetails = 16;
             Block.Set.Relations blockSetRelations = 22;
             Block.Set.Div blockSetDiv = 17;
-            Block.Set.Dataview.Records blockSetDataviewRecords = 18;
-            Block.Set.Dataview.View blockSetDataviewView = 19;
-            Block.Delete.Dataview.View blockDeleteDataviewView = 20;
-            Block.Delete.Dataview.Relation blockDeleteDataviewRelation = 24;
+            Block.Dataview.RecordsSet blockDataviewRecordsSet = 18;
+            Block.Dataview.RecordsUpdate blockDataviewRecordsUpdate = 26;
+            Block.Dataview.RecordsInsert blockDataviewRecordsInsert = 27;
+            Block.Dataview.RecordsDelete blockDataviewRecordsDelete = 28;
+
+            Block.Dataview.ViewSet blockDataviewViewSet = 19;
+            Block.Dataview.ViewDelete blockDataviewViewDelete = 20;
+            Block.Dataview.RelationDelete blockDataviewRelationDelete = 24;
+            Block.Dataview.RelationSet blockDataviewRelationSet = 23;
 
             Block.Set.Relation blockSetRelation = 21;
-            Block.Set.Dataview.Relation blockSetDataviewRelation = 23;
-
             Block.Show blockShow = 30;
             User.Block.Join userBlockJoin = 31;
             User.Block.Left userBlockLeft = 32;
@@ -58,8 +61,7 @@ message Event {
             Process.Update processUpdate = 102;
             Process.Done processDone = 103;
 
-            Status.CafeConnect connStatus = 110;
-            Status.ThreadSync threadStatus = 111;
+            Status.Thread threadStatus = 110;
         }
     }
 
@@ -100,9 +102,8 @@ message Event {
         */
         message Show {
             string rootId = 1; // Root block id
-            repeated anytype.model.Block blocks = 2; // dependent blocks (descendants)
-            repeated Block.Set.Details details = 3; // deprecated, details for current and dependent smart blocks
-
+            repeated anytype.model.Block blocks = 2; // dependent simple blocks (descendants)
+            repeated Block.Set.Details details = 3; // details for the current and dependent objects
             SmartBlockType type = 4;
 
             message RelationWithValuePerObject {
@@ -110,16 +111,16 @@ message Event {
                 repeated anytype.relation.RelationWithValue relations = 2;
             }
 
-            message ObjectTypesPerObject {
+            message ObjectTypePerObject {
                 string objectId = 1;
-                repeated string objectTypes = 2;
+                string objectType = 2;
             }
 
             repeated anytype.relation.ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
-            repeated ObjectTypesPerObject objectTypesPerObject = 6; // objectType URLs per object
+            repeated ObjectTypePerObject objectTypePerObject = 6; // objectType URLs per object
             repeated anytype.relation.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
 
-            anytype.relation.ObjectType.Layout layout = 8; //
+            anytype.relation.ObjectType.Layout layout = 8; // layout extracted from the object type of the current object
         }
 
         /**
@@ -138,18 +139,6 @@ message Event {
         */
         message Delete {
             repeated string blockIds = 1;
-
-            message Dataview {
-                message View {
-                    string id = 1; // dataview block's id
-                    string viewId = 2; // view id to remove
-                }
-
-                message Relation {
-                    string id = 1; // dataview block's id
-                    string relationKey = 2; // view id to remove
-                }
-            }
         }
 
         message MarksInfo {
@@ -166,37 +155,6 @@ message Event {
             message Relations {
                 string id = 1;
                 repeated anytype.relation.Relation relations = 2;
-            }
-
-
-            message Dataview {
-                // sent when the active view's visible records have been
-                // changed either by the view settings(filters/sort/limit/offset) or by the data itself
-                message Records {
-                    string id = 1; // dataview block's id
-                    string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                    repeated google.protobuf.Struct updated = 3; // existing records updated
-                    repeated google.protobuf.Struct inserted = 4; // block of new records to insert
-                    uint32 insertPosition = 5; // position to insert
-                    repeated string removed = 6;
-                    uint32 total = 7; // total number of records
-                }
-
-                // sent when the view have been changed or added
-                message View {
-                    string id = 1; // dataview block's id
-                    string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                    anytype.model.Block.Content.Dataview.View view = 3;
-                    uint32 offset = 4; // middleware will try to preserve the current aciveview's offset&limit but may reset it in case it becomes invalid or not actual anymore
-                    uint32 limit = 5;
-                }
-
-                // sent when the dataview relation has been changed or added
-                message Relation {
-                    string id = 1; // dataview block's id
-                    string relationKey = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                    anytype.relation.Relation relation = 3;
-                }
             }
 
             message Relation {
@@ -541,6 +499,63 @@ message Event {
             }
         }
 
+        message Dataview{
+            // sent when the view have been changed or added
+            message ViewSet {
+                string id = 1; // dataview block's id
+                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
+                anytype.model.Block.Content.Dataview.View view = 3;
+                uint32 offset = 4; // middleware will try to preserve the current aciveview's offset&limit but may reset it in case it becomes invalid or not actual anymore
+                uint32 limit = 5;
+            }
+
+            message ViewDelete {
+                string id = 1; // dataview block's id
+                string viewId = 2; // view id to remove
+            }
+
+            message RelationDelete {
+                string id = 1; // dataview block's id
+                string relationKey = 2; // relation key to remove
+            }
+
+            // sent when the dataview relation has been changed or added
+            message RelationSet {
+                string id = 1; // dataview block's id
+                string relationKey = 2; // relation key to update
+                anytype.relation.Relation relation = 3;
+            }
+
+            // sent when the active view's visible records should be replaced
+            message RecordsSet {
+                string id = 1; // dataview block's id
+                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
+                repeated google.protobuf.Struct records = 3;
+                uint32 total = 7; // total number of records
+            }
+
+            // sent when client should insert new records on the active view
+            message RecordsInsert {
+                string id = 1; // dataview block's id
+                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
+                repeated google.protobuf.Struct records = 3;
+                uint32 insertPosition = 5; // position to insert
+            }
+
+            // sent when client should update existing records on the active view
+            message RecordsUpdate {
+                string id = 1; // dataview block's id
+                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
+                repeated google.protobuf.Struct records = 4; // records to update. Use 'id' field to get records ids
+            }
+
+            // sent when client should remove existing records on the active view
+            message RecordsDelete {
+                string id = 1; // dataview block's id
+                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
+                repeated string removed = 6;
+            }
+        }
     }
 
     message User {
@@ -608,19 +623,52 @@ message Event {
     }
 
     message Status {
-        message CafeConnect {
-            bool connected = 1;
-        }
+        message Thread {
+            Summary summary = 1;
+            Cafe cafe = 2;
+            repeated Account accounts = 3;
 
-        message ThreadSync {
-            SyncStatus status = 1;
-            int64 lastPull = 2;
+            message Summary {
+                SyncStatus status = 1;
+            }
+
+            message Cafe {
+                SyncStatus status = 1;
+                int64 lastPulled = 2;
+                bool lastPushSucceed = 3;
+                PinStatus files = 4;
+
+                message PinStatus {
+                    int32 pinning = 1;
+                    int32 pinned = 2;
+                    int32 failed = 3;
+                    int64 updated = 4;
+                }
+            }
+
+            message Account {
+                string id = 1;
+                string name = 2;
+                string imageHash = 3;
+                bool online = 4;
+                int64 lastPulled = 5;
+                int64 lastEdited = 6;
+                repeated Device devices = 7;
+            }
+
+            message Device {
+                string name = 1;
+                bool online = 2;
+                int64 lastPulled = 3;
+                int64 lastEdited = 4;
+            }
 
             enum SyncStatus {
                 Unknown = 0;
-                InProgress = 1;
-                Success = 2;
-                Failure = 3;
+                Offline = 1;
+                Syncing = 2;
+                Synced = 3;
+                Failed = 4;
             }
         }
     }
@@ -634,6 +682,9 @@ enum SmartBlockType {
     Breadcrumbs = 4; // have only Link simpleblocks
 
     Set = 5; // only have dataview simpleblock
+    ObjectType = 6; // have relations list
+
+    File = 7;
 }
 
 message ResponseEvent {

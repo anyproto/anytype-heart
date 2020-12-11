@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -430,6 +431,16 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		if !pbtypes.RelationsEqual(prev, s.extraRelations) {
 			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
 			s.parent.extraRelations = s.extraRelations
+			msgs = append(msgs, simple.EventMessage{
+				Msg: &pb.EventMessage{
+					Value: &pb.EventMessageValueOfBlockSetRelations{
+						BlockSetRelations: &pb.EventBlockSetRelations{
+							Id:        s.RootId(),
+							Relations: pbtypes.CopyRelations(s.extraRelations),
+						},
+					},
+				},
+			})
 		}
 	}
 
@@ -585,7 +596,7 @@ func (s *State) SetDetails(d *types.Struct) *State {
 }
 
 func (s *State) SetDetail(key string, value *types.Value) {
-	if s.details == nil {
+	if s.details == nil && s.parent != nil {
 		s.details = pbtypes.CopyStruct(s.parent.Details())
 	}
 	if s.details == nil || s.details.Fields == nil {
@@ -596,16 +607,20 @@ func (s *State) SetDetail(key string, value *types.Value) {
 }
 
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {
-	for _, rel := range s.extraRelations {
+	for _, rel := range s.ExtraRelations() {
 		if rel.Key == relation.Key {
 			return s
 		}
 	}
-	s.extraRelations = append(s.extraRelations, relation)
+	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
+		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+	}
+
+	s.extraRelations = append(s.ExtraRelations(), relation)
 	return s
 }
 
-func (s *State) SetRelations(relations []*pbrelation.Relation) *State {
+func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	s.extraRelations = relations
 	return s
 }
@@ -613,6 +628,35 @@ func (s *State) SetRelations(relations []*pbrelation.Relation) *State {
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	return s
+}
+
+func (s *State) fillLocalScopeDetails() {
+	s.SetDetail("id", pbtypes.String(s.rootId))
+	s.SetDetail("type", pbtypes.StringList(s.ObjectTypes()))
+	// todo: lastModifiedDate
+}
+
+// ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
+func (s *State) ObjectScopedDetails() *types.Struct {
+	if s.details == nil && s.parent != nil {
+		return s.parent.ObjectScopedDetails()
+	}
+
+	return s.objectScopedDetailsForCurrentState()
+}
+
+// objectScopedDetailsForCurrentState clears current state details from local-only relations
+func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
+	if s.details == nil || s.details.Fields == nil {
+		return nil
+	}
+	d := pbtypes.CopyStruct(s.details)
+	for key, _ := range d.Fields {
+		if slice.FindPos(relationCol.LocalOnlyRelationsKeys, key) != -1 {
+			delete(d.Fields, key)
+		}
+	}
+	return d
 }
 
 func (s *State) Details() *types.Struct {
@@ -665,9 +709,13 @@ func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 		return
 	}
 
-	for _, field := range detailsKeys {
-		if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
-			hashes = append(hashes, v.GetStringValue())
+	for _, key := range detailsKeys {
+		if v := pbtypes.GetStringList(det, key); v != nil {
+			for _, hash := range v {
+				if slice.FindPos(hashes, hash) == -1 {
+					hashes = append(hashes, hash)
+				}
+			}
 		}
 	}
 	return
@@ -775,11 +823,16 @@ func (s *State) Copy() *State {
 	for k, v := range s.blocks {
 		blocks[k] = v.Copy()
 	}
+	objTypes := make([]string, len(s.objectTypes))
+	copy(objTypes, s.objectTypes)
+
 	copy := &State{
-		ctx:     s.ctx,
-		blocks:  blocks,
-		rootId:  s.rootId,
-		details: pbtypes.CopyStruct(s.details),
+		ctx:            s.ctx,
+		blocks:         blocks,
+		rootId:         s.rootId,
+		details:        pbtypes.CopyStruct(s.details),
+		extraRelations: pbtypes.CopyRelations(s.extraRelations),
+		objectTypes:    objTypes,
 	}
 	return copy
 }

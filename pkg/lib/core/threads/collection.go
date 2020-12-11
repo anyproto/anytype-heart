@@ -188,12 +188,14 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if localThreadInfo, err = s.t.GetThread(ctx, tid); err == nil {
-		log.Warnf("processNewExternalThread: thread already exists locally")
+		success = true
 		if hasNonEmptyLogs(localThreadInfo.Logs) {
+			log.Debugf("processNewExternalThread: thread already exists locally and has non-empty logs")
 			return nil
+		} else {
+			log.Warnf("processNewExternalThread: thread already exists locally but all logs are empty")
 		}
 	} else {
-		log.Errorf("processNewExternalThread: thread doesn't exist locally: %s", err.Error())
 	addrsLoop:
 		for _, addr := range multiAddrs {
 			logWithAddr := log.With("addr", addr.String())

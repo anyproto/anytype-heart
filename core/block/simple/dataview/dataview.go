@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
 )
@@ -39,7 +40,7 @@ type Block interface {
 	DeleteView(viewID string) error
 
 	AddRelation(relation pbrelation.Relation)
-	SetRelation(relationKey string, relation pbrelation.Relation) error
+	UpdateRelation(relationKey string, relation pbrelation.Relation) error
 
 	DeleteRelation(relationKey string) error
 
@@ -91,8 +92,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		if !found || changed {
 			msgs = append(msgs,
 				simple.EventMessage{
-					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewView{
-						&pb.EventBlockSetDataviewView{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewSet{
+						&pb.EventBlockDataviewViewSet{
 							Id:     dv.Id,
 							ViewId: view2.Id,
 							View:   view2,
@@ -112,8 +113,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 		if !found {
 			msgs = append(msgs,
-				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewView{
-					&pb.EventBlockDeleteDataviewView{
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewDelete{
+					&pb.EventBlockDataviewViewDelete{
 						Id:     dv.Id,
 						ViewId: view1.Id,
 					}}}})
@@ -134,8 +135,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		if !found || changed {
 			msgs = append(msgs,
 				simple.EventMessage{
-					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDataviewRelation{
-						&pb.EventBlockSetDataviewRelation{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
+						&pb.EventBlockDataviewRelationSet{
 							Id:          dv.Id,
 							RelationKey: rel2.Key,
 							Relation:    rel2,
@@ -153,8 +154,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 
 		if !found {
 			msgs = append(msgs,
-				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDeleteDataviewRelation{
-					&pb.EventBlockDeleteDataviewRelation{
+				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
+					&pb.EventBlockDataviewRelationDelete{
 						Id:          dv.Id,
 						RelationKey: rel1.Key,
 					}}}})
@@ -223,11 +224,35 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	return nil
 }
 
-func (s *Dataview) SetRelation(relationKey string, rel pbrelation.Relation) error {
+func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) error {
 	var found bool
+	if relationKey != rel.Key {
+		return fmt.Errorf("changing key of existing relation is retricted")
+	}
+
 	for i, v := range s.content.Relations {
 		if v.Key == relationKey {
 			found = true
+
+			if v.Format != rel.Format {
+				return fmt.Errorf("changing format of existing relation is retricted")
+			}
+
+			if v.DataSource != rel.DataSource {
+				return fmt.Errorf("changing data source of existing relation is retricted")
+			}
+
+			if v.Hidden != rel.Hidden {
+				return fmt.Errorf("changing hidden flag of existing relation is retricted")
+			}
+
+			if rel.Format == pbrelation.RelationFormat_select {
+				for i := range rel.SelectDict {
+					if rel.SelectDict[i].Id == "" {
+						rel.SelectDict[i].Id = bson.NewObjectId().Hex()
+					}
+				}
+			}
 
 			s.content.Relations[i] = &rel
 
@@ -266,7 +291,15 @@ func (d *Dataview) GetSource() string {
 
 func (d *Dataview) AddRelation(relation pbrelation.Relation) {
 	if relation.Key == "" {
-		relation.Key = uuid.New().String()
+		relation.Key = bson.NewObjectId().Hex()
+	}
+
+	if relation.Format == pbrelation.RelationFormat_select {
+		for i := range relation.SelectDict {
+			if relation.SelectDict[i].Id == "" {
+				relation.SelectDict[i].Id = bson.NewObjectId().Hex()
+			}
+		}
 	}
 
 	d.content.Relations = append(d.content.Relations, &relation)
