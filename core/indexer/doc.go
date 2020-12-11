@@ -45,12 +45,12 @@ type doc struct {
 	changesBuf []*change.Change
 
 	lastUsage time.Time
-	mu        sync.RWMutex
+	mu        sync.Mutex
 }
 
 func (d *doc) meta() core.SmartBlockMeta {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	// todo: copy?
 	return core.SmartBlockMeta{
 		ObjectTypes: d.st.ObjectTypes(),
@@ -117,9 +117,6 @@ func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (lastChangeTS
 }
 
 func (d *doc) buildState() (doc *state.State, err error) {
-	d.mu.RLock()
-	defer d.mu.RUnlock()
-
 	root := d.tree.Root()
 	if root == nil || root.GetSnapshot() == nil {
 		return nil, fmt.Errorf("root missing or not a snapshot")
