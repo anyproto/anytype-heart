@@ -107,12 +107,12 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
-	go func() {
-		err = mw.indexer.SetDetail(req.BlockId, relation.LastOpenedDate, pbtypes.Float64(float64(time.Now().Unix())))
-		if err != nil {
-			log.Errorf("failed to update last opened for the object %s: %s", req.BlockId, err.Error())
-		}
-	}()
+	err = mw.doBlockService(func(bs block.Service) error {
+		return mw.indexer.SetDetail(req.BlockId, relation.LastOpenedDate, pbtypes.Float64(float64(time.Now().Unix())))
+	})
+	if err != nil {
+		log.Errorf("failed to update last opened for the object %s: %s", req.BlockId, err.Error())
+	}
 
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
 }

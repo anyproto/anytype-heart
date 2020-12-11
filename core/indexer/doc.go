@@ -9,6 +9,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -21,6 +24,7 @@ func newDoc(id string, a anytype.Service) (d *doc, err error) {
 	d = &doc{
 		id:        id,
 		lastUsage: time.Now(),
+		store:     a.ObjectStore(),
 	}
 	d.tree, _, err = change.BuildMetaTree(sb)
 	if err == change.ErrEmpty {
@@ -43,9 +47,13 @@ type doc struct {
 	st   *state.State
 
 	changesBuf []*change.Change
+	store      detailsGetter
+	lastUsage  time.Time
+	mu         sync.Mutex
+}
 
-	lastUsage time.Time
-	mu        sync.Mutex
+type detailsGetter interface {
+	GetDetails(id string) (*model.ObjectDetails, error)
 }
 
 func (d *doc) meta() core.SmartBlockMeta {
@@ -128,6 +136,16 @@ func (d *doc) buildState() (doc *state.State, err error) {
 		return
 	}
 
+	// set persisted local-only details (e.g. lastOpenedDate)
+	if details, err := d.store.GetDetails(d.id); err == nil {
+		if details != nil && details.Details != nil {
+			for key, v := range details.Details.Fields {
+				if slice.FindPos(relation.LocalOnlyRelationsKeys, key) != -1 {
+					st.SetDetail(key, v)
+				}
+			}
+		}
+	}
 	st.InjectDerivedDetails()
 
 	if _, _, err = state.ApplyStateFast(st); err != nil {
