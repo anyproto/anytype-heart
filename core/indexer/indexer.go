@@ -158,8 +158,9 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 	if metaChanged {
 		rels = &pbrelation.Relations{Relations: meta.Relations}
 	}
+	prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, relation.LastModifiedDate))
 
-	if meta.Details != nil && meta.Details.Fields != nil {
+	if meta.Details != nil && meta.Details.Fields != nil && lastChangeTS > prevModifiedDate {
 		meta.Details.Fields[relation.LastModifiedDate] = pbtypes.Float64(float64(lastChangeTS))
 		if profileId, err := threads.ProfileThreadIDFromAccountAddress(lastChangeBy); err == nil {
 			meta.Details.Fields[relation.LastModifiedBy] = pbtypes.String(profileId.String())
