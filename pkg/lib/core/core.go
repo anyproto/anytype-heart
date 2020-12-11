@@ -99,7 +99,6 @@ type Service interface {
 	ObjectStore() localstore.ObjectStore
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
-	ObjectUpdateLastOpened(id string) error
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
@@ -219,12 +218,7 @@ func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 		return nil, err
 	}
 	sb := &smartBlock{thread: thrd, node: a}
-	err = sb.indexSnapshot(nil, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to index new block %s: %s", thrd.ID.String(), err.Error())
-	}
-
-	return &smartBlock{thread: thrd, node: a}, nil
+	return sb, nil
 }
 
 // PredefinedBlocks returns default blocks like home and archive
@@ -480,7 +474,7 @@ func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID
 
 				case ch <- SmartblockRecordWithThreadID{
 					SmartblockRecordEnvelope: *rec,
-					ThreadID: id,
+					ThreadID:                 id,
 				}:
 					// everything is ok
 				case <-ctx.Done():

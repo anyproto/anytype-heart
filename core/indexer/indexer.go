@@ -6,13 +6,16 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
+	"github.com/gogo/protobuf/types"
 )
 
 var log = logging.Logger("anytype-doc-indexer")
@@ -47,6 +50,7 @@ func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
 }
 
 type Indexer interface {
+	SetDetail(id string, key string, val *types.Value) error
 	Close()
 }
 
@@ -148,14 +152,18 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 		return
 	}
 	var rels *pbrelation.Relations
-	lastChangeTS, metaChanged := d.addRecords(records...)
+	lastChangeTS, lastChangeBy, metaChanged := d.addRecords(records...)
+
 	meta := d.meta()
 	if metaChanged {
 		rels = &pbrelation.Relations{Relations: meta.Relations}
 	}
 
 	if meta.Details != nil && meta.Details.Fields != nil {
-		meta.Details.Fields["lastModifiedDate"] = pbtypes.Float64(float64(lastChangeTS))
+		meta.Details.Fields[relation.LastModifiedDate] = pbtypes.Float64(float64(lastChangeTS))
+		if profileId, err := threads.ProfileThreadIDFromAccountAddress(lastChangeBy); err == nil {
+			meta.Details.Fields[relation.LastModifiedBy] = pbtypes.String(profileId.String())
+		}
 	}
 
 	if err := i.store.UpdateObject(id, meta.Details, rels, nil, ""); err != nil {
@@ -258,4 +266,15 @@ func (i *indexer) Close() {
 		i.quitWG.Wait()
 		i.quit = nil
 	}
+}
+
+func (i *indexer) SetDetail(id string, key string, val *types.Value) error {
+	d, err := i.getDoc(id)
+	if err != nil {
+		return err
+	}
+
+	d.SetDetail(key, val)
+	i.index(id, nil)
+	return nil
 }

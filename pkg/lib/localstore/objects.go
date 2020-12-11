@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -37,14 +36,6 @@ var (
 )
 
 var ErrNotAPage = fmt.Errorf("not a page")
-
-const (
-	// special record fields
-	fieldLastOpened   = "lastOpenedDate"
-	fieldLastModified = "lastModifiedDate"
-
-	pageSchema = "https://anytype.io/schemas/page"
-)
 
 var filterNotSystemObjects = &filterObjectTypes{
 	objectTypes: []smartblock.SmartBlockType{
@@ -573,6 +564,8 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 	m.l.Lock()
 	defer m.l.Unlock()
 
+	log.Errorf("UpdateObject %s: %v", id, details)
+
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -651,61 +644,6 @@ func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 			_ = sub.Publish(id, detCopy)
 		}(m.subscriptions[i])
 	}
-}
-
-func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	details, err := getDetails(txn, id)
-	if err != nil {
-		return err
-	}
-
-	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		return nil
-	}
-
-	details.Details.Fields[fieldLastOpened] = structs.Float64(float64(time.Unix()))
-
-	if err := m.updateDetails(txn, id, details); err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	details, err := getDetails(txn, id)
-	if err != nil {
-		return err
-	}
-
-	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.ObjectDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
-	}
-
-	details.Details.Fields[fieldLastModified] = structs.Float64(float64(time.Unix()))
-
-	err = m.updateDetails(txn, id, details)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
 }
 
 func (m *dsObjectStore) AddToIndexQueue(id string) error {

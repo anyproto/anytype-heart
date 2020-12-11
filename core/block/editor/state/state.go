@@ -641,10 +641,9 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 	return s
 }
 
-func (s *State) FillLocalScopeDetails() {
-	s.SetDetail("id", pbtypes.String(s.rootId))
-	s.SetDetail("type", pbtypes.StringList(s.ObjectTypes()))
-	// todo: lastModifiedDate
+func (s *State) InjectDerivedDetails() {
+	s.SetDetail(relationCol.Id, pbtypes.String(s.rootId))
+	s.SetDetail(relationCol.Type, pbtypes.StringList(s.ObjectTypes()))
 }
 
 // ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots

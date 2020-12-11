@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
@@ -67,7 +68,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
-	relations1 := &pbrelation.Relations{Relations: []*pbrelation.Relation{relation.BundledRelations["name"]}}
+	relations1 := &pbrelation.Relations{Relations: []*pbrelation.Relation{relation.BundledRelations["name"], relation.BundledRelations["lastModifiedDate"]}}
 	blocks1 := []*model.Block{
 		{
 			Id:      "test_id1",
@@ -115,7 +116,10 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	n := time.Now()
 	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
 
-	ps.UpdateLastOpened(block1.ID(), time.Now())
+	details1.Fields["lastOpenedDate"] = pbtypes.Float64(float64(time.Now().Unix()))
+	err = ps.UpdateObject(block1.ID(), details1, relations1, nil, "")
+	require.NoError(t, err)
+
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:    model.BlockContentDataviewFilter_And,
 		RelationKey: "lastOpenedDate",
@@ -127,8 +131,13 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.Len(t, results, 1)
 	require.Equal(t, total, 1)
 
-	ps.UpdateLastModified(block1.ID(), time.Now())
-	ps.UpdateLastModified(block2.ID(), time.Now())
+	details1.Fields["lastModifiedDate"] = pbtypes.Float64(float64(time.Now().Unix()))
+	details2.Fields["lastModifiedDate"] = pbtypes.Float64(float64(time.Now().Unix()))
+	err = ps.UpdateObject(block1.ID(), details1, relations1, nil, "")
+	require.NoError(t, err)
+
+	err = ps.UpdateObject(block2.ID(), details2, relations2, nil, "")
+	require.NoError(t, err)
 
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
 		Operator:    model.BlockContentDataviewFilter_And,

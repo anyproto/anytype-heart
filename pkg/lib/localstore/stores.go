@@ -60,8 +60,6 @@ type ObjectStore interface {
 	database.Reader
 
 	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
-	UpdateLastModified(id string, time time.Time) error
-	UpdateLastOpened(id string, time time.Time) error
 	DeleteObject(id string) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)

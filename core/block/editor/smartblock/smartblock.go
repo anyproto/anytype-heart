@@ -237,7 +237,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
 				for _, rel := range dv.Relations {
 					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
-						if rel.Key == "id" || rel.Key == "type" {
+						if rel.Key == relation.Id || rel.Key == relation.Type {
 							continue
 						}
 						for _, ot := range rel.ObjectTypes {
@@ -363,7 +363,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 				}
 			}
 
-			if rel.Key == "id" || rel.Key == "type" {
+			if rel.Key == relation.Id || rel.Key == relation.Type {
 				continue
 			}
 

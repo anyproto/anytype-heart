@@ -26,6 +26,7 @@ var (
 				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
+				MustGetBundledRelationByKey("lastModifiedBy"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
 
 				MustGetBundledRelationByKey("iconEmoji"),
@@ -47,6 +48,7 @@ var (
 				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
+				MustGetBundledRelationByKey("lastModifiedBy"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
 
 				MustGetBundledRelationByKey("iconImage"),
@@ -68,6 +70,7 @@ var (
 				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
+				MustGetBundledRelationByKey("lastModifiedBy"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
 				MustGetBundledRelationByKey("iconEmoji"),
 				MustGetBundledRelationByKey("iconImage"),
@@ -87,6 +90,7 @@ var (
 				MustGetBundledRelationByKey("name"),
 				MustGetBundledRelationByKey("createdDate"),
 				MustGetBundledRelationByKey("lastModifiedDate"),
+				MustGetBundledRelationByKey("lastModifiedBy"),
 				MustGetBundledRelationByKey("lastOpenedDate"),
 				MustGetBundledRelationByKey("iconEmoji"),
 				MustGetBundledRelationByKey("iconImage"),
