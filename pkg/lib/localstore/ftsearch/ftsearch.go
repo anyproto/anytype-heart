@@ -55,6 +55,14 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 	text = strings.TrimSpace(text)
 	var queries = make([]query.Query, 0, 4)
 
+	// id match
+	if len(text) > 10 {
+		im := bleve.NewMatchQuery(text)
+		im.SetField("Id")
+		im.SetBoost(30)
+		queries = append(queries, im)
+	}
+
 	// title prefix
 	tp := bleve.NewPrefixQuery(text)
 	tp.SetField("Title")
