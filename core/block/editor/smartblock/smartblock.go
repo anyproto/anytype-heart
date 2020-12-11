@@ -475,8 +475,7 @@ func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
 		return
 	} else {
 		createdDate = fc.Timestamp
-		// TODO: wait for @dgtony pr
-		//createdBy = fc.Account
+		createdBy = fc.Account
 	}
 	s.SetDetail("createdDate", pbtypes.Float64(float64(createdDate)))
 	s.SetDetail("createdBy", pbtypes.String(createdBy))
