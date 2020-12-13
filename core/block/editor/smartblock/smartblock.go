@@ -464,6 +464,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 }
 
 func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
+	if sb.Anytype() == nil {
+		return nil
+	}
 	var (
 		createdDate = time.Now().Unix()
 		createdBy   = sb.Anytype().Account()
