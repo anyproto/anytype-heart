@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -481,7 +482,9 @@ func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
 		createdBy = fc.Account
 	}
 	s.SetDetail("createdDate", pbtypes.Float64(float64(createdDate)))
-	s.SetDetail("createdBy", pbtypes.String(createdBy))
+	if profileId, e := threads.ProfileThreadIDFromAccountAddress(createdBy); e == nil {
+		s.SetDetail("createdBy", pbtypes.String(profileId.String()))
+	}
 	return
 }
 
