@@ -102,7 +102,7 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
-	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error)
+	NewRecordsChan() (ch chan SmartblockRecordWithThreadID)
 
 	ProfileInfo
 }
@@ -119,6 +119,8 @@ type Anytype struct {
 	threadService      threads.Service
 	pinService         pin.FilePinService
 
+	newRecordsChan chan SmartblockRecordWithThreadID
+
 	logLevels map[string]string
 
 	opts ServiceOptions
@@ -126,9 +128,11 @@ type Anytype struct {
 	replicationWG    sync.WaitGroup
 	migrationOnce    sync.Once
 	lock             sync.Mutex
-	isStarted        bool          // use under the lock
-	shutdownStartsCh chan struct{} // closed when node shutdown starts
-	onlineCh         chan struct{} // closed when became online
+	isStarted        bool // use under the lock
+	shutdownStartsCh chan struct {
+	} // closed when node shutdown starts
+	onlineCh chan struct {
+	} // closed when became online
 }
 
 func New(options ...ServiceOption) (*Anytype, error) {
@@ -318,7 +322,9 @@ func (a *Anytype) start() error {
 		}
 		return nil
 	}, a.opts.NewSmartblockChan, a.opts.CafeP2PAddr)
-
+	if a.newRecordsChan, err = a.subscribeForNewRecords(); err != nil {
+		return err
+	}
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {
 			return
@@ -437,13 +443,16 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
-func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error) {
-	var ctx context.Context
-	ctx, cancel = context.WithCancel(context.Background())
+func (a *Anytype) NewRecordsChan() chan SmartblockRecordWithThreadID {
+	return a.newRecordsChan
+}
+
+func (a *Anytype) subscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
+	ctx, cancel := context.WithCancel(context.Background())
 	ch = make(chan SmartblockRecordWithThreadID)
 	threadsCh, err := a.t.Subscribe(ctx)
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to subscribe: %s", err.Error())
+		return nil, fmt.Errorf("failed to subscribe: %s", err.Error())
 	}
 
 	go func() {
@@ -492,7 +501,7 @@ func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID
 		}
 	}()
 
-	return ch, cancel, nil
+	return ch, nil
 }
 
 func init() {
