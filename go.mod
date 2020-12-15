@@ -65,7 +65,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/stretchr/testify v1.6.1
 	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c // indirect
-	github.com/textileio/go-threads v1.0.2-0.20201207162022-b26c14c7ba54
+	github.com/textileio/go-threads v1.0.2-0.20201215165201-b6c8203b5537
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/yuin/goldmark v1.1.30
 	go.uber.org/zap v1.16.0
@@ -78,7 +78,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20201207162022-b26c14c7ba54
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20201215165201-b6c8203b5537
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
