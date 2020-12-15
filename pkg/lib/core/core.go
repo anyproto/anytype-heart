@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"path/filepath"
 	"strings"
 	"sync"
 	"time"
@@ -14,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
@@ -97,10 +99,10 @@ type Service interface {
 	ObjectStore() localstore.ObjectStore
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
-	ObjectUpdateLastOpened(id string) error
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
+	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error)
 
 	ProfileInfo
 }
@@ -216,12 +218,7 @@ func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 		return nil, err
 	}
 	sb := &smartBlock{thread: thrd, node: a}
-	err = sb.indexSnapshot(nil, nil, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to index new block %s: %s", thrd.ID.String(), err.Error())
-	}
-
-	return &smartBlock{thread: thrd, node: a}, nil
+	return sb, nil
 }
 
 // PredefinedBlocks returns default blocks like home and archive
@@ -302,8 +299,11 @@ func (a *Anytype) start() error {
 			}
 		}
 	}
-
-	a.localStore = localstore.NewLocalStore(a.t.Datastore())
+	fts, err := ftsearch.NewFTSearch(filepath.Join(a.opts.Repo, "fts"))
+	if err != nil {
+		log.Errorf("can't start fulltext search service: %v", err)
+	}
+	a.localStore = localstore.NewLocalStore(a.t.Datastore(), fts)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	go func() { <-a.shutdownStartsCh; cancel() }()
@@ -311,20 +311,11 @@ func (a *Anytype) start() error {
 	a.pinService.Start()
 
 	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.pinService)
-
 	a.threadService = threads.New(a.t, a.t.Logstore(), a.opts.Repo, a.opts.Device, a.opts.Account, func(id thread.ID) error {
 		err := a.migratePageToChanges(id)
 		if err != nil && err != ErrAlreadyMigrated {
 			return err
 		}
-		go func() {
-			// todo: mw is locked during AccountSelect, this leads to deadlock in doBlockService
-			// as a workaround,do it in the goroutine
-			err = a.opts.ReindexFunc(id.String())
-			if err != nil {
-				log.Errorf("ReindexFunc failed: %s", err.Error())
-			}
-		}()
 		return nil
 	}, a.opts.NewSmartblockChan, a.opts.CafeP2PAddr)
 
@@ -444,6 +435,64 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 	}
 
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
+}
+
+func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, cancel func(), err error) {
+	var ctx context.Context
+	ctx, cancel = context.WithCancel(context.Background())
+	ch = make(chan SmartblockRecordWithThreadID)
+	threadsCh, err := a.t.Subscribe(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to subscribe: %s", err.Error())
+	}
+
+	go func() {
+		smartBlocksCache := make(map[string]*smartBlock)
+		defer close(ch)
+		for {
+			select {
+			case val, ok := <-threadsCh:
+				if !ok {
+					return
+				}
+				var block *smartBlock
+				id := val.ThreadID().String()
+				if block, ok = smartBlocksCache[id]; !ok {
+					if block, err = a.GetSmartBlock(id); err != nil {
+						log.Errorf("failed to open smartblock %s: %v", id, err)
+						continue
+					} else {
+						smartBlocksCache[id] = block
+					}
+				}
+				rec, err := block.decodeRecord(ctx, val.Value(), true)
+				if err != nil {
+					log.Errorf("failed to decode thread record: %s", err.Error())
+					continue
+				}
+				select {
+
+				case ch <- SmartblockRecordWithThreadID{
+					SmartblockRecordEnvelope: *rec,
+					ThreadID:                 id,
+				}:
+					// everything is ok
+				case <-ctx.Done():
+					// no need to cancel, continue to read the rest msgs from the channel
+					continue
+				case <-a.shutdownStartsCh:
+					// cancel first, then we should read ok == false from the threadsCh
+					cancel()
+				}
+			case <-ctx.Done():
+				continue
+			case <-a.shutdownStartsCh:
+				cancel()
+			}
+		}
+	}()
+
+	return ch, cancel, nil
 }
 
 func init() {

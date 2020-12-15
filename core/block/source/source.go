@@ -16,6 +16,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -176,9 +178,22 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		return
 	}
 
+	// set local-only details
+	if details, err := s.a.ObjectStore().GetDetails(s.id); err == nil {
+		if details != nil && details.Details != nil {
+			for key, v := range details.Details.Fields {
+				if slice.FindPos(relation.LocalOnlyRelationsKeys, key) != -1 {
+					st.SetDetail(key, v)
+				}
+			}
+		}
+	}
+	st.InjectDerivedDetails()
+
 	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
 	}
+
 	return
 }
 
@@ -237,10 +252,10 @@ func (s *source) needSnapshot() bool {
 }
 
 func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
-	defer close(s.closed)
 	batch := mb.New(0)
 	defer batch.Close()
 	go func() {
+		defer close(s.closed)
 		var records []core.SmartblockRecordEnvelope
 		for {
 			msgs := batch.Wait()

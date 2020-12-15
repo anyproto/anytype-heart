@@ -6,7 +6,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -58,8 +60,6 @@ type ObjectStore interface {
 	database.Reader
 
 	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
-	UpdateLastModified(id string, time time.Time) error
-	UpdateLastOpened(id string, time time.Time) error
 	DeleteObject(id string) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
@@ -67,12 +67,17 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
+	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
+	AddToIndexQueue(id string) error
+	IndexForEach(f func(id string, tm time.Time) error) error
+	FTSearch() ftsearch.FTSearch
+	Close()
 }
 
-func NewLocalStore(store ds.Batching) LocalStore {
+func NewLocalStore(store ds.Batching, fts ftsearch.FTSearch) LocalStore {
 	return LocalStore{
 		Files:   NewFileStore(store.(ds.TxnDatastore)),
-		Objects: NewObjectStore(store.(ds.TxnDatastore)),
+		Objects: NewObjectStore(store.(ds.TxnDatastore), fts),
 	}
 }
 

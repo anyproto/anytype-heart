@@ -40,7 +40,7 @@ func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
 				Name:    pbtypes.GetString(d, "name"),
-				Mime:    pbtypes.GetString(d, "mimeType"),
+				Mime:    pbtypes.GetString(d, "fileMimeType"),
 				Hash:    p.Id(),
 				Size_:   int64(pbtypes.GetFloat64(d, "sizeBytes")),
 				State:   model.BlockContentFile_Done,

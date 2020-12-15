@@ -1,6 +1,7 @@
 package localstore
 
 import (
+	"encoding/binary"
 	"fmt"
 	"strings"
 	"sync"
@@ -8,11 +9,11 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/structs"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -29,23 +30,26 @@ var (
 	pagesSnippetBase       = ds.NewKey("/" + pagesPrefix + "/snippet")
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
+	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
 var ErrNotAPage = fmt.Errorf("not a page")
 
-const (
-	// special record fields
-	fieldLastOpened   = "lastOpenedDate"
-	fieldLastModified = "lastModifiedDate"
+var filterNotSystemObjects = &filterObjectTypes{
+	objectTypes: []smartblock.SmartBlockType{
+		smartblock.SmartBlockTypeArchive,
+		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeObjectType,
+	},
+}
 
-	pageSchema = "https://anytype.io/schemas/page"
-)
+type filterObjectTypes struct {
+	objectTypes []smartblock.SmartBlockType
+}
 
-type filterNotSystemObjects struct{}
-
-func (m *filterNotSystemObjects) Filter(e query.Entry) bool {
+func (m *filterObjectTypes) Filter(e query.Entry) bool {
 	keyParts := strings.Split(e.Key, "/")
 	id := keyParts[len(keyParts)-1]
 
@@ -62,13 +66,14 @@ func (m *filterNotSystemObjects) Filter(e query.Entry) bool {
 	return false
 }
 
-func NewObjectStore(ds ds.TxnDatastore) ObjectStore {
-	return &dsObjectStore{ds: ds}
+func NewObjectStore(ds ds.TxnDatastore, fts ftsearch.FTSearch) ObjectStore {
+	return &dsObjectStore{ds: ds, fts: fts}
 }
 
 type dsObjectStore struct {
 	// underlying storage
-	ds ds.TxnDatastore
+	ds  ds.TxnDatastore
+	fts ftsearch.FTSearch
 
 	// serializing page updates
 	l sync.Mutex
@@ -149,7 +154,12 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{&filterNotSystemObjects{}}, dsq.Filters...)
+	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	if q.FullText != "" {
+		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
+			return
+		}
+	}
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
@@ -199,6 +209,61 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	return results, total, nil
 }
 
+func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	dsq := q.DSQuery(nil)
+	dsq.Offset = 0
+	dsq.Limit = 0
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+	if len(objectTypes) > 0 {
+		dsq.Filters = append([]query.Filter{&filterObjectTypes{objectTypes}}, dsq.Filters...)
+	}
+	if q.FullText != "" {
+		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
+			return
+		}
+	}
+	res, err := txn.Query(dsq)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	var (
+		offset = q.Offset
+	)
+
+	// We use own limit/offset implementation in order to find out
+	// total number of records matching specified filters. Query
+	// returns this number for handy pagination on clients.
+	for rec := range res.Next() {
+		total++
+
+		if offset > 0 {
+			offset--
+			continue
+		}
+
+		if q.Limit > 0 && len(results) >= q.Limit {
+			continue
+		}
+
+		key := ds.NewKey(rec.Key)
+		keyList := key.List()
+		id := keyList[len(keyList)-1]
+		oi, err := getObjectInfo(txn, id)
+		if err != nil {
+			return nil, 0, err
+		}
+		results = append(results, oi)
+	}
+	return results, total, nil
+}
+
 func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -241,7 +306,7 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbr
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesRelationsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{&filterNotSystemObjects{}}, dsq.Filters...)
+	dsq.Filters = append([]query.Filter{&filterObjectTypes{}}, dsq.Filters...)
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, fmt.Errorf("error when querying ds: %w", err)
@@ -327,6 +392,7 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 	for _, k := range []ds.Key{
 		pagesDetailsBase.ChildString(id),
 		pagesSnippetBase.ChildString(id),
+		indexQueueBase.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
 			return err
@@ -348,7 +414,11 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 			return err
 		}
 	}
-
+	if m.fts != nil {
+		if err := m.fts.Delete(id); err != nil {
+			return err
+		}
+	}
 	return txn.Commit()
 }
 
@@ -494,6 +564,8 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 	m.l.Lock()
 	defer m.l.Unlock()
 
+	log.Errorf("UpdateObject %s: %v", id, details)
+
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -574,58 +646,42 @@ func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Str
 	}
 }
 
-func (m *dsObjectStore) UpdateLastOpened(id string, time time.Time) error {
-	m.l.Lock()
-	defer m.l.Unlock()
+func (m *dsObjectStore) AddToIndexQueue(id string) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
-
-	details, err := getDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
+	var buf [8]byte
+	size := binary.PutVarint(buf[:], time.Now().Unix())
+	if err = txn.Put(indexQueueBase.ChildString(id), buf[:size]); err != nil {
 		return err
 	}
-
-	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.ObjectDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
-	}
-
-	details.Details.Fields[fieldLastOpened] = structs.Float64(float64(time.Unix()))
-
-	if err := m.updateDetails(txn, id, details); err != nil {
-		return err
-	}
-
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdateLastModified(id string, time time.Time) error {
-	m.l.Lock()
-	defer m.l.Unlock()
+func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
-
-	details, err := getDetails(txn, id)
-	if err != nil && err != ds.ErrNotFound {
-		return err
-	}
-
-	if details == nil || details.Details == nil || details.Details.Fields == nil {
-		details = &model.ObjectDetails{Details: &types.Struct{Fields: make(map[string]*types.Value)}}
-	}
-
-	details.Details.Fields[fieldLastModified] = structs.Float64(float64(time.Unix()))
-
-	err = m.updateDetails(txn, id, details)
+	res, err := txn.Query(query.Query{Prefix: indexQueueBase.String()})
 	if err != nil {
-		return err
+		return fmt.Errorf("error query txn in datastore: %w", err)
 	}
-
+	defer res.Close()
+	for entry := range res.Next() {
+		id := extractIdFromKey(entry.Key)
+		ts, _ := binary.Varint(entry.Value)
+		if indexErr := f(id, time.Unix(ts, 0)); indexErr != nil {
+			log.Warnf("can't index '%s': %v", id, indexErr)
+			continue
+		}
+		if err := txn.Delete(indexQueueBase.ChildString(id)); err != nil {
+			return err
+		}
+	}
 	return txn.Commit()
 }
 
@@ -669,6 +725,30 @@ func (m *dsObjectStore) Prefix() string {
 
 func (m *dsObjectStore) Indexes() []Index {
 	return nil
+}
+
+func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
+	return m.fts
+}
+
+func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query, error) {
+	if m.fts == nil {
+		return dsq, fmt.Errorf("fullText search not configured")
+	}
+	ids, err := m.fts.Search(text)
+	if err != nil {
+		return dsq, err
+	}
+	idsQuery := newIdsFilter(ids)
+	dsq.Filters = append([]query.Filter{idsQuery}, dsq.Filters...)
+	dsq.Orders = append([]query.Order{idsQuery}, dsq.Orders...)
+	return dsq, nil
+}
+
+func (m *dsObjectStore) Close() {
+	if m.fts != nil {
+		m.fts.Close()
+	}
 }
 
 /* internal */
@@ -824,4 +904,39 @@ func outgoingLinkKey(from, to string) ds.Key {
 
 func inboundLinkKey(from, to string) ds.Key {
 	return pagesInboundLinksBase.ChildString(to).ChildString(from)
+}
+
+func newIdsFilter(ids []string) idsFilter {
+	f := make(idsFilter)
+	for i, id := range ids {
+		f[id] = i
+	}
+	return f
+}
+
+type idsFilter map[string]int
+
+func (f idsFilter) Filter(e query.Entry) bool {
+	_, ok := f[extractIdFromKey(e.Key)]
+	return ok
+}
+
+func (f idsFilter) Compare(a, b query.Entry) int {
+	aIndex := f[extractIdFromKey(a.Key)]
+	bIndex := f[extractIdFromKey(b.Key)]
+	if aIndex == bIndex {
+		return 0
+	} else if aIndex < bIndex {
+		return -1
+	} else {
+		return 1
+	}
+}
+
+func extractIdFromKey(key string) (id string) {
+	i := strings.LastIndexByte(key, '/')
+	if i == -1 || len(key)-1 == i {
+		return
+	}
+	return key[i+1:]
 }

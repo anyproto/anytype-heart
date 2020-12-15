@@ -10,8 +10,17 @@ import (
 // ObjectTypeSelfType used in relations which target the type of the object which holds this relation
 const ObjectTypeSelfType = "self"
 
+// some relations that has a special logic internally
+const (
+	LastModifiedDate = "lastModifiedDate"
+	LastModifiedBy   = "lastModifiedBy"
+	LastOpenedDate   = "lastOpenedDate"
+	Id               = "id"
+	Type             = "type"
+)
+
 // all required internal relations will be added to any new object type
-var RequiredInternalRelations = []string{"id", "name", "type", "createdDate", "lastModifiedDate", "lastOpenedDate"}
+var RequiredInternalRelations = []string{"id", "name", "type", "createdDate", "lastModifiedDate", "lastModifiedBy", "lastOpenedDate"}
 
 var FormatFilePossibleTargetObjectTypes = []string{objects.BundledObjectTypeURLPrefix + "file", objects.BundledObjectTypeURLPrefix + "image", objects.BundledObjectTypeURLPrefix + "video", objects.BundledObjectTypeURLPrefix + "audio"}
 
@@ -20,12 +29,12 @@ var LocalOnlyRelationsKeys []string
 
 var (
 	BundledRelations = map[string]*relation.Relation{
-		"id": {
+		Id: {
 			Format:       relation.RelationFormat_object,
 			ObjectTypes:  []string{ObjectTypeSelfType}, // the actual objectType of the object which has this relation will be injected here
 			Name:         "Anytype ID",
 			DefaultValue: nil,
-			Key:          "id",
+			Key:          Id,
 			DataSource:   relation.Relation_local,
 			Hidden:       true,
 			ReadOnly:     true,
@@ -59,20 +68,30 @@ var (
 			Hidden:       false,
 			ReadOnly:     true,
 		},
-		"lastModifiedDate": {
+		LastModifiedDate: {
 			Format:       relation.RelationFormat_date,
 			Name:         "Last modified date",
 			DefaultValue: nil,
-			Key:          "lastModifiedDate",
+			Key:          LastModifiedDate,
 			DataSource:   relation.Relation_local,
 			Hidden:       false,
 			ReadOnly:     true,
 		},
-		"lastOpenedDate": {
+		LastModifiedBy: {
+			Format:       relation.RelationFormat_object,
+			Name:         "Last modified by",
+			ObjectTypes:  []string{bundledObjectTypeURLPrefix + "profile"},
+			DefaultValue: nil,
+			Key:          LastModifiedBy,
+			DataSource:   relation.Relation_local,
+			Hidden:       false,
+			ReadOnly:     true,
+		},
+		LastOpenedDate: {
 			Format:       relation.RelationFormat_date,
 			Name:         "Last opened date",
 			DefaultValue: nil,
-			Key:          "lastOpenedDate",
+			Key:          LastOpenedDate,
 			DataSource:   relation.Relation_local,
 			Hidden:       false,
 			ReadOnly:     true,

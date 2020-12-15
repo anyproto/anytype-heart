@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -44,6 +45,15 @@ type SmartTest struct {
 	ms      meta.Service
 	sync.Mutex
 	state.Doc
+}
+
+func (st *SmartTest) GetSearchInfo() (indexer.SearchInfo, error) {
+	return indexer.SearchInfo{
+		Id:      st.Id(),
+		Title:   pbtypes.GetString(st.Details(), "name"),
+		Snippet: st.Snippet(),
+		Text:    st.Doc.SearchText(),
+	}, nil
 }
 
 func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
@@ -122,10 +132,6 @@ func (st *SmartTest) DisableLayouts() {
 
 func (st *SmartTest) SendEvent(msgs []*pb.EventMessage) {
 	return
-}
-
-func (st *SmartTest) Reindex() error {
-	return nil
 }
 
 func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {

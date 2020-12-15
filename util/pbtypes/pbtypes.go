@@ -1,6 +1,8 @@
 package pbtypes
 
-import "github.com/gogo/protobuf/types"
+import (
+	"github.com/gogo/protobuf/types"
+)
 
 func Float64(v float64) *types.Value {
 	return &types.Value{

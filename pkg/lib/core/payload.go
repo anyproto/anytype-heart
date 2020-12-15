@@ -22,6 +22,11 @@ type SmartblockRecordEnvelope struct {
 	LogID     string
 }
 
+type SmartblockRecordWithThreadID struct {
+	SmartblockRecordEnvelope
+	ThreadID string
+}
+
 type SmartblockRecord struct {
 	ID      string
 	PrevID  string

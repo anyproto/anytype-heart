@@ -2,7 +2,6 @@ package core
 
 import (
 	"sort"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
@@ -79,13 +78,4 @@ func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
 	})
 
 	return pages, nil
-}
-
-// deprecated, to be removed
-func (a *Anytype) ObjectUpdateLastOpened(id string) error {
-	// lock here for the concurrent details changes
-	a.lock.Lock()
-	defer a.lock.Unlock()
-
-	return a.localStore.Objects.UpdateLastModified(id, time.Now())
 }

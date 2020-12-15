@@ -6,6 +6,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -218,7 +219,7 @@ func TestRelationAdd(t *testing.T) {
 			BlockId:     "dataview",
 			RelationKey: relKey,
 		})
-		mw.blocksService.Close()
+		//mw.blocksService.Close()
 		respAccountCreate := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: mw.Anytype.Account(), RootPath: rootPath})
 		require.Equal(t, 0, int(respAccountCreate.Error.Code))
 
@@ -321,14 +322,14 @@ func TestCustomType(t *testing.T) {
 			Name: "1",
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
-				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/pages"}},
+				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/page"}},
 				{Format: pbrelation.RelationFormat_description, Name: "bio"},
 			},
 		},
 	})
 
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
-	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 9) // including relation.RequiredInternalRelations
+	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 10) // including relation.RequiredInternalRelations
 	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
 	var newRelation *pbrelation.Relation
 	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
@@ -344,7 +345,7 @@ func TestCustomType(t *testing.T) {
 	require.Len(t, respObjectTypeList.ObjectTypes, len(relation.BundledObjectTypes)+1)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
 	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
-	require.Len(t, lastObjType.Relations, 9)
+	require.Len(t, lastObjType.Relations, 10)
 
 	respCreateCustomTypeSet := mw.SetCreate(&pb.RpcSetCreateRequest{
 		ObjectTypeUrl: respObjectTypeCreate.ObjectType.Url,
@@ -389,14 +390,22 @@ func TestCustomType(t *testing.T) {
 
 	require.NotNil(t, details.Fields[newRelation.Key])
 	require.Equal(t, "newRelationVal", details.Fields[newRelation.Key].GetStringValue())
+	for i := 0; i <= 20; i++ {
+		respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
+		require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
 
-	respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
-	require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
+		recordsSet := getEventRecordsSet(respOpenCustomTypeSet.Event.Messages)
+		require.NotNil(t, recordsSet)
+		if len(recordsSet.Records) == 0 {
+			if i < 20 {
+				time.Sleep(time.Millisecond * 200)
+				continue
+			}
+		}
 
-	require.Len(t, respOpenCustomTypeSet.Event.Messages, 2)
-	require.Len(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 1)
-	require.Equal(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[0].Fields["id"].GetStringValue(), respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue())
-
+		require.Equal(t, 1, len(recordsSet.Records))
+		require.Equal(t, respOpenCustomTypeSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[0].Fields["id"].GetStringValue(), respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue())
+	}
 	show = respOpenCustomTypeSet.Event.Messages[0].GetBlockShow()
 	require.NotNil(t, show)
 
@@ -415,24 +424,56 @@ func TestBundledType(t *testing.T) {
 
 	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
-
+	time.Sleep(time.Second)
 	respOpenPagesSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
-	require.Len(t, respOpenPagesSet.Event.Messages, 2)
-	show := respOpenPagesSet.Event.Messages[0].GetBlockShow()
+
+	show := getEventBlockShow(respOpenPagesSet.Event.Messages)
 	require.NotNil(t, show)
 
-	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 1)
+	recordsSet := getEventRecordsSet(respOpenPagesSet.Event.Messages)
+	require.NotNil(t, recordsSet)
+
+	require.Len(t, recordsSet.Records, 1)
 	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[0].Fields["id"].GetStringValue())
 
 	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 
+	time.Sleep(time.Second)
 	respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
-	require.Len(t, respOpenPagesSet.Event.Messages, 2)
-	show = respOpenPagesSet.Event.Messages[0].GetBlockShow()
+
+	show = getEventBlockShow(respOpenPagesSet.Event.Messages)
 	require.NotNil(t, show)
 	require.Len(t, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, 2)
-	require.Equal(t, respCreatePage.PageId, respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records[1].Fields["id"].GetStringValue())
+
+	require.True(t, hasRecordWithKeyAndVal(respOpenPagesSet.Event.Messages[1].GetBlockDataviewRecordsSet().Records, "id", respCreatePage.PageId))
+}
+
+func hasRecordWithKeyAndVal(recs []*types2.Struct, key string, val string) bool {
+	for _, rec := range recs {
+		if pbtypes.GetString(rec, key) == val {
+			return true
+		}
+	}
+	return false
+}
+
+func getEventRecordsSet(msgs []*pb.EventMessage) *pb.EventBlockDataviewRecordsSet {
+	for _, msg := range msgs {
+		if v, ok := msg.Value.(*pb.EventMessageValueOfBlockDataviewRecordsSet); ok {
+			return v.BlockDataviewRecordsSet
+		}
+	}
+	return nil
+}
+
+func getEventBlockShow(msgs []*pb.EventMessage) *pb.EventBlockShow {
+	for _, msg := range msgs {
+		if v, ok := msg.Value.(*pb.EventMessageValueOfBlockShow); ok {
+			return v.BlockShow
+		}
+	}
+	return nil
 }

@@ -132,7 +132,7 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	details.Fields["name"] = pbtypes.String(largest.Meta().Name)
-	details.Fields["mimeType"] = pbtypes.String(largest.Meta().Media)
+	details.Fields["fileMimeType"] = pbtypes.String(largest.Meta().Media)
 
 	details.Fields["sizeInBytes"] = pbtypes.Float64(float64(largest.Meta().Size))
 	details.Fields["addedDate"] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))

@@ -37,11 +37,11 @@ func (i *file) Details() (*types.Struct, error) {
 	meta := i.Meta()
 	return &types.Struct{
 		Fields: map[string]*types.Value{
-			"type":        pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "file"}),
-			"mimeType":    pbtypes.String(meta.Media),
-			"name":        pbtypes.String(meta.Name),
-			"sizeInBytes": pbtypes.Float64(float64(meta.Size)),
-			"addedDate":   pbtypes.Float64(float64(meta.Added.Unix())),
+			"type":         pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "file"}),
+			"fileMimeType": pbtypes.String(meta.Media),
+			"name":         pbtypes.String(meta.Name),
+			"sizeInBytes":  pbtypes.Float64(float64(meta.Size)),
+			"addedDate":    pbtypes.Float64(float64(meta.Added.Unix())),
 		},
 	}, nil
 }
