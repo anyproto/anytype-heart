@@ -49,6 +49,7 @@ type Database interface {
 }
 
 type Query struct {
+	FullText  string
 	Relations []*model.BlockContentDataviewRelation // relations used to provide relations options
 	Filters   []*model.BlockContentDataviewFilter   // filters results. apply sequentially
 	Sorts     []*model.BlockContentDataviewSort     // order results. apply hierarchically

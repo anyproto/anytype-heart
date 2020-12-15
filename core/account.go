@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -159,7 +160,6 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	if mw.Anytype, err = core.New(
 		core.WithRootPathAndAccount(mw.rootPath, account.Address()),
-		core.WithReindexFunc(mw.reindexDoc),
 		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
 	); err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
@@ -189,6 +189,11 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		ss = status.NewService(syncStatus, fileStatus, profileInfo, eventSender, cafePid.String(), ownDevice)
 		bs = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, eventSender)
 	)
+
+	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)
+	if err != nil {
+		panic(err)
+	}
 
 	if err := ss.Start(); err != nil {
 		// app misconfiguration
@@ -227,6 +232,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	mw.foundAccounts = append(mw.foundAccounts, newAcc)
 	mw.setStatusService(ss)
 	mw.setBlockService(bs)
+	mw.setIndexer(is)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -302,7 +308,6 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	// it is ok to unlock just after we've started with the 1st account
 	if mw.Anytype, err = core.New(
 		core.WithRootPathAndAccount(mw.rootPath, zeroAccount.Address()),
-		core.WithReindexFunc(mw.reindexDoc),
 		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
 	); err != nil {
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
@@ -486,7 +491,6 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		var err error
 		if mw.Anytype, err = core.New(
 			core.WithRootPathAndAccount(mw.rootPath, req.Id),
-			core.WithReindexFunc(mw.reindexDoc),
 			core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
 		); err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
@@ -522,11 +526,16 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		bs = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, eventSender)
 	)
 
+	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)
+	if err != nil {
+		panic(err)
+	}
+
 	if err := ss.Start(); err != nil {
 		// app misconfiguration
 		panic(err)
 	}
-
+	mw.setIndexer(is)
 	mw.setStatusService(ss)
 	mw.setBlockService(bs)
 	return response(&acc, pb.RpcAccountSelectResponseError_NULL, nil)

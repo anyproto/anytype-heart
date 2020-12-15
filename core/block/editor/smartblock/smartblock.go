@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -81,11 +82,11 @@ type SmartBlock interface {
 	RemoveObjectTypes(objectTypes []string) (err error)
 	FileRelationKeys() []string
 
-	Reindex() error
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
+	GetSearchInfo() (indexer.SearchInfo, error)
 	MetaService() meta.Service
 	BlockClose()
 	Close() (err error)
@@ -236,6 +237,9 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
 				for _, rel := range dv.Relations {
 					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+						if rel.Key == relation.Id || rel.Key == relation.Type {
+							continue
+						}
 						for _, ot := range rel.ObjectTypes {
 							if slice.FindPos(uniqueObjTypes, ot) == -1 {
 								uniqueObjTypes = append(uniqueObjTypes, ot)
@@ -359,7 +363,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 				}
 			}
 
-			if rel.Key == "id" || rel.Key == "type" {
+			if rel.Key == relation.Id || rel.Key == relation.Type {
 				continue
 			}
 
@@ -405,7 +409,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	var beforeSnippet = sb.Doc.Snippet()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
@@ -451,8 +454,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
-	s.SetDetail("lastModifiedDate", pbtypes.Float64(float64(time.Now().Unix())))
-	sb.updatePageStoreNoErr(beforeSnippet, &act)
+	if hasDepIds(&act) {
+		sb.checkSubscriptions()
+	}
 	return
 }
 
@@ -464,65 +468,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	if sb.undo != nil {
 		sb.undo.Reset()
 	}
-	sb.updatePageStoreNoErr("", nil)
 	return
-}
-
-func (sb *smartBlock) updatePageStoreNoErr(beforeSnippet string, act *undo.Action) {
-	if e := sb.updatePageStore(beforeSnippet, act); e != nil {
-		log.Warnf("can't update pageStore info: %v", e)
-	}
-}
-
-func (sb *smartBlock) updatePageStore(beforeSnippet string, act *undo.Action) (err error) {
-	if sb.Type() == pb.SmartBlockType_Archive {
-		return
-	}
-
-	var storeInfo struct {
-		details   *types.Struct
-		relations *pbrelation.Relations
-		snippet   string
-		links     []string
-	}
-
-	if act == nil || act.Details != nil {
-		storeInfo.details = pbtypes.CopyStruct(sb.Details())
-		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
-	}
-
-	if act == nil || act.Relations != nil {
-		storeInfo.relations = &pbrelation.Relations{Relations: pbtypes.CopyRelations(sb.ExtraRelations())}
-	}
-
-	if act == nil || act.ObjectTypes != nil {
-		storeInfo.details = pbtypes.CopyStruct(sb.Details())
-		if storeInfo.details == nil || storeInfo.details.Fields == nil {
-			storeInfo.details = &types.Struct{Fields: map[string]*types.Value{}}
-		}
-
-		storeInfo.details.Fields["type"] = pbtypes.StringList(sb.ObjectTypes())
-	}
-
-	if hasDepIds(act) {
-		if sb.checkSubscriptions() {
-			storeInfo.links = make([]string, len(sb.depIds))
-			copy(storeInfo.links, sb.depIds)
-			storeInfo.links = slice.Remove(storeInfo.links, sb.Id())
-		}
-	}
-
-	if afterSnippet := sb.Doc.Snippet(); beforeSnippet != afterSnippet {
-		storeInfo.snippet = afterSnippet
-	}
-
-	if at := sb.Anytype(); at != nil && sb.Type() != pb.SmartBlockType_Breadcrumbs {
-		if storeInfo.links != nil || storeInfo.details != nil || len(storeInfo.snippet) > 0 {
-			return at.ObjectStore().UpdateObject(sb.Id(), storeInfo.details, storeInfo.relations, storeInfo.links, storeInfo.snippet)
-		}
-	}
-
-	return nil
 }
 
 func (sb *smartBlock) checkSubscriptions() (changed bool) {
@@ -717,7 +663,6 @@ func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
 }
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
-	beforeSnippet := sb.Doc.Snippet()
 	s, err := f(sb.Doc)
 	if err != nil {
 		return err
@@ -734,7 +679,9 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		})
 	}
 	sb.storeFileKeys()
-	sb.updatePageStoreNoErr(beforeSnippet, &act)
+	if hasDepIds(&act) {
+		sb.checkSubscriptions()
+	}
 	return nil
 }
 
@@ -754,12 +701,8 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 		}
 	}
 	sb.storeFileKeys()
-	sb.updatePageStoreNoErr("", nil)
+	sb.checkSubscriptions()
 	return nil
-}
-
-func (sb *smartBlock) Reindex() (err error) {
-	return sb.updatePageStore("", nil)
 }
 
 func (sb *smartBlock) MetaService() meta.Service {
@@ -908,6 +851,17 @@ func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
 		}
 	}
 	return
+}
+
+func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
+	depIds := slice.Remove(sb.dependentSmartIds(), sb.Id())
+	return indexer.SearchInfo{
+		Id:      sb.Id(),
+		Title:   pbtypes.GetString(sb.Details(), "name"),
+		Snippet: sb.Snippet(),
+		Text:    sb.Doc.SearchText(),
+		Links:   depIds,
+	}, nil
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {

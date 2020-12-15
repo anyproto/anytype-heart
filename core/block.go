@@ -9,6 +9,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -105,9 +107,11 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
 
-	err = mw.Anytype.ObjectStore().UpdateLastOpened(req.BlockId, time.Now())
+	err = mw.doBlockService(func(bs block.Service) error {
+		return mw.indexer.SetDetail(req.BlockId, relation.LastOpenedDate, pbtypes.Float64(float64(time.Now().Unix())))
+	})
 	if err != nil {
-		log.Errorf("failed to update last opened for the page %s: %s", req.BlockId, err.Error())
+		log.Errorf("failed to update last opened for the object %s: %s", req.BlockId, err.Error())
 	}
 
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)

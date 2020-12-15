@@ -13,14 +13,14 @@ import (
 func TestTree_Add(t *testing.T) {
 	t.Run("add first el", func(t *testing.T) {
 		tr := new(Tree)
-		assert.Equal(t, Append, tr.Add(newSnapshot("root", "", nil)))
+		assert.Equal(t, Rebuild, tr.Add(newSnapshot("root", "", nil)))
 		assert.Equal(t, tr.root.Id, "root")
 		assert.Equal(t, []string{"root"}, tr.Heads())
 		assert.Equal(t, []string{"root"}, tr.MetaHeads())
 	})
 	t.Run("linear add", func(t *testing.T) {
 		tr := new(Tree)
-		assert.Equal(t, Append, tr.Add(
+		assert.Equal(t, Rebuild, tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("one", "root", "root", "root", true),
 			newDetailsChange("two", "root", "one", "one", false),
@@ -43,7 +43,7 @@ func TestTree_Add(t *testing.T) {
 	})
 	t.Run("branch", func(t *testing.T) {
 		tr := new(Tree)
-		assert.Equal(t, Append, tr.Add(
+		assert.Equal(t, Rebuild, tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("1", "root", "root", "root", false),
 			newDetailsChange("2", "root", "1", "root", true),
@@ -65,7 +65,7 @@ func TestTree_Add(t *testing.T) {
 		c3 := newDetailsChange("3", "root", "", "", true)
 		c3.PreviousMetaIds = []string{"2", "1.3"}
 		c3.PreviousIds = []string{"2", "1.3"}
-		assert.Equal(t, Append, tr.Add(
+		assert.Equal(t, Rebuild, tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("1", "root", "root", "root", false),
 			newDetailsChange("2", "root", "1", "root", true),
@@ -214,7 +214,7 @@ func BenchmarkTree_Add(b *testing.B) {
 func TestTree_LastSnapshotId(t *testing.T) {
 	t.Run("trivial", func(t *testing.T) {
 		tr := new(Tree)
-		assert.Equal(t, Append, tr.Add(
+		assert.Equal(t, Rebuild, tr.Add(
 			newSnapshot("root", "", nil),
 			newDetailsChange("one", "root", "root", "root", true),
 			newDetailsChange("two", "root", "one", "one", false),

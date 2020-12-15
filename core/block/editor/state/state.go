@@ -49,6 +49,7 @@ type Doc interface {
 	Snippet() (snippet string)
 	GetFileKeys() []pb.ChangeFileKeys
 	BlocksInit()
+	SearchText() string
 }
 
 func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
@@ -255,6 +256,16 @@ func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 
 func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
+}
+
+func (s *State) SearchText() (text string) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if tb := b.Model().GetText(); tb != nil {
+			text += tb.Text + "\n"
+		}
+		return true
+	})
+	return
 }
 
 func ApplyState(s *State, withLayouts bool) (msgs []simple.EventMessage, action undo.Action, err error) {
@@ -630,10 +641,9 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 	return s
 }
 
-func (s *State) fillLocalScopeDetails() {
-	s.SetDetail("id", pbtypes.String(s.rootId))
-	s.SetDetail("type", pbtypes.StringList(s.ObjectTypes()))
-	// todo: lastModifiedDate
+func (s *State) InjectDerivedDetails() {
+	s.SetDetail(relationCol.Id, pbtypes.String(s.rootId))
+	s.SetDetail(relationCol.Type, pbtypes.StringList(s.ObjectTypes()))
 }
 
 // ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots

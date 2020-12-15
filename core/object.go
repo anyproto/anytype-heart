@@ -45,7 +45,13 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	records, _, err := mw.Anytype.ObjectStore().Query(nil, database.Query{Filters: req.Filters, Sorts: req.Sorts, Offset: int(req.Offset), Limit: int(req.Limit)})
+	records, _, err := mw.Anytype.ObjectStore().Query(nil, database.Query{
+		Filters:  req.Filters,
+		Sorts:    req.Sorts,
+		Offset:   int(req.Offset),
+		Limit:    int(req.Limit),
+		FullText: req.FullText,
+	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
