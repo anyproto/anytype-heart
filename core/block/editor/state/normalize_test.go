@@ -366,6 +366,25 @@ func TestState_Normalize(t *testing.T) {
 		assert.Equal(t, []string{"d"}, r.Pick("a").Model().ChildrenIds)
 		assert.Equal(t, []string{"e"}, r.Pick("c").Model().ChildrenIds)
 	})
+	t.Run("normalize header", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		var rootIds []string
+		for i := 0; i < 200; i++ {
+			rootIds = append(rootIds, fmt.Sprint(i))
+			r.Add(simple.New(&model.Block{Id: fmt.Sprint(i)}))
+		}
+		r.Add(simple.New(&model.Block{Id: "header", Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Header,
+			},
+		}}))
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: append([]string{"header"}, rootIds...)}))
+
+		s := r.NewState()
+		s.normalizeTree()
+		ApplyState(s, true)
+		assert.Equal(t, "header", s.Pick(s.RootId()).Model().ChildrenIds[0])
+	})
 }
 
 func TestCleanupLayouts(t *testing.T) {
