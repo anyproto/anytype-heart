@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -18,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -409,6 +411,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
+	if !pbtypes.Exists(sb.Details(), "createdDate") {
+		if e := sb.setCreationInfo(s); e != nil {
+			log.With("thread", sb.Id()).Errorf("can't set creation info: %v", err)
+		}
+	}
+
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
@@ -456,6 +464,30 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	if hasDepIds(&act) {
 		sb.checkSubscriptions()
+	}
+	return
+}
+
+func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
+	if sb.Anytype() == nil {
+		return nil
+	}
+	var (
+		createdDate = time.Now().Unix()
+		createdBy   = sb.Anytype().Account()
+	)
+	fc, err := sb.source.FindFirstChange()
+	if err == change.ErrEmpty {
+		err = nil
+	} else if err != nil {
+		return
+	} else {
+		createdDate = fc.Timestamp
+		createdBy = fc.Account
+	}
+	s.SetDetail("createdDate", pbtypes.Float64(float64(createdDate)))
+	if profileId, e := threads.ProfileThreadIDFromAccountAddress(createdBy); e == nil {
+		s.SetDetail("createdBy", pbtypes.String(profileId.String()))
 	}
 	return
 }

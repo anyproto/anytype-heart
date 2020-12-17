@@ -1,6 +1,7 @@
 package source
 
 import (
+	"context"
 	"fmt"
 	"math/rand"
 	"sync"
@@ -37,6 +38,7 @@ type Source interface {
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
+	FindFirstChange() (c *change.Change, err error)
 	Close() (err error)
 }
 
@@ -342,6 +344,24 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 		})
 	}
 	return fileKeys
+}
+
+func (s *source) FindFirstChange() (c *change.Change, err error) {
+	ctx := context.TODO()
+	if s.tree.RootId() == "" {
+		return nil, change.ErrEmpty
+	}
+	c = s.tree.Get(s.tree.RootId())
+	for c.LastSnapshotId != "" {
+		var rec *core.SmartblockRecordEnvelope
+		if rec, err = s.sb.GetRecord(ctx, c.LastSnapshotId); err != nil {
+			return
+		}
+		if c, err = change.NewChangeFromRecord(*rec); err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (s *source) logHeadIDs() map[string]string {
