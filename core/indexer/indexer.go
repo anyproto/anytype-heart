@@ -27,16 +27,12 @@ var (
 )
 
 func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
-	ch, cancel, err := a.SubscribeForNewRecords()
-	if err != nil {
-		return nil, err
-	}
+	ch := a.NewRecordsChan()
 	i := &indexer{
 		store:      a.ObjectStore(),
 		anytype:    a,
 		searchInfo: searchInfo,
 		cache:      make(map[string]*doc),
-		cancel:     cancel,
 		quitWG:     &sync.WaitGroup{},
 		quit:       make(chan struct{}),
 	}
@@ -71,7 +67,6 @@ type indexer struct {
 	anytype    anytype.Service
 	searchInfo GetSearchInfo
 	cache      map[string]*doc
-	cancel     func()
 	quitWG     *sync.WaitGroup
 	quit       chan struct{}
 
@@ -110,6 +105,8 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 			batch.Add(rec)
 		case <-ticker.C:
 			i.cleanup()
+		case <-i.quit:
+			batch.Close()
 		}
 	}
 }
@@ -258,10 +255,6 @@ func (i *indexer) cleanup() {
 }
 
 func (i *indexer) Close() {
-	if i.cancel != nil {
-		i.cancel()
-		i.cancel = nil
-	}
 	if i.quit != nil {
 		close(i.quit)
 		i.quitWG.Wait()
