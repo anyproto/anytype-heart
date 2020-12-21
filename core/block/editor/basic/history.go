@@ -8,8 +8,8 @@ import (
 )
 
 type IHistory interface {
-	Undo(*state.Context) (counters pb.RpcBlockUndoCounters, err error)
-	Redo(*state.Context) (counters pb.RpcBlockUndoCounters, err error)
+	Undo(*state.Context) (counters pb.RpcBlockUndoRedoCounter, err error)
+	Redo(*state.Context) (counters pb.RpcBlockUndoRedoCounter, err error)
 }
 
 func NewHistory(sb smartblock.SmartBlock) IHistory {
@@ -20,7 +20,7 @@ type history struct {
 	smartblock.SmartBlock
 }
 
-func (h *history) Undo(ctx *state.Context) (counters pb.RpcBlockUndoCounters, err error) {
+func (h *history) Undo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Previous()
 	if err != nil {
@@ -46,7 +46,7 @@ func (h *history) Undo(ctx *state.Context) (counters pb.RpcBlockUndoCounters, er
 	return
 }
 
-func (h *history) Redo(ctx *state.Context) (counters pb.RpcBlockUndoCounters, err error) {
+func (h *history) Redo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Next()
 	if err != nil {

@@ -10,7 +10,7 @@ import (
 func (mw *Middleware) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoResponse {
 	ctx := state.NewContext(nil)
 	var (
-		counters pb.RpcBlockUndoCounters
+		counters pb.RpcBlockUndoRedoCounter
 		err      error
 	)
 	response := func(code pb.RpcBlockUndoResponseErrorCode, err error) *pb.RpcBlockUndoResponse {
@@ -39,7 +39,7 @@ func (mw *Middleware) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoRes
 func (mw *Middleware) BlockRedo(req *pb.RpcBlockRedoRequest) *pb.RpcBlockRedoResponse {
 	ctx := state.NewContext(nil)
 	var (
-		counters pb.RpcBlockUndoCounters
+		counters pb.RpcBlockUndoRedoCounter
 		err      error
 	)
 	response := func(code pb.RpcBlockRedoResponseErrorCode, err error) *pb.RpcBlockRedoResponse {
