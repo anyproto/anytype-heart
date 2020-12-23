@@ -14,14 +14,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/html"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/util/anyblocks"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -300,15 +297,6 @@ func (cb *clipboard) pasteText(ctx *state.Context, req pb.RpcBlockPasteRequest, 
 
 }
 
-func (cb *clipboard) filterFromLayouts(anySlot []*model.Block) (anySlotFiltered []*model.Block) {
-	for _, b := range anySlot {
-		if layout := b.GetLayout(); layout == nil || layout.Style != model.BlockContentLayout_Div || layout.Style == model.BlockContentLayout_Header {
-			anySlotFiltered = append(anySlotFiltered, b)
-		}
-	}
-	return anySlotFiltered
-}
-
 func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*model.Block) {
 	var oldToNew = make(map[string]string)
 	for _, b := range anySlot {
@@ -328,253 +316,11 @@ func (cb *clipboard) replaceIds(anySlot []*model.Block) (anySlotreplacedIds []*m
 
 func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	s := cb.NewStateCtx(ctx).SetGroupId(groupId)
-	targetId := req.FocusedBlockId
-	isSameBlockCaret = false
-
-	req.AnySlot = cb.replaceIds(req.AnySlot)
-	req.AnySlot = cb.filterFromLayouts(req.AnySlot)
-
-	isMultipleBlocksToPaste := len(req.AnySlot) > 1
-	firstPasteBlockText := &model.BlockContentText{}
-	firstPasteBlockText = nil
-
-	req.AnySlot = uri.ProcessAllURI(req.AnySlot)
-
-	caretPosition = -1
-
-	if len(req.AnySlot) > 0 {
-		firstPasteBlockText = req.AnySlot[0].GetText()
+	ctrl := &pasteCtrl{s: s, ps: cb.blocksToState(cb.replaceIds(req.AnySlot))}
+	if err = ctrl.Exec(req); err != nil {
+		return
 	}
-
-	if req.SelectedTextRange == nil {
-		req.SelectedTextRange = &model.Range{From: 0, To: 0}
-	}
-
-	if firstPasteBlockText != nil && firstPasteBlockText.Marks == nil {
-		firstPasteBlockText.Marks = &model.BlockContentTextMarks{Marks: []*model.BlockContentTextMark{}}
-	}
-
-	isSelectedBlocks := len(req.SelectedBlockIds) > 0
-	if isSelectedBlocks {
-		targetId = req.SelectedBlockIds[len(req.SelectedBlockIds)-1]
-	}
-
-	var focusedContent *model.BlockContentOfText
-
-	isFocusedText := false
-	isFocusedTitle := false
-
-	isPasteTop := false
-	isPasteBottom := false
-	isPasteInstead := false
-	isPasteWithSplit := false
-	isPasteToCodeBlock := false
-
-	focusedBlock := s.Get(targetId)
-	focusedBlockText, ok := focusedBlock.(text.Block)
-	if ok {
-		isPasteToCodeBlock = focusedBlock.Model().GetText() != nil && focusedBlock.Model().GetText().Style == model.BlockContentText_Code
-	}
-
-	cIds := cb.Pick(cb.Id()).Model().ChildrenIds
-
-	isEmptyPage := len(cIds) == 0
-	if isEmptyPage {
-		root := cb.Pick(cb.Id())
-		if root != nil && root.Model() != nil && len(root.Model().ChildrenIds) > 0 {
-			targetId = root.Model().ChildrenIds[0]
-		} else {
-			root := cb.Pick(cb.Id())
-			children := []string{}
-			for _, b := range req.AnySlot {
-				newBlock := simple.New(b)
-				s.Add(newBlock)
-				children = append(children, newBlock.Model().Id)
-				root.Model().ChildrenIds = children
-				s.Set(root)
-
-				targetId = newBlock.Model().Id
-				focusedBlock = cb.Pick(targetId)
-				focusedBlockText, ok = focusedBlock.(text.Block)
-
-				for _, childId := range b.ChildrenIds {
-					childBlock := s.Get(childId)
-					s.Add(childBlock)
-
-					if err = s.InsertTo(b.Id, model.Block_Bottom, childId); err != nil {
-						return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-					}
-				}
-			}
-		}
-	}
-
-	if ok && focusedBlock != nil && focusedBlockText != nil && !isSelectedBlocks {
-		focusedContent, isFocusedText = focusedBlock.Model().Content.(*model.BlockContentOfText)
-		//isFocusedTitle = isFocusedText && focusedContent.Text.Style == model.BlockContentText_Title
-
-		isPasteTop = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == 0 && utf8.RuneCountInString(focusedContent.Text.Text) != 0
-		isPasteBottom = req.SelectedTextRange.From == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text)) && req.SelectedTextRange.To != 0
-		isPasteInstead = req.SelectedTextRange.From == 0 && req.SelectedTextRange.To == int32(utf8.RuneCountInString(focusedContent.Text.Text))
-		isPasteWithSplit = !isPasteInstead && !isPasteBottom && !isPasteTop
-	}
-
-	pasteToTheEnd := targetId == "" && len(req.SelectedBlockIds) == 0 && len(cIds) > 0
-	pasteSingleTextInFocusedText := focusedBlockText != nil && isFocusedText && !isFocusedTitle && !isMultipleBlocksToPaste && firstPasteBlockText != nil
-	pasteMultipleBlocksInFocusedText := isFocusedText && (isMultipleBlocksToPaste || firstPasteBlockText == nil)
-	pasteMultipleBlocksOnSelectedBlocks := isSelectedBlocks
-
-	switch true {
-
-	case isPasteToCodeBlock:
-		combinedCodeBlock := anyblocks.CombineCodeBlocks(req.AnySlot)
-		caretPosition, err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, combinedCodeBlock, req.IsPartOfBlock)
-
-	case pasteToTheEnd:
-		targetId = cb.Pick(cIds[len(cIds)-1]).Model().Id
-		blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, targetId, req.AnySlot, model.Block_Bottom, false)
-		if err != nil {
-			return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-		}
-		break
-
-	case pasteSingleTextInFocusedText:
-		caretPosition, err = focusedBlockText.RangeTextPaste(req.SelectedTextRange.From, req.SelectedTextRange.To, req.AnySlot[0], req.IsPartOfBlock)
-		if err != nil {
-			return nil, nil, -1, isSameBlockCaret, err
-		}
-		break
-
-	case pasteMultipleBlocksInFocusedText:
-		if isPasteTop {
-			isSameBlockCaret = true
-			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, targetId, req.AnySlot, model.Block_Top, true)
-			if err != nil {
-				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-			}
-
-			if utf8.RuneCountInString(focusedContent.Text.Text) == 0 {
-				s.Unlink(focusedBlock.Model().Id)
-			}
-
-		} else if isPasteBottom {
-			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, targetId, req.AnySlot, model.Block_Bottom, false)
-			if err != nil {
-				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-			}
-
-		} else if isPasteInstead {
-			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, req.FocusedBlockId, req.AnySlot, model.Block_Bottom, false)
-			if err != nil {
-				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-			}
-			s.Unlink(req.FocusedBlockId)
-
-			break
-
-		} else if isPasteWithSplit {
-			isSameBlockCaret = true
-			newBlock, err := focusedBlockText.RangeSplit(req.SelectedTextRange.From, req.SelectedTextRange.To, true)
-			if err != nil {
-				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-			}
-
-			// insert new blocks
-			pos := model.Block_Top
-			isReversed := true
-			blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, targetId, req.AnySlot, pos, isReversed)
-			if err != nil {
-				return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-			}
-
-			if utf8.RuneCountInString(newBlock.Model().GetText().Text) > 0 {
-				s.Add(newBlock)
-				err = s.InsertTo(targetId, model.Block_Top, newBlock.Model().Id)
-
-				if err != nil {
-					return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-				}
-				blockIds = append(blockIds, newBlock.Model().Id)
-			}
-
-			if utf8.RuneCountInString(focusedBlock.Model().GetText().Text) == 0 {
-				s.Unlink(focusedBlock.Model().Id)
-			}
-		}
-		break
-
-	case pasteMultipleBlocksOnSelectedBlocks:
-		blockIds, uploadArr, targetId, err = cb.insertBlocks(s, isPasteToCodeBlock, targetId, req.AnySlot, model.Block_Bottom, false)
-		if err != nil {
-			return blockIds, uploadArr, caretPosition, isSameBlockCaret, err
-		}
-		for _, selectedBlockId := range req.SelectedBlockIds {
-			s.Unlink(selectedBlockId)
-		}
-
-		break
-	}
-
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
-}
-
-func (cb *clipboard) insertBlocks(s *state.State, isPasteToCodeBlock bool, targetId string, blocks []*model.Block, pos model.BlockPosition, isReversed bool) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, targetIdOut string, err error) {
-	idToIsChild := make(map[string]bool)
-	/*	if isPasteToCodeBlock {
-		blocks = blocks.AllBlocksToCode(blocks)
-	}*/
-
-	for _, b := range blocks {
-		for _, cId := range b.ChildrenIds {
-			idToIsChild[cId] = true
-		}
-	}
-
-	var newBlocks []simple.Block
-	for i, _ := range blocks {
-		index := i
-		if isReversed {
-			index = len(blocks) - i - 1
-		}
-		newBlock := simple.New(blocks[index])
-		newBlocks = append(newBlocks, newBlock)
-		s.Add(newBlock)
-	}
-	for i, _ := range blocks {
-		index := i
-		if isReversed {
-			index = len(blocks) - i - 1
-		}
-		newBlock := newBlocks[i]
-
-		blockIds = append(blockIds, newBlock.Model().Id)
-
-		if idToIsChild[blocks[index].Id] != true {
-			if targetId == template.TitleBlockId {
-				targetId = template.HeaderLayoutId
-				pos = model.Block_Bottom
-			}
-			err = s.InsertTo(targetId, pos, newBlock.Model().Id)
-
-			if err != nil {
-				return blockIds, uploadArr, targetId, err
-			}
-
-			targetId = newBlock.Model().Id
-		}
-
-		if f := newBlock.Model().GetFile(); f != nil {
-			if f.State != model.BlockContentFile_Done {
-				uploadArr = append(uploadArr,
-					pb.RpcBlockUploadRequest{
-						BlockId: newBlock.Model().Id,
-						Url:     f.Name,
-					})
-			}
-		}
-	}
-
-	return blockIds, uploadArr, targetId, nil
 }
 
 func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
@@ -594,6 +340,7 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
 	cbs.BlocksInit()
+	state.CleanupLayouts(cbs)
 	cbs.Normalize(false)
 	return
 }
