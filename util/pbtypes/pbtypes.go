@@ -53,6 +53,14 @@ func GetString(s *types.Struct, name string) string {
 	return ""
 }
 
+func Exists(s *types.Struct, name string) bool {
+	if s == nil || s.Fields == nil {
+		return false
+	}
+	_, ok := s.Fields[name]
+	return ok
+}
+
 func GetStringList(s *types.Struct, name string) []string {
 	if s == nil || s.Fields == nil {
 		return nil

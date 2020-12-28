@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -102,6 +103,10 @@ func (v *files) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 
 func (v *files) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
+}
+
+func (v *files) FindFirstChange() (c *change.Change, err error) {
+	return nil, change.ErrEmpty
 }
 
 func (v *files) Close() (err error) {

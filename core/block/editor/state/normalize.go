@@ -115,6 +115,12 @@ func isDivLayout(m *model.Block) bool {
 func (s *State) normalizeTree() (err error) {
 	s.checkDividedLists(s.RootId())
 	s.normalizeTreeBranch(s.RootId())
+	const headerId = "header"
+	if s.Pick(headerId) != nil && slice.FindPos(s.Pick(s.RootId()).Model().ChildrenIds, headerId) != 0 {
+		s.Unlink(headerId)
+		root := s.Get(s.RootId()).Model()
+		root.ChildrenIds = append([]string{headerId}, root.ChildrenIds...)
+	}
 	return nil
 }
 
