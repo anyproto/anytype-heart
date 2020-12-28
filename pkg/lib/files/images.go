@@ -2,14 +2,11 @@ package files
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 )
 
 func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
@@ -49,19 +46,10 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 	}
 
 	go func() {
-		for attempt := 1; attempt <= maxPinAttempts; attempt++ {
-			if err := s.pins.FilePin(nodeHash); err != nil {
-				if errors.Is(err, pin.ErrNoCafe) {
-					return
-				}
-
-				log.Errorf("failed to pin image %s on the cafe (attempt %d): %s", nodeHash, attempt, err.Error())
-				time.Sleep(time.Minute * time.Duration(attempt))
-				continue
-			}
-
-			log.Debugf("image %s pinned on cafe", nodeHash)
-			break
+		if err := s.pins.FilePin(nodeHash); err != nil {
+			log.Warnf("cannot pin image %s: %v", nodeHash, err)
+		} else {
+			log.Debugf("pinning image %s started on the cafe", nodeHash)
 		}
 	}()
 
