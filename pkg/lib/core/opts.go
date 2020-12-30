@@ -29,6 +29,7 @@ type ServiceOptions struct {
 	WebGatewayBaseUrl     string
 	Offline               bool
 	InMemoryDS            bool
+	FullTextSearch        bool
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
 	SnapshotMarshalerFunc func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler
@@ -73,21 +74,22 @@ func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
 			return err
 		}
 
-		opts := []ServiceOption{WithRepo(repoPath), WithDeviceKey(deviceKp), WithAccountKey(accountKp), WithHostMultiaddr(cfg.HostAddr), WithWebGatewayBaseUrl(cfg.WebGatewayBaseUrl)}
+		var opts = []ServiceOption{
+			WithRepo(repoPath),
+			WithDeviceKey(deviceKp),
+			WithAccountKey(accountKp),
+			WithHostMultiaddr(cfg.HostAddr),
+			WithWebGatewayBaseUrl(cfg.WebGatewayBaseUrl),
+			WithOfflineMode(cfg.Offline),
+			WithInMemoryDS(cfg.InMemoryDS),
+			WithFullTextSearch(cfg.FullTextSearch),
+		}
 
-		// "-" or any other single char assumes as empty for env var compatability
+		// "-" or any other single char assumes as empty for env var compatibility
 		if len(cfg.CafeP2PAddr) > 1 {
 			opts = append(opts, WithCafeP2PAddr(cfg.CafeP2PAddr))
 		} else if cfg.CafeP2PAddr == "-" {
 			opts = append(opts, WithoutCafe())
-		}
-
-		if cfg.Offline {
-			opts = append(opts, WithOfflineMode(true))
-		}
-
-		if cfg.InMemoryDS {
-			opts = append(opts, WithInMemoryDS(true))
 		}
 
 		if len(cfg.CafeGRPCAddr) > 1 {
@@ -213,9 +215,22 @@ func WithNetBootstrapper(n net.NetBoostrapper) ServiceOption {
 	}
 }
 
-func WithSnapshotMarshalerFunc(f func(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler) ServiceOption {
+func WithSnapshotMarshalerFunc(f func(
+	blocks []*model.Block,
+	details *types.Struct,
+	relations []*pbrelation.Relation,
+	objectTypes []string,
+	fileKeys []*files.FileKeys,
+) proto.Marshaler) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.SnapshotMarshalerFunc = f
+		return nil
+	}
+}
+
+func WithFullTextSearch(enabled bool) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.FullTextSearch = enabled
 		return nil
 	}
 }
