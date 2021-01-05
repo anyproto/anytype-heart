@@ -102,7 +102,7 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
-	NewRecordsChan() (ch chan SmartblockRecordWithThreadID)
+	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error)
 
 	ProfileInfo
 }
@@ -118,8 +118,6 @@ type Anytype struct {
 	predefinedBlockIds threads.DerivedSmartblockIds
 	threadService      threads.Service
 	pinService         pin.FilePinService
-
-	newRecordsChan chan SmartblockRecordWithThreadID
 
 	logLevels map[string]string
 
@@ -337,9 +335,6 @@ func (a *Anytype) start() error {
 		a.opts.CafeP2PAddr,
 	)
 
-	if a.newRecordsChan, err = a.subscribeForNewRecords(); err != nil {
-		return err
-	}
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {
 			return
@@ -458,11 +453,7 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
-func (a *Anytype) NewRecordsChan() chan SmartblockRecordWithThreadID {
-	return a.newRecordsChan
-}
-
-func (a *Anytype) subscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
+func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch = make(chan SmartblockRecordWithThreadID)
 	threadsCh, err := a.t.Subscribe(ctx)

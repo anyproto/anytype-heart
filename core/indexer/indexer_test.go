@@ -90,7 +90,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.ch = make(chan core.SmartblockRecordWithThreadID)
-	fx.anytype.EXPECT().NewRecordsChan().Return(fx.ch)
+	fx.anytype.EXPECT().SubscribeForNewRecords().Return(fx.ch, nil)
 	fx.Indexer, err = indexer.NewIndexer(fx.anytype, fx.getSerach)
 	require.NoError(t, err)
 	return fx
