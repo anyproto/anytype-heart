@@ -145,7 +145,7 @@ func TestCommonSmart_splitMarks(t *testing.T) {
 
 		sb := createPage(t, createBlocks([]string{}, initialText, initialMarks))
 		pasteAny(t, sb, "1", model.Range{From: 5, To: 5}, []string{}, createBlocks([]string{"new1"}, pasteText, pasteMarks)) // @marks
-		checkBlockMarks(t, sb, [][]*model.BlockContentTextMark{
+		checkBlockMarksDebug(t, sb, [][]*model.BlockContentTextMark{
 			{{
 				Range: &model.Range{From: 1, To: 3},
 				Type:  model.BlockContentTextMark_Bold,
