@@ -173,11 +173,7 @@ func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
 }
 
 func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err error) {
-	var sendEvent, addHistory = true, true
-	msgs, act, err := state.ApplyState(s, true)
-	if err != nil {
-		return
-	}
+	var sendEvent, addHistory, checkRestrictions = true, true, true
 
 	for _, f := range flags {
 		switch f {
@@ -185,8 +181,23 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 			sendEvent = false
 		case smartblock.NoHistory:
 			addHistory = false
+		case smartblock.NoRestrictions:
+			checkRestrictions = false
 		}
 	}
+
+	if checkRestrictions {
+		if err = s.CheckRestrictions(); err != nil {
+			return
+		}
+	}
+
+	msgs, act, err := state.ApplyState(s, true)
+	if err != nil {
+		return
+	}
+
+
 
 	if st.hist != nil && addHistory {
 		st.hist.Add(act)

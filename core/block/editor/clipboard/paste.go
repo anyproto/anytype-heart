@@ -4,6 +4,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -21,8 +22,10 @@ type pasteCtrl struct {
 }
 
 type pasteMode struct {
+	toTitle             bool
 	removeSelection     bool
 	multiRange          bool
+	singleRange         bool
 	intoBlock           bool
 	intoBlockPasteStyle bool
 }
@@ -39,7 +42,7 @@ func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
 		if err = p.intoBlock(); err != nil {
 			return
 		}
-	} else {
+	} else if p.mode.singleRange {
 		if err = p.singleRange(); err != nil {
 			return
 		}
@@ -60,6 +63,7 @@ func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
 	p.selIds = req.SelectedBlockIds
 	if req.FocusedBlockId != "" {
 		p.selIds = append([]string{req.FocusedBlockId}, p.selIds...)
+		p.mode.singleRange = true
 	} else {
 		p.mode.removeSelection = true
 	}
@@ -81,6 +85,7 @@ func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
 			return
 		}
 		selText := p.getFirstSelectedText()
+		p.mode.toTitle = selText != nil && selText.Model().Id == template.TitleBlockId
 		if selText != nil && textCount == 1 && nonTextCount == 0 {
 			p.mode.intoBlock = true
 			if selText.GetText() == "" {
@@ -89,6 +94,8 @@ func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
 		} else {
 			p.mode.intoBlock = selText != nil && selText.Model().GetText().Style == model.BlockContentText_Code
 		}
+	} else {
+		p.mode.singleRange = false
 	}
 	return
 }
@@ -144,22 +151,32 @@ func (p *pasteCtrl) singleRange() (err error) {
 	if selText == nil {
 		return
 	}
-	if p.selRange.From == 0 && p.selRange.To == 0 {
-		return
-	}
 	if secondBlock, err = selText.RangeSplit(p.selRange.From, p.selRange.To, false); err != nil {
 		return
 	}
 	p.s.Add(secondBlock)
-	if err = p.s.InsertTo(selText.Model().Id, model.Block_Bottom, secondBlock.Model().Id); err != nil {
+	targetId := selText.Model().Id
+	pos := model.Block_Bottom
+	if targetId == template.TitleBlockId {
+		targetId = template.HeaderLayoutId
+	}
+	if err = p.s.InsertTo(targetId, pos, secondBlock.Model().Id); err != nil {
 		return
 	}
-	p.selIds[0] = secondBlock.Model().Id
 	if secondBlock.Model().GetText().Text == "" {
-		p.mode.removeSelection = true
+		p.s.Unlink(secondBlock.Model().Id)
+	}
+	if selText.Model().Id == template.TitleBlockId && selText.GetText() == "" {
+		firstPasteText := p.getFirstPasteText()
+		if firstPasteText != nil {
+			selText.SetText(firstPasteText.GetText(), nil)
+			p.ps.Unlink(firstPasteText.Model().Id)
+			return
+		}
+		return
 	}
 	if selText.GetText() == "" {
-		p.s.Unlink(selText.Model().Id)
+		p.mode.removeSelection = true
 	}
 	return
 }
@@ -218,8 +235,12 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	)
 	if len(p.selIds) > 0 {
 		targetId = p.selIds[0]
-		targetPos = model.Block_Top
+		if targetId == template.TitleBlockId {
+			targetId = template.HeaderLayoutId
+		}
+		targetPos = model.Block_Bottom
 	}
+
 	return p.ps.Iterate(func(b simple.Block) (isContinue bool) {
 		if b.Model().Id != p.ps.RootId() {
 			p.s.Add(b)
