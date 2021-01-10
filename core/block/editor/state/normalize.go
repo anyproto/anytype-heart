@@ -307,12 +307,14 @@ func CleanupLayouts(s *State) (removedCount int) {
 			return
 		}
 		for _, chId := range b.Model().ChildrenIds {
-			if isDivLayout(s.Pick(chId).Model()) {
-				removedCount++
-				result = append(result, cleanup(chId)...)
-			} else {
-				result = append(result, chId)
-				cleanup(chId)
+			if chB := s.Pick(chId); chB != nil {
+				if isDivLayout(chB.Model()) {
+					removedCount++
+					result = append(result, cleanup(chId)...)
+				} else {
+					result = append(result, chId)
+					cleanup(chId)
+				}
 			}
 		}
 		b.Model().ChildrenIds = result

@@ -19,6 +19,9 @@ type pasteCtrl struct {
 	mode     pasteMode
 	selIds   []string
 	selRange model.Range
+
+	caretPos  int32
+	uploadArr []pb.RpcBlockUploadRequest
 }
 
 type pasteMode struct {
@@ -53,6 +56,7 @@ func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
 	if p.mode.removeSelection {
 		p.removeSelection()
 	}
+	p.processFiles()
 	return
 }
 
@@ -189,7 +193,7 @@ func (p *pasteCtrl) intoBlock() (err error) {
 	if firstSelText == nil || firstPasteText == nil {
 		return
 	}
-	_, err = firstSelText.RangeTextPaste(p.selRange.From, p.selRange.To, firstPasteText.Model(), p.mode.intoBlockPasteStyle)
+	p.caretPos, err = firstSelText.RangeTextPaste(p.selRange.From, p.selRange.To, firstPasteText.Model(), p.mode.intoBlockPasteStyle)
 	p.ps.Unlink(firstPasteText.Model().Id)
 	return
 }
@@ -255,4 +259,16 @@ func (p *pasteCtrl) removeSelection() {
 	for _, toRemove := range p.selIds {
 		p.s.Unlink(toRemove)
 	}
+}
+
+func (p *pasteCtrl) processFiles() {
+	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
+		if file := b.Model().GetFile(); file != nil && file.State == model.BlockContentFile_Empty {
+			p.uploadArr = append(p.uploadArr, pb.RpcBlockUploadRequest{
+				BlockId: b.Model().Id,
+				Url:     file.Name,
+			})
+		}
+		return true
+	})
 }

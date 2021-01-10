@@ -320,6 +320,8 @@ func (cb *clipboard) pasteAny(ctx *state.Context, req pb.RpcBlockPasteRequest, g
 	if err = ctrl.Exec(req); err != nil {
 		return
 	}
+	caretPosition = ctrl.caretPos
+	uploadArr = ctrl.uploadArr
 	return blockIds, uploadArr, caretPosition, isSameBlockCaret, cb.Apply(s)
 }
 
