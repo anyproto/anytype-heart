@@ -74,10 +74,10 @@ func (f *filePinService) FilePin(cid string) error {
 	}
 
 	f.mu.RLock()
-	status := f.files[cid]
+	status, found := f.files[cid]
 	f.mu.RUnlock()
 
-	if status.Status == cafepb.PinStatus_Done {
+	if found && status.Status != cafepb.PinStatus_Failed {
 		return nil
 	}
 

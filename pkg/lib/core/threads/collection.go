@@ -43,7 +43,12 @@ func (s *service) threadsDbInit() error {
 		return err
 	}
 
-	d, err := db.NewDB(context.Background(), s.t, accountID, db.WithNewRepoPath(filepath.Join(s.repoRootPath, "collections")), db.WithNewCollections())
+	path := filepath.Join(s.repoRootPath, "collections")
+	store, err := util.NewBadgerDatastore(path, "eventstore", false)
+	if err != nil {
+		return err
+	}
+	d, err := db.NewDB(context.Background(), store, s.t, accountID, db.WithNewCollections())
 	if err != nil {
 		return err
 	}

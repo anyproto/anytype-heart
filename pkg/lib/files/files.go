@@ -5,7 +5,6 @@ import (
 	"context"
 	"crypto/aes"
 	"crypto/sha256"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -13,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	symmetric "github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
@@ -94,19 +93,10 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 	}
 
 	go func() {
-		for attempt := 1; attempt <= maxPinAttempts; attempt++ {
-			if err := s.pins.FilePin(nodeHash); err != nil {
-				if errors.Is(err, pin.ErrNoCafe) {
-					return
-				}
-
-				log.Errorf("failed to pin file %s on the cafe (attempt %d): %s", nodeHash, attempt, err.Error())
-				time.Sleep(time.Minute * time.Duration(attempt))
-				continue
-			}
-
+		if err := s.pins.FilePin(nodeHash); err != nil {
+			log.Warnf("cannot pin file %s: %v", nodeHash, err)
+		} else {
 			log.Debugf("pinning file %s started on the cafe", nodeHash)
-			break
 		}
 	}()
 
