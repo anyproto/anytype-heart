@@ -1,6 +1,7 @@
 package clipboard
 
 import (
+	"strings"
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -31,6 +32,8 @@ type pasteMode struct {
 	singleRange         bool
 	intoBlock           bool
 	intoBlockPasteStyle bool
+	intoCodeBlock       bool
+	textBuf             string
 }
 
 func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
@@ -39,6 +42,10 @@ func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
 	}
 	if p.mode.multiRange {
 		if err = p.multiRange(); err != nil {
+			return
+		}
+	} else if p.mode.intoCodeBlock {
+		if err = p.intoCodeBlock(); err != nil {
 			return
 		}
 	} else if p.mode.intoBlock {
@@ -68,6 +75,14 @@ func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
 	if req.FocusedBlockId != "" {
 		p.selIds = append([]string{req.FocusedBlockId}, p.selIds...)
 		p.mode.singleRange = true
+		if firstSelText := p.getFirstSelectedText(); firstSelText != nil {
+			p.mode.intoCodeBlock = firstSelText.Model().GetText().Style == model.BlockContentText_Code
+			if p.mode.intoCodeBlock {
+				p.mode.textBuf = req.TextSlot
+				p.mode.removeSelection = false
+				return
+			}
+		}
 	} else {
 		p.mode.removeSelection = true
 	}
@@ -271,4 +286,30 @@ func (p *pasteCtrl) processFiles() {
 		}
 		return true
 	})
+}
+
+func (p *pasteCtrl) intoCodeBlock() (err error) {
+	selText := p.getFirstSelectedText()
+	var txt = p.mode.textBuf
+	if txt == "" {
+		var txtArr []string
+		p.ps.Iterate(func(b simple.Block) (isContinue bool) {
+			if tb, ok := b.(text.Block); ok {
+				txtArr = append(txtArr, tb.GetText())
+			}
+			return true
+		})
+		txt = strings.Join(txtArr, "\n")
+	}
+	tb := &model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text:  txt,
+				Marks: &model.BlockContentTextMarks{},
+			},
+		},
+	}
+	p.ps.Get(p.ps.RootId()).Model().ChildrenIds = nil
+	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, false)
+	return err
 }

@@ -550,8 +550,8 @@ func TestClipboard_PasteToTitle(t *testing.T) {
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
 		assert.Equal(t, "first", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
-		assert.Equal(t, "second", st.Doc.Pick(rootChild[1]).Model().GetText().Text )
-		assert.Equal(t, "third", st.Doc.Pick(rootChild[2]).Model().GetText().Text )
+		assert.Equal(t, "second", st.Doc.Pick(rootChild[1]).Model().GetText().Text)
+		assert.Equal(t, "third", st.Doc.Pick(rootChild[2]).Model().GetText().Text)
 	})
 	t.Run("multi to not empty title", func(t *testing.T) {
 		st := withTitle(t, "title")
@@ -560,9 +560,9 @@ func TestClipboard_PasteToTitle(t *testing.T) {
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
 		assert.Equal(t, "first", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
-		assert.Equal(t, "second", st.Doc.Pick(rootChild[1]).Model().GetText().Text )
-		assert.Equal(t, "third", st.Doc.Pick(rootChild[2]).Model().GetText().Text )
-		assert.Equal(t, "title", st.Doc.Pick(rootChild[3]).Model().GetText().Text )
+		assert.Equal(t, "second", st.Doc.Pick(rootChild[1]).Model().GetText().Text)
+		assert.Equal(t, "third", st.Doc.Pick(rootChild[2]).Model().GetText().Text)
+		assert.Equal(t, "title", st.Doc.Pick(rootChild[3]).Model().GetText().Text)
 	})
 	t.Run("multi to not empty title with range", func(t *testing.T) {
 		st := withTitle(t, "title")
@@ -573,10 +573,10 @@ func TestClipboard_PasteToTitle(t *testing.T) {
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
 		assert.Equal(t, "t", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
-		assert.Equal(t, "first", st.Doc.Pick(rootChild[1]).Model().GetText().Text )
-		assert.Equal(t, "second", st.Doc.Pick(rootChild[2]).Model().GetText().Text )
-		assert.Equal(t, "third", st.Doc.Pick(rootChild[3]).Model().GetText().Text )
-		assert.Equal(t, "e", st.Doc.Pick(rootChild[4]).Model().GetText().Text )
+		assert.Equal(t, "first", st.Doc.Pick(rootChild[1]).Model().GetText().Text)
+		assert.Equal(t, "second", st.Doc.Pick(rootChild[2]).Model().GetText().Text)
+		assert.Equal(t, "third", st.Doc.Pick(rootChild[3]).Model().GetText().Text)
+		assert.Equal(t, "e", st.Doc.Pick(rootChild[4]).Model().GetText().Text)
 	})
 	t.Run("multi to end of title", func(t *testing.T) {
 		st := withTitle(t, "title")
@@ -587,8 +587,34 @@ func TestClipboard_PasteToTitle(t *testing.T) {
 		require.NoError(t, err)
 		rootChild := st.Doc.Pick(st.RootId()).Model().ChildrenIds
 		assert.Equal(t, "title", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
-		assert.Equal(t, "first", st.Doc.Pick(rootChild[1]).Model().GetText().Text )
-		assert.Equal(t, "second", st.Doc.Pick(rootChild[2]).Model().GetText().Text )
-		assert.Equal(t, "third", st.Doc.Pick(rootChild[3]).Model().GetText().Text )
+		assert.Equal(t, "first", st.Doc.Pick(rootChild[1]).Model().GetText().Text)
+		assert.Equal(t, "second", st.Doc.Pick(rootChild[2]).Model().GetText().Text)
+		assert.Equal(t, "third", st.Doc.Pick(rootChild[3]).Model().GetText().Text)
 	})
+}
+
+func TestClipboard_PasteToCodeBock(t *testing.T) {
+	sb := smarttest.New("text")
+	require.NoError(t, template.ApplyTemplate(sb, nil, template.WithTitle))
+	s := sb.NewState()
+	codeBlock := simple.New(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Style: model.BlockContentText_Code,
+				Text:  "some code",
+			},
+		},
+	})
+	s.Add(codeBlock)
+	s.InsertTo("", model.Block_Inner, codeBlock.Model().Id)
+	require.NoError(t, sb.Apply(s))
+
+	cb := NewClipboard(sb, nil)
+	_, _, _, _, err := cb.Paste(nil, pb.RpcBlockPasteRequest{
+		FocusedBlockId:    codeBlock.Model().Id,
+		SelectedTextRange: &model.Range{4, 5},
+		TextSlot:          "\nsome text\nhere\n",
+	}, "")
+	require.NoError(t, err)
+	assert.Equal(t, "some\nsome text\nhere\ncode", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
 }
