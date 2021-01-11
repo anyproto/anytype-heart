@@ -18,7 +18,7 @@ require (
 	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.4.4
 	github.com/google/martian v2.1.0+incompatible
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.1.4
 	github.com/h2non/filetype v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hsanjuan/ipfs-lite v1.1.17
