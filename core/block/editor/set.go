@@ -12,8 +12,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/google/uuid"
 )
 
@@ -55,7 +55,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
 				Source:    "https://anytype.io/schemas/object/bundled/page",
-				Relations: relation.BundledObjectTypes["page"].Relations,
+				Relations: bundle.Types[bundle.TypeKeyPage].Relations,
 				Views: []*model.BlockContentDataviewView{
 					{
 						Id:   uuid.New().String(),

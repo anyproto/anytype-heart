@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
@@ -155,12 +155,12 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 	if metaChanged {
 		rels = &pbrelation.Relations{Relations: meta.Relations}
 	}
-	prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, relation.LastModifiedDate))
+	prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLastModifiedDate.String()))
 
 	if meta.Details != nil && meta.Details.Fields != nil && lastChangeTS > prevModifiedDate {
-		meta.Details.Fields[relation.LastModifiedDate] = pbtypes.Float64(float64(lastChangeTS))
+		meta.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastChangeTS))
 		if profileId, err := threads.ProfileThreadIDFromAccountAddress(lastChangeBy); err == nil {
-			meta.Details.Fields[relation.LastModifiedBy] = pbtypes.String(profileId.String())
+			meta.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(profileId.String())
 		}
 	}
 

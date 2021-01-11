@@ -1096,7 +1096,7 @@ func (m *EventBlockShow) GetLayout() relation.ObjectTypeLayout {
 	if m != nil {
 		return m.Layout
 	}
-	return relation.ObjectType_page
+	return relation.ObjectType_basic
 }
 
 type EventBlockShowRelationWithValuePerObject struct {

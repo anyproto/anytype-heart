@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -92,18 +92,14 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 	for _, otypeUrl := range objectTypeUrls {
 		if strings.HasPrefix(otypeUrl, objects.BundledObjectTypeURLPrefix) {
 			var err error
-			objectType, err := relation.GetObjectType(otypeUrl)
+			objectType, err := bundle.GetType(otypeUrl)
 			if err != nil {
-				if err == relation.ErrNotFound {
-					log.Errorf("unknown objectType: %s", otypeUrl)
-				} else {
-					log.Errorf("failed to get bundled objectType: %w", err)
-				}
+				log.Errorf("failed to get objectType %s: %s", otypeUrl, err.Error())
 				continue
 			}
 			objectTypes = append(objectTypes, objectType)
 		} else if !strings.HasPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix) {
-			log.Errorf("failed to get objectType: incorrect url: %s", otypeUrl)
+			log.Errorf("failed to get objectType %s: incorrect url", otypeUrl)
 		} else {
 			customOtypeIds = append(customOtypeIds, strings.TrimPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix))
 		}
@@ -114,7 +110,6 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 	}
 
 	metas := s.FetchMeta(customOtypeIds)
-
 	for _, meta := range metas {
 		objectType := &pbrelation.ObjectType{}
 		if name := pbtypes.GetString(meta.Details, "name"); name != "" {

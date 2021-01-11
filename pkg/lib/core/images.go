@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")
@@ -74,7 +74,7 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		return nil, err
 	}
 
-	err = a.localStore.Objects.UpdateObject(img.hash, details, &pbrelation.Relations{Relations: relation.BundledObjectTypes["image"].Relations}, nil, "")
+	err = a.localStore.Objects.UpdateObject(img.hash, details, &pbrelation.Relations{Relations: bundle.Types[bundle.TypeKeyImage].Relations}, nil, "")
 	if err != nil {
 		return nil, err
 	}

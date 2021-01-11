@@ -17,14 +17,13 @@ type Ctrl interface {
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
 	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
 
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error)
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
 	UpdateExtraRelations(id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	AddExtraRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveExtraRelations(id string, relationKeys []string) (err error)
 
-	AddObjectTypes(objectId string, objectTypes []string) (err error)
-	RemoveObjectTypes(objectId string, objectTypes []string) (err error)
+	SetObjectTypes(objectId string, objectTypes []string) (err error)
 }
 
 type Router interface {

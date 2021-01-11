@@ -125,7 +125,7 @@ func (filters filters) Filter(e query.Entry) bool {
 				}
 			}
 		} else {
-			if filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+			if filters.Schema.ObjType != nil && filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
 				// backward compatibility in case we don't have type indexed for pages
 				foundType = true
 			}

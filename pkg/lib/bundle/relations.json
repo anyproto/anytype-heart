@@ -1,0 +1,461 @@
+[
+  {
+    "format": "select",
+    "hidden": true,
+    "key": "tag",
+    "name": "Tag",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "camera",
+    "name": "Camera used to capture image or video",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Height of image/video in pixels",
+    "format": "number",
+    "hidden": true,
+    "key": "heightInPixels",
+    "name": "Height(px)",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Date when the object was initially created",
+    "format": "date",
+    "hidden": true,
+    "key": "createdDate",
+    "name": "Creation date",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Date when the object will be deleted from your device",
+    "format": "date",
+    "hidden": true,
+    "key": "toBeDeletedDate",
+    "name": "Date to delete",
+    "readonly": true,
+    "source": "account"
+  },
+  {
+    "description": "Done checkbox used to render action layout. ",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "done",
+    "name": "Done",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "date",
+    "hidden": true,
+    "key": "dateOfBirth",
+    "name": "Date of birth",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "thumbnailImage",
+    "name": "Thumbnail image",
+    "objectTypes": [
+      "image"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "attachments",
+    "name": "Attachments",
+    "objectTypes": [
+      "file",
+      "image",
+      "video",
+      "audio"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "linkedTasks",
+    "name": "Linked tasks",
+    "objectTypes": [
+      "task"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "iconImage",
+    "name": "Image icon",
+    "objectTypes": [
+      "image"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Year when this object were released",
+    "format": "number",
+    "hidden": true,
+    "key": "releasedYear",
+    "name": "Released year",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": true,
+    "key": "coverScale",
+    "name": "Cover image scale factor",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "linkedProjects",
+    "name": "Linked Projects",
+    "objectTypes": [
+      "project"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "audioAlbum",
+    "name": "Audio record's album name",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "select",
+    "hidden": true,
+    "key": "status",
+    "name": "Status",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Duration of audio/video file in seconds",
+    "format": "number",
+    "hidden": true,
+    "key": "durationInSeconds",
+    "name": "Duration(sec)",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "aperture",
+    "name": "Camera Aperture",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Date when the object was modified last time",
+    "format": "date",
+    "hidden": true,
+    "key": "lastModifiedDate",
+    "name": "Last modified date",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "List of recommended relations",
+    "format": "object",
+    "hidden": true,
+    "key": "recommendedRelations",
+    "name": "Recommended relations",
+    "objectTypes": [
+      "relation"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "creator",
+    "name": "Human which created this object",
+    "objectTypes": [
+      "profile"
+    ],
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Date when the object was modified last opened",
+    "format": "date",
+    "hidden": true,
+    "key": "lastOpenedDate",
+    "name": "Last opened date",
+    "readonly": true,
+    "source": "account"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "artist",
+    "name": "Name of artist",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "date",
+    "hidden": true,
+    "key": "dueDate",
+    "name": "Due date",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
+    "format": "emoji",
+    "hidden": true,
+    "key": "iconEmoji",
+    "name": "Emoji icon",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Image y offset of the provided image",
+    "format": "number",
+    "hidden": true,
+    "key": "coverY",
+    "name": "Cover image y offset",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Size of file/image in bytes",
+    "format": "number",
+    "hidden": true,
+    "key": "sizeInBytes",
+    "name": "Size(bytes)",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Point to the object types that can be added to collection. Empty means any object type can be added to the collection",
+    "format": "object",
+    "hidden": true,
+    "key": "collectionOf",
+    "name": "Collection of",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Status of object with status relation when it is assumed completed",
+    "format": "select",
+    "hidden": true,
+    "key": "doneStatus",
+    "name": "Done status",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Person who is responsible for this task or object",
+    "format": "object",
+    "hidden": true,
+    "key": "assignee",
+    "name": "Assignee",
+    "objectTypes": [
+      "profile"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "exposure",
+    "name": "Camera Exposure",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "audioGenre",
+    "name": "Audio record's genre name",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Name of the object",
+    "format": "title",
+    "hidden": true,
+    "key": "name",
+    "name": "Name",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Used to order tasks in list/canban",
+    "format": "number",
+    "hidden": true,
+    "key": "priority",
+    "name": "Priority",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "fileMimeType",
+    "name": "Mime type of object",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "type",
+    "name": "Object type",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": true,
+    "key": "audioAlbumTrackNumber",
+    "name": "Number of the track in the",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "select",
+    "hidden": true,
+    "key": "placeOfBirth",
+    "name": "Place of birth",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": true,
+    "key": "composer",
+    "name": "Name of composer",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Image x offset of the provided image",
+    "format": "number",
+    "hidden": true,
+    "key": "coverX",
+    "name": "Cover image x offset",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "description",
+    "hidden": true,
+    "key": "description",
+    "name": "Description",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Link to itself. Used in databases",
+    "format": "object",
+    "hidden": true,
+    "key": "id",
+    "name": "Anytype ID",
+    "readonly": false,
+    "source": "derived"
+  },
+  {
+    "format": "number",
+    "hidden": true,
+    "key": "cameraIso",
+    "name": "ISO",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "coverImage",
+    "name": "Cover image",
+    "objectTypes": [
+      "image"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Human which updates the object last time",
+    "format": "object",
+    "hidden": true,
+    "key": "lastModifiedBy",
+    "name": "Last modified by",
+    "objectTypes": [
+      "profile"
+    ],
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Width of image/video in pixels",
+    "format": "number",
+    "hidden": true,
+    "key": "widthInPixels",
+    "name": "Width(px)",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
+    "format": "object",
+    "hidden": true,
+    "key": "setOf",
+    "name": "Set of",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "select",
+    "hidden": true,
+    "key": "gender",
+    "name": "Gender",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "featuredRelations",
+    "name": "Featured relations management will be  implemented later.",
+    "objectTypes": [
+      "relation"
+    ],
+    "readonly": false,
+    "source": "details"
+  }
+]

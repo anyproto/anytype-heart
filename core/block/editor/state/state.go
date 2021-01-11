@@ -11,10 +11,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -624,7 +624,7 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 		}
 	}
 	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
 	s.extraRelations = append(s.ExtraRelations(), relation)
@@ -642,8 +642,8 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
-	s.SetDetail(relationCol.Id, pbtypes.String(s.rootId))
-	s.SetDetail(relationCol.Type, pbtypes.StringList(s.ObjectTypes()))
+	s.SetDetail(string(bundle.RelationKeyId), pbtypes.String(s.rootId))
+	s.SetDetail(string(bundle.RelationKeyType), pbtypes.StringList(s.ObjectTypes()))
 }
 
 // ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
@@ -662,7 +662,7 @@ func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
 	}
 	d := pbtypes.CopyStruct(s.details)
 	for key, _ := range d.Fields {
-		if slice.FindPos(relationCol.LocalOnlyRelationsKeys, key) != -1 {
+		if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
 			delete(d.Fields, key)
 		}
 	}

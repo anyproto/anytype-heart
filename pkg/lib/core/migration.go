@@ -11,11 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -307,14 +306,8 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 			return err
 		}
 		targetsProceed := map[string]struct{}{}
-		imgObjType, err := relation.GetObjectType(objects.BundledObjectTypeURLPrefix + "file")
-		if err != nil {
-			return err
-		}
-		fileObjType, err := relation.GetObjectType(objects.BundledObjectTypeURLPrefix + "image")
-		if err != nil {
-			return err
-		}
+		imgObjType := bundle.Types[bundle.TypeKeyImage]
+		fileObjType := bundle.Types[bundle.TypeKeyFile]
 		log.Debugf("migrating %d files", len(files))
 		var (
 			ctx      context.Context

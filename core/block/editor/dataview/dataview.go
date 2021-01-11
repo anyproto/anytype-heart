@@ -12,11 +12,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	bundle "github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
@@ -107,7 +107,7 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	}
 
 	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
 	tb.AddRelation(relation)
@@ -140,7 +140,7 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 	}
 
 	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
 	if err = tb.UpdateRelation(relationKey, relation); err != nil {

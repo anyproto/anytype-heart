@@ -178,14 +178,10 @@
     - [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response)
     - [Rpc.Block.Merge.Response.Error](#anytype.Rpc.Block.Merge.Response.Error)
     - [Rpc.Block.ObjectType](#anytype.Rpc.Block.ObjectType)
-    - [Rpc.Block.ObjectType.Add](#anytype.Rpc.Block.ObjectType.Add)
-    - [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request)
-    - [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response)
-    - [Rpc.Block.ObjectType.Add.Response.Error](#anytype.Rpc.Block.ObjectType.Add.Response.Error)
-    - [Rpc.Block.ObjectType.Remove](#anytype.Rpc.Block.ObjectType.Remove)
-    - [Rpc.Block.ObjectType.Remove.Request](#anytype.Rpc.Block.ObjectType.Remove.Request)
-    - [Rpc.Block.ObjectType.Remove.Response](#anytype.Rpc.Block.ObjectType.Remove.Response)
-    - [Rpc.Block.ObjectType.Remove.Response.Error](#anytype.Rpc.Block.ObjectType.Remove.Response.Error)
+    - [Rpc.Block.ObjectType.Set](#anytype.Rpc.Block.ObjectType.Set)
+    - [Rpc.Block.ObjectType.Set.Request](#anytype.Rpc.Block.ObjectType.Set.Request)
+    - [Rpc.Block.ObjectType.Set.Response](#anytype.Rpc.Block.ObjectType.Set.Response)
+    - [Rpc.Block.ObjectType.Set.Response.Error](#anytype.Rpc.Block.ObjectType.Set.Response.Error)
     - [Rpc.Block.Open](#anytype.Rpc.Block.Open)
     - [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request)
     - [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response)
@@ -535,8 +531,7 @@
     - [Rpc.Block.GetPublicWebURL.Response.Error.Code](#anytype.Rpc.Block.GetPublicWebURL.Response.Error.Code)
     - [Rpc.Block.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Block.ImportMarkdown.Response.Error.Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype.Rpc.Block.Merge.Response.Error.Code)
-    - [Rpc.Block.ObjectType.Add.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Add.Response.Error.Code)
-    - [Rpc.Block.ObjectType.Remove.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Remove.Response.Error.Code)
+    - [Rpc.Block.ObjectType.Set.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Set.Response.Error.Code)
     - [Rpc.Block.Open.Response.Error.Code](#anytype.Rpc.Block.Open.Response.Error.Code)
     - [Rpc.Block.OpenBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.OpenBreadcrumbs.Response.Error.Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype.Rpc.Block.Paste.Response.Error.Code)
@@ -802,6 +797,7 @@
   
 
 - [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
+    - [Layout](#anytype.relation.Layout)
     - [ObjectType](#anytype.relation.ObjectType)
     - [Relation](#anytype.relation.Relation)
     - [Relation.SelectOption](#anytype.relation.Relation.SelectOption)
@@ -921,15 +917,14 @@
 | BlockDataviewRecordCreate | [Rpc.Block.Dataview.RecordCreate.Request](#anytype.Rpc.Block.Dataview.RecordCreate.Request) | [Rpc.Block.Dataview.RecordCreate.Response](#anytype.Rpc.Block.Dataview.RecordCreate.Response) | # Record |
 | BlockDataviewRecordUpdate | [Rpc.Block.Dataview.RecordUpdate.Request](#anytype.Rpc.Block.Dataview.RecordUpdate.Request) | [Rpc.Block.Dataview.RecordUpdate.Response](#anytype.Rpc.Block.Dataview.RecordUpdate.Response) |  |
 | BlockDataviewRecordDelete | [Rpc.Block.Dataview.RecordDelete.Request](#anytype.Rpc.Block.Dataview.RecordDelete.Request) | [Rpc.Block.Dataview.RecordDelete.Response](#anytype.Rpc.Block.Dataview.RecordDelete.Response) |  |
-| BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype.Rpc.Block.Relation.SetKey.Request) | [Rpc.Block.Relation.SetKey.Response](#anytype.Rpc.Block.Relation.SetKey.Response) | ## Object&#39;s relations add existing object type to the object so it will appear in sets and offer relations from this object |
-| BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) |  |
+| BlockObjectTypeSet | [Rpc.Block.ObjectType.Set.Request](#anytype.Rpc.Block.ObjectType.Set.Request) | [Rpc.Block.ObjectType.Set.Response](#anytype.Rpc.Block.ObjectType.Set.Response) | ## Object&#39;s relations set an existing object type to the object so it will appear in sets and suggests relations from this type TODO: rename BlockObjectTypeSet -&gt; ObjectObjectTypeSet |
+| BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype.Rpc.Block.Relation.SetKey.Request) | [Rpc.Block.Relation.SetKey.Response](#anytype.Rpc.Block.Relation.SetKey.Response) | TODO: rename BlockRelationSetKey -&gt; ObjectRelationSetKey |
+| BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) | TODO: rename BlockRelationAdd -&gt; ObjectRelationAdd |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request) | [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
-| BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | BlockSetDetails will be renamed to ObjectSetDetails |
-| BlockObjectTypeAdd | [Rpc.Block.ObjectType.Add.Request](#anytype.Rpc.Block.ObjectType.Add.Request) | [Rpc.Block.ObjectType.Add.Response](#anytype.Rpc.Block.ObjectType.Add.Response) | BlockObjectTypeAdd will be renamed to ObjectObjectTypeAdd |
-| BlockObjectTypeRemove | [Rpc.Block.ObjectType.Remove.Request](#anytype.Rpc.Block.ObjectType.Remove.Request) | [Rpc.Block.ObjectType.Remove.Response](#anytype.Rpc.Block.ObjectType.Remove.Response) | BlockObjectTypeRemove will be renamed to ObjectObjectTypeRemove |
-| PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page |
+| BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | TODO: rename BlockSetDetails -&gt; ObjectSetDetails |
+| PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page TODO: rename PageCreate -&gt; ObjectCreate |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) | SetCreate just creates the new set, without adding the link to it from some other page |
 | ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request) | [Rpc.ObjectType.Create.Response](#anytype.Rpc.ObjectType.Create.Response) | ## ObjectType |
 | ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype.Rpc.ObjectType.List.Request) | [Rpc.ObjectType.List.Response](#anytype.Rpc.ObjectType.List.Response) | ObjectTypeList lists all object types both bundled and created by user |
@@ -3374,67 +3369,9 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype.Rpc.Block.ObjectType.Add"></a>
+<a name="anytype.Rpc.Block.ObjectType.Set"></a>
 
-### Rpc.Block.ObjectType.Add
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ObjectType.Add.Request"></a>
-
-### Rpc.Block.ObjectType.Add.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| objectTypeUrl | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ObjectType.Add.Response"></a>
-
-### Rpc.Block.ObjectType.Add.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.ObjectType.Add.Response.Error](#anytype.Rpc.Block.ObjectType.Add.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ObjectType.Add.Response.Error"></a>
-
-### Rpc.Block.ObjectType.Add.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.ObjectType.Add.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Add.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Block.ObjectType.Remove"></a>
-
-### Rpc.Block.ObjectType.Remove
+### Rpc.Block.ObjectType.Set
 
 
 
@@ -3442,9 +3379,9 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype.Rpc.Block.ObjectType.Remove.Request"></a>
+<a name="anytype.Rpc.Block.ObjectType.Set.Request"></a>
 
-### Rpc.Block.ObjectType.Remove.Request
+### Rpc.Block.ObjectType.Set.Request
 
 
 
@@ -3458,15 +3395,15 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype.Rpc.Block.ObjectType.Remove.Response"></a>
+<a name="anytype.Rpc.Block.ObjectType.Set.Response"></a>
 
-### Rpc.Block.ObjectType.Remove.Response
+### Rpc.Block.ObjectType.Set.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Block.ObjectType.Remove.Response.Error](#anytype.Rpc.Block.ObjectType.Remove.Response.Error) |  |  |
+| error | [Rpc.Block.ObjectType.Set.Response.Error](#anytype.Rpc.Block.ObjectType.Set.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
@@ -3474,15 +3411,15 @@ Get marks list in the selected range in text block.
 
 
 
-<a name="anytype.Rpc.Block.ObjectType.Remove.Response.Error"></a>
+<a name="anytype.Rpc.Block.ObjectType.Set.Response.Error"></a>
 
-### Rpc.Block.ObjectType.Remove.Response.Error
+### Rpc.Block.ObjectType.Set.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Block.ObjectType.Remove.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Remove.Response.Error.Code) |  |  |
+| code | [Rpc.Block.ObjectType.Set.Response.Error.Code](#anytype.Rpc.Block.ObjectType.Set.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -8428,23 +8365,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Block.ObjectType.Add.Response.Error.Code"></a>
+<a name="anytype.Rpc.Block.ObjectType.Set.Response.Error.Code"></a>
 
-### Rpc.Block.ObjectType.Add.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 |  |
-
-
-
-<a name="anytype.Rpc.Block.ObjectType.Remove.Response.Error.Code"></a>
-
-### Rpc.Block.ObjectType.Remove.Response.Error.Code
+### Rpc.Block.ObjectType.Set.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -12235,6 +12158,23 @@ deprecated
 
 
 
+<a name="anytype.relation.Layout"></a>
+
+### Layout
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
+| name | [string](#string) |  |  |
+| requiredRelations | [Relation](#anytype.relation.Relation) | repeated | relations required for this object type |
+
+
+
+
+
+
 <a name="anytype.relation.ObjectType"></a>
 
 ### ObjectType
@@ -12337,12 +12277,15 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| page | 0 |  |
-| contact | 1 |  |
-| task | 2 |  |
+| basic | 0 |  |
+| profile | 1 |  |
+| action | 2 |  |
 | set | 3 |  |
 | objectType | 4 |  |
-| file | 5 |  |
+| relation | 5 |  |
+| file | 6 |  |
+| dashboard | 7 |  |
+| database | 8 | to be released later |
 
 
 
@@ -12354,7 +12297,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | details | 0 | default, stored inside the object&#39;s details |
-| local | 1 | stored locally, e.g. in badger or generated on the fly |
+| derived | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
 
 
@@ -12390,21 +12333,21 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 ## Scalar Value Types
 
-| .proto Type | Notes | C++ | Java | Python | Go | C# | PHP | Ruby |
-| ----------- | ----- | --- | ---- | ------ | -- | -- | --- | ---- |
-| <a name="double" /> double |  | double | double | float | float64 | double | float | Float |
-| <a name="float" /> float |  | float | float | float | float32 | float | float | Float |
-| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long | uint32 | uint | integer | Bignum or Fixnum (as required) |
-| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum or Fixnum (as required) |
-| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int | uint32 | uint | integer | Bignum or Fixnum (as required) |
-| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long | uint64 | ulong | integer/string | Bignum |
-| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int | int32 | int | integer | Bignum or Fixnum (as required) |
-| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long | int64 | long | integer/string | Bignum |
-| <a name="bool" /> bool |  | bool | boolean | boolean | bool | bool | boolean | TrueClass/FalseClass |
-| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode | string | string | string | String (UTF-8) |
-| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str | []byte | ByteString | string | String (ASCII-8BIT) |
+| .proto Type | Notes | C++ Type | Java Type | Python Type |
+| ----------- | ----- | -------- | --------- | ----------- |
+| <a name="double" /> double |  | double | double | float |
+| <a name="float" /> float |  | float | float | float |
+| <a name="int32" /> int32 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint32 instead. | int32 | int | int |
+| <a name="int64" /> int64 | Uses variable-length encoding. Inefficient for encoding negative numbers – if your field is likely to have negative values, use sint64 instead. | int64 | long | int/long |
+| <a name="uint32" /> uint32 | Uses variable-length encoding. | uint32 | int | int/long |
+| <a name="uint64" /> uint64 | Uses variable-length encoding. | uint64 | long | int/long |
+| <a name="sint32" /> sint32 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int32s. | int32 | int | int |
+| <a name="sint64" /> sint64 | Uses variable-length encoding. Signed int value. These more efficiently encode negative numbers than regular int64s. | int64 | long | int/long |
+| <a name="fixed32" /> fixed32 | Always four bytes. More efficient than uint32 if values are often greater than 2^28. | uint32 | int | int |
+| <a name="fixed64" /> fixed64 | Always eight bytes. More efficient than uint64 if values are often greater than 2^56. | uint64 | long | int/long |
+| <a name="sfixed32" /> sfixed32 | Always four bytes. | int32 | int | int |
+| <a name="sfixed64" /> sfixed64 | Always eight bytes. | int64 | long | int/long |
+| <a name="bool" /> bool |  | bool | boolean | boolean |
+| <a name="string" /> string | A string must always contain UTF-8 encoded or 7-bit ASCII text. | string | String | str/unicode |
+| <a name="bytes" /> bytes | May contain any arbitrary sequence of bytes. | string | ByteString | str |
 

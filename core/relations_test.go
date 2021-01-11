@@ -10,10 +10,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 	types2 "github.com/gogo/protobuf/types"
@@ -88,7 +88,7 @@ func TestRelationAdd(t *testing.T) {
 	require.Len(t, respOpenNewPage.Event.Messages, 2)
 	block := getBlockById("dataview", respOpenNewPage.Event.Messages[0].GetBlockShow().Blocks)
 
-	require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations))
+	require.Len(t, block.GetDataview().Relations, len(bundle.Types[bundle.TypeKeyPage].Relations))
 
 	t.Run("add_incorrect", func(t *testing.T) {
 		respDataviewRelationAdd := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
@@ -107,7 +107,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
 		block = getBlockById("dataview", respOpenNewPage.Event.Messages[0].GetBlockShow().Blocks)
 
-		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations))
+		require.Len(t, block.GetDataview().Relations, len(bundle.Types[bundle.TypeKeyPage].Relations))
 
 	})
 
@@ -128,7 +128,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
 		block = getBlockById("dataview", respOpenNewPage.Event.Messages[0].GetBlockShow().Blocks)
-		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
+		require.Len(t, block.GetDataview().Relations, len(bundle.Types[bundle.TypeKeyPage].Relations)+1)
 
 		respAccountCreate := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: mw.Anytype.Account(), RootPath: rootPath})
 		require.Equal(t, 0, int(respAccountCreate.Error.Code))
@@ -136,7 +136,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
 		block = getBlockById("dataview", respOpenNewPage.Event.Messages[0].GetBlockShow().Blocks)
-		require.Len(t, block.GetDataview().Relations, len(relation.BundledObjectTypes["page"].Relations)+1)
+		require.Len(t, block.GetDataview().Relations, len(bundle.Types[bundle.TypeKeyPage].Relations)+1)
 	})
 
 	t.Run("update_not_existing", func(t *testing.T) {
@@ -315,7 +315,7 @@ func TestCustomType(t *testing.T) {
 
 	respObjectTypeList := mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
-	require.Len(t, respObjectTypeList.ObjectTypes, len(relation.BundledObjectTypes))
+	require.Len(t, respObjectTypeList.ObjectTypes, len(bundle.Types))
 
 	respObjectTypeCreate := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
 		ObjectType: &pbrelation.ObjectType{
@@ -342,7 +342,7 @@ func TestCustomType(t *testing.T) {
 	fmt.Printf("newRelation: %+v\n", newRelation)
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
-	require.Len(t, respObjectTypeList.ObjectTypes, len(relation.BundledObjectTypes)+1)
+	require.Len(t, respObjectTypeList.ObjectTypes, len(bundle.Types)+1)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
 	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
 	require.Len(t, lastObjType.Relations, 10)

@@ -8,8 +8,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 )
@@ -108,7 +108,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	}
 
 	err = mw.doBlockService(func(bs block.Service) error {
-		return mw.indexer.SetDetail(req.BlockId, relation.LastOpenedDate, pbtypes.Float64(float64(time.Now().Unix())))
+		return mw.indexer.SetDetail(req.BlockId, bundle.RelationKeyLastOpenedDate.String(), pbtypes.Float64(float64(time.Now().Unix())))
 	})
 	if err != nil {
 		log.Errorf("failed to update last opened for the object %s: %s", req.BlockId, err.Error())
@@ -1070,12 +1070,25 @@ func (mw *Middleware) BlockFileCreateAndUpload(req *pb.RpcBlockFileCreateAndUplo
 	return response(pb.RpcBlockFileCreateAndUploadResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockObjectTypeAdd(req *pb.RpcBlockObjectTypeAddRequest) *pb.RpcBlockObjectTypeAddResponse {
-	panic("implement me")
-}
+func (mw *Middleware) BlockObjectTypeSet(req *pb.RpcBlockObjectTypeSetRequest) *pb.RpcBlockObjectTypeSetResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockObjectTypeSetResponseErrorCode, err error) *pb.RpcBlockObjectTypeSetResponse {
+		m := &pb.RpcBlockObjectTypeSetResponse{Error: &pb.RpcBlockObjectTypeSetResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
 
-func (mw *Middleware) BlockObjectTypeRemove(req *pb.RpcBlockObjectTypeRemoveRequest) *pb.RpcBlockObjectTypeRemoveResponse {
-	panic("implement me")
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetObjectTypes(req.ContextId, []string{req.ObjectTypeUrl})
+	}); err != nil {
+		return response(pb.RpcBlockObjectTypeSetResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockObjectTypeSetResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockRelationSetKey(req *pb.RpcBlockRelationSetKeyRequest) *pb.RpcBlockRelationSetKeyResponse {

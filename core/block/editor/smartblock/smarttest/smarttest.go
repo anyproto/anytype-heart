@@ -118,11 +118,7 @@ func (st *SmartTest) RemoveExtraRelations(relationKeys []string) (err error) {
 	return nil
 }
 
-func (st *SmartTest) AddObjectTypes(objectTypes []string) (err error) {
-	return nil
-}
-
-func (st *SmartTest) RemoveObjectTypes(objectTypes []string) (err error) {
+func (st *SmartTest) SetObjectTypes(objectTypes []string) (err error) {
 	return nil
 }
 

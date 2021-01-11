@@ -18,12 +18,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -80,8 +80,8 @@ type SmartBlock interface {
 	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(relationKeys []string) (err error)
-	AddObjectTypes(objectTypes []string) (err error)
-	RemoveObjectTypes(objectTypes []string) (err error)
+	SetObjectTypes(objectTypes []string) (err error)
+
 	FileRelationKeys() []string
 
 	SendEvent(msgs []*pb.EventMessage)
@@ -239,7 +239,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
 				for _, rel := range dv.Relations {
 					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
-						if rel.Key == relation.Id || rel.Key == relation.Type {
+						if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
 							continue
 						}
 						for _, ot := range rel.ObjectTypes {
@@ -365,7 +365,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 				}
 			}
 
-			if rel.Key == relation.Id || rel.Key == relation.Type {
+			if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
 				continue
 			}
 
@@ -586,37 +586,8 @@ func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relat
 	return
 }
 
-func (sb *smartBlock) AddObjectTypes(objectTypes []string) (err error) {
-	c := make([]string, len(sb.ObjectTypes()))
-	copy(c, sb.ObjectTypes())
-
-	c = append(c, objectTypes...)
-	s := sb.NewState().SetObjectTypes(c)
-
-	if err = sb.Apply(s, NoEvent); err != nil {
-		return
-	}
-	return
-}
-
-func (sb *smartBlock) RemoveObjectTypes(objectTypes []string) (err error) {
-	filtered := []string{}
-
-	for _, ot := range sb.ObjectTypes() {
-		var toBeRemoved bool
-		for _, OTToRemove := range objectTypes {
-			if ot == OTToRemove {
-				toBeRemoved = true
-				break
-			}
-		}
-		if !toBeRemoved {
-			filtered = append(filtered, ot)
-		}
-	}
-
-	s := sb.NewState().SetObjectTypes(filtered)
-
+func (sb *smartBlock) SetObjectTypes(objectTypes []string) (err error) {
+	s := sb.NewState().SetObjectTypes(objectTypes)
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
@@ -839,8 +810,43 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 	}
 }
 
+func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelations []*pbrelation.Relation, details *types.Struct) []*pbrelation.Relation {
+	var m = make(map[string]struct{}, len(extraRelations))
+	var rels = make([]*pbrelation.Relation, 0, len(objTypeRelations)+len(extraRelations))
+
+	for _, rel := range extraRelations {
+		m[rel.Key] = struct{}{}
+		rels = append(rels, pbtypes.CopyRelation(rel))
+	}
+
+	for _, rel := range objTypeRelations {
+		if _, exists := m[rel.Key]; exists {
+			continue
+		}
+		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = struct{}{}
+	}
+
+	if details == nil || details.Fields == nil {
+		return rels
+	}
+
+	sort.Slice(rels, func(i, j int) bool {
+		_, iExists := details.Fields[rels[i].Key]
+		_, jExists := details.Fields[rels[j].Key]
+
+		if iExists && !jExists {
+			return true
+		}
+
+		return false
+	})
+
+	return rels
+}
+
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	return relation.MergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
+	return mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
 }
 
 func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {

@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
@@ -56,8 +56,15 @@ var (
 var log = logging.Logger("anytype-mw-service")
 
 var (
-	blockCacheTTL       = time.Minute
-	blockCleanupTimeout = time.Second * 30
+	blockCacheTTL                      = time.Minute
+	blockCleanupTimeout                = time.Second * 30
+	defaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]bundle.TypeKey{
+		coresb.SmartBlockTypePage:        bundle.TypeKeyPage,
+		coresb.SmartBlockTypeProfilePage: bundle.TypeKeyPage,
+		coresb.SmartBlockTypeSet:         bundle.TypeKeySet,
+		coresb.SmartBlockTypeObjectType:  bundle.TypeKeyObjectType,
+		coresb.SmartBlockTypeHome:        bundle.TypeKeyDashboard,
+	}
 )
 
 var (
@@ -78,7 +85,7 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -99,8 +106,7 @@ type Service interface {
 	RemoveExtraRelations(id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 
-	AddObjectTypes(objectId string, objectTypes []string) (err error)
-	RemoveObjectTypes(objectId string, objectTypes []string) (err error)
+	SetObjectTypes(objectId string, objectTypes []string) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -435,7 +441,7 @@ func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) 
 	return
 }
 
-func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error) {
+func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error) {
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -443,8 +449,17 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 	}
 	id = csm.ID()
 
+	typesInDetails := pbtypes.GetStringList(details, "type")
+	if len(typesInDetails) == 0 {
+		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
+			typesInDetails = []string{ot.URL()}
+		} else {
+			typesInDetails = []string{bundle.TypeKeyPage.URL()}
+		}
+	}
+
 	var sb smartblock.SmartBlock
-	if sb, err = s.createSmartBlock(id, true, objectTypes); err != nil {
+	if sb, err = s.createSmartBlock(id, true, typesInDetails); err != nil {
 		return id, err
 	}
 
@@ -493,7 +508,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 		return "", "", basic.ErrNotSupported
 	}
 
-	pageId, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, []string{objects.BundledObjectTypeURLPrefix + "page"}, nil)
+	pageId, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
@@ -1302,9 +1317,9 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 	objectType = &pbrelation.ObjectType{}
 	if strings.HasPrefix(url, objects.BundledObjectTypeURLPrefix) {
 		var err error
-		objectType, err = relation.GetObjectType(url)
+		objectType, err = bundle.GetType(url)
 		if err != nil {
-			if err == relation.ErrNotFound {
+			if err == bundle.ErrNotFound {
 				return nil, ErrUnknownObjectType
 			}
 			return nil, err
@@ -1368,15 +1383,9 @@ func (s *service) AddExtraRelations(objectId string, relations []*pbrelation.Rel
 	return
 }
 
-func (s *service) AddObjectTypes(objectId string, objectTypes []string) (err error) {
+func (s *service) SetObjectTypes(objectId string, objectTypes []string) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.AddObjectTypes(objectTypes)
-	})
-}
-
-func (s *service) RemoveObjectTypes(objectId string, objectTypes []string) (err error) {
-	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.RemoveObjectTypes(objectTypes)
+		return b.SetObjectTypes(objectTypes)
 	})
 }
 

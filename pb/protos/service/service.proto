@@ -115,22 +115,23 @@ service ClientCommands {
     rpc BlockDataviewRecordDelete (anytype.Rpc.Block.Dataview.RecordDelete.Request) returns (anytype.Rpc.Block.Dataview.RecordDelete.Response);
 
     // ## Object's relations
-    // add existing object type to the object so it will appear in sets and offer relations from this object
+    // set an existing object type to the object so it will appear in sets and suggests relations from this type
+    // TODO: rename BlockObjectTypeSet -> ObjectObjectTypeSet
+    rpc BlockObjectTypeSet (anytype.Rpc.Block.ObjectType.Set.Request) returns (anytype.Rpc.Block.ObjectType.Set.Response);
+    // TODO: rename BlockRelationSetKey -> ObjectRelationSetKey
     rpc BlockRelationSetKey (anytype.Rpc.Block.Relation.SetKey.Request) returns (anytype.Rpc.Block.Relation.SetKey.Response);
+    // TODO: rename BlockRelationAdd -> ObjectRelationAdd
     rpc BlockRelationAdd (anytype.Rpc.Block.Relation.Add.Request) returns (anytype.Rpc.Block.Relation.Add.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
 
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
-    // BlockSetDetails will be renamed to ObjectSetDetails
+    // TODO: rename BlockSetDetails -> ObjectSetDetails
     rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);
-    // BlockObjectTypeAdd will be renamed to ObjectObjectTypeAdd
-    rpc BlockObjectTypeAdd (anytype.Rpc.Block.ObjectType.Add.Request) returns (anytype.Rpc.Block.ObjectType.Add.Response);
-    // BlockObjectTypeRemove will be renamed to ObjectObjectTypeRemove
-    rpc BlockObjectTypeRemove (anytype.Rpc.Block.ObjectType.Remove.Request) returns (anytype.Rpc.Block.ObjectType.Remove.Response);
 
     // PageCreate just creates the new page, without adding the link to it from some other page
+    // TODO: rename PageCreate -> ObjectCreate
     rpc PageCreate (anytype.Rpc.Page.Create.Request) returns (anytype.Rpc.Page.Create.Response);
     // SetCreate just creates the new set, without adding the link to it from some other page
     rpc SetCreate (anytype.Rpc.Set.Create.Request) returns (anytype.Rpc.Set.Create.Response);

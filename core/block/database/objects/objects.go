@@ -24,7 +24,7 @@ func New(
 	getRelations func(objectId string) (relations []*pbrelation.Relation, err error),
 	setRelations func(id string, relations []*pbrelation.Relation) (err error),
 
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error),
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error),
 ) database.Database {
 	return &setOfObjects{
 		ObjectStore:      pageStore,
@@ -43,11 +43,12 @@ type setOfObjects struct {
 	getRelations  func(objectId string) (relations []*pbrelation.Relation, err error)
 	setRelations  func(id string, relations []*pbrelation.Relation) (err error)
 
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error)
 }
 
 func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record, sub database.Subscription) (database.Record, error) {
-	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, []string{sp.objectTypeUrl}, nil)
+	rec.Details.Fields["type"] = pbtypes.StringList([]string{sp.objectTypeUrl})
+	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, nil)
 	if err != nil {
 		return rec, err
 	}

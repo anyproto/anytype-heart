@@ -12,13 +12,23 @@ message ObjectType {
     string iconEmoji = 5; // emoji symbol
 
     enum Layout {
-        page = 0;
-        contact = 1;
-        task = 2;
+        basic = 0;
+        profile = 1;
+        action = 2;
         set = 3;
         objectType = 4;
-        file = 5;
+        relation = 5;
+        file = 6;
+        dashboard = 7;
+
+        database = 8; // to be released later
     }
+}
+
+message Layout {
+    ObjectType.Layout id = 1;
+    string name = 2;
+    repeated Relation requiredRelations = 3; // relations required for this object type
 }
 
 message RelationWithValue {
@@ -53,7 +63,7 @@ message Relation {
 
     enum RelationDataSource {
         details = 0; // default, stored inside the object's details
-        local = 1; // stored locally, e.g. in badger or generated on the fly
+        derived = 1; // stored locally, e.g. in badger or generated on the fly
         account = 2; // stored in the account DB. means existing only for specific anytype account
     }
 }

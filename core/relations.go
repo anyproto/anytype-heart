@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -165,10 +165,10 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 	var sbId string
 	var relations []*pbrelation.Relation
-	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(relation.RequiredInternalRelations))
+	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(bundle.RequiredInternalRelations))
 
-	for _, rel := range relation.RequiredInternalRelations {
-		requiredRelationByKey[rel] = relation.BundledRelations[rel]
+	for _, rel := range bundle.RequiredInternalRelations {
+		requiredRelationByKey[rel] = bundle.Relations[bundle.RelationKey(rel)]
 	}
 
 	for _, rel := range req.ObjectType.Relations {
@@ -194,7 +194,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 				"iconEmoji": pbtypes.String(req.ObjectType.IconEmoji),
 				"layout":    pbtypes.Float64(float64(req.ObjectType.Layout)),
 			},
-		}, nil, nil)
+		}, nil)
 		if err != nil {
 			return err
 		}
@@ -225,7 +225,7 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return m
 	}
 
-	otypes, err := relation.ListObjectTypes()
+	otypes, err := bundle.ListTypes()
 	if err != nil {
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}
