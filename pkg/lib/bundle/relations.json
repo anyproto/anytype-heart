@@ -99,7 +99,7 @@
   {
     "description": "Image icon",
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "iconImage",
     "name": "Image",
     "objectTypes": [
@@ -232,7 +232,7 @@
   {
     "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
     "format": "emoji",
-    "hidden": false,
+    "hidden": true,
     "key": "iconEmoji",
     "name": "Emoji",
     "readonly": false,
@@ -405,7 +405,7 @@
   },
   {
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "coverImage",
     "name": "Cover image",
     "objectTypes": [

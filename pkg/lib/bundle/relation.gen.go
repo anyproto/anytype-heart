@@ -172,7 +172,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      false,
+			Hidden:      true,
 			Key:         "coverImage",
 			Name:        "Cover image",
 			ObjectTypes: []string{TypePrefix + "image"},
@@ -328,7 +328,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_emoji,
-			Hidden:     false,
+			Hidden:     true,
 			Key:        "iconEmoji",
 			Name:       "Emoji",
 			ReadOnly:   false,
@@ -337,7 +337,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      false,
+			Hidden:      true,
 			Key:         "iconImage",
 			Name:        "Image",
 			ObjectTypes: []string{TypePrefix + "image"},
