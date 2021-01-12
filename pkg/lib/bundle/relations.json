@@ -1,7 +1,7 @@
 [
   {
     "format": "select",
-    "hidden": true,
+    "hidden": false,
     "key": "tag",
     "name": "Tag",
     "readonly": false,
@@ -9,7 +9,7 @@
   },
   {
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "camera",
     "name": "Camera used to capture image or video",
     "readonly": false,
@@ -18,7 +18,7 @@
   {
     "description": "Height of image/video in pixels",
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "heightInPixels",
     "name": "Height(px)",
     "readonly": true,
@@ -27,7 +27,7 @@
   {
     "description": "Date when the object was initially created",
     "format": "date",
-    "hidden": true,
+    "hidden": false,
     "key": "createdDate",
     "name": "Creation date",
     "readonly": true,
@@ -36,7 +36,7 @@
   {
     "description": "Date when the object will be deleted from your device",
     "format": "date",
-    "hidden": true,
+    "hidden": false,
     "key": "toBeDeletedDate",
     "name": "Date to delete",
     "readonly": true,
@@ -45,7 +45,7 @@
   {
     "description": "Done checkbox used to render action layout. ",
     "format": "checkbox",
-    "hidden": true,
+    "hidden": false,
     "key": "done",
     "name": "Done",
     "readonly": false,
@@ -53,7 +53,7 @@
   },
   {
     "format": "date",
-    "hidden": true,
+    "hidden": false,
     "key": "dateOfBirth",
     "name": "Date of birth",
     "readonly": false,
@@ -61,7 +61,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "thumbnailImage",
     "name": "Thumbnail image",
     "objectTypes": [
@@ -72,7 +72,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "attachments",
     "name": "Attachments",
     "objectTypes": [
@@ -86,7 +86,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "linkedTasks",
     "name": "Linked tasks",
     "objectTypes": [
@@ -97,7 +97,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "iconImage",
     "name": "Image icon",
     "objectTypes": [
@@ -109,7 +109,7 @@
   {
     "description": "Year when this object were released",
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "releasedYear",
     "name": "Released year",
     "readonly": false,
@@ -125,7 +125,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "linkedProjects",
     "name": "Linked Projects",
     "objectTypes": [
@@ -136,7 +136,7 @@
   },
   {
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "audioAlbum",
     "name": "Audio record's album name",
     "readonly": false,
@@ -144,7 +144,7 @@
   },
   {
     "format": "select",
-    "hidden": true,
+    "hidden": false,
     "key": "status",
     "name": "Status",
     "readonly": false,
@@ -153,7 +153,7 @@
   {
     "description": "Duration of audio/video file in seconds",
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "durationInSeconds",
     "name": "Duration(sec)",
     "readonly": false,
@@ -161,7 +161,7 @@
   },
   {
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "aperture",
     "name": "Camera Aperture",
     "readonly": false,
@@ -170,7 +170,7 @@
   {
     "description": "Date when the object was modified last time",
     "format": "date",
-    "hidden": true,
+    "hidden": false,
     "key": "lastModifiedDate",
     "name": "Last modified date",
     "readonly": true,
@@ -179,7 +179,7 @@
   {
     "description": "List of recommended relations",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "recommendedRelations",
     "name": "Recommended relations",
     "objectTypes": [
@@ -190,7 +190,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "creator",
     "name": "Human which created this object",
     "objectTypes": [
@@ -202,7 +202,7 @@
   {
     "description": "Date when the object was modified last opened",
     "format": "date",
-    "hidden": true,
+    "hidden": false,
     "key": "lastOpenedDate",
     "name": "Last opened date",
     "readonly": true,
@@ -210,7 +210,7 @@
   },
   {
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "artist",
     "name": "Name of artist",
     "readonly": false,
@@ -218,7 +218,7 @@
   },
   {
     "format": "date",
-    "hidden": true,
+    "hidden": false,
     "key": "dueDate",
     "name": "Due date",
     "readonly": false,
@@ -227,7 +227,7 @@
   {
     "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
     "format": "emoji",
-    "hidden": true,
+    "hidden": false,
     "key": "iconEmoji",
     "name": "Emoji icon",
     "readonly": false,
@@ -245,7 +245,7 @@
   {
     "description": "Size of file/image in bytes",
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "sizeInBytes",
     "name": "Size(bytes)",
     "readonly": false,
@@ -254,7 +254,7 @@
   {
     "description": "Point to the object types that can be added to collection. Empty means any object type can be added to the collection",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "collectionOf",
     "name": "Collection of",
     "objectTypes": [
@@ -266,7 +266,7 @@
   {
     "description": "Status of object with status relation when it is assumed completed",
     "format": "select",
-    "hidden": true,
+    "hidden": false,
     "key": "doneStatus",
     "name": "Done status",
     "readonly": false,
@@ -275,7 +275,7 @@
   {
     "description": "Person who is responsible for this task or object",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "assignee",
     "name": "Assignee",
     "objectTypes": [
@@ -286,7 +286,7 @@
   },
   {
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "exposure",
     "name": "Camera Exposure",
     "readonly": false,
@@ -294,7 +294,7 @@
   },
   {
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "audioGenre",
     "name": "Audio record's genre name",
     "readonly": false,
@@ -303,7 +303,7 @@
   {
     "description": "Name of the object",
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "name",
     "name": "Name",
     "readonly": false,
@@ -328,7 +328,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "type",
     "name": "Object type",
     "objectTypes": [
@@ -339,7 +339,7 @@
   },
   {
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "audioAlbumTrackNumber",
     "name": "Number of the track in the",
     "readonly": false,
@@ -347,7 +347,7 @@
   },
   {
     "format": "select",
-    "hidden": true,
+    "hidden": false,
     "key": "placeOfBirth",
     "name": "Place of birth",
     "readonly": false,
@@ -355,7 +355,7 @@
   },
   {
     "format": "title",
-    "hidden": true,
+    "hidden": false,
     "key": "composer",
     "name": "Name of composer",
     "readonly": false,
@@ -372,7 +372,7 @@
   },
   {
     "format": "description",
-    "hidden": true,
+    "hidden": false,
     "key": "description",
     "name": "Description",
     "readonly": false,
@@ -389,7 +389,7 @@
   },
   {
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "cameraIso",
     "name": "ISO",
     "readonly": false,
@@ -397,7 +397,7 @@
   },
   {
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "coverImage",
     "name": "Cover image",
     "objectTypes": [
@@ -409,7 +409,7 @@
   {
     "description": "Human which updates the object last time",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "lastModifiedBy",
     "name": "Last modified by",
     "objectTypes": [
@@ -421,7 +421,7 @@
   {
     "description": "Width of image/video in pixels",
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "widthInPixels",
     "name": "Width(px)",
     "readonly": true,
@@ -430,7 +430,7 @@
   {
     "description": "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "setOf",
     "name": "Set of",
     "objectTypes": [
@@ -441,7 +441,7 @@
   },
   {
     "format": "select",
-    "hidden": true,
+    "hidden": false,
     "key": "gender",
     "name": "Gender",
     "readonly": false,

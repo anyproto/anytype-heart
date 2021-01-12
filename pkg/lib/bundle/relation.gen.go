@@ -70,7 +70,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "aperture",
 			Name:       "Camera Aperture",
 			ReadOnly:   false,
@@ -79,7 +79,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "artist",
 			Name:       "Name of artist",
 			ReadOnly:   false,
@@ -88,7 +88,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "assignee",
 			Name:        "Assignee",
 			ObjectTypes: []string{TypePrefix + "profile"},
@@ -98,7 +98,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "attachments",
 			Name:        "Attachments",
 			ObjectTypes: []string{TypePrefix + "file", TypePrefix + "image", TypePrefix + "video", TypePrefix + "audio"},
@@ -108,7 +108,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "audioAlbum",
 			Name:       "Audio record's album name",
 			ReadOnly:   false,
@@ -117,7 +117,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_number,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "audioAlbumTrackNumber",
 			Name:       "Number of the track in the",
 			ReadOnly:   false,
@@ -126,7 +126,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "audioGenre",
 			Name:       "Audio record's genre name",
 			ReadOnly:   false,
@@ -135,7 +135,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "camera",
 			Name:       "Camera used to capture image or video",
 			ReadOnly:   false,
@@ -144,7 +144,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_number,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "cameraIso",
 			Name:       "ISO",
 			ReadOnly:   false,
@@ -153,7 +153,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "collectionOf",
 			Name:        "Collection of",
 			ObjectTypes: []string{TypePrefix + "objectType"},
@@ -163,7 +163,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "composer",
 			Name:       "Name of composer",
 			ReadOnly:   false,
@@ -172,7 +172,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "coverImage",
 			Name:        "Cover image",
 			ObjectTypes: []string{TypePrefix + "image"},
@@ -209,7 +209,7 @@ var (
 
 			DataSource: relation.Relation_derived,
 			Format:     relation.RelationFormat_date,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "createdDate",
 			Name:       "Creation date",
 			ReadOnly:   true,
@@ -218,7 +218,7 @@ var (
 
 			DataSource:  relation.Relation_derived,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "creator",
 			Name:        "Human which created this object",
 			ObjectTypes: []string{TypePrefix + "profile"},
@@ -228,7 +228,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_date,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "dateOfBirth",
 			Name:       "Date of birth",
 			ReadOnly:   false,
@@ -237,7 +237,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_description,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "description",
 			Name:       "Description",
 			ReadOnly:   false,
@@ -246,7 +246,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_checkbox,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "done",
 			Name:       "Done",
 			ReadOnly:   false,
@@ -255,7 +255,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_select,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "doneStatus",
 			Name:       "Done status",
 			ReadOnly:   false,
@@ -264,7 +264,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_date,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "dueDate",
 			Name:       "Due date",
 			ReadOnly:   false,
@@ -273,7 +273,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_number,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "durationInSeconds",
 			Name:       "Duration(sec)",
 			ReadOnly:   false,
@@ -282,7 +282,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "exposure",
 			Name:       "Camera Exposure",
 			ReadOnly:   false,
@@ -310,7 +310,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_select,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "gender",
 			Name:       "Gender",
 			ReadOnly:   false,
@@ -319,7 +319,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_number,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "heightInPixels",
 			Name:       "Height(px)",
 			ReadOnly:   true,
@@ -328,7 +328,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_emoji,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "iconEmoji",
 			Name:       "Emoji icon",
 			ReadOnly:   false,
@@ -337,7 +337,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "iconImage",
 			Name:        "Image icon",
 			ObjectTypes: []string{TypePrefix + "image"},
@@ -356,7 +356,7 @@ var (
 
 			DataSource:  relation.Relation_derived,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "lastModifiedBy",
 			Name:        "Last modified by",
 			ObjectTypes: []string{TypePrefix + "profile"},
@@ -366,7 +366,7 @@ var (
 
 			DataSource: relation.Relation_derived,
 			Format:     relation.RelationFormat_date,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "lastModifiedDate",
 			Name:       "Last modified date",
 			ReadOnly:   true,
@@ -375,7 +375,7 @@ var (
 
 			DataSource: relation.Relation_account,
 			Format:     relation.RelationFormat_date,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "lastOpenedDate",
 			Name:       "Last opened date",
 			ReadOnly:   true,
@@ -384,7 +384,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "linkedProjects",
 			Name:        "Linked Projects",
 			ObjectTypes: []string{TypePrefix + "project"},
@@ -394,7 +394,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "linkedTasks",
 			Name:        "Linked tasks",
 			ObjectTypes: []string{TypePrefix + "task"},
@@ -404,7 +404,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_title,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "name",
 			Name:       "Name",
 			ReadOnly:   false,
@@ -413,7 +413,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_select,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "placeOfBirth",
 			Name:       "Place of birth",
 			ReadOnly:   false,
@@ -431,7 +431,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "recommendedRelations",
 			Name:        "Recommended relations",
 			ObjectTypes: []string{TypePrefix + "relation"},
@@ -441,7 +441,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_number,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "releasedYear",
 			Name:       "Released year",
 			ReadOnly:   false,
@@ -450,7 +450,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "setOf",
 			Name:        "Set of",
 			ObjectTypes: []string{TypePrefix + "objectType"},
@@ -460,7 +460,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_number,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "sizeInBytes",
 			Name:       "Size(bytes)",
 			ReadOnly:   false,
@@ -469,7 +469,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_select,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "status",
 			Name:       "Status",
 			ReadOnly:   false,
@@ -478,7 +478,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_select,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "tag",
 			Name:       "Tag",
 			ReadOnly:   false,
@@ -487,7 +487,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "thumbnailImage",
 			Name:        "Thumbnail image",
 			ObjectTypes: []string{TypePrefix + "image"},
@@ -497,7 +497,7 @@ var (
 
 			DataSource: relation.Relation_account,
 			Format:     relation.RelationFormat_date,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "toBeDeletedDate",
 			Name:       "Date to delete",
 			ReadOnly:   true,
@@ -506,7 +506,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Format:      relation.RelationFormat_object,
-			Hidden:      true,
+			Hidden:      false,
 			Key:         "type",
 			Name:        "Object type",
 			ObjectTypes: []string{TypePrefix + "objectType"},
@@ -516,7 +516,7 @@ var (
 
 			DataSource: relation.Relation_details,
 			Format:     relation.RelationFormat_number,
-			Hidden:     true,
+			Hidden:     false,
 			Key:        "widthInPixels",
 			Name:       "Width(px)",
 			ReadOnly:   true,
