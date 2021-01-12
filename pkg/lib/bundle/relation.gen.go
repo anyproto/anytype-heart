@@ -81,7 +81,7 @@ var (
 			Format:     relation.RelationFormat_title,
 			Hidden:     false,
 			Key:        "artist",
-			Name:       "Name of artist",
+			Name:       "Artist",
 			ReadOnly:   false,
 		},
 		RelationKeyAssignee: {
@@ -110,7 +110,7 @@ var (
 			Format:     relation.RelationFormat_title,
 			Hidden:     false,
 			Key:        "audioAlbum",
-			Name:       "Audio record's album name",
+			Name:       "Album",
 			ReadOnly:   false,
 		},
 		RelationKeyAudioAlbumTrackNumber: {
@@ -119,7 +119,7 @@ var (
 			Format:     relation.RelationFormat_number,
 			Hidden:     false,
 			Key:        "audioAlbumTrackNumber",
-			Name:       "Number of the track in the",
+			Name:       "Track #",
 			ReadOnly:   false,
 		},
 		RelationKeyAudioGenre: {
@@ -128,7 +128,7 @@ var (
 			Format:     relation.RelationFormat_title,
 			Hidden:     false,
 			Key:        "audioGenre",
-			Name:       "Audio record's genre name",
+			Name:       "Genre",
 			ReadOnly:   false,
 		},
 		RelationKeyCamera: {
@@ -137,7 +137,7 @@ var (
 			Format:     relation.RelationFormat_title,
 			Hidden:     false,
 			Key:        "camera",
-			Name:       "Camera used to capture image or video",
+			Name:       "Camera",
 			ReadOnly:   false,
 		},
 		RelationKeyCameraIso: {
@@ -165,7 +165,7 @@ var (
 			Format:     relation.RelationFormat_title,
 			Hidden:     false,
 			Key:        "composer",
-			Name:       "Name of composer",
+			Name:       "Composer",
 			ReadOnly:   false,
 		},
 		RelationKeyCoverImage: {
@@ -184,7 +184,7 @@ var (
 			Format:     relation.RelationFormat_number,
 			Hidden:     true,
 			Key:        "coverScale",
-			Name:       "Cover image scale factor",
+			Name:       "Cover scale",
 			ReadOnly:   false,
 		},
 		RelationKeyCoverX: {
@@ -193,7 +193,7 @@ var (
 			Format:     relation.RelationFormat_number,
 			Hidden:     true,
 			Key:        "coverX",
-			Name:       "Cover image x offset",
+			Name:       "Cover x offset",
 			ReadOnly:   false,
 		},
 		RelationKeyCoverY: {
@@ -202,7 +202,7 @@ var (
 			Format:     relation.RelationFormat_number,
 			Hidden:     true,
 			Key:        "coverY",
-			Name:       "Cover image y offset",
+			Name:       "Cover y offset",
 			ReadOnly:   false,
 		},
 		RelationKeyCreatedDate: {
@@ -220,7 +220,7 @@ var (
 			Format:      relation.RelationFormat_object,
 			Hidden:      false,
 			Key:         "creator",
-			Name:        "Human which created this object",
+			Name:        "Created by",
 			ObjectTypes: []string{TypePrefix + "profile"},
 			ReadOnly:    true,
 		},
@@ -303,7 +303,7 @@ var (
 			Format:     relation.RelationFormat_title,
 			Hidden:     true,
 			Key:        "fileMimeType",
-			Name:       "Mime type of object",
+			Name:       "Mime type",
 			ReadOnly:   false,
 		},
 		RelationKeyGender: {
@@ -330,7 +330,7 @@ var (
 			Format:     relation.RelationFormat_emoji,
 			Hidden:     false,
 			Key:        "iconEmoji",
-			Name:       "Emoji icon",
+			Name:       "Emoji",
 			ReadOnly:   false,
 		},
 		RelationKeyIconImage: {
@@ -339,7 +339,7 @@ var (
 			Format:      relation.RelationFormat_object,
 			Hidden:      false,
 			Key:         "iconImage",
-			Name:        "Image icon",
+			Name:        "Image",
 			ObjectTypes: []string{TypePrefix + "image"},
 			ReadOnly:    false,
 		},
@@ -497,7 +497,7 @@ var (
 
 			DataSource: relation.Relation_account,
 			Format:     relation.RelationFormat_date,
-			Hidden:     false,
+			Hidden:     true,
 			Key:        "toBeDeletedDate",
 			Name:       "Date to delete",
 			ReadOnly:   true,

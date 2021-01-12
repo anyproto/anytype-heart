@@ -8,10 +8,11 @@
     "source": "details"
   },
   {
+    "description": "Camera used to capture image or video",
     "format": "title",
     "hidden": false,
     "key": "camera",
-    "name": "Camera used to capture image or video",
+    "name": "Camera",
     "readonly": false,
     "source": "details"
   },
@@ -36,7 +37,7 @@
   {
     "description": "Date when the object will be deleted from your device",
     "format": "date",
-    "hidden": false,
+    "hidden": true,
     "key": "toBeDeletedDate",
     "name": "Date to delete",
     "readonly": true,
@@ -96,10 +97,11 @@
     "source": "details"
   },
   {
+    "description": "Image icon",
     "format": "object",
     "hidden": false,
     "key": "iconImage",
-    "name": "Image icon",
+    "name": "Image",
     "objectTypes": [
       "image"
     ],
@@ -119,7 +121,7 @@
     "format": "number",
     "hidden": true,
     "key": "coverScale",
-    "name": "Cover image scale factor",
+    "name": "Cover scale",
     "readonly": false,
     "source": "details"
   },
@@ -135,10 +137,11 @@
     "source": "details"
   },
   {
+    "description": "Audio record's album name",
     "format": "title",
     "hidden": false,
     "key": "audioAlbum",
-    "name": "Audio record's album name",
+    "name": "Album",
     "readonly": false,
     "source": "details"
   },
@@ -189,10 +192,11 @@
     "source": "details"
   },
   {
+    "description": "Human which created this object",
     "format": "object",
     "hidden": false,
     "key": "creator",
-    "name": "Human which created this object",
+    "name": "Created by",
     "objectTypes": [
       "profile"
     ],
@@ -209,10 +213,11 @@
     "source": "account"
   },
   {
+    "description": "Name of artist",
     "format": "title",
     "hidden": false,
     "key": "artist",
-    "name": "Name of artist",
+    "name": "Artist",
     "readonly": false,
     "source": "details"
   },
@@ -229,7 +234,7 @@
     "format": "emoji",
     "hidden": false,
     "key": "iconEmoji",
-    "name": "Emoji icon",
+    "name": "Emoji",
     "readonly": false,
     "source": "details"
   },
@@ -238,7 +243,7 @@
     "format": "number",
     "hidden": true,
     "key": "coverY",
-    "name": "Cover image y offset",
+    "name": "Cover y offset",
     "readonly": false,
     "source": "details"
   },
@@ -293,10 +298,11 @@
     "source": "details"
   },
   {
+    "description": "Audio record's genre name",
     "format": "title",
     "hidden": false,
     "key": "audioGenre",
-    "name": "Audio record's genre name",
+    "name": "Genre",
     "readonly": false,
     "source": "details"
   },
@@ -319,10 +325,11 @@
     "source": "details"
   },
   {
+    "description": "Mime type of object",
     "format": "title",
     "hidden": true,
     "key": "fileMimeType",
-    "name": "Mime type of object",
+    "name": "Mime type",
     "readonly": false,
     "source": "details"
   },
@@ -338,10 +345,11 @@
     "source": "details"
   },
   {
+    "description": "Number of the track in the",
     "format": "number",
     "hidden": false,
     "key": "audioAlbumTrackNumber",
-    "name": "Number of the track in the",
+    "name": "Track #",
     "readonly": false,
     "source": "details"
   },
@@ -357,7 +365,7 @@
     "format": "title",
     "hidden": false,
     "key": "composer",
-    "name": "Name of composer",
+    "name": "Composer",
     "readonly": false,
     "source": "details"
   },
@@ -366,7 +374,7 @@
     "format": "number",
     "hidden": true,
     "key": "coverX",
-    "name": "Cover image x offset",
+    "name": "Cover x offset",
     "readonly": false,
     "source": "details"
   },
