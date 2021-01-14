@@ -27,7 +27,11 @@ var (
 )
 
 func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
-	ch := a.NewRecordsChan()
+	ch, err := a.SubscribeForNewRecords()
+	if err != nil {
+		return nil, err
+	}
+
 	i := &indexer{
 		store:      a.ObjectStore(),
 		anytype:    a,

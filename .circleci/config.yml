@@ -126,12 +126,10 @@ jobs:
             make build-js-addon
             mv dist/js/pb protobuf
             mkdir protobuf/protos
-            mkdir schemas
             mv pb/protos/*.proto ./protobuf/protos
-            cp pkg/lib/schema/*.json schemas
             cp pkg/lib/pb/model/protos/*.proto protobuf/protos
             mv clientlibrary/jsaddon/build addon
-            tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon schemas
+            tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon
             mv js_${VERSION}_linux-amd64.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
@@ -270,11 +268,9 @@ jobs:
             make protos-js
             cd tmp
             mkdir -p protobuf/protos
-            mkdir -p schemas
 
             cp ../pb/protos/*.proto ./protobuf/protos
             cp ../pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-            cp ../pkg/lib/schema/*.json ./schemas
             cp -R ../dist/js/pb/* ./protobuf
 
             declare -a arr=("windows-amd64")
@@ -282,7 +278,7 @@ jobs:
             do
                 OSARCH=${i%.*}
                 cp ../${i}* ./grpc-server.exe
-                zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf schemas
+                zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf
                 mv js_${VERSION}_${OSARCH}.zip ${OUT}/
             done
             cd .. && rm -rf tmp
@@ -302,13 +298,11 @@ jobs:
             make build-js-addon
             mv dist/js/pb protobuf
             mkdir -p protobuf/protos
-            mkdir -p schemas
             mv pb/protos/*.proto ./protobuf/protos
             cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
-            cp pkg/lib/schema/*.json ./schemas
 
             mv clientlibrary/jsaddon/build addon
-            tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon schemas
+            tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
             mv js_${VERSION}_darwin-amd64.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
@@ -395,11 +389,9 @@ jobs:
           command: |
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
-            mkdir -p schemas
             cp ./pb/protos/*.proto protobuf/protos
             cp ./pb/protos/service/*.proto protobuf/protos
             cp ./pkg/lib/pb/model/protos/*.proto protobuf/protos
-            cp ./pkg/lib/schema/*.json schemas
 
             protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
       - run:
@@ -412,7 +404,7 @@ jobs:
             OUT=~/dist/ios_framework
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf schemas
+            tar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf
             mv ios_framework_${VERSION}.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/dist
@@ -481,7 +473,7 @@ jobs:
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date --iso-8601=seconds)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
-            gomobile bind -v -ldflags="$FLAGS" -tags nogrpcserver -target=android -o=lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+            gomobile bind -v -ldflags="$FLAGS" -tags nogrpcserver -target=android -androidapi=24 -o=lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
       - save_cache:
           key: go-pkg-v3-android-{{ arch }}-{{ checksum "~/go/src/github.com/anytypeio/go-anytype-middleware/go.sum" }}
           paths:
@@ -492,11 +484,9 @@ jobs:
           command: |
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
             mkdir -p protobuf/protos
-            mkdir -p schemas
             cp ./pb/protos/*.proto protobuf/protos
             cp ./pb/protos/service/*.proto protobuf/protos
             cp ./pkg/lib/pb/model/protos/*.proto protobuf/protos
-            cp ./pkg/lib/schema/*.json schemas
             protoc -I ./ --java_out=./protobuf pb/protos/* pkg/lib/pb/model/protos/*.proto
       - run:
           name: collect artifacts
@@ -508,7 +498,7 @@ jobs:
             OUT=~/dist/android_aar
             mkdir -p ${OUT}
             cd ~/go/src/github.com/anytypeio/go-anytype-middleware
-            tar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf schemas
+            tar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
             mv android_lib_${VERSION}.tar.gz ${OUT}/
       - persist_to_workspace:
           root: ~/go/src/github.com/anytypeio/go-anytype-middleware
