@@ -29,6 +29,7 @@ type Reader interface {
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
 	AggregateRelations(schema *schema.Schema) (relations []*pbrelation.Relation, err error)
+	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 }
 
 type Writer interface {

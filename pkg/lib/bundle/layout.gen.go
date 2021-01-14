@@ -12,13 +12,13 @@ var (
 
 			Id:                relation.ObjectType_action,
 			Name:              "Action",
-			RequiredRelations: []*relation.Relation{Relations[RelationKeyDone], Relations[RelationKeyName]},
+			RequiredRelations: []*relation.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
 		},
 		relation.ObjectType_basic: {
 
 			Id:                relation.ObjectType_basic,
 			Name:              "Basic",
-			RequiredRelations: []*relation.Relation{Relations[RelationKeyName]},
+			RequiredRelations: []*relation.Relation{relations[RelationKeyName]},
 		},
 		relation.ObjectType_dashboard: {
 
@@ -39,24 +39,24 @@ var (
 
 			Id:                relation.ObjectType_objectType,
 			Name:              "Object Type",
-			RequiredRelations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyRecommendedRelations]},
+			RequiredRelations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
 		},
 		relation.ObjectType_profile: {
 
 			Id:                relation.ObjectType_profile,
 			Name:              "Profile",
-			RequiredRelations: []*relation.Relation{Relations[RelationKeyName]},
+			RequiredRelations: []*relation.Relation{relations[RelationKeyName]},
 		},
 		relation.ObjectType_relation: {
 
 			Id:   relation.ObjectType_relation,
-			Name: "Relation",
+			Name: "ByRelation",
 		},
 		relation.ObjectType_set: {
 
 			Id:                relation.ObjectType_set,
 			Name:              "Set",
-			RequiredRelations: []*relation.Relation{Relations[RelationKeySetOf], Relations[RelationKeyName]},
+			RequiredRelations: []*relation.Relation{relations[RelationKeySetOf], relations[RelationKeyName]},
 		},
 	}
 )

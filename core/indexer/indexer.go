@@ -148,13 +148,9 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 		log.Warnf("can't get doc '%s': %v", id, err)
 		return
 	}
-	var rels *pbrelation.Relations
-	lastChangeTS, lastChangeBy, metaChanged := d.addRecords(records...)
+	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 
 	meta := d.meta()
-	if metaChanged {
-		rels = &pbrelation.Relations{Relations: meta.Relations}
-	}
 	prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLastModifiedDate.String()))
 
 	if meta.Details != nil && meta.Details.Fields != nil && lastChangeTS > prevModifiedDate {
@@ -164,7 +160,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 		}
 	}
 
-	if err := i.store.UpdateObject(id, meta.Details, rels, nil, ""); err != nil {
+	if err := i.store.UpdateObject(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}, nil, ""); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {
 		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, "name"))

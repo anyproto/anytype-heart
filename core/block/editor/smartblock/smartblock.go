@@ -236,6 +236,9 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 		// add the object type from the dataview source
 		if b := sb.Doc.Pick("dataview"); b != nil {
 			if dv := b.Model().GetDataview(); dv != nil {
+				if dv.Source == "" {
+					panic("empty dv source")
+				}
 				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
 				for _, rel := range dv.Relations {
 					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
@@ -244,7 +247,11 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 						}
 						for _, ot := range rel.ObjectTypes {
 							if slice.FindPos(uniqueObjTypes, ot) == -1 {
-								uniqueObjTypes = append(uniqueObjTypes, ot)
+								if ot == "" {
+									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
+								} else {
+									uniqueObjTypes = append(uniqueObjTypes, ot)
+								}
 							}
 						}
 					}
@@ -853,7 +860,7 @@ func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
-		if !(len(objectTypes) == 1 && objectTypes[0].Url == objects.BundledObjectTypeURLPrefix+"objectType") {
+		if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
 			// do not fetch objectTypes for object type type to avoid universe collapse
 			for _, objType := range objectTypes {
 				relations = append(relations, objType.Relations...)

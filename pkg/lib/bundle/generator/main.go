@@ -107,7 +107,7 @@ func generateRelations() error {
 			dictS := Dict{
 				Id("Key"):        Lit(relation.Key),
 				Id("Name"):       Lit(relation.Name),
-				Id("Format"):     Qual(relPbPkg, "RelationFormat_"+relation.Format),
+				Id("ByFormat"):   Qual(relPbPkg, "RelationFormat_"+relation.Format),
 				Id("DataSource"): Qual(relPbPkg, "Relation_"+relation.Source),
 				Id("Hidden"):     Lit(relation.Hidden),
 				Id("ReadOnly"):   Lit(relation.Readonly),
@@ -122,8 +122,9 @@ func generateRelations() error {
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)
 		}
-		g.Id("Relations").Op("=").Map(Id("RelationKey")).Op("*").Qual(relPbPkg, "Relation").Values(Dict(dict))
+		g.Id("relations").Op("=").Map(Id("RelationKey")).Op("*").Qual(relPbPkg, "ByRelation").Values(Dict(dict))
 	})
+
 	file, err := os.OpenFile("pkg/lib/bundle/relation.gen.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
@@ -183,15 +184,16 @@ func generateTypes() error {
 			if len(ot.Relations) > 0 {
 				var t []Code
 				for _, rel := range ot.Relations {
-					t = append(t, Id("Relations").Index(Id(relConst(rel))))
+					t = append(t, Id("relations").Index(Id(relConst(rel))))
 				}
-				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
+				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "ByRelation").Values(t...)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)
 		}
-		g.Id("Types").Op("=").Map(Id("TypeKey")).Op("*").Qual(relPbPkg, "ObjectType").Values(Dict(dict))
+		g.Id("types").Op("=").Map(Id("TypeKey")).Op("*").Qual(relPbPkg, "ObjectType").Values(Dict(dict))
 	})
+
 	file, err := os.OpenFile("pkg/lib/bundle/types.gen.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
 	if err != nil {
 		return err
@@ -227,9 +229,9 @@ func generateLayouts() error {
 			if len(lt.RequiredRelations) > 0 {
 				var t []Code
 				for _, rel := range lt.RequiredRelations {
-					t = append(t, Id("Relations").Index(Id(relConst(rel))))
+					t = append(t, Id("relations").Index(Id(relConst(rel))))
 				}
-				map[Code]Code(dictS)[Id("RequiredRelations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
+				map[Code]Code(dictS)[Id("RequiredRelations")] = Index().Op("*").Qual(relPbPkg, "ByRelation").Values(t...)
 			}
 
 			dict[Qual(relPbPkg, "ObjectType_"+lt.ID)] = Block(dictS)

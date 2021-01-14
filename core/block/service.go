@@ -274,13 +274,14 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	defer ob.Unlock()
 	ob.locked = true
 	ob.SetEventFunc(s.sendEvent)
+	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
+		v.SmartblockOpened(ctx)
+	}
+
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
 
-	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
-		v.SmartblockOpened(ctx)
-	}
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
 			bs    = ob.NewState()
@@ -1317,7 +1318,7 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 	objectType = &pbrelation.ObjectType{}
 	if strings.HasPrefix(url, objects.BundledObjectTypeURLPrefix) {
 		var err error
-		objectType, err = bundle.GetType(url)
+		objectType, err = bundle.GetTypeByUrl(url)
 		if err != nil {
 			if err == bundle.ErrNotFound {
 				return nil, ErrUnknownObjectType

@@ -65,7 +65,7 @@ const (
 )
 
 var (
-	Relations = map[RelationKey]*relation.Relation{
+	relations = map[RelationKey]*relation.Relation{
 		RelationKeyAperture: {
 
 			DataSource: relation.Relation_details,
@@ -254,7 +254,7 @@ var (
 		RelationKeyDoneStatus: {
 
 			DataSource: relation.Relation_details,
-			Format:     relation.RelationFormat_select,
+			Format:     relation.RelationFormat_status,
 			Hidden:     false,
 			Key:        "doneStatus",
 			Name:       "Done status",
@@ -309,7 +309,7 @@ var (
 		RelationKeyGender: {
 
 			DataSource: relation.Relation_details,
-			Format:     relation.RelationFormat_select,
+			Format:     relation.RelationFormat_status,
 			Hidden:     false,
 			Key:        "gender",
 			Name:       "Gender",
@@ -412,7 +412,7 @@ var (
 		RelationKeyPlaceOfBirth: {
 
 			DataSource: relation.Relation_details,
-			Format:     relation.RelationFormat_select,
+			Format:     relation.RelationFormat_status,
 			Hidden:     false,
 			Key:        "placeOfBirth",
 			Name:       "Place of birth",
@@ -468,7 +468,7 @@ var (
 		RelationKeyStatus: {
 
 			DataSource: relation.Relation_details,
-			Format:     relation.RelationFormat_select,
+			Format:     relation.RelationFormat_status,
 			Hidden:     false,
 			Key:        "status",
 			Name:       "Status",
@@ -477,7 +477,7 @@ var (
 		RelationKeyTag: {
 
 			DataSource: relation.Relation_details,
-			Format:     relation.RelationFormat_select,
+			Format:     relation.RelationFormat_tag,
 			Hidden:     false,
 			Key:        "tag",
 			Name:       "Tag",

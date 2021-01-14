@@ -24,7 +24,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultLimit = 100
+const defaultLimit = 50
 
 var log = logging.Logger("anytype-mw-editor")
 
@@ -165,8 +165,8 @@ func (d *dataviewCollectionImpl) AddRelationSelectOption(ctx *state.Context, blo
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_select {
-			return nil, fmt.Errorf("relation is non-select format")
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return nil, fmt.Errorf("relation has incorrect format")
 		}
 		for _, opt := range rel.SelectDict {
 			if strings.EqualFold(opt.Text, option.Text) {
@@ -201,8 +201,8 @@ func (d *dataviewCollectionImpl) UpdateRelationSelectOption(ctx *state.Context, 
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_select {
-			return fmt.Errorf("relation is non-select format")
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
 			if opt.Id == option.Id {
@@ -231,8 +231,8 @@ func (d *dataviewCollectionImpl) DeleteRelationSelectOption(ctx *state.Context, 
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_select {
-			return fmt.Errorf("relation is non-select format")
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
 			if opt.Id == optionId {
@@ -243,6 +243,7 @@ func (d *dataviewCollectionImpl) DeleteRelationSelectOption(ctx *state.Context, 
 				return d.Apply(s, smartblock.NoEvent)
 			}
 		}
+		// todo: should we remove option and value from all objects within type?
 
 		return fmt.Errorf("relation option not found")
 	}
@@ -589,18 +590,50 @@ func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, 
 }
 
 func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
-	d.Iterate(func(b simple.Block) (isContinue bool) {
+	st := d.NewStateCtx(ctx)
+	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {
 			return true
 		} else {
 			// reset state after block was reopened
 			// getDataviewImpl will also set activeView to the fist one in case the smartblock wasn't opened in this session before
 			dv := d.getDataviewImpl(dvBlock)
+
+			dvc := b.Model().GetDataview()
+
+			for _, rel := range dvc.Relations {
+				if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+					continue
+				}
+
+				objScopeOptions, restScopeOptions, err := d.Anytype().ObjectStore().GetAggregatedOptionsForRelation(rel.Key, dvc.Source)
+				if err != nil {
+					log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+					continue
+				}
+
+				/*formatScopeOptions, err := d.Anytype().ObjectStore().GetAggregatedOptionsForFormat(rel.Key, d.Id())
+				if err != nil {
+					log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+					continue
+				}*/
+
+				dvc.AggregatedOptions = append(dvc.AggregatedOptions,
+					&model.BlockContentDataviewAggregatedOptions{
+						RelationKey: rel.Key,
+						Local:       objScopeOptions,
+						ByRelation:  restScopeOptions,
+					})
+			}
+			st.Set(b)
 			dv.records = nil
 		}
 		return true
 	})
-
+	err := d.Apply(st)
+	if err != nil {
+		log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+	}
 	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 

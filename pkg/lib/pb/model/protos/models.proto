@@ -200,6 +200,7 @@ message Block {
             repeated View views = 2;
             // index 3 is deprecated, was used for schemaURL in old-format sets
             repeated anytype.relation.Relation relations = 4;
+            repeated AggregatedOptions aggregatedOptions = 5; // virtual, not saved in the state
 
             message View {
                 string id = 1;
@@ -215,6 +216,12 @@ message Block {
                     Gallery = 2;
                     Kanban = 3;
                 }
+            }
+            message AggregatedOptions {
+                string relationKey = 1;
+                repeated anytype.relation.Relation.SelectOption local = 2; // list of aggregated options from all objects in this dataview(set)
+                repeated anytype.relation.Relation.SelectOption byRelation = 3; // list of aggregated options from all indexed objects with this relation
+                repeated anytype.relation.Relation.SelectOption byFormat = 4; // list of aggregated options from all indexed objects with the format of this relation
             }
 
             message Relation {

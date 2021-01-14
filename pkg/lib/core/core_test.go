@@ -92,7 +92,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	var ps = s.ObjectStore()
-	sch := schema.New(bundle.Types[bundle.TypeKeyPage], nil)
+	sch := schema.New(bundle.types[bundle.TypeKeyPage], nil)
 	results, total, err := ps.Query(&sch, database.Query{Limit: 1, Sorts: []*model.BlockContentDataviewSort{{RelationKey: "name"}}})
 	require.NoError(t, err)
 	require.Len(t, results, 1)

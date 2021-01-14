@@ -65,8 +65,13 @@ type ObjectStore interface {
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
+	GetAggregatedOptionsForRelation(relationKey, objectType string) (objectTypeScope []*pbrelation.RelationSelectOption, restScope []*pbrelation.RelationSelectOption, err error)
+	GetAggregatedOptionsForFormat(format pbrelation.RelationFormat) ([]*pbrelation.RelationSelectOption, error)
+
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
+	ListIds() ([]string, error)
+
 	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
@@ -255,15 +260,26 @@ func GetKeyByIndex(index Index, ds ds.TxnDatastore, val interface{}) (string, er
 	return keyParts[len(keyParts)-1], nil
 }
 
-func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
+func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []string, hash bool) ds.Key {
 	keyStr := strings.Join(keyIndexValue, "")
 	if hash {
 		keyBytesF := sha256.Sum256([]byte(keyStr))
 		keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 	}
 
-	key := indexBase.ChildString(prefix).ChildString(keyIndexName).ChildString(keyStr)
+	return indexBase.ChildString(prefix).ChildString(keyIndexName).ChildString(keyStr)
+}
+
+func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash)
+
 	return GetKeys(ds, key.String(), limit)
+}
+
+func HasPrimaryKeyByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, hash bool, primaryIndex string) (exists bool, err error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash).ChildString(primaryIndex)
+
+	return txn.Has(key)
 }
 
 func CountAllKeysFromResults(results query.Results) (int, error) {
@@ -351,7 +367,7 @@ func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int)
 
 func GetKeys(ds ds.TxnDatastore, prefix string, limit int) (query.Results, error) {
 	return ds.Query(query.Query{
-		Prefix:   prefix + "/",
+		Prefix:   prefix,
 		Limit:    limit,
 		KeysOnly: true,
 	})

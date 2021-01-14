@@ -41,7 +41,6 @@ type Block interface {
 
 	AddRelation(relation pbrelation.Relation)
 	UpdateRelation(relationKey string, relation pbrelation.Relation) error
-
 	DeleteRelation(relationKey string) error
 
 	GetSource() string
@@ -165,6 +164,11 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	return
 }
 
+// SetAggregatedOptions injects virtual field(NOT SAVED) with aggregated options into the state
+func (s *Dataview) SetAggregatedOptions(aggregatedOptions []*model.BlockContentDataviewAggregatedOptions) {
+	s.content.AggregatedOptions = aggregatedOptions
+}
+
 // AddView adds a view to the dataview. It doesn't fills any missing field excepting id
 func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	if view.Id == "" {
@@ -246,7 +250,7 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 				return fmt.Errorf("changing hidden flag of existing relation is retricted")
 			}
 
-			if rel.Format == pbrelation.RelationFormat_select {
+			if rel.Format == pbrelation.RelationFormat_status {
 				for i := range rel.SelectDict {
 					if rel.SelectDict[i].Id == "" {
 						rel.SelectDict[i].Id = bson.NewObjectId().Hex()
@@ -276,6 +280,12 @@ func (l *Dataview) HasSmartIds() bool {
 	return len(l.recordIDs) > 0
 }
 
+func (td *Dataview) ModelToSave() *model.Block {
+	b := pbtypes.CopyBlock(td.Model())
+	b.Content.(*model.BlockContentOfDataview).Dataview.AggregatedOptions = nil
+	return b
+}
+
 func (d *Dataview) SetSource(source string) error {
 	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, objects.CustomObjectTypeURLPrefix) {
 		return fmt.Errorf("invalid source URL")
@@ -294,11 +304,9 @@ func (d *Dataview) AddRelation(relation pbrelation.Relation) {
 		relation.Key = bson.NewObjectId().Hex()
 	}
 
-	if relation.Format == pbrelation.RelationFormat_select {
-		for i := range relation.SelectDict {
-			if relation.SelectDict[i].Id == "" {
-				relation.SelectDict[i].Id = bson.NewObjectId().Hex()
-			}
+	for i := range relation.SelectDict {
+		if relation.SelectDict[i].Id == "" {
+			relation.SelectDict[i].Id = bson.NewObjectId().Hex()
 		}
 	}
 
@@ -320,4 +328,16 @@ func (d *Dataview) DeleteRelation(relationKey string) error {
 	}
 
 	return nil
+}
+
+func (d *Dataview) DetailsInit(s simple.DetailsService) {
+	//todo: inject setOf
+}
+
+func (d *Dataview) OnDetailsChange(s simple.DetailsService) {
+	// empty
+}
+
+func (d *Dataview) DetailsApply(s simple.DetailsService) {
+
 }

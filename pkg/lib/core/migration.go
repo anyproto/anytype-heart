@@ -306,8 +306,8 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 			return err
 		}
 		targetsProceed := map[string]struct{}{}
-		imgObjType := bundle.Types[bundle.TypeKeyImage]
-		fileObjType := bundle.Types[bundle.TypeKeyFile]
+		imgObjType := bundle.MustGetType(bundle.TypeKeyImage)
+		fileObjType := bundle.MustGetType(bundle.TypeKeyFile)
 		log.Debugf("migrating %d files", len(files))
 		var (
 			ctx      context.Context

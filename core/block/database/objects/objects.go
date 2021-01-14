@@ -47,14 +47,14 @@ type setOfObjects struct {
 }
 
 func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record, sub database.Subscription) (database.Record, error) {
+	if rec.Details == nil || rec.Details.Fields == nil {
+		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
+	}
+
 	rec.Details.Fields["type"] = pbtypes.StringList([]string{sp.objectTypeUrl})
 	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, nil)
 	if err != nil {
 		return rec, err
-	}
-
-	if rec.Details == nil || rec.Details.Fields == nil {
-		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
 
 	if sub != nil {

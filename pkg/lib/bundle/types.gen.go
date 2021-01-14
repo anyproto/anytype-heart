@@ -39,124 +39,124 @@ const (
 )
 
 var (
-	Types = map[TypeKey]*relation.ObjectType{
+	types = map[TypeKey]*relation.ObjectType{
 		TypeKeyAudio: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Audio",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyArtist], Relations[RelationKeyAudioAlbum], Relations[RelationKeyAudioAlbumTrackNumber], Relations[RelationKeyAudioGenre], Relations[RelationKeyReleasedYear], Relations[RelationKeyThumbnailImage], Relations[RelationKeyComposer], Relations[RelationKeyDurationInSeconds], Relations[RelationKeySizeInBytes], Relations[RelationKeyFileMimeType]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeyArtist], relations[RelationKeyAudioAlbum], relations[RelationKeyAudioAlbumTrackNumber], relations[RelationKeyAudioGenre], relations[RelationKeyReleasedYear], relations[RelationKeyThumbnailImage], relations[RelationKeyComposer], relations[RelationKeyDurationInSeconds], relations[RelationKeySizeInBytes], relations[RelationKeyFileMimeType]},
 			Url:       TypePrefix + "audio",
 		},
 		TypeKeyCollection: {
 
 			Layout:    relation.ObjectType_database,
 			Name:      "Collection",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyCollectionOf]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeyCollectionOf]},
 			Url:       TypePrefix + "collection",
 		},
 		TypeKeyContact: {
 
 			Layout:    relation.ObjectType_profile,
 			Name:      "Contact",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate]},
 			Url:       TypePrefix + "contact",
 		},
 		TypeKeyDashboard: {
 
 			Layout:    relation.ObjectType_dashboard,
 			Name:      "Dashboard",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate]},
 			Url:       TypePrefix + "dashboard",
 		},
 		TypeKeyDocument: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Document",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate]},
 			Url:       TypePrefix + "document",
 		},
 		TypeKeyFile: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "File",
-			Relations: []*relation.Relation{Relations[RelationKeyFileMimeType], Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyFileMimeType], Relations[RelationKeySizeInBytes]},
+			Relations: []*relation.Relation{relations[RelationKeyFileMimeType], relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFileMimeType], relations[RelationKeySizeInBytes]},
 			Url:       TypePrefix + "file",
 		},
 		TypeKeyIdea: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Idea",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyTag]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeyTag]},
 			Url:       TypePrefix + "idea",
 		},
 		TypeKeyImage: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Image",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyFileMimeType], Relations[RelationKeyWidthInPixels], Relations[RelationKeyCamera], Relations[RelationKeyHeightInPixels], Relations[RelationKeySizeInBytes], Relations[RelationKeyCameraIso], Relations[RelationKeyAperture], Relations[RelationKeyExposure]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFileMimeType], relations[RelationKeyWidthInPixels], relations[RelationKeyCamera], relations[RelationKeyHeightInPixels], relations[RelationKeySizeInBytes], relations[RelationKeyCameraIso], relations[RelationKeyAperture], relations[RelationKeyExposure]},
 			Url:       TypePrefix + "image",
 		},
 		TypeKeyNote: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Note",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate]},
 			Url:       TypePrefix + "note",
 		},
 		TypeKeyObjectType: {
 
 			Layout:    relation.ObjectType_objectType,
 			Name:      "Type",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyRecommendedRelations]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
 			Url:       TypePrefix + "objectType",
 		},
 		TypeKeyPage: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Undefined",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate]},
 			Url:       TypePrefix + "page",
 		},
 		TypeKeyProfile: {
 
 			Layout:    relation.ObjectType_profile,
 			Name:      "Human",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate]},
 			Url:       TypePrefix + "profile",
 		},
 		TypeKeyProject: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Project",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate]},
 			Url:       TypePrefix + "project",
 		},
 		TypeKeyRelation: {
 
 			Layout:    relation.ObjectType_relation,
-			Name:      "Relation",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyId], Relations[RelationKeyCoverX]},
+			Name:      "ByRelation",
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyId], relations[RelationKeyCoverX]},
 			Url:       TypePrefix + "relation",
 		},
 		TypeKeySet: {
 
 			Layout:    relation.ObjectType_set,
 			Name:      "Set of objects",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeySetOf]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeySetOf]},
 			Url:       TypePrefix + "set",
 		},
 		TypeKeyTask: {
 
 			Layout:    relation.ObjectType_action,
 			Name:      "Task",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyAssignee], Relations[RelationKeyDueDate], Relations[RelationKeyDescription], Relations[RelationKeyAttachments], Relations[RelationKeyStatus], Relations[RelationKeyDone], Relations[RelationKeyPriority], Relations[RelationKeyLinkedTasks], Relations[RelationKeyLinkedProjects], Relations[RelationKeyTag], Relations[RelationKeyDoneStatus]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeyAssignee], relations[RelationKeyDueDate], relations[RelationKeyDescription], relations[RelationKeyAttachments], relations[RelationKeyStatus], relations[RelationKeyDone], relations[RelationKeyPriority], relations[RelationKeyLinkedTasks], relations[RelationKeyLinkedProjects], relations[RelationKeyTag], relations[RelationKeyDoneStatus]},
 			Url:       TypePrefix + "task",
 		},
 		TypeKeyVideo: {
 
 			Layout:    relation.ObjectType_basic,
 			Name:      "Video",
-			Relations: []*relation.Relation{Relations[RelationKeyName], Relations[RelationKeyIconImage], Relations[RelationKeyIconEmoji], Relations[RelationKeyLastModifiedBy], Relations[RelationKeyCoverImage], Relations[RelationKeyCreatedDate], Relations[RelationKeyLastModifiedDate], Relations[RelationKeyId], Relations[RelationKeyType], Relations[RelationKeyLastOpenedDate], Relations[RelationKeyCoverX], Relations[RelationKeyCoverY], Relations[RelationKeyCoverScale], Relations[RelationKeyThumbnailImage], Relations[RelationKeyCreator], Relations[RelationKeyToBeDeletedDate], Relations[RelationKeyDurationInSeconds], Relations[RelationKeySizeInBytes], Relations[RelationKeyFileMimeType], Relations[RelationKeyCamera], Relations[RelationKeyThumbnailImage], Relations[RelationKeyHeightInPixels], Relations[RelationKeyWidthInPixels], Relations[RelationKeyCameraIso], Relations[RelationKeyAperture], Relations[RelationKeyExposure]},
+			Relations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyLastModifiedBy], relations[RelationKeyCoverImage], relations[RelationKeyCreatedDate], relations[RelationKeyLastModifiedDate], relations[RelationKeyId], relations[RelationKeyType], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyThumbnailImage], relations[RelationKeyCreator], relations[RelationKeyToBeDeletedDate], relations[RelationKeyDurationInSeconds], relations[RelationKeySizeInBytes], relations[RelationKeyFileMimeType], relations[RelationKeyCamera], relations[RelationKeyThumbnailImage], relations[RelationKeyHeightInPixels], relations[RelationKeyWidthInPixels], relations[RelationKeyCameraIso], relations[RelationKeyAperture], relations[RelationKeyExposure]},
 			Url:       TypePrefix + "video",
 		},
 	}

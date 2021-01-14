@@ -127,6 +127,14 @@ service ClientCommands {
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
 
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
+    rpc ObjectRelationAdd (anytype.Rpc.Object.RelationAdd.Request) returns (anytype.Rpc.Object.RelationAdd.Response);
+    rpc ObjectRelationUpdate (anytype.Rpc.Object.RelationUpdate.Request) returns (anytype.Rpc.Object.RelationUpdate.Response);
+    rpc ObjectRelationDelete (anytype.Rpc.Object.RelationDelete.Request) returns (anytype.Rpc.Object.RelationDelete.Response);
+    rpc ObjectRelationSelectOptionAdd (anytype.Rpc.Object.RelationSelectOptionAdd.Request) returns (anytype.Rpc.Object.RelationSelectOptionAdd.Response);
+    rpc ObjectRelationSelectOptionUpdate (anytype.Rpc.Object.RelationSelectOptionUpdate.Request) returns (anytype.Rpc.Object.RelationSelectOptionUpdate.Response);
+    rpc ObjectRelationSelectOptionDelete (anytype.Rpc.Object.RelationSelectOptionDelete.Request) returns (anytype.Rpc.Object.RelationSelectOptionDelete.Response);
+    rpc ObjectRelationListAvailable (anytype.Rpc.Object.RelationListAvailable.Request) returns (anytype.Rpc.Object.RelationListAvailable.Response);
+
     // TODO: rename BlockSetDetails -> ObjectSetDetails
     rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);
 

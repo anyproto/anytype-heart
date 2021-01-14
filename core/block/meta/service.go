@@ -92,7 +92,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 	for _, otypeUrl := range objectTypeUrls {
 		if strings.HasPrefix(otypeUrl, objects.BundledObjectTypeURLPrefix) {
 			var err error
-			objectType, err := bundle.GetType(otypeUrl)
+			objectType, err := bundle.GetTypeByUrl(otypeUrl)
 			if err != nil {
 				log.Errorf("failed to get objectType %s: %s", otypeUrl, err.Error())
 				continue

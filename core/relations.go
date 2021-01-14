@@ -168,7 +168,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(bundle.RequiredInternalRelations))
 
 	for _, rel := range bundle.RequiredInternalRelations {
-		requiredRelationByKey[rel] = bundle.Relations[bundle.RelationKey(rel)]
+		requiredRelationByKey[rel.String()] = bundle.MustGetRelation(rel)
 	}
 
 	for _, rel := range req.ObjectType.Relations {

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
@@ -22,6 +23,10 @@ import (
 )
 
 var (
+	relationsPrefix = "relations"
+	// /relations/options/<relKey>/<relOptionId>: list of object Ids
+	relationsOptionsBase = ds.NewKey("/" + relationsPrefix + "/options")
+
 	// ObjectInfo is stored in db key pattern:
 	pagesPrefix        = "pages"
 	pagesDetailsBase   = ds.NewKey("/" + pagesPrefix + "/details")
@@ -31,6 +36,70 @@ var (
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
 	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
+
+	indexRelationOptionObject = Index{
+		Prefix: pagesPrefix,
+		Name:   "relkey_optid",
+		Keys: func(val interface{}) []IndexKeyParts {
+			if v, ok := val.(*pbrelation.Relation); ok {
+				var indexes []IndexKeyParts
+				if v.Format != pbrelation.RelationFormat_tag && v.Format != pbrelation.RelationFormat_status {
+					return nil
+				}
+				if len(v.SelectDict) == 0 {
+					return nil
+				}
+
+				for _, opt := range v.SelectDict {
+					indexes = append(indexes, IndexKeyParts([]string{v.Key + "/" + opt.Id}))
+				}
+				return indexes
+			}
+			return nil
+		},
+		Unique: false,
+	}
+	indexFormatOptionObject = Index{
+		Prefix: pagesPrefix,
+		Name:   "format_relkey_optid",
+		Keys: func(val interface{}) []IndexKeyParts {
+			if v, ok := val.(*pbrelation.Relation); ok {
+				var indexes []IndexKeyParts
+				if v.Format != pbrelation.RelationFormat_tag && v.Format != pbrelation.RelationFormat_status {
+					return nil
+				}
+				if len(v.SelectDict) == 0 {
+					return nil
+				}
+
+				for _, opt := range v.SelectDict {
+					indexes = append(indexes, IndexKeyParts([]string{v.Format.String() + "/" + v.Key + "/" + opt.Id}))
+				}
+				return indexes
+			}
+			return nil
+		},
+		Unique: false,
+	}
+
+	indexObjectTypeObject = Index{
+		Prefix: pagesPrefix,
+		Name:   "type",
+		Keys: func(val interface{}) []IndexKeyParts {
+			if v, ok := val.(*model.ObjectDetails); ok {
+				var indexes []IndexKeyParts
+				types := pbtypes.GetStringList(v.Details, bundle.RelationKeyType.String())
+
+				for _, t := range types {
+					indexes = append(indexes, IndexKeyParts([]string{t}))
+				}
+				return indexes
+			}
+			return nil
+		},
+		Unique: false,
+		Hash:   true,
+	}
 
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
@@ -80,6 +149,153 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error) {
+	res, err := GetKeysByIndexParts(m.ds, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, false, 100)
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := ExtractKeysFromResults(res)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	objectsByOptionId = make(map[string][]string)
+
+	for _, key := range keys {
+		optionId, err := CarveKeyParts(key, -2, -1)
+		if err != nil {
+			return nil, err
+		}
+		objId, err := CarveKeyParts(key, -1, 0)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, exists := objectsByOptionId[optionId]; !exists {
+			objectsByOptionId[optionId] = []string{}
+		}
+
+		objectsByOptionId[optionId] = append(objectsByOptionId[optionId], objId)
+	}
+	return
+}
+
+type relationOption struct {
+	relationKey string
+	optionId    string
+}
+
+func (m *dsObjectStore) getAggregatedOptionsForFormat(format pbrelation.RelationFormat) (options []relationOption, err error) {
+	res, err := GetKeysByIndexParts(m.ds, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, false, 100)
+	if err != nil {
+		return nil, err
+	}
+
+	keys, err := ExtractKeysFromResults(res)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	var ex = make(map[string]struct{})
+	for _, key := range keys {
+		optionId, err := CarveKeyParts(key, -2, -1)
+		if err != nil {
+			return nil, err
+		}
+		relKey, err := CarveKeyParts(key, -3, -2)
+		if err != nil {
+			return nil, err
+		}
+
+		if _, exists := ex[optionId]; exists {
+			continue
+		}
+		ex[optionId] = struct{}{}
+		options = append(options, relationOption{
+			relationKey: relKey,
+			optionId:    optionId,
+		})
+	}
+	return
+}
+
+// GetAggregatedOptionsForRelation returns aggregated options for specific relation. objectTypeScope contains options existed in the objects with the provided objectType, relationScope contains all the rest options
+func (m *dsObjectStore) GetAggregatedOptionsForRelation(relationKey, objectType string) (objectTypeScope []*pbrelation.RelationSelectOption, relationScope []*pbrelation.RelationSelectOption, err error) {
+	objectsByOptionId, err := m.AggregateObjectIdsByOptionForRelation(relationKey)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, nil, err
+	}
+
+	for optId, objIds := range objectsByOptionId {
+		var objScope bool
+		for _, objId := range objIds {
+			exists, err := isObjectBelongToType(txn, objId, objectType)
+			if err != nil {
+				return nil, nil, err
+			}
+
+			if exists {
+				objScope = true
+				break
+			}
+		}
+		opt, err := getOption(txn, relationKey, optId)
+		if err != nil {
+			return nil, nil, err
+		}
+
+		if objScope {
+			objectTypeScope = append(objectTypeScope, opt)
+		} else {
+			relationScope = append(relationScope, opt)
+		}
+
+	}
+	return
+}
+
+func (m *dsObjectStore) GetAggregatedOptionsForFormat(format pbrelation.RelationFormat) ([]*pbrelation.RelationSelectOption, error) {
+	ros, err := m.getAggregatedOptionsForFormat(format)
+	if err != nil {
+		return nil, err
+	}
+
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, err
+	}
+
+	var options []*pbrelation.RelationSelectOption
+	for _, ro := range ros {
+		opt, err := getOption(txn, ro.relationKey, ro.optionId)
+		if err != nil {
+			return nil, err
+		}
+
+		options = append(options, opt)
+	}
+
+	return options, nil
 }
 
 func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
@@ -312,7 +528,7 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbr
 		return nil, fmt.Errorf("error when querying ds: %w", err)
 	}
 
-	var relationsKeysMaps map[string]struct{}
+	var relationsKeysMaps = make(map[string]*pbrelation.Relation)
 
 	for rec := range res.Next() {
 		var rels pbrelation.Relations
@@ -321,14 +537,30 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbr
 			continue
 		}
 		for i, rel := range rels.Relations {
-			if _, exists := relationsKeysMaps[rel.Key]; exists {
-				// todo: aggregate select dictionary?
+			if exRelation, exists := relationsKeysMaps[rel.Key]; exists {
+				// merge selectDict
+				for _, dictOption := range rel.SelectDict {
+					var found bool
+					for _, exDictOption := range exRelation.SelectDict {
+						if exDictOption.Id == dictOption.Id {
+							found = true
+							break
+						}
+					}
+					if !found {
+						exRelation.SelectDict = append(exRelation.SelectDict, dictOption)
+					}
+				}
+
 				continue
 			}
 
-			relationsKeysMaps[rel.Key] = struct{}{}
-			relations = append(relations, rels.Relations[i])
+			relationsKeysMaps[rel.Key] = rels.Relations[i]
 		}
+	}
+
+	for _, rel := range relationsKeysMaps {
+		relations = append(relations, rel)
 	}
 
 	return relations, nil
@@ -564,8 +796,6 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 	m.l.Lock()
 	defer m.l.Unlock()
 
-	log.Errorf("UpdateObject %s: %v", id, details)
-
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -685,6 +915,16 @@ func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) erro
 	return txn.Commit()
 }
 
+func (m *dsObjectStore) ListIds() ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
+}
+
 func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.ObjectDetails) error {
 	detailsKey := pagesDetailsBase.ChildString(id)
 	b, err := proto.Marshal(details)
@@ -697,6 +937,11 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.Obje
 		return err
 	}
 
+	err = AddIndexesWithTxn(m, txn, details, id)
+	if err != nil {
+		return err
+	}
+
 	if details.Details != nil && details.Details.Fields != nil {
 		m.sendUpdatesToSubscriptions(id, details.Details)
 	}
@@ -704,11 +949,34 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, details *model.Obje
 	return nil
 }
 
+func (m *dsObjectStore) updateOption(txn ds.Txn, relationKey string, option *pbrelation.RelationSelectOption) error {
+	b, err := proto.Marshal(option)
+	if err != nil {
+		return err
+	}
+	relationsKey := relationsOptionsBase.ChildString(relationKey).ChildString(option.Id)
+
+	return txn.Put(relationsKey, b)
+
+}
 func (m *dsObjectStore) updateRelations(txn ds.Txn, id string, relations *pbrelation.Relations) error {
 	relationsKey := pagesRelationsBase.ChildString(id)
 	b, err := proto.Marshal(relations)
 	if err != nil {
 		return err
+	}
+	for _, relation := range relations.Relations {
+		// save all options
+		for _, opt := range relation.SelectDict {
+			err := m.updateOption(txn, relation.Key, opt)
+			if err != nil {
+				return err
+			}
+		}
+		err = AddIndexesWithTxn(m, txn, relation, id)
+		if err != nil {
+			return err
+		}
 	}
 
 	return txn.Put(relationsKey, b)
@@ -724,7 +992,7 @@ func (m *dsObjectStore) Prefix() string {
 }
 
 func (m *dsObjectStore) Indexes() []Index {
-	return nil
+	return []Index{indexRelationOptionObject, indexFormatOptionObject, indexObjectTypeObject}
 }
 
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
@@ -745,6 +1013,19 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 	return dsq, nil
 }
 
+func (m *dsObjectStore) listIdsOfType(ot string) ([]string, error) {
+	res, err := GetKeysByIndexParts(m.ds, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, true, 100)
+	if err != nil {
+		return nil, err
+	}
+
+	return GetLeavesFromResults(res)
+}
+
+func isObjectBelongToType(txn ds.Txn, id, objectType string) (bool, error) {
+	return HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objectType}, true, id)
+}
+
 func (m *dsObjectStore) Close() {
 	if m.fts != nil {
 		m.fts.Close()
@@ -762,6 +1043,30 @@ func getDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	}
 
 	return &details, nil
+}
+
+func getRelations(txn ds.Txn, id string) (*pbrelation.Relations, error) {
+	var relations pbrelation.Relations
+	if val, err := txn.Get(pagesRelationsBase.ChildString(id)); err != nil {
+		if err != ds.ErrNotFound {
+			return nil, fmt.Errorf("failed to get relations: %w", err)
+		}
+	} else if err := proto.Unmarshal(val, &relations); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
+	}
+	return &relations, nil
+}
+
+func getOption(txn ds.Txn, relationKey, optionId string) (*pbrelation.RelationSelectOption, error) {
+	var opt pbrelation.RelationSelectOption
+	if val, err := txn.Get(relationsOptionsBase.ChildString(relationKey).ChildString(optionId)); err != nil {
+		if err != ds.ErrNotFound {
+			return nil, fmt.Errorf("failed to get relations: %w", err)
+		}
+	} else if err := proto.Unmarshal(val, &opt); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
+	}
+	return &opt, nil
 }
 
 func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {

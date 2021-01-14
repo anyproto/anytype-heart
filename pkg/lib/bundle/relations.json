@@ -1,6 +1,6 @@
 [
   {
-    "format": "select",
+    "format": "tag",
     "hidden": false,
     "key": "tag",
     "name": "Tag",
@@ -146,7 +146,7 @@
     "source": "details"
   },
   {
-    "format": "select",
+    "format": "status",
     "hidden": false,
     "key": "status",
     "name": "Status",
@@ -270,7 +270,7 @@
   },
   {
     "description": "Status of object with status relation when it is assumed completed",
-    "format": "select",
+    "format": "status",
     "hidden": false,
     "key": "doneStatus",
     "name": "Done status",
@@ -354,7 +354,7 @@
     "source": "details"
   },
   {
-    "format": "select",
+    "format": "status",
     "hidden": false,
     "key": "placeOfBirth",
     "name": "Place of birth",
@@ -448,7 +448,7 @@
     "source": "details"
   },
   {
-    "format": "select",
+    "format": "status",
     "hidden": false,
     "key": "gender",
     "name": "Gender",

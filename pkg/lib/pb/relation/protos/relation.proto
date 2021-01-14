@@ -73,7 +73,8 @@ enum RelationFormat {
     description = 0; // plain string
     title = 1; // string, usually short enough. May be truncated
     number = 2; // double
-    select = 3; // string
+    status = 3; // string (choose one from a list)
+    tag = 11; // list of string (choose multiple from a list)
     date = 4; // int64(pb.Value doesn't have int64) or string
     file = 5; // relation can has objects of specific types: file, image, audio, video
     checkbox = 6; // boolean
