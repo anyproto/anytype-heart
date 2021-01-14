@@ -1655,6 +1655,12 @@ message Rpc {
             }
         }
 
+        // Available undo/redo operations
+        message UndoRedoCounter {
+            int32 undo = 1;
+            int32 redo = 2;
+        }
+
         message Undo {
             message Request {
                 string contextId = 1; // id of the context block
@@ -1663,6 +1669,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 ResponseEvent event = 2;
+                UndoRedoCounter counters = 3;
 
                 message Error {
                     Code code = 1;
@@ -1687,6 +1694,7 @@ message Rpc {
             message Response {
                 Error error = 1;
                 ResponseEvent event = 2;
+                UndoRedoCounter counters = 3;
 
                 message Error {
                     Code code = 1;

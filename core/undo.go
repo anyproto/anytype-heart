@@ -9,18 +9,23 @@ import (
 
 func (mw *Middleware) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoResponse {
 	ctx := state.NewContext(nil)
+	var (
+		counters pb.RpcBlockUndoRedoCounter
+		err      error
+	)
 	response := func(code pb.RpcBlockUndoResponseErrorCode, err error) *pb.RpcBlockUndoResponse {
 		m := &pb.RpcBlockUndoResponse{Error: &pb.RpcBlockUndoResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
 			m.Event = ctx.GetResponseEvent()
+			m.Counters = &counters
 		}
 		return m
 	}
-
-	err := mw.doBlockService(func(bs block.Service) error {
-		return bs.Undo(ctx, *req)
+	err = mw.doBlockService(func(bs block.Service) error {
+		counters, err = bs.Undo(ctx, *req)
+		return err
 	})
 	if err != nil {
 		if err == undo.ErrNoHistory {
@@ -33,18 +38,24 @@ func (mw *Middleware) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoRes
 
 func (mw *Middleware) BlockRedo(req *pb.RpcBlockRedoRequest) *pb.RpcBlockRedoResponse {
 	ctx := state.NewContext(nil)
+	var (
+		counters pb.RpcBlockUndoRedoCounter
+		err      error
+	)
 	response := func(code pb.RpcBlockRedoResponseErrorCode, err error) *pb.RpcBlockRedoResponse {
 		m := &pb.RpcBlockRedoResponse{Error: &pb.RpcBlockRedoResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
 			m.Event = ctx.GetResponseEvent()
+			m.Counters = &counters
 		}
 		return m
 	}
 
-	err := mw.doBlockService(func(bs block.Service) error {
-		return bs.Redo(ctx, *req)
+	err = mw.doBlockService(func(bs block.Service) error {
+		counters, err = bs.Redo(ctx, *req)
+		return err
 	})
 	if err != nil {
 		if err == undo.ErrNoHistory {

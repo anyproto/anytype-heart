@@ -136,3 +136,27 @@ func TestAction_IsEmpty(t *testing.T) {
 	assert.True(t, Action{}.IsEmpty())
 	assert.False(t, Action{Add: []simple.Block{nil}}.IsEmpty())
 }
+
+func TestHistory_Counters(t *testing.T) {
+	h := NewHistory(0)
+	h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "1"})}})
+	uc, rc := h.Counters()
+	assert.Equal(t, int32(1), uc)
+	assert.Equal(t, int32(0), rc)
+	h.Add(Action{Add: []simple.Block{simple.New(&model.Block{Id: "2"})}})
+	uc, rc = h.Counters()
+	assert.Equal(t, int32(2), uc)
+	assert.Equal(t, int32(0), rc)
+	h.Previous()
+	uc, rc = h.Counters()
+	assert.Equal(t, int32(1), uc)
+	assert.Equal(t, int32(1), rc)
+	h.Previous()
+	uc, rc = h.Counters()
+	assert.Equal(t, int32(0), uc)
+	assert.Equal(t, int32(2), rc)
+	h.Next()
+	uc, rc = h.Counters()
+	assert.Equal(t, int32(1), uc)
+	assert.Equal(t, int32(1), rc)
+}
