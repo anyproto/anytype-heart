@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
@@ -55,5 +56,15 @@ func (p *Page) Init(s source.Source, _ bool, objectTypeUrls []string) (err error
 		objectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
 
-	return template.ApplyTemplate(p, nil, template.WithTitle, template.WithObjectTypesAndLayout(objectTypeUrls))
+	var layout relation.ObjectTypeLayout
+	otypes := p.MetaService().FetchObjectTypes(objectTypeUrls)
+	for _, ot := range otypes {
+		layout = ot.Layout
+	}
+
+	return template.ApplyTemplate(p, nil,
+		template.WithTitle,
+		template.WithObjectTypes(objectTypeUrls),
+		template.WithLayout(layout),
+	)
 }

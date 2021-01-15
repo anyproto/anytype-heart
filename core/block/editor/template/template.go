@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -37,6 +38,14 @@ var WithEmpty = StateTransformer(func(s *state.State) {
 
 })
 
+var WithObjectTypes = func(otypes []string) StateTransformer {
+	return func(s *state.State) {
+		if len(s.ObjectTypes()) == 0 {
+			s.SetObjectTypes(otypes)
+		}
+	}
+}
+
 var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {
@@ -52,6 +61,15 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 				}
 				s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(t.Layout)))
 			}
+		}
+	}
+}
+
+var WithLayout = func(layout relation.ObjectTypeLayout) StateTransformer {
+	return func(s *state.State) {
+		d := s.Details()
+		if d == nil || d.Fields == nil || d.Fields[bundle.RelationKeyLayout.String()] == nil {
+			s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(layout)))
 		}
 	}
 }

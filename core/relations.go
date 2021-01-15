@@ -188,11 +188,11 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		sbId, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
+		sbId, _, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
 			Fields: map[string]*types.Value{
-				"name":      pbtypes.String(req.ObjectType.Name),
-				"iconEmoji": pbtypes.String(req.ObjectType.IconEmoji),
-				"layout":    pbtypes.Float64(float64(req.ObjectType.Layout)),
+				bundle.RelationKeyName.String():      pbtypes.String(req.ObjectType.Name),
+				bundle.RelationKeyIconEmoji.String(): pbtypes.String(req.ObjectType.IconEmoji),
+				bundle.RelationKeyType.String():      pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
 			},
 		}, nil)
 		if err != nil {

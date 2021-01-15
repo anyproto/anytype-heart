@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
@@ -24,7 +25,7 @@ func New(
 	getRelations func(objectId string) (relations []*pbrelation.Relation, err error),
 	setRelations func(id string, relations []*pbrelation.Relation) (err error),
 
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error),
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error),
 ) database.Database {
 	return &setOfObjects{
 		ObjectStore:      pageStore,
@@ -43,7 +44,7 @@ type setOfObjects struct {
 	getRelations  func(objectId string) (relations []*pbrelation.Relation, err error)
 	setRelations  func(id string, relations []*pbrelation.Relation) (err error)
 
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error)
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
 }
 
 func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record, sub database.Subscription) (database.Record, error) {
@@ -51,37 +52,25 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
 
-	rec.Details.Fields["type"] = pbtypes.StringList([]string{sp.objectTypeUrl})
-	id, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, nil)
+	rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl})
+	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, nil)
 	if err != nil {
 		return rec, err
 	}
 
+	rec.Details = newDetails
+	rec.Details.Fields[bundle.RelationKeyId.String()] = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
+
 	if sub != nil {
 		sub.Subscribe([]string{id})
 	}
+
 	err = sp.setRelations(id, relations)
 	if err != nil {
 		return rec, err
 	}
 
-	rec.Details.Fields["type"] = pbtypes.StringList([]string{sp.objectTypeUrl})
-
-	var details []*pb.RpcBlockSetDetailsDetail
-	for k, v := range rec.Details.Fields {
-		details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
-	}
-
-	rec.Details.Fields[database.RecordIDField] = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
-
-	if len(details) == 0 {
-		return rec, nil
-	}
-
-	return rec, sp.setDetails(pb.RpcBlockSetDetailsRequest{
-		ContextId: id, // not sure?
-		Details:   details,
-	})
+	return rec, nil
 }
 
 func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec database.Record) error {

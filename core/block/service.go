@@ -85,7 +85,7 @@ type Service interface {
 	CloseBlock(id string) error
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -442,7 +442,7 @@ func (s *service) CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) 
 	return
 }
 
-func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error) {
+func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error) {
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -461,7 +461,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 
 	var sb smartblock.SmartBlock
 	if sb, err = s.createSmartBlock(id, true, typesInDetails); err != nil {
-		return id, err
+		return id, nil, err
 	}
 
 	log.Debugf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
@@ -478,7 +478,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 			ContextId: id,
 			Details:   setDetails,
 		}); err != nil {
-			return id, fmt.Errorf("can't set details to object: %v", err)
+			return id, nil, fmt.Errorf("can't set details to object: %v", err)
 		}
 	}
 
@@ -491,11 +491,11 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 			})
 		}
 		if _, err = s.AddExtraRelations(id, relations); err != nil {
-			return id, fmt.Errorf("can't add relations to object: %v", err)
+			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
 		}
 	}
 
-	return id, nil
+	return id, sb.Details(), nil
 }
 
 func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
@@ -509,7 +509,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 		return "", "", basic.ErrNotSupported
 	}
 
-	pageId, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil)
+	pageId, _, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}

@@ -17,7 +17,7 @@ type Ctrl interface {
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
 	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
 
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
 	UpdateExtraRelations(id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	AddExtraRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)

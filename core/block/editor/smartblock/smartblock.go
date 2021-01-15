@@ -175,20 +175,6 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 			ot.Relations = nil
 		}
 
-		var layout pbrelation.ObjectTypeLayout
-		for _, objectTypesUrlForObject := range objectTypeUrlByObject {
-			if objectTypesUrlForObject.ObjectId != sb.Id() {
-				continue
-			}
-
-			for _, ot := range objectTypes {
-				if ot.Url == objectTypesUrlForObject.ObjectType {
-					layout = ot.Layout
-					break
-				}
-			}
-		}
-
 		// todo: sb.Relations() makes extra query to read objectType which we already have here
 		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
@@ -201,7 +187,6 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 					Relations:           sb.Relations(),
 					ObjectTypePerObject: objectTypeUrlByObject,
 					ObjectTypes:         objectTypes,
-					Layout:              layout,
 				}},
 			},
 		})
