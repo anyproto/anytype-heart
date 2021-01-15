@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"io"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -40,7 +42,7 @@ func (i *file) Details() (*types.Struct, error) {
 			"id":           pbtypes.String(i.hash),
 			"type":         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
 			"fileMimeType": pbtypes.String(meta.Media),
-			"name":         pbtypes.String(meta.Name),
+			"name":         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
 			"sizeInBytes":  pbtypes.Float64(float64(meta.Size)),
 			"addedDate":    pbtypes.Float64(float64(meta.Added.Unix())),
 		},

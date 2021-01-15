@@ -46,10 +46,22 @@ func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		return err
 	}
 	d := doc.Details()
-
 	fileType := detectFileType(pbtypes.GetString(d, "fileMimeType"))
 
 	var blocks []*model.Block
+	blocks = append(blocks, &model.Block{
+		Id: "file",
+		Content: &model.BlockContentOfFile{
+			File: &model.BlockContentFile{
+				Name:    pbtypes.GetString(d, "name"),
+				Mime:    pbtypes.GetString(d, "fileMimeType"),
+				Hash:    p.Id(),
+				Type:    detectFileType(pbtypes.GetString(d, "fileMimeType")),
+				Size_:   int64(pbtypes.GetFloat64(d, "sizeBytes")),
+				State:   model.BlockContentFile_Done,
+				AddedAt: int64(pbtypes.GetFloat64(d, "addedDate")),
+			},
+		}})
 
 	switch fileType {
 	case model.BlockContentFile_Image:
@@ -101,20 +113,6 @@ func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 				},
 			}...)
 	}
-
-	blocks = append(blocks, &model.Block{
-		Id: "file",
-		Content: &model.BlockContentOfFile{
-			File: &model.BlockContentFile{
-				Name:    pbtypes.GetString(d, "name"),
-				Mime:    pbtypes.GetString(d, "fileMimeType"),
-				Hash:    p.Id(),
-				Type:    detectFileType(pbtypes.GetString(d, "fileMimeType")),
-				Size_:   int64(pbtypes.GetFloat64(d, "sizeBytes")),
-				State:   model.BlockContentFile_Done,
-				AddedAt: int64(pbtypes.GetFloat64(d, "addedDate")),
-			},
-		}})
 
 	return template.ApplyTemplate(p, nil,
 		template.WithEmpty,

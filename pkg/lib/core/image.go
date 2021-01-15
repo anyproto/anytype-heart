@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -132,7 +133,7 @@ func (i *image) Details() (*types.Struct, error) {
 		return details, nil
 	}
 
-	details.Fields["name"] = pbtypes.String(largest.Meta().Name)
+	details.Fields["name"] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, largest.Meta().Name))
 	details.Fields["fileMimeType"] = pbtypes.String(largest.Meta().Media)
 
 	details.Fields["sizeInBytes"] = pbtypes.Float64(float64(largest.Meta().Size))
