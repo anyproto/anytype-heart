@@ -55,8 +55,8 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-func New(ms meta.Service, defaultObjectTypeUrl string) SmartBlock {
-	return &smartBlock{meta: ms, defaultObjectTypeUrl: defaultObjectTypeUrl}
+func New(ms meta.Service) SmartBlock {
+	return &smartBlock{meta: ms}
 }
 
 type SmartblockOpenListner interface {
@@ -66,7 +66,6 @@ type SmartblockOpenListner interface {
 type SmartBlock interface {
 	Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error)
 	Id() string
-	DefaultObjectTypeUrl() string
 	Type() pb.SmartBlockType
 	Meta() *core.SmartBlockMeta
 	Show(*state.Context) (err error)
@@ -104,18 +103,17 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds               []string
-	sendEvent            func(e *pb.Event)
-	undo                 undo.History
-	source               source.Source
-	meta                 meta.Service
-	metaSub              meta.Subscriber
-	metaData             *core.SmartBlockMeta
-	disableLayouts       bool
-	defaultObjectTypeUrl string
-	onNewStateHooks      []func()
-	onCloseHooks         []func()
-	onBlockCloseHooks    []func()
+	depIds            []string
+	sendEvent         func(e *pb.Event)
+	undo              undo.History
+	source            source.Source
+	meta              meta.Service
+	metaSub           meta.Subscriber
+	metaData          *core.SmartBlockMeta
+	disableLayouts    bool
+	onNewStateHooks   []func()
+	onCloseHooks      []func()
+	onBlockCloseHooks []func()
 }
 
 func (sb *smartBlock) HasRelation(key string) bool {
@@ -137,10 +135,6 @@ func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 		Details:     sb.Details(),
 		Relations:   sb.ExtraRelations(),
 	}
-}
-
-func (sb *smartBlock) DefaultObjectTypeUrl() string {
-	return sb.defaultObjectTypeUrl
 }
 
 func (sb *smartBlock) Type() pb.SmartBlockType {

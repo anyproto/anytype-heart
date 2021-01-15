@@ -50,7 +50,7 @@ var (
 		relation.ObjectType_relation: {
 
 			Id:   relation.ObjectType_relation,
-			Name: "ByRelation",
+			Name: "Relation",
 		},
 		relation.ObjectType_set: {
 

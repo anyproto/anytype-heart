@@ -4,7 +4,6 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	sDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -28,7 +27,7 @@ func NewSet(
 	dbCtrl database.Ctrl,
 ) *Set {
 	sb := &Set{
-		SmartBlock: smartblock.New(ms, objects.BundledObjectTypeURLPrefix+"set"),
+		SmartBlock: smartblock.New(ms),
 	}
 
 	sb.Basic = basic.NewBasic(sb)
@@ -54,7 +53,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		return err
 	}
 
-	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypes([]string{p.DefaultObjectTypeUrl()})}
+	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
@@ -134,5 +133,9 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 
 func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
 	s := p.NewState()
-	return template.ApplyTemplate(p, s, template.WithDetailName(name), template.WithDetailIconEmoji(icon), template.WithDataview(blockContent))
+	return template.ApplyTemplate(p, s,
+		template.WithDetailName(name),
+		template.WithDetailIconEmoji(icon),
+		template.WithDataview(blockContent),
+	)
 }

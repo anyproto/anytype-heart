@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -13,11 +12,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
 func NewProfile(m meta.Service, fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
-	sb := smartblock.New(m, objects.BundledObjectTypeURLPrefix+"profile")
+	sb := smartblock.New(m)
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
 		SmartBlock: sb,
@@ -47,7 +47,10 @@ func (p *Profile) Init(s source.Source, _ bool, _ []string) (err error) {
 	if err = p.SmartBlock.Init(s, true, nil); err != nil {
 		return
 	}
-	return template.ApplyTemplate(p, nil, template.WithTitle, template.WithObjectTypes([]string{p.DefaultObjectTypeUrl()}))
+	return template.ApplyTemplate(p, nil,
+		template.WithTitle,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
+	)
 }
 
 func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {

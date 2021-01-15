@@ -41,7 +41,6 @@ const (
 	RelationKeyCoverY                RelationKey = "coverY"
 	RelationKeySizeInBytes           RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf          RelationKey = "collectionOf"
-	RelationKeyDoneStatus            RelationKey = "doneStatus"
 	RelationKeyAssignee              RelationKey = "assignee"
 	RelationKeyExposure              RelationKey = "exposure"
 	RelationKeyAudioGenre            RelationKey = "audioGenre"
@@ -49,6 +48,7 @@ const (
 	RelationKeyPriority              RelationKey = "priority"
 	RelationKeyFileMimeType          RelationKey = "fileMimeType"
 	RelationKeyType                  RelationKey = "type"
+	RelationKeyLayout                RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber RelationKey = "audioAlbumTrackNumber"
 	RelationKeyPlaceOfBirth          RelationKey = "placeOfBirth"
 	RelationKeyComposer              RelationKey = "composer"
@@ -251,15 +251,6 @@ var (
 			Name:       "Done",
 			ReadOnly:   false,
 		},
-		RelationKeyDoneStatus: {
-
-			DataSource: relation.Relation_details,
-			Format:     relation.RelationFormat_status,
-			Hidden:     false,
-			Key:        "doneStatus",
-			Name:       "Done status",
-			ReadOnly:   false,
-		},
 		RelationKeyDueDate: {
 
 			DataSource: relation.Relation_details,
@@ -379,6 +370,15 @@ var (
 			Key:        "lastOpenedDate",
 			Name:       "Last opened date",
 			ReadOnly:   true,
+		},
+		RelationKeyLayout: {
+
+			DataSource: relation.Relation_details,
+			Format:     relation.RelationFormat_number,
+			Hidden:     false,
+			Key:        "layout",
+			Name:       "Layout",
+			ReadOnly:   false,
 		},
 		RelationKeyLinkedProjects: {
 

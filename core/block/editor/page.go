@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -12,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
@@ -22,7 +22,7 @@ func NewPage(
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
 ) *Page {
-	sb := smartblock.New(m, objects.BundledObjectTypeURLPrefix+"page")
+	sb := smartblock.New(m)
 	f := file.NewFile(sb, fileSource)
 	return &Page{
 		SmartBlock: sb,
@@ -52,7 +52,8 @@ func (p *Page) Init(s source.Source, _ bool, objectTypeUrls []string) (err error
 		return
 	}
 	if objectTypeUrls == nil {
-		objectTypeUrls = []string{p.DefaultObjectTypeUrl()}
+		objectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
-	return template.ApplyTemplate(p, nil, template.WithTitle, template.WithObjectTypes(objectTypeUrls))
+
+	return template.ApplyTemplate(p, nil, template.WithTitle, template.WithObjectTypesAndLayout(objectTypeUrls))
 }

@@ -104,7 +104,7 @@ var (
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
 
-var ErrNotAPage = fmt.Errorf("not a page")
+var ErrNotAnObject = fmt.Errorf("not an object")
 
 var filterNotSystemObjects = &filterObjectTypes{
 	objectTypes: []smartblock.SmartBlockType{
@@ -319,14 +319,15 @@ func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q dat
 }
 
 // unsafe, use under mutex
-func (m *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) {
+func (m *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (existed bool) {
 	for _, s := range m.subscriptions {
 		if s == sub {
-			return
+			return true
 		}
 	}
 	log.Debugf("objStore subscription add %p", sub)
 	m.subscriptions = append(m.subscriptions, sub)
+	return false
 }
 
 func (m *dsObjectStore) closeAndRemoveSubscription(sub database.Subscription) {
@@ -661,7 +662,7 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 	}
 	defer txn.Discard()
 
-	pages, err := getPagesInfo(txn, []string{id})
+	pages, err := getObjectsInfo(txn, []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -681,12 +682,12 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 		return nil, err
 	}
 
-	inbound, err := getPagesInfo(txn, inboundIds)
+	inbound, err := getObjectsInfo(txn, inboundIds)
 	if err != nil {
 		return nil, err
 	}
 
-	outbound, err := getPagesInfo(txn, outboundsIds)
+	outbound, err := getObjectsInfo(txn, outboundsIds)
 	if err != nil {
 		return nil, err
 	}
@@ -708,7 +709,7 @@ func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectIn
 	}
 	defer txn.Discard()
 
-	pages, err := getPagesInfo(txn, []string{id})
+	pages, err := getObjectsInfo(txn, []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -723,7 +724,7 @@ func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectIn
 		return nil, err
 	}
 
-	outbound, err := getPagesInfo(txn, outboundsIds)
+	outbound, err := getObjectsInfo(txn, outboundsIds)
 	if err != nil {
 		return nil, err
 	}
@@ -756,7 +757,7 @@ func (m *dsObjectStore) List() ([]*model.ObjectInfo, error) {
 		return nil, err
 	}
 
-	return getPagesInfo(txn, ids)
+	return getObjectsInfo(txn, ids)
 }
 
 func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
@@ -766,7 +767,7 @@ func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	}
 	defer txn.Discard()
 
-	return getPagesInfo(txn, ids)
+	return getObjectsInfo(txn, ids)
 }
 
 func diffSlices(a, b []string) (removed []string, added []string) {
@@ -795,6 +796,13 @@ func diffSlices(a, b []string) (removed []string, added []string) {
 func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
+	sbt, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		return fmt.Errorf("failed to extract smartblock type: %w", err)
+	}
+	if sbt == smartblock.SmartBlockTypeArchive {
+		return ErrNotAnObject
+	}
 
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
@@ -1075,7 +1083,7 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		return nil, fmt.Errorf("failed to extract smartblock type: %w", err)
 	}
 	if sbt == smartblock.SmartBlockTypeArchive {
-		return nil, ErrNotAPage
+		return nil, ErrNotAnObject
 	}
 
 	var details model.ObjectDetails
@@ -1133,20 +1141,20 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	}, nil
 }
 
-func getPagesInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
-	var pages []*model.ObjectInfo
+func getObjectsInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
+	var objects []*model.ObjectInfo
 	for _, id := range ids {
 		info, err := getObjectInfo(txn, id)
 		if err != nil {
-			if strings.HasSuffix(err.Error(), "key not found") || err == ErrNotAPage {
+			if strings.HasSuffix(err.Error(), "key not found") || err == ErrNotAnObject {
 				continue
 			}
 			return nil, err
 		}
-		pages = append(pages, info)
+		objects = append(objects, info)
 	}
 
-	return pages, nil
+	return objects, nil
 }
 
 func hasInboundLinks(txn ds.Txn, id string) (bool, error) {

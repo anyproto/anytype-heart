@@ -7,6 +7,7 @@ import (
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -36,12 +37,22 @@ var WithEmpty = StateTransformer(func(s *state.State) {
 
 })
 
-var WithObjectTypes = func(otypes []string) StateTransformer {
+var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
-		if len(s.ObjectTypes()) > 0 {
-			return
+		if len(s.ObjectTypes()) == 0 {
+			s.SetObjectTypes(otypes)
 		}
-		s.SetObjectTypes(otypes)
+
+		d := s.Details()
+		if d == nil || d.Fields == nil || d.Fields[bundle.RelationKeyLayout.String()] == nil {
+			for _, ot := range otypes {
+				t, err := bundle.GetTypeByUrl(ot)
+				if err != nil {
+					continue
+				}
+				s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(t.Layout)))
+			}
+		}
 	}
 }
 

@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -42,6 +43,7 @@ var migrations = []migration{
 	skipMigration,        // 6
 	addFilesMetaHash,     // 7
 	addFilesToObjects,    // 8
+	reindexAll,           // 9
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -391,6 +393,54 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 			log.Errorf("addFilesToObjects migration not completed for all files: %d/%d completed", migrated, len(files))
 		} else {
 			log.Debugf("addFilesToObjects migration completed for %d files", migrated)
+		}
+		return nil
+	})
+}
+
+func reindexAll(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		ids, err := a.localStore.Objects.ListIds()
+		if err != nil {
+			return err
+		}
+		total := len(ids)
+		var migrated int
+		for _, id := range ids {
+			sbt, err := smartblock.SmartBlockTypeFromID(id)
+			if err != nil {
+				return fmt.Errorf("migration reindexAll:failed to extract smartblock type: %w", err)
+			}
+			if sbt == smartblock.SmartBlockTypeArchive {
+				// remove archive we have accidentally indexed
+				err = a.localStore.Objects.DeleteObject(id)
+				if err != nil {
+					log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
+				}
+				total--
+				continue
+			}
+			oi, err := a.localStore.Objects.GetByIDs(id)
+			if err != nil {
+				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
+				continue
+			}
+			if len(oi) < 1 {
+				log.Errorf("migration reindexAll: failed to get objects: not found")
+				continue
+			}
+			o := oi[0]
+			err = a.localStore.Objects.UpdateObject(id, o.Details, o.Relations, nil, o.Snippet)
+			if err != nil {
+				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
+				continue
+			}
+			migrated++
+		}
+		if migrated != total {
+			log.Errorf("migration reindexAll: %d/%d completed", migrated, len(ids))
+		} else {
+			log.Debugf("migration reindexAll completed for %d objects", migrated)
 		}
 		return nil
 	})

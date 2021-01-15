@@ -68,7 +68,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	details1 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block1_name")}}
-	relations1 := &pbrelation.Relations{Relations: []*pbrelation.Relation{bundle.Relations["name"], bundle.Relations["lastModifiedDate"]}}
+	relations1 := &pbrelation.Relations{Relations: []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyName), bundle.MustGetRelation(bundle.RelationKeyLastModifiedDate)}}
 	blocks1 := []*model.Block{
 		{
 			Id:      "test_id1",
@@ -79,7 +79,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	details2 := &types.Struct{Fields: map[string]*types.Value{"name": structs.String("block2_name")}}
-	relations2 := &pbrelation.Relations{Relations: []*pbrelation.Relation{bundle.Relations["iconImage"]}}
+	relations2 := &pbrelation.Relations{Relations: []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyIconImage)}}
 
 	blocks2 := []*model.Block{
 		{
@@ -92,7 +92,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.NoError(t, err)
 
 	var ps = s.ObjectStore()
-	sch := schema.New(bundle.types[bundle.TypeKeyPage], nil)
+	sch := schema.New(bundle.MustGetType(bundle.TypeKeyPage), nil)
 	results, total, err := ps.Query(&sch, database.Query{Limit: 1, Sorts: []*model.BlockContentDataviewSort{{RelationKey: "name"}}})
 	require.NoError(t, err)
 	require.Len(t, results, 1)

@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
@@ -271,13 +272,64 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 	return nil
 }
 
+func (l *Dataview) relationsWithObjectFormat() []string {
+	var relationsWithObjFormat []string
+	for _, rel := range l.GetDataview().Relations {
+		if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+			relationsWithObjFormat = append(relationsWithObjFormat, rel.Key)
+		}
+	}
+	return relationsWithObjFormat
+}
+
+func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
+	for i, view := range l.GetDataview().Views {
+		if view.Id == l.activeViewID {
+			return l.GetDataview().Views[i]
+		}
+	}
+
+	return nil
+}
+
 func (l *Dataview) FillSmartIds(ids []string) []string {
-	//@todo: fill from recordIDs
+	relationsWithObjFormat := l.relationsWithObjectFormat()
+	activeView := l.getActiveView()
+	if activeView == nil {
+		// shouldn't be a case
+		return ids
+	}
+
+	for _, filter := range activeView.Filters {
+		if slice.FindPos(relationsWithObjFormat, filter.RelationKey) >= 0 {
+			for _, objId := range pbtypes.GetStringListValue(filter.Value) {
+				if slice.FindPos(ids, objId) == -1 {
+					ids = append(ids, objId)
+				}
+			}
+		}
+	}
+
 	return ids
 }
 
 func (l *Dataview) HasSmartIds() bool {
-	return len(l.recordIDs) > 0
+	relationsWithObjFormat := l.relationsWithObjectFormat()
+	activeView := l.getActiveView()
+	if activeView == nil {
+		// shouldn't be a case
+		return false
+	}
+
+	for _, filter := range activeView.Filters {
+		if slice.FindPos(relationsWithObjFormat, filter.RelationKey) >= 0 {
+			if len(pbtypes.GetStringListValue(filter.Value)) > 0 {
+				return true
+			}
+		}
+	}
+
+	return false
 }
 
 func (td *Dataview) ModelToSave() *model.Block {

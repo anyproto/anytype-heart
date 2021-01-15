@@ -398,7 +398,7 @@ func TestCustomType(t *testing.T) {
 	})
 
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
-	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 10) // including relation.RequiredInternalRelations
+	require.Len(t, respObjectTypeCreate.ObjectType.Relations, 12) // including relation.RequiredInternalRelations
 	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
 	var newRelation *pbrelation.Relation
 	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
@@ -413,7 +413,7 @@ func TestCustomType(t *testing.T) {
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
 	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
-	require.Len(t, lastObjType.Relations, 10)
+	require.Len(t, lastObjType.Relations, 12)
 
 	respCreateCustomTypeSet := mw.SetCreate(&pb.RpcSetCreateRequest{
 		ObjectTypeUrl: respObjectTypeCreate.ObjectType.Url,

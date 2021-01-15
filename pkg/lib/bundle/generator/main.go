@@ -107,7 +107,7 @@ func generateRelations() error {
 			dictS := Dict{
 				Id("Key"):        Lit(relation.Key),
 				Id("Name"):       Lit(relation.Name),
-				Id("ByFormat"):   Qual(relPbPkg, "RelationFormat_"+relation.Format),
+				Id("Format"):     Qual(relPbPkg, "RelationFormat_"+relation.Format),
 				Id("DataSource"): Qual(relPbPkg, "Relation_"+relation.Source),
 				Id("Hidden"):     Lit(relation.Hidden),
 				Id("ReadOnly"):   Lit(relation.Readonly),
@@ -122,7 +122,7 @@ func generateRelations() error {
 
 			dict[Id(relConst(relation.Key))] = Block(dictS)
 		}
-		g.Id("relations").Op("=").Map(Id("RelationKey")).Op("*").Qual(relPbPkg, "ByRelation").Values(Dict(dict))
+		g.Id("relations").Op("=").Map(Id("RelationKey")).Op("*").Qual(relPbPkg, "Relation").Values(Dict(dict))
 	})
 
 	file, err := os.OpenFile("pkg/lib/bundle/relation.gen.go", os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0660)
@@ -186,7 +186,7 @@ func generateTypes() error {
 				for _, rel := range ot.Relations {
 					t = append(t, Id("relations").Index(Id(relConst(rel))))
 				}
-				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "ByRelation").Values(t...)
+				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)
@@ -231,7 +231,7 @@ func generateLayouts() error {
 				for _, rel := range lt.RequiredRelations {
 					t = append(t, Id("relations").Index(Id(relConst(rel))))
 				}
-				map[Code]Code(dictS)[Id("RequiredRelations")] = Index().Op("*").Qual(relPbPkg, "ByRelation").Values(t...)
+				map[Code]Code(dictS)[Id("RequiredRelations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
 			}
 
 			dict[Qual(relPbPkg, "ObjectType_"+lt.ID)] = Block(dictS)

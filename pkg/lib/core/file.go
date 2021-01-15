@@ -5,7 +5,7 @@ import (
 	"io"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -37,7 +37,7 @@ func (i *file) Details() (*types.Struct, error) {
 	meta := i.Meta()
 	return &types.Struct{
 		Fields: map[string]*types.Value{
-			"type":         pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "file"}),
+			"type":         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
 			"fileMimeType": pbtypes.String(meta.Media),
 			"name":         pbtypes.String(meta.Name),
 			"sizeInBytes":  pbtypes.Float64(float64(meta.Size)),

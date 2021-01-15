@@ -361,26 +361,26 @@ func (d *dataviewCollectionImpl) GetObjectTypeURL(ctx *state.Context, blockId st
 
 func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
+	dvBlock, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 
-	oldView := tb.GetView(viewId)
+	oldView := dvBlock.GetView(viewId)
 	var needRecordRefresh bool
 	if !pbtypes.DataviewFiltersEqualSorted(oldView.Filters, view.Filters) {
 		needRecordRefresh = true
 	} else if !pbtypes.DataviewSortsEqualSorted(oldView.Sorts, view.Sorts) {
 		needRecordRefresh = true
 	}
-	if err = tb.SetView(viewId, view); err != nil {
+	if err = dvBlock.SetView(viewId, view); err != nil {
 		return err
 	}
 
-	dv := d.getDataviewImpl(tb)
+	dv := d.getDataviewImpl(dvBlock)
 	if needRecordRefresh && dv.activeViewId == viewId {
 		dv.offset = 0
-		msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(tb), tb)
+		msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(dvBlock), dvBlock)
 		if err != nil {
 			return err
 		}

@@ -7,13 +7,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewFiles(m meta.Service) *Files {
 	return &Files{
-		SmartBlock: smartblock.New(m, ""),
+		SmartBlock: smartblock.New(m),
 	}
 }
 
@@ -48,5 +49,11 @@ func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 			},
 		}}
 
-	return template.ApplyTemplate(p, nil, template.WithEmpty, template.WithTitle, template.WithRootBlocks([]*model.Block{fileBlock}), template.WithAllBlocksEditsRestricted)
+	return template.ApplyTemplate(p, nil,
+		template.WithEmpty,
+		template.WithTitle,
+		template.WithRootBlocks([]*model.Block{fileBlock}),
+		template.WithAllBlocksEditsRestricted,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyFile.URL()}),
+	)
 }

@@ -61,7 +61,6 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/yuin/goldmark v1.1.30
 	go.uber.org/zap v1.16.0
-	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/text v0.3.4
 	google.golang.org/grpc v1.34.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f

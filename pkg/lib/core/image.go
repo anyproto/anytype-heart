@@ -6,7 +6,7 @@ import (
 	"math"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
@@ -119,7 +119,7 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 func (i *image) Details() (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			"type": pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "image"}),
+			"type": pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
 		},
 	}
 

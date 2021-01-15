@@ -59,7 +59,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, nil, fmt.Errorf("can't modify bundled object type"))
 	}
 
@@ -98,7 +98,7 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
@@ -135,7 +135,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
