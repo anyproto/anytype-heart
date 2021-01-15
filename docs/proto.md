@@ -12119,6 +12119,7 @@ Bookmark is to keep a web-link and to preview a content.
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
 | relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | aggregatedOptions | [Block.Content.Dataview.AggregatedOptions](#anytype.model.Block.Content.Dataview.AggregatedOptions) | repeated | virtual, not saved in the state |
+| activeView | [string](#string) |  | saved within a session |
 
 
 

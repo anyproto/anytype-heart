@@ -306,6 +306,7 @@ func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataview
 	var activeViewId string
 	if len(block.Model().GetDataview().Views) > 0 {
 		activeViewId = block.Model().GetDataview().Views[0].Id
+		block.SetActiveView(activeViewId)
 	}
 
 	dv := &dataviewImpl{blockId: block.Model().Id, activeViewId: activeViewId, offset: 0, limit: defaultLimit}
@@ -407,6 +408,7 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 		return fmt.Errorf("view not found")
 	}
 
+	dvBlock.SetActiveView(activeViewId)
 	if dv.activeViewId != activeViewId {
 		dv.activeViewId = activeViewId
 		dv.records = nil

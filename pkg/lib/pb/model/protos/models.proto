@@ -201,6 +201,7 @@ message Block {
             // index 3 is deprecated, was used for schemaURL in old-format sets
             repeated anytype.relation.Relation relations = 4;
             repeated AggregatedOptions aggregatedOptions = 5; // virtual, not saved in the state
+            string activeView = 3; // saved within a session
 
             message View {
                 string id = 1;

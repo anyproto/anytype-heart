@@ -46,6 +46,7 @@ type Block interface {
 
 	GetSource() string
 	SetSource(source string) error
+	SetActiveView(activeView string)
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -53,11 +54,7 @@ type Block interface {
 
 type Dataview struct {
 	*base.Base
-	content      *model.BlockContentDataview
-	recordIDs    []string
-	activeViewID string
-	offset       int
-	limit        int
+	content *model.BlockContentDataview
 }
 
 func (d *Dataview) Copy() simple.Block {
@@ -284,7 +281,7 @@ func (l *Dataview) relationsWithObjectFormat() []string {
 
 func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
 	for i, view := range l.GetDataview().Views {
-		if view.Id == l.activeViewID {
+		if view.Id == l.content.ActiveView {
 			return l.GetDataview().Views[i]
 		}
 	}
@@ -335,6 +332,7 @@ func (l *Dataview) HasSmartIds() bool {
 func (td *Dataview) ModelToSave() *model.Block {
 	b := pbtypes.CopyBlock(td.Model())
 	b.Content.(*model.BlockContentOfDataview).Dataview.AggregatedOptions = nil
+	b.Content.(*model.BlockContentOfDataview).Dataview.ActiveView = ""
 	return b
 }
 
@@ -392,4 +390,8 @@ func (d *Dataview) OnDetailsChange(s simple.DetailsService) {
 
 func (d *Dataview) DetailsApply(s simple.DetailsService) {
 
+}
+
+func (d *Dataview) SetActiveView(activeView string) {
+	d.content.ActiveView = activeView
 }
