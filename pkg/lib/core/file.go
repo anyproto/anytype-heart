@@ -37,6 +37,7 @@ func (i *file) Details() (*types.Struct, error) {
 	meta := i.Meta()
 	return &types.Struct{
 		Fields: map[string]*types.Value{
+			"id":           pbtypes.String(i.hash),
 			"type":         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
 			"fileMimeType": pbtypes.String(meta.Media),
 			"name":         pbtypes.String(meta.Name),
