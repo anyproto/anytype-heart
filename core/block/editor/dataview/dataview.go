@@ -421,6 +421,8 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 		return err
 	}
 	ctx.SetMessages(d.SmartBlock.Id(), msgs)
+	d.SmartBlock.CheckSubscriptions()
+
 	return nil
 }
 

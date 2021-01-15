@@ -87,9 +87,11 @@ type SmartBlock interface {
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
+	CheckSubscriptions() (changed bool)
 	GetSearchInfo() (indexer.SearchInfo, error)
 	MetaService() meta.Service
 	BlockClose()
+
 	Close() (err error)
 	state.Doc
 	sync.Locker
@@ -449,7 +451,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		})
 	}
 	if hasDepIds(&act) {
-		sb.checkSubscriptions()
+		sb.CheckSubscriptions()
 	}
 	return
 }
@@ -489,7 +491,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 	return
 }
 
-func (sb *smartBlock) checkSubscriptions() (changed bool) {
+func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	depIds := sb.dependentSmartIds()
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
@@ -669,7 +671,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	}
 	sb.storeFileKeys()
 	if hasDepIds(&act) {
-		sb.checkSubscriptions()
+		sb.CheckSubscriptions()
 	}
 	return nil
 }
@@ -690,7 +692,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 		}
 	}
 	sb.storeFileKeys()
-	sb.checkSubscriptions()
+	sb.CheckSubscriptions()
 	return nil
 }
 
