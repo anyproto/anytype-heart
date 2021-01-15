@@ -107,7 +107,7 @@ var (
 
 			Layout:    relation.ObjectType_objectType,
 			Name:      "Type",
-			Relations: []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverImage], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyRecommendedRelations]},
+			Relations: []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverImage], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyRecommendedRelations], relations[RelationKeyRecommendedLayout]},
 			Url:       TypePrefix + "objectType",
 		},
 		TypeKeyPage: {

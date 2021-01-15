@@ -34,6 +34,7 @@ const (
 	RelationKeyLastModifiedDate      RelationKey = "lastModifiedDate"
 	RelationKeyRecommendedRelations  RelationKey = "recommendedRelations"
 	RelationKeyCreator               RelationKey = "creator"
+	RelationKeyRecommendedLayout     RelationKey = "recommendedLayout"
 	RelationKeyLastOpenedDate        RelationKey = "lastOpenedDate"
 	RelationKeyArtist                RelationKey = "artist"
 	RelationKeyDueDate               RelationKey = "dueDate"
@@ -425,6 +426,15 @@ var (
 			Hidden:     true,
 			Key:        "priority",
 			Name:       "Priority",
+			ReadOnly:   false,
+		},
+		RelationKeyRecommendedLayout: {
+
+			DataSource: relation.Relation_details,
+			Format:     relation.RelationFormat_number,
+			Hidden:     true,
+			Key:        "recommendedLayout",
+			Name:       "Recommended layout",
 			ReadOnly:   false,
 		},
 		RelationKeyRecommendedRelations: {

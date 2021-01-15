@@ -189,7 +189,8 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
-      "recommendedRelations"
+      "recommendedRelations",
+      "recommendedLayout"
     ]
   },
   {

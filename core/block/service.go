@@ -1341,13 +1341,13 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 		objectType.Relations = b.ExtraRelations()
 		objectType.Url = url
 		if details != nil && details.Fields != nil {
-			if v, ok := details.Fields["name"]; ok {
+			if v, ok := details.Fields[bundle.RelationKeyName.String()]; ok {
 				objectType.Name = v.GetStringValue()
 			}
-			if v, ok := details.Fields["layout"]; ok {
+			if v, ok := details.Fields[bundle.RelationKeyLayout.String()]; ok {
 				objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
 			}
-			if v, ok := details.Fields["iconEmoji"]; ok {
+			if v, ok := details.Fields[bundle.RelationKeyIconEmoji.String()]; ok {
 				objectType.IconEmoji = v.GetStringValue()
 			}
 		}

@@ -205,6 +205,15 @@
     "source": "derived"
   },
   {
+    "description": "Recommended layout for new templates and objects of specific objec",
+    "format": "number",
+    "hidden": true,
+    "key": "recommendedLayout",
+    "name": "Recommended layout",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Date when the object was modified last opened",
     "format": "date",
     "hidden": false,

@@ -193,6 +193,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 				bundle.RelationKeyName.String():      pbtypes.String(req.ObjectType.Name),
 				bundle.RelationKeyIconEmoji.String(): pbtypes.String(req.ObjectType.IconEmoji),
 				bundle.RelationKeyType.String():      pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
+				bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
 			},
 		}, nil)
 		if err != nil {
