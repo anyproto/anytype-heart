@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -133,7 +134,7 @@ func (i *image) Details() (*types.Struct, error) {
 		return details, nil
 	}
 
-	details.Fields["name"] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, largest.Meta().Name))
+	details.Fields["name"] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
 	details.Fields["fileMimeType"] = pbtypes.String(largest.Meta().Media)
 
 	details.Fields["sizeInBytes"] = pbtypes.Float64(float64(largest.Meta().Size))
