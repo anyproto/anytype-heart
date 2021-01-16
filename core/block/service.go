@@ -107,6 +107,9 @@ type Service interface {
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 
 	SetObjectTypes(objectId string, objectTypes []string) (err error)
+	AddExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error)
+	UpdateExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionUpdateRequest) (err error)
+	DeleteExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionDeleteRequest) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -1386,6 +1389,38 @@ func (s *service) AddExtraRelations(objectId string, relations []*pbrelation.Rel
 	})
 
 	return
+}
+
+func (s *service) AddExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error) {
+	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		opt, err = b.AddExtraRelationSelectOption(ctx, req.RelationKey, *req.Option, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+
+	return
+}
+
+func (s *service) UpdateExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionUpdateRequest) error {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		err := b.UpdateExtraRelationSelectOption(ctx, req.RelationKey, *req.Option, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
+
+func (s *service) DeleteExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionDeleteRequest) error {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		err := b.DeleteExtraRelationSelectOption(ctx, req.RelationKey, req.OptionId, true)
+		if err != nil {
+			return err
+		}
+		return nil
+	})
 }
 
 func (s *service) SetObjectTypes(objectId string, objectTypes []string) (err error) {

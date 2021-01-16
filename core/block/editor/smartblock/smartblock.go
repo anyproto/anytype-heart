@@ -79,6 +79,10 @@ type SmartBlock interface {
 	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(relationKeys []string) (err error)
+	AddExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error)
+	UpdateExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error
+	DeleteExtraRelationSelectOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
+
 	SetObjectTypes(objectTypes []string) (err error)
 
 	FileRelationKeys() []string
@@ -651,6 +655,88 @@ func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
 		return
 	}
 	return
+}
+
+// AddRelationSelectOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
+func (sb *smartBlock) AddExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error) {
+	s := sb.NewStateCtx(ctx)
+	for _, rel := range s.ExtraRelations() {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return nil, fmt.Errorf("relation has incorrect format")
+		}
+		for _, opt := range rel.SelectDict {
+			if strings.EqualFold(opt.Text, option.Text) {
+				// here we can have the option with another color. but it looks
+				return opt, nil
+			}
+		}
+
+		option.Id = bson.NewObjectId().Hex()
+		rel.SelectDict = append(rel.SelectDict, &option)
+
+		if showEvent {
+			return &option, sb.Apply(s)
+		}
+		return &option, sb.Apply(s, NoEvent)
+	}
+
+	return nil, fmt.Errorf("relation not found")
+}
+
+func (sb *smartBlock) UpdateExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error {
+	s := sb.NewStateCtx(ctx)
+
+	for _, rel := range s.ExtraRelations() {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
+		}
+		for i, opt := range rel.SelectDict {
+			if opt.Id == option.Id {
+				rel.SelectDict[i] = &option
+				if showEvent {
+					return sb.Apply(s)
+				}
+				return sb.Apply(s, NoEvent)
+			}
+		}
+
+		return fmt.Errorf("relation option not found")
+	}
+
+	return fmt.Errorf("relation not found")
+}
+
+func (sb *smartBlock) DeleteExtraRelationSelectOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
+	s := sb.NewStateCtx(ctx)
+
+	for _, rel := range s.ExtraRelations() {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
+		}
+		for i, opt := range rel.SelectDict {
+			if opt.Id == optionId {
+				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
+				if showEvent {
+					return sb.Apply(s)
+				}
+				return sb.Apply(s, NoEvent)
+			}
+		}
+		// todo: should we remove option and value from all objects within type?
+
+		return fmt.Errorf("relation option not found")
+	}
+
+	return fmt.Errorf("relation not found")
 }
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {

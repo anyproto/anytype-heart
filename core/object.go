@@ -142,8 +142,9 @@ func (mw *Middleware) ObjectRelationSelectOptionAdd(req *pb.RpcObjectRelationSel
 	}
 	var opt *pbrelation.RelationSelectOption
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		//opt, err = bs.UpdateExtraRelations(ctx, *req)
-		return fmt.Errorf("not implemented")
+		var err2 error
+		opt, err2 = bs.AddExtraRelationSelectOption(ctx, *req)
+		return err2
 	})
 	if err != nil {
 		return response(nil, pb.RpcObjectRelationSelectOptionAddResponseError_BAD_INPUT, err)
@@ -164,8 +165,7 @@ func (mw *Middleware) ObjectRelationSelectOptionUpdate(req *pb.RpcObjectRelation
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		//err = bs.UpdateDataviewRelationSelectOption(ctx, *req)
-		return fmt.Errorf("not implemented")
+		return bs.UpdateExtraRelationSelectOption(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationSelectOptionUpdateResponseError_BAD_INPUT, err)
@@ -186,8 +186,7 @@ func (mw *Middleware) ObjectRelationSelectOptionDelete(req *pb.RpcObjectRelation
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		//err = bs.DeleteDataviewRelationSelectOption(ctx, *req)
-		return fmt.Errorf("not implemented")
+		return bs.DeleteExtraRelationSelectOption(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationSelectOptionDeleteResponseError_BAD_INPUT, err)
