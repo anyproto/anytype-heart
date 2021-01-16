@@ -11,12 +11,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/textileio/go-threads/core/thread"
@@ -45,6 +48,7 @@ var migrations = []migration{
 	//addFilesToObjects,  // 8
 	reindexAll,        // 9
 	addFilesToObjects, // 10
+	addMissingLayout,  // 11
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -442,6 +446,87 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 			log.Errorf("migration reindexAll: %d/%d completed", migrated, len(ids))
 		} else {
 			log.Debugf("migration reindexAll completed for %d objects", migrated)
+		}
+		return nil
+	})
+}
+
+func addMissingLayout(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		ids, err := a.localStore.Objects.ListIds()
+		if err != nil {
+			return err
+		}
+		total := len(ids)
+		var migrated int
+		for _, id := range ids {
+			oi, err := a.localStore.Objects.GetByIDs(id)
+			if err != nil {
+				log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
+				continue
+			}
+			if len(oi) < 1 {
+				log.Errorf("migration addMissingLayout: failed to get objects: not found")
+				continue
+			}
+			o := oi[0]
+			if o.Details == nil || o.Details.Fields == nil {
+				o.Details = &types.Struct{Fields: make(map[string]*types.Value)}
+			}
+
+			if pbtypes.Exists(o.Details, bundle.RelationKeyLayout.String()) {
+				continue
+			}
+
+			var ot []string
+			if t, exists := o.Details.Fields[bundle.RelationKeyType.String()]; exists {
+				ot = pbtypes.GetStringListValue(t)
+			}
+			if len(ot) == 0 {
+				ot = []string{bundle.TypeKeyPage.URL()}
+			}
+
+			var layout pbrelation.ObjectTypeLayout
+			otUrl := ot[len(ot)-1]
+			if strings.HasPrefix(otUrl, bundle.TypePrefix) {
+				t, err := bundle.GetTypeByUrl(otUrl)
+				if err != nil {
+					log.Errorf("migration addMissingLayout: failed to get bundled type '%s': %s", otUrl, err.Error())
+					layout = pbrelation.ObjectType_basic
+				} else {
+					layout = t.Layout
+				}
+			} else {
+				otId := strings.TrimPrefix(otUrl, objects.CustomObjectTypeURLPrefix)
+				oi, err := a.localStore.Objects.GetByIDs(otId)
+				if err != nil {
+					log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
+					continue
+				} else if len(oi) == 0 {
+					log.Errorf("migration addMissingLayout: failed to get custom type '%s': %s", otUrl, err.Error())
+					layout = pbrelation.ObjectType_basic
+				} else {
+					if exists := pbtypes.Exists(oi[0].Details, bundle.RelationKeyLayout.String()); exists {
+						layout = pbrelation.ObjectTypeLayout(int32(pbtypes.GetFloat64(oi[0].Details, bundle.RelationKeyLayout.String())))
+					} else {
+						layout = pbrelation.ObjectType_basic
+					}
+				}
+			}
+
+			o.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(layout))
+			err = a.localStore.Objects.UpdateObject(id, o.Details, o.Relations, nil, o.Snippet)
+			if err != nil {
+				log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
+				continue
+			}
+			migrated++
+		}
+
+		if migrated != total {
+			log.Errorf("migration addMissingLayout: %d/%d completed", migrated, len(ids))
+		} else {
+			log.Debugf("migration addMissingLayout completed for %d objects", migrated)
 		}
 		return nil
 	})
