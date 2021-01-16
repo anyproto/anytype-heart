@@ -579,8 +579,21 @@ func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relat
 }
 
 func (sb *smartBlock) SetObjectTypes(objectTypes []string) (err error) {
+	if len(objectTypes) == 0 {
+		return fmt.Errorf("you must provide at least 1 object type")
+	}
+
+	otypes := sb.meta.FetchObjectTypes(objectTypes)
+	if len(otypes) == 0 {
+		return fmt.Errorf("object types not found")
+	}
+
+	ot := otypes[len(otypes)-1]
 	s := sb.NewState().SetObjectTypes(objectTypes)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(ot.Layout)))
+
+	// send event here to send updated details to client
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return

@@ -638,6 +638,7 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
+	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.StringList(objectTypes))
 	return s
 }
 
