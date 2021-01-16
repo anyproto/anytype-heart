@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -177,14 +178,11 @@ func createPage(t *testing.T, blocks []*model.Block) (sb *smarttest.SmartTest) {
 
 func checkBlockText(t *testing.T, sb *smarttest.SmartTest, textArr []string) {
 	cIds := sb.Pick("test").Model().ChildrenIds
-
-	require.Equal(t, len(cIds), len(textArr))
-
+	textArr2 := make([]string, len(cIds))
 	for i, c := range cIds {
-		b := sb.Pick(c)
-		require.NotNil(t, b)
-		require.Equal(t, textArr[i], sb.Pick(c).Model().GetText().Text)
+		textArr2[i] = sb.Pick(c).Model().GetText().Text
 	}
+	assert.Equal(t, textArr, textArr2)
 }
 
 func checkBlockTextDebug(t *testing.T, sb *smarttest.SmartTest, textArr []string) {

@@ -288,6 +288,7 @@
     - [Rpc.Block.Undo.Request](#anytype.Rpc.Block.Undo.Request)
     - [Rpc.Block.Undo.Response](#anytype.Rpc.Block.Undo.Response)
     - [Rpc.Block.Undo.Response.Error](#anytype.Rpc.Block.Undo.Response.Error)
+    - [Rpc.Block.UndoRedoCounter](#anytype.Rpc.Block.UndoRedoCounter)
     - [Rpc.Block.Unlink](#anytype.Rpc.Block.Unlink)
     - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
     - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
@@ -3720,6 +3721,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Redo.Response.Error](#anytype.Rpc.Block.Redo.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| counters | [Rpc.Block.UndoRedoCounter](#anytype.Rpc.Block.UndoRedoCounter) |  |  |
 
 
 
@@ -4992,6 +4994,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Undo.Response.Error](#anytype.Rpc.Block.Undo.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+| counters | [Rpc.Block.UndoRedoCounter](#anytype.Rpc.Block.UndoRedoCounter) |  |  |
 
 
 
@@ -5008,6 +5011,22 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.UndoRedoCounter"></a>
+
+### Rpc.Block.UndoRedoCounter
+Available undo/redo operations
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| undo | [int32](#int32) |  |  |
+| redo | [int32](#int32) |  |  |
 
 
 

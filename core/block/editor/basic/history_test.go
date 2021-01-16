@@ -40,7 +40,7 @@ func TestHistory_Undo(t *testing.T) {
 
 		h := NewHistory(sb)
 
-		err := h.Undo(nil)
+		_, err := h.Undo(nil)
 		require.NoError(t, err)
 		assert.Len(t, sb.Blocks(), 2)
 		assert.Equal(t, bDetails, sb.Details())
@@ -63,7 +63,7 @@ func TestHistory_Undo(t *testing.T) {
 
 		h := NewHistory(sb)
 
-		err := h.Undo(nil)
+		_, err := h.Undo(nil)
 		require.NoError(t, err)
 		//t.Log(sb.Doc.(*state.State).String())
 		require.Len(t, sb.Doc.Pick("test").Model().ChildrenIds, 1)
@@ -82,10 +82,10 @@ func TestHistory_Redo(t *testing.T) {
 	require.Len(t, sb.Blocks(), 1)
 
 	h := NewHistory(sb)
+	_, err := h.Undo(nil)
+	require.NoError(t, err)
 
-	require.NoError(t, h.Undo(nil))
-
-	err := h.Redo(nil)
+	_, err = h.Redo(nil)
 	require.NoError(t, err)
 	assert.Len(t, sb.Blocks(), 1)
 }

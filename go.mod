@@ -4,7 +4,7 @@ go 1.13
 
 require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
-	github.com/PuerkitoBio/goquery v1.6.0
+	github.com/PuerkitoBio/goquery v1.6.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/blevesearch/bleve v1.0.14
@@ -19,7 +19,7 @@ require (
 	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.4.4
 	github.com/google/martian v2.1.0+incompatible
-	github.com/google/uuid v1.1.2
+	github.com/google/uuid v1.1.4
 	github.com/h2non/filetype v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hsanjuan/ipfs-lite v1.1.17
@@ -56,12 +56,12 @@ require (
 	github.com/multiformats/go-multihash v0.0.14
 	github.com/otiai10/opengraph v1.1.3
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/textileio/go-threads v1.0.2-0.20201217154614-3a79caa4def7
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
-	github.com/yuin/goldmark v1.1.30
+	github.com/yuin/goldmark v1.3.1
 	go.uber.org/zap v1.16.0
-	golang.org/x/text v0.3.4
+	golang.org/x/text v0.3.5
 	google.golang.org/grpc v1.34.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c

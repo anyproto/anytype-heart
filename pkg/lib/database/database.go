@@ -303,38 +303,46 @@ func (filters filters) Filter(e query.Entry) bool {
 			}
 			break
 		case model.BlockContentDataviewFilter_Empty:
-			switch v := details.Details.Fields[filter.RelationKey].Kind.(type) {
-			case *types.Value_NullValue:
+			if f, ok := details.Details.Fields[filter.RelationKey]; !ok {
 				res = true
-			case *types.Value_StringValue:
-				res = v.StringValue == ""
-			case *types.Value_ListValue:
-				res = v.ListValue == nil || len(v.ListValue.Values) == 0
-			case *types.Value_StructValue:
-				res = v.StructValue == nil
-			case *types.Value_NumberValue:
-				if isDate {
-					res = getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
+			} else {
+				switch v := f.Kind.(type) {
+				case *types.Value_NullValue:
+					res = true
+				case *types.Value_StringValue:
+					res = v.StringValue == ""
+				case *types.Value_ListValue:
+					res = v.ListValue == nil || len(v.ListValue.Values) == 0
+				case *types.Value_StructValue:
+					res = v.StructValue == nil
+				case *types.Value_NumberValue:
+					if isDate {
+						res = getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
+					}
+				default:
+					res = false
 				}
-			default:
-				res = false
 			}
 		case model.BlockContentDataviewFilter_NotEmpty:
-			switch v := details.Details.Fields[filter.RelationKey].Kind.(type) {
-			case *types.Value_NullValue:
+			if f, ok := details.Details.Fields[filter.RelationKey]; !ok {
 				res = false
-			case *types.Value_StringValue:
-				res = v.StringValue != ""
-			case *types.Value_ListValue:
-				res = v.ListValue != nil && len(v.ListValue.Values) > 0
-			case *types.Value_StructValue:
-				res = v.StructValue != nil
-			case *types.Value_NumberValue:
-				if isDate {
-					res = !getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
+			} else {
+				switch v := f.Kind.(type) {
+				case *types.Value_NullValue:
+					res = false
+				case *types.Value_StringValue:
+					res = v.StringValue != ""
+				case *types.Value_ListValue:
+					res = v.ListValue != nil && len(v.ListValue.Values) > 0
+				case *types.Value_StructValue:
+					res = v.StructValue != nil
+				case *types.Value_NumberValue:
+					if isDate {
+						res = !getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
+					}
+				default:
+					res = true
 				}
-			default:
-				res = true
 			}
 		}
 

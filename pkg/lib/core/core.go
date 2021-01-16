@@ -15,7 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
+	fts "github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
@@ -102,7 +102,7 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
-	NewRecordsChan() (ch chan SmartblockRecordWithThreadID)
+	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error)
 
 	ProfileInfo
 }
@@ -119,8 +119,6 @@ type Anytype struct {
 	threadService      threads.Service
 	pinService         pin.FilePinService
 
-	newRecordsChan chan SmartblockRecordWithThreadID
-
 	logLevels map[string]string
 
 	opts ServiceOptions
@@ -136,8 +134,7 @@ type Anytype struct {
 }
 
 func New(options ...ServiceOption) (*Anytype, error) {
-	opts := ServiceOptions{}
-
+	var opts ServiceOptions
 	for _, opt := range options {
 		err := opt(&opts)
 		if err != nil {
@@ -277,10 +274,10 @@ func (a *Anytype) start() error {
 		return nil
 	}
 
+	var err error
 	if a.opts.NetBootstraper != nil {
 		a.t = a.opts.NetBootstraper
 	} else {
-		var err error
 		if a.t, err = a.startNetwork(a.opts.HostAddr); err != nil {
 			if strings.Contains(err.Error(), "address already in use") { // FIXME proper cross-platform solution?
 				// start on random port in case saved port is already used by some other app
@@ -293,6 +290,20 @@ func (a *Anytype) start() error {
 		}
 	}
 
+	var fullTextSearch fts.FTSearch
+	if a.opts.FullTextSearch {
+		fullTextSearch, err = fts.NewFTSearch(filepath.Join(a.opts.Repo, "fts"))
+		if err != nil {
+			log.Errorf("can't start fulltext search service: %v", err)
+		}
+	}
+
+	a.localStore = localstore.NewLocalStore(a.t.Datastore(), fullTextSearch)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	go func() { <-a.shutdownStartsCh; cancel() }()
+	a.pinService = pin.NewFilePinService(ctx, a.cafe, a.localStore.Files)
+
 	if a.opts.CafeP2PAddr != nil {
 		// protect cafe connections from pruning
 		if p, err := a.opts.CafeP2PAddr.ValueForProtocol(ma.P_P2P); err == nil {
@@ -302,29 +313,28 @@ func (a *Anytype) start() error {
 				log.Errorf("decoding peerID from cafe address failed: %v", err)
 			}
 		}
+		// start syncing with cafe
+		a.pinService.Start()
 	}
-	fts, err := ftsearch.NewFTSearch(filepath.Join(a.opts.Repo, "fts"))
-	if err != nil {
-		log.Errorf("can't start fulltext search service: %v", err)
-	}
-	a.localStore = localstore.NewLocalStore(a.t.Datastore(), fts)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() { <-a.shutdownStartsCh; cancel() }()
-	a.pinService = pin.NewFilePinService(ctx, a.cafe, a.localStore.Files)
-	a.pinService.Start()
 
 	a.files = files.New(a.localStore.Files, a.t.GetIpfs(), a.pinService)
-	a.threadService = threads.New(a.t, a.t.Logstore(), a.opts.Repo, a.opts.Device, a.opts.Account, func(id thread.ID) error {
-		err := a.migratePageToChanges(id)
-		if err != nil && err != ErrAlreadyMigrated {
-			return err
-		}
-		return nil
-	}, a.opts.NewSmartblockChan, a.opts.CafeP2PAddr)
-	if a.newRecordsChan, err = a.subscribeForNewRecords(); err != nil {
-		return err
-	}
+	a.threadService = threads.New(
+		a.t,
+		a.t.Logstore(),
+		a.opts.Repo,
+		a.opts.Device,
+		a.opts.Account,
+		func(id thread.ID) error {
+			err := a.migratePageToChanges(id)
+			if err != nil && err != ErrAlreadyMigrated {
+				return err
+			}
+			return nil
+		},
+		a.opts.NewSmartblockChan,
+		a.opts.CafeP2PAddr,
+	)
+
 	go func(net net.NetBoostrapper, offline bool, onlineCh chan struct{}) {
 		if offline {
 			return
@@ -443,11 +453,7 @@ func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
-func (a *Anytype) NewRecordsChan() chan SmartblockRecordWithThreadID {
-	return a.newRecordsChan
-}
-
-func (a *Anytype) subscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
+func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	ch = make(chan SmartblockRecordWithThreadID)
 	threadsCh, err := a.t.Subscribe(ctx)

@@ -83,6 +83,7 @@ type History interface {
 	Previous() (Action, error)
 	Next() (Action, error)
 	Reset()
+	Counters() (undo int32, redo int32)
 }
 
 func NewHistory(limit int) History {
@@ -143,6 +144,10 @@ func (h *history) Next() (Action, error) {
 func (h *history) Reset() {
 	h.pointer = 0
 	h.actions = h.actions[:0]
+}
+
+func (h *history) Counters() (undo int32, redo int32) {
+	return int32(h.pointer), int32(len(h.actions) - h.pointer)
 }
 
 func (h *history) applyGroup(b Action) (ok bool) {

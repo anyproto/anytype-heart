@@ -856,6 +856,14 @@ func (s *State) HasRelation(key string) bool {
 	return false
 }
 
+func (s *State) Len() (l int) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		l++
+		return true
+	})
+	return
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
