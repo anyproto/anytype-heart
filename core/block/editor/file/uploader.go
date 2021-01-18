@@ -153,6 +153,7 @@ func (u *uploader) SetBytes(b []byte) Uploader {
 }
 
 func (u *uploader) AddOptions(options ...files.AddOption) Uploader {
+	u.opts = append(u.opts, options...)
 	return u
 }
 
