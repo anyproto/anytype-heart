@@ -29,6 +29,9 @@ type ServiceOptions struct {
 	WebGatewayBaseUrl     string
 	Offline               bool
 	InMemoryDS            bool
+	NetDebug              bool
+	NetPubSub             bool
+	SyncTracking          bool
 	FullTextSearch        bool
 	NetBootstraper        net.NetBoostrapper
 	IPFS                  ipfs.IPFS
@@ -83,6 +86,9 @@ func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
 			WithOfflineMode(cfg.Offline),
 			WithInMemoryDS(cfg.InMemoryDS),
 			WithFullTextSearch(cfg.FullTextSearch),
+			WithNetDebug(false),
+			WithNetPubSub(true),
+			WithNetSyncTracking(true),
 		}
 
 		// "-" or any other single char assumes as empty for env var compatibility
@@ -211,6 +217,27 @@ func WithIPFSNode(node ipfs.IPFS) ServiceOption {
 func WithNetBootstrapper(n net.NetBoostrapper) ServiceOption {
 	return func(args *ServiceOptions) error {
 		args.NetBootstraper = n
+		return nil
+	}
+}
+
+func WithNetDebug(enabled bool) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.NetDebug = enabled
+		return nil
+	}
+}
+
+func WithNetPubSub(enabled bool) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.NetPubSub = enabled
+		return nil
+	}
+}
+
+func WithNetSyncTracking(enabled bool) ServiceOption {
+	return func(args *ServiceOptions) error {
+		args.SyncTracking = enabled
 		return nil
 	}
 }

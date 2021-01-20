@@ -278,10 +278,10 @@ func (a *Anytype) start() error {
 	if a.opts.NetBootstraper != nil {
 		a.t = a.opts.NetBootstraper
 	} else {
-		if a.t, err = a.startNetwork(a.opts.HostAddr); err != nil {
+		if a.t, err = a.startNetwork(true); err != nil {
 			if strings.Contains(err.Error(), "address already in use") { // FIXME proper cross-platform solution?
 				// start on random port in case saved port is already used by some other app
-				if a.t, err = a.startNetwork(nil); err != nil {
+				if a.t, err = a.startNetwork(false); err != nil {
 					return err
 				}
 			} else {
@@ -427,27 +427,29 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 	return a.threadService.InitNewThreadsChan(ch)
 }
 
-func (a *Anytype) startNetwork(hostAddr ma.Multiaddr) (net.NetBoostrapper, error) {
+func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
 	var opts = []litenet.NetOption{
-		litenet.WithNetHostAddr(hostAddr),
-		litenet.WithNetDebug(false),
-		litenet.WithOffline(a.opts.Offline),
 		litenet.WithInMemoryDS(a.opts.InMemoryDS),
-		litenet.WithNetPubSub(true), // TODO control with env var
-		litenet.WithNetSyncTracking(true),
+		litenet.WithOffline(a.opts.Offline),
+		litenet.WithNetDebug(a.opts.NetDebug),
+		litenet.WithNetPubSub(a.opts.NetPubSub),
+		litenet.WithNetSyncTracking(a.opts.SyncTracking),
 		litenet.WithNetGRPCServerOptions(
-			grpc.MaxRecvMsgSize(1024 * 1024 * 20),
+			grpc.MaxRecvMsgSize(5 << 20), // 5Mb max message size
 		),
 		litenet.WithNetGRPCDialOptions(
 			grpc.WithDefaultCallOptions(
-				grpc.MaxCallRecvMsgSize(1024*1024*10),
-				grpc.MaxCallSendMsgSize(1024*1024*10),
+				grpc.MaxCallRecvMsgSize(5<<20),
+				grpc.MaxCallSendMsgSize(5<<20),
 			),
-
 			// gRPC metrics
 			//grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
 			//grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
 		),
+	}
+
+	if useHostAddr {
+		opts = append(opts, litenet.WithNetHostAddr(a.opts.HostAddr))
 	}
 
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
