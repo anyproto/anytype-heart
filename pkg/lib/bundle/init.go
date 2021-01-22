@@ -12,6 +12,7 @@ import (
 var RequiredInternalRelations = []RelationKey{
 	RelationKeyId,
 	RelationKeyName,
+	RelationKeyIconEmoji,
 	RelationKeyType,
 	RelationKeyLayout,
 	RelationKeyCreatedDate,

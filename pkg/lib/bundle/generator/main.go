@@ -23,13 +23,15 @@ type Relation struct {
 	ObjectTypes []string `json:"objectTypes"`
 	Readonly    bool     `json:"readonly"`
 	Source      string   `json:"source"`
+	Description string   `json:"description"`
 }
 
 type ObjectType struct {
-	ID        string   `json:"id"`
-	Name      string   `json:"name"`
-	Layout    string   `json:"layout"`
-	Relations []string `json:"relations"`
+	ID          string   `json:"id"`
+	Name        string   `json:"name"`
+	Layout      string   `json:"layout"`
+	Relations   []string `json:"relations"`
+	Description string   `json:"description"`
 }
 
 type Layout struct {
@@ -105,12 +107,13 @@ func generateRelations() error {
 		for _, relation := range relations {
 
 			dictS := Dict{
-				Id("Key"):        Lit(relation.Key),
-				Id("Name"):       Lit(relation.Name),
-				Id("Format"):     Qual(relPbPkg, "RelationFormat_"+relation.Format),
-				Id("DataSource"): Qual(relPbPkg, "Relation_"+relation.Source),
-				Id("Hidden"):     Lit(relation.Hidden),
-				Id("ReadOnly"):   Lit(relation.Readonly),
+				Id("Key"):         Lit(relation.Key),
+				Id("Name"):        Lit(relation.Name),
+				Id("Format"):      Qual(relPbPkg, "RelationFormat_"+relation.Format),
+				Id("DataSource"):  Qual(relPbPkg, "Relation_"+relation.Source),
+				Id("Hidden"):      Lit(relation.Hidden),
+				Id("ReadOnly"):    Lit(relation.Readonly),
+				Id("Description"): Lit(relation.Description),
 			}
 			if len(relation.ObjectTypes) > 0 {
 				var t []Code
@@ -177,9 +180,10 @@ func generateTypes() error {
 		for _, ot := range types {
 
 			dictS := Dict{
-				Id("Url"):    Id("TypePrefix").Op("+").Lit(ot.ID),
-				Id("Name"):   Lit(ot.Name),
-				Id("Layout"): Qual(relPbPkg, "ObjectType_"+ot.Layout),
+				Id("Url"):         Id("TypePrefix").Op("+").Lit(ot.ID),
+				Id("Name"):        Lit(ot.Name),
+				Id("Layout"):      Qual(relPbPkg, "ObjectType_"+ot.Layout),
+				Id("Description"): Lit(ot.Description),
 			}
 			if len(ot.Relations) > 0 {
 				var t []Code

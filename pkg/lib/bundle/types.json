@@ -19,7 +19,8 @@
       "coverX",
       "coverY",
       "coverScale",
-      "toBeDeletedDate"
+      "toBeDeletedDate",
+      "description"
     ]
   },
   {
@@ -42,7 +43,8 @@
       "coverX",
       "coverY",
       "coverScale",
-      "toBeDeletedDate"
+      "toBeDeletedDate",
+      "description"
     ]
   },
   {
@@ -65,7 +67,8 @@
       "coverX",
       "coverY",
       "coverScale",
-      "toBeDeletedDate"
+      "toBeDeletedDate",
+      "description"
     ]
   },
   {
@@ -89,6 +92,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "tag"
     ]
   },
@@ -113,6 +117,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "assignee",
       "dueDate",
       "description",
@@ -132,7 +137,8 @@
     "relations": [
       "id",
       "name",
-      "layout"
+      "layout",
+      "description"
     ]
   },
   {
@@ -156,6 +162,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -169,6 +176,7 @@
     ]
   },
   {
+    "description": "Object that contains a definition of some object type",
     "id": "objectType",
     "layout": "objectType",
     "name": "Type",
@@ -189,6 +197,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "recommendedRelations",
       "recommendedLayout"
     ]
@@ -214,16 +223,19 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "setOf"
     ]
   },
   {
+    "description": "Base type to start with",
     "id": "page",
     "layout": "basic",
     "name": "Undefined",
     "relations": [
       "id",
       "name",
+      "description",
       "type",
       "creator",
       "createdDate",
@@ -237,7 +249,8 @@
       "coverX",
       "coverY",
       "coverScale",
-      "toBeDeletedDate"
+      "toBeDeletedDate",
+      "featuredRelations"
     ]
   },
   {
@@ -261,6 +274,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -291,7 +305,8 @@
       "coverX",
       "coverY",
       "coverScale",
-      "toBeDeletedDate"
+      "toBeDeletedDate",
+      "description"
     ]
   },
   {
@@ -315,6 +330,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -347,7 +363,8 @@
       "coverX",
       "coverY",
       "coverScale",
-      "toBeDeletedDate"
+      "toBeDeletedDate",
+      "description"
     ]
   },
   {
@@ -371,6 +388,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "fileMimeType",
       "sizeInBytes"
     ]
@@ -395,7 +413,8 @@
       "coverX",
       "coverY",
       "coverScale",
-      "toBeDeletedDate"
+      "toBeDeletedDate",
+      "description"
     ]
   },
   {
@@ -419,6 +438,7 @@
       "coverY",
       "coverScale",
       "toBeDeletedDate",
+      "description",
       "collectionOf"
     ]
   }
