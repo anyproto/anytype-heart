@@ -127,7 +127,9 @@ func (i *indexer) applyRecords(records []core.SmartblockRecordWithThreadID) {
 	for _, tid := range threadIds {
 		threadRecords := i.recBuf[:0]
 		for _, rec := range records {
-			threadRecords = append(threadRecords, rec.SmartblockRecordEnvelope)
+			if rec.ThreadID == tid {
+				threadRecords = append(threadRecords, rec.SmartblockRecordEnvelope)
+			}
 		}
 		i.index(tid, threadRecords)
 	}
