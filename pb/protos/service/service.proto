@@ -104,16 +104,15 @@ service ClientCommands {
     rpc BlockDataviewRelationAdd (anytype.Rpc.Block.Dataview.RelationAdd.Request) returns (anytype.Rpc.Block.Dataview.RelationAdd.Response);
     rpc BlockDataviewRelationUpdate (anytype.Rpc.Block.Dataview.RelationUpdate.Request) returns (anytype.Rpc.Block.Dataview.RelationUpdate.Response);
     rpc BlockDataviewRelationDelete (anytype.Rpc.Block.Dataview.RelationDelete.Request) returns (anytype.Rpc.Block.Dataview.RelationDelete.Response);
-    rpc BlockDataviewRelationSelectOptionAdd (anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Request) returns (anytype.Rpc.Block.Dataview.RelationSelectOptionAdd.Response);
-    rpc BlockDataviewRelationSelectOptionUpdate (anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Request) returns (anytype.Rpc.Block.Dataview.RelationSelectOptionUpdate.Response);
-    rpc BlockDataviewRelationSelectOptionDelete (anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Request) returns (anytype.Rpc.Block.Dataview.RelationSelectOptionDelete.Response);
     rpc BlockDataviewRelationListAvailable (anytype.Rpc.Block.Dataview.RelationListAvailable.Request) returns (anytype.Rpc.Block.Dataview.RelationListAvailable.Response);
 
     // # Record
     rpc BlockDataviewRecordCreate (anytype.Rpc.Block.Dataview.RecordCreate.Request) returns (anytype.Rpc.Block.Dataview.RecordCreate.Response);
     rpc BlockDataviewRecordUpdate (anytype.Rpc.Block.Dataview.RecordUpdate.Request) returns (anytype.Rpc.Block.Dataview.RecordUpdate.Response);
     rpc BlockDataviewRecordDelete (anytype.Rpc.Block.Dataview.RecordDelete.Request) returns (anytype.Rpc.Block.Dataview.RecordDelete.Response);
-
+    rpc BlockDataviewRecordRelationOptionAdd (anytype.Rpc.Block.Dataview.RecordRelationOptionAdd.Request) returns (anytype.Rpc.Block.Dataview.RecordRelationOptionAdd.Response);
+    rpc BlockDataviewRecordRelationOptionUpdate (anytype.Rpc.Block.Dataview.RecordRelationOptionUpdate.Request) returns (anytype.Rpc.Block.Dataview.RecordRelationOptionUpdate.Response);
+    rpc BlockDataviewRecordRelationOptionDelete (anytype.Rpc.Block.Dataview.RecordRelationOptionDelete.Request) returns (anytype.Rpc.Block.Dataview.RecordRelationOptionDelete.Response);
     // ## Object's relations
     // set an existing object type to the object so it will appear in sets and suggests relations from this type
     // TODO: rename BlockObjectTypeSet -> ObjectObjectTypeSet
@@ -130,9 +129,9 @@ service ClientCommands {
     rpc ObjectRelationAdd (anytype.Rpc.Object.RelationAdd.Request) returns (anytype.Rpc.Object.RelationAdd.Response);
     rpc ObjectRelationUpdate (anytype.Rpc.Object.RelationUpdate.Request) returns (anytype.Rpc.Object.RelationUpdate.Response);
     rpc ObjectRelationDelete (anytype.Rpc.Object.RelationDelete.Request) returns (anytype.Rpc.Object.RelationDelete.Response);
-    rpc ObjectRelationSelectOptionAdd (anytype.Rpc.Object.RelationSelectOptionAdd.Request) returns (anytype.Rpc.Object.RelationSelectOptionAdd.Response);
-    rpc ObjectRelationSelectOptionUpdate (anytype.Rpc.Object.RelationSelectOptionUpdate.Request) returns (anytype.Rpc.Object.RelationSelectOptionUpdate.Response);
-    rpc ObjectRelationSelectOptionDelete (anytype.Rpc.Object.RelationSelectOptionDelete.Request) returns (anytype.Rpc.Object.RelationSelectOptionDelete.Response);
+    rpc ObjectRelationOptionAdd (anytype.Rpc.Object.RelationOptionAdd.Request) returns (anytype.Rpc.Object.RelationOptionAdd.Response);
+    rpc ObjectRelationOptionUpdate (anytype.Rpc.Object.RelationOptionUpdate.Request) returns (anytype.Rpc.Object.RelationOptionUpdate.Response);
+    rpc ObjectRelationOptionDelete (anytype.Rpc.Object.RelationOptionDelete.Request) returns (anytype.Rpc.Object.RelationOptionDelete.Response);
     rpc ObjectRelationListAvailable (anytype.Rpc.Object.RelationListAvailable.Request) returns (anytype.Rpc.Object.RelationListAvailable.Response);
 
     // TODO: rename BlockSetDetails -> ObjectSetDetails

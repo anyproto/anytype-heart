@@ -3,7 +3,6 @@ package dataview
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	blockDB "github.com/anytypeio/go-anytype-middleware/core/block/database"
@@ -39,9 +38,10 @@ type Dataview interface {
 	AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error)
 	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
 	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation pbrelation.Relation, showEvent bool) error
-	AddRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error)
-	UpdateRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error
-	DeleteRelationSelectOption(ctx *state.Context, blockId string, relationKey string, optionId string, showEvent bool) error
+	AddRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error)
+	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) error
+	DeleteRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
+	FillAggregatedOptions(ctx *state.Context) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -98,7 +98,7 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 			}
 		}
 		if foundRelation == nil {
-			return nil, fmt.Errorf("provided relation with key not found among aggregated relations for dataview")
+			return nil, fmt.Errorf("provided relation with key %s not found among aggregated relations for dataview", relation.Key)
 		}
 
 		if !pbtypes.RelationCompatible(foundRelation, &relation) {
@@ -110,6 +110,8 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
+	// reset SelectDict because it is supposed to be aggregated and injected on-the-fly
+	relation.SelectDict = nil
 	tb.AddRelation(relation)
 
 	return &relation, d.Apply(s)
@@ -153,44 +155,44 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-// AddRelationSelectOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (d *dataviewCollectionImpl) AddRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error) {
+// AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
+func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error) {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, rel := range tb.Model().GetDataview().Relations {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
-			return nil, fmt.Errorf("relation has incorrect format")
-		}
-		for _, opt := range rel.SelectDict {
-			if strings.EqualFold(opt.Text, option.Text) {
-				// here we can have the option with another color. but it looks
-				return opt, nil
-			}
-		}
-
-		option.Id = bson.NewObjectId().Hex()
-		rel.SelectDict = append(rel.SelectDict, &option)
-		if err = tb.UpdateRelation(relationKey, *rel); err != nil {
-			return nil, err
-		}
-
-		if showEvent {
-			return &option, d.Apply(s)
-		}
-		return &option, d.Apply(s, smartblock.NoEvent)
+	var db database.Database
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(""); err != nil {
+		return nil, err
+	} else {
+		db = target
 	}
 
-	return nil, fmt.Errorf("relation not found")
+	optionId, err := db.AddRelationOption(recordId, relationKey, option)
+	if err != nil {
+		return nil, err
+	}
+
+	option.Id = optionId
+	err = tb.AddRelationOption(relationKey, option)
+	if err != nil {
+		return nil, err
+	}
+
+	if showEvent {
+		err = d.Apply(s)
+	} else {
+		err = d.Apply(s, smartblock.NoEvent)
+	}
+
+	return &option, err
 }
 
-func (d *dataviewCollectionImpl) UpdateRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error {
+func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -220,7 +222,7 @@ func (d *dataviewCollectionImpl) UpdateRelationSelectOption(ctx *state.Context, 
 	return fmt.Errorf("relation not found")
 }
 
-func (d *dataviewCollectionImpl) DeleteRelationSelectOption(ctx *state.Context, blockId string, relationKey string, optionId string, showEvent bool) error {
+func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -543,6 +545,10 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 
 	var depIdsMap = map[string]struct{}{}
 	var depIds []string
+	if rec.Details == nil || rec.Details.Fields == nil {
+		return nil
+	}
+
 	for key, item := range rec.Details.Fields {
 		if key == "id" || key == "type" {
 			continue
@@ -593,42 +599,48 @@ func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, 
 	return db.Delete(recID)
 }
 
+func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error {
+	st := d.NewStateCtx(ctx)
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		if dvBlock, ok := b.(dataview.Block); !ok {
+			return true
+		} else {
+			d.fillAggregatedOptions(dvBlock)
+			st.Set(b)
+			return true
+		}
+	})
+	return d.Apply(st)
+}
+
+func (d *dataviewCollectionImpl) fillAggregatedOptions(b dataview.Block) {
+	dvc := b.Model().GetDataview()
+
+	for _, rel := range dvc.Relations {
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			continue
+		}
+
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvc.Source)
+		if err != nil {
+			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+			continue
+		}
+
+		rel.SelectDict = options
+	}
+}
+
 func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 	st := d.NewStateCtx(ctx)
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {
 			return true
 		} else {
+			dv := d.getDataviewImpl(dvBlock)
 			// reset state after block was reopened
 			// getDataviewImpl will also set activeView to the fist one in case the smartblock wasn't opened in this session before
-			dv := d.getDataviewImpl(dvBlock)
-
-			dvc := b.Model().GetDataview()
-
-			for _, rel := range dvc.Relations {
-				if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
-					continue
-				}
-
-				objScopeOptions, restScopeOptions, err := d.Anytype().ObjectStore().GetAggregatedOptionsForRelation(rel.Key, dvc.Source)
-				if err != nil {
-					log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
-					continue
-				}
-
-				/*formatScopeOptions, err := d.Anytype().ObjectStore().GetAggregatedOptionsForFormat(rel.Key, d.Id())
-				if err != nil {
-					log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
-					continue
-				}*/
-
-				dvc.AggregatedOptions = append(dvc.AggregatedOptions,
-					&model.BlockContentDataviewAggregatedOptions{
-						RelationKey: rel.Key,
-						Local:       objScopeOptions,
-						ByRelation:  restScopeOptions,
-					})
-			}
+			d.fillAggregatedOptions(dvBlock)
 			st.Set(b)
 			dv.records = nil
 		}

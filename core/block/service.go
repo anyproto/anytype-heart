@@ -97,19 +97,21 @@ type Service interface {
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
+	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
 
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
 
 	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
 	UpdateExtraRelations(id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
+	ModifyExtraRelations(objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error)
 	AddExtraRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveExtraRelations(id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 
 	SetObjectTypes(objectId string, objectTypes []string) (err error)
-	AddExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error)
-	UpdateExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionUpdateRequest) (err error)
-	DeleteExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionDeleteRequest) (err error)
+	AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error)
+	UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionUpdateRequest) (err error)
+	DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionDeleteRequest) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -153,9 +155,9 @@ type Service interface {
 	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (id string, err error)
 	UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationUpdateRequest) error
 	DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
-	AddDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error)
-	UpdateDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionUpdateRequest) error
-	DeleteDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionDeleteRequest) error
+	AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error)
+	UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) error
+	DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error
 
 	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (*types.Struct, error)
 	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRequest) error
@@ -469,6 +471,19 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 
 	log.Debugf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
 
+	if relations != nil {
+		var setDetails []*pb.RpcBlockSetDetailsDetail
+		for k, v := range details.Fields {
+			setDetails = append(setDetails, &pb.RpcBlockSetDetailsDetail{
+				Key:   k,
+				Value: v,
+			})
+		}
+		if _, err = s.AddExtraRelations(id, relations); err != nil {
+			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
+		}
+	}
+
 	if details != nil && details.Fields != nil {
 		var setDetails []*pb.RpcBlockSetDetailsDetail
 		for k, v := range details.Fields {
@@ -482,19 +497,6 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 			Details:   setDetails,
 		}); err != nil {
 			return id, nil, fmt.Errorf("can't set details to object: %v", err)
-		}
-	}
-
-	if relations != nil {
-		var setDetails []*pb.RpcBlockSetDetailsDetail
-		for k, v := range details.Fields {
-			setDetails = append(setDetails, &pb.RpcBlockSetDetailsDetail{
-				Key:   k,
-				Value: v,
-			})
-		}
-		if _, err = s.AddExtraRelations(id, relations); err != nil {
-			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
 		}
 	}
 
@@ -813,9 +815,9 @@ func (s *service) DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockData
 	})
 }
 
-func (s *service) AddDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error) {
+func (s *service) AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		opt, err = b.AddRelationSelectOption(ctx, req.BlockId, req.RelationKey, *req.Option, true)
+		opt, err = b.AddRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, *req.Option, true)
 		if err != nil {
 			return err
 		}
@@ -825,9 +827,9 @@ func (s *service) AddDataviewRelationSelectOption(ctx *state.Context, req pb.Rpc
 	return
 }
 
-func (s *service) UpdateDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionUpdateRequest) error {
+func (s *service) UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) error {
 	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		err := b.UpdateRelationSelectOption(ctx, req.BlockId, req.RelationKey, *req.Option, true)
+		err := b.UpdateRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, *req.Option, true)
 		if err != nil {
 			return err
 		}
@@ -837,9 +839,9 @@ func (s *service) UpdateDataviewRelationSelectOption(ctx *state.Context, req pb.
 	return err
 }
 
-func (s *service) DeleteDataviewRelationSelectOption(ctx *state.Context, req pb.RpcBlockDataviewRelationSelectOptionDeleteRequest) error {
+func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error {
 	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		err := b.DeleteRelationSelectOption(ctx, req.BlockId, req.RelationKey, req.OptionId, true)
+		err := b.DeleteRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, req.OptionId, true)
 		if err != nil {
 			return err
 		}
@@ -1372,6 +1374,36 @@ func (s *service) GetRelations(objectId string) (relations []*pbrelation.Relatio
 	return
 }
 
+// ModifyExtraRelations gets and updates extra relations under the sb lock to make sure no modifications are done in the middle
+func (s *service) ModifyExtraRelations(objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error) {
+	if modifier == nil {
+		return fmt.Errorf("modifier is nil")
+	}
+	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+		rels, err := modifier(b.Relations())
+		if err != nil {
+			return err
+		}
+
+		return b.UpdateExtraRelations(rels, true)
+	})
+}
+
+// ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
+func (s *service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
+	if modifier == nil {
+		return fmt.Errorf("modifier is nil")
+	}
+	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+		dets, err := modifier(b.Details())
+		if err != nil {
+			return err
+		}
+
+		return b.Apply(b.NewState().SetDetails(dets))
+	})
+}
+
 func (s *service) UpdateExtraRelations(objectId string, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
 		return b.UpdateExtraRelations(relations, createIfMissing)
@@ -1391,9 +1423,9 @@ func (s *service) AddExtraRelations(objectId string, relations []*pbrelation.Rel
 	return
 }
 
-func (s *service) AddExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionAddRequest) (opt *pbrelation.RelationSelectOption, err error) {
+func (s *service) AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error) {
 	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		opt, err = b.AddExtraRelationSelectOption(ctx, req.RelationKey, *req.Option, true)
+		opt, err = b.AddExtraRelationOption(ctx, req.RelationKey, *req.Option, true)
 		if err != nil {
 			return err
 		}
@@ -1403,9 +1435,9 @@ func (s *service) AddExtraRelationSelectOption(ctx *state.Context, req pb.RpcObj
 	return
 }
 
-func (s *service) UpdateExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionUpdateRequest) error {
+func (s *service) UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionUpdateRequest) error {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		err := b.UpdateExtraRelationSelectOption(ctx, req.RelationKey, *req.Option, true)
+		err := b.UpdateExtraRelationOption(ctx, req.RelationKey, *req.Option, true)
 		if err != nil {
 			return err
 		}
@@ -1413,9 +1445,9 @@ func (s *service) UpdateExtraRelationSelectOption(ctx *state.Context, req pb.Rpc
 	})
 }
 
-func (s *service) DeleteExtraRelationSelectOption(ctx *state.Context, req pb.RpcObjectRelationSelectOptionDeleteRequest) error {
+func (s *service) DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionDeleteRequest) error {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		err := b.DeleteExtraRelationSelectOption(ctx, req.RelationKey, req.OptionId, true)
+		err := b.DeleteExtraRelationOption(ctx, req.RelationKey, req.OptionId, true)
 		if err != nil {
 			return err
 		}

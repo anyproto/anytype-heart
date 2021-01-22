@@ -18,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -617,6 +618,25 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	return
 }
 
+func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
+	if s.extraRelations == nil && s.parent != nil {
+		s.extraRelations = pbtypes.CopyRelations(s.parent.ExtraRelations())
+	}
+	relCopy := pbtypes.CopyRelation(rel)
+	var found bool
+	for i, exRel := range s.extraRelations {
+		if exRel.Key == rel.Key {
+			found = true
+			s.extraRelations[i] = relCopy
+		}
+	}
+	if !found {
+		s.extraRelations = append(s.extraRelations, relCopy)
+	}
+
+	return
+}
+
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	for _, rel := range s.ExtraRelations() {
 		if rel.Key == relation.Key {
@@ -627,13 +647,41 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(s.ExtraRelations(), relation)
+	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relation)
 	return s
 }
 
 func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	s.extraRelations = relations
 	return s
+}
+
+func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelation.RelationOption) (*pbrelation.RelationOption, error) {
+	exRel := pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
+	if exRel == nil {
+		rel.SelectDict = nil
+		s.AddRelation(&rel)
+		exRel = &rel
+	}
+	exRel = pbtypes.CopyRelation(exRel)
+
+	if exRel.Format != pbrelation.RelationFormat_status && exRel.Format != pbrelation.RelationFormat_tag {
+		return nil, fmt.Errorf("relation has incorrect format")
+	}
+
+	for _, opt := range exRel.SelectDict {
+		if strings.EqualFold(opt.Text, option.Text) && (option.Id == "" || opt.Id == option.Id) {
+			// here we can have the option with another color, but we can ignore this
+			return opt, nil
+		}
+	}
+	if option.Id == "" {
+		option.Id = bson.NewObjectId().Hex()
+	}
+	exRel.SelectDict = append(exRel.SelectDict, &option)
+	s.SetExtraRelation(exRel)
+
+	return &option, nil
 }
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {

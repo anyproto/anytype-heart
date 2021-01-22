@@ -24,27 +24,31 @@ func New(
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
 	getRelations func(objectId string) (relations []*pbrelation.Relation, err error),
 	setRelations func(id string, relations []*pbrelation.Relation) (err error),
-
+	modifyExtraRelations func(id string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) error,
+	addExtraRelationOption func(req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error),
 	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error),
 ) database.Database {
 	return &setOfObjects{
-		ObjectStore:      pageStore,
-		objectTypeUrl:    objectTypeUrl,
-		setDetails:       setDetails,
-		getRelations:     getRelations,
-		setRelations:     setRelations,
-		createSmartBlock: createSmartBlock,
+		ObjectStore:            pageStore,
+		objectTypeUrl:          objectTypeUrl,
+		setDetails:             setDetails,
+		getRelations:           getRelations,
+		setRelations:           setRelations,
+		createSmartBlock:       createSmartBlock,
+		modifyExtraRelations:   modifyExtraRelations,
+		addExtraRelationOption: addExtraRelationOption,
 	}
 }
 
 type setOfObjects struct {
 	localstore.ObjectStore
-	objectTypeUrl string
-	setDetails    func(req pb.RpcBlockSetDetailsRequest) error
-	getRelations  func(objectId string) (relations []*pbrelation.Relation, err error)
-	setRelations  func(id string, relations []*pbrelation.Relation) (err error)
-
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
+	objectTypeUrl          string
+	setDetails             func(req pb.RpcBlockSetDetailsRequest) error
+	getRelations           func(objectId string) (relations []*pbrelation.Relation, err error)
+	setRelations           func(id string, relations []*pbrelation.Relation) (err error)
+	modifyExtraRelations   func(id string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) error
+	addExtraRelationOption func(req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error)
+	createSmartBlock       func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
 }
 
 func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record, sub database.Subscription) (database.Record, error) {
@@ -75,8 +79,10 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 
 func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec database.Record) error {
 	var details []*pb.RpcBlockSetDetailsDetail
-	for k, v := range rec.Details.Fields {
-		details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
+	if rec.Details != nil && rec.Details.Fields != nil {
+		for k, v := range rec.Details.Fields {
+			details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
+		}
 	}
 
 	if len(details) == 0 {
@@ -92,6 +98,18 @@ func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec datab
 		ContextId: id, // not sure?
 		Details:   details,
 	})
+}
+
+func (sp *setOfObjects) AddRelationOption(id string, relationKey string, option pbrelation.RelationOption) (optionId string, err error) {
+	o, err := sp.addExtraRelationOption(pb.RpcObjectRelationOptionAddRequest{
+		ContextId:   id,
+		RelationKey: relationKey,
+		Option:      &option,
+	})
+	if err != nil {
+		return "", err
+	}
+	return o.Id, nil
 }
 
 func (sp setOfObjects) Delete(id string) error {

@@ -79,9 +79,9 @@ type SmartBlock interface {
 	AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(relationKeys []string) (err error)
-	AddExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error)
-	UpdateExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error
-	DeleteExtraRelationSelectOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
+	AddExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error)
+	UpdateExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) error
+	DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
 
 	SetObjectTypes(objectTypes []string) (err error)
 
@@ -403,7 +403,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if !pbtypes.Exists(sb.Details(), "createdDate") {
+	if !pbtypes.Exists(sb.Details(), "creator") {
 		if e := sb.setCreationInfo(s); e != nil {
 			log.With("thread", sb.Id()).Errorf("can't set creation info: %v", err)
 		}
@@ -477,9 +477,9 @@ func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
 		createdDate = fc.Timestamp
 		createdBy = fc.Account
 	}
-	s.SetDetail("createdDate", pbtypes.Float64(float64(createdDate)))
+	s.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Float64(float64(createdDate)))
 	if profileId, e := threads.ProfileThreadIDFromAccountAddress(createdBy); e == nil {
-		s.SetDetail("createdBy", pbtypes.String(profileId.String()))
+		s.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(profileId.String()))
 	}
 	return
 }
@@ -525,6 +525,72 @@ func (sb *smartBlock) Anytype() anytype.Service {
 	return sb.source.Anytype()
 }
 
+func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Struct) (err error) {
+	if d == nil || d.Fields == nil {
+		return nil
+	}
+	rels := sb.Relations()
+	for k, v := range d.Fields {
+		var found bool
+		for _, rel := range rels {
+			if rel.Key != k {
+				continue
+			}
+			if rel.DataSource != pbrelation.Relation_details {
+				delete(d.Fields, k)
+				found = true
+				break
+			}
+			found = true
+			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
+				objTypes := sb.ObjectTypes()
+				if len(objTypes) > 1 {
+					log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
+				}
+				var objType string
+				if len(objTypes) == 1 {
+					objType = objTypes[0]
+				}
+
+				options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
+				if err != nil {
+					return fmt.Errorf("failed to get aggregated options for a select/tag relation '%s': %s", rel.Key, err.Error())
+				}
+
+				vals := pbtypes.GetStringListValue(v)
+				if len(vals) == 0 {
+					continue
+				}
+
+				for _, val := range vals {
+					var optFound bool
+					for _, opt := range options {
+						if opt.Id == val {
+							optFound = true
+							optCopy := *opt
+							// reset scope
+							optCopy.Scope = pbrelation.RelationOption_local
+							_, err = st.AddExtraRelationOption(*rel, optCopy)
+							if err != nil {
+								return fmt.Errorf("failed to add an option for a select/tag relation '%s': %s", rel.Key, err.Error())
+							}
+							break
+						}
+					}
+					if !optFound {
+						return fmt.Errorf("failed to find an option for a select/tag relation '%s'", rel.Key)
+					}
+				}
+			}
+		}
+		if !found {
+			return fmt.Errorf("relation for detail '%s' not exists", k)
+		}
+	}
+
+	return nil
+}
+
 func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
 	s := sb.NewStateCtx(ctx)
 	copy := pbtypes.CopyStruct(s.Details())
@@ -533,6 +599,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 			Fields: make(map[string]*types.Value),
 		}
 	}
+
 	for _, detail := range details {
 		if detail.Value != nil {
 			copy.Fields[detail.Key] = detail.Value
@@ -543,11 +610,17 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	if copy.Equal(sb.Details()) {
 		return
 	}
+
+	err = sb.validateDetailsAndAddOptions(s, copy)
+	if err != nil {
+		return err
+	}
+
 	s.SetDetails(copy)
 	if err = sb.Apply(s); err != nil {
 		return
 	}
-	return
+	return nil
 }
 
 func (sb *smartBlock) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
@@ -599,6 +672,7 @@ func (sb *smartBlock) SetObjectTypes(objectTypes []string) (err error) {
 	return
 }
 
+// UpdateExtraRelations sets the extra relations, it skips the
 func (sb *smartBlock) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	objectTypeRelations := pbtypes.CopyRelations(sb.ObjectTypeRelations())
 	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
@@ -619,10 +693,11 @@ mainLoop:
 		}
 		for j := range extraRelations {
 			if extraRelations[j].Key == relationsToSet[i].Key {
-				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
+				if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
 					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
 						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
 					}
+
 					extraRelations[j] = relationsToSet[i]
 					somethingChanged = true
 				}
@@ -670,39 +745,32 @@ func (sb *smartBlock) RemoveExtraRelations(relationKeys []string) (err error) {
 	return
 }
 
-// AddRelationSelectOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (sb *smartBlock) AddExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error) {
+// AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
+func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error) {
 	s := sb.NewStateCtx(ctx)
-	for _, rel := range s.ExtraRelations() {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
-			return nil, fmt.Errorf("relation has incorrect format")
-		}
-		for _, opt := range rel.SelectDict {
-			if strings.EqualFold(opt.Text, option.Text) {
-				// here we can have the option with another color. but it looks
-				return opt, nil
-			}
-		}
-
-		option.Id = bson.NewObjectId().Hex()
-		rel.SelectDict = append(rel.SelectDict, &option)
-
-		if showEvent {
-			return &option, sb.Apply(s)
-		}
-		return &option, sb.Apply(s, NoEvent)
+	rel := pbtypes.GetRelation(sb.Relations(), relationKey)
+	if rel == nil {
+		return nil, fmt.Errorf("relation not found")
 	}
 
-	return nil, fmt.Errorf("relation not found")
+	if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		return nil, fmt.Errorf("incorrect relation format")
+	}
+
+	newOption, err := s.AddExtraRelationOption(*rel, option)
+	if err != nil {
+		return nil, err
+	}
+
+	if showEvent {
+		return newOption, sb.Apply(s)
+	}
+	return newOption, sb.Apply(s, NoEvent)
 }
 
-func (sb *smartBlock) UpdateExtraRelationSelectOption(ctx *state.Context, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error {
+func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) error {
 	s := sb.NewStateCtx(ctx)
-
-	for _, rel := range s.ExtraRelations() {
+	for _, rel := range sb.ExtraRelations() {
 		if rel.Key != relationKey {
 			continue
 		}
@@ -711,7 +779,10 @@ func (sb *smartBlock) UpdateExtraRelationSelectOption(ctx *state.Context, relati
 		}
 		for i, opt := range rel.SelectDict {
 			if opt.Id == option.Id {
-				rel.SelectDict[i] = &option
+				copy := pbtypes.CopyRelation(rel)
+				copy.SelectDict[i] = &option
+				s.SetExtraRelation(copy)
+
 				if showEvent {
 					return sb.Apply(s)
 				}
@@ -725,10 +796,9 @@ func (sb *smartBlock) UpdateExtraRelationSelectOption(ctx *state.Context, relati
 	return fmt.Errorf("relation not found")
 }
 
-func (sb *smartBlock) DeleteExtraRelationSelectOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
+func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
 	s := sb.NewStateCtx(ctx)
-
-	for _, rel := range s.ExtraRelations() {
+	for _, rel := range sb.ExtraRelations() {
 		if rel.Key != relationKey {
 			continue
 		}
@@ -737,7 +807,9 @@ func (sb *smartBlock) DeleteExtraRelationSelectOption(ctx *state.Context, relati
 		}
 		for i, opt := range rel.SelectDict {
 			if opt.Id == optionId {
-				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
+				copy := pbtypes.CopyRelation(rel)
+				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
+				s.SetExtraRelation(copy)
 				if showEvent {
 					return sb.Apply(s)
 				}

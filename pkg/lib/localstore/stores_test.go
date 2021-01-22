@@ -5,17 +5,15 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
 func Test_AddIndex(t *testing.T) {
-	ds2, err := badger.NewDatastore(filepath.Join(os.TempDir(), "anytypetestds"), &badger.DefaultOptions)
+	ds, err := badger.NewDatastore(filepath.Join(os.TempDir(), "anytypetestds"), &badger.DefaultOptions)
 	require.NoError(t, err)
 
-	ds := datastore.Batching(ds2)
 	type Item struct {
 		PrimKey string
 		Field1  string
@@ -57,18 +55,23 @@ func Test_AddIndex(t *testing.T) {
 	}
 
 	for _, idx := range idxs {
-		err = AddIndex(idx, ds.(datastore.TxnDatastore), item, "primkey1")
+		err = AddIndex(idx, ds, item, "primkey1")
 		require.NoError(t, err)
 	}
 
-	key, err := GetKeyByIndex(idxs[0], ds.(datastore.TxnDatastore), item)
+	txn, err := ds.NewTransaction(true)
+	require.NoError(t, err)
+
+	defer txn.Discard()
+
+	key, err := GetKeyByIndex(idxs[0], txn, item)
 	require.NoError(t, err)
 	require.Equal(t, "primkey1", key)
 
-	key, err = GetKeyByIndex(idxs[1], ds.(datastore.TxnDatastore), item)
+	key, err = GetKeyByIndex(idxs[1], txn, item)
 	require.True(t, err != nil)
 
-	results, err := GetKeysByIndexParts(ds.(datastore.TxnDatastore), idxs[1].Prefix, idxs[1].Name, []string{item.Slice[0]}, false, 1)
+	results, err := GetKeysByIndexParts(txn, idxs[1].Prefix, idxs[1].Name, []string{item.Slice[0]}, false, 1)
 	require.NoError(t, err)
 
 	res := <-results.Next()

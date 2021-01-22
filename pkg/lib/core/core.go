@@ -472,6 +472,9 @@ func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID
 				}
 				var block *smartBlock
 				id := val.ThreadID().String()
+				if id == a.predefinedBlockIds.Account {
+					continue
+				}
 				if block, ok = smartBlocksCache[id]; !ok {
 					if block, err = a.GetSmartBlock(id); err != nil {
 						log.Errorf("failed to open smartblock %s: %v", id, err)

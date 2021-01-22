@@ -44,6 +44,10 @@ type Block interface {
 	UpdateRelation(relationKey string, relation pbrelation.Relation) error
 	DeleteRelation(relationKey string) error
 
+	AddRelationOption(relationKey string, opt pbrelation.RelationOption) error
+	UpdateRelationOption(relationKey string, opt pbrelation.RelationOption) error
+	DeleteRelationOption(relationKey string, optId string) error
+
 	GetSource() string
 	SetSource(source string) error
 	SetActiveView(activeView string)
@@ -124,7 +128,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		for _, rel1 := range d.content.Relations {
 			if rel1.Key == rel2.Key {
 				found = true
-				changed = !pbtypes.RelationEqual(rel1, rel2)
+				changed = !pbtypes.RelationEqualOmitDictionary(rel1, rel2)
 				break
 			}
 		}
@@ -160,11 +164,6 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	}
 
 	return
-}
-
-// SetAggregatedOptions injects virtual field(NOT SAVED) with aggregated options into the state
-func (s *Dataview) SetAggregatedOptions(aggregatedOptions []*model.BlockContentDataviewAggregatedOptions) {
-	s.content.AggregatedOptions = aggregatedOptions
 }
 
 // AddView adds a view to the dataview. It doesn't fills any missing field excepting id
@@ -331,7 +330,10 @@ func (l *Dataview) HasSmartIds() bool {
 
 func (td *Dataview) ModelToSave() *model.Block {
 	b := pbtypes.CopyBlock(td.Model())
-	b.Content.(*model.BlockContentOfDataview).Dataview.AggregatedOptions = nil
+	for _, rel := range b.Content.(*model.BlockContentOfDataview).Dataview.Relations {
+		// reset all selectDict
+		rel.SelectDict = nil
+	}
 	b.Content.(*model.BlockContentOfDataview).Dataview.ActiveView = ""
 	return b
 }
@@ -394,4 +396,65 @@ func (d *Dataview) DetailsApply(s simple.DetailsService) {
 
 func (d *Dataview) SetActiveView(activeView string) {
 	d.content.ActiveView = activeView
+}
+
+func (d *Dataview) AddRelationOption(relationKey string, option pbrelation.RelationOption) error {
+	for _, rel := range d.content.Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+
+		for _, opt := range rel.SelectDict {
+			if option.Id == opt.Id {
+				return fmt.Errorf("option already exists")
+			}
+		}
+		if option.Scope != pbrelation.RelationOption_local {
+			return fmt.Errorf("incorrect option scope")
+		}
+
+		rel.SelectDict = append(rel.SelectDict, &option)
+	}
+	return nil
+}
+
+func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.RelationOption) error {
+	for _, rel := range d.content.Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+
+		if option.Scope != pbrelation.RelationOption_local {
+			return fmt.Errorf("incorrect option scope")
+		}
+
+		for i, opt := range rel.SelectDict {
+			if option.Id == opt.Id {
+				opt2 := option
+				rel.SelectDict[i] = &opt2
+				return nil
+			}
+		}
+
+		return fmt.Errorf("option not exists")
+	}
+	return nil
+}
+
+func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error {
+	for _, rel := range d.content.Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+
+		for i, opt := range rel.SelectDict {
+			if optId == opt.Id {
+				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
+				return nil
+			}
+		}
+
+		return fmt.Errorf("option not exists")
+	}
+	return nil
 }

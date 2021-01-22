@@ -164,7 +164,6 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		return m
 	}
 	var sbId string
-	var relations []*pbrelation.Relation
 	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(bundle.RequiredInternalRelations))
 
 	for _, rel := range bundle.RequiredInternalRelations {
@@ -195,15 +194,11 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 				bundle.RelationKeyType.String():      pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
 				bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
 			},
-		}, nil)
+		}, req.ObjectType.Relations)
 		if err != nil {
 			return err
 		}
 
-		relations, err = bs.AddExtraRelations(sbId, req.ObjectType.Relations)
-		if err != nil {
-			return err
-		}
 		return nil
 	})
 
@@ -212,7 +207,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 
 	otype := req.ObjectType
-	otype.Relations = relations
+	otype.Relations = req.ObjectType.Relations
 	otype.Url = customObjectTypeURLPrefix + sbId
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }

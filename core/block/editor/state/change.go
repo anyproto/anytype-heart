@@ -171,8 +171,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 }
 
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
-	rels := s.ExtraRelations()
-	for _, rel := range rels {
+	for _, rel := range s.ExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
 			log.Warnf("changeRelationAdd, relation already exists")
@@ -185,12 +184,12 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(rels, rel)
+	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), rel)
 	return nil
 }
 
 func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
-	rels := s.ExtraRelations()
+	rels := pbtypes.CopyRelations(s.ExtraRelations())
 	for i, rel := range rels {
 		if rel.Key == remove.Key {
 			s.extraRelations = append(rels[:i], rels[i+1:]...)
@@ -203,8 +202,8 @@ func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
 }
 
 func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
-	for _, rel := range s.ExtraRelations() {
-		// todo: copy slice?
+	rels := pbtypes.CopyRelations(s.ExtraRelations())
+	for _, rel := range rels {
 		if rel.Key != update.Key {
 			continue
 		}
@@ -216,7 +215,11 @@ func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
 			rel.Name = val.Name
 		case *pb.ChangeRelationUpdateValueOfDefaultValue:
 			rel.DefaultValue = val.DefaultValue
+		case *pb.ChangeRelationUpdateValueOfSelectDict:
+			rel.SelectDict = val.SelectDict.Dict
 		}
+		s.extraRelations = rels
+
 		return nil
 	}
 
@@ -508,7 +511,7 @@ func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation)
 		})
 	}
 
-	if pbtypes.RelationSelectDictEqual(prev.SelectDict, new.SelectDict) {
+	if !pbtypes.RelationSelectDictEqual(prev.SelectDict, new.SelectDict) {
 		// todo: CRDT SelectDict patches
 		updates = append(updates, &pb.ChangeRelationUpdate{
 			Key:   prev.Key,

@@ -129,10 +129,10 @@ func (mw *Middleware) ObjectRelationDelete(req *pb.RpcObjectRelationDeleteReques
 	return response(pb.RpcObjectRelationDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectRelationSelectOptionAdd(req *pb.RpcObjectRelationSelectOptionAddRequest) *pb.RpcObjectRelationSelectOptionAddResponse {
+func (mw *Middleware) ObjectRelationOptionAdd(req *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(opt *pbrelation.RelationSelectOption, code pb.RpcObjectRelationSelectOptionAddResponseErrorCode, err error) *pb.RpcObjectRelationSelectOptionAddResponse {
-		m := &pb.RpcObjectRelationSelectOptionAddResponse{Option: opt, Error: &pb.RpcObjectRelationSelectOptionAddResponseError{Code: code}}
+	response := func(opt *pbrelation.RelationOption, code pb.RpcObjectRelationOptionAddResponseErrorCode, err error) *pb.RpcObjectRelationOptionAddResponse {
+		m := &pb.RpcObjectRelationOptionAddResponse{Option: opt, Error: &pb.RpcObjectRelationOptionAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -140,23 +140,23 @@ func (mw *Middleware) ObjectRelationSelectOptionAdd(req *pb.RpcObjectRelationSel
 		}
 		return m
 	}
-	var opt *pbrelation.RelationSelectOption
+	var opt *pbrelation.RelationOption
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		var err2 error
-		opt, err2 = bs.AddExtraRelationSelectOption(ctx, *req)
+		opt, err2 = bs.AddExtraRelationOption(ctx, *req)
 		return err2
 	})
 	if err != nil {
-		return response(nil, pb.RpcObjectRelationSelectOptionAddResponseError_BAD_INPUT, err)
+		return response(nil, pb.RpcObjectRelationOptionAddResponseError_BAD_INPUT, err)
 	}
 
-	return response(opt, pb.RpcObjectRelationSelectOptionAddResponseError_NULL, nil)
+	return response(opt, pb.RpcObjectRelationOptionAddResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectRelationSelectOptionUpdate(req *pb.RpcObjectRelationSelectOptionUpdateRequest) *pb.RpcObjectRelationSelectOptionUpdateResponse {
+func (mw *Middleware) ObjectRelationOptionUpdate(req *pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectRelationSelectOptionUpdateResponseErrorCode, err error) *pb.RpcObjectRelationSelectOptionUpdateResponse {
-		m := &pb.RpcObjectRelationSelectOptionUpdateResponse{Error: &pb.RpcObjectRelationSelectOptionUpdateResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationOptionUpdateResponseErrorCode, err error) *pb.RpcObjectRelationOptionUpdateResponse {
+		m := &pb.RpcObjectRelationOptionUpdateResponse{Error: &pb.RpcObjectRelationOptionUpdateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -165,19 +165,19 @@ func (mw *Middleware) ObjectRelationSelectOptionUpdate(req *pb.RpcObjectRelation
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateExtraRelationSelectOption(ctx, *req)
+		return bs.UpdateExtraRelationOption(ctx, *req)
 	})
 	if err != nil {
-		return response(pb.RpcObjectRelationSelectOptionUpdateResponseError_BAD_INPUT, err)
+		return response(pb.RpcObjectRelationOptionUpdateResponseError_BAD_INPUT, err)
 	}
 
-	return response(pb.RpcObjectRelationSelectOptionUpdateResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationOptionUpdateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectRelationSelectOptionDelete(req *pb.RpcObjectRelationSelectOptionDeleteRequest) *pb.RpcObjectRelationSelectOptionDeleteResponse {
+func (mw *Middleware) ObjectRelationOptionDelete(req *pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectRelationSelectOptionDeleteResponseErrorCode, err error) *pb.RpcObjectRelationSelectOptionDeleteResponse {
-		m := &pb.RpcObjectRelationSelectOptionDeleteResponse{Error: &pb.RpcObjectRelationSelectOptionDeleteResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationOptionDeleteResponseErrorCode, err error) *pb.RpcObjectRelationOptionDeleteResponse {
+		m := &pb.RpcObjectRelationOptionDeleteResponse{Error: &pb.RpcObjectRelationOptionDeleteResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -186,13 +186,13 @@ func (mw *Middleware) ObjectRelationSelectOptionDelete(req *pb.RpcObjectRelation
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DeleteExtraRelationSelectOption(ctx, *req)
+		return bs.DeleteExtraRelationOption(ctx, *req)
 	})
 	if err != nil {
-		return response(pb.RpcObjectRelationSelectOptionDeleteResponseError_BAD_INPUT, err)
+		return response(pb.RpcObjectRelationOptionDeleteResponseError_BAD_INPUT, err)
 	}
 
-	return response(pb.RpcObjectRelationSelectOptionDeleteResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationOptionDeleteResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationListAvailable(req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {

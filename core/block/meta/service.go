@@ -23,7 +23,7 @@ type Service interface {
 	PubSub() PubSub
 	ReportChange(m Meta)
 	Close() (err error)
-	FetchMeta(ids []string) (details []Meta)
+	FetchMeta(ids []string) (metas []Meta)
 	FetchObjectTypes(objectTypeUrls []string) []*pbrelation.ObjectType
 }
 
@@ -54,7 +54,7 @@ func (s *service) ReportChange(m Meta) {
 	s.ps.setMeta(m)
 }
 
-func (s *service) FetchMeta(ids []string) (details []Meta) {
+func (s *service) FetchMeta(ids []string) (metas []Meta) {
 	if len(ids) == 0 {
 		return
 	}
@@ -69,8 +69,8 @@ func (s *service) FetchMeta(ids []string) (details []Meta) {
 		if done {
 			return
 		}
-		details = append(details, d)
-		if len(details) == len(ids) {
+		metas = append(metas, d)
+		if len(metas) == len(ids) {
 			close(filled)
 			done = true
 		}
