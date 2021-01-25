@@ -128,7 +128,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		for _, rel1 := range d.content.Relations {
 			if rel1.Key == rel2.Key {
 				found = true
-				changed = !pbtypes.RelationEqualOmitDictionary(rel1, rel2)
+				changed = !pbtypes.RelationEqual(rel1, rel2)
 				break
 			}
 		}
