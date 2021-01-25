@@ -43,7 +43,7 @@ func (i *file) Details() (*types.Struct, error) {
 			bundle.RelationKeyType.String():         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
 			bundle.RelationKeyFileMimeType.String(): pbtypes.String(meta.Media),
 			bundle.RelationKeyName.String():         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
-			bundle.RelationKeyFileExt.String():      pbtypes.String(strings.TrimPrefix(".", filepath.Ext(meta.Name))),
+			bundle.RelationKeyFileExt.String():      pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), ".")),
 			bundle.RelationKeySizeInBytes.String():  pbtypes.Float64(float64(meta.Size)),
 			bundle.RelationKeyAddedDate.String():    pbtypes.Float64(float64(meta.Added.Unix())),
 		},
