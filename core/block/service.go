@@ -455,7 +455,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 	}
 	id = csm.ID()
 
-	typesInDetails := pbtypes.GetStringList(details, "type")
+	typesInDetails := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if len(typesInDetails) == 0 {
 		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
 			typesInDetails = []string{ot.URL()}
@@ -1509,16 +1509,9 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 			},
 		},
 	}
+	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
+	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
 
-	var name, icon string
-	if req.Details != nil && req.Details.Fields != nil {
-		if req.Details.Fields["name"] != nil {
-			name = req.Details.Fields["name"].GetStringValue()
-		}
-		if req.Details.Fields["iconEmoji"] != nil {
-			icon = req.Details.Fields["iconEmoji"].GetStringValue()
-		}
-	}
 	if name == "" {
 		name = objType.Name + " set"
 	}

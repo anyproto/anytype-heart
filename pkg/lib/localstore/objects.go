@@ -331,7 +331,7 @@ func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q dat
 
 	var ids []string
 	for _, record := range records {
-		ids = append(ids, pbtypes.GetString(record.Details, "id"))
+		ids = append(ids, pbtypes.GetString(record.Details, bundle.RelationKeyId.String()))
 	}
 
 	sub.Subscribe(ids)
@@ -1197,16 +1197,13 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	if details.Details == nil || details.Details.Fields == nil {
 		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	details.Details.Fields["id"] = pbtypes.String(id)
+	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	var objectTypes []string
 	// remove hardcoded type
-	// todo: maybe we should move it to a separate key?
-	if details.Details != nil && details.Details.Fields != nil && details.Details.Fields["type"] != nil {
-		vals := details.Details.Fields["type"].GetListValue()
-		for _, val := range vals.Values {
-			objectTypes = append(objectTypes, val.GetStringValue())
-		}
+	otypes := pbtypes.GetStringList(details.Details, bundle.RelationKeyType.String())
+	for _, ot := range otypes {
+		objectTypes = append(objectTypes, ot)
 	}
 
 	var snippet string

@@ -249,6 +249,15 @@
     "source": "details"
   },
   {
+    "description": "1-image, 2-color, 3-gradient, 4-prebuilt bg image. Value stored in coverId",
+    "format": "number",
+    "hidden": true,
+    "key": "coverType",
+    "name": "Cover type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Image y offset of the provided image",
     "format": "number",
     "hidden": true,
@@ -275,6 +284,15 @@
     "objectTypes": [
       "objectType"
     ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Date when the file were added into the anytype",
+    "format": "date",
+    "hidden": false,
+    "key": "addedDate",
+    "name": "Added date",
     "readonly": false,
     "source": "details"
   },
@@ -313,6 +331,14 @@
     "hidden": false,
     "key": "name",
     "name": "Name",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "focalRatio",
+    "name": "Focal ratio",
     "readonly": false,
     "source": "details"
   },
@@ -414,13 +440,11 @@
     "source": "details"
   },
   {
-    "format": "object",
+    "description": "Can contains image hash, color or prebuild bg id, depends on coverType relation",
+    "format": "title",
     "hidden": true,
     "key": "coverId",
-    "name": "Cover image",
-    "objectTypes": [
-      "image"
-    ],
+    "name": "Cover image or color",
     "readonly": false,
     "source": "details"
   },
@@ -464,6 +488,14 @@
     "name": "Gender",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": false,
+    "key": "fileExt",
+    "name": "File extension",
+    "readonly": false,
+    "source": "derived"
   },
   {
     "format": "object",

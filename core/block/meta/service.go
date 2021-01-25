@@ -112,14 +112,14 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 	metas := s.FetchMeta(customOtypeIds)
 	for _, meta := range metas {
 		objectType := &pbrelation.ObjectType{}
-		if name := pbtypes.GetString(meta.Details, "name"); name != "" {
+		if name := pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()); name != "" {
 			objectType.Name = name
 		}
-		if layout := pbtypes.GetFloat64(meta.Details, "layout"); layout != 0.0 {
+		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLayout.String()); layout != 0.0 {
 			objectType.Layout = pbrelation.ObjectTypeLayout(int(layout))
 		}
 
-		if iconEmoji := pbtypes.GetString(meta.Details, "iconEmoji"); iconEmoji != "" {
+		if iconEmoji := pbtypes.GetString(meta.Details, bundle.RelationKeyIconEmoji.String()); iconEmoji != "" {
 			objectType.IconEmoji = iconEmoji
 		}
 

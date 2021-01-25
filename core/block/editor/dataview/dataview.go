@@ -573,7 +573,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 	sub := dv.depsUpdatesSubscription
 	go func() {
 		for _, det := range depDetails {
-			sub.Publish(pbtypes.GetString(det.Details, "id"), det.Details)
+			sub.Publish(pbtypes.GetString(det.Details, bundle.RelationKeyId.String()), det.Details)
 		}
 	}()
 	return nil
@@ -746,7 +746,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	for _, depEntry := range depEntries {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDetails{BlockSetDetails: &pb.EventBlockSetDetails{Id: pbtypes.GetString(depEntry.Details, "id"), Details: depEntry.Details}}})
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDetails{BlockSetDetails: &pb.EventBlockSetDetails{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
 	}
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
@@ -773,7 +773,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				d.SendEvent([]*pb.EventMessage{
 					{Value: &pb.EventMessageValueOfBlockSetDetails{
 						BlockSetDetails: &pb.EventBlockSetDetails{
-							Id:      pbtypes.GetString(rec, "id"),
+							Id:      pbtypes.GetString(rec, bundle.RelationKeyId.String()),
 							Details: rec,
 						}}}})
 			}
@@ -800,7 +800,7 @@ func getEntryID(entry database.Record) string {
 		return ""
 	}
 
-	return entry.Details.Fields["id"].GetStringValue()
+	return pbtypes.GetString(entry.Details, bundle.RelationKeyId.String())
 }
 
 type recordInsertedAtPosition struct {

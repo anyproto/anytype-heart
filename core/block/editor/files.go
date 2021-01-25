@@ -46,20 +46,20 @@ func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		return err
 	}
 	d := doc.Details()
-	fileType := detectFileType(pbtypes.GetString(d, "fileMimeType"))
+	fileType := detectFileType(pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String()))
 
 	var blocks []*model.Block
 	blocks = append(blocks, &model.Block{
 		Id: "file",
 		Content: &model.BlockContentOfFile{
 			File: &model.BlockContentFile{
-				Name:    pbtypes.GetString(d, "name"),
-				Mime:    pbtypes.GetString(d, "fileMimeType"),
+				Name:    pbtypes.GetString(d, bundle.RelationKeyName.String()),
+				Mime:    pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String()),
 				Hash:    p.Id(),
-				Type:    detectFileType(pbtypes.GetString(d, "fileMimeType")),
-				Size_:   int64(pbtypes.GetFloat64(d, "sizeBytes")),
+				Type:    detectFileType(pbtypes.GetString(d, bundle.RelationKeyFileMimeType.String())),
+				Size_:   int64(pbtypes.GetFloat64(d, bundle.RelationKeySizeInBytes.String())),
 				State:   model.BlockContentFile_Done,
-				AddedAt: int64(pbtypes.GetFloat64(d, "addedDate")),
+				AddedAt: int64(pbtypes.GetFloat64(d, bundle.RelationKeyFileMimeType.String())),
 			},
 		}})
 

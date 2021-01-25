@@ -169,7 +169,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 	if err := i.store.UpdateObject(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}, nil, ""); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {
-		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, "name"))
+		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
 	}
 
 	if err := i.store.AddToIndexQueue(id); err != nil {

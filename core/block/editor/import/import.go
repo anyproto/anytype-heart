@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -743,7 +744,7 @@ func (imp *importImpl) convertCsvToLinks(csvFileName string, files map[string]*f
 		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
 			file.hasInboundLinks = true
 			fields := make(map[string]*types.Value)
-			fields["name"] = &types.Value{
+			fields[bundle.RelationKeyName.String()] = &types.Value{
 				Kind: &types.Value_StringValue{StringValue: file.title},
 			}
 

@@ -39,13 +39,16 @@ const (
 	RelationKeyArtist                RelationKey = "artist"
 	RelationKeyDueDate               RelationKey = "dueDate"
 	RelationKeyIconEmoji             RelationKey = "iconEmoji"
+	RelationKeyCoverType             RelationKey = "coverType"
 	RelationKeyCoverY                RelationKey = "coverY"
 	RelationKeySizeInBytes           RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf          RelationKey = "collectionOf"
+	RelationKeyAddedDate             RelationKey = "addedDate"
 	RelationKeyAssignee              RelationKey = "assignee"
 	RelationKeyExposure              RelationKey = "exposure"
 	RelationKeyAudioGenre            RelationKey = "audioGenre"
 	RelationKeyName                  RelationKey = "name"
+	RelationKeyFocalRatio            RelationKey = "focalRatio"
 	RelationKeyPriority              RelationKey = "priority"
 	RelationKeyFileMimeType          RelationKey = "fileMimeType"
 	RelationKeyType                  RelationKey = "type"
@@ -62,11 +65,22 @@ const (
 	RelationKeyWidthInPixels         RelationKey = "widthInPixels"
 	RelationKeySetOf                 RelationKey = "setOf"
 	RelationKeyGender                RelationKey = "gender"
+	RelationKeyFileExt               RelationKey = "fileExt"
 	RelationKeyFeaturedRelations     RelationKey = "featuredRelations"
 )
 
 var (
 	relations = map[RelationKey]*relation.Relation{
+		RelationKeyAddedDate: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Date when the file were added into the anytype",
+			Format:      relation.RelationFormat_date,
+			Hidden:      false,
+			Key:         "addedDate",
+			Name:        "Added date",
+			ReadOnly:    false,
+		},
 		RelationKeyAperture: {
 
 			DataSource:  relation.Relation_details,
@@ -183,12 +197,11 @@ var (
 		RelationKeyCoverId: {
 
 			DataSource:  relation.Relation_details,
-			Description: "",
-			Format:      relation.RelationFormat_object,
+			Description: "Can contains image hash, color or prebuild bg id, depends on coverType relation",
+			Format:      relation.RelationFormat_title,
 			Hidden:      true,
 			Key:         "coverId",
-			Name:        "Cover image",
-			ObjectTypes: []string{TypePrefix + "image"},
+			Name:        "Cover image or color",
 			ReadOnly:    false,
 		},
 		RelationKeyCoverScale: {
@@ -199,6 +212,16 @@ var (
 			Hidden:      true,
 			Key:         "coverScale",
 			Name:        "Cover scale",
+			ReadOnly:    false,
+		},
+		RelationKeyCoverType: {
+
+			DataSource:  relation.Relation_details,
+			Description: "1-image, 2-color, 3-gradient, 4-prebuilt bg image. Value stored in coverId",
+			Format:      relation.RelationFormat_number,
+			Hidden:      true,
+			Key:         "coverType",
+			Name:        "Cover type",
 			ReadOnly:    false,
 		},
 		RelationKeyCoverX: {
@@ -313,6 +336,16 @@ var (
 			ObjectTypes: []string{TypePrefix + "relation"},
 			ReadOnly:    false,
 		},
+		RelationKeyFileExt: {
+
+			DataSource:  relation.Relation_derived,
+			Description: "",
+			Format:      relation.RelationFormat_title,
+			Hidden:      false,
+			Key:         "fileExt",
+			Name:        "File extension",
+			ReadOnly:    false,
+		},
 		RelationKeyFileMimeType: {
 
 			DataSource:  relation.Relation_details,
@@ -321,6 +354,16 @@ var (
 			Hidden:      true,
 			Key:         "fileMimeType",
 			Name:        "Mime type",
+			ReadOnly:    false,
+		},
+		RelationKeyFocalRatio: {
+
+			DataSource:  relation.Relation_details,
+			Description: "",
+			Format:      relation.RelationFormat_number,
+			Hidden:      false,
+			Key:         "focalRatio",
+			Name:        "Focal ratio",
 			ReadOnly:    false,
 		},
 		RelationKeyGender: {

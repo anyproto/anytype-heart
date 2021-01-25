@@ -76,21 +76,21 @@ var WithLayout = func(layout relation.ObjectTypeLayout) StateTransformer {
 
 var WithDetailName = func(name string) StateTransformer {
 	return func(s *state.State) {
-		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields["name"] != nil {
+		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[bundle.RelationKeyName.String()] != nil {
 			return
 		}
 
-		s.SetDetail("name", pbtypes.String(name))
+		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
 	}
 }
 
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
 	return func(s *state.State) {
-		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields["iconEmoji"] != nil {
+		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[bundle.RelationKeyIconEmoji.String()] != nil {
 			return
 		}
 
-		s.SetDetail("iconEmoji", pbtypes.String(iconEmoji))
+		s.SetDetail(bundle.RelationKeyIconEmoji.String(), pbtypes.String(iconEmoji))
 	}
 }
 

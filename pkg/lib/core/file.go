@@ -39,12 +39,13 @@ func (i *file) Details() (*types.Struct, error) {
 	meta := i.Meta()
 	return &types.Struct{
 		Fields: map[string]*types.Value{
-			"id":           pbtypes.String(i.hash),
-			"type":         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
-			"fileMimeType": pbtypes.String(meta.Media),
-			"name":         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
-			"sizeInBytes":  pbtypes.Float64(float64(meta.Size)),
-			"addedDate":    pbtypes.Float64(float64(meta.Added.Unix())),
+			bundle.RelationKeyId.String():           pbtypes.String(i.hash),
+			bundle.RelationKeyType.String():         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
+			bundle.RelationKeyFileMimeType.String(): pbtypes.String(meta.Media),
+			bundle.RelationKeyName.String():         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
+			bundle.RelationKeyFileExt.String():      pbtypes.String(filepath.Ext(meta.Name)),
+			bundle.RelationKeySizeInBytes.String():  pbtypes.Float64(float64(meta.Size)),
+			bundle.RelationKeyAddedDate.String():    pbtypes.Float64(float64(meta.Added.Unix())),
 		},
 	}, nil
 }

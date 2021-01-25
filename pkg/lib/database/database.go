@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -118,7 +119,7 @@ func (filters filters) Filter(e query.Entry) bool {
 
 	var foundType bool
 	if filters.Schema != nil {
-		if t, ok := details.Details.Fields["type"]; ok {
+		if t, ok := details.Details.Fields[bundle.RelationKeyType.String()]; ok {
 			if list := t.GetListValue(); list != nil {
 				for _, val := range list.Values {
 					if val.GetStringValue() == filters.Schema.ObjType.Url {

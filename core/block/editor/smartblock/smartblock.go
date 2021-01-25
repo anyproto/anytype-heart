@@ -584,7 +584,8 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 			}
 		}
 		if !found {
-			return fmt.Errorf("relation for detail '%s' not exists", k)
+			// todo: make this an error after stabilizing of relations names and creating of migrations
+			log.Errorf("relation for detail '%s' doesn't exist", k)
 		}
 	}
 
@@ -1074,7 +1075,7 @@ func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
 	depIds := slice.Remove(sb.dependentSmartIds(), sb.Id())
 	return indexer.SearchInfo{
 		Id:      sb.Id(),
-		Title:   pbtypes.GetString(sb.Details(), "name"),
+		Title:   pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String()),
 		Snippet: sb.Snippet(),
 		Text:    sb.Doc.SearchText(),
 		Links:   depIds,
