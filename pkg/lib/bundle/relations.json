@@ -416,7 +416,7 @@
   {
     "format": "object",
     "hidden": true,
-    "key": "coverImage",
+    "key": "coverId",
     "name": "Cover image",
     "objectTypes": [
       "image"

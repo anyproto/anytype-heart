@@ -57,7 +57,7 @@ const (
 	RelationKeyDescription           RelationKey = "description"
 	RelationKeyId                    RelationKey = "id"
 	RelationKeyCameraIso             RelationKey = "cameraIso"
-	RelationKeyCoverImage            RelationKey = "coverImage"
+	RelationKeyCoverId               RelationKey = "coverId"
 	RelationKeyLastModifiedBy        RelationKey = "lastModifiedBy"
 	RelationKeyWidthInPixels         RelationKey = "widthInPixels"
 	RelationKeySetOf                 RelationKey = "setOf"
@@ -180,13 +180,13 @@ var (
 			Name:        "Composer",
 			ReadOnly:    false,
 		},
-		RelationKeyCoverImage: {
+		RelationKeyCoverId: {
 
 			DataSource:  relation.Relation_details,
 			Description: "",
 			Format:      relation.RelationFormat_object,
 			Hidden:      true,
-			Key:         "coverImage",
+			Key:         "coverId",
 			Name:        "Cover image",
 			ObjectTypes: []string{TypePrefix + "image"},
 			ReadOnly:    false,

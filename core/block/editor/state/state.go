@@ -33,7 +33,7 @@ var (
 	ErrRestricted = errors.New("restricted")
 )
 
-var DetailsFileFields = [...]string{"coverId", "iconImage"}
+var DetailsFileFields = [...]string{bundle.RelationKeyCoverId.String(), bundle.RelationKeyIconImage.String()}
 
 type Doc interface {
 	RootId() string
