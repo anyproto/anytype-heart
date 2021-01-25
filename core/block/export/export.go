@@ -116,19 +116,23 @@ func (e *export) writeDoc(wr writer, queue process.Queue, docId string) (err err
 		}
 		for _, fh := range conv.FileHashes() {
 			fileHash := fh
-			queue.Add(func() {
+			if err = queue.Add(func() {
 				if werr := e.saveFile(wr, fileHash); werr != nil {
 					log.With("hash", fileHash).Warnf("can't save file: %v", werr)
 				}
-			})
+			}); err != nil {
+				return err
+			}
 		}
 		for _, fh := range conv.ImageHashes() {
 			fileHash := fh
-			queue.Add(func() {
+			if err = queue.Add(func() {
 				if werr := e.saveImage(wr, fileHash); werr != nil {
 					log.With("hash", fileHash).Warnf("can't save image: %v", werr)
 				}
-			})
+			}); err != nil {
+				return err
+			}
 		}
 		return nil
 	})

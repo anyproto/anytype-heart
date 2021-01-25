@@ -43,10 +43,12 @@ var filterNotSystemObjects = &filterObjectTypes{
 		smartblock.SmartBlockTypeHome,
 		smartblock.SmartBlockTypeObjectType,
 	},
+	not: true,
 }
 
 type filterObjectTypes struct {
 	objectTypes []smartblock.SmartBlockType
+	not         bool
 }
 
 func (m *filterObjectTypes) Filter(e query.Entry) bool {
@@ -61,10 +63,10 @@ func (m *filterObjectTypes) Filter(e query.Entry) bool {
 
 	for _, ot := range m.objectTypes {
 		if t == ot {
-			return false
+			return !m.not
 		}
 	}
-	return true
+	return m.not
 }
 
 func NewObjectStore(ds ds.TxnDatastore, fts ftsearch.FTSearch) ObjectStore {
@@ -222,7 +224,7 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{&filterObjectTypes{objectTypes}}, dsq.Filters...)
+		dsq.Filters = append([]query.Filter{&filterObjectTypes{objectTypes: objectTypes}}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
