@@ -1005,7 +1005,27 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	return mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
+	rels := mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
+	var objType string
+	objTypes := sb.ObjectTypes()
+	if len(objTypes) > 0 {
+		objType = objTypes[0]
+	}
+	for _, rel := range rels {
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			continue
+		}
+
+		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
+		if err != nil {
+			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
+			continue
+		}
+
+		rel.SelectDict = options
+	}
+
+	return rels
 }
 
 func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
