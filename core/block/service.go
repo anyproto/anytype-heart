@@ -131,8 +131,8 @@ type Service interface {
 	CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (id string, err error)
 	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
 
-	Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) error
-	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) error
+	Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (pb.RpcBlockUndoRedoCounter, error)
+	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (pb.RpcBlockUndoRedoCounter, error)
 
 	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
@@ -1016,16 +1016,20 @@ func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
 	})
 }
 
-func (s *service) Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (err error) {
-	return s.DoHistory(req.ContextId, func(b basic.IHistory) error {
-		return b.Undo(ctx)
+func (s *service) Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (counters pb.RpcBlockUndoRedoCounter, err error) {
+	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
+		counters, err = b.Undo(ctx)
+		return err
 	})
+	return
 }
 
-func (s *service) Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (err error) {
-	return s.DoHistory(req.ContextId, func(b basic.IHistory) error {
-		return b.Redo(ctx)
+func (s *service) Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (counters pb.RpcBlockUndoRedoCounter, err error) {
+	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
+		counters, err = b.Redo(ctx)
+		return err
 	})
+	return
 }
 
 func (s *service) BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error) {

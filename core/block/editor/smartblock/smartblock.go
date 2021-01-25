@@ -3,7 +3,6 @@ package smartblock
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"sort"
 	"strings"
 	"sync"
@@ -17,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
-	"github.com/anytypeio/go-anytype-middleware/core/converter/md"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -467,9 +465,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(&act) {
 		sb.checkSubscriptions()
 	}
-
-	ioutil.WriteFile("/home/che/md/" + sb.Id(), []byte(md.NewMDConverter(sb.Anytype(), sb.Doc.(*state.State)).Convert()), 0777)
-
 	return
 }
 

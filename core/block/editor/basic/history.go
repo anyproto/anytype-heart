@@ -3,12 +3,13 @@ package basic
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type IHistory interface {
-	Undo(*state.Context) (err error)
-	Redo(*state.Context) (err error)
+	Undo(*state.Context) (counters pb.RpcBlockUndoRedoCounter, err error)
+	Redo(*state.Context) (counters pb.RpcBlockUndoRedoCounter, err error)
 }
 
 func NewHistory(sb smartblock.SmartBlock) IHistory {
@@ -19,7 +20,7 @@ type history struct {
 	smartblock.SmartBlock
 }
 
-func (h *history) Undo(ctx *state.Context) (err error) {
+func (h *history) Undo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Previous()
 	if err != nil {
@@ -38,10 +39,14 @@ func (h *history) Undo(ctx *state.Context) (err error) {
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.Before))
 	}
-	return h.Apply(s, smartblock.NoHistory)
+	if err = h.Apply(s, smartblock.NoHistory); err != nil {
+		return
+	}
+	counters.Undo, counters.Redo = h.History().Counters()
+	return
 }
 
-func (h *history) Redo(ctx *state.Context) (err error) {
+func (h *history) Redo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter, err error) {
 	s := h.NewStateCtx(ctx)
 	action, err := h.History().Next()
 	if err != nil {
@@ -60,5 +65,9 @@ func (h *history) Redo(ctx *state.Context) (err error) {
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.After))
 	}
-	return h.Apply(s, smartblock.NoHistory)
+	if err = h.Apply(s, smartblock.NoHistory); err != nil {
+		return
+	}
+	counters.Undo, counters.Redo = h.History().Counters()
+	return
 }

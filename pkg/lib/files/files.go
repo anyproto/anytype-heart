@@ -37,6 +37,7 @@ import (
 const maxPinAttempts = 10
 
 var log = logging.Logger("anytype-files")
+var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
 
 type Service struct {
 	store localstore.FileStore
@@ -395,7 +396,7 @@ func (s *Service) fileInfoFromPath(target string, path string, key string) (*sto
 		}
 		err = proto.Unmarshal(b, &file)
 		if err != nil || file.Hash == "" {
-			return nil, fmt.Errorf("failed to unmarshal unencrypted file info")
+			return nil, ErrorFailedToUnmarhalNotencrypted
 		}
 	}
 
@@ -698,7 +699,8 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists
 
 	keys, err := s.store.GetFileKeys(hash)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get file keys from cache: %w", err)
+		// no keys means file is not encrypted or keys are missing
+		log.Debugf("failed to get file keys from cache: %w", err)
 	}
 
 	var files []*storage.FileInfo
