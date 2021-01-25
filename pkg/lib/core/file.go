@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -40,6 +41,7 @@ func (i *file) Details() (*types.Struct, error) {
 	return &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():           pbtypes.String(i.hash),
+			bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(relation.ObjectType_file)),
 			bundle.RelationKeyType.String():         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
 			bundle.RelationKeyFileMimeType.String(): pbtypes.String(meta.Media),
 			bundle.RelationKeyName.String():         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),

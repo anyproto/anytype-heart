@@ -46,9 +46,10 @@ var migrations = []migration{
 	skipMigration,        // 6
 	addFilesMetaHash,     // 7
 	//addFilesToObjects,  // 8
-	reindexAll,        // 9
-	addFilesToObjects, // 10
+	reindexAll, // 9
+	//addFilesToObjects, // 10
 	addMissingLayout,  // 11
+	addFilesToObjects, // 12
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
