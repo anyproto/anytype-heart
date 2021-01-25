@@ -275,7 +275,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, bloc
 	} else {
 		db = target
 	}
-	sch := schema.New(objectType, nil)
+	sch := schema.New(objectType, tb.Model().GetDataview().Relations)
 	aggregatedRelations, err := db.AggregateRelations(&sch)
 	if err != nil {
 		return nil, err

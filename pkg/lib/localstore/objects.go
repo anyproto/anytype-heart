@@ -553,6 +553,17 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) ([]*pbrelation.Re
 	}
 
 	for _, r := range relationsUnsorted {
+		var found bool
+		for _, rel := range sch.Relations {
+			if r.Key == rel.Key {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+
 		b, err := isRelationBelongToType(txn, r.Key, sch.ObjType.Url)
 		if err != nil {
 			return nil, err
@@ -564,7 +575,7 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) ([]*pbrelation.Re
 		}
 	}
 
-	return append(rels1, rels2...), nil
+	return append(sch.Relations, append(rels1, rels2...)...), nil
 }
 
 /*func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error {
