@@ -61,10 +61,10 @@ func (m *filterObjectTypes) Filter(e query.Entry) bool {
 
 	for _, ot := range m.objectTypes {
 		if t == ot {
-			return true
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func NewObjectStore(ds ds.TxnDatastore, fts ftsearch.FTSearch) ObjectStore {
@@ -307,7 +307,7 @@ func (m *dsObjectStore) AggregateRelations(sch *schema.Schema) (relations []*pbr
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesRelationsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{&filterObjectTypes{}}, dsq.Filters...)
+	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, fmt.Errorf("error when querying ds: %w", err)

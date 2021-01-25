@@ -112,7 +112,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
 	}
 
-	thrdId, err := threadCreateID(thread.AccessControlled, blockType)
+	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
 	}
