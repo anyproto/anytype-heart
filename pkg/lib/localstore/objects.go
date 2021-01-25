@@ -59,10 +59,11 @@ func (m *filterObjectTypes) Filter(e query.Entry) bool {
 		return false
 	}
 
-	if t != smartblock.SmartBlockTypeArchive && t != smartblock.SmartBlockTypeHome && t != smartblock.SmartBlockTypeObjectType {
-		return true
+	for _, ot := range m.objectTypes {
+		if t == ot {
+			return true
+		}
 	}
-
 	return false
 }
 

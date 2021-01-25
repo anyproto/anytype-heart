@@ -368,6 +368,10 @@
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
     - [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response)
     - [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error)
+    - [Rpc.Export](#anytype.Rpc.Export)
+    - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
+    - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
+    - [Rpc.Export.Response.Error](#anytype.Rpc.Export.Response.Error)
     - [Rpc.ExternalDrop](#anytype.Rpc.ExternalDrop)
     - [Rpc.ExternalDrop.Content](#anytype.Rpc.ExternalDrop.Content)
     - [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request)
@@ -579,6 +583,8 @@
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.BlockList.TurnInto.Response.Error.Code](#anytype.Rpc.BlockList.TurnInto.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
+    - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
+    - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code)
@@ -942,6 +948,7 @@
 | HistoryShow | [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request) | [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response) |  |
 | HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
+| Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
 
  
@@ -6121,6 +6128,67 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.Export"></a>
+
+### Rpc.Export
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Export.Request"></a>
+
+### Rpc.Export.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  | the path where export files will place |
+| docIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
+| format | [Rpc.Export.Format](#anytype.Rpc.Export.Format) |  | export format |
+| zip | [bool](#bool) |  | save as zip file |
+
+
+
+
+
+
+<a name="anytype.Rpc.Export.Response"></a>
+
+### Rpc.Export.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Export.Response.Error](#anytype.Rpc.Export.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Export.Response.Error"></a>
+
+### Rpc.Export.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ExternalDrop"></a>
 
 ### Rpc.ExternalDrop
@@ -9007,6 +9075,30 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Export.Format"></a>
+
+### Rpc.Export.Format
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| MD | 0 |  |
+
+
+
+<a name="anytype.Rpc.Export.Response.Error.Code"></a>
+
+### Rpc.Export.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.ExternalDrop.Content.Response.Error.Code"></a>
 
 ### Rpc.ExternalDrop.Content.Response.Error.Code
@@ -11359,6 +11451,7 @@ Precondition: user A and user B opened the same block
 | ---- | ------ | ----------- |
 | DropFiles | 0 |  |
 | Import | 1 |  |
+| Export | 2 |  |
 
 
 

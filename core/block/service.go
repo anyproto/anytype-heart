@@ -72,6 +72,9 @@ func init() {
 }
 
 type Service interface {
+
+	Do(id string, apply func(b smartblock.SmartBlock) error) error
+
 	OpenBlock(ctx *state.Context, id string) error
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
@@ -159,6 +162,7 @@ type Service interface {
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
 
+	Process() process.Service
 	ProcessAdd(p process.Process) (err error)
 	ProcessCancel(id string) error
 
@@ -1064,6 +1068,10 @@ func (s *service) GetSearchInfo(id string) (info indexer.SearchInfo, err error) 
 		return
 	}
 	return
+}
+
+func (s *service) Process() process.Service {
+	return s.process
 }
 
 func (s *service) ProcessAdd(p process.Process) (err error) {
