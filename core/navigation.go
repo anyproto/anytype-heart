@@ -25,15 +25,17 @@ func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequ
 		return response(pb.RpcNavigationListObjectsResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 	objectTypes := []coresb.SmartBlockType{
-		coresb.SmartBlockTypeArchive,
-		coresb.SmartBlockTypeFile,
+		coresb.SmartBlockTypePage,
+		coresb.SmartBlockTypeProfilePage,
+		coresb.SmartBlockTypeHome,
+		coresb.SmartBlockTypeSet,
+		coresb.SmartBlockTypeObjectType,
 	}
 	if req.Context != pb.RpcNavigation_Navigation {
 		objectTypes = []coresb.SmartBlockType{
-			coresb.SmartBlockTypeSet,
-			coresb.SmartBlockTypeArchive,
-			coresb.SmartBlockTypeHome,
-			coresb.SmartBlockTypeFile,
+			coresb.SmartBlockTypePage,
+			coresb.SmartBlockTypeProfilePage,
+			coresb.SmartBlockTypeObjectType,
 		}
 	}
 	records, _, err := mw.Anytype.ObjectStore().QueryObjectInfo(database.Query{
