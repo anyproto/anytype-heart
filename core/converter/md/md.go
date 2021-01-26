@@ -171,10 +171,10 @@ func (h *MD) renderFile(b *model.Block, in *renderState) {
 	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
 	h.buf.WriteString(in.indent)
 	if file.Type == model.BlockContentFile_Image {
-		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, file.Hash+"_"+url.PathEscape(file.Name))
+		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
 		h.fileHashes = append(h.fileHashes, file.Hash)
 	} else {
-		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, file.Hash+"_"+url.PathEscape(file.Name))
+		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
 		h.imageHashes = append(h.imageHashes, file.Hash)
 	}
 }
@@ -183,7 +183,10 @@ func (h *MD) renderBookmark(b *model.Block, in *renderState) {
 	bm := b.GetBookmark()
 	if bm != nil && bm.Url != "" {
 		h.buf.WriteString(in.indent)
-		fmt.Fprintf(h.buf, "[%s](%s)    \n", escape.MarkdownCharacters(html.EscapeString(bm.Title)), bm.Url)
+		url, e := url.Parse(bm.Url)
+		if e == nil {
+			fmt.Fprintf(h.buf, "[%s](%s)    \n", escape.MarkdownCharacters(html.EscapeString(bm.Title)), url.String())
+		}
 	}
 }
 
@@ -263,7 +266,12 @@ func (mw *marksWriter) writeMarks(pos int) {
 			if start {
 				mw.h.buf.WriteString("[")
 			} else {
-				fmt.Fprintf(mw.h.buf, "](%s)", m.Param)
+				urlP, e := url.Parse(m.Param)
+				urlS := m.Param
+				if e == nil {
+					urlS = urlP.String()
+				}
+				fmt.Fprintf(mw.h.buf, "](%s)", urlS)
 			}
 		}
 	}
