@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func NewMDConverter(a anytype.Service, s *state.State) *MD {
@@ -27,7 +28,8 @@ type MD struct {
 	fileHashes  []string
 	imageHashes []string
 
-	mw *marksWriter
+	mw         *marksWriter
+	knownLinks []string
 }
 
 func (h *MD) Convert() (result string) {
@@ -214,7 +216,7 @@ func (h *MD) renderLayout(b *model.Block, in *renderState) {
 func (h *MD) renderLink(b *model.Block, in *renderState) {
 	l := b.GetLink()
 	h.a.ObjectStore().GetByIDs()
-	if l != nil && l.TargetBlockId != "" {
+	if l != nil && l.TargetBlockId != "" && h.isKnownLink(l.TargetBlockId) {
 		var title string
 		ois, err := h.a.ObjectStore().GetByIDs(l.TargetBlockId)
 		if err == nil && len(ois) > 0 {
@@ -245,6 +247,15 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
+func (h *MD) SetKnownKinks(ids []string) *MD {
+	h.knownLinks = ids
+	return h
+}
+
+func (h *MD) isKnownLink(docId string) bool {
+	return slice.FindPos(h.knownLinks, docId) != -1
+}
+
 type marksWriter struct {
 	h           *MD
 	breakpoints map[int]struct {
@@ -272,6 +283,14 @@ func (mw *marksWriter) writeMarks(pos int) {
 					urlS = urlP.String()
 				}
 				fmt.Fprintf(mw.h.buf, "](%s)", urlS)
+			}
+		case model.BlockContentTextMark_Mention:
+			if mw.h.isKnownLink(m.Param) {
+				if start {
+					mw.h.buf.WriteString("[")
+				} else {
+					fmt.Fprintf(mw.h.buf, "](%s)", m.Param+".md")
+				}
 			}
 		}
 	}

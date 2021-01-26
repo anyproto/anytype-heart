@@ -71,7 +71,7 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
 		did := docId
 		if err = queue.Wait(func() {
 			log.With("threadId", did).Debugf("write doc")
-			if werr := e.writeDoc(wr, queue, did); werr != nil {
+			if werr := e.writeDoc(wr, docIds, queue, did); werr != nil {
 				log.With("threadId", did).Warnf("can't export doc: %v", werr)
 			}
 		}); err != nil {
@@ -103,9 +103,9 @@ func (e *export) idsForExport(reqIds []string) (ids []string, err error) {
 	return
 }
 
-func (e *export) writeDoc(wr writer, queue process.Queue, docId string) (err error) {
+func (e *export) writeDoc(wr writer, docIds []string, queue process.Queue, docId string) (err error) {
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
-		conv := md.NewMDConverter(e.a, b.NewState())
+		conv := md.NewMDConverter(e.a, b.NewState()).SetKnownKinks(docIds)
 		result := conv.Convert()
 		filename := docId + ".md"
 		if docId == e.a.PredefinedBlocks().Home {
