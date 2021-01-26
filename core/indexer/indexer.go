@@ -250,20 +250,19 @@ func (i *indexer) cleanup() {
 	removed := 0
 	count := len(i.cache)
 	for k, v := range i.cache {
+		v.mu.Lock()
 		if v.lastUsage.Before(toCleanup) {
 			delete(i.cache, k)
 			removed++
 		}
+		v.mu.Unlock()
 	}
 	log.Infof("indexer cleanup: removed %d from %d", removed, count)
 }
 
 func (i *indexer) Close() {
-	if i.quit != nil {
-		close(i.quit)
-		i.quitWG.Wait()
-		i.quit = nil
-	}
+	close(i.quit)
+	i.quitWG.Wait()
 }
 
 func (i *indexer) SetDetail(id string, key string, val *types.Value) error {

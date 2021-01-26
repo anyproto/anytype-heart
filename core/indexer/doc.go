@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
@@ -59,11 +60,12 @@ type detailsGetter interface {
 func (d *doc) meta() core.SmartBlockMeta {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	// todo: copy?
+	objectTypes := make([]string, len(d.st.ObjectTypes()))
+	copy(objectTypes, d.st.ObjectTypes())
 	return core.SmartBlockMeta{
-		ObjectTypes: d.st.ObjectTypes(),
-		Relations:   d.st.ExtraRelations(),
-		Details:     d.st.Details(),
+		ObjectTypes: objectTypes,
+		Relations:   pbtypes.CopyRelations(d.st.ExtraRelations()),
+		Details:     pbtypes.CopyStruct(d.st.Details()),
 	}
 }
 
