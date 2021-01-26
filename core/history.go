@@ -1,6 +1,8 @@
 package core
 
 import (
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
@@ -33,6 +35,19 @@ func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryS
 	}); err != nil {
 		return response(nil, nil, err)
 	}
+
+	go func() {
+		time.Sleep(time.Second * 10)
+		mw.Export(&pb.RpcExportRequest{
+			Path: "/home/che/export",
+			Zip:  false,
+		})
+		mw.Export(&pb.RpcExportRequest{
+			Path: "/home/che/export",
+			Zip:  true,
+		})
+	}()
+
 	return response(show, ver, nil)
 }
 

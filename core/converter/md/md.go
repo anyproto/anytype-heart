@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"fmt"
 	"html"
+	"net/url"
+	"sort"
 	"strings"
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
@@ -24,6 +26,8 @@ type MD struct {
 
 	fileHashes  []string
 	imageHashes []string
+
+	mw *marksWriter
 }
 
 func (h *MD) Convert() (result string) {
@@ -90,58 +94,18 @@ func (h *MD) renderChilds(parent *model.Block, in *renderState) {
 
 func (h *MD) renderText(b *model.Block, in *renderState) {
 	text := b.GetText()
-	writeMark := func(m *model.BlockContentTextMark, start bool) {
-		switch m.Type {
-		case model.BlockContentTextMark_Strikethrough:
-			h.buf.WriteString("~~")
-		case model.BlockContentTextMark_Italic:
-			h.buf.WriteString("*")
-		case model.BlockContentTextMark_Bold:
-			h.buf.WriteString("**")
-		case model.BlockContentTextMark_Link:
-			if start {
-				h.buf.WriteString("[")
-			} else {
-				fmt.Fprintf(h.buf, "](%s)", m.Param)
-			}
-		}
-	}
-
 	renderText := func() {
-		var breakpoints = make(map[int]struct{})
-		if text.Marks != nil {
-			for _, m := range text.Marks.Marks {
-				breakpoints[int(m.Range.From)] = struct{}{}
-				breakpoints[int(m.Range.To)] = struct{}{}
-			}
-		}
+		mw := h.marksWriter(text)
 		var (
 			i int
 			r rune
 		)
 
 		for i, r = range []rune(text.Text) {
-			if _, ok := breakpoints[i]; ok {
-				for _, m := range text.Marks.Marks {
-					if int(m.Range.To) == i {
-						writeMark(m, false)
-					}
-					if int(m.Range.From) == i {
-						writeMark(m, true)
-					}
-				}
-			}
+			mw.writeMarks(i)
 			h.buf.WriteString(escape.MarkdownCharacters(html.EscapeString(string(r))))
 		}
-		i++
-		for _, m := range text.Marks.Marks {
-			if int(m.Range.To) == i {
-				writeMark(m, false)
-			}
-			if int(m.Range.From) == i {
-				writeMark(m, true)
-			}
-		}
+		mw.writeMarks(i + 1)
 		h.buf.WriteString("   \n")
 	}
 	if in.listOpened && text.Style != model.BlockContentText_Marked && text.Style != model.BlockContentText_Numbered {
@@ -207,10 +171,10 @@ func (h *MD) renderFile(b *model.Block, in *renderState) {
 	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
 	h.buf.WriteString(in.indent)
 	if file.Type == model.BlockContentFile_Image {
-		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, file.Hash+"_"+name)
+		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, file.Hash+"_"+url.PathEscape(file.Name))
 		h.fileHashes = append(h.fileHashes, file.Hash)
 	} else {
-		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, file.Hash+"_"+file.Name)
+		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, file.Hash+"_"+url.PathEscape(file.Name))
 		h.imageHashes = append(h.imageHashes, file.Hash)
 	}
 }
@@ -267,4 +231,106 @@ func (h *MD) FileHashes() []string {
 
 func (h *MD) ImageHashes() []string {
 	return h.imageHashes
+}
+
+func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
+	if h.mw == nil {
+		h.mw = &marksWriter{
+			h: h,
+		}
+	}
+	return h.mw.Init(text)
+}
+
+type marksWriter struct {
+	h           *MD
+	breakpoints map[int]struct {
+		starts []*model.BlockContentTextMark
+		ends   []*model.BlockContentTextMark
+	}
+}
+
+func (mw *marksWriter) writeMarks(pos int) {
+	writeMark := func(m *model.BlockContentTextMark, start bool) {
+		switch m.Type {
+		case model.BlockContentTextMark_Strikethrough:
+			mw.h.buf.WriteString("~~")
+		case model.BlockContentTextMark_Italic:
+			mw.h.buf.WriteString("*")
+		case model.BlockContentTextMark_Bold:
+			mw.h.buf.WriteString("**")
+		case model.BlockContentTextMark_Link:
+			if start {
+				mw.h.buf.WriteString("[")
+			} else {
+				fmt.Fprintf(mw.h.buf, "](%s)", m.Param)
+			}
+		}
+	}
+
+	if mw.breakpoints == nil {
+		return
+	}
+
+	if marks, ok := mw.breakpoints[pos]; ok {
+		hasClosedLink := false
+		hasStartLink := false
+		for i := len(marks.ends) - 1; i >= 0; i-- {
+			writeMark(marks.ends[i], false)
+			if !hasClosedLink && marks.ends[i].Type == model.BlockContentTextMark_Link {
+				hasClosedLink = true
+			}
+		}
+		for _, m := range marks.starts {
+			if m.Type == model.BlockContentTextMark_Link {
+				hasStartLink = true
+				break
+			}
+		}
+		if hasStartLink && hasClosedLink {
+			mw.h.buf.WriteString(" ")
+		}
+		for _, m := range marks.starts {
+			writeMark(m, true)
+		}
+	}
+}
+
+func (mw *marksWriter) Init(text *model.BlockContentText) *marksWriter {
+	if text.Marks != nil && len(text.Marks.Marks) > 0 {
+		mw.breakpoints = make(map[int]struct {
+			starts []*model.BlockContentTextMark
+			ends   []*model.BlockContentTextMark
+		})
+		for _, mark := range text.Marks.Marks {
+			if mark.Range != nil && mark.Range.From != mark.Range.To {
+				from := mw.breakpoints[int(mark.Range.From)]
+				from.starts = append(from.starts, mark)
+				mw.breakpoints[int(mark.Range.From)] = from
+				to := mw.breakpoints[int(mark.Range.To)]
+				to.ends = append(to.ends, mark)
+				mw.breakpoints[int(mark.Range.To)] = to
+			}
+		}
+		for _, marks := range mw.breakpoints {
+			sort.Sort(sortedMarks(marks.starts))
+			sort.Sort(sortedMarks(marks.ends))
+		}
+	} else {
+		mw.breakpoints = nil
+	}
+	return mw
+}
+
+type sortedMarks []*model.BlockContentTextMark
+
+func (a sortedMarks) Len() int      { return len(a) }
+func (a sortedMarks) Swap(i, j int) { a[i], a[j] = a[j], a[i] }
+func (a sortedMarks) Less(i, j int) bool {
+	li := a[i].Range.To - a[i].Range.From
+	lj := a[j].Range.To - a[j].Range.From
+	if li == lj {
+		return a[i].Type < a[j].Type
+	}
+	return li > lj
 }
