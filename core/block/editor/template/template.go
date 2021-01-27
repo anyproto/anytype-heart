@@ -7,7 +7,9 @@ import (
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -38,30 +40,57 @@ var WithEmpty = StateTransformer(func(s *state.State) {
 
 var WithObjectTypes = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
-		if len(s.ObjectTypes()) > 0 {
-			return
+		if len(s.ObjectTypes()) == 0 {
+			s.SetObjectTypes(otypes)
 		}
-		s.SetObjectTypes(otypes)
+	}
+}
+
+var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
+	return func(s *state.State) {
+		if len(s.ObjectTypes()) == 0 {
+			s.SetObjectTypes(otypes)
+		}
+
+		d := s.Details()
+		if d == nil || d.Fields == nil || d.Fields[bundle.RelationKeyLayout.String()] == nil {
+			for _, ot := range otypes {
+				t, err := bundle.GetTypeByUrl(ot)
+				if err != nil {
+					continue
+				}
+				s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(t.Layout)))
+			}
+		}
+	}
+}
+
+var WithLayout = func(layout relation.ObjectTypeLayout) StateTransformer {
+	return func(s *state.State) {
+		d := s.Details()
+		if d == nil || d.Fields == nil || d.Fields[bundle.RelationKeyLayout.String()] == nil {
+			s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(layout)))
+		}
 	}
 }
 
 var WithDetailName = func(name string) StateTransformer {
 	return func(s *state.State) {
-		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields["name"] != nil {
+		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[bundle.RelationKeyName.String()] != nil {
 			return
 		}
 
-		s.SetDetail("name", pbtypes.String(name))
+		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
 	}
 }
 
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
 	return func(s *state.State) {
-		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields["iconEmoji"] != nil {
+		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[bundle.RelationKeyIconEmoji.String()] != nil {
 			return
 		}
 
-		s.SetDetail("iconEmoji", pbtypes.String(iconEmoji))
+		s.SetDetail(bundle.RelationKeyIconEmoji.String(), pbtypes.String(iconEmoji))
 	}
 }
 

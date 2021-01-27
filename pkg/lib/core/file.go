@@ -3,10 +3,13 @@ package core
 import (
 	"context"
 	"io"
+	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -37,11 +40,14 @@ func (i *file) Details() (*types.Struct, error) {
 	meta := i.Meta()
 	return &types.Struct{
 		Fields: map[string]*types.Value{
-			"type":         pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "file"}),
-			"fileMimeType": pbtypes.String(meta.Media),
-			"name":         pbtypes.String(meta.Name),
-			"sizeInBytes":  pbtypes.Float64(float64(meta.Size)),
-			"addedDate":    pbtypes.Float64(float64(meta.Added.Unix())),
+			bundle.RelationKeyId.String():           pbtypes.String(i.hash),
+			bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(relation.ObjectType_file)),
+			bundle.RelationKeyType.String():         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
+			bundle.RelationKeyFileMimeType.String(): pbtypes.String(meta.Media),
+			bundle.RelationKeyName.String():         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
+			bundle.RelationKeyFileExt.String():      pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), ".")),
+			bundle.RelationKeySizeInBytes.String():  pbtypes.Float64(float64(meta.Size)),
+			bundle.RelationKeyAddedDate.String():    pbtypes.Float64(float64(meta.Added.Unix())),
 		},
 	}, nil
 }

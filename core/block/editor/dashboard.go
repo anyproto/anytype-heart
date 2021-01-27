@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -9,11 +8,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 func NewDashboard(m meta.Service, importServices _import.Services) *Dashboard {
-	sb := smartblock.New(m, objects.BundledObjectTypeURLPrefix+"dashboard")
+	sb := smartblock.New(m)
 	return &Dashboard{
 		SmartBlock: sb,
 		Basic:      basic.NewBasic(sb),
@@ -28,7 +28,7 @@ type Dashboard struct {
 }
 
 func (p *Dashboard) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, []string{p.SmartBlock.DefaultObjectTypeUrl()}); err != nil {
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
 		return
 	}
 	p.DisableLayouts()
@@ -44,6 +44,7 @@ func (p *Dashboard) init() (err error) {
 		template.WithDetailIconEmoji("🏠"),
 		template.WithRootLink(p.Anytype().PredefinedBlocks().Archive, model.BlockContentLink_Archive),
 		template.WithRootLink(p.Anytype().PredefinedBlocks().SetPages, model.BlockContentLink_Dataview),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
 	); err != nil {
 		return
 	}

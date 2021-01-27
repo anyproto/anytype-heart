@@ -119,8 +119,6 @@ message Event {
             repeated anytype.relation.ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
             repeated ObjectTypePerObject objectTypePerObject = 6; // objectType URLs per object
             repeated anytype.relation.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
-
-            anytype.relation.ObjectType.Layout layout = 8; // layout extracted from the object type of the current object
         }
 
         /**

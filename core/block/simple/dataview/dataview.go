@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
@@ -41,11 +42,15 @@ type Block interface {
 
 	AddRelation(relation pbrelation.Relation)
 	UpdateRelation(relationKey string, relation pbrelation.Relation) error
-
 	DeleteRelation(relationKey string) error
+
+	AddRelationOption(relationKey string, opt pbrelation.RelationOption) error
+	UpdateRelationOption(relationKey string, opt pbrelation.RelationOption) error
+	DeleteRelationOption(relationKey string, optId string) error
 
 	GetSource() string
 	SetSource(source string) error
+	SetActiveView(activeView string)
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -53,11 +58,7 @@ type Block interface {
 
 type Dataview struct {
 	*base.Base
-	content      *model.BlockContentDataview
-	recordIDs    []string
-	activeViewID string
-	offset       int
-	limit        int
+	content *model.BlockContentDataview
 }
 
 func (d *Dataview) Copy() simple.Block {
@@ -246,7 +247,7 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 				return fmt.Errorf("changing hidden flag of existing relation is retricted")
 			}
 
-			if rel.Format == pbrelation.RelationFormat_select {
+			if rel.Format == pbrelation.RelationFormat_status {
 				for i := range rel.SelectDict {
 					if rel.SelectDict[i].Id == "" {
 						rel.SelectDict[i].Id = bson.NewObjectId().Hex()
@@ -267,13 +268,74 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 	return nil
 }
 
+func (l *Dataview) relationsWithObjectFormat() []string {
+	var relationsWithObjFormat []string
+	for _, rel := range l.GetDataview().Relations {
+		if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+			relationsWithObjFormat = append(relationsWithObjFormat, rel.Key)
+		}
+	}
+	return relationsWithObjFormat
+}
+
+func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
+	for i, view := range l.GetDataview().Views {
+		if view.Id == l.content.ActiveView {
+			return l.GetDataview().Views[i]
+		}
+	}
+
+	return nil
+}
+
 func (l *Dataview) FillSmartIds(ids []string) []string {
-	//@todo: fill from recordIDs
+	relationsWithObjFormat := l.relationsWithObjectFormat()
+	activeView := l.getActiveView()
+	if activeView == nil {
+		// shouldn't be a case
+		return ids
+	}
+
+	for _, filter := range activeView.Filters {
+		if slice.FindPos(relationsWithObjFormat, filter.RelationKey) >= 0 {
+			for _, objId := range pbtypes.GetStringListValue(filter.Value) {
+				if slice.FindPos(ids, objId) == -1 {
+					ids = append(ids, objId)
+				}
+			}
+		}
+	}
+
 	return ids
 }
 
 func (l *Dataview) HasSmartIds() bool {
-	return len(l.recordIDs) > 0
+	relationsWithObjFormat := l.relationsWithObjectFormat()
+	activeView := l.getActiveView()
+	if activeView == nil {
+		// shouldn't be a case
+		return false
+	}
+
+	for _, filter := range activeView.Filters {
+		if slice.FindPos(relationsWithObjFormat, filter.RelationKey) >= 0 {
+			if len(pbtypes.GetStringListValue(filter.Value)) > 0 {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func (td *Dataview) ModelToSave() *model.Block {
+	b := pbtypes.CopyBlock(td.Model())
+	for _, rel := range b.Content.(*model.BlockContentOfDataview).Dataview.Relations {
+		// reset all selectDict
+		rel.SelectDict = nil
+	}
+	b.Content.(*model.BlockContentOfDataview).Dataview.ActiveView = ""
+	return b
 }
 
 func (d *Dataview) SetSource(source string) error {
@@ -294,11 +356,9 @@ func (d *Dataview) AddRelation(relation pbrelation.Relation) {
 		relation.Key = bson.NewObjectId().Hex()
 	}
 
-	if relation.Format == pbrelation.RelationFormat_select {
-		for i := range relation.SelectDict {
-			if relation.SelectDict[i].Id == "" {
-				relation.SelectDict[i].Id = bson.NewObjectId().Hex()
-			}
+	for i := range relation.SelectDict {
+		if relation.SelectDict[i].Id == "" {
+			relation.SelectDict[i].Id = bson.NewObjectId().Hex()
 		}
 	}
 
@@ -319,5 +379,82 @@ func (d *Dataview) DeleteRelation(relationKey string) error {
 		return fmt.Errorf("relation not found")
 	}
 
+	return nil
+}
+
+func (d *Dataview) DetailsInit(s simple.DetailsService) {
+	//todo: inject setOf
+}
+
+func (d *Dataview) OnDetailsChange(s simple.DetailsService) {
+	// empty
+}
+
+func (d *Dataview) DetailsApply(s simple.DetailsService) {
+
+}
+
+func (d *Dataview) SetActiveView(activeView string) {
+	d.content.ActiveView = activeView
+}
+
+func (d *Dataview) AddRelationOption(relationKey string, option pbrelation.RelationOption) error {
+	for _, rel := range d.content.Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+
+		for _, opt := range rel.SelectDict {
+			if option.Id == opt.Id {
+				return fmt.Errorf("option already exists")
+			}
+		}
+		if option.Scope != pbrelation.RelationOption_local {
+			return fmt.Errorf("incorrect option scope")
+		}
+
+		rel.SelectDict = append(rel.SelectDict, &option)
+	}
+	return nil
+}
+
+func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.RelationOption) error {
+	for _, rel := range d.content.Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+
+		if option.Scope != pbrelation.RelationOption_local {
+			return fmt.Errorf("incorrect option scope")
+		}
+
+		for i, opt := range rel.SelectDict {
+			if option.Id == opt.Id {
+				opt2 := option
+				rel.SelectDict[i] = &opt2
+				return nil
+			}
+		}
+
+		return fmt.Errorf("option not exists")
+	}
+	return nil
+}
+
+func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error {
+	for _, rel := range d.content.Relations {
+		if rel.Key != relationKey {
+			continue
+		}
+
+		for i, opt := range rel.SelectDict {
+			if optId == opt.Id {
+				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
+				return nil
+			}
+		}
+
+		return fmt.Errorf("option not exists")
+	}
 	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -99,7 +100,7 @@ func (l *Link) ApplyEvent(e *pb.EventBlockSetLink) error {
 func (l *Link) ToText(targetDetails *types.Struct) simple.Block {
 	tb := &model.BlockContentText{}
 	if l.content.TargetBlockId != "" {
-		name := pbtypes.GetString(targetDetails, "name")
+		name := pbtypes.GetString(targetDetails, bundle.RelationKeyName.String())
 		if name == "" {
 			name = "Untitled"
 		}

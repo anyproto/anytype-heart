@@ -11,13 +11,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -32,7 +33,7 @@ var (
 	ErrRestricted = errors.New("restricted")
 )
 
-var DetailsFileFields = [...]string{"coverId", "iconImage"}
+var DetailsFileFields = [...]string{bundle.RelationKeyCoverId.String(), bundle.RelationKeyIconImage.String()}
 
 type Doc interface {
 	RootId() string
@@ -617,6 +618,25 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	return
 }
 
+func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
+	if s.extraRelations == nil && s.parent != nil {
+		s.extraRelations = pbtypes.CopyRelations(s.parent.ExtraRelations())
+	}
+	relCopy := pbtypes.CopyRelation(rel)
+	var found bool
+	for i, exRel := range s.extraRelations {
+		if exRel.Key == rel.Key {
+			found = true
+			s.extraRelations[i] = relCopy
+		}
+	}
+	if !found {
+		s.extraRelations = append(s.extraRelations, relCopy)
+	}
+
+	return
+}
+
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	for _, rel := range s.ExtraRelations() {
 		if rel.Key == relation.Key {
@@ -624,10 +644,10 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 		}
 	}
 	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(s.ExtraRelations(), relation)
+	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relation)
 	return s
 }
 
@@ -636,14 +656,43 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	return s
 }
 
+func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelation.RelationOption) (*pbrelation.RelationOption, error) {
+	exRel := pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
+	if exRel == nil {
+		rel.SelectDict = nil
+		s.AddRelation(&rel)
+		exRel = &rel
+	}
+	exRel = pbtypes.CopyRelation(exRel)
+
+	if exRel.Format != pbrelation.RelationFormat_status && exRel.Format != pbrelation.RelationFormat_tag {
+		return nil, fmt.Errorf("relation has incorrect format")
+	}
+
+	for _, opt := range exRel.SelectDict {
+		if strings.EqualFold(opt.Text, option.Text) && (option.Id == "" || opt.Id == option.Id) {
+			// here we can have the option with another color, but we can ignore this
+			return opt, nil
+		}
+	}
+	if option.Id == "" {
+		option.Id = bson.NewObjectId().Hex()
+	}
+	exRel.SelectDict = append(exRel.SelectDict, &option)
+	s.SetExtraRelation(exRel)
+
+	return &option, nil
+}
+
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
+	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.StringList(objectTypes))
 	return s
 }
 
 func (s *State) InjectDerivedDetails() {
-	s.SetDetail(relationCol.Id, pbtypes.String(s.rootId))
-	s.SetDetail(relationCol.Type, pbtypes.StringList(s.ObjectTypes()))
+	s.SetDetail(string(bundle.RelationKeyId), pbtypes.String(s.rootId))
+	s.SetDetail(string(bundle.RelationKeyType), pbtypes.StringList(s.ObjectTypes()))
 }
 
 // ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
@@ -662,7 +711,7 @@ func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
 	}
 	d := pbtypes.CopyStruct(s.details)
 	for key, _ := range d.Fields {
-		if slice.FindPos(relationCol.LocalOnlyRelationsKeys, key) != -1 {
+		if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
 			delete(d.Fields, key)
 		}
 	}

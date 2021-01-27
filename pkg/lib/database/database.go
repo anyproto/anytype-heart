@@ -4,6 +4,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -29,6 +30,7 @@ type Reader interface {
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
 	AggregateRelations(schema *schema.Schema) (relations []*pbrelation.Relation, err error)
+	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 }
 
 type Writer interface {
@@ -38,6 +40,8 @@ type Writer interface {
 	Create(relations []*pbrelation.Relation, rec Record, sub Subscription) (Record, error)
 
 	Update(id string, relations []*pbrelation.Relation, rec Record) error
+	AddRelationOption(id string, relKey string, option pbrelation.RelationOption) (optionId string, err error)
+
 	Delete(id string) error
 }
 
@@ -115,7 +119,7 @@ func (filters filters) Filter(e query.Entry) bool {
 
 	var foundType bool
 	if filters.Schema != nil {
-		if t, ok := details.Details.Fields["type"]; ok {
+		if t, ok := details.Details.Fields[bundle.RelationKeyType.String()]; ok {
 			if list := t.GetListValue(); list != nil {
 				for _, val := range list.Values {
 					if val.GetStringValue() == filters.Schema.ObjType.Url {
@@ -125,7 +129,7 @@ func (filters filters) Filter(e query.Entry) bool {
 				}
 			}
 		} else {
-			if filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+			if filters.Schema.ObjType != nil && filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
 				// backward compatibility in case we don't have type indexed for pages
 				foundType = true
 			}

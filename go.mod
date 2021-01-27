@@ -9,6 +9,7 @@ require (
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/blevesearch/bleve v1.0.14
 	github.com/cheggaaa/mb v1.0.2
+	github.com/dave/jennifer v1.4.1
 	github.com/dgtony/collections v0.1.5
 	github.com/disintegration/imaging v1.6.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
@@ -60,7 +61,6 @@ require (
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/yuin/goldmark v1.3.1
 	go.uber.org/zap v1.16.0
-	go4.org v0.0.0-20180809161055-417644f6feb5
 	golang.org/x/text v0.3.5
 	google.golang.org/grpc v1.34.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f

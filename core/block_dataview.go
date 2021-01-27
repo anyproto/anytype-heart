@@ -242,10 +242,10 @@ func (mw *Middleware) BlockDataviewRelationDelete(req *pb.RpcBlockDataviewRelati
 	return response(pb.RpcBlockDataviewRelationDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRelationSelectOptionAdd(req *pb.RpcBlockDataviewRelationSelectOptionAddRequest) *pb.RpcBlockDataviewRelationSelectOptionAddResponse {
+func (mw *Middleware) BlockDataviewRecordRelationOptionAdd(req *pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(opt *pbrelation.RelationSelectOption, code pb.RpcBlockDataviewRelationSelectOptionAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationSelectOptionAddResponse {
-		m := &pb.RpcBlockDataviewRelationSelectOptionAddResponse{Option: opt, Error: &pb.RpcBlockDataviewRelationSelectOptionAddResponseError{Code: code}}
+	response := func(opt *pbrelation.RelationOption, code pb.RpcBlockDataviewRecordRelationOptionAddResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
+		m := &pb.RpcBlockDataviewRecordRelationOptionAddResponse{Option: opt, Error: &pb.RpcBlockDataviewRecordRelationOptionAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -253,22 +253,22 @@ func (mw *Middleware) BlockDataviewRelationSelectOptionAdd(req *pb.RpcBlockDatav
 		}
 		return m
 	}
-	var opt *pbrelation.RelationSelectOption
+	var opt *pbrelation.RelationOption
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		opt, err = bs.AddDataviewRelationSelectOption(ctx, *req)
+		opt, err = bs.AddDataviewRecordRelationOption(ctx, *req)
 		return err
 	})
 	if err != nil {
-		return response(nil, pb.RpcBlockDataviewRelationSelectOptionAddResponseError_BAD_INPUT, err)
+		return response(nil, pb.RpcBlockDataviewRecordRelationOptionAddResponseError_BAD_INPUT, err)
 	}
 
-	return response(opt, pb.RpcBlockDataviewRelationSelectOptionAddResponseError_NULL, nil)
+	return response(opt, pb.RpcBlockDataviewRecordRelationOptionAddResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRelationSelectOptionUpdate(req *pb.RpcBlockDataviewRelationSelectOptionUpdateRequest) *pb.RpcBlockDataviewRelationSelectOptionUpdateResponse {
+func (mw *Middleware) BlockDataviewRecordRelationOptionUpdate(req *pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockDataviewRelationSelectOptionUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewRelationSelectOptionUpdateResponse {
-		m := &pb.RpcBlockDataviewRelationSelectOptionUpdateResponse{Error: &pb.RpcBlockDataviewRelationSelectOptionUpdateResponseError{Code: code}}
+	response := func(code pb.RpcBlockDataviewRecordRelationOptionUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionUpdateResponse {
+		m := &pb.RpcBlockDataviewRecordRelationOptionUpdateResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -277,20 +277,20 @@ func (mw *Middleware) BlockDataviewRelationSelectOptionUpdate(req *pb.RpcBlockDa
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.UpdateDataviewRelationSelectOption(ctx, *req)
+		err = bs.UpdateDataviewRecordRelationOption(ctx, *req)
 		return err
 	})
 	if err != nil {
-		return response(pb.RpcBlockDataviewRelationSelectOptionUpdateResponseError_BAD_INPUT, err)
+		return response(pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError_BAD_INPUT, err)
 	}
 
-	return response(pb.RpcBlockDataviewRelationSelectOptionUpdateResponseError_NULL, nil)
+	return response(pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRelationSelectOptionDelete(req *pb.RpcBlockDataviewRelationSelectOptionDeleteRequest) *pb.RpcBlockDataviewRelationSelectOptionDeleteResponse {
+func (mw *Middleware) BlockDataviewRecordRelationOptionDelete(req *pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockDataviewRelationSelectOptionDeleteResponseErrorCode, err error) *pb.RpcBlockDataviewRelationSelectOptionDeleteResponse {
-		m := &pb.RpcBlockDataviewRelationSelectOptionDeleteResponse{Error: &pb.RpcBlockDataviewRelationSelectOptionDeleteResponseError{Code: code}}
+	response := func(code pb.RpcBlockDataviewRecordRelationOptionDeleteResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionDeleteResponse {
+		m := &pb.RpcBlockDataviewRecordRelationOptionDeleteResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -299,12 +299,12 @@ func (mw *Middleware) BlockDataviewRelationSelectOptionDelete(req *pb.RpcBlockDa
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.DeleteDataviewRelationSelectOption(ctx, *req)
+		err = bs.DeleteDataviewRecordRelationOption(ctx, *req)
 		return err
 	})
 	if err != nil {
-		return response(pb.RpcBlockDataviewRelationSelectOptionDeleteResponseError_BAD_INPUT, err)
+		return response(pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError_BAD_INPUT, err)
 	}
 
-	return response(pb.RpcBlockDataviewRelationSelectOptionDeleteResponseError_NULL, nil)
+	return response(pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError_NULL, nil)
 }

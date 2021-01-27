@@ -5,13 +5,13 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
@@ -127,7 +127,9 @@ func (i *indexer) applyRecords(records []core.SmartblockRecordWithThreadID) {
 	for _, tid := range threadIds {
 		threadRecords := i.recBuf[:0]
 		for _, rec := range records {
-			threadRecords = append(threadRecords, rec.SmartblockRecordEnvelope)
+			if rec.ThreadID == tid {
+				threadRecords = append(threadRecords, rec.SmartblockRecordEnvelope)
+			}
 		}
 		i.index(tid, threadRecords)
 	}
@@ -152,26 +154,22 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 		log.Warnf("can't get doc '%s': %v", id, err)
 		return
 	}
-	var rels *pbrelation.Relations
-	lastChangeTS, lastChangeBy, metaChanged := d.addRecords(records...)
+	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 
 	meta := d.meta()
-	if metaChanged {
-		rels = &pbrelation.Relations{Relations: meta.Relations}
-	}
-	prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, relation.LastModifiedDate))
+	prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLastModifiedDate.String()))
 
 	if meta.Details != nil && meta.Details.Fields != nil && lastChangeTS > prevModifiedDate {
-		meta.Details.Fields[relation.LastModifiedDate] = pbtypes.Float64(float64(lastChangeTS))
+		meta.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastChangeTS))
 		if profileId, err := threads.ProfileThreadIDFromAccountAddress(lastChangeBy); err == nil {
-			meta.Details.Fields[relation.LastModifiedBy] = pbtypes.String(profileId.String())
+			meta.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(profileId.String())
 		}
 	}
 
-	if err := i.store.UpdateObject(id, meta.Details, rels, nil, ""); err != nil {
+	if err := i.store.UpdateObject(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}, nil, ""); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {
-		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, "name"))
+		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
 	}
 
 	if err := i.store.AddToIndexQueue(id); err != nil {

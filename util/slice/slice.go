@@ -66,8 +66,8 @@ func UnsortedEquals(s1, s2 []string) bool {
 
 	s1Sorted := make([]string, len(s1))
 	s2Sorted := make([]string, len(s2))
-	copy(s1, s1Sorted)
-	copy(s2, s2Sorted)
+	copy(s1Sorted, s1)
+	copy(s2Sorted, s2)
 	sort.Strings(s1Sorted)
 	sort.Strings(s2Sorted)
 
