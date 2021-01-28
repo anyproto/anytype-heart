@@ -13,9 +13,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/ipfs/go-datastore/query"
+	"github.com/ipfs/go-datastore/sync"
 	badger "github.com/ipfs/go-ds-badger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -168,4 +173,112 @@ func TestDsObjectStore_Query(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 1, tot)
 	assert.Len(t, rec, 1)
+}
+func getId() string {
+	return thread.NewIDV1(thread.Raw, 32).String()
+}
+func TestDsObjectStore_PrefixQuery(t *testing.T) {
+	bds := sync.MutexWrap(ds.NewMapDatastore())
+	err := bds.Put(ds.NewKey("/p1/abc/def/1"), []byte{})
+
+	require.NoError(t, err)
+
+	res, err := bds.Query(query.Query{Prefix: "/p1/abc", KeysOnly: true})
+	require.NoError(t, err)
+
+	entries, err := res.Rest()
+	require.NoError(t, err)
+	require.Len(t, entries, 1)
+	require.Equal(t, "/p1/abc/def/1", entries[0].Key)
+
+}
+func TestDsObjectStore_RelationsIndex(t *testing.T) {
+	tmpDir, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(tmpDir)
+
+	fts, err := ftsearch.NewFTSearch(filepath.Join(tmpDir, "fts"))
+	require.NoError(t, err)
+
+	bds, err := badger.NewDatastore(tmpDir, nil)
+	require.NoError(t, err)
+
+	ds := NewObjectStore(bds, fts)
+	defer ds.Close()
+	newDet := func(name, objtype string) *types.Struct {
+		return &types.Struct{
+			Fields: map[string]*types.Value{
+				"name": pbtypes.String(name),
+				"type": pbtypes.StringList([]string{objtype}),
+			},
+		}
+	}
+	id1 := getId()
+	id2 := getId()
+	id3 := getId()
+	require.NoError(t, ds.UpdateObject(id1, newDet("one", "a1"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+		{
+			Key:          "rel1",
+			Format:       pbrelation.RelationFormat_status,
+			Name:         "rel 1",
+			DefaultValue: nil,
+			SelectDict: []*pbrelation.RelationOption{
+				{"id1", "option1", "red", pbrelation.RelationOption_local},
+				{"id2", "option2", "red", pbrelation.RelationOption_local},
+				{"id3", "option3", "red", pbrelation.RelationOption_local},
+			},
+		},
+		{
+			Key:          "rel2",
+			Format:       pbrelation.RelationFormat_title,
+			Name:         "rel 2",
+			DefaultValue: nil,
+		},
+	}}, nil, "s1"))
+
+	require.NoError(t, ds.UpdateObject(id2, newDet("two", "a2"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+		{
+			Key:          "rel1",
+			Format:       pbrelation.RelationFormat_status,
+			Name:         "rel 1",
+			DefaultValue: nil,
+			SelectDict: []*pbrelation.RelationOption{
+				{"id3", "option3", "yellow", pbrelation.RelationOption_local},
+				{"id4", "option4", "red", pbrelation.RelationOption_local},
+				{"id5", "option5", "red", pbrelation.RelationOption_local},
+			},
+		},
+		{
+			Key:          "rel3",
+			Format:       pbrelation.RelationFormat_status,
+			Name:         "rel 3",
+			DefaultValue: nil,
+			SelectDict: []*pbrelation.RelationOption{
+				{"id5", "option5", "red", pbrelation.RelationOption_local},
+				{"id6", "option6", "red", pbrelation.RelationOption_local},
+			},
+		},
+		{
+			Key:          "rel4",
+			Format:       pbrelation.RelationFormat_tag,
+			Name:         "rel 4",
+			DefaultValue: nil,
+			SelectDict: []*pbrelation.RelationOption{
+				{"id7", "option7", "red", pbrelation.RelationOption_local},
+			},
+		},
+	}}, nil, "s2"))
+	require.NoError(t, ds.UpdateObject(id3, newDet("three", "a2"), nil, nil, "s3"))
+
+	restOpts, err := ds.GetAggregatedOptions("rel1", pbrelation.RelationFormat_status, "1")
+	require.NoError(t, err)
+	require.Len(t, restOpts, 6)
+
+	rels, err := ds.AggregateRelations(&schema.Schema{ObjType: &pbrelation.ObjectType{Url: "a1"}})
+	require.NoError(t, err)
+	require.Len(t, rels, 4)
+
+	require.Equal(t, "rel1", rels[0].Key)
+	require.Equal(t, "rel2", rels[1].Key)
+	require.Equal(t, "rel3", rels[2].Key)
+	require.Equal(t, "rel4", rels[3].Key)
 }

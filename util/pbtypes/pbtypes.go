@@ -1,6 +1,7 @@
 package pbtypes
 
 import (
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -95,4 +96,34 @@ func GetStringListValue(v *types.Value) []string {
 	}
 
 	return stringsSlice
+}
+
+func HasRelation(rels []*pbrelation.Relation, key string) bool {
+	for _, rel := range rels {
+		if rel.Key == key {
+			return true
+		}
+	}
+
+	return false
+}
+
+func GetRelation(rels []*pbrelation.Relation, key string) *pbrelation.Relation {
+	for i, rel := range rels {
+		if rel.Key == key {
+			return rels[i]
+		}
+	}
+
+	return nil
+}
+
+func GetOption(opts []*pbrelation.RelationOption, id string) *pbrelation.RelationOption {
+	for i, opt := range opts {
+		if opt.Id == id {
+			return opts[i]
+		}
+	}
+
+	return nil
 }

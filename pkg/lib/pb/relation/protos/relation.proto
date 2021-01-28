@@ -10,15 +10,26 @@ message ObjectType {
     repeated Relation relations = 3; // cannot contain more than one Relation with the same RelationType
     Layout layout = 4;
     string iconEmoji = 5; // emoji symbol
+    string description = 6;
 
     enum Layout {
-        page = 0;
-        contact = 1;
-        task = 2;
+        basic = 0;
+        profile = 1;
+        action = 2;
         set = 3;
         objectType = 4;
-        file = 5;
+        relation = 5;
+        file = 6;
+        dashboard = 7;
+
+        database = 8; // to be released later
     }
+}
+
+message Layout {
+    ObjectType.Layout id = 1;
+    string name = 2;
+    repeated Relation requiredRelations = 3; // relations required for this object type
 }
 
 message RelationWithValue {
@@ -43,17 +54,26 @@ message Relation {
 
     repeated string objectTypes = 9; // URL of object type, empty to allow link to any object
     // index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
-    repeated SelectOption selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
+    repeated Option selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
+    int32 maxCount = 13; // max number of values can be set for this relation. 0 means no limit
+    string description = 14;
 
-    message SelectOption {
+    message Option {
         string id = 1; // id generated automatically if omitted
         string text = 2;
         string color = 3; // stored
+        Scope scope = 4; // on-store contains only local-scope relations. All others injected on-the-fly
+
+        enum Scope {
+            local = 0; // stored within the object/aggregated from set
+            relation = 1; // aggregated from all relation of this relation's key
+            format = 2; // aggregated from all relations of this relation's format
+        }
     }
 
     enum RelationDataSource {
         details = 0; // default, stored inside the object's details
-        local = 1; // stored locally, e.g. in badger or generated on the fly
+        derived = 1; // stored locally, e.g. in badger or generated on the fly
         account = 2; // stored in the account DB. means existing only for specific anytype account
     }
 }
@@ -63,7 +83,8 @@ enum RelationFormat {
     description = 0; // plain string
     title = 1; // string, usually short enough. May be truncated
     number = 2; // double
-    select = 3; // string
+    status = 3; // string (choose one from a list)
+    tag = 11; // list of string (choose multiple from a list)
     date = 4; // int64(pb.Value doesn't have int64) or string
     file = 5; // relation can has objects of specific types: file, image, audio, video
     checkbox = 6; // boolean

@@ -3,6 +3,7 @@ package core
 import (
 	"sort"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -55,14 +56,14 @@ func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
 		var lastOpenedI, lastOpenedJ int64
 
 		if pages[i].Details != nil {
-			if pages[i].Details.Fields["lastOpenedDate"] != nil {
-				lastOpenedI = int64(pages[i].Details.Fields["lastOpenedDate"].GetNumberValue())
+			if pages[i].Details.Fields[bundle.RelationKeyLastOpenedDate.String()] != nil {
+				lastOpenedI = int64(pages[i].Details.Fields[bundle.RelationKeyLastOpenedDate.String()].GetNumberValue())
 			}
 		}
 
 		if pages[j].Details != nil {
-			if pages[j].Details.Fields["lastOpenedDate"] != nil {
-				lastOpenedJ = int64(pages[j].Details.Fields["lastOpenedDate"].GetNumberValue())
+			if pages[j].Details.Fields[bundle.RelationKeyLastOpenedDate.String()] != nil {
+				lastOpenedJ = int64(pages[j].Details.Fields[bundle.RelationKeyLastOpenedDate.String()].GetNumberValue())
 			}
 		}
 

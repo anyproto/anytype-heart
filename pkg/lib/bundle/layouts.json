@@ -1,0 +1,56 @@
+[
+  {
+    "id": "basic",
+    "name": "Basic",
+    "requiredRelations": [
+      "name"
+    ]
+  },
+  {
+    "id": "set",
+    "name": "Set",
+    "requiredRelations": [
+      "setOf",
+      "name"
+    ]
+  },
+  {
+    "id": "database",
+    "name": "Database"
+  },
+  {
+    "id": "relation",
+    "name": "Relation"
+  },
+  {
+    "id": "file",
+    "name": "File"
+  },
+  {
+    "id": "dashboard",
+    "name": "Dashboard"
+  },
+  {
+    "id": "action",
+    "name": "Action",
+    "requiredRelations": [
+      "done",
+      "name"
+    ]
+  },
+  {
+    "id": "profile",
+    "name": "Profile",
+    "requiredRelations": [
+      "name"
+    ]
+  },
+  {
+    "id": "objectType",
+    "name": "Object Type",
+    "requiredRelations": [
+      "name",
+      "recommendedRelations"
+    ]
+  }
+]

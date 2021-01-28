@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -62,7 +63,7 @@ type fileInfo struct {
 }
 
 type Services interface {
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, objectTypes []string, relations []*pbrelation.Relation) (id string, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error
@@ -132,7 +133,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 			continue
 		}
 
-		pageID, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil, nil, nil)
+		pageID, _, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil, nil)
 		if err != nil {
 			log.Errorf("failed to create smartblock: %s", err.Error())
 			continue
@@ -265,7 +266,8 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 		progress.AddDone(1)
 		// wrap root-level csv files with page
 		if file.isRootFile && strings.EqualFold(filepath.Ext(name), ".csv") {
-			pageID, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil, nil, nil)
+			// fixme: move initial details into CreateSmartBlock
+			pageID, _, err := imp.ctrl.CreateSmartBlock(coresb.SmartBlockTypePage, nil, nil)
 			if err != nil {
 				log.Errorf("failed to create smartblock: %s", err.Error())
 				continue
@@ -742,7 +744,7 @@ func (imp *importImpl) convertCsvToLinks(csvFileName string, files map[string]*f
 		if filepath.Dir(name) == csvDir && strings.EqualFold(fileExt, ".md") {
 			file.hasInboundLinks = true
 			fields := make(map[string]*types.Value)
-			fields["name"] = &types.Value{
+			fields[bundle.RelationKeyName.String()] = &types.Value{
 				Kind: &types.Value_StringValue{StringValue: file.title},
 			}
 

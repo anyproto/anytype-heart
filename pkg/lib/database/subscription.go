@@ -17,7 +17,7 @@ type subscription struct {
 type Subscription interface {
 	Close()
 	RecordChan() chan *types.Struct
-	Subscribe(id []string)
+	Subscribe(ids []string) (added []string)
 	Subscriptions() []string
 	Publish(id string, msg *types.Struct) bool
 }
@@ -39,7 +39,7 @@ func (sub *subscription) Close() {
 	sub.closed = true
 }
 
-func (sub *subscription) Subscribe(ids []string) {
+func (sub *subscription) Subscribe(ids []string) (added []string) {
 	sub.Lock()
 	defer sub.Unlock()
 loop:
@@ -49,8 +49,10 @@ loop:
 				continue loop
 			}
 		}
+		added = append(added, id)
 		sub.ids = append(sub.ids, id)
 	}
+	return
 }
 
 func (sub *subscription) Publish(id string, msg *types.Struct) bool {

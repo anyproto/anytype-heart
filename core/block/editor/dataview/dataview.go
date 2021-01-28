@@ -3,7 +3,6 @@ package dataview
 import (
 	"context"
 	"fmt"
-	"strings"
 	"sync"
 
 	blockDB "github.com/anytypeio/go-anytype-middleware/core/block/database"
@@ -12,11 +11,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	bundle "github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	relationCol "github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
@@ -24,7 +23,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultLimit = 100
+const defaultLimit = 50
 
 var log = logging.Logger("anytype-mw-editor")
 
@@ -39,9 +38,10 @@ type Dataview interface {
 	AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error)
 	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
 	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation pbrelation.Relation, showEvent bool) error
-	AddRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error)
-	UpdateRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error
-	DeleteRelationSelectOption(ctx *state.Context, blockId string, relationKey string, optionId string, showEvent bool) error
+	AddRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error)
+	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) error
+	DeleteRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
+	FillAggregatedOptions(ctx *state.Context) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -98,7 +98,7 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 			}
 		}
 		if foundRelation == nil {
-			return nil, fmt.Errorf("provided relation with key not found among aggregated relations for dataview")
+			return nil, fmt.Errorf("provided relation with key %s not found among aggregated relations for dataview", relation.Key)
 		}
 
 		if !pbtypes.RelationCompatible(foundRelation, &relation) {
@@ -107,9 +107,11 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	}
 
 	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
+	// reset SelectDict because it is supposed to be aggregated and injected on-the-fly
+	relation.SelectDict = nil
 	tb.AddRelation(relation)
 
 	return &relation, d.Apply(s)
@@ -140,7 +142,7 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 	}
 
 	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = relationCol.FormatFilePossibleTargetObjectTypes
+		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
 	if err = tb.UpdateRelation(relationKey, relation); err != nil {
@@ -153,44 +155,44 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 	return d.Apply(s, smartblock.NoEvent)
 }
 
-// AddRelationSelectOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (d *dataviewCollectionImpl) AddRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) (*pbrelation.RelationSelectOption, error) {
+// AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
+func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error) {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return nil, err
 	}
 
-	for _, rel := range tb.Model().GetDataview().Relations {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != pbrelation.RelationFormat_select {
-			return nil, fmt.Errorf("relation is non-select format")
-		}
-		for _, opt := range rel.SelectDict {
-			if strings.EqualFold(opt.Text, option.Text) {
-				// here we can have the option with another color. but it looks
-				return opt, nil
-			}
-		}
-
-		option.Id = bson.NewObjectId().Hex()
-		rel.SelectDict = append(rel.SelectDict, &option)
-		if err = tb.UpdateRelation(relationKey, *rel); err != nil {
-			return nil, err
-		}
-
-		if showEvent {
-			return &option, d.Apply(s)
-		}
-		return &option, d.Apply(s, smartblock.NoEvent)
+	var db database.Database
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(""); err != nil {
+		return nil, err
+	} else {
+		db = target
 	}
 
-	return nil, fmt.Errorf("relation not found")
+	optionId, err := db.AddRelationOption(recordId, relationKey, option)
+	if err != nil {
+		return nil, err
+	}
+
+	option.Id = optionId
+	err = tb.AddRelationOption(relationKey, option)
+	if err != nil {
+		return nil, err
+	}
+
+	if showEvent {
+		err = d.Apply(s)
+	} else {
+		err = d.Apply(s, smartblock.NoEvent)
+	}
+
+	return &option, err
 }
 
-func (d *dataviewCollectionImpl) UpdateRelationSelectOption(ctx *state.Context, blockId string, relationKey string, option pbrelation.RelationSelectOption, showEvent bool) error {
+func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option pbrelation.RelationOption, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -201,8 +203,8 @@ func (d *dataviewCollectionImpl) UpdateRelationSelectOption(ctx *state.Context, 
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_select {
-			return fmt.Errorf("relation is non-select format")
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
 			if opt.Id == option.Id {
@@ -220,7 +222,7 @@ func (d *dataviewCollectionImpl) UpdateRelationSelectOption(ctx *state.Context, 
 	return fmt.Errorf("relation not found")
 }
 
-func (d *dataviewCollectionImpl) DeleteRelationSelectOption(ctx *state.Context, blockId string, relationKey string, optionId string, showEvent bool) error {
+func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -231,8 +233,8 @@ func (d *dataviewCollectionImpl) DeleteRelationSelectOption(ctx *state.Context, 
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_select {
-			return fmt.Errorf("relation is non-select format")
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
 			if opt.Id == optionId {
@@ -243,6 +245,7 @@ func (d *dataviewCollectionImpl) DeleteRelationSelectOption(ctx *state.Context, 
 				return d.Apply(s, smartblock.NoEvent)
 			}
 		}
+		// todo: should we remove option and value from all objects within type?
 
 		return fmt.Errorf("relation option not found")
 	}
@@ -272,7 +275,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, bloc
 	} else {
 		db = target
 	}
-	sch := schema.New(objectType, nil)
+	sch := schema.New(objectType, tb.Model().GetDataview().Relations)
 	aggregatedRelations, err := db.AggregateRelations(&sch)
 	if err != nil {
 		return nil, err
@@ -305,6 +308,7 @@ func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataview
 	var activeViewId string
 	if len(block.Model().GetDataview().Views) > 0 {
 		activeViewId = block.Model().GetDataview().Views[0].Id
+		block.SetActiveView(activeViewId)
 	}
 
 	dv := &dataviewImpl{blockId: block.Model().Id, activeViewId: activeViewId, offset: 0, limit: defaultLimit}
@@ -360,26 +364,26 @@ func (d *dataviewCollectionImpl) GetObjectTypeURL(ctx *state.Context, blockId st
 
 func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
+	dvBlock, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 
-	oldView := tb.GetView(viewId)
+	oldView := dvBlock.GetView(viewId)
 	var needRecordRefresh bool
 	if !pbtypes.DataviewFiltersEqualSorted(oldView.Filters, view.Filters) {
 		needRecordRefresh = true
 	} else if !pbtypes.DataviewSortsEqualSorted(oldView.Sorts, view.Sorts) {
 		needRecordRefresh = true
 	}
-	if err = tb.SetView(viewId, view); err != nil {
+	if err = dvBlock.SetView(viewId, view); err != nil {
 		return err
 	}
 
-	dv := d.getDataviewImpl(tb)
+	dv := d.getDataviewImpl(dvBlock)
 	if needRecordRefresh && dv.activeViewId == viewId {
 		dv.offset = 0
-		msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(tb), tb)
+		msgs, err := d.fetchAndGetEventsMessages(d.getDataviewImpl(dvBlock), dvBlock)
 		if err != nil {
 			return err
 		}
@@ -406,6 +410,7 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 		return fmt.Errorf("view not found")
 	}
 
+	dvBlock.SetActiveView(activeViewId)
 	if dv.activeViewId != activeViewId {
 		dv.activeViewId = activeViewId
 		dv.records = nil
@@ -418,6 +423,8 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 		return err
 	}
 	ctx.SetMessages(d.SmartBlock.Id(), msgs)
+	d.SmartBlock.CheckSubscriptions()
+
 	return nil
 }
 
@@ -538,6 +545,10 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 
 	var depIdsMap = map[string]struct{}{}
 	var depIds []string
+	if rec.Details == nil || rec.Details.Fields == nil {
+		return nil
+	}
+
 	for key, item := range rec.Details.Fields {
 		if key == "id" || key == "type" {
 			continue
@@ -562,7 +573,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 	sub := dv.depsUpdatesSubscription
 	go func() {
 		for _, det := range depDetails {
-			sub.Publish(pbtypes.GetString(det.Details, "id"), det.Details)
+			sub.Publish(pbtypes.GetString(det.Details, bundle.RelationKeyId.String()), det.Details)
 		}
 	}()
 	return nil
@@ -588,19 +599,57 @@ func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, 
 	return db.Delete(recID)
 }
 
-func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
-	d.Iterate(func(b simple.Block) (isContinue bool) {
+func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error {
+	st := d.NewStateCtx(ctx)
+	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {
 			return true
 		} else {
+			d.fillAggregatedOptions(dvBlock)
+			st.Set(b)
+			return true
+		}
+	})
+	return d.Apply(st)
+}
+
+func (d *dataviewCollectionImpl) fillAggregatedOptions(b dataview.Block) {
+	dvc := b.Model().GetDataview()
+
+	for _, rel := range dvc.Relations {
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			continue
+		}
+
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvc.Source)
+		if err != nil {
+			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+			continue
+		}
+
+		rel.SelectDict = options
+	}
+}
+
+func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
+	st := d.NewStateCtx(ctx)
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		if dvBlock, ok := b.(dataview.Block); !ok {
+			return true
+		} else {
+			dv := d.getDataviewImpl(dvBlock)
 			// reset state after block was reopened
 			// getDataviewImpl will also set activeView to the fist one in case the smartblock wasn't opened in this session before
-			dv := d.getDataviewImpl(dvBlock)
+			d.fillAggregatedOptions(dvBlock)
+			st.Set(b)
 			dv.records = nil
 		}
 		return true
 	})
-
+	err := d.Apply(st)
+	if err != nil {
+		log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+	}
 	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 
@@ -697,7 +746,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	for _, depEntry := range depEntries {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDetails{BlockSetDetails: &pb.EventBlockSetDetails{Id: pbtypes.GetString(depEntry.Details, "id"), Details: depEntry.Details}}})
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDetails{BlockSetDetails: &pb.EventBlockSetDetails{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
 	}
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
@@ -724,7 +773,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				d.SendEvent([]*pb.EventMessage{
 					{Value: &pb.EventMessageValueOfBlockSetDetails{
 						BlockSetDetails: &pb.EventBlockSetDetails{
-							Id:      pbtypes.GetString(rec, "id"),
+							Id:      pbtypes.GetString(rec, bundle.RelationKeyId.String()),
 							Details: rec,
 						}}}})
 			}
@@ -751,7 +800,7 @@ func getEntryID(entry database.Record) string {
 		return ""
 	}
 
-	return entry.Details.Fields["id"].GetStringValue()
+	return pbtypes.GetString(entry.Details, bundle.RelationKeyId.String())
 }
 
 type recordInsertedAtPosition struct {

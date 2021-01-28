@@ -72,6 +72,76 @@ func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }
 
+func (st *SmartTest) AddExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error) {
+	rel := pbtypes.GetRelation(st.Relations(), relationKey)
+	if rel == nil {
+		return nil, fmt.Errorf("relation not found")
+	}
+
+	if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		return nil, fmt.Errorf("incorrect relation format")
+	}
+
+	newOption, err := st.Doc.(*state.State).AddExtraRelationOption(*rel, option)
+	if err != nil {
+		return nil, err
+	}
+
+	return newOption, nil
+}
+
+func (st *SmartTest) CheckSubscriptions() (changed bool) {
+	return false
+}
+
+func (st *SmartTest) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) error {
+	for _, rel := range st.ExtraRelations() {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
+		}
+		for i, opt := range rel.SelectDict {
+			if opt.Id == option.Id {
+				copy := pbtypes.CopyRelation(rel)
+				copy.SelectDict[i] = &option
+				st.Doc.(*state.State).SetExtraRelation(copy)
+
+				return nil
+			}
+		}
+
+		return fmt.Errorf("relation option not found")
+	}
+
+	return fmt.Errorf("relation not found")
+}
+
+func (st *SmartTest) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
+	for _, rel := range st.ExtraRelations() {
+		if rel.Key != relationKey {
+			continue
+		}
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
+		}
+		for i, opt := range rel.SelectDict {
+			if opt.Id == optionId {
+				copy := pbtypes.CopyRelation(rel)
+				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
+				st.Doc.(*state.State).SetExtraRelation(copy)
+				return nil
+			}
+		}
+		// todo: should we remove option and value from all objects within type?
+
+		return fmt.Errorf("relation option not found")
+	}
+
+	return fmt.Errorf("relation not found")
+}
+
 func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
@@ -118,11 +188,7 @@ func (st *SmartTest) RemoveExtraRelations(relationKeys []string) (err error) {
 	return nil
 }
 
-func (st *SmartTest) AddObjectTypes(objectTypes []string) (err error) {
-	return nil
-}
-
-func (st *SmartTest) RemoveObjectTypes(objectTypes []string) (err error) {
+func (st *SmartTest) SetObjectTypes(objectTypes []string) (err error) {
 	return nil
 }
 
@@ -196,8 +262,6 @@ func (st *SmartTest) Apply(s *state.State, flags ...smartblock.ApplyFlag) (err e
 	if err != nil {
 		return
 	}
-
-
 
 	if st.hist != nil && addHistory {
 		st.hist.Add(act)

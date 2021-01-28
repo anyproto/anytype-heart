@@ -200,6 +200,7 @@ message Block {
             repeated View views = 2;
             // index 3 is deprecated, was used for schemaURL in old-format sets
             repeated anytype.relation.Relation relations = 4;
+            string activeView = 3; // saved within a session
 
             message View {
                 string id = 1;

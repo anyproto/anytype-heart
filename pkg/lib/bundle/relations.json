@@ -1,0 +1,511 @@
+[
+  {
+    "format": "tag",
+    "hidden": false,
+    "key": "tag",
+    "name": "Tag",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Camera used to capture image or video",
+    "format": "title",
+    "hidden": false,
+    "key": "camera",
+    "name": "Camera",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Height of image/video in pixels",
+    "format": "number",
+    "hidden": false,
+    "key": "heightInPixels",
+    "name": "Height(px)",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Date when the object was initially created",
+    "format": "date",
+    "hidden": false,
+    "key": "createdDate",
+    "name": "Creation date",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Date when the object will be deleted from your device",
+    "format": "date",
+    "hidden": true,
+    "key": "toBeDeletedDate",
+    "name": "Date to delete",
+    "readonly": true,
+    "source": "account"
+  },
+  {
+    "description": "Done checkbox used to render action layout. ",
+    "format": "checkbox",
+    "hidden": false,
+    "key": "done",
+    "name": "Done",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "date",
+    "hidden": false,
+    "key": "dateOfBirth",
+    "name": "Date of birth",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "thumbnailImage",
+    "name": "Thumbnail image",
+    "objectTypes": [
+      "image"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "attachments",
+    "name": "Attachments",
+    "objectTypes": [
+      "file",
+      "image",
+      "video",
+      "audio"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "linkedTasks",
+    "name": "Linked tasks",
+    "objectTypes": [
+      "task"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Image icon",
+    "format": "object",
+    "hidden": true,
+    "key": "iconImage",
+    "name": "Image",
+    "objectTypes": [
+      "image"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Year when this object were released",
+    "format": "number",
+    "hidden": false,
+    "key": "releasedYear",
+    "name": "Released year",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": true,
+    "key": "coverScale",
+    "name": "Cover scale",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "linkedProjects",
+    "name": "Linked Projects",
+    "objectTypes": [
+      "project"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Audio record's album name",
+    "format": "title",
+    "hidden": false,
+    "key": "audioAlbum",
+    "name": "Album",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Task status?",
+    "format": "status",
+    "hidden": false,
+    "key": "status",
+    "name": "Status",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Duration of audio/video file in seconds",
+    "format": "number",
+    "hidden": false,
+    "key": "durationInSeconds",
+    "name": "Duration(sec)",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": false,
+    "key": "aperture",
+    "name": "Camera Aperture",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Date when the object was modified last time",
+    "format": "date",
+    "hidden": false,
+    "key": "lastModifiedDate",
+    "name": "Last modified date",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "List of recommended relations",
+    "format": "object",
+    "hidden": false,
+    "key": "recommendedRelations",
+    "name": "Recommended relations",
+    "objectTypes": [
+      "relation"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Human which created this object",
+    "format": "object",
+    "hidden": false,
+    "key": "creator",
+    "name": "Created by",
+    "objectTypes": [
+      "profile"
+    ],
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Recommended layout for new templates and objects of specific objec",
+    "format": "number",
+    "hidden": true,
+    "key": "recommendedLayout",
+    "name": "Recommended layout",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Date when the object was modified last opened",
+    "format": "date",
+    "hidden": false,
+    "key": "lastOpenedDate",
+    "name": "Last opened date",
+    "readonly": true,
+    "source": "account"
+  },
+  {
+    "description": "Name of artist",
+    "format": "title",
+    "hidden": false,
+    "key": "artist",
+    "name": "Artist",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "date",
+    "hidden": false,
+    "key": "dueDate",
+    "name": "Due date",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "1 emoji(can contains multiple UTF symbols) used as an icon",
+    "format": "emoji",
+    "hidden": true,
+    "key": "iconEmoji",
+    "name": "Emoji",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "1-image, 2-color, 3-gradient, 4-prebuilt bg image. Value stored in coverId",
+    "format": "number",
+    "hidden": true,
+    "key": "coverType",
+    "name": "Cover type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Image y offset of the provided image",
+    "format": "number",
+    "hidden": true,
+    "key": "coverY",
+    "name": "Cover y offset",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Size of file/image in bytes",
+    "format": "number",
+    "hidden": false,
+    "key": "sizeInBytes",
+    "name": "Size(bytes)",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Point to the object types that can be added to collection. Empty means any object type can be added to the collection",
+    "format": "object",
+    "hidden": false,
+    "key": "collectionOf",
+    "name": "Collection of",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Date when the file were added into the anytype",
+    "format": "date",
+    "hidden": false,
+    "key": "addedDate",
+    "name": "Added date",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Person who is responsible for this task or object",
+    "format": "object",
+    "hidden": false,
+    "key": "assignee",
+    "name": "Assignee",
+    "objectTypes": [
+      "profile"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": false,
+    "key": "exposure",
+    "name": "Camera Exposure",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Audio record's genre name",
+    "format": "title",
+    "hidden": false,
+    "key": "audioGenre",
+    "name": "Genre",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Name of the object",
+    "format": "title",
+    "hidden": false,
+    "key": "name",
+    "name": "Name",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "focalRatio",
+    "name": "Focal ratio",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Used to order tasks in list/canban",
+    "format": "number",
+    "hidden": true,
+    "key": "priority",
+    "name": "Priority",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Mime type of object",
+    "format": "title",
+    "hidden": true,
+    "key": "fileMimeType",
+    "name": "Mime type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "type",
+    "name": "Object type",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Anytype layout ID(from pb enum)",
+    "format": "number",
+    "hidden": false,
+    "key": "layout",
+    "name": "Layout",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Number of the track in the",
+    "format": "number",
+    "hidden": false,
+    "key": "audioAlbumTrackNumber",
+    "name": "Track #",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "status",
+    "hidden": false,
+    "key": "placeOfBirth",
+    "name": "Place of birth",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": false,
+    "key": "composer",
+    "name": "Composer",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Image x offset of the provided image",
+    "format": "number",
+    "hidden": true,
+    "key": "coverX",
+    "name": "Cover x offset",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "description",
+    "hidden": false,
+    "key": "description",
+    "name": "Description",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Link to itself. Used in databases",
+    "format": "object",
+    "hidden": true,
+    "key": "id",
+    "name": "Anytype ID",
+    "readonly": false,
+    "source": "derived"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "cameraIso",
+    "name": "ISO",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Can contains image hash, color or prebuild bg id, depends on coverType relation",
+    "format": "title",
+    "hidden": true,
+    "key": "coverId",
+    "name": "Cover image or color",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Human which updates the object last time",
+    "format": "object",
+    "hidden": false,
+    "key": "lastModifiedBy",
+    "name": "Last modified by",
+    "objectTypes": [
+      "profile"
+    ],
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "description": "Width of image/video in pixels",
+    "format": "number",
+    "hidden": false,
+    "key": "widthInPixels",
+    "name": "Width(px)",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "description": "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
+    "format": "object",
+    "hidden": false,
+    "key": "setOf",
+    "name": "Set of",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "status",
+    "hidden": false,
+    "key": "gender",
+    "name": "Gender",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "title",
+    "hidden": false,
+    "key": "fileExt",
+    "name": "File extension",
+    "readonly": false,
+    "source": "derived"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "featuredRelations",
+    "name": "Featured relations management will be  implemented later.",
+    "objectTypes": [
+      "relation"
+    ],
+    "readonly": false,
+    "source": "details"
+  }
+]

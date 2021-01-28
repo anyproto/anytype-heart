@@ -103,7 +103,7 @@ func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreate
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, err = bs.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil, nil)
+		id, _, err = bs.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil)
 		return
 	})
 
