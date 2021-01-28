@@ -135,7 +135,10 @@ func (h *MD) renderText(b *model.Block, in *renderState) {
 		renderText()
 		h.renderChilds(b, in.AddSpace())
 	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
-
+		h.buf.WriteString("> ")
+		h.buf.WriteString(strings.ReplaceAll(text.Text, "\n", "   \n> "))
+		h.buf.WriteString("\n")
+		h.renderChilds(b, in)
 	case model.BlockContentText_Code:
 		h.buf.WriteString("```\n")
 		h.buf.WriteString(strings.ReplaceAll(text.Text, "```", "\\`\\`\\`"))
