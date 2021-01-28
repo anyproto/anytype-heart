@@ -137,7 +137,7 @@ func (h *MD) renderText(b *model.Block, in *renderState) {
 	case model.BlockContentText_Quote, model.BlockContentText_Toggle:
 		h.buf.WriteString("> ")
 		h.buf.WriteString(strings.ReplaceAll(text.Text, "\n", "   \n> "))
-		h.buf.WriteString("\n")
+		h.buf.WriteString("   \n\n")
 		h.renderChilds(b, in)
 	case model.BlockContentText_Code:
 		h.buf.WriteString("```\n")
@@ -175,11 +175,11 @@ func (h *MD) renderFile(b *model.Block, in *renderState) {
 	}
 	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
 	h.buf.WriteString(in.indent)
-	if file.Type == model.BlockContentFile_Image {
-		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
+	if file.Type != model.BlockContentFile_Image {
+		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
 		h.fileHashes = append(h.fileHashes, file.Hash)
 	} else {
-		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
+		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
 		h.imageHashes = append(h.imageHashes, file.Hash)
 	}
 }
