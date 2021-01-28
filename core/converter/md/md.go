@@ -295,6 +295,8 @@ func (mw *marksWriter) writeMarks(pos int) {
 					fmt.Fprintf(mw.h.buf, "](%s)", m.Param+".md")
 				}
 			}
+		case model.BlockContentTextMark_Keyboard:
+			mw.h.buf.WriteString("`")
 		}
 	}
 
