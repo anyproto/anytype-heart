@@ -328,12 +328,18 @@ func (m *dsFileStore) GetByHash(hash string) (*storage.FileInfo, error) {
 }
 
 func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*storage.FileInfo, error) {
-	key, err := GetKeyByIndex(indexMillChecksum, m.ds, &storage.FileInfo{Mill: mill, Checksum: checksum})
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	key, err := GetKeyByIndex(indexMillChecksum, txn, &storage.FileInfo{Mill: mill, Checksum: checksum})
 	if err != nil {
 		return nil, err
 	}
 
-	val, err := m.ds.Get(filesInfoBase.ChildString(key))
+	val, err := txn.Get(filesInfoBase.ChildString(key))
 	if err != nil {
 		return nil, err
 	}
@@ -348,12 +354,18 @@ func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*storage.File
 }
 
 func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*storage.FileInfo, error) {
-	key, err := GetKeyByIndex(indexMillSourceOpts, m.ds, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	key, err := GetKeyByIndex(indexMillSourceOpts, txn, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
 	if err != nil {
 		return nil, err
 	}
 
-	val, err := m.ds.Get(filesInfoBase.ChildString(key))
+	val, err := txn.Get(filesInfoBase.ChildString(key))
 	if err != nil {
 		return nil, err
 	}
@@ -368,9 +380,15 @@ func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*sto
 }
 
 func (m *dsFileStore) ListTargets() ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
 	targetPrefix := indexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
 
-	res, err := GetKeys(m.ds, targetPrefix, 0)
+	res, err := GetKeys(txn, targetPrefix, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -393,7 +411,13 @@ func (m *dsFileStore) ListTargets() ([]string, error) {
 }
 
 func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
-	results, err := GetKeysByIndexParts(m.ds, indexTargets.Prefix, indexTargets.Name, []string{target}, indexTargets.Hash, 0)
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	results, err := GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{target}, indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -405,7 +429,7 @@ func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
 
 	var files []*storage.FileInfo
 	for _, key := range keys {
-		val, err := m.ds.Get(filesInfoBase.ChildString(key))
+		val, err := txn.Get(filesInfoBase.ChildString(key))
 		if err != nil {
 			return nil, err
 		}
@@ -433,7 +457,13 @@ func (m *dsFileStore) Count() (int, error) {
 
 func (m *dsFileStore) List() ([]*storage.FileInfo, error) {
 	var infos []*storage.FileInfo
-	res, err := GetKeys(m.ds, filesInfoBase.String(), 0)
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	res, err := GetKeys(txn, filesInfoBase.String(), 0)
 	if err != nil {
 		return nil, err
 	}

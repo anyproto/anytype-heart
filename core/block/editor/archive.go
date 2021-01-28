@@ -14,7 +14,7 @@ import (
 func NewArchive(m meta.Service, ctrl ArchiveCtrl) *Archive {
 	return &Archive{
 		ctrl:       ctrl,
-		SmartBlock: smartblock.New(m, ""),
+		SmartBlock: smartblock.New(m),
 	}
 }
 

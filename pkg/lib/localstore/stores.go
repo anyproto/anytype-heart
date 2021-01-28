@@ -65,8 +65,12 @@ type ObjectStore interface {
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
+	GetAggregatedOptions(relationKey string, relationFormat pbrelation.RelationFormat, objectType string) (options []*pbrelation.RelationOption, err error)
+
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
+	ListIds() ([]string, error)
+
 	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
@@ -233,8 +237,8 @@ func RemoveIndexesWithTxn(store Indexable, txn ds.Txn, val interface{}, valPrima
 	return nil
 }
 
-func GetKeyByIndex(index Index, ds ds.TxnDatastore, val interface{}) (string, error) {
-	results, err := GetKeysByIndex(index, ds, val, 1)
+func GetKeyByIndex(index Index, txn ds.Txn, val interface{}) (string, error) {
+	results, err := GetKeysByIndex(index, txn, val, 1)
 	if err != nil {
 		return "", err
 	}
@@ -255,15 +259,41 @@ func GetKeyByIndex(index Index, ds ds.TxnDatastore, val interface{}) (string, er
 	return keyParts[len(keyParts)-1], nil
 }
 
-func GetKeysByIndexParts(ds ds.TxnDatastore, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
+func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []string, hash bool) ds.Key {
+	key := indexBase.ChildString(prefix).ChildString(keyIndexName)
+	if len(keyIndexValue) == 0 {
+		return key
+	}
+
 	keyStr := strings.Join(keyIndexValue, "")
 	if hash {
 		keyBytesF := sha256.Sum256([]byte(keyStr))
 		keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 	}
 
-	key := indexBase.ChildString(prefix).ChildString(keyIndexName).ChildString(keyStr)
-	return GetKeys(ds, key.String(), limit)
+	return key.ChildString(keyStr)
+}
+
+func GetKeysByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash)
+
+	return GetKeys(txn, key.String(), limit)
+}
+
+func QueryByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash)
+
+	return txn.Query(query.Query{
+		Prefix:   key.String(),
+		Limit:    limit,
+		KeysOnly: false,
+	})
+}
+
+func HasPrimaryKeyByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, hash bool, primaryIndex string) (exists bool, err error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash).ChildString(primaryIndex)
+
+	return txn.Has(key)
 }
 
 func CountAllKeysFromResults(results query.Results) (int, error) {
@@ -324,7 +354,7 @@ func CarveKeyParts(key string, from, to int) (string, error) {
 	return strings.Join(polymorph.ToStrings(carved), "/"), nil
 }
 
-func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int) (query.Results, error) {
+func GetKeysByIndex(index Index, txn ds.Txn, val interface{}, limit int) (query.Results, error) {
 	indexKeyValues := index.Keys(val)
 	if indexKeyValues == nil {
 		return nil, fmt.Errorf("failed to get index key values – may be incorrect val interface")
@@ -346,12 +376,12 @@ func GetKeysByIndex(index Index, ds ds.TxnDatastore, val interface{}, limit int)
 		limit = 1
 	}
 
-	return GetKeys(ds, key.String(), limit)
+	return GetKeys(txn, key.String(), limit)
 }
 
-func GetKeys(ds ds.TxnDatastore, prefix string, limit int) (query.Results, error) {
-	return ds.Query(query.Query{
-		Prefix:   prefix + "/",
+func GetKeys(tx ds.Txn, prefix string, limit int) (query.Results, error) {
+	return tx.Query(query.Query{
+		Prefix:   prefix,
 		Limit:    limit,
 		KeysOnly: true,
 	})

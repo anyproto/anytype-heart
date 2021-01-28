@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -23,7 +23,7 @@ type Service interface {
 	PubSub() PubSub
 	ReportChange(m Meta)
 	Close() (err error)
-	FetchMeta(ids []string) (details []Meta)
+	FetchMeta(ids []string) (metas []Meta)
 	FetchObjectTypes(objectTypeUrls []string) []*pbrelation.ObjectType
 }
 
@@ -54,7 +54,7 @@ func (s *service) ReportChange(m Meta) {
 	s.ps.setMeta(m)
 }
 
-func (s *service) FetchMeta(ids []string) (details []Meta) {
+func (s *service) FetchMeta(ids []string) (metas []Meta) {
 	if len(ids) == 0 {
 		return
 	}
@@ -69,8 +69,8 @@ func (s *service) FetchMeta(ids []string) (details []Meta) {
 		if done {
 			return
 		}
-		details = append(details, d)
-		if len(details) == len(ids) {
+		metas = append(metas, d)
+		if len(metas) == len(ids) {
 			close(filled)
 			done = true
 		}
@@ -92,18 +92,14 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 	for _, otypeUrl := range objectTypeUrls {
 		if strings.HasPrefix(otypeUrl, objects.BundledObjectTypeURLPrefix) {
 			var err error
-			objectType, err := relation.GetObjectType(otypeUrl)
+			objectType, err := bundle.GetTypeByUrl(otypeUrl)
 			if err != nil {
-				if err == relation.ErrNotFound {
-					log.Errorf("unknown objectType: %s", otypeUrl)
-				} else {
-					log.Errorf("failed to get bundled objectType: %w", err)
-				}
+				log.Errorf("failed to get objectType %s: %s", otypeUrl, err.Error())
 				continue
 			}
 			objectTypes = append(objectTypes, objectType)
 		} else if !strings.HasPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix) {
-			log.Errorf("failed to get objectType: incorrect url: %s", otypeUrl)
+			log.Errorf("failed to get objectType %s: incorrect url", otypeUrl)
 		} else {
 			customOtypeIds = append(customOtypeIds, strings.TrimPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix))
 		}
@@ -114,17 +110,16 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 	}
 
 	metas := s.FetchMeta(customOtypeIds)
-
 	for _, meta := range metas {
 		objectType := &pbrelation.ObjectType{}
-		if name := pbtypes.GetString(meta.Details, "name"); name != "" {
+		if name := pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()); name != "" {
 			objectType.Name = name
 		}
-		if layout := pbtypes.GetFloat64(meta.Details, "layout"); layout != 0.0 {
+		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLayout.String()); layout != 0.0 {
 			objectType.Layout = pbrelation.ObjectTypeLayout(int(layout))
 		}
 
-		if iconEmoji := pbtypes.GetString(meta.Details, "iconEmoji"); iconEmoji != "" {
+		if iconEmoji := pbtypes.GetString(meta.Details, bundle.RelationKeyIconEmoji.String()); iconEmoji != "" {
 			objectType.IconEmoji = iconEmoji
 		}
 

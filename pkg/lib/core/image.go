@@ -4,11 +4,14 @@ import (
 	"context"
 	"encoding/json"
 	"math"
+	"path/filepath"
+	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -119,7 +122,8 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 func (i *image) Details() (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			"type": pbtypes.StringList([]string{objects.BundledObjectTypeURLPrefix + "image"}),
+			"id":   pbtypes.String(i.hash),
+			"type": pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
 		},
 	}
 
@@ -130,19 +134,20 @@ func (i *image) Details() (*types.Struct, error) {
 	if err != nil {
 		return details, nil
 	}
+	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(relation.ObjectType_file))
 
-	details.Fields["name"] = pbtypes.String(largest.Meta().Name)
-	details.Fields["fileMimeType"] = pbtypes.String(largest.Meta().Media)
-
-	details.Fields["sizeInBytes"] = pbtypes.Float64(float64(largest.Meta().Size))
-	details.Fields["addedDate"] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
+	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
+	details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
+	details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
+	details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
+	details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
 
 	if v, exists := largest.Info().Meta.Fields["width"]; exists {
-		details.Fields["widthInPixels"] = v
+		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
 	}
 
 	if v, exists := largest.Info().Meta.Fields["height"]; exists {
-		details.Fields["heightInPixels"] = v
+		details.Fields[bundle.RelationKeyHeightInPixels.String()] = v
 	}
 
 	exif, err := i.Exif()
@@ -152,31 +157,31 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	if exif.Width > 0 {
-		details.Fields["widthInPixels"] = pbtypes.Float64(float64(exif.Width))
+		details.Fields[bundle.RelationKeyWidthInPixels.String()] = pbtypes.Float64(float64(exif.Width))
 	}
 	if exif.Height > 0 {
-		details.Fields["heightInPixels"] = pbtypes.Float64(float64(exif.Height))
+		details.Fields[bundle.RelationKeyHeightInPixels.String()] = pbtypes.Float64(float64(exif.Height))
 	}
 	if !exif.Created.IsZero() {
-		details.Fields["createdDate"] = pbtypes.Float64(float64(exif.Created.Unix()))
+		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(exif.Created.Unix()))
 	}
-	if exif.Latitude != 0.0 {
+	/*if exif.Latitude != 0.0 {
 		details.Fields["latitude"] = pbtypes.Float64(exif.Latitude)
 	}
 	if exif.Longitude != 0.0 {
 		details.Fields["longitude"] = pbtypes.Float64(exif.Longitude)
-	}
+	}*/
 	if exif.CameraModel != "" {
-		details.Fields["camera"] = pbtypes.String(exif.CameraModel)
+		details.Fields[bundle.RelationKeyCamera.String()] = pbtypes.String(exif.CameraModel)
 	}
 	if exif.ExposureTime != "" {
-		details.Fields["exposureTime"] = pbtypes.String(exif.ExposureTime)
+		details.Fields[bundle.RelationKeyExposure.String()] = pbtypes.String(exif.ExposureTime)
 	}
 	if exif.FNumber != 0 {
-		details.Fields["focalRatio"] = pbtypes.Float64(exif.FNumber)
+		details.Fields[bundle.RelationKeyFocalRatio.String()] = pbtypes.Float64(exif.FNumber)
 	}
 	if exif.ISO != 0 {
-		details.Fields["iso"] = pbtypes.Float64(float64(exif.ISO))
+		details.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Float64(float64(exif.ISO))
 	}
 
 	return details, nil

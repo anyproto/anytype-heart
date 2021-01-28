@@ -96,7 +96,7 @@ func RelationEqual(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal 
 	return RelationSelectDictEqual(rel1.SelectDict, rel2.SelectDict)
 }
 
-func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationSelectOption) bool {
+func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationOption) bool {
 	if len(dict1) != len(dict2) {
 		return false
 	}

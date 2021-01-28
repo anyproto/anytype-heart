@@ -98,7 +98,7 @@ message Change {
 
     message RelationUpdate {
         message Dict {
-            repeated anytype.relation.Relation.SelectOption dict = 2;
+            repeated anytype.relation.Relation.Option dict = 2;
         }
 
         message ObjectTypes {

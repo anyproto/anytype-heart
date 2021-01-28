@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -59,7 +59,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 		return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationAddResponseError_READONLY_OBJECT_TYPE, nil, fmt.Errorf("can't modify bundled object type"))
 	}
 
@@ -98,7 +98,7 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
@@ -135,7 +135,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if strings.HasPrefix(objType.Url, objects.BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
@@ -164,11 +164,10 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		return m
 	}
 	var sbId string
-	var relations []*pbrelation.Relation
-	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(relation.RequiredInternalRelations))
+	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(bundle.RequiredInternalRelations))
 
-	for _, rel := range relation.RequiredInternalRelations {
-		requiredRelationByKey[rel] = relation.BundledRelations[rel]
+	for _, rel := range bundle.RequiredInternalRelations {
+		requiredRelationByKey[rel.String()] = bundle.MustGetRelation(rel)
 	}
 
 	for _, rel := range req.ObjectType.Relations {
@@ -188,21 +187,18 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		sbId, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
+		sbId, _, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
 			Fields: map[string]*types.Value{
-				"name":      pbtypes.String(req.ObjectType.Name),
-				"iconEmoji": pbtypes.String(req.ObjectType.IconEmoji),
-				"layout":    pbtypes.Float64(float64(req.ObjectType.Layout)),
+				bundle.RelationKeyName.String():      pbtypes.String(req.ObjectType.Name),
+				bundle.RelationKeyIconEmoji.String(): pbtypes.String(req.ObjectType.IconEmoji),
+				bundle.RelationKeyType.String():      pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
+				bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
 			},
-		}, nil, nil)
+		}, req.ObjectType.Relations)
 		if err != nil {
 			return err
 		}
 
-		relations, err = bs.AddExtraRelations(sbId, req.ObjectType.Relations)
-		if err != nil {
-			return err
-		}
 		return nil
 	})
 
@@ -211,7 +207,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 
 	otype := req.ObjectType
-	otype.Relations = relations
+	otype.Relations = req.ObjectType.Relations
 	otype.Url = customObjectTypeURLPrefix + sbId
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }
@@ -225,7 +221,7 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return m
 	}
 
-	otypes, err := relation.ListObjectTypes()
+	otypes, err := bundle.ListTypes()
 	if err != nil {
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}

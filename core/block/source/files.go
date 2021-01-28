@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -80,7 +81,7 @@ func (v *files) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err
 
 	s.SetDetails(d)
 
-	s.SetObjectTypes(pbtypes.GetStringList(d, "type"))
+	s.SetObjectTypes(pbtypes.GetStringList(d, bundle.RelationKeyType.String()))
 	return s, nil
 }
 
@@ -97,7 +98,7 @@ func (v *files) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 
 	s.SetDetails(d)
 	s.SetDetail("id", pbtypes.String(v.id))
-	s.SetObjectTypes(pbtypes.GetStringList(d, "type"))
+	s.SetObjectTypes(pbtypes.GetStringList(d, bundle.RelationKeyType.String()))
 	return s, nil
 }
 

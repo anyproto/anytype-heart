@@ -8,9 +8,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -142,7 +142,7 @@ func (d *doc) buildState() (doc *state.State, err error) {
 	if details, err := d.store.GetDetails(d.id); err == nil {
 		if details != nil && details.Details != nil {
 			for key, v := range details.Details.Fields {
-				if slice.FindPos(relation.LocalOnlyRelationsKeys, key) != -1 {
+				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
 					st.SetDetail(key, v)
 				}
 			}
