@@ -29,7 +29,7 @@ var log = logging.Logger("anytype-mw-editor")
 
 type Dataview interface {
 	GetObjectTypeURL(ctx *state.Context, blockId string) (string, error)
-	GetAggregatedRelations(ctx *state.Context, blockId string) ([]*pbrelation.Relation, error)
+	GetAggregatedRelations(blockId string) ([]*pbrelation.Relation, error)
 
 	UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
 	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
@@ -84,24 +84,16 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	if err != nil {
 		return nil, err
 	}
+
 	if relation.Key == "" {
 		relation.Key = bson.NewObjectId().Hex()
 	} else {
-		existingRelations, err := d.GetAggregatedRelations(ctx, blockId)
+		existingRelation, err := d.Anytype().ObjectStore().GetRelation(relation.Key)
 		if err != nil {
 			return nil, err
 		}
-		var foundRelation *pbrelation.Relation
-		for _, rel := range existingRelations {
-			if rel.Key == relation.Key {
-				foundRelation = rel
-			}
-		}
-		if foundRelation == nil {
-			return nil, fmt.Errorf("provided relation with key %s not found among aggregated relations for dataview", relation.Key)
-		}
 
-		if !pbtypes.RelationCompatible(foundRelation, &relation) {
+		if !pbtypes.RelationCompatible(existingRelation, &relation) {
 			return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
 		}
 	}
@@ -113,8 +105,12 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	// reset SelectDict because it is supposed to be aggregated and injected on-the-fly
 	relation.SelectDict = nil
 	tb.AddRelation(relation)
+	err = d.Apply(s)
+	if err != nil {
+		return nil, err
+	}
 
-	return &relation, d.Apply(s)
+	return &relation, nil
 }
 
 func (d *dataviewCollectionImpl) DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error {
@@ -148,11 +144,16 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 	if err = tb.UpdateRelation(relationKey, relation); err != nil {
 		return err
 	}
-
 	if showEvent {
-		return d.Apply(s)
+		err = d.Apply(s)
+	} else {
+		err = d.Apply(s, smartblock.NoEvent)
 	}
-	return d.Apply(s, smartblock.NoEvent)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
@@ -253,10 +254,9 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockI
 	return fmt.Errorf("relation not found")
 }
 
-func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, blockId string) ([]*pbrelation.Relation, error) {
-	s := d.NewStateCtx(ctx)
-
-	tb, err := getDataviewBlock(s, blockId)
+func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*pbrelation.Relation, error) {
+	st := d.NewState()
+	tb, err := getDataviewBlock(st, blockId)
 	if err != nil {
 		return nil, err
 	}
@@ -265,37 +265,36 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(ctx *state.Context, bloc
 	if err != nil {
 		return nil, err
 	}
-
-	var relations []*pbrelation.Relation
-	var db database.Reader
-	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(tb.GetSource()); err != nil {
-		return nil, err
-	} else {
-		db = target
+	hasRelations := func(rels []*pbrelation.Relation, key string) bool {
+		for _, rel := range rels {
+			if rel.Key == key {
+				return true
+			}
+		}
+		return false
 	}
-	sch := schema.New(objectType, tb.Model().GetDataview().Relations)
-	aggregatedRelations, err := db.AggregateRelations(&sch)
+
+	rels := objectType.Relations
+	for _, rel := range tb.Model().GetDataview().GetRelations() {
+		if hasRelations(rels, rel.Key) {
+			continue
+		}
+		rels = append(rels, pbtypes.CopyRelation(rel))
+	}
+
+	agRels, err := d.Anytype().ObjectStore().AggregateRelationsForType(tb.GetSource())
 	if err != nil {
 		return nil, err
 	}
 
-	var m = make(map[string]struct{}, len(aggregatedRelations))
-	for _, rel := range objectType.Relations {
-		m[rel.Key] = struct{}{}
-		relations = append(relations, pbtypes.CopyRelation(rel))
-	}
-
-	for _, rel := range aggregatedRelations {
-		if _, exists := m[rel.Key]; exists {
+	for _, rel := range agRels {
+		if hasRelations(rels, rel.Key) {
 			continue
 		}
-		m[rel.Key] = struct{}{}
-		relations = append(relations, pbtypes.CopyRelation(rel))
+		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
-	return relations, nil
+	return rels, nil
 }
 
 func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataviewImpl {

@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -43,6 +44,7 @@ const (
 	NoRestrictions
 	NoHooks
 	DoSnapshot
+	SkipIfNoChanges
 )
 
 type Hook int
@@ -403,7 +405,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if !pbtypes.Exists(sb.Details(), "creator") {
+	if !pbtypes.Exists(sb.Details(), bundle.RelationKeyCreator.String()) {
+		// todo: should it be done in the background?
 		if e := sb.setCreationInfo(s); e != nil {
 			log.With("thread", sb.Id()).Errorf("can't set creation info: %v", err)
 		}
@@ -468,11 +471,14 @@ func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
 		createdDate = time.Now().Unix()
 		createdBy   = sb.Anytype().Account()
 	)
-	fc, err := sb.source.FindFirstChange()
+	// protect from the big documents with a large trees
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	fc, err := sb.source.FindFirstChange(ctx)
 	if err == change.ErrEmpty {
 		err = nil
 	} else if err != nil {
-		return
+		return fmt.Errorf("failed to find first change to derive creation info")
 	} else {
 		createdDate = fc.Timestamp
 		createdBy = fc.Account
@@ -578,7 +584,8 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 						}
 					}
 					if !optFound {
-						return fmt.Errorf("failed to find an option for a select/tag relation '%s'", rel.Key)
+						log.Errorf("failed to find an option for a select/tag relation '%s'", rel.Key)
+						return fmt.Errorf("failed to find an option for a select/tag relation")
 					}
 				}
 			}
@@ -751,7 +758,11 @@ func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey str
 	s := sb.NewStateCtx(ctx)
 	rel := pbtypes.GetRelation(sb.Relations(), relationKey)
 	if rel == nil {
-		return nil, fmt.Errorf("relation not found")
+		var err error
+		rel, err = sb.Anytype().ObjectStore().GetRelation(relationKey)
+		if err != nil {
+			return nil, fmt.Errorf("relation not found: %s", err.Error())
+		}
 	}
 
 	if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
@@ -970,7 +981,7 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 	}
 }
 
-func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelations []*pbrelation.Relation, details *types.Struct) []*pbrelation.Relation {
+func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelations []*pbrelation.Relation, aggregatedRelations []*pbrelation.Relation, details *types.Struct) []*pbrelation.Relation {
 	var m = make(map[string]struct{}, len(extraRelations))
 	var rels = make([]*pbrelation.Relation, 0, len(objTypeRelations)+len(extraRelations))
 
@@ -985,6 +996,14 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 		}
 		rels = append(rels, pbtypes.CopyRelation(rel))
 		m[rel.Key] = struct{}{}
+	}
+
+	for _, rel := range aggregatedRelations {
+		if _, exists := m[rel.Key]; exists {
+			continue
+		}
+		m[rel.Key] = struct{}{}
+		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
 	if details == nil || details.Fields == nil {
@@ -1006,12 +1025,22 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	rels := mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), sb.Details())
-	var objType string
 	objTypes := sb.ObjectTypes()
+	var objType string
 	if len(objTypes) > 0 {
 		objType = objTypes[0]
 	}
+	var err error
+	var aggregatedRelation []*pbrelation.Relation
+	if len(objTypes) > 0 {
+		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsForType(objType)
+		if err != nil {
+			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
+		}
+	}
+
+	rels := mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), aggregatedRelation, sb.Details())
+
 	for _, rel := range rels {
 		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
 			continue

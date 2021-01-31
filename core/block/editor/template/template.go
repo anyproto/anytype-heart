@@ -84,6 +84,16 @@ var WithDetailName = func(name string) StateTransformer {
 	}
 }
 
+var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
+	return func(s *state.State) {
+		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[key.String()] != nil {
+			return
+		}
+
+		s.SetDetail(key.String(), value)
+	}
+}
+
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[bundle.RelationKeyIconEmoji.String()] != nil {
@@ -267,5 +277,5 @@ func ApplyTemplate(sb smartblock.SmartBlock, s *state.State, templates ...StateT
 	if err = InitTemplate(s, templates...); err != nil {
 		return
 	}
-	return sb.Apply(s, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions)
+	return sb.Apply(s, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
 }

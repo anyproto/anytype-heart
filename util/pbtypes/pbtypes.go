@@ -127,3 +127,12 @@ func GetOption(opts []*pbrelation.RelationOption, id string) *pbrelation.Relatio
 
 	return nil
 }
+
+func GetRelationKeys(rels []*pbrelation.Relation) []string {
+	var keys []string
+	for _, rel := range rels {
+		keys = append(keys, rel.Key)
+	}
+
+	return keys
+}

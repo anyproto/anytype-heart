@@ -33,7 +33,7 @@ var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
 	for _, r := range relations {
-		if r.DataSource == relation.Relation_derived {
+		if r.DataSource != relation.Relation_details {
 			LocalOnlyRelationsKeys = append(LocalOnlyRelationsKeys, r.Key)
 		}
 	}

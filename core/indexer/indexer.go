@@ -131,7 +131,7 @@ func (i *indexer) applyRecords(records []core.SmartblockRecordWithThreadID) {
 				threadRecords = append(threadRecords, rec.SmartblockRecordEnvelope)
 			}
 		}
-		i.index(tid, threadRecords)
+		i.index(tid, threadRecords, false)
 	}
 }
 
@@ -148,11 +148,24 @@ func (i *indexer) getDoc(id string) (d *doc, err error) {
 	return
 }
 
-func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
+func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, onlyDetails bool) {
 	d, err := i.getDoc(id)
 	if err != nil {
 		log.Warnf("can't get doc '%s': %v", id, err)
 		return
+	}
+
+	var (
+		dataviewRelationsBefore []*pbrelation.Relation
+		dataviewSourceBefore    string
+	)
+
+	if len(d.st.ObjectTypes()) == 1 && d.st.ObjectTypes()[0] == bundle.TypeKeySet.URL() {
+		b := d.st.Get("dataview")
+		if b != nil && b.Model().GetDataview() != nil {
+			dataviewRelationsBefore = b.Model().GetDataview().Relations
+			dataviewSourceBefore = b.Model().GetDataview().Source
+		}
 	}
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 
@@ -163,6 +176,24 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope) {
 		meta.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastChangeTS))
 		if profileId, err := threads.ProfileThreadIDFromAccountAddress(lastChangeBy); err == nil {
 			meta.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(profileId.String())
+		}
+	}
+
+	if onlyDetails {
+		if err := i.store.UpdateObject(id, meta.Details, nil, nil, ""); err != nil {
+			log.With("thread", id).Errorf("can't update object store: %v", err)
+		} else {
+			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
+		}
+		return
+	}
+
+	if len(meta.ObjectTypes) == 1 && meta.ObjectTypes[0] == bundle.TypeKeySet.URL() {
+		b := d.st.Get("dataview")
+		if b != nil && b.Model().GetDataview() != nil {
+			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, b.Model().GetDataview().Source, &pbrelation.Relations{dataviewRelationsBefore}, &pbrelation.Relations{b.Model().GetDataview().Relations}); err != nil {
+				log.With("thread", id).Errorf("failed to index dataview relations")
+			}
 		}
 	}
 
@@ -271,6 +302,6 @@ func (i *indexer) SetDetail(id string, key string, val *types.Value) error {
 	}
 
 	d.SetDetail(key, val)
-	i.index(id, nil)
+	i.index(id, nil, true)
 	return nil
 }

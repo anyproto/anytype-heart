@@ -1,6 +1,8 @@
 package source
 
 import (
+	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -50,7 +52,7 @@ func (v *virtual) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }
 
-func (v *virtual) FindFirstChange() (c *change.Change, err error) {
+func (v *virtual) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
 	return nil, change.ErrEmpty
 }
 

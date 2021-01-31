@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	"github.com/gogo/protobuf/types"
@@ -61,11 +62,13 @@ type ObjectStore interface {
 
 	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	DeleteObject(id string) error
+	UpdateRelationsInSet(setId, objTypeBefore, objTypeAfter string, relationsBefore, relationsAfter *pbrelation.Relations) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, relationFormat pbrelation.RelationFormat, objectType string) (options []*pbrelation.RelationOption, err error)
+	GetRelation(relationKey string) (*pbrelation.Relation, error)
 
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
@@ -90,14 +93,34 @@ type Indexable interface {
 }
 
 type Index struct {
-	Prefix string
-	Name   string
-	Keys   func(val interface{}) []IndexKeyParts
-	Unique bool
-	Hash   bool
+	Prefix             string
+	Name               string
+	Keys               func(val interface{}) []IndexKeyParts
+	Unique             bool
+	Hash               bool
+	SplitIndexKeyParts bool // split IndexKeyParts using slash
 }
 
 type IndexKeyParts []string
+
+func (i Index) JoinedKeys(val interface{}) []string {
+	var keys []string
+	var sep string
+	if i.SplitIndexKeyParts {
+		sep = "/"
+	}
+
+	var keyStr string
+	for _, key := range i.Keys(val) {
+		keyStr = strings.Join(key, sep)
+		if i.Hash {
+			keyBytesF := sha256.Sum256([]byte(keyStr))
+			keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
+		}
+		keys = append(keys, keyStr)
+	}
+	return keys
+}
 
 func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
 	txn, err := ds.NewTransaction(false)
@@ -115,9 +138,53 @@ func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary
 	return txn.Commit()
 }
 
+func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
+	oldKeys := index.JoinedKeys(oldVal)
+	newKeys := index.JoinedKeys(newVal)
+
+	removed, added := diffSlices(oldKeys, newKeys)
+
+	for _, removedKey := range removed {
+		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(removedKey).ChildString(newValPrimary)
+		exists, err := ds.Has(key)
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			continue
+		}
+		err = ds.Delete(key)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, addedKey := range added {
+		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(addedKey).ChildString(newValPrimary)
+		exists, err := ds.Has(key)
+		if err != nil {
+			return err
+		}
+
+		if exists {
+			continue
+		}
+		err = ds.Put(key, []byte{})
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary string) error {
 	for _, keyParts := range index.Keys(newVal) {
-		keyStr := strings.Join(keyParts, "")
+		var sep string
+		if index.SplitIndexKeyParts {
+			sep = "/"
+		}
+		keyStr := strings.Join(keyParts, sep)
 		if index.Hash {
 			keyBytesF := sha256.Sum256([]byte(keyStr))
 			keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
@@ -160,28 +227,43 @@ func RemoveIndex(index Index, ds ds.TxnDatastore, val interface{}, valPrimary st
 
 func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary string) error {
 	for _, keyParts := range index.Keys(val) {
-		keyStr := strings.Join(keyParts, "")
+		var sep string
+		if index.SplitIndexKeyParts {
+			sep = "/"
+		}
+		keyStr := strings.Join(keyParts, sep)
 		if index.Hash {
 			keyBytesF := sha256.Sum256([]byte(keyStr))
 			keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 		}
 
 		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
-		if index.Unique {
-			exists, err := txn.Has(key)
-			if err != nil {
-				return err
-			}
-			if exists {
-				return ErrDuplicateKey
-			}
+
+		exists, err := txn.Has(key.ChildString(valPrimary))
+		if err != nil {
+			return err
 		}
 
-		err := txn.Delete(key.ChildString(valPrimary))
+		if !exists {
+			return nil
+		}
+
+		err = txn.Delete(key.ChildString(valPrimary))
 		if err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func UpdateIndexesWithTxn(store Indexable, txn ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
+	for _, index := range store.Indexes() {
+		err := UpdateIndexWithTxn(index, txn, oldVal, newVal, newValPrimary)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -259,13 +341,13 @@ func GetKeyByIndex(index Index, txn ds.Txn, val interface{}) (string, error) {
 	return keyParts[len(keyParts)-1], nil
 }
 
-func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []string, hash bool) ds.Key {
+func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool) ds.Key {
 	key := indexBase.ChildString(prefix).ChildString(keyIndexName)
 	if len(keyIndexValue) == 0 {
 		return key
 	}
 
-	keyStr := strings.Join(keyIndexValue, "")
+	keyStr := strings.Join(keyIndexValue, separator)
 	if hash {
 		keyBytesF := sha256.Sum256([]byte(keyStr))
 		keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
@@ -274,14 +356,14 @@ func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []st
 	return key.ChildString(keyStr)
 }
 
-func GetKeysByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
-	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash)
+func GetKeysByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool, limit int) (query.Results, error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, separator, hash)
 
 	return GetKeys(txn, key.String(), limit)
 }
 
-func QueryByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, hash bool, limit int) (query.Results, error) {
-	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash)
+func QueryByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool, limit int) (query.Results, error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, separator, hash)
 
 	return txn.Query(query.Query{
 		Prefix:   key.String(),
@@ -290,8 +372,8 @@ func QueryByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexV
 	})
 }
 
-func HasPrimaryKeyByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, hash bool, primaryIndex string) (exists bool, err error) {
-	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, hash).ChildString(primaryIndex)
+func HasPrimaryKeyByIndexParts(txn ds.Txn, prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool, primaryIndex string) (exists bool, err error) {
+	key := getDsKeyByIndexParts(prefix, keyIndexName, keyIndexValue, separator, hash).ChildString(primaryIndex)
 
 	return txn.Has(key)
 }
@@ -331,6 +413,24 @@ func GetLeavesFromResults(results query.Results) ([]string, error) {
 	return leaves, nil
 }
 
+func GetKeyPartFromResults(results query.Results, from, to int, removeDuplicates bool) ([]string, error) {
+	var keyParts []string
+	for res := range results.Next() {
+		p, err := CarveKeyParts(res.Key, from, to)
+		if err != nil {
+			return nil, err
+		}
+		if removeDuplicates {
+			if slice.FindPos(keyParts, p) >= 0 {
+				continue
+			}
+		}
+		keyParts = append(keyParts, p)
+	}
+
+	return keyParts, nil
+}
+
 func ExtractKeysFromResults(results query.Results) ([]string, error) {
 	var keys []string
 	for res := range results.Next() {
@@ -365,7 +465,12 @@ func GetKeysByIndex(index Index, txn ds.Txn, val interface{}, limit int) (query.
 		return nil, fmt.Errorf("multiple keys index not supported – use GetKeysByIndexParts instead")
 	}
 
-	keyStr := strings.Join(keys[0], "")
+	var sep string
+	if index.SplitIndexKeyParts {
+		sep = "/"
+	}
+
+	keyStr := strings.Join(keys[0], sep)
 	if index.Hash {
 		keyBytesF := sha256.Sum256([]byte(keyStr))
 		keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
