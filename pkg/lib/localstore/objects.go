@@ -907,12 +907,21 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 	)
 
 	if details != nil || len(snippet) > 0 || relations != nil {
-		exInfo, _ := getObjectInfo(txn, id)
+		exInfo, err := getObjectInfo(txn, id)
+		if err != nil {
+			log.Errorf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
+		}
+
 		if exInfo != nil {
 			before = *exInfo
 			if exInfo.Snippet == snippet {
 				// skip updating snippet
 				snippet = ""
+			}
+		} else {
+			before = model.ObjectInfo{
+				Relations: &pbrelation.Relations{},
+				Details:   &types.Struct{Fields: map[string]*types.Value{}},
 			}
 		}
 	}
@@ -1350,6 +1359,7 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		if err != ds.ErrNotFound {
 			return nil, fmt.Errorf("failed to get relations: %w", err)
 		}
+
 	} else if err := proto.Unmarshal(val, &relations); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
 	}
