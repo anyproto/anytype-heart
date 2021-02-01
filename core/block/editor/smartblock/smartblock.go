@@ -567,7 +567,7 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 				if len(vals) == 0 {
 					continue
 				}
-
+				var valsFiltered []string
 				for _, val := range vals {
 					var optFound bool
 					for _, opt := range options {
@@ -585,9 +585,11 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 					}
 					if !optFound {
 						log.Errorf("failed to find an option for a select/tag relation '%s'", rel.Key)
-						return fmt.Errorf("failed to find an option for a select/tag relation")
+						continue
 					}
+					valsFiltered = append(valsFiltered, val)
 				}
+				d.Fields[k] = pbtypes.StringList(valsFiltered)
 			}
 		}
 		if !found {
