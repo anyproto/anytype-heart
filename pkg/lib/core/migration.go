@@ -38,18 +38,20 @@ var ErrAlreadyMigrated = fmt.Errorf("thread already migrated")
 
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
-	skipMigration,        // 1
-	alterThreadsDbSchema, // 2
-	skipMigration,        // 3
-	skipMigration,        // 4
-	snapshotToChanges,    // 5
-	skipMigration,        // 6
-	addFilesMetaHash,     // 7
-	//addFilesToObjects,  // 8
-	reindexAll, // 9
-	//addFilesToObjects, // 10
-	addMissingLayout,  // 11
-	addFilesToObjects, // 12
+	skipMigration,               // 1
+	alterThreadsDbSchema,        // 2
+	skipMigration,               // 3
+	skipMigration,               // 4
+	snapshotToChanges,           // 5
+	skipMigration,               // 6
+	addFilesMetaHash,            // 7
+	skipMigration,               // 8
+	skipMigration,               // 9
+	skipMigration,               // 10
+	addMissingLayout,            // 11
+	addFilesToObjects,           // 12
+	removeBundleRelationsFromDs, // 13
+	reindexAll,                  // 13
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -127,11 +129,14 @@ func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error)
 	}()
 
 	a.opts.Offline = offline
-	err := a.start()
-	if err != nil {
-		return err
+	if !a.isStarted {
+		err := a.start()
+		if err != nil {
+			return err
+		}
 	}
 
+	var err error
 	if stopAfter {
 		defer func() {
 			err = a.Stop()
@@ -404,6 +409,25 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 	})
 }
 
+func removeBundleRelationsFromDs(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		keys := bundle.ListRelationsKeys()
+		var migrated int
+		for _, key := range keys {
+			err := a.localStore.Objects.RemoveRelationFromCache(key.String())
+			if err != nil {
+				continue
+			}
+
+			migrated++
+		}
+
+		log.Debugf("migration removeBundleRelationsFromDs completed for %d relations", migrated)
+
+		return nil
+	})
+}
+
 func reindexAll(a *Anytype, lastMigration bool) error {
 	return doWithRunningNode(a, true, !lastMigration, func() error {
 		ids, err := a.localStore.Objects.ListIds()
@@ -436,7 +460,7 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				continue
 			}
 			o := oi[0]
-			err = a.localStore.Objects.UpdateObject(id, o.Details, o.Relations, nil, o.Snippet)
+			err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
 				continue

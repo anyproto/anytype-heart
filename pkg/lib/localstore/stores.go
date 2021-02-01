@@ -60,8 +60,11 @@ type ObjectStore interface {
 	Indexable
 	database.Reader
 
+	CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	DeleteObject(id string) error
+	RemoveRelationFromCache(key string) error
+
 	UpdateRelationsInSet(setId, objTypeBefore, objTypeAfter string, relationsBefore, relationsAfter *pbrelation.Relations) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
@@ -120,6 +123,11 @@ func (i Index) JoinedKeys(val interface{}) []string {
 		keys = append(keys, keyStr)
 	}
 	return keys
+}
+
+func (ls LocalStore) Close() error {
+	ls.Objects.Close()
+	return nil
 }
 
 func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {

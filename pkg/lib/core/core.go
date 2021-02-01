@@ -412,6 +412,11 @@ func (a *Anytype) Stop() error {
 		}
 	}
 
+	err := a.localStore.Close()
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 

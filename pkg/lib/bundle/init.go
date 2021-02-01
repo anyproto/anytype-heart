@@ -73,6 +73,38 @@ func MustGetRelation(rk RelationKey) *relation.Relation {
 	panic(ErrNotFound)
 }
 
+func GetRelation(rk RelationKey) (*relation.Relation, error) {
+	if v, exists := relations[rk]; exists {
+		return pbtypes.CopyRelation(v), nil
+	}
+
+	return nil, ErrNotFound
+}
+
+func ListRelations() []*relation.Relation {
+	var rels []*relation.Relation
+	for _, rel := range relations {
+		rels = append(rels, pbtypes.CopyRelation(rel))
+	}
+
+	return rels
+}
+
+func ListRelationsKeys() []RelationKey {
+	var keys []RelationKey
+	for k, _ := range relations {
+		keys = append(keys, k)
+	}
+
+	return keys
+}
+
+func HasRelation(key string) bool {
+	_, exists := relations[RelationKey(key)]
+
+	return exists
+}
+
 func ListTypes() ([]*relation.ObjectType, error) {
 	var otypes []*relation.ObjectType
 	for _, ot := range types {

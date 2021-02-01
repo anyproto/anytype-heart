@@ -713,9 +713,11 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 	}
 	defer txn.Discard()
 
+	// todo: remove all indexes with this object
 	for _, k := range []ds.Key{
 		pagesDetailsBase.ChildString(id),
 		pagesSnippetBase.ChildString(id),
+		pagesRelationsBase.ChildString(id),
 		indexQueueBase.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
@@ -743,6 +745,25 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 			return err
 		}
 	}
+	return txn.Commit()
+}
+
+// RemoveRelationFromCache removes cached relation data
+func (m *dsObjectStore) RemoveRelationFromCache(key string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	for _, k := range []ds.Key{
+		relationsBase.ChildString(key),
+	} {
+		if err = txn.Delete(k); err != nil {
+			return err
+		}
+	}
+
 	return txn.Commit()
 }
 
@@ -884,25 +905,34 @@ func diffSlices(a, b []string) (removed []string, added []string) {
 	return
 }
 
-func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	sbt, err := smartblock.SmartBlockTypeFromID(id)
+func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
+	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return fmt.Errorf("failed to extract smartblock type: %w", err)
+		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
-	if sbt == smartblock.SmartBlockTypeArchive {
-		return ErrNotAnObject
+	defer txn.Discard()
+
+	// init an empty state to skip nil checks later
+	before := model.ObjectInfo{
+		Relations: &pbrelation.Relations{},
+		Details:   &types.Struct{Fields: map[string]*types.Value{}},
 	}
 
+	err = m.updateObject(txn, id, before, details, relations, links, snippet)
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 	var (
-		before   model.ObjectInfo
-		objTypes []string
+		before model.ObjectInfo
 	)
 
 	if details != nil || len(snippet) > 0 || relations != nil {
@@ -926,9 +956,32 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 		}
 	}
 
+	err = m.updateObject(txn, id, before, details, relations, links, snippet)
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) updateObject(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+	sbt, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		return fmt.Errorf("failed to extract smartblock type: %w", err)
+	}
+	if sbt == smartblock.SmartBlockTypeArchive {
+		return ErrNotAnObject
+	}
+
+	var (
+		objTypes []string
+	)
+
 	var addedLinks, removedLinks []string
 
 	if links != nil {
+		// todo: use links from before?
 		exLinks, _ := findOutboundLinks(txn, id)
 		removedLinks, addedLinks = diffSlices(exLinks, links)
 	}
@@ -966,11 +1019,6 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 		if err = m.updateSnippet(txn, id, snippet); err != nil {
 			return err
 		}
-	}
-
-	err = txn.Commit()
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -1094,6 +1142,10 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 	var relBytes []byte
 	var err error
 	for _, relation := range relations {
+		if bundle.HasRelation(relation.Key) {
+			// do not store bundled relations
+			continue
+		}
 		relCopy := pbtypes.CopyRelation(relation)
 		relCopy.SelectDict = nil
 
@@ -1102,7 +1154,6 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 		if err != nil {
 			return err
 		}
-		//log.Errorf("objstore.storeRelation(%s): %v", relationKey.String(), relCopy)
 
 		err = txn.Put(relationKey, relBytes)
 		if err != nil {
@@ -1117,6 +1168,7 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 	var err error
 	for _, relation := range relationsAfter.Relations {
 		// save all options
+		// todo: save only changed options
 		for _, opt := range relation.SelectDict {
 			err := m.updateOption(txn, relation.Key, opt)
 			if err != nil {
@@ -1227,8 +1279,12 @@ func (m *dsObjectStore) listRelationsKeys(txn ds.Txn) ([]string, error) {
 }
 
 func (m *dsObjectStore) getRelation(txn ds.Txn, key string) (*pbrelation.Relation, error) {
+	br, err := bundle.GetRelation(bundle.RelationKey(key))
+	if br != nil {
+		return br, nil
+	}
+
 	res, err := txn.Get(relationsBase.ChildString(key))
-	//log.Errorf("objstore.getRelation(%s): %d", relationsBase.ChildString(key).String(), len(res))
 
 	if err != nil {
 		return nil, err
