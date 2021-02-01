@@ -617,7 +617,6 @@ func (m *dsObjectStore) AggregateRelationsForType(objType string) ([]*pbrelation
 		return nil, err
 	}
 
-	log.Errorf("AggregateRelationsForType %s", indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, objType)
 	relKeys, err := GetKeyPartFromResults(res, -2, -1, true)
 	if err != nil {
 		return nil, err
@@ -919,6 +918,7 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 				snippet = ""
 			}
 		} else {
+			// init an empty state to skip nil checks later
 			before = model.ObjectInfo{
 				Relations: &pbrelation.Relations{},
 				Details:   &types.Struct{Fields: map[string]*types.Value{}},
@@ -1102,7 +1102,7 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 		if err != nil {
 			return err
 		}
-		log.Errorf("objstore.storeRelation(%s): %v", relationKey.String(), relCopy)
+		//log.Errorf("objstore.storeRelation(%s): %v", relationKey.String(), relCopy)
 
 		err = txn.Put(relationKey, relBytes)
 		if err != nil {
@@ -1228,7 +1228,7 @@ func (m *dsObjectStore) listRelationsKeys(txn ds.Txn) ([]string, error) {
 
 func (m *dsObjectStore) getRelation(txn ds.Txn, key string) (*pbrelation.Relation, error) {
 	res, err := txn.Get(relationsBase.ChildString(key))
-	log.Errorf("objstore.getRelation(%s): %d", relationsBase.ChildString(key).String(), len(res))
+	//log.Errorf("objstore.getRelation(%s): %d", relationsBase.ChildString(key).String(), len(res))
 
 	if err != nil {
 		return nil, err

@@ -40,7 +40,7 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 		if slice.FindPos(excludeKeys, key) >= 0 {
 			continue
 		}
-		if _, exists := m2[key]; !exists {
+		if _, exists := m1[key]; !exists {
 			log.Errorf("compare: det1 doesn't has %s", key)
 			return false
 		}
@@ -57,7 +57,7 @@ func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
 
 	m := make(map[string]*types.Value, len(st.Fields))
 	for k, v := range st.Fields {
-		if slice.FindPos(excludeKeys, k) >= 0 {
+		if slice.FindPos(excludeKeys, k) == -1 {
 			m[k] = v
 		}
 	}
