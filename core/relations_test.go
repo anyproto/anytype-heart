@@ -597,11 +597,20 @@ func TestCustomType(t *testing.T) {
 	require.Len(t, respOpenCustomTypeObject.Event.Messages, 1)
 	show := getEventBlockShow(respOpenCustomTypeObject.Event.Messages)
 	require.NotNil(t, show)
-	require.Len(t, show.ObjectTypes, 1)
-	require.Len(t, show.ObjectTypePerObject, 1)
-	// omit relations
-	respObjectTypeCreate.ObjectType.Relations = nil
-	require.Equal(t, respObjectTypeCreate.ObjectType, show.ObjectTypes[0])
+	// should have custom obj type + profile, because it has the relation `creator`
+	require.Len(t, show.ObjectTypes, 2)
+	require.Len(t, show.ObjectTypePerObject, 2)
+	var found bool
+	for _, ot := range show.ObjectTypes {
+		if ot.Url == respObjectTypeCreate.ObjectType.Url {
+			// omit relations
+			respObjectTypeCreate.ObjectType.Relations = nil
+			require.Equal(t, respObjectTypeCreate.ObjectType, ot)
+			found = true
+		}
+	}
+	require.True(t, found, "required custom obj type not found")
+
 	var details *types2.Struct
 	for _, detail := range show.Details {
 		if detail.Id == customObjectId {
@@ -610,7 +619,7 @@ func TestCustomType(t *testing.T) {
 		}
 	}
 
-	var found bool
+	found = false
 	for _, rel := range show.Relations {
 		if rel.Key == newRelation.Key {
 			require.Equal(t, newRelation, rel)

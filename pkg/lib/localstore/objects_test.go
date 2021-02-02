@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -268,7 +267,14 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, restOpts, 6)
 
-	rels, err := ds.AggregateRelations(&schema.Schema{ObjType: &pbrelation.ObjectType{Url: "a1"}})
+	rels, err := ds.AggregateRelationsForType("a1")
+	require.NoError(t, err)
+	require.Len(t, rels, 2)
+
+	require.Equal(t, "rel1", rels[0].Key)
+	require.Equal(t, "rel2", rels[1].Key)
+
+	rels, err = ds.ListRelations()
 	require.NoError(t, err)
 	require.Len(t, rels, 4)
 

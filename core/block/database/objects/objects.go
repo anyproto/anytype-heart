@@ -11,6 +11,7 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+	"github.com/google/martian/log"
 )
 
 const (
@@ -62,6 +63,10 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 		return rec, err
 	}
 
+	if newDetails == nil || newDetails.Fields == nil {
+		log.Errorf("createSmartBlock returns an empty details for %s", id)
+		newDetails = &types.Struct{Fields: map[string]*types.Value{}}
+	}
 	rec.Details = newDetails
 	rec.Details.Fields[bundle.RelationKeyId.String()] = &types.Value{Kind: &types.Value_StringValue{StringValue: id}}
 

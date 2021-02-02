@@ -33,7 +33,7 @@ var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
 	for _, r := range relations {
-		if r.DataSource == relation.Relation_derived {
+		if r.DataSource != relation.Relation_details {
 			LocalOnlyRelationsKeys = append(LocalOnlyRelationsKeys, r.Key)
 		}
 	}
@@ -71,6 +71,38 @@ func MustGetRelation(rk RelationKey) *relation.Relation {
 
 	// we can safely panic in case RelationKey is a generated constant
 	panic(ErrNotFound)
+}
+
+func GetRelation(rk RelationKey) (*relation.Relation, error) {
+	if v, exists := relations[rk]; exists {
+		return pbtypes.CopyRelation(v), nil
+	}
+
+	return nil, ErrNotFound
+}
+
+func ListRelations() []*relation.Relation {
+	var rels []*relation.Relation
+	for _, rel := range relations {
+		rels = append(rels, pbtypes.CopyRelation(rel))
+	}
+
+	return rels
+}
+
+func ListRelationsKeys() []RelationKey {
+	var keys []RelationKey
+	for k, _ := range relations {
+		keys = append(keys, k)
+	}
+
+	return keys
+}
+
+func HasRelation(key string) bool {
+	_, exists := relations[RelationKey(key)]
+
+	return exists
 }
 
 func ListTypes() ([]*relation.ObjectType, error) {

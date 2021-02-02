@@ -106,7 +106,7 @@ func (v *files) PushChange(params PushChangeParams) (id string, err error) {
 	return "", nil
 }
 
-func (v *files) FindFirstChange() (c *change.Change, err error) {
+func (v *files) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
 	return nil, change.ErrEmpty
 }
 

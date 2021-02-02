@@ -605,7 +605,7 @@ var (
 		},
 		RelationKeyType: {
 
-			DataSource:  relation.Relation_details,
+			DataSource:  relation.Relation_derived,
 			Description: "",
 			Format:      relation.RelationFormat_object,
 			Hidden:      false,

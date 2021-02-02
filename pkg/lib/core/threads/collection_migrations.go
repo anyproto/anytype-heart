@@ -174,7 +174,7 @@ func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info,
 			err := tdb.HandleNetRecord(ctx, records[i], thrd.Key)
 			if err != nil {
 				// todo: errCantCreateExistingInstance error is not exported and has a typo
-				if !strings.HasSuffix(err.Error(), "already existing instance") {
+				if !strings.HasSuffix(err.Error(), "already existent instance") {
 					log.Errorf("failed to handle record: %s", err.Error())
 				}
 			} else {
