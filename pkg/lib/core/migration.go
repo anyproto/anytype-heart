@@ -528,7 +528,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 					log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
 					continue
 				} else if len(oi) == 0 {
-					log.Errorf("migration addMissingLayout: failed to get custom type '%s': %s", otUrl, err.Error())
+					log.Errorf("migration addMissingLayout: failed to get custom type '%s'", otUrl)
 					layout = pbrelation.ObjectType_basic
 				} else {
 					if exists := pbtypes.Exists(oi[0].Details, bundle.RelationKeyLayout.String()); exists {
