@@ -3964,10 +3964,8 @@ type RpcBlockListConvertChildrenToPagesRequest struct {
 func (m *RpcBlockListConvertChildrenToPagesRequest) Reset() {
 	*m = RpcBlockListConvertChildrenToPagesRequest{}
 }
-func (m *RpcBlockListConvertChildrenToPagesRequest) String() string {
-	return proto.CompactTextString(m)
-}
-func (*RpcBlockListConvertChildrenToPagesRequest) ProtoMessage() {}
+func (m *RpcBlockListConvertChildrenToPagesRequest) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockListConvertChildrenToPagesRequest) ProtoMessage()    {}
 func (*RpcBlockListConvertChildrenToPagesRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 1, 0, 0}
 }
@@ -12262,10 +12260,8 @@ type RpcBlockSetLinkTargetBlockIdResponseError struct {
 func (m *RpcBlockSetLinkTargetBlockIdResponseError) Reset() {
 	*m = RpcBlockSetLinkTargetBlockIdResponseError{}
 }
-func (m *RpcBlockSetLinkTargetBlockIdResponseError) String() string {
-	return proto.CompactTextString(m)
-}
-func (*RpcBlockSetLinkTargetBlockIdResponseError) ProtoMessage() {}
+func (m *RpcBlockSetLinkTargetBlockIdResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockSetLinkTargetBlockIdResponseError) ProtoMessage()    {}
 func (*RpcBlockSetLinkTargetBlockIdResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 10, 8, 0, 1, 0}
 }
@@ -14737,10 +14733,8 @@ type RpcBlockDataviewRecordUpdateResponseError struct {
 func (m *RpcBlockDataviewRecordUpdateResponseError) Reset() {
 	*m = RpcBlockDataviewRecordUpdateResponseError{}
 }
-func (m *RpcBlockDataviewRecordUpdateResponseError) String() string {
-	return proto.CompactTextString(m)
-}
-func (*RpcBlockDataviewRecordUpdateResponseError) ProtoMessage() {}
+func (m *RpcBlockDataviewRecordUpdateResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockDataviewRecordUpdateResponseError) ProtoMessage()    {}
 func (*RpcBlockDataviewRecordUpdateResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 4, 1, 0}
 }
@@ -14941,10 +14935,8 @@ type RpcBlockDataviewRecordDeleteResponseError struct {
 func (m *RpcBlockDataviewRecordDeleteResponseError) Reset() {
 	*m = RpcBlockDataviewRecordDeleteResponseError{}
 }
-func (m *RpcBlockDataviewRecordDeleteResponseError) String() string {
-	return proto.CompactTextString(m)
-}
-func (*RpcBlockDataviewRecordDeleteResponseError) ProtoMessage() {}
+func (m *RpcBlockDataviewRecordDeleteResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockDataviewRecordDeleteResponseError) ProtoMessage()    {}
 func (*RpcBlockDataviewRecordDeleteResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 5, 1, 0}
 }
@@ -15145,10 +15137,8 @@ type RpcBlockDataviewRecordCreateResponseError struct {
 func (m *RpcBlockDataviewRecordCreateResponseError) Reset() {
 	*m = RpcBlockDataviewRecordCreateResponseError{}
 }
-func (m *RpcBlockDataviewRecordCreateResponseError) String() string {
-	return proto.CompactTextString(m)
-}
-func (*RpcBlockDataviewRecordCreateResponseError) ProtoMessage() {}
+func (m *RpcBlockDataviewRecordCreateResponseError) String() string { return proto.CompactTextString(m) }
+func (*RpcBlockDataviewRecordCreateResponseError) ProtoMessage()    {}
 func (*RpcBlockDataviewRecordCreateResponseError) Descriptor() ([]byte, []int) {
 	return fileDescriptor_8261c968b2e6f45c, []int{0, 2, 15, 6, 1, 0}
 }

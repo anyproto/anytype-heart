@@ -114,7 +114,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	require.Equal(t, total, 1)
 
 	n := time.Now()
-	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, time.UTC)
+	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, n.Location())
 
 	details1.Fields["lastOpenedDate"] = pbtypes.Float64(float64(time.Now().Unix()))
 	err = ps.UpdateObject(block1.ID(), details1, relations1, nil, "")
