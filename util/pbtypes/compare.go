@@ -4,7 +4,66 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
+	"github.com/google/martian/log"
 )
+
+func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []string) (equal bool) {
+	var m1, m2 map[string]*types.Value
+	if det1 == nil || det1.Fields == nil {
+		m1 = make(map[string]*types.Value)
+	} else {
+		m1 = det1.Fields
+	}
+
+	if det2 == nil || det2.Fields == nil {
+		m2 = make(map[string]*types.Value)
+	} else {
+		m2 = det2.Fields
+	}
+
+	for key, v1 := range m1 {
+		if slice.FindPos(excludeKeys, key) >= 0 {
+			continue
+		}
+		if v2, exists := m2[key]; !exists {
+			log.Errorf("compare: det2 doesn't has %s", key)
+			return false
+		} else if !v2.Equal(v1) {
+			log.Errorf("compare: det2 has not equal %s: %v!=%v", key, v1, v2)
+
+			return false
+		}
+	}
+
+	for key, _ := range m2 {
+		if slice.FindPos(excludeKeys, key) >= 0 {
+			continue
+		}
+		if _, exists := m1[key]; !exists {
+			log.Errorf("compare: det1 doesn't has %s", key)
+			return false
+		}
+	}
+
+	return true
+}
+
+// StructCutKeys excludes provided keys reusing underlying pb values pointers
+func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
+	if st == nil || st.Fields == nil {
+		return st
+	}
+
+	m := make(map[string]*types.Value, len(st.Fields))
+	for k, v := range st.Fields {
+		if slice.FindPos(excludeKeys, k) == -1 {
+			m[k] = v
+		}
+	}
+
+	return &types.Struct{Fields: m}
+}
 
 func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) (equal bool) {
 	if len(rels1) != len(rels2) {

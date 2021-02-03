@@ -144,3 +144,12 @@ func Get(st *types.Struct, key string) *types.Value {
 	}
 	return st.Fields[key]
 }
+
+func GetRelationKeys(rels []*pbrelation.Relation) []string {
+	var keys []string
+	for _, rel := range rels {
+		keys = append(keys, rel.Key)
+	}
+
+	return keys
+}

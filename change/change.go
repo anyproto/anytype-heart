@@ -51,7 +51,6 @@ func (ch *Change) HasMeta() bool {
 			return true
 		case *pb.ChangeContentValueOfDetailsUnset:
 			return true
-
 		case *pb.ChangeContentValueOfRelationAdd:
 			return true
 		case *pb.ChangeContentValueOfRelationRemove:
@@ -62,6 +61,16 @@ func (ch *Change) HasMeta() bool {
 			return true
 		case *pb.ChangeContentValueOfObjectTypeRemove:
 			return true
+		case *pb.ChangeContentValueOfBlockUpdate:
+			// todo: find a better solution to store dataview relations
+			for _, ev := range ct.Value.(*pb.ChangeContentValueOfBlockUpdate).BlockUpdate.Events {
+				switch ev.Value.(type) {
+				case *pb.EventMessageValueOfBlockDataviewRelationSet:
+					return true
+				case *pb.EventMessageValueOfBlockDataviewRelationDelete:
+					return true
+				}
+			}
 		}
 	}
 	return false
