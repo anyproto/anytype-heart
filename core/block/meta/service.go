@@ -94,7 +94,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 			var err error
 			objectType, err := bundle.GetTypeByUrl(otypeUrl)
 			if err != nil {
-				log.Errorf("failed to get objectType %s: %s", otypeUrl, err.Error())
+				log.Errorf("failed to get objectType '%s': %s", otypeUrl, err.Error())
 				continue
 			}
 			objectTypes = append(objectTypes, objectType)

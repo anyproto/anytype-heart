@@ -267,17 +267,34 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 					if len(d.SmartBlockMeta.ObjectTypes) > 1 {
 						log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
 					}
-					trimedType := d.SmartBlockMeta.ObjectTypes[0]
-					if slice.FindPos(uniqueObjTypes, trimedType) == -1 {
-						uniqueObjTypes = append(uniqueObjTypes, trimedType)
+					ot := d.SmartBlockMeta.ObjectTypes[0]
+					if len(ot) == 0 {
+						log.Errorf("sb %s has empty objectType", sb.Id())
+					} else {
+						if slice.FindPos(uniqueObjTypes, ot) == -1 {
+							uniqueObjTypes = append(uniqueObjTypes, ot)
+						}
+						objectTypeUrlByObjectMap[d.BlockId] = ot
 					}
-					objectTypeUrlByObjectMap[d.BlockId] = trimedType
 				}
 			}
 		}
 	}
 
 	objectTypes = sb.meta.FetchObjectTypes(uniqueObjTypes)
+	if len(objectTypes) != len(uniqueObjTypes) {
+		var m = map[string]struct{}{}
+		for _, ot := range objectTypes {
+			m[ot.Url] = struct{}{}
+		}
+
+		for _, ot := range uniqueObjTypes {
+			if _, exists := m[ot]; !exists {
+				log.Errorf("failed to load object type '%s' for sb %s", ot, sb.Id())
+			}
+		}
+	}
+
 	for id, ot := range objectTypeUrlByObjectMap {
 		objectTypeUrlByObject = append(objectTypeUrlByObject, &pb.EventBlockShowObjectTypePerObject{
 			ObjectId:   id,
