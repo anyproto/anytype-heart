@@ -417,7 +417,7 @@ func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
 	}
 	defer txn.Discard()
 
-	results, err := GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{target}, indexTargets.Hash, 0)
+	results, err := GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{target}, "", indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
 	}

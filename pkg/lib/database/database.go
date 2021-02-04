@@ -29,7 +29,8 @@ type Reader interface {
 	QueryById(ids []string) (records []Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
-	AggregateRelations(schema *schema.Schema) (relations []*pbrelation.Relation, err error)
+	ListRelations() (relations []*pbrelation.Relation, err error)
+	AggregateRelationsForType(objType string) (relations []*pbrelation.Relation, err error)
 	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 }
 

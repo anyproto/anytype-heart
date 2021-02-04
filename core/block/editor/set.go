@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/google/uuid"
 )
 
@@ -67,20 +68,20 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 							},
 						},
 						Relations: []*model.BlockContentDataviewRelation{
-							{Key: "id", IsVisible: false},
-							{Key: "name", IsVisible: true},
-							{Key: "lastOpenedDate", IsVisible: true},
-							{Key: "lastModifiedDate", IsVisible: true},
-							{Key: "creator", IsVisible: true}},
+							{Key: bundle.RelationKeyId.String(), IsVisible: false},
+							{Key: bundle.RelationKeyName.String(), IsVisible: true},
+							{Key: bundle.RelationKeyLastOpenedDate.String(), IsVisible: true},
+							{Key: bundle.RelationKeyLastModifiedDate.String(), IsVisible: true},
+							{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 						Filters: nil,
 					},
 				},
 			},
 		}
-
 		templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
+	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
+		templates = append(templates, template.WithDetail(bundle.RelationKeySetOf, pbtypes.String(dvBlock.Model().GetDataview().Source)))
 	}
-
 	st := p.NewState()
 	if err = template.ApplyTemplate(p, st, templates...); err != nil {
 		return
@@ -98,6 +99,7 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 	s := p.NewState()
 	return template.ApplyTemplate(p, s,
 		template.WithDetailName(name),
+		template.WithDetail(bundle.RelationKeySetOf, pbtypes.String(blockContent.Dataview.Source)),
 		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent),
 	)

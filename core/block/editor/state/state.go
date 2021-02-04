@@ -422,9 +422,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
-		if !prev.Equal(s.details) {
-			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
-			s.parent.details = s.details
+		if !pbtypes.StructEqualIgnore(prev, s.details, bundle.LocalOnlyRelationsKeys) {
+			action.Details = &undo.Details{Before: pbtypes.CopyStruct(pbtypes.StructCutKeys(prev, bundle.LocalOnlyRelationsKeys)), After: pbtypes.CopyStruct(pbtypes.StructCutKeys(s.details, bundle.LocalOnlyRelationsKeys))}
 			msgs = append(msgs, simple.EventMessage{
 				Msg: &pb.EventMessage{
 					Value: &pb.EventMessageValueOfBlockSetDetails{
@@ -435,6 +434,9 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 					},
 				},
 			})
+			s.parent.details = s.details
+		} else if !s.details.Equal(s.parent.details) {
+			s.parent.details = s.details
 		}
 	}
 	if s.parent != nil && s.extraRelations != nil {
@@ -709,13 +711,7 @@ func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
 	if s.details == nil || s.details.Fields == nil {
 		return nil
 	}
-	d := pbtypes.CopyStruct(s.details)
-	for key, _ := range d.Fields {
-		if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
-			delete(d.Fields, key)
-		}
-	}
-	return d
+	return pbtypes.StructCutKeys(s.Details(), bundle.LocalOnlyRelationsKeys)
 }
 
 func (s *State) Details() *types.Struct {

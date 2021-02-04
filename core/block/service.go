@@ -149,7 +149,7 @@ type Service interface {
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
 	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
-	GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error)
+	GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error)
 	GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (string, error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error
 	UpdateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewUpdateRequest) error
@@ -483,7 +483,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
-		if _, err = s.AddExtraRelations(id, relations); err != nil {
+		if _, err = sb.AddExtraRelations(relations); err != nil {
 			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
 		}
 	}
@@ -496,10 +496,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
-		if err = s.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
-			ContextId: id,
-			Details:   setDetails,
-		}); err != nil {
+		if err = sb.SetDetails(nil, setDetails); err != nil {
 			return id, nil, fmt.Errorf("can't set details to object: %v", err)
 		}
 	}
@@ -716,9 +713,9 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	})
 }
 
-func (s *service) GetAggregatedRelations(ctx *state.Context, req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error) {
+func (s *service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		relations, err = b.GetAggregatedRelations(ctx, req.BlockId)
+		relations, err = b.GetAggregatedRelations(req.BlockId)
 		return err
 	})
 

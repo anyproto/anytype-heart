@@ -57,15 +57,22 @@ func (d *decoder) decode(r io.Reader, configOnly bool) error {
 	if err := d.readHeader(); err != nil {
 		return err
 	}
-	if err := d.readImageDir(configOnly); err != nil {
+	if err := d.readImageDir(); err != nil {
 		return err
 	}
 	if configOnly {
-		cfg, err := d.parseConfig(d.dir[0])
-		if err != nil {
-			return err
+		var maxSum int
+		for _, entry := range d.dir {
+			cfg, err := d.parseConfig(entry)
+			if err != nil {
+				return err
+			}
+			sum := cfg.Width + cfg.Height
+			if sum > maxSum {
+				d.cfg = cfg
+				maxSum = sum
+			}
 		}
-		d.cfg = cfg
 	} else {
 		d.image = make([]image.Image, d.num)
 		for i, entry := range d.dir {
@@ -93,11 +100,9 @@ func (d *decoder) readHeader() error {
 	return nil
 }
 
-func (d *decoder) readImageDir(configOnly bool) error {
+func (d *decoder) readImageDir() error {
 	n := int(d.num)
-	if configOnly {
-		n = 1
-	}
+
 	for i := 0; i < n; i++ {
 		var e entry
 		err := binary.Read(d.r, binary.LittleEndian, &e)
@@ -267,7 +272,7 @@ func (d *decoder) setupBMP(e entry, data []byte) ([]byte, []byte, int, error) {
 	var offset uint32
 	offset = 14 + dibSize + numColorsSize
 
-	if dibSize > 40 {
+	if dibSize > 40 && int(14+dibSize-4) <= len(img) {
 		var iccSize uint32
 		binary.Read(bytes.NewReader(img[14+dibSize-8:14+dibSize-4]), binary.LittleEndian, &iccSize)
 		offset += iccSize
@@ -282,7 +287,15 @@ func Decode(r io.Reader) (image.Image, error) {
 	if err := d.decode(r, false); err != nil {
 		return nil, err
 	}
-	return d.image[0], nil
+	var maxI, maxSize int
+	for i, img := range d.image {
+		sum := img.Bounds().Max.X + img.Bounds().Max.Y
+		if sum > maxSize {
+			maxI = i
+			maxSize = sum
+		}
+	}
+	return d.image[maxI], nil
 }
 
 func DecodeConfig(r io.Reader) (image.Config, error) {

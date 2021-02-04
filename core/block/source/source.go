@@ -38,7 +38,7 @@ type Source interface {
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
-	FindFirstChange() (c *change.Change, err error)
+	FindFirstChange(ctx context.Context) (c *change.Change, err error)
 	Close() (err error)
 }
 
@@ -346,8 +346,7 @@ func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {
 	return fileKeys
 }
 
-func (s *source) FindFirstChange() (c *change.Change, err error) {
-	ctx := context.TODO()
+func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
 	if s.tree.RootId() == "" {
 		return nil, change.ErrEmpty
 	}

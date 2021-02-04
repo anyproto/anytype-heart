@@ -71,7 +71,7 @@ func Test_AddIndex(t *testing.T) {
 	key, err = GetKeyByIndex(idxs[1], txn, item)
 	require.True(t, err != nil)
 
-	results, err := GetKeysByIndexParts(txn, idxs[1].Prefix, idxs[1].Name, []string{item.Slice[0]}, false, 1)
+	results, err := GetKeysByIndexParts(txn, idxs[1].Prefix, idxs[1].Name, []string{item.Slice[0]}, "", false, 1)
 	require.NoError(t, err)
 
 	res := <-results.Next()
