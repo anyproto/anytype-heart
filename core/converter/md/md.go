@@ -142,13 +142,13 @@ func (h *MD) renderText(b *model.Block, in *renderState) {
 	case model.BlockContentText_Code:
 		h.buf.WriteString("```\n")
 		h.buf.WriteString(strings.ReplaceAll(text.Text, "```", "\\`\\`\\`"))
-		h.buf.WriteString("```\n")
+		h.buf.WriteString("\n```\n")
 		h.renderChilds(b, in)
 	case model.BlockContentText_Checkbox:
 		if text.Checked {
-			h.buf.WriteString("[x] ")
+			h.buf.WriteString("- [x] ")
 		} else {
-			h.buf.WriteString("[ ] ")
+			h.buf.WriteString("- [ ] ")
 		}
 		renderText()
 		h.renderChilds(b, in.AddNBSpace())
@@ -265,6 +265,7 @@ type marksWriter struct {
 		starts []*model.BlockContentTextMark
 		ends   []*model.BlockContentTextMark
 	}
+	open       []*model.BlockContentTextMark
 }
 
 func (mw *marksWriter) writeMarks(pos int) {
@@ -303,11 +304,23 @@ func (mw *marksWriter) writeMarks(pos int) {
 	if mw.breakpoints == nil {
 		return
 	}
-
 	if marks, ok := mw.breakpoints[pos]; ok {
-		hasClosedLink := false
-		hasStartLink := false
+		var (
+			hasClosedLink bool
+			hasStartLink  bool
+		)
 		for i := len(marks.ends) - 1; i >= 0; i-- {
+			if len(mw.open) > 0 {
+				if mw.open[len(mw.open)-1] != marks.ends[i] {
+					marks.ends = append(marks.ends, mw.open[len(mw.open)-1])
+					marks.starts = append(marks.starts, mw.open[len(mw.open)-1])
+					mw.breakpoints[pos] = marks
+					mw.writeMarks(pos)
+					return
+				} else {
+					mw.open = mw.open[:len(mw.open)-1]
+				}
+			}
 			writeMark(marks.ends[i], false)
 			if !hasClosedLink && marks.ends[i].Type == model.BlockContentTextMark_Link {
 				hasClosedLink = true
@@ -324,11 +337,13 @@ func (mw *marksWriter) writeMarks(pos int) {
 		}
 		for _, m := range marks.starts {
 			writeMark(m, true)
+			mw.open = append(mw.open, m)
 		}
 	}
 }
 
 func (mw *marksWriter) Init(text *model.BlockContentText) *marksWriter {
+	mw.open = mw.open[:0]
 	if text.Marks != nil && len(text.Marks.Marks) > 0 {
 		mw.breakpoints = make(map[int]struct {
 			starts []*model.BlockContentTextMark
