@@ -46,7 +46,7 @@ message Relation {
     RelationFormat format = 2; // format of the underlying data
     string name = 3; // name to show (can be localized for bundled types)
     google.protobuf.Value defaultValue = 4;
-    RelationDataSource dataSource = 5; // where the data is stored
+    DataSource dataSource = 5; // where the data is stored
 
     bool hidden = 6; // internal, not displayed to user (e.g. coverX, coverY)
     bool readOnly = 7; // not editable by user
@@ -57,6 +57,7 @@ message Relation {
     repeated Option selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
     int32 maxCount = 13; // max number of values can be set for this relation. 0 means no limit
     string description = 14;
+    Scope scope = 20; // on-store should be only local
 
     message Option {
         string id = 1; // id generated automatically if omitted
@@ -71,12 +72,20 @@ message Relation {
         }
     }
 
-    enum RelationDataSource {
+    enum Scope {
+        object = 0; // stored within the object
+        type = 1; // stored within the object type
+        setOfTheSameType = 2; // aggregated from the dataview of sets of the same object type
+        objectsOfTheSameType = 3; // aggregated from the dataview of sets of the same object type
+    }
+
+    enum DataSource {
         details = 0; // default, stored inside the object's details
         derived = 1; // stored locally, e.g. in badger or generated on the fly
         account = 2; // stored in the account DB. means existing only for specific anytype account
     }
 }
+
 
 // RelationFormat describes how the underlying data is stored in the google.protobuf.Value and how it should be validated/sanitized
 enum RelationFormat {
@@ -94,6 +103,8 @@ enum RelationFormat {
     emoji = 10; // one emoji, can contains multiple utf-8 symbols
 
     object = 100; // relation can has objectType to specify objectType
+    relations = 101; // base64-encoded
+
 }
 
 message Relations {

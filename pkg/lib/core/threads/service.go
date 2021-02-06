@@ -112,6 +112,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
 	}
 
+	// todo: we have a possible trouble here, using thread.AccessControlled uvariant without actually storing the cid with access control
 	thrdId, err := threadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err

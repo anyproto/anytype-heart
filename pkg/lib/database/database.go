@@ -30,7 +30,8 @@ type Reader interface {
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
 	ListRelations() (relations []*pbrelation.Relation, err error)
-	AggregateRelationsForType(objType string) (relations []*pbrelation.Relation, err error)
+	AggregateRelationsFromObjectsOfType(objType string) (relations []*pbrelation.Relation, err error)
+	AggregateRelationsFromSetsOfType(objType string) (relations []*pbrelation.Relation, err error)
 	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 }
 

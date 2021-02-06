@@ -80,6 +80,7 @@ var (
 			Key:         "addedDate",
 			Name:        "Added date",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyAperture: {
 
@@ -90,6 +91,7 @@ var (
 			Key:         "aperture",
 			Name:        "Camera Aperture",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyArtist: {
 
@@ -100,6 +102,7 @@ var (
 			Key:         "artist",
 			Name:        "Artist",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyAssignee: {
 
@@ -111,6 +114,7 @@ var (
 			Name:        "Assignee",
 			ObjectTypes: []string{TypePrefix + "profile"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyAttachments: {
 
@@ -122,6 +126,7 @@ var (
 			Name:        "Attachments",
 			ObjectTypes: []string{TypePrefix + "file", TypePrefix + "image", TypePrefix + "video", TypePrefix + "audio"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyAudioAlbum: {
 
@@ -132,6 +137,7 @@ var (
 			Key:         "audioAlbum",
 			Name:        "Album",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyAudioAlbumTrackNumber: {
 
@@ -142,6 +148,7 @@ var (
 			Key:         "audioAlbumTrackNumber",
 			Name:        "Track #",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyAudioGenre: {
 
@@ -152,6 +159,7 @@ var (
 			Key:         "audioGenre",
 			Name:        "Genre",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCamera: {
 
@@ -162,6 +170,7 @@ var (
 			Key:         "camera",
 			Name:        "Camera",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCameraIso: {
 
@@ -172,6 +181,7 @@ var (
 			Key:         "cameraIso",
 			Name:        "ISO",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCollectionOf: {
 
@@ -183,6 +193,7 @@ var (
 			Name:        "Collection of",
 			ObjectTypes: []string{TypePrefix + "objectType"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyComposer: {
 
@@ -193,6 +204,7 @@ var (
 			Key:         "composer",
 			Name:        "Composer",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCoverId: {
 
@@ -203,6 +215,7 @@ var (
 			Key:         "coverId",
 			Name:        "Cover image or color",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCoverScale: {
 
@@ -213,6 +226,7 @@ var (
 			Key:         "coverScale",
 			Name:        "Cover scale",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCoverType: {
 
@@ -223,6 +237,7 @@ var (
 			Key:         "coverType",
 			Name:        "Cover type",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCoverX: {
 
@@ -233,6 +248,7 @@ var (
 			Key:         "coverX",
 			Name:        "Cover x offset",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCoverY: {
 
@@ -243,6 +259,7 @@ var (
 			Key:         "coverY",
 			Name:        "Cover y offset",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCreatedDate: {
 
@@ -253,6 +270,7 @@ var (
 			Key:         "createdDate",
 			Name:        "Creation date",
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyCreator: {
 
@@ -264,6 +282,7 @@ var (
 			Name:        "Created by",
 			ObjectTypes: []string{TypePrefix + "profile"},
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyDateOfBirth: {
 
@@ -274,6 +293,7 @@ var (
 			Key:         "dateOfBirth",
 			Name:        "Date of birth",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyDescription: {
 
@@ -284,6 +304,7 @@ var (
 			Key:         "description",
 			Name:        "Description",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyDone: {
 
@@ -294,6 +315,7 @@ var (
 			Key:         "done",
 			Name:        "Done",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyDueDate: {
 
@@ -304,6 +326,7 @@ var (
 			Key:         "dueDate",
 			Name:        "Due date",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyDurationInSeconds: {
 
@@ -314,6 +337,7 @@ var (
 			Key:         "durationInSeconds",
 			Name:        "Duration(sec)",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyExposure: {
 
@@ -324,6 +348,7 @@ var (
 			Key:         "exposure",
 			Name:        "Camera Exposure",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyFeaturedRelations: {
 
@@ -335,6 +360,7 @@ var (
 			Name:        "Featured relations management will be \u2028implemented later.",
 			ObjectTypes: []string{TypePrefix + "relation"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyFileExt: {
 
@@ -345,6 +371,7 @@ var (
 			Key:         "fileExt",
 			Name:        "File extension",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyFileMimeType: {
 
@@ -355,6 +382,7 @@ var (
 			Key:         "fileMimeType",
 			Name:        "Mime type",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyFocalRatio: {
 
@@ -365,6 +393,7 @@ var (
 			Key:         "focalRatio",
 			Name:        "Focal ratio",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyGender: {
 
@@ -375,6 +404,7 @@ var (
 			Key:         "gender",
 			Name:        "Gender",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyHeightInPixels: {
 
@@ -385,6 +415,7 @@ var (
 			Key:         "heightInPixels",
 			Name:        "Height(px)",
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyIconEmoji: {
 
@@ -395,6 +426,7 @@ var (
 			Key:         "iconEmoji",
 			Name:        "Emoji",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyIconImage: {
 
@@ -406,6 +438,7 @@ var (
 			Name:        "Image",
 			ObjectTypes: []string{TypePrefix + "image"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyId: {
 
@@ -416,6 +449,7 @@ var (
 			Key:         "id",
 			Name:        "Anytype ID",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyLastModifiedBy: {
 
@@ -427,6 +461,7 @@ var (
 			Name:        "Last modified by",
 			ObjectTypes: []string{TypePrefix + "profile"},
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyLastModifiedDate: {
 
@@ -437,6 +472,7 @@ var (
 			Key:         "lastModifiedDate",
 			Name:        "Last modified date",
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyLastOpenedDate: {
 
@@ -447,6 +483,7 @@ var (
 			Key:         "lastOpenedDate",
 			Name:        "Last opened date",
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyLayout: {
 
@@ -457,6 +494,7 @@ var (
 			Key:         "layout",
 			Name:        "Layout",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyLinkedProjects: {
 
@@ -468,6 +506,7 @@ var (
 			Name:        "Linked Projects",
 			ObjectTypes: []string{TypePrefix + "project"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyLinkedTasks: {
 
@@ -479,6 +518,7 @@ var (
 			Name:        "Linked tasks",
 			ObjectTypes: []string{TypePrefix + "task"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyName: {
 
@@ -489,6 +529,7 @@ var (
 			Key:         "name",
 			Name:        "Name",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyPlaceOfBirth: {
 
@@ -499,6 +540,7 @@ var (
 			Key:         "placeOfBirth",
 			Name:        "Place of birth",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyPriority: {
 
@@ -509,6 +551,7 @@ var (
 			Key:         "priority",
 			Name:        "Priority",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyRecommendedLayout: {
 
@@ -519,6 +562,7 @@ var (
 			Key:         "recommendedLayout",
 			Name:        "Recommended layout",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyRecommendedRelations: {
 
@@ -530,6 +574,7 @@ var (
 			Name:        "Recommended relations",
 			ObjectTypes: []string{TypePrefix + "relation"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyReleasedYear: {
 
@@ -540,6 +585,7 @@ var (
 			Key:         "releasedYear",
 			Name:        "Released year",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeySetOf: {
 
@@ -551,6 +597,7 @@ var (
 			Name:        "Set of",
 			ObjectTypes: []string{TypePrefix + "objectType"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeySizeInBytes: {
 
@@ -561,6 +608,7 @@ var (
 			Key:         "sizeInBytes",
 			Name:        "Size(bytes)",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyStatus: {
 
@@ -571,6 +619,7 @@ var (
 			Key:         "status",
 			Name:        "Status",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyTag: {
 
@@ -581,6 +630,7 @@ var (
 			Key:         "tag",
 			Name:        "Tag",
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyThumbnailImage: {
 
@@ -592,6 +642,7 @@ var (
 			Name:        "Thumbnail image",
 			ObjectTypes: []string{TypePrefix + "image"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyToBeDeletedDate: {
 
@@ -602,10 +653,11 @@ var (
 			Key:         "toBeDeletedDate",
 			Name:        "Date to delete",
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyType: {
 
-			DataSource:  relation.Relation_derived,
+			DataSource:  relation.Relation_details,
 			Description: "",
 			Format:      relation.RelationFormat_object,
 			Hidden:      false,
@@ -613,6 +665,7 @@ var (
 			Name:        "Object type",
 			ObjectTypes: []string{TypePrefix + "objectType"},
 			ReadOnly:    false,
+			Scope:       relation.Relation_type,
 		},
 		RelationKeyWidthInPixels: {
 
@@ -623,6 +676,7 @@ var (
 			Key:         "widthInPixels",
 			Name:        "Width(px)",
 			ReadOnly:    true,
+			Scope:       relation.Relation_type,
 		},
 	}
 )

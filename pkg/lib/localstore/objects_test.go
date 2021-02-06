@@ -267,7 +267,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, restOpts, 6)
 
-	rels, err := ds.AggregateRelationsForType("a1")
+	rels, err := ds.AggregateRelationsFromObjectsOfType("a1")
 	require.NoError(t, err)
 	require.Len(t, rels, 2)
 

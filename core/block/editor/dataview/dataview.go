@@ -282,7 +282,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*pbre
 		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
-	agRels, err := d.Anytype().ObjectStore().AggregateRelationsForType(tb.GetSource())
+	agRels, err := d.Anytype().ObjectStore().AggregateRelationsFromObjectsOfType(tb.GetSource())
 	if err != nil {
 		return nil, err
 	}

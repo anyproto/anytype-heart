@@ -841,8 +841,9 @@
     - [Relations](#anytype.relation.Relations)
   
     - [ObjectType.Layout](#anytype.relation.ObjectType.Layout)
+    - [Relation.DataSource](#anytype.relation.Relation.DataSource)
     - [Relation.Option.Scope](#anytype.relation.Relation.Option.Scope)
-    - [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource)
+    - [Relation.Scope](#anytype.relation.Relation.Scope)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
   
@@ -12777,7 +12778,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 | format | [RelationFormat](#anytype.relation.RelationFormat) |  | format of the underlying data |
 | name | [string](#string) |  | name to show (can be localized for bundled types) |
 | defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-| dataSource | [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource) |  | where the data is stored |
+| dataSource | [Relation.DataSource](#anytype.relation.Relation.DataSource) |  | where the data is stored |
 | hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
 | readOnly | [bool](#bool) |  | not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
@@ -12787,6 +12788,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 default dictionary with unique values to choose for select/multiSelect format |
 | maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit |
 | description | [string](#string) |  |  |
+| scope | [Relation.Scope](#anytype.relation.Relation.Scope) |  | on-store should be only local |
 
 
 
@@ -12863,6 +12865,19 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 
 
+<a name="anytype.relation.Relation.DataSource"></a>
+
+### Relation.DataSource
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| details | 0 | default, stored inside the object&#39;s details |
+| derived | 1 | stored locally, e.g. in badger or generated on the fly |
+| account | 2 | stored in the account DB. means existing only for specific anytype account |
+
+
+
 <a name="anytype.relation.Relation.Option.Scope"></a>
 
 ### Relation.Option.Scope
@@ -12876,16 +12891,17 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 
 
-<a name="anytype.relation.Relation.RelationDataSource"></a>
+<a name="anytype.relation.Relation.Scope"></a>
 
-### Relation.RelationDataSource
+### Relation.Scope
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| details | 0 | default, stored inside the object&#39;s details |
-| derived | 1 | stored locally, e.g. in badger or generated on the fly |
-| account | 2 | stored in the account DB. means existing only for specific anytype account |
+| object | 0 | stored within the object |
+| type | 1 | stored within the object type |
+| setOfTheSameType | 2 | aggregated from the dataview of sets of the same object type |
+| objectsOfTheSameType | 3 | aggregated from the dataview of sets of the same object type |
 
 
 
@@ -12909,6 +12925,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | phone | 9 | string with sanity check |
 | emoji | 10 | one emoji, can contains multiple utf-8 symbols |
 | object | 100 | relation can has objectType to specify objectType |
+| relations | 101 | base64-encoded |
 
 
  

@@ -98,6 +98,16 @@ func GetStringListValue(v *types.Value) []string {
 	return stringsSlice
 }
 
+func HasField(st *types.Struct, key string) bool {
+	if st == nil || st.Fields == nil {
+		return false
+	}
+
+	_, exists := st.Fields[key]
+
+	return exists
+}
+
 func HasRelation(rels []*pbrelation.Relation, key string) bool {
 	for _, rel := range rels {
 		if rel.Key == key {

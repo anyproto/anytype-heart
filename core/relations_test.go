@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -134,6 +135,56 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
 		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
 		require.Len(t, block.GetDataview().Relations, len(bundle.MustGetType(bundle.TypeKeyPage).Relations)+1)
+	})
+
+	t.Run("relation_scope_becomes_object", func(t *testing.T) {
+		respPageCreate := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
+			bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyTask.URL()}),
+		}}})
+
+		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+
+		blockShow := getEventBlockShow(respOpenNewPage.Event.Messages)
+
+		for _, rel := range bundle.MustGetType(bundle.TypeKeyTask).Relations {
+			var found bool
+			for _, relInObj := range blockShow.Relations {
+				if relInObj.Key == rel.Key {
+					found = true
+					break
+				}
+			}
+			require.True(t, found, fmt.Errorf("missing %s(%s) relation", rel.Key, rel.Name))
+			if rel.Key == bundle.RelationKeyStatus.String() {
+				require.Equal(t, pbrelation.Relation_type, rel.Scope, fmt.Errorf("relation '%s' has scope %s instead of %s", rel.Name, rel.Scope.String(), pbrelation.Relation_type.String()))
+			}
+		}
+
+		mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{ContextId: respPageCreate.PageId, Details: []*pb.RpcBlockSetDetailsDetail{
+			{Key: bundle.RelationKeyStatus.String(), Value: pbtypes.String("Done")},
+		}})
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+
+		blockShow = getEventBlockShow(respOpenNewPage.Event.Messages)
+		for _, rel := range bundle.MustGetType(bundle.TypeKeyTask).Relations {
+			var found bool
+			for _, relInObj := range blockShow.Relations {
+				if relInObj.Key == rel.Key {
+					found = true
+					if rel.Key == bundle.RelationKeyStatus.String() {
+						require.Equal(t, pbrelation.Relation_object, relInObj.Scope, fmt.Errorf("relation '%s' has scope %s instead of %s", rel.Name, rel.Scope.String(), pbrelation.Relation_object.String()))
+					}
+					break
+				}
+			}
+			require.True(t, found, fmt.Errorf("missing %s(%s) relation", rel.Key, rel.Name))
+
+		}
 	})
 
 	t.Run("update_not_existing", func(t *testing.T) {

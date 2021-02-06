@@ -645,15 +645,24 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 			return s
 		}
 	}
-	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
+
+	relCopy := pbtypes.CopyRelation(relation)
+	// reset the scope to object
+	relCopy.Scope = pbrelation.Relation_object
+	if relCopy.Format == pbrelation.RelationFormat_file && relCopy.ObjectTypes == nil {
+		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relation)
+	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relCopy)
 	return s
 }
 
 func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
+	relationsCopy := pbtypes.CopyRelations(relations)
+	for _, rel := range relationsCopy {
+		// reset scopes for all relations
+		rel.Scope = pbrelation.Relation_object
+	}
 	s.extraRelations = relations
 	return s
 }

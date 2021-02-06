@@ -564,6 +564,10 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 				found = true
 				break
 			}
+			if rel.Scope != pbrelation.Relation_object {
+				rel.Scope = pbrelation.Relation_object
+				st.AddRelation(rel)
+			}
 			found = true
 			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
 				objTypes := sb.ObjectTypes()
@@ -1052,7 +1056,7 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 	var err error
 	var aggregatedRelation []*pbrelation.Relation
 	if len(objTypes) > 0 {
-		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsForType(objType)
+		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsFromSetsOfType(objType)
 		if err != nil {
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
 		}

@@ -52,8 +52,9 @@ func (r router) Get(id string) (database.Database, error) {
 	setOrAddRelations := func(id string, relations []*pbrelation.Relation) error {
 		newRels := pbtypes.CopyRelations(relations)
 		return r.s.ModifyExtraRelations(id, func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error) {
-			for _, currRel := range current {
-				for _, newRel := range newRels {
+			for _, newRel := range newRels {
+				newRel.Scope = pbrelation.Relation_object
+				for _, currRel := range current {
 					if newRel.Key != currRel.Key {
 						continue
 					}
@@ -61,6 +62,7 @@ func (r router) Get(id string) (database.Database, error) {
 					newRel.SelectDict = currRel.SelectDict
 				}
 			}
+
 			return newRels, nil
 		})
 	}

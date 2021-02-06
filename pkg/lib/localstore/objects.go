@@ -16,7 +16,6 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -603,7 +602,7 @@ func (m *dsObjectStore) ListRelations() ([]*pbrelation.Relation, error) {
 	return m.listRelations(txn, 0)
 }
 
-func (m *dsObjectStore) AggregateRelationsForType(objType string) ([]*pbrelation.Relation, error) {
+func (m *dsObjectStore) AggregateRelationsFromObjectsOfType(objType string) ([]*pbrelation.Relation, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -629,82 +628,45 @@ func (m *dsObjectStore) AggregateRelationsForType(objType string) ([]*pbrelation
 			continue
 		}
 
-		rels = append(rels, rel)
-	}
-
-	res, err = GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objType}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	relKeys2, err := GetKeyPartFromResults(res, -2, -1, true)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, relKey := range relKeys2 {
-		if slice.FindPos(relKeys, relKey) >= 0 {
-			continue
-		}
-		rel, err := m.getRelation(txn, relKey)
-		if err != nil {
-			log.Errorf("relation '%s' found in the index but failed to retreive: %s", relKey, err.Error())
-			continue
-		}
-
+		rel.Scope = pbrelation.Relation_objectsOfTheSameType
 		rels = append(rels, rel)
 	}
 
 	return rels, nil
 }
 
-/*func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error {
-	txn, err := m.ds.NewTransaction(false)
+func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*pbrelation.Relation, error) {
+	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	detailsKey := pagesDetailsBase.ChildString(page.Id)
-	relationsKey := pagesRelationsBase.ChildString(page.Id)
-	snippetKey := pagesSnippetBase.ChildString(page.Id)
+	var rels []*pbrelation.Relation
 
-	if exists, err := txn.Has(detailsKey); err != nil {
-		return err
-	} else if exists {
-		return ErrDuplicateKey
-	}
-
-	page.Info.Details.Fields["type"] = pbtypes.StringList(page.Info.ObjectTypeUrls)
-	b, err := proto.Marshal(page.Info.Details)
+	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objType}, "/", false, 0)
 	if err != nil {
-		return err
-	}
-	if err = txn.Put(detailsKey, b); err != nil {
-		return err
+		return nil, err
 	}
 
-	b, err = proto.Marshal(page.Info.Relations)
+	relKeys, err := GetKeyPartFromResults(res, -2, -1, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err = txn.Put(relationsKey, b); err != nil {
-		return err
-	}
-
-	for _, key := range pageLinkKeys(page.Id, nil, page.OutboundLinks) {
-		if err = txn.Put(key, nil); err != nil {
-			return err
+	for _, relKey := range relKeys {
+		rel, err := m.getRelation(txn, relKey)
+		if err != nil {
+			log.Errorf("relation '%s' found in the index but failed to retreive: %s", relKey, err.Error())
+			continue
 		}
+
+		rel.Scope = pbrelation.Relation_setOfTheSameType
+		rels = append(rels, rel)
 	}
 
-	if err = txn.Put(snippetKey, []byte(page.Info.Snippet)); err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}*/
+	return rels, nil
+}
 
 func (m *dsObjectStore) DeleteObject(id string) error {
 	txn, err := m.ds.NewTransaction(false)

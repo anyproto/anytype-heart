@@ -114,6 +114,7 @@ func generateRelations() error {
 				Id("Hidden"):      Lit(relation.Hidden),
 				Id("ReadOnly"):    Lit(relation.Readonly),
 				Id("Description"): Lit(relation.Description),
+				Id("Scope"):       Qual(relPbPkg, "Relation_type"),
 			}
 			if len(relation.ObjectTypes) > 0 {
 				var t []Code
