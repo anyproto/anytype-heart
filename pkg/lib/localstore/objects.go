@@ -965,7 +965,7 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 	if details != nil || len(snippet) > 0 || relations != nil {
 		exInfo, err := getObjectInfo(txn, id)
 		if err != nil {
-			log.Errorf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
+			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
 		}
 
 		if exInfo != nil {

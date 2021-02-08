@@ -648,6 +648,9 @@ func TestCustomType(t *testing.T) {
 	require.Len(t, respOpenCustomTypeObject.Event.Messages, 1)
 	show := getEventBlockShow(respOpenCustomTypeObject.Event.Messages)
 	require.NotNil(t, show)
+
+	profile := getDetailsForContext(show.Details, mw.Anytype.PredefinedBlocks().Profile)
+	require.NotNil(t, profile)
 	// should have custom obj type + profile, because it has the relation `creator`
 	require.Len(t, show.ObjectTypes, 2)
 	require.Len(t, show.ObjectTypePerObject, 2)
@@ -662,26 +665,15 @@ func TestCustomType(t *testing.T) {
 	}
 	require.True(t, found, "required custom obj type not found")
 
-	var details *types2.Struct
-	for _, detail := range show.Details {
-		if detail.Id == customObjectId {
-			details = detail.Details
-			break
-		}
-	}
+	var customObjectDetails = getDetailsForContext(show.Details, customObjectId)
+	require.NotNil(t, customObjectDetails)
+	require.Equal(t, mw.Anytype.PredefinedBlocks().Profile, pbtypes.GetString(customObjectDetails, bundle.RelationKeyCreator.String()))
+	rel := getRelationByKey(show.Relations, newRelation.Key)
+	require.NotNil(t, rel)
+	require.Equal(t, newRelation, rel)
 
-	found = false
-	for _, rel := range show.Relations {
-		if rel.Key == newRelation.Key {
-			require.Equal(t, newRelation, rel)
-			found = true
-			break
-		}
-	}
-	require.True(t, found)
-
-	require.NotNil(t, details.Fields[newRelation.Key])
-	require.Equal(t, "newRelationVal", details.Fields[newRelation.Key].GetStringValue())
+	require.NotNil(t, customObjectDetails.Fields[newRelation.Key])
+	require.Equal(t, "newRelationVal", customObjectDetails.Fields[newRelation.Key].GetStringValue())
 	for i := 0; i <= 20; i++ {
 		respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
 		require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
@@ -765,6 +757,15 @@ func getEventBlockShow(msgs []*pb.EventMessage) *pb.EventBlockShow {
 	for _, msg := range msgs {
 		if v, ok := msg.Value.(*pb.EventMessageValueOfBlockShow); ok {
 			return v.BlockShow
+		}
+	}
+	return nil
+}
+
+func getDetailsForContext(msgs []*pb.EventBlockSetDetails, contextId string) *types2.Struct {
+	for _, msg := range msgs {
+		if msg.Id == contextId {
+			return msg.Details
 		}
 	}
 	return nil

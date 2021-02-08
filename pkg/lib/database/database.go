@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
@@ -125,12 +126,10 @@ func (filters filters) Filter(e query.Entry) bool {
 	var foundType bool
 	if filters.Schema != nil {
 		if t, ok := details.Details.Fields[bundle.RelationKeyType.String()]; ok {
-			if list := t.GetListValue(); list != nil {
-				for _, val := range list.Values {
-					if val.GetStringValue() == filters.Schema.ObjType.Url {
-						foundType = true
-						break
-					}
+			for _, val := range pbtypes.GetStringListValue(t) {
+				if val == filters.Schema.ObjType.Url {
+					foundType = true
+					break
 				}
 			}
 		} else {

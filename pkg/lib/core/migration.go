@@ -51,7 +51,8 @@ var migrations = []migration{
 	addMissingLayout,            // 11
 	addFilesToObjects,           // 12
 	removeBundleRelationsFromDs, // 13
-	reindexAll,                  // 13
+	skipMigration,               // 13
+	reindexAll,                  // 14
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -460,6 +461,15 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				continue
 			}
 			o := oi[0]
+			var objType string
+			if pbtypes.HasField(o.Details, bundle.RelationKeyType.String()) {
+				objTypes := pbtypes.GetStringList(o.Details, bundle.RelationKeyType.String())
+				if len(objTypes) > 0 {
+					objType = objTypes[0]
+				}
+			}
+
+			o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
 			err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
