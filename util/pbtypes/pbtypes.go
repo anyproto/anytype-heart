@@ -11,6 +11,12 @@ func Float64(v float64) *types.Value {
 	}
 }
 
+func Null() *types.Value {
+	return &types.Value{
+		Kind: &types.Value_NullValue{NullValue: types.NullValue_NULL_VALUE},
+	}
+}
+
 func String(v string) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_StringValue{StringValue: v},

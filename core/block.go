@@ -1083,7 +1083,7 @@ func (mw *Middleware) BlockObjectTypeSet(req *pb.RpcBlockObjectTypeSetRequest) *
 	}
 
 	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetObjectTypes(req.ContextId, []string{req.ObjectTypeUrl})
+		return bs.SetObjectTypes(ctx, req.ContextId, []string{req.ObjectTypeUrl})
 	}); err != nil {
 		return response(pb.RpcBlockObjectTypeSetResponseError_UNKNOWN_ERROR, err)
 	}

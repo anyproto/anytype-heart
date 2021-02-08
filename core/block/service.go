@@ -102,13 +102,14 @@ type Service interface {
 	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
 
 	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
-	UpdateExtraRelations(id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
-	ModifyExtraRelations(objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error)
-	AddExtraRelations(id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	RemoveExtraRelations(id string, relationKeys []string) (err error)
+	UpdateExtraRelations(ctx *state.Context, id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
+	ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error)
+	AddExtraRelations(ctx *state.Context, id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
+	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 
-	SetObjectTypes(objectId string, objectTypes []string) (err error)
+	ListAvailableRelations(objectId string) (aggregatedRelations []*pbrelation.Relation, err error)
+	SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error)
 	AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error)
 	UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionUpdateRequest) (err error)
 	DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionDeleteRequest) (err error)
@@ -479,7 +480,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
-		if _, err = sb.AddExtraRelations(relations); err != nil {
+		if _, err = sb.AddExtraRelations(nil, relations); err != nil {
 			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
 		}
 	}
@@ -1372,7 +1373,7 @@ func (s *service) GetRelations(objectId string) (relations []*pbrelation.Relatio
 }
 
 // ModifyExtraRelations gets and updates extra relations under the sb lock to make sure no modifications are done in the middle
-func (s *service) ModifyExtraRelations(objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error) {
+func (s *service) ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
@@ -1382,7 +1383,7 @@ func (s *service) ModifyExtraRelations(objectId string, modifier func(current []
 			return err
 		}
 
-		return b.UpdateExtraRelations(rels, true)
+		return b.UpdateExtraRelations(ctx, rels, true)
 	})
 }
 
@@ -1401,16 +1402,16 @@ func (s *service) ModifyDetails(objectId string, modifier func(current *types.St
 	})
 }
 
-func (s *service) UpdateExtraRelations(objectId string, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+func (s *service) UpdateExtraRelations(ctx *state.Context, objectId string, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.UpdateExtraRelations(relations, createIfMissing)
+		return b.UpdateExtraRelations(ctx, relations, createIfMissing)
 	})
 }
 
-func (s *service) AddExtraRelations(objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (s *service) AddExtraRelations(ctx *state.Context, objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		var err2 error
-		relationsWithKeys, err2 = b.AddExtraRelations(relations)
+		relationsWithKeys, err2 = b.AddExtraRelations(ctx, relations)
 		if err2 != nil {
 			return err2
 		}
@@ -1452,9 +1453,9 @@ func (s *service) DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObject
 	})
 }
 
-func (s *service) SetObjectTypes(objectId string, objectTypes []string) (err error) {
+func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		return b.SetObjectTypes(objectTypes)
+		return b.SetObjectTypes(ctx, objectTypes)
 	})
 }
 
@@ -1548,10 +1549,32 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	return linkId, setId, nil
 }
 
-func (s *service) RemoveExtraRelations(objectTypeId string, relationKeys []string) (err error) {
+func (s *service) RemoveExtraRelations(ctx *state.Context, objectTypeId string, relationKeys []string) (err error) {
 	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
-		return b.RemoveExtraRelations(relationKeys)
+		return b.RemoveExtraRelations(ctx, relationKeys)
 	})
+}
+
+func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations []*pbrelation.Relation, err error) {
+	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
+		objType := b.ObjectType()
+		aggregatedRelations = b.Relations()
+
+		agRels, err := s.Anytype().ObjectStore().ListRelations(objType)
+		if err != nil {
+			return err
+		}
+
+		for _, rel := range agRels {
+			if pbtypes.HasRelation(agRels, rel.Key) {
+				continue
+			}
+			aggregatedRelations = append(aggregatedRelations, pbtypes.CopyRelation(rel))
+		}
+		return nil
+	})
+
+	return
 }
 
 func (s *service) cleanupBlocks() (closed bool) {
