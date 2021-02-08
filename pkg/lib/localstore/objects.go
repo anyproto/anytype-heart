@@ -592,14 +592,79 @@ func (m *dsObjectStore) GetRelation(relationKey string) (*pbrelation.Relation, e
 	return m.getRelation(txn, relationKey)
 }
 
-func (m *dsObjectStore) ListRelations() ([]*pbrelation.Relation, error) {
+// ListRelations retrieves all available relations and sort them in this order:
+// 1. extraRelations aggregated from object of specific type (scope objectsOfTheSameType)
+// 2. relations aggregated from sets of specific type  (scope setsOfTheSameType)
+// 3. user-defined relations aggregated from all objects (scope library)
+// 4. the rest of bundled relations (scope library)
+func (m *dsObjectStore) ListRelations(objType string) ([]*pbrelation.Relation, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	return m.listRelations(txn, 0)
+	if objType == "" {
+		return m.listRelations(txn, 0)
+	}
+
+	rels, err := m.AggregateRelationsFromObjectsOfType(objType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to aggregate relations from objects: %w", err)
+	}
+
+	rels2, err := m.AggregateRelationsFromSetsOfType(objType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to aggregate relations from sets: %w", err)
+	}
+
+	for i, rel := range rels2 {
+		if pbtypes.HasRelation(rels, rel.Key) {
+			continue
+		}
+		rels = append(rels, rels2[i])
+	}
+
+	relsKeys, err := m.listRelationsKeys(txn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list relations from store index: %w", err)
+	}
+
+	for _, relKey := range relsKeys {
+		if pbtypes.HasRelation(rels, relKey) {
+			continue
+		}
+		rel, err := m.getRelation(txn, relKey)
+		if err != nil {
+			log.Errorf("relation found in index but failed to retrieve from store")
+			continue
+		}
+		rel.Scope = pbrelation.Relation_library
+		rels = append(rels, rel)
+	}
+
+	relsKeys2 := bundle.ListRelationsKeys()
+	for _, relKey := range relsKeys2 {
+		if pbtypes.HasRelation(rels, relKey.String()) {
+			continue
+		}
+
+		rel := bundle.MustGetRelation(relKey)
+		rel.Scope = pbrelation.Relation_library
+		rels = append(rels, rel)
+	}
+
+	return rels, nil
+}
+
+func (m *dsObjectStore) ListRelationsKeys() ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return m.listRelationsKeys(txn)
 }
 
 func (m *dsObjectStore) AggregateRelationsFromObjectsOfType(objType string) ([]*pbrelation.Relation, error) {

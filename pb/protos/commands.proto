@@ -3016,7 +3016,6 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
-                        NOT_A_DATAVIEW_BLOCK = 3;
                         // ...
                     }
                 }

@@ -11,7 +11,8 @@ message ObjectType {
     Layout layout = 4;
     string iconEmoji = 5; // emoji symbol
     string description = 6;
-
+    bool hidden = 7;
+    
     enum Layout {
         basic = 0;
         profile = 1;
@@ -55,7 +56,7 @@ message Relation {
     repeated string objectTypes = 9; // URL of object type, empty to allow link to any object
     // index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
     repeated Option selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
-    int32 maxCount = 13; // max number of values can be set for this relation. 0 means no limit
+    int32 maxCount = 13; // max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field
     string description = 14;
     Scope scope = 20; // on-store should be only local
 
@@ -77,6 +78,7 @@ message Relation {
         type = 1; // stored within the object type
         setOfTheSameType = 2; // aggregated from the dataview of sets of the same object type
         objectsOfTheSameType = 3; // aggregated from the dataview of sets of the same object type
+        library = 4; // aggregated from relations library
     }
 
     enum DataSource {

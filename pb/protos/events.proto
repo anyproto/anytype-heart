@@ -20,6 +20,11 @@ message Event {
             Account.Show accountShow = 1;
             Account.Details accountDetails = 201;
 
+            Block.Set.Details blockSetDetails = 16; // to be renamed to objectSetDetails
+            Block.Set.Relations blockSetRelations = 22; // to be renamed to objectSetRelations
+            Block.Set.Restrictions blockSetRestrictions = 8; // to be renamed to objectSetRestrictions
+            Block.Show blockShow = 30; // to be renamed to objectShow
+
             Block.Add blockAdd = 2;
             Block.Delete blockDelete = 3;
             Block.FilesUpload filesUpload = 4;
@@ -27,7 +32,6 @@ message Event {
 
             Block.Set.Fields blockSetFields = 6;
             Block.Set.ChildrenIds blockSetChildrenIds = 7;
-            Block.Set.Restrictions blockSetRestrictions = 8;
             Block.Set.BackgroundColor blockSetBackgroundColor = 9;
 
             Block.Set.Text blockSetText = 10;
@@ -35,8 +39,6 @@ message Event {
             Block.Set.Link blockSetLink = 13;
             Block.Set.Bookmark blockSetBookmark = 14;
             Block.Set.Align blockSetAlign = 15;
-            Block.Set.Details blockSetDetails = 16;
-            Block.Set.Relations blockSetRelations = 22;
             Block.Set.Div blockSetDiv = 17;
             Block.Dataview.RecordsSet blockDataviewRecordsSet = 18;
             Block.Dataview.RecordsUpdate blockDataviewRecordsUpdate = 26;
@@ -49,7 +51,6 @@ message Event {
             Block.Dataview.RelationSet blockDataviewRelationSet = 23;
 
             Block.Set.Relation blockSetRelation = 21;
-            Block.Show blockShow = 30;
             User.Block.Join userBlockJoin = 31;
             User.Block.Left userBlockLeft = 32;
             User.Block.SelectRange userBlockSelectRange = 33;

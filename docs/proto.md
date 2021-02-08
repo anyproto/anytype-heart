@@ -9638,8 +9638,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_A_DATAVIEW_BLOCK | 3 | ... |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -11427,21 +11426,22 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
+| blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  | to be renamed to objectSetDetails |
+| blockSetRelations | [Event.Block.Set.Relations](#anytype.Event.Block.Set.Relations) |  | to be renamed to objectSetRelations |
+| blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  | to be renamed to objectSetRestrictions |
+| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  | to be renamed to objectShow |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
 | marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
 | blockSetFields | [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields) |  |  |
 | blockSetChildrenIds | [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds) |  |  |
-| blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  |  |
 | blockSetBackgroundColor | [Event.Block.Set.BackgroundColor](#anytype.Event.Block.Set.BackgroundColor) |  |  |
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
 | blockSetLink | [Event.Block.Set.Link](#anytype.Event.Block.Set.Link) |  |  |
 | blockSetBookmark | [Event.Block.Set.Bookmark](#anytype.Event.Block.Set.Bookmark) |  |  |
 | blockSetAlign | [Event.Block.Set.Align](#anytype.Event.Block.Set.Align) |  |  |
-| blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  |  |
-| blockSetRelations | [Event.Block.Set.Relations](#anytype.Event.Block.Set.Relations) |  |  |
 | blockSetDiv | [Event.Block.Set.Div](#anytype.Event.Block.Set.Div) |  |  |
 | blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype.Event.Block.Dataview.RecordsSet) |  |  |
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate) |  |  |
@@ -11452,7 +11452,6 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation) |  |  |
-| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
@@ -12760,6 +12759,7 @@ deprecated
 | layout | [ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
 | iconEmoji | [string](#string) |  | emoji symbol |
 | description | [string](#string) |  |  |
+| hidden | [bool](#bool) |  |  |
 
 
 
@@ -12786,7 +12786,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 | selectDict | [Relation.Option](#anytype.relation.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
 
 default dictionary with unique values to choose for select/multiSelect format |
-| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit |
+| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
 | description | [string](#string) |  |  |
 | scope | [Relation.Scope](#anytype.relation.Relation.Scope) |  | on-store should be only local |
 
@@ -12902,6 +12902,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | type | 1 | stored within the object type |
 | setOfTheSameType | 2 | aggregated from the dataview of sets of the same object type |
 | objectsOfTheSameType | 3 | aggregated from the dataview of sets of the same object type |
+| library | 4 | aggregated from relations library |
 
 
 
