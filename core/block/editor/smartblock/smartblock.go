@@ -1,7 +1,6 @@
 package smartblock
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -9,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -21,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -430,14 +427,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
-
-	if !pbtypes.Exists(sb.Details(), bundle.RelationKeyCreator.String()) {
-		// todo: should it be done in the background?
-		if e := sb.setCreationInfo(s); e != nil {
-			log.With("thread", sb.Id()).Errorf("can't set creation info: %v", err)
-		}
+	err = source.InjectCreationInfo(sb.source, s)
+	if err != nil {
+		log.With("thread", sb.Id()).Errorf("injectCreationInfo failed: %s", err.Error())
 	}
-
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
@@ -485,33 +478,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
-	}
-	return
-}
-
-func (sb *smartBlock) setCreationInfo(s *state.State) (err error) {
-	if sb.Anytype() == nil {
-		return nil
-	}
-	var (
-		createdDate = time.Now().Unix()
-		createdBy   = sb.Anytype().Account()
-	)
-	// protect from the big documents with a large trees
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
-	defer cancel()
-	fc, err := sb.source.FindFirstChange(ctx)
-	if err == change.ErrEmpty {
-		err = nil
-	} else if err != nil {
-		return fmt.Errorf("failed to find first change to derive creation info")
-	} else {
-		createdDate = fc.Timestamp
-		createdBy = fc.Account
-	}
-	s.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Float64(float64(createdDate)))
-	if profileId, e := threads.ProfileThreadIDFromAccountAddress(createdBy); e == nil {
-		s.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(profileId.String()))
 	}
 	return
 }
@@ -568,11 +534,11 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 			if rel.Key != k {
 				continue
 			}
-			if rel.DataSource != pbrelation.Relation_details {
+			/*if rel.DataSource != pbrelation.Relation_details {
 				delete(d.Fields, k)
 				found = true
 				break
-			}
+			}*/
 			if rel.Scope != pbrelation.Relation_object {
 				rel.Scope = pbrelation.Relation_object
 				st.AddRelation(rel)

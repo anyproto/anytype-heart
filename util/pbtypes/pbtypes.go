@@ -152,3 +152,39 @@ func GetRelationKeys(rels []*pbrelation.Relation) []string {
 
 	return keys
 }
+
+// StructToMap converts a types.Struct to a map from strings to Go types.
+// StructToMap panics if s is invalid.
+func StructToMap(s *types.Struct) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+	m := map[string]interface{}{}
+	for k, v := range s.Fields {
+		m[k] = ValueToInterface(v)
+	}
+	return m
+}
+
+func ValueToInterface(v *types.Value) interface{} {
+	switch k := v.Kind.(type) {
+	case *types.Value_NullValue:
+		return nil
+	case *types.Value_NumberValue:
+		return k.NumberValue
+	case *types.Value_StringValue:
+		return k.StringValue
+	case *types.Value_BoolValue:
+		return k.BoolValue
+	case *types.Value_StructValue:
+		return StructToMap(k.StructValue)
+	case *types.Value_ListValue:
+		s := make([]interface{}, len(k.ListValue.Values))
+		for i, e := range k.ListValue.Values {
+			s[i] = ValueToInterface(e)
+		}
+		return s
+	default:
+		panic("protostruct: unknown kind")
+	}
+}
