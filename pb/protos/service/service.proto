@@ -160,6 +160,8 @@ service ClientCommands {
     rpc HistoryVersions (anytype.Rpc.History.Versions.Request) returns (anytype.Rpc.History.Versions.Response);
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
 
+    rpc Export (anytype.Rpc.Export.Request) returns (anytype.Rpc.Export.Response);
+
     // used only for lib-server via grpc
     rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);
 }

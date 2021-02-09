@@ -33,6 +33,7 @@ func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryS
 	}); err != nil {
 		return response(nil, nil, err)
 	}
+
 	return response(show, ver, nil)
 }
 
