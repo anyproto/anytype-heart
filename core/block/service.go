@@ -327,17 +327,17 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 
 func (s *service) CloseBlock(id string) error {
 	s.m.Lock()
-	defer s.m.Unlock()
-
 	ob, ok := s.openedBlocks[id]
 	if !ok {
+		s.m.Unlock()
 		return ErrBlockNotFound
 	}
+	ob.locked = false
+	s.m.Unlock()
 
 	ob.Lock()
 	defer ob.Unlock()
 	ob.BlockClose()
-	ob.locked = false
 	return nil
 }
 
