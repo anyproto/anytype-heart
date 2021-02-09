@@ -57,6 +57,9 @@ const (
 
 var log = logging.Logger("anytype-mw-smartblock")
 
+// DepSmartblockEventsTimeout sets the timeout after which we will stop to synchronously wait dependent smart blocks and will send them as a separate events in the background
+var DepSmartblockSyncEventsTimeout = time.Second * 1
+
 func New(ms meta.Service) SmartBlock {
 	return &smartBlock{meta: ms}
 }
@@ -248,19 +251,21 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 	}
 
 	// todo: should we use badger here?
-	timeout := time.After(time.Second)
+	timeout := time.After(DepSmartblockSyncEventsTimeout)
 	var objectTypeUrlByObjectMap = map[string]string{}
 
-	for i := 0; i < len(sb.depIds); i++ {
+	detailsEvents := make(map[string]*pb.EventBlockSetDetails, len(sb.depIds))
+loop:
+	for len(detailsEvents) < len(sb.depIds) {
 		select {
 		case <-timeout:
-			return
+			break loop
 		case d := <-ch:
 			if d.Details != nil {
-				details = append(details, &pb.EventBlockSetDetails{
+				detailsEvents[d.BlockId] = &pb.EventBlockSetDetails{
 					Id:      d.BlockId,
 					Details: d.SmartBlockMeta.Details,
-				})
+				}
 			}
 			if d.ObjectTypes != nil {
 				if len(d.SmartBlockMeta.ObjectTypes) > 0 {
@@ -300,6 +305,10 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 			ObjectId:   id,
 			ObjectType: ot,
 		})
+	}
+
+	for _, det := range detailsEvents {
+		details = append(details, det)
 	}
 
 	defer func() {
