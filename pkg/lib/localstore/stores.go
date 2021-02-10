@@ -125,7 +125,9 @@ func (i Index) JoinedKeys(val interface{}) []string {
 }
 
 func (ls LocalStore) Close() error {
-	ls.Objects.Close()
+	if ls.Objects != nil {
+		ls.Objects.Close()
+	}
 	return nil
 }
 
