@@ -80,6 +80,10 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 		}
 		return m
 	}
+	if req.Relation == nil {
+		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
+	}
+
 	var relations []*pbrelation.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		relations, err = bs.AddExtraRelations(ctx, req.ContextId, []*pbrelation.Relation{req.Relation})
