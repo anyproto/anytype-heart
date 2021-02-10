@@ -204,6 +204,10 @@ func (s *source) buildState() (doc state.Doc, err error) {
 }
 
 func InjectCreationInfo(s Source, st *state.State) (err error) {
+	if s.Anytype() == nil {
+		return fmt.Errorf("anytype is nil")
+	}
+
 	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
 		return nil
 	}

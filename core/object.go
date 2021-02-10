@@ -67,8 +67,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 
 func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(relationKey string, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
-		m := &pb.RpcObjectRelationAddResponse{RelationKey: relationKey, Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
+	response := func(relation *pbrelation.Relation, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
+		var relKey string
+		if relation != nil {
+			relKey = relation.Key
+		}
+		m := &pb.RpcObjectRelationAddResponse{RelationKey: relKey, Relation: relation, Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -82,10 +86,10 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 		return err
 	})
 	if err != nil {
-		return response("", pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
+		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
 	}
 
-	return response(relations[0].Key, pb.RpcObjectRelationAddResponseError_NULL, nil)
+	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationUpdate(req *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse {

@@ -2533,7 +2533,8 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Dataview.RelationAdd.Response.Error](#anytype.Rpc.Block.Dataview.RelationAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-| relationKey | [string](#string) |  |  |
+| relationKey | [string](#string) |  | deprecated |
+| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
 
 
 
@@ -6971,7 +6972,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.RelationAdd.Response.Error](#anytype.Rpc.Object.RelationAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-| relationKey | [string](#string) |  |  |
+| relationKey | [string](#string) |  | deprecated |
+| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
 
 
 
