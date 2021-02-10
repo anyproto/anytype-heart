@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
@@ -38,6 +39,7 @@ type Middleware struct {
 	linkPreview   linkpreview.LinkPreview
 	status        status.Service
 	indexer       indexer.Indexer
+	exportService export.Export
 
 	Anytype libCore.Service
 
@@ -88,6 +90,7 @@ func (mw *Middleware) setBlockService(bs block.Service) {
 		mw.blocksService.Close()
 	}
 	mw.blocksService = bs
+	mw.exportService = export.NewExport(mw.Anytype, bs)
 }
 
 func (mw *Middleware) setStatusService(ss status.Service) {

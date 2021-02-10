@@ -113,7 +113,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	}
 
 	// todo: we have a possible trouble here, using thread.AccessControlled uvariant without actually storing the cid with access control
-	thrdId, err := threadCreateID(thread.AccessControlled, blockType)
+	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
 	}

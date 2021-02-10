@@ -498,7 +498,7 @@ message Event {
             }
         }
 
-        message Dataview{
+        message Dataview {
             // sent when the view have been changed or added
             message ViewSet {
                 string id = 1; // dataview block's id
@@ -701,6 +701,7 @@ message Model {
         enum Type {
             DropFiles = 0;
             Import = 1;
+            Export = 2;
         }
 
         enum State {

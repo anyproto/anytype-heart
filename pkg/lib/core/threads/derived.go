@@ -419,7 +419,7 @@ func threadIDFromBytes(variant thread.Variant, blockType smartblock.SmartBlockTy
 	return thread.Cast(buf[:n+blen])
 }
 
-func threadCreateID(variant thread.Variant, blockType smartblock.SmartBlockType) (thread.ID, error) {
+func ThreadCreateID(variant thread.Variant, blockType smartblock.SmartBlockType) (thread.ID, error) {
 	rnd := make([]byte, 32)
 	_, err := rand.Read(rnd)
 	if err != nil {

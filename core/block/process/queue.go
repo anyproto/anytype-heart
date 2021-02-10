@@ -7,7 +7,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/cheggaaa/mb"
-	"github.com/google/uuid"
+	"github.com/globalsign/mgo/bson"
 )
 
 var (
@@ -27,16 +27,23 @@ type Queue interface {
 	Add(t ...Task) (err error)
 	// Wait adds tasks to queue and wait for done. Can be called before Start
 	Wait(t ...Task) (err error)
+	// SetMessage sets progress message
+	SetMessage(msg string)
 	// Finalize must be called after all tasks was added. Will wait for all tasks complete
 	Finalize() (err error)
+	// Stop stops the queue with given error (can be nil)
+	Stop(err error)
 }
 
 func (s *service) NewQueue(info pb.ModelProcess, workers int) Queue {
 	if workers <= 0 {
 		workers = 1
 	}
+	if info.Id == "" {
+		info.Id = bson.NewObjectId().Hex()
+	}
 	q := &queue{
-		id:      uuid.New().String(),
+		id:    info.Id ,
 		info:    info,
 		state:   pb.ModelProcess_None,
 		msgs:    mb.New(0),
@@ -61,6 +68,7 @@ type queue struct {
 	workers       int
 	s             Service
 	m             sync.Mutex
+	message       string
 }
 
 func (p *queue) Id() string {
@@ -165,14 +173,44 @@ func (p *queue) Info() pb.ModelProcess {
 		Type:  p.info.Type,
 		State: p.state,
 		Progress: &pb.ModelProcessProgress{
-			Total: atomic.LoadInt64(&p.pTotal),
-			Done:  atomic.LoadInt64(&p.pDone),
+			Total:   atomic.LoadInt64(&p.pTotal),
+			Done:    atomic.LoadInt64(&p.pDone),
+			Message: p.message,
 		},
 	}
 }
 
 func (p *queue) Done() chan struct{} {
 	return p.done
+}
+
+func (p *queue) SetMessage(msg string) {
+	p.m.Lock()
+	p.message = msg
+	p.m.Unlock()
+}
+
+func (p *queue) Stop(err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if e := p.checkRunning(true); e != nil {
+		return
+	}
+	close(p.cancel)
+	// flush queue
+	p.msgs.Pause()
+	if err = p.msgs.Close(); err != nil {
+		return
+	}
+	p.wg.Wait()
+	close(p.done)
+	if err == nil {
+		p.state = pb.ModelProcess_Done
+	} else {
+		p.state = pb.ModelProcess_Error
+		p.message = err.Error()
+	}
+	return
 }
 
 func (p *queue) checkRunning(checkStarted bool) (err error) {

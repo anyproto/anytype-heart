@@ -97,9 +97,12 @@ func TestDsObjectStore_Query(t *testing.T) {
 			},
 		}
 	}
-	id1 := thread.NewIDV1(thread.Raw, 32).String()
-	id2 := thread.NewIDV1(thread.Raw, 32).String()
-	id3 := thread.NewIDV1(thread.Raw, 32).String()
+	tid1, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+	tid2, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+	tid3, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+	id1 := string(tid1)
+	id2 := string(tid2)
+	id3 := string(tid3)
 	require.NoError(t, ds.UpdateObject(id1, newDet("one"), nil, nil, "s1"))
 	require.NoError(t, ds.UpdateObject(id2, newDet("two"), nil, nil, "s2"))
 	require.NoError(t, ds.UpdateObject(id3, newDet("three"), nil, nil, "s3"))
