@@ -159,14 +159,16 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		dataviewRelationsBefore []*pbrelation.Relation
 		dataviewSourceBefore    string
 	)
-
+	d.mu.Lock()
 	if len(d.st.ObjectTypes()) == 1 && d.st.ObjectTypes()[0] == bundle.TypeKeySet.URL() {
 		b := d.st.Get("dataview")
 		if b != nil && b.Model().GetDataview() != nil {
+			b = b.Copy()
 			dataviewRelationsBefore = b.Model().GetDataview().Relations
 			dataviewSourceBefore = b.Model().GetDataview().Source
 		}
 	}
+	d.mu.Unlock()
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 
 	meta := d.meta()
@@ -293,8 +295,13 @@ func (i *indexer) cleanup() {
 }
 
 func (i *indexer) Close() {
-	close(i.quit)
-	i.quitWG.Wait()
+	i.mu.Lock()
+	defer i.mu.Unlock()
+	if i.quit != nil {
+		close(i.quit)
+		i.quitWG.Wait()
+		i.quit = nil
+	}
 }
 
 func (i *indexer) SetDetail(id string, key string, val *types.Value) error {
