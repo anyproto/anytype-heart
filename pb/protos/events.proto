@@ -683,6 +683,8 @@ enum SmartBlockType {
     ObjectType = 6; // have relations list
 
     File = 7;
+
+    Marketplace = 8;
 }
 
 message ResponseEvent {

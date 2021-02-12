@@ -11,12 +11,14 @@ func (mw *Middleware) ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetRespons
 	if mw.Anytype == nil {
 		return &pb.RpcConfigGetResponse{Error: &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NODE_NOT_STARTED, "account not started"}}
 	}
-
+	pBlocks := mw.Anytype.PredefinedBlocks()
 	return &pb.RpcConfigGetResponse{
-		Error:          &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NULL, ""},
-		HomeBlockId:    mw.Anytype.PredefinedBlocks().Home,
-		ArchiveBlockId: mw.Anytype.PredefinedBlocks().Archive,
-		ProfileBlockId: mw.Anytype.PredefinedBlocks().Profile,
-		GatewayUrl:     mw.gatewayAddr,
+		Error:                &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NULL, ""},
+		HomeBlockId:          pBlocks.Home,
+		ArchiveBlockId:       pBlocks.Archive,
+		ProfileBlockId:       pBlocks.Profile,
+		MarketplaceId:        pBlocks.Marketplace,
+		MarketplaceLibraryId: pBlocks.MarketplaceLibrary,
+		GatewayUrl:           mw.gatewayAddr,
 	}
 }

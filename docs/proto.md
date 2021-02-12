@@ -6107,6 +6107,8 @@ commands acceptable only for text blocks, others will be ignored
 | homeBlockId | [string](#string) |  | home dashboard block id |
 | archiveBlockId | [string](#string) |  | archive block id |
 | profileBlockId | [string](#string) |  | profile block id |
+| marketplaceId | [string](#string) |  | marketplace id |
+| marketplaceLibraryId | [string](#string) |  | marketplace library id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
@@ -11962,6 +11964,7 @@ Precondition: user A and user B opened the same block
 | Set | 5 | only have dataview simpleblock |
 | ObjectType | 6 | have relations list |
 | File | 7 |  |
+| Marketplace | 8 |  |
 
 
  

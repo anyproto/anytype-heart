@@ -17,6 +17,7 @@ const (
 	SmartBlockTypeSet         SmartBlockType = 0x41
 	SmartBlockTypeObjectType  SmartBlockType = 0x60
 	SmartBlockTypeFile        SmartBlockType = 0x100
+	SmartblockTypeMarketplace SmartBlockType = 0x110
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -52,6 +53,8 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 	case SmartBlockTypeArchive:
 		return model.ObjectInfo_Archive
 	case SmartBlockTypeSet:
+		return model.ObjectInfo_Set
+	case SmartblockTypeMarketplace:
 		return model.ObjectInfo_Set
 	default:
 		return model.ObjectInfo_Page

@@ -27,6 +27,9 @@ const (
 
 	threadDerivedIndexSetPages threadDerivedIndex = 20
 
+	threadDerivedIndexMarketplace        threadDerivedIndex = 30
+	threadDerivedIndexMarketplaceLibrary threadDerivedIndex = 31
+
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
 	// derivation as described in SEP-00XX. Use with `fmt.Sprintf` and `DeriveForPath`.
@@ -39,11 +42,13 @@ const (
 )
 
 type DerivedSmartblockIds struct {
-	Account  string
-	Profile  string
-	Home     string
-	Archive  string
-	SetPages string
+	Account            string
+	Profile            string
+	Home               string
+	Archive            string
+	SetPages           string
+	Marketplace        string
+	MarketplaceLibrary string
 }
 
 var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
@@ -52,10 +57,12 @@ var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
 	threadDerivedIndexArchive:     "archive",
 }
 var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.SmartBlockType{
-	threadDerivedIndexProfilePage: smartblock.SmartBlockTypeProfilePage,
-	threadDerivedIndexHome:        smartblock.SmartBlockTypeHome,
-	threadDerivedIndexArchive:     smartblock.SmartBlockTypeArchive,
-	threadDerivedIndexSetPages:    smartblock.SmartBlockTypeSet,
+	threadDerivedIndexProfilePage:        smartblock.SmartBlockTypeProfilePage,
+	threadDerivedIndexHome:               smartblock.SmartBlockTypeHome,
+	threadDerivedIndexArchive:            smartblock.SmartBlockTypeArchive,
+	threadDerivedIndexSetPages:           smartblock.SmartBlockTypeSet,
+	threadDerivedIndexMarketplace:        smartblock.SmartblockTypeMarketplace,
+	threadDerivedIndexMarketplaceLibrary: smartblock.SmartblockTypeMarketplace,
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
@@ -159,6 +166,20 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return ids, err
 	}
 	ids.SetPages = setPages.ID.String()
+
+	// marketplace
+	marketplace, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplace, newAccount, true)
+	if err != nil {
+		return ids, err
+	}
+	ids.Marketplace = marketplace.ID.String()
+
+	// marketplace library
+	marketplaceLib, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceLibrary, newAccount, true)
+	if err != nil {
+		return ids, err
+	}
+	ids.MarketplaceLibrary = marketplaceLib.ID.String()
 
 	return ids, nil
 }

@@ -2398,6 +2398,8 @@ message Rpc {
                 string homeBlockId = 2; // home dashboard block id
                 string archiveBlockId = 3; // archive block id
                 string profileBlockId = 4; // profile block id
+                string marketplaceId = 5; // marketplace id
+                string marketplaceLibraryId = 6; // marketplace library id
                 string gatewayUrl = 101; // gateway url for fetching static files
                 message Error {
                     Code code = 1;
