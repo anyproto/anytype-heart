@@ -684,7 +684,8 @@ enum SmartBlockType {
 
     File = 7;
 
-    Marketplace = 8;
+    MarketplaceType = 8;
+    MarketplaceRelation = 9;
 }
 
 message ResponseEvent {

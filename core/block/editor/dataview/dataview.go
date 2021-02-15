@@ -684,7 +684,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	recordsSub := database.NewSubscription(nil, recordsCh)
 	depRecordsSub := database.NewSubscription(nil, depRecordsCh)
 
-	entries, cancelRecordSubscripton, total, err := db.QueryAndSubscribeForChanges(&sch, database.Query{
+	entries, cancelRecordSubscription, total, err := db.QueryAndSubscribeForChanges(&sch, database.Query{
 		Relations: activeView.Relations,
 		Filters:   activeView.Filters,
 		Sorts:     activeView.Sorts,
@@ -730,7 +730,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	dv.depsUpdatesSubscription = depRecordsSub
 	dv.recordsUpdatesCancel = func() {
 		cancelDepsSubscripton()
-		cancelRecordSubscripton()
+		cancelRecordSubscription()
 	}
 
 	var msgs = []*pb.EventMessage{

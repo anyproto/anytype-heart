@@ -11964,7 +11964,8 @@ Precondition: user A and user B opened the same block
 | Set | 5 | only have dataview simpleblock |
 | ObjectType | 6 | have relations list |
 | File | 7 |  |
-| Marketplace | 8 |  |
+| MarketplaceType | 8 |  |
+| MarketplaceRelation | 9 |  |
 
 
  

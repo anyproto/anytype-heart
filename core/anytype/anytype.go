@@ -28,8 +28,10 @@ func SmartBlockTypeToProto(t coresb.SmartBlockType) pb.SmartBlockType {
 		return pb.SmartBlockType_Set
 	case coresb.SmartBlockTypeObjectType:
 		return pb.SmartBlockType_ObjectType
-	case coresb.SmartblockTypeMarketplace:
-		return pb.SmartBlockType_Marketplace
+	case coresb.SmartblockTypeMarketplaceType:
+		return pb.SmartBlockType_MarketplaceType
+	case coresb.SmartblockTypeMarketplaceRelation:
+		return pb.SmartBlockType_MarketplaceRelation
 	}
 	return 0
 }
@@ -48,8 +50,10 @@ func SmartBlockTypeToCore(t pb.SmartBlockType) coresb.SmartBlockType {
 		return coresb.SmartBlockTypeSet
 	case pb.SmartBlockType_ObjectType:
 		return coresb.SmartBlockTypeObjectType
-	case pb.SmartBlockType_Marketplace:
-		return coresb.SmartblockTypeMarketplace
+	case pb.SmartBlockType_MarketplaceType:
+		return coresb.SmartblockTypeMarketplaceType
+	case pb.SmartBlockType_MarketplaceRelation:
+		return coresb.SmartblockTypeMarketplaceRelation
 	}
 	return 0
 }

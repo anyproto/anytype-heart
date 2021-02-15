@@ -79,7 +79,6 @@ func init() {
 }
 
 type Service interface {
-
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
 
 	OpenBlock(ctx *state.Context, id string) error
@@ -1172,6 +1171,10 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 		sb = editor.NewObjectType(s.meta)
 	case pb.SmartBlockType_File:
 		sb = editor.NewFiles(s.meta)
+	case pb.SmartBlockType_MarketplaceType:
+		sb = editor.NewMarketplaceType(s.meta, s)
+	case pb.SmartBlockType_MarketplaceRelation:
+		sb = editor.NewMarketplaceRelation(s.meta, s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
