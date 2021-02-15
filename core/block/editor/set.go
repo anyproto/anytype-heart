@@ -82,14 +82,9 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
 		templates = append(templates, template.WithDetail(bundle.RelationKeySetOf, pbtypes.String(dvBlock.Model().GetDataview().Source)))
 	}
-	st := p.NewState()
-	if err = template.ApplyTemplate(p, st, templates...); err != nil {
-		return
-	}
 
-	err = p.Apply(st)
-	if err != nil {
-		log.Errorf("failed to apply state: %s", err.Error())
+	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
+		return
 	}
 
 	return p.FillAggregatedOptions(nil)
