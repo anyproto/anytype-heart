@@ -6107,8 +6107,8 @@ commands acceptable only for text blocks, others will be ignored
 | homeBlockId | [string](#string) |  | home dashboard block id |
 | archiveBlockId | [string](#string) |  | archive block id |
 | profileBlockId | [string](#string) |  | profile block id |
-| marketplaceId | [string](#string) |  | marketplace id |
-| marketplaceLibraryId | [string](#string) |  | marketplace library id |
+| marketplaceTypeId | [string](#string) |  | marketplace type id |
+| marketplaceRelationId | [string](#string) |  | marketplace relation id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 

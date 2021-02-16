@@ -13,12 +13,12 @@ func (mw *Middleware) ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetRespons
 	}
 	pBlocks := mw.Anytype.PredefinedBlocks()
 	return &pb.RpcConfigGetResponse{
-		Error:                &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NULL, ""},
-		HomeBlockId:          pBlocks.Home,
-		ArchiveBlockId:       pBlocks.Archive,
-		ProfileBlockId:       pBlocks.Profile,
-		MarketplaceId:        pBlocks.Marketplace,
-		MarketplaceLibraryId: pBlocks.MarketplaceLibrary,
-		GatewayUrl:           mw.gatewayAddr,
+		Error:                 &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NULL, ""},
+		HomeBlockId:           pBlocks.Home,
+		ArchiveBlockId:        pBlocks.Archive,
+		ProfileBlockId:        pBlocks.Profile,
+		MarketplaceTypeId:     pBlocks.MarketplaceType,
+		MarketplaceRelationId: pBlocks.MarketplaceRelation,
+		GatewayUrl:            mw.gatewayAddr,
 	}
 }
