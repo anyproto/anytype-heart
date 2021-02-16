@@ -74,7 +74,14 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 		sub.Subscribe([]string{id})
 	}
 
-	err = sp.setRelations(id, relations)
+	var relsToSet []*pbrelation.Relation
+	for _, rel := range relations {
+		if pbtypes.HasField(rec.Details, rel.Key) {
+			relsToSet = append(relsToSet, rel)
+		}
+	}
+
+	err = sp.setRelations(id, relsToSet)
 	if err != nil {
 		return rec, err
 	}

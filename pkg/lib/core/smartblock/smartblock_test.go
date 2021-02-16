@@ -24,6 +24,12 @@ func TestSmartBlockTypeFromID(t *testing.T) {
 			want:    SmartBlockTypeFile,
 			wantErr: false,
 		},
+		{
+			name:    "page2",
+			args:    args{"bafybahy5zolqoeetiaf4kvjwbo3fq2hl4fnm55xq5tdpp5tr3ayg4oj5"},
+			want:    SmartBlockTypePage,
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

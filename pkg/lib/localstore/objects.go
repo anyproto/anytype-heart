@@ -16,7 +16,6 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -596,17 +595,82 @@ func (m *dsObjectStore) GetRelation(relationKey string) (*pbrelation.Relation, e
 	return m.getRelation(txn, relationKey)
 }
 
-func (m *dsObjectStore) ListRelations() ([]*pbrelation.Relation, error) {
+// ListRelations retrieves all available relations and sort them in this order:
+// 1. extraRelations aggregated from object of specific type (scope objectsOfTheSameType)
+// 2. relations aggregated from sets of specific type  (scope setsOfTheSameType)
+// 3. user-defined relations aggregated from all objects (scope library)
+// 4. the rest of bundled relations (scope library)
+func (m *dsObjectStore) ListRelations(objType string) ([]*pbrelation.Relation, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	return m.listRelations(txn, 0)
+	if objType == "" {
+		return m.listRelations(txn, 0)
+	}
+
+	rels, err := m.AggregateRelationsFromObjectsOfType(objType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to aggregate relations from objects: %w", err)
+	}
+
+	rels2, err := m.AggregateRelationsFromSetsOfType(objType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to aggregate relations from sets: %w", err)
+	}
+
+	for i, rel := range rels2 {
+		if pbtypes.HasRelation(rels, rel.Key) {
+			continue
+		}
+		rels = append(rels, rels2[i])
+	}
+
+	relsKeys, err := m.listRelationsKeys(txn)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list relations from store index: %w", err)
+	}
+
+	for _, relKey := range relsKeys {
+		if pbtypes.HasRelation(rels, relKey) {
+			continue
+		}
+		rel, err := m.getRelation(txn, relKey)
+		if err != nil {
+			log.Errorf("relation found in index but failed to retrieve from store")
+			continue
+		}
+		rel.Scope = pbrelation.Relation_library
+		rels = append(rels, rel)
+	}
+
+	relsKeys2 := bundle.ListRelationsKeys()
+	for _, relKey := range relsKeys2 {
+		if pbtypes.HasRelation(rels, relKey.String()) {
+			continue
+		}
+
+		rel := bundle.MustGetRelation(relKey)
+		rel.Scope = pbrelation.Relation_library
+		rels = append(rels, rel)
+	}
+
+	return rels, nil
 }
 
-func (m *dsObjectStore) AggregateRelationsForType(objType string) ([]*pbrelation.Relation, error) {
+func (m *dsObjectStore) ListRelationsKeys() ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return m.listRelationsKeys(txn)
+}
+
+func (m *dsObjectStore) AggregateRelationsFromObjectsOfType(objType string) ([]*pbrelation.Relation, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -632,82 +696,45 @@ func (m *dsObjectStore) AggregateRelationsForType(objType string) ([]*pbrelation
 			continue
 		}
 
-		rels = append(rels, rel)
-	}
-
-	res, err = GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objType}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	relKeys2, err := GetKeyPartFromResults(res, -2, -1, true)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, relKey := range relKeys2 {
-		if slice.FindPos(relKeys, relKey) >= 0 {
-			continue
-		}
-		rel, err := m.getRelation(txn, relKey)
-		if err != nil {
-			log.Errorf("relation '%s' found in the index but failed to retreive: %s", relKey, err.Error())
-			continue
-		}
-
+		rel.Scope = pbrelation.Relation_objectsOfTheSameType
 		rels = append(rels, rel)
 	}
 
 	return rels, nil
 }
 
-/*func (m *dsObjectStore) AddObject(page *model.ObjectInfoWithOutboundLinksIDs) error {
-	txn, err := m.ds.NewTransaction(false)
+func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*pbrelation.Relation, error) {
+	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	detailsKey := pagesDetailsBase.ChildString(page.Id)
-	relationsKey := pagesRelationsBase.ChildString(page.Id)
-	snippetKey := pagesSnippetBase.ChildString(page.Id)
+	var rels []*pbrelation.Relation
 
-	if exists, err := txn.Has(detailsKey); err != nil {
-		return err
-	} else if exists {
-		return ErrDuplicateKey
-	}
-
-	page.Info.Details.Fields["type"] = pbtypes.StringList(page.Info.ObjectTypeUrls)
-	b, err := proto.Marshal(page.Info.Details)
+	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objType}, "/", false, 0)
 	if err != nil {
-		return err
-	}
-	if err = txn.Put(detailsKey, b); err != nil {
-		return err
+		return nil, err
 	}
 
-	b, err = proto.Marshal(page.Info.Relations)
+	relKeys, err := GetKeyPartFromResults(res, -2, -1, true)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
-	if err = txn.Put(relationsKey, b); err != nil {
-		return err
-	}
-
-	for _, key := range pageLinkKeys(page.Id, nil, page.OutboundLinks) {
-		if err = txn.Put(key, nil); err != nil {
-			return err
+	for _, relKey := range relKeys {
+		rel, err := m.getRelation(txn, relKey)
+		if err != nil {
+			log.Errorf("relation '%s' found in the index but failed to retreive: %s", relKey, err.Error())
+			continue
 		}
+
+		rel.Scope = pbrelation.Relation_setOfTheSameType
+		rels = append(rels, rel)
 	}
 
-	if err = txn.Put(snippetKey, []byte(page.Info.Snippet)); err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}*/
+	return rels, nil
+}
 
 func (m *dsObjectStore) DeleteObject(id string) error {
 	txn, err := m.ds.NewTransaction(false)
@@ -941,7 +968,7 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 	if details != nil || len(snippet) > 0 || relations != nil {
 		exInfo, err := getObjectInfo(txn, id)
 		if err != nil {
-			log.Errorf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
+			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
 		}
 
 		if exInfo != nil {

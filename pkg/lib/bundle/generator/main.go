@@ -19,6 +19,7 @@ type Relation struct {
 	Format      string   `json:"format"`
 	Hidden      bool     `json:"hidden"`
 	Key         string   `json:"key"`
+	MaxCount    int      `json:"maxCount"`
 	Name        string   `json:"name"`
 	ObjectTypes []string `json:"objectTypes"`
 	Readonly    bool     `json:"readonly"`
@@ -29,6 +30,7 @@ type Relation struct {
 type ObjectType struct {
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`
+	Hidden      bool     `json:"hidden"`
 	Layout      string   `json:"layout"`
 	Relations   []string `json:"relations"`
 	Description string   `json:"description"`
@@ -105,15 +107,20 @@ func generateRelations() error {
 	f.Var().DefsFunc(func(g *Group) {
 		var dict = make(map[Code]Code)
 		for _, relation := range relations {
-
 			dictS := Dict{
 				Id("Key"):         Lit(relation.Key),
 				Id("Name"):        Lit(relation.Name),
 				Id("Format"):      Qual(relPbPkg, "RelationFormat_"+relation.Format),
 				Id("DataSource"):  Qual(relPbPkg, "Relation_"+relation.Source),
-				Id("Hidden"):      Lit(relation.Hidden),
 				Id("ReadOnly"):    Lit(relation.Readonly),
 				Id("Description"): Lit(relation.Description),
+				Id("Scope"):       Qual(relPbPkg, "Relation_type"),
+			}
+			if relation.Hidden {
+				dictS[Id("Hidden")] = Lit(relation.Hidden)
+			}
+			if relation.MaxCount != 0 {
+				dictS[Id("MaxCount")] = Lit(relation.MaxCount)
 			}
 			if len(relation.ObjectTypes) > 0 {
 				var t []Code
@@ -184,6 +191,9 @@ func generateTypes() error {
 				Id("Name"):        Lit(ot.Name),
 				Id("Layout"):      Qual(relPbPkg, "ObjectType_"+ot.Layout),
 				Id("Description"): Lit(ot.Description),
+			}
+			if ot.Hidden {
+				dictS[Id("Hidden")] = Lit(ot.Hidden)
 			}
 			if len(ot.Relations) > 0 {
 				var t []Code

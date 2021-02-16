@@ -3,6 +3,7 @@
     "format": "tag",
     "hidden": false,
     "key": "tag",
+    "maxCount": 0,
     "name": "Tag",
     "readonly": false,
     "source": "details"
@@ -12,6 +13,7 @@
     "format": "title",
     "hidden": false,
     "key": "camera",
+    "maxCount": 1,
     "name": "Camera",
     "readonly": false,
     "source": "details"
@@ -21,6 +23,7 @@
     "format": "number",
     "hidden": false,
     "key": "heightInPixels",
+    "maxCount": 1,
     "name": "Height(px)",
     "readonly": true,
     "source": "details"
@@ -30,6 +33,7 @@
     "format": "date",
     "hidden": false,
     "key": "createdDate",
+    "maxCount": 1,
     "name": "Creation date",
     "readonly": true,
     "source": "derived"
@@ -39,6 +43,7 @@
     "format": "date",
     "hidden": true,
     "key": "toBeDeletedDate",
+    "maxCount": 1,
     "name": "Date to delete",
     "readonly": true,
     "source": "account"
@@ -48,6 +53,7 @@
     "format": "checkbox",
     "hidden": false,
     "key": "done",
+    "maxCount": 1,
     "name": "Done",
     "readonly": false,
     "source": "details"
@@ -56,6 +62,7 @@
     "format": "date",
     "hidden": false,
     "key": "dateOfBirth",
+    "maxCount": 1,
     "name": "Date of birth",
     "readonly": false,
     "source": "details"
@@ -64,6 +71,7 @@
     "format": "object",
     "hidden": false,
     "key": "thumbnailImage",
+    "maxCount": 0,
     "name": "Thumbnail image",
     "objectTypes": [
       "image"
@@ -75,6 +83,7 @@
     "format": "object",
     "hidden": false,
     "key": "attachments",
+    "maxCount": 0,
     "name": "Attachments",
     "objectTypes": [
       "file",
@@ -89,6 +98,7 @@
     "format": "object",
     "hidden": false,
     "key": "linkedTasks",
+    "maxCount": 0,
     "name": "Linked tasks",
     "objectTypes": [
       "task"
@@ -101,6 +111,7 @@
     "format": "object",
     "hidden": true,
     "key": "iconImage",
+    "maxCount": 1,
     "name": "Image",
     "objectTypes": [
       "image"
@@ -113,6 +124,7 @@
     "format": "number",
     "hidden": false,
     "key": "releasedYear",
+    "maxCount": 1,
     "name": "Released year",
     "readonly": false,
     "source": "details"
@@ -121,6 +133,7 @@
     "format": "number",
     "hidden": true,
     "key": "coverScale",
+    "maxCount": 1,
     "name": "Cover scale",
     "readonly": false,
     "source": "details"
@@ -129,6 +142,7 @@
     "format": "object",
     "hidden": false,
     "key": "linkedProjects",
+    "maxCount": 0,
     "name": "Linked Projects",
     "objectTypes": [
       "project"
@@ -141,6 +155,7 @@
     "format": "title",
     "hidden": false,
     "key": "audioAlbum",
+    "maxCount": 1,
     "name": "Album",
     "readonly": false,
     "source": "details"
@@ -150,6 +165,7 @@
     "format": "status",
     "hidden": false,
     "key": "status",
+    "maxCount": 1,
     "name": "Status",
     "readonly": false,
     "source": "details"
@@ -159,6 +175,7 @@
     "format": "number",
     "hidden": false,
     "key": "durationInSeconds",
+    "maxCount": 1,
     "name": "Duration(sec)",
     "readonly": false,
     "source": "details"
@@ -167,6 +184,7 @@
     "format": "title",
     "hidden": false,
     "key": "aperture",
+    "maxCount": 1,
     "name": "Camera Aperture",
     "readonly": false,
     "source": "details"
@@ -176,6 +194,7 @@
     "format": "date",
     "hidden": false,
     "key": "lastModifiedDate",
+    "maxCount": 1,
     "name": "Last modified date",
     "readonly": true,
     "source": "derived"
@@ -185,6 +204,7 @@
     "format": "object",
     "hidden": false,
     "key": "recommendedRelations",
+    "maxCount": 0,
     "name": "Recommended relations",
     "objectTypes": [
       "relation"
@@ -197,6 +217,7 @@
     "format": "object",
     "hidden": false,
     "key": "creator",
+    "maxCount": 1,
     "name": "Created by",
     "objectTypes": [
       "profile"
@@ -209,6 +230,7 @@
     "format": "number",
     "hidden": true,
     "key": "recommendedLayout",
+    "maxCount": 1,
     "name": "Recommended layout",
     "readonly": false,
     "source": "details"
@@ -218,6 +240,7 @@
     "format": "date",
     "hidden": false,
     "key": "lastOpenedDate",
+    "maxCount": 1,
     "name": "Last opened date",
     "readonly": true,
     "source": "account"
@@ -227,6 +250,7 @@
     "format": "title",
     "hidden": false,
     "key": "artist",
+    "maxCount": 1,
     "name": "Artist",
     "readonly": false,
     "source": "details"
@@ -235,6 +259,7 @@
     "format": "date",
     "hidden": false,
     "key": "dueDate",
+    "maxCount": 1,
     "name": "Due date",
     "readonly": false,
     "source": "details"
@@ -244,6 +269,7 @@
     "format": "emoji",
     "hidden": true,
     "key": "iconEmoji",
+    "maxCount": 0,
     "name": "Emoji",
     "readonly": false,
     "source": "details"
@@ -253,6 +279,7 @@
     "format": "number",
     "hidden": true,
     "key": "coverType",
+    "maxCount": 1,
     "name": "Cover type",
     "readonly": false,
     "source": "details"
@@ -262,6 +289,7 @@
     "format": "number",
     "hidden": true,
     "key": "coverY",
+    "maxCount": 1,
     "name": "Cover y offset",
     "readonly": false,
     "source": "details"
@@ -271,6 +299,7 @@
     "format": "number",
     "hidden": false,
     "key": "sizeInBytes",
+    "maxCount": 1,
     "name": "Size(bytes)",
     "readonly": false,
     "source": "details"
@@ -280,6 +309,7 @@
     "format": "object",
     "hidden": false,
     "key": "collectionOf",
+    "maxCount": 0,
     "name": "Collection of",
     "objectTypes": [
       "objectType"
@@ -292,6 +322,7 @@
     "format": "date",
     "hidden": false,
     "key": "addedDate",
+    "maxCount": 1,
     "name": "Added date",
     "readonly": false,
     "source": "details"
@@ -301,6 +332,7 @@
     "format": "object",
     "hidden": false,
     "key": "assignee",
+    "maxCount": 0,
     "name": "Assignee",
     "objectTypes": [
       "profile"
@@ -312,6 +344,7 @@
     "format": "title",
     "hidden": false,
     "key": "exposure",
+    "maxCount": 1,
     "name": "Camera Exposure",
     "readonly": false,
     "source": "details"
@@ -321,6 +354,7 @@
     "format": "title",
     "hidden": false,
     "key": "audioGenre",
+    "maxCount": 1,
     "name": "Genre",
     "readonly": false,
     "source": "details"
@@ -330,6 +364,7 @@
     "format": "title",
     "hidden": false,
     "key": "name",
+    "maxCount": 1,
     "name": "Name",
     "readonly": false,
     "source": "details"
@@ -338,6 +373,7 @@
     "format": "number",
     "hidden": false,
     "key": "focalRatio",
+    "maxCount": 1,
     "name": "Focal ratio",
     "readonly": false,
     "source": "details"
@@ -347,6 +383,7 @@
     "format": "number",
     "hidden": true,
     "key": "priority",
+    "maxCount": 1,
     "name": "Priority",
     "readonly": false,
     "source": "details"
@@ -356,6 +393,7 @@
     "format": "title",
     "hidden": true,
     "key": "fileMimeType",
+    "maxCount": 1,
     "name": "Mime type",
     "readonly": false,
     "source": "details"
@@ -364,18 +402,20 @@
     "format": "object",
     "hidden": false,
     "key": "type",
+    "maxCount": 1,
     "name": "Object type",
     "objectTypes": [
       "objectType"
     ],
     "readonly": false,
-    "source": "details"
+    "source": "derived"
   },
   {
     "description": "Anytype layout ID(from pb enum)",
     "format": "number",
     "hidden": false,
     "key": "layout",
+    "maxCount": 1,
     "name": "Layout",
     "readonly": false,
     "source": "details"
@@ -385,6 +425,7 @@
     "format": "number",
     "hidden": false,
     "key": "audioAlbumTrackNumber",
+    "maxCount": 1,
     "name": "Track #",
     "readonly": false,
     "source": "details"
@@ -393,6 +434,7 @@
     "format": "status",
     "hidden": false,
     "key": "placeOfBirth",
+    "maxCount": 1,
     "name": "Place of birth",
     "readonly": false,
     "source": "details"
@@ -401,6 +443,7 @@
     "format": "title",
     "hidden": false,
     "key": "composer",
+    "maxCount": 1,
     "name": "Composer",
     "readonly": false,
     "source": "details"
@@ -410,6 +453,7 @@
     "format": "number",
     "hidden": true,
     "key": "coverX",
+    "maxCount": 1,
     "name": "Cover x offset",
     "readonly": false,
     "source": "details"
@@ -418,6 +462,7 @@
     "format": "description",
     "hidden": false,
     "key": "description",
+    "maxCount": 1,
     "name": "Description",
     "readonly": false,
     "source": "details"
@@ -427,6 +472,7 @@
     "format": "object",
     "hidden": true,
     "key": "id",
+    "maxCount": 0,
     "name": "Anytype ID",
     "readonly": false,
     "source": "derived"
@@ -435,6 +481,7 @@
     "format": "number",
     "hidden": false,
     "key": "cameraIso",
+    "maxCount": 1,
     "name": "ISO",
     "readonly": false,
     "source": "details"
@@ -444,6 +491,7 @@
     "format": "title",
     "hidden": true,
     "key": "coverId",
+    "maxCount": 1,
     "name": "Cover image or color",
     "readonly": false,
     "source": "details"
@@ -453,6 +501,7 @@
     "format": "object",
     "hidden": false,
     "key": "lastModifiedBy",
+    "maxCount": 1,
     "name": "Last modified by",
     "objectTypes": [
       "profile"
@@ -465,6 +514,7 @@
     "format": "number",
     "hidden": false,
     "key": "widthInPixels",
+    "maxCount": 1,
     "name": "Width(px)",
     "readonly": true,
     "source": "details"
@@ -474,17 +524,19 @@
     "format": "object",
     "hidden": false,
     "key": "setOf",
+    "maxCount": 0,
     "name": "Set of",
     "objectTypes": [
       "objectType"
     ],
-    "readonly": false,
+    "readonly": true,
     "source": "details"
   },
   {
     "format": "status",
     "hidden": false,
     "key": "gender",
+    "maxCount": 1,
     "name": "Gender",
     "readonly": false,
     "source": "details"
@@ -493,6 +545,7 @@
     "format": "title",
     "hidden": false,
     "key": "fileExt",
+    "maxCount": 1,
     "name": "File extension",
     "readonly": false,
     "source": "derived"
@@ -501,6 +554,7 @@
     "format": "object",
     "hidden": true,
     "key": "featuredRelations",
+    "maxCount": 0,
     "name": "Featured relations management will be  implemented later.",
     "objectTypes": [
       "relation"

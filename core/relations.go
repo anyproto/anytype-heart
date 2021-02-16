@@ -67,7 +67,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddExtraRelations(id, req.Relations)
+		relations, err = bs.AddExtraRelations(nil, id, req.Relations)
 		if err != nil {
 			return err
 		}
@@ -104,7 +104,7 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 
 	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.UpdateExtraRelations(id, []*pbrelation.Relation{req.Relation}, false)
+		err = bs.UpdateExtraRelations(nil, id, []*pbrelation.Relation{req.Relation}, false)
 		if err != nil {
 			return err
 		}
@@ -141,7 +141,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.RemoveExtraRelations(id, []string{req.RelationKey})
+		err = bs.RemoveExtraRelations(nil, id, []string{req.RelationKey})
 		if err != nil {
 			return err
 		}

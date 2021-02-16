@@ -3,6 +3,7 @@ package smartblock
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/ipfs/go-cid"
+	"github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -22,13 +23,17 @@ const (
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
-	tid, err := thread.Decode(id)
-	if err != nil || tid.Variant() != thread.Raw {
-		_, err := cid.Decode(id)
-		if err == nil {
-			return SmartBlockTypeFile, nil
-		}
+	c, err := cid.Decode(id)
+	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
+	if err == nil && c.Prefix().Codec == 0x70 && c.Prefix().MhType == multihash.SHA2_256 {
+		return SmartBlockTypeFile, nil
 	}
+
+	tid, err := thread.Decode(id)
+	if err != nil {
+		return SmartBlockTypePage, err
+	}
+
 	return SmartBlockTypeFromThreadID(tid)
 }
 

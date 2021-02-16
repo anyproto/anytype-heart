@@ -22,6 +22,7 @@ func newDoc(id string, a anytype.Service) (d *doc, err error) {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return
 	}
+
 	d = &doc{
 		id:        id,
 		lastUsage: time.Now(),
@@ -126,6 +127,17 @@ func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (lastChangeTS
 	return
 }
 
+func (d *doc) injectLocalRelations(st *state.State) {
+	if details, err := d.store.GetDetails(d.id); err == nil {
+		if details != nil && details.Details != nil {
+			for key, v := range details.Details.Fields {
+				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
+					st.SetDetail(key, v)
+				}
+			}
+		}
+	}
+}
 func (d *doc) buildState() (doc *state.State, err error) {
 	root := d.tree.Root()
 	if root == nil || root.GetSnapshot() == nil {
@@ -138,16 +150,7 @@ func (d *doc) buildState() (doc *state.State, err error) {
 		return
 	}
 
-	// set persisted local-only details (e.g. lastOpenedDate)
-	if details, err := d.store.GetDetails(d.id); err == nil {
-		if details != nil && details.Details != nil {
-			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
-					st.SetDetail(key, v)
-				}
-			}
-		}
-	}
+	d.injectLocalRelations(st)
 	st.InjectDerivedDetails()
 
 	if _, _, err = state.ApplyStateFast(st); err != nil {

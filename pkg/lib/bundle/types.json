@@ -26,32 +26,6 @@
     ]
   },
   {
-    "id": "dashboard",
-    "layout": "dashboard",
-    "name": "Dashboard",
-    "relations": [
-      "id",
-      "name",
-      "description",
-      "type",
-      "creator",
-      "createdDate",
-      "layout",
-      "lastModifiedBy",
-      "iconImage",
-      "iconEmoji",
-      "coverId",
-      "lastModifiedDate",
-      "lastOpenedDate",
-      "coverX",
-      "coverY",
-      "coverScale",
-      "toBeDeletedDate",
-      "featuredRelations",
-      "coverType"
-    ]
-  },
-  {
     "id": "contact",
     "layout": "profile",
     "name": "Contact",
@@ -130,7 +104,6 @@
       "coverType",
       "assignee",
       "dueDate",
-      "description",
       "attachments",
       "status",
       "done",
@@ -141,6 +114,7 @@
     ]
   },
   {
+    "hidden": true,
     "id": "relation",
     "layout": "relation",
     "name": "Relation",
@@ -190,7 +164,36 @@
     ]
   },
   {
+    "description": "Internal home dashboard",
+    "hidden": true,
+    "id": "dashboard",
+    "layout": "dashboard",
+    "name": "Dashboard",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType"
+    ]
+  },
+  {
     "description": "Object that contains a definition of some object type",
+    "hidden": true,
     "id": "objectType",
     "layout": "objectType",
     "name": "Type",
@@ -221,7 +224,7 @@
   {
     "id": "set",
     "layout": "set",
-    "name": "Set of objects",
+    "name": "All sets",
     "relations": [
       "id",
       "name",
@@ -249,7 +252,7 @@
     "description": "Base type to start with",
     "id": "page",
     "layout": "basic",
-    "name": "Undefined",
+    "name": "Draft",
     "relations": [
       "id",
       "name",
@@ -453,33 +456,6 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType"
-    ]
-  },
-  {
-    "id": "collection",
-    "layout": "database",
-    "name": "Collection",
-    "relations": [
-      "id",
-      "name",
-      "description",
-      "type",
-      "creator",
-      "createdDate",
-      "layout",
-      "lastModifiedBy",
-      "iconImage",
-      "iconEmoji",
-      "coverId",
-      "lastModifiedDate",
-      "lastOpenedDate",
-      "coverX",
-      "coverY",
-      "coverScale",
-      "toBeDeletedDate",
-      "featuredRelations",
-      "coverType",
-      "collectionOf"
     ]
   }
 ]

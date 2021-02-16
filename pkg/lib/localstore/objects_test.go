@@ -8,8 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -272,16 +271,16 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, restOpts, 6)
 
-	rels, err := ds.AggregateRelationsForType("a1")
+	rels, err := ds.AggregateRelationsFromObjectsOfType("a1")
 	require.NoError(t, err)
 	require.Len(t, rels, 2)
 
 	require.Equal(t, "rel1", rels[0].Key)
 	require.Equal(t, "rel2", rels[1].Key)
 
-	rels, err = ds.ListRelations()
+	rels, err = ds.ListRelations("a1")
 	require.NoError(t, err)
-	require.Len(t, rels, 4)
+	require.Len(t, rels, len(bundle.ListRelationsKeys())+4)
 
 	require.Equal(t, "rel1", rels[0].Key)
 	require.Equal(t, "rel2", rels[1].Key)

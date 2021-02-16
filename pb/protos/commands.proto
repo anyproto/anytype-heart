@@ -1436,7 +1436,8 @@ message Rpc {
                 message Response {
                     Error error = 1;
                     ResponseEvent event = 2;
-                    string relationKey = 3;
+                    string relationKey = 3; // deprecated
+                    anytype.relation.Relation relation = 4;
 
                     message Error {
                         Code code = 1;
@@ -2869,7 +2870,8 @@ message Rpc {
             message Response {
                 Error error = 1;
                 ResponseEvent event = 2;
-                string relationKey = 3;
+                string relationKey = 3; // deprecated
+                anytype.relation.Relation relation = 4;
 
                 message Error {
                     Code code = 1;
@@ -3018,7 +3020,6 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
-                        NOT_A_DATAVIEW_BLOCK = 3;
                         // ...
                     }
                 }

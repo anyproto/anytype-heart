@@ -847,8 +847,9 @@
     - [Relations](#anytype.relation.Relations)
   
     - [ObjectType.Layout](#anytype.relation.ObjectType.Layout)
+    - [Relation.DataSource](#anytype.relation.Relation.DataSource)
     - [Relation.Option.Scope](#anytype.relation.Relation.Option.Scope)
-    - [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource)
+    - [Relation.Scope](#anytype.relation.Relation.Scope)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
   
@@ -946,6 +947,8 @@
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype.Rpc.Block.Bookmark.Fetch.Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype.Rpc.Block.Bookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype.Rpc.Block.File.CreateAndUpload.Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype.Rpc.Block.File.CreateAndUpload.Response) |  |
+| BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype.Rpc.Block.Relation.SetKey.Request) | [Rpc.Block.Relation.SetKey.Response](#anytype.Rpc.Block.Relation.SetKey.Response) |  |
+| BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) |  |
 | BlockDataviewViewCreate | [Rpc.Block.Dataview.ViewCreate.Request](#anytype.Rpc.Block.Dataview.ViewCreate.Request) | [Rpc.Block.Dataview.ViewCreate.Response](#anytype.Rpc.Block.Dataview.ViewCreate.Response) | ## Dataview # View |
 | BlockDataviewViewDelete | [Rpc.Block.Dataview.ViewDelete.Request](#anytype.Rpc.Block.Dataview.ViewDelete.Request) | [Rpc.Block.Dataview.ViewDelete.Response](#anytype.Rpc.Block.Dataview.ViewDelete.Response) |  |
 | BlockDataviewViewUpdate | [Rpc.Block.Dataview.ViewUpdate.Request](#anytype.Rpc.Block.Dataview.ViewUpdate.Request) | [Rpc.Block.Dataview.ViewUpdate.Response](#anytype.Rpc.Block.Dataview.ViewUpdate.Response) |  |
@@ -961,8 +964,6 @@
 | BlockDataviewRecordRelationOptionUpdate | [Rpc.Block.Dataview.RecordRelationOptionUpdate.Request](#anytype.Rpc.Block.Dataview.RecordRelationOptionUpdate.Request) | [Rpc.Block.Dataview.RecordRelationOptionUpdate.Response](#anytype.Rpc.Block.Dataview.RecordRelationOptionUpdate.Response) |  |
 | BlockDataviewRecordRelationOptionDelete | [Rpc.Block.Dataview.RecordRelationOptionDelete.Request](#anytype.Rpc.Block.Dataview.RecordRelationOptionDelete.Request) | [Rpc.Block.Dataview.RecordRelationOptionDelete.Response](#anytype.Rpc.Block.Dataview.RecordRelationOptionDelete.Response) |  |
 | BlockObjectTypeSet | [Rpc.Block.ObjectType.Set.Request](#anytype.Rpc.Block.ObjectType.Set.Request) | [Rpc.Block.ObjectType.Set.Response](#anytype.Rpc.Block.ObjectType.Set.Response) | ## Object&#39;s relations set an existing object type to the object so it will appear in sets and suggests relations from this type TODO: rename BlockObjectTypeSet -&gt; ObjectObjectTypeSet |
-| BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype.Rpc.Block.Relation.SetKey.Request) | [Rpc.Block.Relation.SetKey.Response](#anytype.Rpc.Block.Relation.SetKey.Response) | TODO: rename BlockRelationSetKey -&gt; ObjectRelationSetKey |
-| BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype.Rpc.Block.Relation.Add.Request) | [Rpc.Block.Relation.Add.Response](#anytype.Rpc.Block.Relation.Add.Response) | TODO: rename BlockRelationAdd -&gt; ObjectRelationAdd |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request) | [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
@@ -2539,7 +2540,8 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Dataview.RelationAdd.Response.Error](#anytype.Rpc.Block.Dataview.RelationAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-| relationKey | [string](#string) |  |  |
+| relationKey | [string](#string) |  | deprecated |
+| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
 
 
 
@@ -7040,7 +7042,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.RelationAdd.Response.Error](#anytype.Rpc.Object.RelationAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-| relationKey | [string](#string) |  |  |
+| relationKey | [string](#string) |  | deprecated |
+| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
 
 
 
@@ -9731,8 +9734,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| NOT_A_DATAVIEW_BLOCK | 3 | ... |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -11520,21 +11522,22 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
+| blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  | to be renamed to objectSetDetails |
+| blockSetRelations | [Event.Block.Set.Relations](#anytype.Event.Block.Set.Relations) |  | to be renamed to objectSetRelations |
+| blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  | to be renamed to objectSetRestrictions |
+| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  | to be renamed to objectShow |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
 | marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
 | blockSetFields | [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields) |  |  |
 | blockSetChildrenIds | [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds) |  |  |
-| blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  |  |
 | blockSetBackgroundColor | [Event.Block.Set.BackgroundColor](#anytype.Event.Block.Set.BackgroundColor) |  |  |
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
 | blockSetLink | [Event.Block.Set.Link](#anytype.Event.Block.Set.Link) |  |  |
 | blockSetBookmark | [Event.Block.Set.Bookmark](#anytype.Event.Block.Set.Bookmark) |  |  |
 | blockSetAlign | [Event.Block.Set.Align](#anytype.Event.Block.Set.Align) |  |  |
-| blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  |  |
-| blockSetRelations | [Event.Block.Set.Relations](#anytype.Event.Block.Set.Relations) |  |  |
 | blockSetDiv | [Event.Block.Set.Div](#anytype.Event.Block.Set.Div) |  |  |
 | blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype.Event.Block.Dataview.RecordsSet) |  |  |
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate) |  |  |
@@ -11545,7 +11548,6 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation) |  |  |
-| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
@@ -12856,6 +12858,7 @@ deprecated
 | layout | [ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
 | iconEmoji | [string](#string) |  | emoji symbol |
 | description | [string](#string) |  |  |
+| hidden | [bool](#bool) |  |  |
 
 
 
@@ -12874,7 +12877,7 @@ Relation describe the human-interpreted relation type. It may be something like 
 | format | [RelationFormat](#anytype.relation.RelationFormat) |  | format of the underlying data |
 | name | [string](#string) |  | name to show (can be localized for bundled types) |
 | defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-| dataSource | [Relation.RelationDataSource](#anytype.relation.Relation.RelationDataSource) |  | where the data is stored |
+| dataSource | [Relation.DataSource](#anytype.relation.Relation.DataSource) |  | where the data is stored |
 | hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
 | readOnly | [bool](#bool) |  | not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
@@ -12882,8 +12885,9 @@ Relation describe the human-interpreted relation type. It may be something like 
 | selectDict | [Relation.Option](#anytype.relation.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
 
 default dictionary with unique values to choose for select/multiSelect format |
-| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit |
+| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
 | description | [string](#string) |  |  |
+| scope | [Relation.Scope](#anytype.relation.Relation.Scope) |  | on-store should be only local |
 
 
 
@@ -12960,6 +12964,19 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 
 
+<a name="anytype.relation.Relation.DataSource"></a>
+
+### Relation.DataSource
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| details | 0 | default, stored inside the object&#39;s details |
+| derived | 1 | stored locally, e.g. in badger or generated on the fly |
+| account | 2 | stored in the account DB. means existing only for specific anytype account |
+
+
+
 <a name="anytype.relation.Relation.Option.Scope"></a>
 
 ### Relation.Option.Scope
@@ -12973,16 +12990,18 @@ default dictionary with unique values to choose for select/multiSelect format |
 
 
 
-<a name="anytype.relation.Relation.RelationDataSource"></a>
+<a name="anytype.relation.Relation.Scope"></a>
 
-### Relation.RelationDataSource
+### Relation.Scope
 
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| details | 0 | default, stored inside the object&#39;s details |
-| derived | 1 | stored locally, e.g. in badger or generated on the fly |
-| account | 2 | stored in the account DB. means existing only for specific anytype account |
+| object | 0 | stored within the object |
+| type | 1 | stored within the object type |
+| setOfTheSameType | 2 | aggregated from the dataview of sets of the same object type |
+| objectsOfTheSameType | 3 | aggregated from the dataview of sets of the same object type |
+| library | 4 | aggregated from relations library |
 
 
 
@@ -13006,6 +13025,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | phone | 9 | string with sanity check |
 | emoji | 10 | one emoji, can contains multiple utf-8 symbols |
 | object | 100 | relation can has objectType to specify objectType |
+| relations | 101 | base64-encoded |
 
 
  

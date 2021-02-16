@@ -67,8 +67,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 
 func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(relationKey string, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
-		m := &pb.RpcObjectRelationAddResponse{RelationKey: relationKey, Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
+	response := func(relation *pbrelation.Relation, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
+		var relKey string
+		if relation != nil {
+			relKey = relation.Key
+		}
+		m := &pb.RpcObjectRelationAddResponse{RelationKey: relKey, Relation: relation, Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -76,16 +80,20 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 		}
 		return m
 	}
+	if req.Relation == nil {
+		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
+	}
+
 	var relations []*pbrelation.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddExtraRelations(req.ContextId, []*pbrelation.Relation{req.Relation})
+		relations, err = bs.AddExtraRelations(ctx, req.ContextId, []*pbrelation.Relation{req.Relation})
 		return err
 	})
 	if err != nil {
-		return response("", pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
+		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
 	}
 
-	return response(relations[0].Key, pb.RpcObjectRelationAddResponseError_NULL, nil)
+	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationUpdate(req *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse {
@@ -100,7 +108,7 @@ func (mw *Middleware) ObjectRelationUpdate(req *pb.RpcObjectRelationUpdateReques
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateExtraRelations(req.ContextId, []*pbrelation.Relation{req.Relation}, false)
+		return bs.UpdateExtraRelations(nil, req.ContextId, []*pbrelation.Relation{req.Relation}, false)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationUpdateResponseError_BAD_INPUT, err)
@@ -121,7 +129,7 @@ func (mw *Middleware) ObjectRelationDelete(req *pb.RpcObjectRelationDeleteReques
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.RemoveExtraRelations(req.ContextId, []string{req.RelationKey})
+		return bs.RemoveExtraRelations(ctx, req.ContextId, []string{req.RelationKey})
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationDeleteResponseError_BAD_INPUT, err)
@@ -203,28 +211,15 @@ func (mw *Middleware) ObjectRelationListAvailable(req *pb.RpcObjectRelationListA
 		}
 		return m
 	}
-	// todo: to be implemented
-	return response(pb.RpcObjectRelationListAvailableResponseError_UNKNOWN_ERROR, nil, fmt.Errorf("not implemented"))
-	/*ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectRelationListAvailableResponseErrorCode, relations []*pbrelation.ByRelation, err error) *pb.RpcObjectRelationListAvailableResponse {
-		m := &pb.RpcObjectRelationListAvailableResponse{Relations: relations, Error: &pb.RpcObjectRelationListAvailableResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	var (
-		err       error
-		relations []*pbrelation.ByRelation
-	)
-
-	err = mw.doBlockService(func(bs block.Service) (err error) {
-		bs.GetRelations()
+	var rels []*pbrelation.Relation
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		rels, err = bs.ListAvailableRelations(req.ContextId)
+		return
 	})
+
 	if err != nil {
-		return response(pb.RpcObjectRelationListAvailableResponseError_BAD_INPUT, relations, err)
+		return response(pb.RpcObjectRelationListAvailableResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	return response(pb.RpcObjectRelationListAvailableResponseError_NULL, relations, nil)
-	*/
+	return response(pb.RpcObjectRelationListAvailableResponseError_NULL, rels, nil)
 }

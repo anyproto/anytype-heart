@@ -142,7 +142,7 @@ func (st *SmartTest) DeleteExtraRelationOption(ctx *state.Context, relationKey s
 	return fmt.Errorf("relation not found")
 }
 
-func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (st *SmartTest) AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -159,7 +159,7 @@ func (st *SmartTest) AddExtraRelations(relations []*pbrelation.Relation) (relati
 	return st.meta.Relations, nil
 }
 
-func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+func (st *SmartTest) UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -184,11 +184,11 @@ func (st *SmartTest) UpdateExtraRelations(relations []*pbrelation.Relation, crea
 	return nil
 }
 
-func (st *SmartTest) RemoveExtraRelations(relationKeys []string) (err error) {
+func (st *SmartTest) RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error) {
 	return nil
 }
 
-func (st *SmartTest) SetObjectTypes(objectTypes []string) (err error) {
+func (st *SmartTest) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
 	return nil
 }
 

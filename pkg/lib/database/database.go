@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
@@ -29,8 +30,12 @@ type Reader interface {
 	QueryById(ids []string) (records []Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
-	ListRelations() (relations []*pbrelation.Relation, err error)
-	AggregateRelationsForType(objType string) (relations []*pbrelation.Relation, err error)
+	GetRelation(key string) (relation *pbrelation.Relation, err error)
+
+	ListRelations(objType string) (relations []*pbrelation.Relation, err error)
+
+	AggregateRelationsFromObjectsOfType(objType string) (relations []*pbrelation.Relation, err error)
+	AggregateRelationsFromSetsOfType(objType string) (relations []*pbrelation.Relation, err error)
 	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 }
 
@@ -121,12 +126,10 @@ func (filters filters) Filter(e query.Entry) bool {
 	var foundType bool
 	if filters.Schema != nil {
 		if t, ok := details.Details.Fields[bundle.RelationKeyType.String()]; ok {
-			if list := t.GetListValue(); list != nil {
-				for _, val := range list.Values {
-					if val.GetStringValue() == filters.Schema.ObjType.Url {
-						foundType = true
-						break
-					}
+			for _, val := range pbtypes.GetStringListValue(t) {
+				if val == filters.Schema.ObjType.Url {
+					foundType = true
+					break
 				}
 			}
 		} else {

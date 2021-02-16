@@ -5,7 +5,6 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/martian/log"
 )
 
 func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []string) (equal bool) {
@@ -27,11 +26,8 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 			continue
 		}
 		if v2, exists := m2[key]; !exists {
-			log.Errorf("compare: det2 doesn't has %s", key)
 			return false
 		} else if !v2.Equal(v1) {
-			log.Errorf("compare: det2 has not equal %s: %v!=%v", key, v1, v2)
-
 			return false
 		}
 	}
@@ -41,7 +37,6 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 			continue
 		}
 		if _, exists := m1[key]; !exists {
-			log.Errorf("compare: det1 doesn't has %s", key)
 			return false
 		}
 	}

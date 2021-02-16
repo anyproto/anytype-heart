@@ -71,7 +71,6 @@ type ObjectStore interface {
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, relationFormat pbrelation.RelationFormat, objectType string) (options []*pbrelation.RelationOption, err error)
-	GetRelation(relationKey string) (*pbrelation.Relation, error)
 
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
@@ -126,7 +125,9 @@ func (i Index) JoinedKeys(val interface{}) []string {
 }
 
 func (ls LocalStore) Close() error {
-	ls.Objects.Close()
+	if ls.Objects != nil {
+		ls.Objects.Close()
+	}
 	return nil
 }
 
