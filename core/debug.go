@@ -49,7 +49,7 @@ func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_Listen
 
 func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
 	response := func(threads []*pb.RpcDebugSyncResponsethread, threadsWithoutRepl int32, code pb.RpcDebugSyncResponseErrorCode, err error) *pb.RpcDebugSyncResponse {
-		m := &pb.RpcDebugSyncResponse{DeviceId: mw.Anytype.Device(), Threads: threads, ThreadsWithoutReplInOwnLog: threadsWithoutRepl, TotalThreads: int32(len(threads))}
+		m := &pb.RpcDebugSyncResponse{DeviceId: mw.Anytype.Device(), Threads: threads, ThreadsWithoutReplInOwnLog: threadsWithoutRepl, TotalThreads: int32(len(threads)), Error: &pb.RpcDebugSyncResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
