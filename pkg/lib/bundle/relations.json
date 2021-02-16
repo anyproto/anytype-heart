@@ -551,6 +551,16 @@
     "source": "derived"
   },
   {
+    "description": "Have been added to library from marketplace",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "mpAddedToLibrary",
+    "maxCount": 0,
+    "name": "Added to library",
+    "readonly": false,
+    "source": "account"
+  },
+  {
     "format": "object",
     "hidden": true,
     "key": "featuredRelations",

@@ -66,6 +66,7 @@ const (
 	RelationKeySetOf                 RelationKey = "setOf"
 	RelationKeyGender                RelationKey = "gender"
 	RelationKeyFileExt               RelationKey = "fileExt"
+	RelationKeyMpAddedToLibrary      RelationKey = "mpAddedToLibrary"
 	RelationKeyFeaturedRelations     RelationKey = "featuredRelations"
 )
 
@@ -519,6 +520,17 @@ var (
 			Key:         "linkedTasks",
 			Name:        "Linked tasks",
 			ObjectTypes: []string{TypePrefix + "task"},
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyMpAddedToLibrary: {
+
+			DataSource:  relation.Relation_account,
+			Description: "Have been added to library from marketplace",
+			Format:      relation.RelationFormat_checkbox,
+			Hidden:      true,
+			Key:         "mpAddedToLibrary",
+			Name:        "Added to library",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},

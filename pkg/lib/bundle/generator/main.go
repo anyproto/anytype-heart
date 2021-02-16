@@ -30,6 +30,7 @@ type Relation struct {
 type ObjectType struct {
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`
+	Emoji       string   `json:"emoji"`
 	Hidden      bool     `json:"hidden"`
 	Layout      string   `json:"layout"`
 	Relations   []string `json:"relations"`
@@ -195,6 +196,10 @@ func generateTypes() error {
 			if ot.Hidden {
 				dictS[Id("Hidden")] = Lit(ot.Hidden)
 			}
+			if ot.Emoji != "" {
+				dictS[Id("IconEmoji")] = Lit(ot.Emoji)
+			}
+
 			if len(ot.Relations) > 0 {
 				var t []Code
 				for _, rel := range ot.Relations {
