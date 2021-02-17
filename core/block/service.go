@@ -1068,8 +1068,22 @@ func (s *service) BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBook
 }
 
 func (s *service) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.SetRelationKey(ctx, req)
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		rels := b.Relations()
+		rel := pbtypes.GetRelation(rels, req.Key)
+		if rel == nil {
+			var err error
+			rels, err = s.Anytype().ObjectStore().ListRelations("")
+			if err != nil {
+				return err
+			}
+			rel = pbtypes.GetRelation(rels, req.Key)
+			if rel == nil {
+				return fmt.Errorf("relation with provided key not found")
+			}
+		}
+
+		return b.(basic.Basic).AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{Relation: rel, BlockId: req.BlockId, ContextId: req.ContextId})
 	})
 }
 

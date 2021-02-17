@@ -636,7 +636,22 @@ func (m *dsObjectStore) ListRelations(objType string) ([]*pbrelation.Relation, e
 	defer txn.Discard()
 
 	if objType == "" {
-		return m.listRelations(txn, 0)
+		rels, err := m.listRelations(txn, 0)
+		if err != nil {
+			return nil, err
+		}
+		// todo: omit when we will have everything in index
+		relsKeys2 := bundle.ListRelationsKeys()
+		for _, relKey := range relsKeys2 {
+			if pbtypes.HasRelation(rels, relKey.String()) {
+				continue
+			}
+
+			rel := bundle.MustGetRelation(relKey)
+			rel.Scope = pbrelation.Relation_library
+			rels = append(rels, rel)
+		}
+		return rels, nil
 	}
 
 	rels, err := m.AggregateRelationsFromObjectsOfType(objType)
@@ -661,6 +676,7 @@ func (m *dsObjectStore) ListRelations(objType string) ([]*pbrelation.Relation, e
 		return nil, fmt.Errorf("failed to list relations from store index: %w", err)
 	}
 
+	// todo: omit when we will have everything in index
 	for _, relKey := range relsKeys {
 		if pbtypes.HasRelation(rels, relKey) {
 			continue
