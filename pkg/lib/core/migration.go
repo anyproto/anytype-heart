@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -52,7 +53,8 @@ var migrations = []migration{
 	addFilesToObjects,           // 12
 	removeBundleRelationsFromDs, // 13
 	skipMigration,               // 13
-	reindexAll,                  // 14
+	skipMigration,               // 14
+	reindexAll,                  // 15
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -451,11 +453,18 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				total--
 				continue
 			}
+			for _, idx := range a.localStore.Objects.Indexes() {
+				err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
+				if err != nil {
+					log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
+				}
+			}
 			oi, err := a.localStore.Objects.GetByIDs(id)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
 				continue
 			}
+
 			if len(oi) < 1 {
 				log.Errorf("migration reindexAll: failed to get objects: not found")
 				continue

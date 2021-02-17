@@ -47,7 +47,13 @@ var (
 				var indexes []IndexKeyParts
 				for _, rk := range v.relationKeys {
 					for _, ot := range v.objectTypes {
-						indexes = append(indexes, IndexKeyParts([]string{ot, rk}))
+						otCompact, err := objTypeCompactEncode(ot)
+						if err != nil {
+							log.Errorf("objtype_relkey_objid index construction error(ot '%s'): %s", ot, err.Error())
+							continue
+						}
+
+						indexes = append(indexes, IndexKeyParts([]string{otCompact, rk}))
 					}
 				}
 				return indexes
@@ -66,7 +72,13 @@ var (
 				var indexes []IndexKeyParts
 				for _, rk := range v.relationKeys {
 					for _, ot := range v.objectTypes {
-						indexes = append(indexes, IndexKeyParts([]string{ot, rk}))
+						otCompact, err := objTypeCompactEncode(ot)
+						if err != nil {
+							log.Errorf("objtype_relkey_setid index construction error('%s'): %s", ot, err.Error())
+							continue
+						}
+
+						indexes = append(indexes, IndexKeyParts([]string{otCompact, rk}))
 					}
 				}
 				return indexes
@@ -145,18 +157,28 @@ var (
 				var indexes []IndexKeyParts
 				types := pbtypes.GetStringList(v.Details, bundle.RelationKeyType.String())
 
-				for _, t := range types {
-					indexes = append(indexes, IndexKeyParts([]string{t}))
+				for _, ot := range types {
+					otCompact, err := objTypeCompactEncode(ot)
+					if err != nil {
+						log.Errorf("type index construction error('%s'): %s", ot, err.Error())
+						continue
+					}
+					indexes = append(indexes, IndexKeyParts([]string{otCompact}))
 				}
 				return indexes
 			}
 			return nil
 		},
 		Unique: false,
-		Hash:   true,
+		Hash:   false,
 	}
 
 	_ ObjectStore = (*dsObjectStore)(nil)
+)
+
+const (
+	CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
+	BundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
 )
 
 type relationOption struct {
@@ -684,8 +706,11 @@ func (m *dsObjectStore) AggregateRelationsFromObjectsOfType(objType string) ([]*
 	defer txn.Discard()
 
 	var rels []*pbrelation.Relation
-
-	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, []string{objType}, "/", false, 0)
+	objTypeCompact, err := objTypeCompactEncode(objType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode object type '%s': %s", objType, err.Error())
+	}
+	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, []string{objTypeCompact}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -717,8 +742,11 @@ func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*pbr
 	defer txn.Discard()
 
 	var rels []*pbrelation.Relation
-
-	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objType}, "/", false, 0)
+	objTypeCompact, err := objTypeCompactEncode(objType)
+	if err != nil {
+		return nil, err
+	}
+	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objTypeCompact}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -1261,7 +1289,7 @@ func (m *dsObjectStore) Prefix() string {
 }
 
 func (m *dsObjectStore) Indexes() []Index {
-	return []Index{indexRelationOptionObject, indexFormatOptionObject, indexObjectTypeObject, indexRelationObject}
+	return []Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexFormatOptionObject, indexObjectTypeObject}
 }
 
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
@@ -1283,7 +1311,7 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 }
 
 func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", true, 100)
+	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 100)
 	if err != nil {
 		return nil, err
 	}
@@ -1358,8 +1386,13 @@ func (m *dsObjectStore) listRelations(txn ds.Txn, limit int) ([]*pbrelation.Rela
 	return rels, nil
 }
 
-func isObjectBelongToType(txn ds.Txn, id, objectType string) (bool, error) {
-	return HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objectType}, "", true, id)
+func isObjectBelongToType(txn ds.Txn, id, objType string) (bool, error) {
+	objTypeCompact, err := objTypeCompactEncode(objType)
+	if err != nil {
+		return false, err
+	}
+
+	return HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
 }
 
 func isRelationBelongToType(txn ds.Txn, relKey, objectType string) (bool, error) {
@@ -1603,4 +1636,24 @@ func extractIdFromKey(key string) (id string) {
 		return
 	}
 	return key[i+1:]
+}
+
+// temp func until we move to the proper ids
+func objTypeCompactEncode(objType string) (string, error) {
+	if strings.HasPrefix(objType, BundledObjectTypeURLPrefix) {
+		return "0" + strings.TrimPrefix(objType, BundledObjectTypeURLPrefix), nil
+	} else if strings.HasPrefix(objType, CustomObjectTypeURLPrefix) {
+		return "1" + strings.TrimPrefix(objType, CustomObjectTypeURLPrefix), nil
+	}
+	return "", fmt.Errorf("invalid objType")
+}
+
+// temp func until we move to the proper ids
+func objTypeCompactDecode(objTypeCompact string) (string, error) {
+	if strings.HasPrefix(objTypeCompact, "0") {
+		return BundledObjectTypeURLPrefix + strings.TrimPrefix(objTypeCompact, "0"), nil
+	} else if strings.HasPrefix(objTypeCompact, "1") {
+		return CustomObjectTypeURLPrefix + strings.TrimPrefix(objTypeCompact, "1"), nil
+	}
+	return "", fmt.Errorf("invalid objType")
 }

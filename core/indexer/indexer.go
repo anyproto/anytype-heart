@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -198,8 +199,12 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 
 	if len(meta.ObjectTypes) == 1 && meta.ObjectTypes[0] == bundle.TypeKeySet.URL() {
 		b := d.st.Get("dataview")
-		if b != nil && b.Model().GetDataview() != nil {
-			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, b.Model().GetDataview().Source, &pbrelation.Relations{dataviewRelationsBefore}, &pbrelation.Relations{b.Model().GetDataview().Relations}); err != nil {
+		var dv *model.BlockContentDataview
+		if b != nil {
+			dv = b.Model().GetDataview()
+		}
+		if b != nil && dv != nil {
+			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, dv.Source, &pbrelation.Relations{dataviewRelationsBefore}, &pbrelation.Relations{dv.Relations}); err != nil {
 				log.With("thread", id).Errorf("failed to index dataview relations")
 			}
 		}

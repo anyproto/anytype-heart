@@ -22,7 +22,7 @@ func TestFile(t *testing.T) {
 		require.GreaterOrEqual(t, len(show.Details), 2)
 		det := getDetailsForContext(show.Details, respUploadImage.Hash)
 		require.Equal(t, "a", pbtypes.GetString(det, "name"))
-		require.Equal(t, "image/jpeg", pbtypes.GetString(respOpenImage.Event.Messages[0].GetBlockShow().Details[0].Details, "fileMimeType"))
+		require.Equal(t, "image/jpeg", pbtypes.GetString(det, "fileMimeType"))
 
 		b := getBlockById("file", respOpenImage.Event.Messages[0].GetBlockShow().Blocks)
 		require.NotNil(t, b)
