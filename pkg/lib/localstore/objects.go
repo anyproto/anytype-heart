@@ -440,7 +440,10 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	}
 	defer txn.Discard()
 
-	dsq := q.DSQuery(sch)
+	dsq, err := q.DSQuery(sch)
+	if err != nil {
+		return
+	}
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
@@ -506,7 +509,10 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 	}
 	defer txn.Discard()
 
-	dsq := q.DSQuery(nil)
+	dsq, err := q.DSQuery(nil)
+	if err != nil {
+		return
+	}
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"

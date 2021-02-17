@@ -1,15 +1,16 @@
 package database
 
 import (
-	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-datastore/query"
@@ -67,39 +68,146 @@ type Query struct {
 	Offset    int                                   // skip given number of results
 }
 
-func (q Query) DSQuery(sch *schema.Schema) query.Query {
-	return query.Query{
-		Filters: []query.Filter{filters{Filters: q.Filters, Relations: q.Relations, Schema: sch}},
-		Orders:  []query.Order{order{Sorts: q.Sorts, Relations: q.Relations, Schema: sch}},
-		Limit:   q.Limit,
-		Offset:  q.Offset,
+func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
+	qq.Limit = q.Limit
+	qq.Offset = q.Offset
+	f, err := newFilters(q, sch)
+	if err != nil {
+		return
 	}
+	qq.Filters = []query.Filter{f}
+	if f.hasOrders() {
+		qq.Orders = []query.Order{f}
+	}
+	return
 }
 
-type order struct {
-	Sorts     []*model.BlockContentDataviewSort
-	Relations []*model.BlockContentDataviewRelation
+func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
+	f = new(filters)
+	var preFilter filter.Filter
+	if sch != nil {
+		for _, rel := range sch.Relations {
+			if rel.Format == pbrelation.RelationFormat_date {
+				if relation := getRelationByKey(q.Relations, rel.Key); relation == nil || !relation.DateIncludeTime {
+					f.dateKeys = append(f.dateKeys, rel.Key)
+				}
+			}
+		}
+		if sch.ObjType != nil {
+			for _, rel := range sch.ObjType.Relations {
+				if rel.Format == pbrelation.RelationFormat_date {
+					if relation := getRelationByKey(q.Relations, rel.Key); relation == nil || !relation.DateIncludeTime {
+						f.dateKeys = append(f.dateKeys, rel.Key)
+					}
+				}
+			}
+		}
+		for _, qf := range q.Filters {
+			if slice.FindPos(f.dateKeys, qf.RelationKey) != -1 {
+				qf.Value = dateOnly(qf.Value)
+			}
+		}
+		if sch.ObjType != nil {
+			relTypeFilter := filter.OrFilters{
+				filter.Eq{
+					Key:   bundle.RelationKeyType.String(),
+					Cond:  model.BlockContentDataviewFilter_Equal,
+					Value: pbtypes.String(sch.ObjType.Url),
+				},
+			}
+			if sch.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+				relTypeFilter = append(relTypeFilter, filter.Empty{
+					Key: bundle.RelationKeyType.String(),
+				})
+			}
+			preFilter = relTypeFilter
+		}
+	}
+	qFilter, err := filter.MakeAndFilter(q.Filters)
+	if err != nil {
+		return
+	}
+	mainFilter := filter.AndFilters{}
+	if preFilter != nil {
+		mainFilter = append(mainFilter, preFilter)
+	}
+	if len(qFilter.(filter.AndFilters)) > 0 {
+		mainFilter = append(mainFilter, qFilter)
+	}
+	f.filter = mainFilter
+	if len(q.Sorts) > 0 {
+		ord := filter.SetOrder{}
+		for _, s := range q.Sorts {
+			ord = append(ord, filter.KeyOrder{
+				Key:  s.RelationKey,
+				Type: s.Type,
+			})
+		}
+		f.order = ord
+	}
+	return
+}
 
-	Schema *schema.Schema
+type filterGetter struct {
+	dateKeys []string
+	curEl    *types.Struct
+}
+
+func (f filterGetter) Get(key string) *types.Value {
+	res := pbtypes.Get(f.curEl, key)
+	if slice.FindPos(f.dateKeys, key) != -1 {
+		res = dateOnly(res)
+	}
+	return res
 }
 
 type filters struct {
-	Filters   []*model.BlockContentDataviewFilter
-	Relations []*model.BlockContentDataviewRelation
-
-	Schema *schema.Schema
+	filter   filter.Filter
+	order    filter.Order
+	dateKeys []string
 }
 
-func getTime(v *types.Value, dateIncludeTime bool) time.Time {
-	if v == nil {
-		return time.Time{}
+func (f *filters) Filter(e query.Entry) bool {
+	g := f.unmarshal(e)
+	if g == nil {
+		return false
 	}
+	return f.filter.FilterObject(g)
+}
 
-	t := time.Unix(int64(v.GetNumberValue()), 0)
-	if !dateIncludeTime {
-		t = time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
+func (f *filters) Compare(a, b query.Entry) int {
+	if f.order == nil {
+		return 0
 	}
-	return t
+	ag := f.unmarshal(a)
+	if ag == nil {
+		return 0
+	}
+	bg := f.unmarshal(b)
+	if bg == nil {
+		return 0
+	}
+	return f.order.Compare(ag, bg)
+}
+
+func (f *filters) unmarshal(e query.Entry) filter.Getter {
+	var details model.ObjectDetails
+	err := proto.Unmarshal(e.Value, &details)
+	if err != nil {
+		log.Errorf("query filters decode error: %s", err.Error())
+		return nil
+	}
+	return filterGetter{dateKeys: f.dateKeys, curEl: details.Details}
+}
+
+func (f *filters) hasOrders() bool {
+	return f.order != nil
+}
+
+func dateOnly(v *types.Value) *types.Value {
+	tm := time.Unix(int64(v.GetNumberValue()), 0)
+	tm = time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location())
+	return pbtypes.Float64(float64(tm.Unix()))
 }
 
 func getRelationByKey(relations []*model.BlockContentDataviewRelation, key string) *model.BlockContentDataviewRelation {
@@ -109,308 +217,4 @@ func getRelationByKey(relations []*model.BlockContentDataviewRelation, key strin
 		}
 	}
 	return nil
-}
-
-func (filters filters) Filter(e query.Entry) bool {
-	var details model.ObjectDetails
-	err := proto.Unmarshal(e.Value, &details)
-	if err != nil {
-		log.Errorf("query filters decode error: %s", err.Error())
-		return false
-	}
-
-	if details.Details == nil || details.Details.Fields == nil {
-		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
-	}
-
-	var foundType bool
-	if filters.Schema != nil {
-		if t, ok := details.Details.Fields[bundle.RelationKeyType.String()]; ok {
-			for _, val := range pbtypes.GetStringListValue(t) {
-				if val == filters.Schema.ObjType.Url {
-					foundType = true
-					break
-				}
-			}
-		} else {
-			if filters.Schema.ObjType != nil && filters.Schema.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
-				// backward compatibility in case we don't have type indexed for pages
-				foundType = true
-			}
-		}
-
-		if !foundType {
-			return false
-		}
-	}
-
-	if len(filters.Filters) == 0 {
-		return true
-	}
-
-	total := true
-	for _, filter := range filters.Filters {
-		var res, isDate, dateIncludeTime bool
-		if filters.Schema != nil {
-			rel, err := filters.Schema.GetRelationByKey(filter.RelationKey)
-			if err != nil {
-				log.Errorf("failed to find relation %s for the filter: %s", filter.RelationKey, err.Error())
-				continue
-			}
-			isDate = rel.Format == pbrelation.RelationFormat_date
-
-			if isDate {
-				relation := getRelationByKey(filters.Relations, filter.RelationKey)
-				if relation == nil {
-					log.Debugf("failed to get relation options for %s: %s", filter.RelationKey)
-				} else {
-					dateIncludeTime = relation.DateIncludeTime
-				}
-			}
-		}
-
-		// todo: compare nil and empty
-		switch filter.Condition {
-		case model.BlockContentDataviewFilter_Equal:
-			if v1, ok := filter.Value.Kind.(*types.Value_StringValue); ok {
-				if details.Details == nil || details.Details.Fields == nil || details.Details.Fields[filter.RelationKey] == nil {
-					res = v1.StringValue == ""
-				} else if v2, ok := details.Details.Fields[filter.RelationKey].Kind.(*types.Value_StringValue); ok {
-					res = strings.EqualFold(v1.StringValue, v2.StringValue)
-				} else if v2, ok := details.Details.Fields[filter.RelationKey].Kind.(*types.Value_ListValue); ok {
-					if len(v2.ListValue.Values) != 1 {
-						res = false
-					} else {
-						res = strings.EqualFold(v1.StringValue, v2.ListValue.Values[0].GetStringValue())
-					}
-				}
-			} else {
-				if isDate {
-					val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
-					filterVal := getTime(filter.Value, dateIncludeTime)
-					res = filterVal.Equal(val)
-				} else {
-					res = filter.Value.Equal(details.Details.Fields[filter.RelationKey])
-				}
-			}
-		case model.BlockContentDataviewFilter_NotEqual:
-			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
-				filterVal := getTime(filter.Value, dateIncludeTime)
-				res = !filterVal.Equal(val)
-			} else {
-				res = !filter.Value.Equal(details.Details.Fields[filter.RelationKey])
-			}
-		case model.BlockContentDataviewFilter_Greater:
-			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
-				filterVal := getTime(filter.Value, dateIncludeTime)
-				res = val.After(filterVal)
-			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) == -1
-			}
-		case model.BlockContentDataviewFilter_Less:
-			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
-				filterVal := getTime(filter.Value, dateIncludeTime)
-				res = val.Before(filterVal)
-			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) == 1
-			}
-		case model.BlockContentDataviewFilter_GreaterOrEqual:
-			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
-				filterVal := getTime(filter.Value, dateIncludeTime)
-				res = val.After(filterVal) || val.Equal(filterVal)
-			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) <= 0
-			}
-		case model.BlockContentDataviewFilter_LessOrEqual:
-			if isDate {
-				val := getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime)
-				filterVal := getTime(filter.Value, dateIncludeTime)
-				res = val.Before(filterVal) || val.Equal(filterVal)
-			} else {
-				res = filter.Value.Compare(details.Details.Fields[filter.RelationKey]) >= 0
-			}
-		case model.BlockContentDataviewFilter_Like:
-			// todo: support for SQL LIKE query symbols like %?
-			if filter.Value.GetStringValue() == "" {
-				res = false
-				break
-			}
-
-			relation := details.Details.Fields[filter.RelationKey]
-			if relation == nil {
-				res = false
-				break
-			}
-
-			if strings.Contains(strings.ToLower(relation.GetStringValue()), strings.ToLower(filter.Value.GetStringValue())) {
-				res = true
-				break
-			}
-
-		case model.BlockContentDataviewFilter_NotLike:
-			// todo: support for SQL LIKE query symbols like %?
-			if filter.Value.GetStringValue() == "" {
-				res = false
-				break
-			}
-
-			relation := details.Details.Fields[filter.RelationKey]
-			if relation == nil {
-				res = true
-				break
-			}
-
-			if !strings.Contains(strings.ToLower(relation.GetStringValue()), strings.ToLower(filter.Value.GetStringValue())) {
-				res = true
-				break
-			}
-		case model.BlockContentDataviewFilter_In, model.BlockContentDataviewFilter_NotIn:
-			var list *types.ListValue
-			if list = filter.Value.GetListValue(); list == nil {
-				log.Errorf("In filters should provide List value")
-				res = false
-				break
-			}
-
-			if len(list.Values) == 0 {
-				// true in case client send an empty IN request
-				res = true
-				break
-			}
-
-			detail := details.Details.Fields[filter.RelationKey]
-			if detail == nil {
-				res = false
-				break
-			}
-			if v, isList := detail.Kind.(*types.Value_ListValue); isList {
-				if len(v.ListValue.Values) != 1 {
-					// IN query can work only on single item value
-					res = false
-					break
-				}
-				detail = v.ListValue.Values[0]
-			}
-			var matchFound bool
-			for _, item := range list.Values {
-				if item.Equal(detail) {
-					matchFound = true
-					break
-				}
-			}
-
-			res = matchFound
-
-			if filter.Condition == model.BlockContentDataviewFilter_NotIn {
-				res = !res
-			}
-			break
-		case model.BlockContentDataviewFilter_Empty:
-			if f, ok := details.Details.Fields[filter.RelationKey]; !ok {
-				res = true
-			} else {
-				switch v := f.Kind.(type) {
-				case *types.Value_NullValue:
-					res = true
-				case *types.Value_StringValue:
-					res = v.StringValue == ""
-				case *types.Value_ListValue:
-					res = v.ListValue == nil || len(v.ListValue.Values) == 0
-				case *types.Value_StructValue:
-					res = v.StructValue == nil
-				case *types.Value_NumberValue:
-					if isDate {
-						res = getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
-					}
-				default:
-					res = false
-				}
-			}
-		case model.BlockContentDataviewFilter_NotEmpty:
-			if f, ok := details.Details.Fields[filter.RelationKey]; !ok {
-				res = false
-			} else {
-				switch v := f.Kind.(type) {
-				case *types.Value_NullValue:
-					res = false
-				case *types.Value_StringValue:
-					res = v.StringValue != ""
-				case *types.Value_ListValue:
-					res = v.ListValue != nil && len(v.ListValue.Values) > 0
-				case *types.Value_StructValue:
-					res = v.StructValue != nil
-				case *types.Value_NumberValue:
-					if isDate {
-						res = !getTime(details.Details.Fields[filter.RelationKey], dateIncludeTime).IsZero()
-					}
-				default:
-					res = true
-				}
-			}
-		}
-
-		if filter.Operator == model.BlockContentDataviewFilter_And {
-			total = total && res
-		} else {
-			total = total || res
-		}
-	}
-	return total
-}
-
-func (order order) Compare(a query.Entry, b query.Entry) int {
-	if len(order.Sorts) == 0 {
-		// todo: default sort?
-		return 0
-	}
-
-	var aDetails model.ObjectDetails
-	err := proto.Unmarshal(a.Value, &aDetails)
-	if err != nil {
-		log.Errorf("query filters decode error: %s", err.Error())
-		return -1
-	}
-
-	var bDetails model.ObjectDetails
-	err = proto.Unmarshal(b.Value, &bDetails)
-	if err != nil {
-		log.Errorf("query filters decode error: %s", err.Error())
-		return -1
-	}
-
-	for _, sort := range order.Sorts {
-		var arelation, brelation *types.Value
-		if aDetails.Details != nil && aDetails.Details.Fields != nil {
-			arelation = aDetails.Details.Fields[sort.RelationKey]
-		}
-
-		if bDetails.Details != nil && bDetails.Details.Fields != nil {
-			brelation = bDetails.Details.Fields[sort.RelationKey]
-		}
-
-		res := arelation.Compare(brelation)
-		if sort.Type == model.BlockContentDataviewSort_Asc {
-			if res == -1 {
-				return -1
-			}
-
-			if res == 1 {
-				return 1
-			}
-		} else if sort.Type == model.BlockContentDataviewSort_Desc {
-			if res == -1 {
-				return 1
-			}
-
-			if res == 1 {
-				return -1
-			}
-		}
-	}
-
-	return 0
 }
