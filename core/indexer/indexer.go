@@ -100,6 +100,9 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 		}
 	}()
 	ticker := time.NewTicker(cleanupInterval)
+	i.mu.Lock()
+	quit := i.quit
+	i.mu.Unlock()
 	for {
 		select {
 		case rec, ok := <-ch:
@@ -109,7 +112,7 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 			batch.Add(rec)
 		case <-ticker.C:
 			i.cleanup()
-		case <-i.quit:
+		case <-quit:
 			batch.Close()
 		}
 	}
@@ -296,11 +299,15 @@ func (i *indexer) cleanup() {
 
 func (i *indexer) Close() {
 	i.mu.Lock()
-	defer i.mu.Unlock()
-	if i.quit != nil {
-		close(i.quit)
+	quit := i.quit
+	i.mu.Unlock()
+
+	if quit != nil {
+		close(quit)
 		i.quitWG.Wait()
+		i.mu.Lock()
 		i.quit = nil
+		i.mu.Unlock()
 	}
 }
 
