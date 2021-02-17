@@ -44,6 +44,16 @@ func GetFloat64(s *types.Struct, name string) float64 {
 	return 0
 }
 
+func GetInt64(s *types.Struct, name string) int64 {
+	if s == nil || s.Fields == nil {
+		return 0
+	}
+	if v, ok := s.Fields[name]; ok {
+		return int64(v.GetNumberValue())
+	}
+	return 0
+}
+
 func GetString(s *types.Struct, name string) string {
 	if s == nil || s.Fields == nil {
 		return ""
@@ -126,6 +136,13 @@ func GetOption(opts []*pbrelation.RelationOption, id string) *pbrelation.Relatio
 	}
 
 	return nil
+}
+
+func Get(st *types.Struct, key string) *types.Value {
+	if st == nil || st.Fields == nil {
+		return nil
+	}
+	return st.Fields[key]
 }
 
 func GetRelationKeys(rels []*pbrelation.Relation) []string {

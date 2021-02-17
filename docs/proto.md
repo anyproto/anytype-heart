@@ -12248,7 +12248,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  |  |
+| operator | [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator) |  | looks not applicable? |
 | RelationKey | [string](#string) |  |  |
 | relationProperty | [string](#string) |  |  |
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition) |  |  |
@@ -12599,6 +12599,8 @@ deprecated
 | NotIn | 9 |  |
 | Empty | 10 |  |
 | NotEmpty | 11 |  |
+| AllIn | 12 |  |
+| NotAllIn | 13 |  |
 
 
 
