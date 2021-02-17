@@ -47,6 +47,8 @@ type Dataview interface {
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
 	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
+	WithSystemObjects(yes bool)
+
 	smartblock.SmartblockOpenListner
 }
 
@@ -75,7 +77,12 @@ type ObjectTypeGetter interface {
 type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
 	ObjectTypeGetter
-	dataviews []*dataviewImpl
+	dataviews         []*dataviewImpl
+	withSystemObjects bool
+}
+
+func (d *dataviewCollectionImpl) WithSystemObjects(yes bool) {
+	d.withSystemObjects = yes
 }
 
 func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error) {
@@ -685,11 +692,12 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	depRecordsSub := database.NewSubscription(nil, depRecordsCh)
 
 	entries, cancelRecordSubscription, total, err := db.QueryAndSubscribeForChanges(&sch, database.Query{
-		Relations: activeView.Relations,
-		Filters:   activeView.Filters,
-		Sorts:     activeView.Sorts,
-		Limit:     dv.limit,
-		Offset:    dv.offset,
+		Relations:         activeView.Relations,
+		Filters:           activeView.Filters,
+		Sorts:             activeView.Sorts,
+		Limit:             dv.limit,
+		Offset:            dv.offset,
+		WithSystemObjects: d.withSystemObjects,
 	}, recordsSub)
 	if err != nil {
 		return nil, err

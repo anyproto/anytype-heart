@@ -64,7 +64,7 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
 		return
 	}
-
+	p.WithSystemObjects(true)
 	return p.FillAggregatedOptions(nil)
 }
 
