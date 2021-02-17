@@ -9,6 +9,8 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -100,9 +102,9 @@ func TestDsObjectStore_Query(t *testing.T) {
 	tid1, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	tid2, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	tid3, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	id1 := string(tid1)
-	id2 := string(tid2)
-	id3 := string(tid3)
+	id1 := tid1.String()
+	id2 := tid2.String()
+	id3 := tid3.String()
 	require.NoError(t, ds.UpdateObject(id1, newDet("one"), nil, nil, "s1"))
 	require.NoError(t, ds.UpdateObject(id2, newDet("two"), nil, nil, "s2"))
 	require.NoError(t, ds.UpdateObject(id3, newDet("three"), nil, nil, "s3"))

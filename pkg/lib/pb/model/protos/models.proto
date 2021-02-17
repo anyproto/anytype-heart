@@ -253,7 +253,7 @@ message Block {
             }
 
             message Filter {
-                Operator operator = 1;
+                Operator operator = 1; // looks not applicable?
                 string RelationKey = 2;
                 string relationProperty = 5;
                 Condition condition = 3;
@@ -277,6 +277,8 @@ message Block {
                     NotIn = 9;
                     Empty = 10;
                     NotEmpty = 11;
+                    AllIn = 12;
+                    NotAllIn = 13;
                 }
             }
         }

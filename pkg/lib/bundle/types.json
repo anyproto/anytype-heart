@@ -1,5 +1,6 @@
 [
   {
+    "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
     "name": "Note",
@@ -52,6 +53,7 @@
     ]
   },
   {
+    "emoji": "💡",
     "id": "idea",
     "layout": "basic",
     "name": "Idea",
@@ -122,10 +124,12 @@
       "id",
       "name",
       "layout",
-      "description"
+      "description",
+      "mpAddedToLibrary"
     ]
   },
   {
+    "emoji": "📹",
     "id": "video",
     "layout": "basic",
     "name": "Video",
@@ -218,7 +222,8 @@
       "featuredRelations",
       "coverType",
       "recommendedRelations",
-      "recommendedLayout"
+      "recommendedLayout",
+      "mpAddedToLibrary"
     ]
   },
   {
@@ -276,6 +281,7 @@
     ]
   },
   {
+    "emoji": "🌅",
     "id": "image",
     "layout": "basic",
     "name": "Image",
@@ -313,6 +319,7 @@
     ]
   },
   {
+    "emoji": "🧍",
     "id": "profile",
     "layout": "profile",
     "name": "Human",
@@ -339,6 +346,7 @@
     ]
   },
   {
+    "emoji": "🎵",
     "id": "audio",
     "layout": "basic",
     "name": "Audio",
@@ -377,6 +385,7 @@
     ]
   },
   {
+    "emoji": "📄",
     "id": "document",
     "layout": "basic",
     "name": "Document",
@@ -433,6 +442,7 @@
     ]
   },
   {
+    "emoji": "🔨",
     "id": "project",
     "layout": "basic",
     "name": "Project",
