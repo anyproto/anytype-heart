@@ -751,7 +751,7 @@ func (s *State) ObjectTypes() []string {
 func (s *State) ObjectType() string {
 	objTypes := s.ObjectTypes()
 	if len(objTypes) != 1 {
-		log.Errorf("obj %s has %d objectTypes instead of 1", s.RootId())
+		log.Errorf("obj %s has %d objectTypes instead of 1", s.RootId(), len(objTypes))
 	}
 
 	if len(objTypes) > 0 {

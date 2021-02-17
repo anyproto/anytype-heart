@@ -1570,7 +1570,7 @@ func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations [
 		}
 
 		for _, rel := range agRels {
-			if pbtypes.HasRelation(agRels, rel.Key) {
+			if pbtypes.HasRelation(aggregatedRelations, rel.Key) {
 				continue
 			}
 			aggregatedRelations = append(aggregatedRelations, pbtypes.CopyRelation(rel))
