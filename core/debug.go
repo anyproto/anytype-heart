@@ -1,20 +1,13 @@
-// +build !nogrpcserver,!_test
-
 package core
 
 import (
 	"context"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 
-	lib "github.com/anytypeio/go-anytype-middleware/pb/service"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
@@ -26,26 +19,6 @@ import (
 	net3 "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
-
-func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_ListenEventsServer) {
-	var sender *event.GrpcSender
-	var ok bool
-	if sender, ok = mw.EventSender.(*event.GrpcSender); ok {
-		sender.SetServer(server)
-	} else {
-		log.Fatal("failed to ListenEvents: has a wrong Sender")
-		return
-	}
-
-	var stopChan = make(chan os.Signal, 2)
-	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
-	select {
-	case <-stopChan:
-		return
-	case <-sender.ServerCh:
-		return
-	}
-}
 
 func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
 	response := func(threads []*pb.RpcDebugSyncResponsethread, threadsWithoutRepl int32, code pb.RpcDebugSyncResponseErrorCode, err error) *pb.RpcDebugSyncResponse {
