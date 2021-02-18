@@ -197,6 +197,7 @@ install-dev-js-addon: setup build-lib build-js-addon protos-js
 
 install-dev-js: build-js
 	@echo 'Installing JS-server (dev-mode)...'
+	@rm -f ../js-anytype/dist/anytypeHelper
 	@cp -r dist/server ../js-anytype/dist/anytypeHelper
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
 	@cp -r dist/js/pb/* ../js-anytype/dist/lib
