@@ -173,7 +173,7 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 		db = target
 	}
 
-	optionId, err := db.AddRelationOption(recordId, relationKey, option)
+	optionId, err := db.UpdateRelationOption(recordId, relationKey, option)
 	if err != nil {
 		return nil, err
 	}
@@ -200,24 +200,27 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 		return err
 	}
 
-	for _, rel := range tb.Model().GetDataview().Relations {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == option.Id {
-				rel.SelectDict[i] = &option
-				if showEvent {
-					return d.Apply(s)
-				}
-				return d.Apply(s, smartblock.NoEvent)
-			}
-		}
+	var db database.Database
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(""); err != nil {
+		return err
+	} else {
+		db = target
+	}
 
-		return fmt.Errorf("relation option not found")
+	if option.Id == "" {
+		return fmt.Errorf("option id is empty")
+	}
+
+	_, err = db.UpdateRelationOption(recordId, relationKey, option)
+	if err != nil {
+		return err
+	}
+
+	err = tb.UpdateRelationOption(relationKey, option)
+	if err != nil {
+		return err
 	}
 
 	return fmt.Errorf("relation not found")

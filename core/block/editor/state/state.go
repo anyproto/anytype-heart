@@ -650,7 +650,7 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	relCopy := pbtypes.CopyRelation(relation)
 	// reset the scope to object
 	relCopy.Scope = pbrelation.Relation_object
-	if relation.Format == pbrelation.RelationFormat_status{
+	if relation.Format == pbrelation.RelationFormat_status {
 		relation.MaxCount = 1
 	}
 
@@ -667,7 +667,7 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	for _, rel := range relationsCopy {
 		// reset scopes for all relations
 		rel.Scope = pbrelation.Relation_object
-		if rel.Format == pbrelation.RelationFormat_status{
+		if rel.Format == pbrelation.RelationFormat_status {
 			rel.MaxCount = 1
 		}
 	}
