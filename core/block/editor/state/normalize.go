@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -46,6 +47,13 @@ func (s *State) normalize(withLayouts bool) (err error) {
 			s.normalizeLayoutRow(b)
 		}
 	}
+
+	for _, r := range s.extraRelations {
+		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+			r.MaxCount = 1
+		}
+	}
+
 	if withLayouts {
 		return s.normalizeTree()
 	}

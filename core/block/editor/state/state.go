@@ -650,6 +650,10 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	relCopy := pbtypes.CopyRelation(relation)
 	// reset the scope to object
 	relCopy.Scope = pbrelation.Relation_object
+	if relation.Format == pbrelation.RelationFormat_status{
+		relation.MaxCount = 1
+	}
+
 	if relCopy.Format == pbrelation.RelationFormat_file && relCopy.ObjectTypes == nil {
 		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
@@ -663,6 +667,9 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	for _, rel := range relationsCopy {
 		// reset scopes for all relations
 		rel.Scope = pbrelation.Relation_object
+		if rel.Format == pbrelation.RelationFormat_status{
+			rel.MaxCount = 1
+		}
 	}
 	s.extraRelations = relations
 	return s
