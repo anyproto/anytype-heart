@@ -4,6 +4,8 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -48,9 +50,13 @@ func (s *State) normalize(withLayouts bool) (err error) {
 		}
 	}
 
-	for _, r := range s.extraRelations {
-		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
-			r.MaxCount = 1
+	s.normalizeRelations()
+
+	for _, b := range s.blocks {
+		if dv := b.Model().GetDataview(); dv != nil {
+			for i, _ := range dv.Relations {
+				s.normalizeDvRelation(dv.Relations[i])
+			}
 		}
 	}
 
@@ -330,4 +336,53 @@ func CleanupLayouts(s *State) (removedCount int) {
 	}
 	cleanup(s.RootId())
 	return
+}
+
+func (s *State) normalizeRelations() {
+	for _, r := range s.ExtraRelations() {
+		equal, exists := bundle.EqualWithRelation(r.Key, r)
+		if exists && !equal {
+			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(r.Key)))
+			continue
+		}
+
+		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+			rc := pbtypes.CopyRelation(r)
+			rc.MaxCount = 1
+			s.SetExtraRelation(rc)
+		}
+	}
+}
+
+func (s *State) normalizeDvRelations(b simple.Block) {
+	dv, ok := b.(dataview.Block)
+	if !ok {
+		return
+	}
+
+	for _, r := range b.Model().GetDataview().Relations {
+		equal, exists := bundle.EqualWithRelation(r.Key, r)
+		if exists && !equal {
+			dv.UpdateRelation(r.Key, *bundle.MustGetRelation(bundle.RelationKey(r.Key)))
+			continue
+		}
+
+		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+			rc := pbtypes.CopyRelation(r)
+			rc.MaxCount = 1
+
+			dv.UpdateRelation(r.Key, *rc)
+		}
+	}
+
+}
+
+func (s *State) normalizeDvRelation(r *relation.Relation) {
+	if exists, equal := bundle.EqualWithRelation(r.Key, r); exists && !equal {
+		*r = *bundle.MustGetRelation(bundle.RelationKey(r.Key))
+	}
+
+	if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+		r.MaxCount = 1
+	}
 }

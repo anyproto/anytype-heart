@@ -109,7 +109,9 @@ func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Rel
 	if rel1.Multi != rel2.Multi {
 		return false
 	}
-
+	if rel1.MaxCount != rel2.MaxCount {
+		return false
+	}
 	if !slice.SortedEquals(rel1.ObjectTypes, rel2.ObjectTypes) {
 		return false
 	}
