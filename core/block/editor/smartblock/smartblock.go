@@ -545,18 +545,12 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 			}
 			found = true
 			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
-				objTypes := sb.ObjectTypes()
-				if len(objTypes) > 1 {
-					log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
-				}
-				var objType string
-				if len(objTypes) == 1 {
-					objType = objTypes[0]
-				}
+				objType := sb.ObjectType()
 
 				options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
 				if err != nil {
-					return fmt.Errorf("failed to get aggregated options for a select/tag relation '%s': %s", rel.Key, err.Error())
+					log.Errorf("failed to get aggregated options for a select/tag relation '%s' ot '%s' format '%s': %s", rel.Key, objType, rel.Format, err.Error())
+					return fmt.Errorf("failed to get aggregated options for a select/tag relation: %s", err.Error())
 				}
 
 				vals := pbtypes.GetStringListValue(v)
