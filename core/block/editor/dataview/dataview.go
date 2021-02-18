@@ -533,7 +533,8 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 		db = target
 	}
 
-	err := db.Update(recID, dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details})
+	relationsFiltered := pbtypes.RelationsFilterKeys(dvBlock.Model().GetDataview().Relations, pbtypes.StructNotNilKeys(rec.Details))
+	err := db.Update(recID, relationsFiltered, database.Record{Details: rec.Details})
 	if err != nil {
 		return err
 	}

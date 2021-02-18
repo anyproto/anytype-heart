@@ -93,6 +93,10 @@ func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec datab
 	var details []*pb.RpcBlockSetDetailsDetail
 	if rec.Details != nil && rec.Details.Fields != nil {
 		for k, v := range rec.Details.Fields {
+			if _, ok := v.Kind.(*types.Value_NullValue); ok {
+				v = nil
+			}
+
 			details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
 		}
 	}
