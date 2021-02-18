@@ -1094,22 +1094,24 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 	}
 
 	rels := mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), aggregatedRelation, sb.Details())
+	sb.fillAggregatedRelations(rels)
+	return rels
+}
 
-	for _, rel := range rels {
+func (sb *smartBlock) fillAggregatedRelations(rels []*pbrelation.Relation) {
+	for i, rel := range rels {
 		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
 			continue
 		}
 
-		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
+		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, sb.ObjectType())
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
 			continue
 		}
 
-		rel.SelectDict = options
+		rels[i].SelectDict = options
 	}
-
-	return rels
 }
 
 func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {

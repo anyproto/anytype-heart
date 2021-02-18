@@ -153,14 +153,14 @@ func TestRelationAdd(t *testing.T) {
 		respSetRelCreate1 := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
 			ContextId: respSet1.Id,
 			BlockId:   "dataview",
-			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_title, Name: "from set1"},
+			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_shorttext, Name: "from set1"},
 		})
 		require.Equal(t, 0, int(respSetRelCreate1.Error.Code), respSetRelCreate1.Error.Description)
 
 		respSetRelCreate2 := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
 			ContextId: respSet2.Id,
 			BlockId:   "dataview",
-			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_title, Name: "from set2"},
+			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_shorttext, Name: "from set2"},
 		})
 		require.Equal(t, 0, int(respSetRelCreate2.Error.Code), respSetRelCreate2.Error.Description)
 
@@ -711,7 +711,7 @@ func TestCustomType(t *testing.T) {
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
 				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/page"}},
-				{Format: pbrelation.RelationFormat_description, Name: "bio"},
+				{Format: pbrelation.RelationFormat_longtext, Name: "bio"},
 			},
 		},
 	})

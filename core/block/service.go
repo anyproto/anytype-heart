@@ -801,7 +801,22 @@ func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDatavie
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		var err error
 		relation, err = b.AddRelation(ctx, req.BlockId, *req.Relation, true)
-		return err
+		if err != nil {
+			return err
+		}
+		rels, err := b.GetDataviewRelations(req.BlockId)
+		if err != nil {
+			return err
+		}
+
+		relation = pbtypes.GetRelation(rels, relation.Key)
+		if relation.Format == pbrelation.RelationFormat_status || relation.Format == pbrelation.RelationFormat_tag {
+			err = b.FillAggregatedOptions(nil)
+			if err != nil {
+				log.Errorf("FillAggregatedOptions failed: %s", err.Error())
+			}
+		}
+		return nil
 	})
 
 	return

@@ -101,13 +101,13 @@ func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec datab
 		}
 	}
 
-	if len(details) == 0 {
-		return nil
-	}
-
 	err := sp.setRelations(id, rels)
 	if err != nil {
 		return err
+	}
+
+	if len(details) == 0 {
+		return nil
 	}
 
 	return sp.setDetails(pb.RpcBlockSetDetailsRequest{

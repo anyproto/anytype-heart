@@ -229,7 +229,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 		},
 		{
 			Key:          "rel2",
-			Format:       pbrelation.RelationFormat_title,
+			Format:       pbrelation.RelationFormat_shorttext,
 			Name:         "rel 2",
 			DefaultValue: nil,
 		},

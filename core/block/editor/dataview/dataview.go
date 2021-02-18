@@ -30,6 +30,7 @@ var log = logging.Logger("anytype-mw-editor")
 type Dataview interface {
 	GetObjectTypeURL(ctx *state.Context, blockId string) (string, error)
 	GetAggregatedRelations(blockId string) ([]*pbrelation.Relation, error)
+	GetDataviewRelations(blockId string) ([]*pbrelation.Relation, error)
 
 	UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error
 	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
@@ -173,6 +174,15 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 		db = target
 	}
 
+	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
+	if rel == nil {
+		return nil, fmt.Errorf("relation not found in dataview")
+	}
+	err = db.Update(recordId, []*pbrelation.Relation{rel}, database.Record{})
+	if err != nil {
+		return nil, err
+	}
+
 	optionId, err := db.UpdateRelationOption(recordId, relationKey, option)
 	if err != nil {
 		return nil, err
@@ -213,7 +223,12 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 		return fmt.Errorf("option id is empty")
 	}
 
-	_, err = db.UpdateRelationOption(recordId, relationKey, option)
+	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
+	if rel == nil {
+		return fmt.Errorf("relation not found in dataview")
+	}
+
+	err = db.Update(recordId, []*pbrelation.Relation{rel}, database.Record{})
 	if err != nil {
 		return err
 	}
@@ -298,6 +313,16 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*pbre
 	}
 
 	return rels, nil
+}
+
+func (d *dataviewCollectionImpl) GetDataviewRelations(blockId string) ([]*pbrelation.Relation, error) {
+	st := d.NewState()
+	tb, err := getDataviewBlock(st, blockId)
+	if err != nil {
+		return nil, err
+	}
+
+	return tb.Model().GetDataview().GetRelations(), nil
 }
 
 func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataviewImpl {
