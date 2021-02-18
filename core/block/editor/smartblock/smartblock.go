@@ -623,7 +623,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	}
 
 	s.SetDetails(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return nil
