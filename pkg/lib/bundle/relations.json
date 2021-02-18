@@ -10,7 +10,7 @@
   },
   {
     "description": "Camera used to capture image or video",
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "camera",
     "maxCount": 1,
@@ -24,7 +24,7 @@
     "hidden": false,
     "key": "heightInPixels",
     "maxCount": 1,
-    "name": "Height(px)",
+    "name": "Height",
     "readonly": true,
     "source": "details"
   },
@@ -152,7 +152,7 @@
   },
   {
     "description": "Audio record's album name",
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "audioAlbum",
     "maxCount": 1,
@@ -176,12 +176,12 @@
     "hidden": false,
     "key": "durationInSeconds",
     "maxCount": 1,
-    "name": "Duration(sec)",
+    "name": "Duration",
     "readonly": false,
     "source": "details"
   },
   {
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "aperture",
     "maxCount": 1,
@@ -247,7 +247,7 @@
   },
   {
     "description": "Name of artist",
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "artist",
     "maxCount": 1,
@@ -300,7 +300,7 @@
     "hidden": false,
     "key": "sizeInBytes",
     "maxCount": 1,
-    "name": "Size(bytes)",
+    "name": "Size",
     "readonly": false,
     "source": "details"
   },
@@ -341,7 +341,7 @@
     "source": "details"
   },
   {
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "exposure",
     "maxCount": 1,
@@ -351,7 +351,7 @@
   },
   {
     "description": "Audio record's genre name",
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "audioGenre",
     "maxCount": 1,
@@ -361,7 +361,7 @@
   },
   {
     "description": "Name of the object",
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "name",
     "maxCount": 1,
@@ -390,7 +390,7 @@
   },
   {
     "description": "Mime type of object",
-    "format": "title",
+    "format": "shorttext",
     "hidden": true,
     "key": "fileMimeType",
     "maxCount": 1,
@@ -413,7 +413,7 @@
   {
     "description": "Anytype layout ID(from pb enum)",
     "format": "number",
-    "hidden": false,
+    "hidden": true,
     "key": "layout",
     "maxCount": 1,
     "name": "Layout",
@@ -431,7 +431,7 @@
     "source": "details"
   },
   {
-    "format": "status",
+    "format": "shorttext",
     "hidden": false,
     "key": "placeOfBirth",
     "maxCount": 1,
@@ -440,7 +440,7 @@
     "source": "details"
   },
   {
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "composer",
     "maxCount": 1,
@@ -459,7 +459,7 @@
     "source": "details"
   },
   {
-    "format": "description",
+    "format": "longtext",
     "hidden": false,
     "key": "description",
     "maxCount": 1,
@@ -488,7 +488,7 @@
   },
   {
     "description": "Can contains image hash, color or prebuild bg id, depends on coverType relation",
-    "format": "title",
+    "format": "shorttext",
     "hidden": true,
     "key": "coverId",
     "maxCount": 1,
@@ -515,7 +515,7 @@
     "hidden": false,
     "key": "widthInPixels",
     "maxCount": 1,
-    "name": "Width(px)",
+    "name": "Width",
     "readonly": true,
     "source": "details"
   },
@@ -542,7 +542,7 @@
     "source": "details"
   },
   {
-    "format": "title",
+    "format": "shorttext",
     "hidden": false,
     "key": "fileExt",
     "maxCount": 1,
