@@ -1079,14 +1079,14 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	objTypes := sb.ObjectTypes()
-	var objType string
-	if len(objTypes) > 0 {
-		objType = objTypes[0]
+	if sb.Type() == pb.SmartBlockType_Archive {
+		return nil
 	}
+	objType := sb.ObjectType()
+
 	var err error
 	var aggregatedRelation []*pbrelation.Relation
-	if len(objTypes) > 0 {
+	if objType != "" {
 		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsFromSetsOfType(objType)
 		if err != nil {
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
