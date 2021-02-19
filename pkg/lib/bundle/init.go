@@ -105,7 +105,7 @@ func HasRelation(key string) bool {
 	return exists
 }
 
-func EqualWithRelation(key string, rel *relation.Relation) (equal bool, exists bool)  {
+func EqualWithRelation(key string, rel *relation.Relation) (equal bool, exists bool) {
 	v, exists := relations[RelationKey(key)]
 	if !exists {
 		return false, false

@@ -136,7 +136,6 @@ func RelationsFilterKeys(in []*pbrelation.Relation, keys []string) (out []*pbrel
 	return
 }
 
-
 func StructNotNilKeys(st *types.Struct) (keys []string) {
 	if st == nil || st.Fields == nil {
 		return nil
