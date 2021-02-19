@@ -223,22 +223,24 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 		return fmt.Errorf("option id is empty")
 	}
 
+	err = tb.UpdateRelationOption(relationKey, option)
+	if err != nil {
+		log.Errorf("UpdateRelationOption error: %s", err.Error())
+		return err
+	}
+
+	if showEvent {
+		err = d.Apply(s)
+	} else {
+		err = d.Apply(s, smartblock.NoEvent)
+	}
+
 	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
 	if rel == nil {
 		return fmt.Errorf("relation not found in dataview")
 	}
 
-	err = db.Update(recordId, []*pbrelation.Relation{rel}, database.Record{})
-	if err != nil {
-		return err
-	}
-
-	err = tb.UpdateRelationOption(relationKey, option)
-	if err != nil {
-		return err
-	}
-
-	return fmt.Errorf("relation not found")
+	return db.Update(recordId, []*pbrelation.Relation{rel}, database.Record{})
 }
 
 func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
@@ -248,28 +250,35 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockI
 		return err
 	}
 
-	for _, rel := range tb.Model().GetDataview().Relations {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == optionId {
-				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
-				if showEvent {
-					return d.Apply(s)
-				}
-				return d.Apply(s, smartblock.NoEvent)
-			}
-		}
-		// todo: should we remove option and value from all objects within type?
-
-		return fmt.Errorf("relation option not found")
+	var db database.Database
+	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+	} else if target, err := dbRouter.Get(""); err != nil {
+		return err
+	} else {
+		db = target
 	}
 
-	return fmt.Errorf("relation not found")
+	if optionId == "" {
+		return fmt.Errorf("option id is empty")
+	}
+
+	err = tb.DeleteRelationOption(relationKey, optionId)
+	if err != nil {
+		return err
+	}
+	if showEvent {
+		err = d.Apply(s)
+	} else {
+		err = d.Apply(s, smartblock.NoEvent)
+	}
+
+	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
+	if rel == nil {
+		return fmt.Errorf("relation not found in dataview")
+	}
+
+	return db.Update(recordId, []*pbrelation.Relation{rel}, database.Record{})
 }
 
 func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*pbrelation.Relation, error) {

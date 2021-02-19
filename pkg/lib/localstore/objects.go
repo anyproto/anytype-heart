@@ -34,7 +34,7 @@ var (
 	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 
 	relationsPrefix = "relations"
-	// /relations/options/<relKey>/<relOptionId>: option model
+	// /relations/options/<relOptionId>: option model
 	relationsOptionsBase = ds.NewKey("/" + relationsPrefix + "/options")
 	// /relations/relations/<relKey>: relation model
 	relationsBase = ds.NewKey("/" + relationsPrefix + "/relations")
@@ -343,7 +343,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 				break
 			}
 		}
-		opt, err := getOption(txn, relationKey, optId)
+		opt, err := getOption(txn, optId)
 		if err != nil {
 			return nil, err
 		}
@@ -358,7 +358,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 			continue
 		}
 
-		opt2, err := getOption(txn, opt.relationKey, opt.optionId)
+		opt2, err := getOption(txn, opt.optionId)
 		if err != nil {
 			return nil, err
 		}
@@ -382,7 +382,7 @@ func (m *dsObjectStore) GetAggregatedOptionsForFormat(format pbrelation.Relation
 
 	var options []*pbrelation.RelationOption
 	for _, ro := range ros {
-		opt, err := getOption(txn, ro.relationKey, ro.optionId)
+		opt, err := getOption(txn, ro.optionId)
 		if err != nil {
 			return nil, err
 		}
@@ -1187,14 +1187,15 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 	return nil
 }
 
-func (m *dsObjectStore) updateOption(txn ds.Txn, relationKey string, option *pbrelation.RelationOption) error {
+func (m *dsObjectStore) updateOption(txn ds.Txn, option *pbrelation.RelationOption) error {
 	b, err := proto.Marshal(option)
 	if err != nil {
 		return err
 	}
-	relationsKey := relationsOptionsBase.ChildString(relationKey).ChildString(option.Id)
+	optionKey := relationsOptionsBase.ChildString(option.Id)
 
-	return txn.Put(relationsKey, b)
+	log.Errorf("updateOption %s: %v", option.Id, option)
+	return txn.Put(optionKey, b)
 
 }
 
@@ -1247,12 +1248,25 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 	relationsKey := pagesRelationsBase.ChildString(id)
 	var err error
 	for _, relation := range relationsAfter.Relations {
-		// save all options
-		// todo: save only changed options
-		for _, opt := range relation.SelectDict {
-			err := m.updateOption(txn, relation.Key, opt)
-			if err != nil {
-				return err
+		if relation.Format == pbrelation.RelationFormat_status || relation.Format == pbrelation.RelationFormat_tag {
+			var relBefore *pbrelation.Relation
+			if relationsBefore != nil {
+				relBefore = pbtypes.GetRelation(relationsBefore.Relations, relation.Key)
+			}
+
+			for _, opt := range relation.SelectDict {
+				var optBefore *pbrelation.RelationOption
+				if relBefore != nil {
+					optBefore = pbtypes.GetOption(relBefore.SelectDict, opt.Id)
+				}
+
+				if !pbtypes.OptionEqualOmitScope(optBefore, opt) {
+					err := m.updateOption(txn, opt)
+					if err != nil {
+						return err
+					}
+
+				}
 			}
 		}
 
@@ -1467,15 +1481,19 @@ func getRelations(txn ds.Txn, id string) (*pbrelation.Relations, error) {
 	return &relations, nil
 }
 
-func getOption(txn ds.Txn, relationKey, optionId string) (*pbrelation.RelationOption, error) {
+func getOption(txn ds.Txn, optionId string) (*pbrelation.RelationOption, error) {
 	var opt pbrelation.RelationOption
-	if val, err := txn.Get(relationsOptionsBase.ChildString(relationKey).ChildString(optionId)); err != nil {
+	if val, err := txn.Get(relationsOptionsBase.ChildString(optionId)); err != nil {
+		log.Errorf("getOption %s: not found", optionId)
 		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get relations: %w", err)
+			return nil, fmt.Errorf("failed to get option from localstore: %w", err)
 		}
 	} else if err := proto.Unmarshal(val, &opt); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal option: %w", err)
 	}
+
+	log.Errorf("getOption %s: %v", optionId, opt)
+
 	return &opt, nil
 }
 

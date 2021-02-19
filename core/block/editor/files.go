@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -34,8 +35,8 @@ func detectFileType(mime string) model.BlockContentFileType {
 }
 
 func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	if !s.Virtual() {
-		return fmt.Errorf("source should be a virtual file")
+	if s.Type() != pb.SmartBlockType_File {
+		return fmt.Errorf("source type should be a file")
 	}
 
 	if err = p.SmartBlock.Init(s, true, nil); err != nil {

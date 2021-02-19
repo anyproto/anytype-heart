@@ -52,9 +52,10 @@ var migrations = []migration{
 	addMissingLayout,            // 11
 	addFilesToObjects,           // 12
 	removeBundleRelationsFromDs, // 13
-	skipMigration,               // 13
 	skipMigration,               // 14
-	reindexAll,                  // 15
+	skipMigration,               // 15
+	skipMigration,               // 16
+	reindexAll,                  // 17
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -452,6 +453,11 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				continue
 			}
 			for _, idx := range a.localStore.Objects.Indexes() {
+				if idx.Name == "objtype_relkey_setid" {
+					// skip it because we can't reindex relations in sets for now
+					continue
+				}
+
 				err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
 				if err != nil {
 					log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())

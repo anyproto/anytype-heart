@@ -61,15 +61,9 @@ func (r router) Get(id string) (database.Database, error) {
 	setOrAddRelations := func(id string, relations []*pbrelation.Relation) error {
 		newRels := pbtypes.CopyRelations(relations)
 		return r.s.ModifyExtraRelations(nil, id, func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error) {
+			newRels = pbtypes.MergeRelationsDicts(current, newRels)
 			for _, newRel := range newRels {
 				newRel.Scope = pbrelation.Relation_object
-				for _, currRel := range current {
-					if newRel.Key != currRel.Key {
-						continue
-					}
-					// do not override selectDict
-					newRel.SelectDict = currRel.SelectDict
-				}
 			}
 
 			return newRels, nil

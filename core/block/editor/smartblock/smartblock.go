@@ -724,7 +724,7 @@ mainLoop:
 		}
 		for j := range extraRelations {
 			if extraRelations[j].Key == relationsToSet[i].Key {
-				if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
+				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
 					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
 						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
 					}
@@ -1079,7 +1079,7 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	if sb.Type() == pb.SmartBlockType_Archive {
+	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
 		return nil
 	}
 	objType := sb.ObjectType()
@@ -1110,7 +1110,7 @@ func (sb *smartBlock) fillAggregatedRelations(rels []*pbrelation.Relation) {
 			continue
 		}
 
-		rels[i].SelectDict = options
+		rels[i].SelectDict = pbtypes.MergeOptionsPreserveScope(rel.SelectDict, options)
 	}
 }
 

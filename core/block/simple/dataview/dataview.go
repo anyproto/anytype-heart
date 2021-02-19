@@ -450,21 +450,25 @@ func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.Re
 	}
 
 	for _, rel := range d.content.Relations {
+		if rel.Key != relationKey {
+			option.Scope = pbrelation.RelationOption_format
+		} else {
+			option.Scope = pbrelation.RelationOption_local
+		}
+
+		var found bool
 		for i, opt := range rel.SelectDict {
 			if option.Id == opt.Id {
-				if rel.Key != relationKey {
-					option.Scope = pbrelation.RelationOption_format
-				} else {
-					option.Scope = pbrelation.RelationOption_local
-				}
-
 				optionCopy := option
 				rel.SelectDict[i] = &optionCopy
-				return nil
+				found = true
+				break
 			}
 		}
 
-		return fmt.Errorf("option not exists")
+		if !found && rel.Key != relationKey {
+			rel.SelectDict = append(rel.SelectDict, &option)
+		}
 	}
 	return nil
 }

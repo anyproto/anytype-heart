@@ -340,16 +340,45 @@ func CleanupLayouts(s *State) (removedCount int) {
 
 func (s *State) normalizeRelations() {
 	for _, r := range s.ExtraRelations() {
+		var updateRelation *relation.Relation
+
 		equal, exists := bundle.EqualWithRelation(r.Key, r)
 		if exists && !equal {
-			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(r.Key)))
-			continue
+			updateRelation = bundle.MustGetRelation(bundle.RelationKey(r.Key))
+			updateRelation.SelectDict = r.SelectDict
 		}
 
+		/*if r.Format == relation.RelationFormat_status || r.Format == relation.RelationFormat_tag {
+			// remove options that doesn't have a value
+			values := pbtypes.GetStringList(s.Details(), r.Key)
+			var optsFiltered []*relation.RelationOption
+			var hasChanges bool
+			for i, opt := range r.SelectDict {
+				if slice.FindPos(values, opt.Id) >= 0 {
+					optsFiltered = append(optsFiltered, r.SelectDict[i])
+				} else {
+					log.With("thread",s.rootId).Errorf("normalizeRelations: remove option %s", opt.Id)
+					hasChanges = true
+				}
+			}
+
+			if hasChanges {
+				if updateRelation == nil {
+					updateRelation = pbtypes.CopyRelation(r)
+				}
+				updateRelation.SelectDict = optsFiltered
+			}
+		}*/
+
 		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
-			rc := pbtypes.CopyRelation(r)
-			rc.MaxCount = 1
-			s.SetExtraRelation(rc)
+			if updateRelation == nil {
+				updateRelation = pbtypes.CopyRelation(r)
+			}
+			updateRelation.MaxCount = 1
+		}
+
+		if updateRelation != nil {
+			s.SetExtraRelation(updateRelation)
 		}
 	}
 }
@@ -363,7 +392,9 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 	for _, r := range b.Model().GetDataview().Relations {
 		equal, exists := bundle.EqualWithRelation(r.Key, r)
 		if exists && !equal {
-			dv.UpdateRelation(r.Key, *bundle.MustGetRelation(bundle.RelationKey(r.Key)))
+			rc := bundle.MustGetRelation(bundle.RelationKey(r.Key))
+			rc.SelectDict = r.SelectDict
+			dv.UpdateRelation(r.Key, *rc)
 			continue
 		}
 

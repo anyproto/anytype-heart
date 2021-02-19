@@ -117,6 +117,18 @@ func CopyRelations(in []*pbrelation.Relation) (out []*pbrelation.Relation) {
 	return outWrapped.Relations
 }
 
+func CopyOptions(in []*pbrelation.RelationOption) (out []*pbrelation.RelationOption) {
+	if in == nil {
+		return nil
+	}
+
+	for _, inO := range in {
+		inCopy := *inO
+		out = append(out, &inCopy)
+	}
+	return
+}
+
 func CopyRelationsToMap(in []*pbrelation.Relation) (out map[string]*pbrelation.Relation) {
 	out = make(map[string]*pbrelation.Relation, len(in))
 	rels := CopyRelations(in)
