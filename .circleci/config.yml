@@ -393,7 +393,7 @@ jobs:
             cp ./pb/protos/service/*.proto protobuf/protos
             cp ./pkg/lib/pb/model/protos/*.proto protobuf/protos
 
-            protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+            protoc -I ./ --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
       - run:
           name: collect artifacts
           command: |
