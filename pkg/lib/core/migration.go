@@ -90,15 +90,13 @@ func (a *Anytype) runMigrationsUnsafe() error {
 	}
 
 	if len(migrations) == version {
-		// TODO: TEMP FIX to run last migration every time, remove with release
-		version--
-		//return nil
+		return nil
 	} else if len(migrations) < version {
 		log.Errorf("repo version(%d) is higher than the total migrations number(%d)", version, len(migrations))
 		return nil
 	}
 
-	log.Debugf("migrating from %d to %d", version, len(migrations))
+	log.Errorf("migrating from %d to %d", version, len(migrations))
 
 	for i := version; i < len(migrations); i++ {
 		err := migrations[i](a, i == len(migrations)-1)
