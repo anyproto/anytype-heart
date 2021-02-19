@@ -4957,10 +4957,7 @@ func (m *SmartBlockSnapshotBase) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -5547,10 +5544,7 @@ func (m *Block) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -5700,10 +5694,7 @@ func (m *BlockRestrictions) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -5753,10 +5744,7 @@ func (m *BlockContent) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -5825,10 +5813,7 @@ func (m *BlockContentLayout) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -5965,10 +5950,7 @@ func (m *BlockContentLink) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -6037,10 +6019,7 @@ func (m *BlockContentDiv) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -6269,10 +6248,7 @@ func (m *BlockContentBookmark) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -6354,10 +6330,7 @@ func (m *BlockContentIcon) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -6546,10 +6519,7 @@ func (m *BlockContentText) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -6633,10 +6603,7 @@ func (m *BlockContentTextMarks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -6773,10 +6740,7 @@ func (m *BlockContentTextMark) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -6998,10 +6962,7 @@ func (m *BlockContentFile) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -7051,10 +7012,7 @@ func (m *BlockContentSmartblock) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -7236,10 +7194,7 @@ func (m *BlockContentDataview) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -7474,10 +7429,7 @@ func (m *BlockContentDataviewView) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -7656,10 +7608,7 @@ func (m *BlockContentDataviewRelation) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -7760,10 +7709,7 @@ func (m *BlockContentDataviewSort) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -7951,10 +7897,7 @@ func (m *BlockContentDataviewFilter) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -8036,10 +7979,7 @@ func (m *BlockContentRelation) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -8157,10 +8097,7 @@ func (m *BlockMetaOnly) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -8248,10 +8185,7 @@ func (m *Range) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -8401,10 +8335,7 @@ func (m *Account) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -8521,10 +8452,7 @@ func (m *AccountAvatar) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {
@@ -8753,10 +8681,7 @@ func (m *LinkPreview) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthModels
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthModels
 			}
 			if (iNdEx + skippy) > l {

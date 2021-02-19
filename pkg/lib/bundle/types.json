@@ -1,34 +1,9 @@
 [
   {
+    "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
     "name": "Note",
-    "relations": [
-      "id",
-      "name",
-      "description",
-      "type",
-      "creator",
-      "createdDate",
-      "layout",
-      "lastModifiedBy",
-      "iconImage",
-      "iconEmoji",
-      "coverId",
-      "lastModifiedDate",
-      "lastOpenedDate",
-      "coverX",
-      "coverY",
-      "coverScale",
-      "toBeDeletedDate",
-      "featuredRelations",
-      "coverType"
-    ]
-  },
-  {
-    "id": "dashboard",
-    "layout": "dashboard",
-    "name": "Dashboard",
     "relations": [
       "id",
       "name",
@@ -78,6 +53,7 @@
     ]
   },
   {
+    "emoji": "💡",
     "id": "idea",
     "layout": "basic",
     "name": "Idea",
@@ -130,7 +106,6 @@
       "coverType",
       "assignee",
       "dueDate",
-      "description",
       "attachments",
       "status",
       "done",
@@ -141,6 +116,7 @@
     ]
   },
   {
+    "hidden": true,
     "id": "relation",
     "layout": "relation",
     "name": "Relation",
@@ -148,10 +124,12 @@
       "id",
       "name",
       "layout",
-      "description"
+      "description",
+      "mpAddedToLibrary"
     ]
   },
   {
+    "emoji": "📹",
     "id": "video",
     "layout": "basic",
     "name": "Video",
@@ -190,7 +168,36 @@
     ]
   },
   {
+    "description": "Internal home dashboard",
+    "hidden": true,
+    "id": "dashboard",
+    "layout": "dashboard",
+    "name": "Dashboard",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType"
+    ]
+  },
+  {
     "description": "Object that contains a definition of some object type",
+    "hidden": true,
     "id": "objectType",
     "layout": "objectType",
     "name": "Type",
@@ -215,13 +222,14 @@
       "featuredRelations",
       "coverType",
       "recommendedRelations",
-      "recommendedLayout"
+      "recommendedLayout",
+      "mpAddedToLibrary"
     ]
   },
   {
     "id": "set",
     "layout": "set",
-    "name": "Set of objects",
+    "name": "All sets",
     "relations": [
       "id",
       "name",
@@ -249,7 +257,7 @@
     "description": "Base type to start with",
     "id": "page",
     "layout": "basic",
-    "name": "Undefined",
+    "name": "Draft",
     "relations": [
       "id",
       "name",
@@ -273,6 +281,7 @@
     ]
   },
   {
+    "emoji": "🌅",
     "id": "image",
     "layout": "basic",
     "name": "Image",
@@ -310,6 +319,7 @@
     ]
   },
   {
+    "emoji": "🧍",
     "id": "profile",
     "layout": "profile",
     "name": "Human",
@@ -336,6 +346,7 @@
     ]
   },
   {
+    "emoji": "🎵",
     "id": "audio",
     "layout": "basic",
     "name": "Audio",
@@ -374,6 +385,7 @@
     ]
   },
   {
+    "emoji": "📄",
     "id": "document",
     "layout": "basic",
     "name": "Document",
@@ -430,6 +442,7 @@
     ]
   },
   {
+    "emoji": "🔨",
     "id": "project",
     "layout": "basic",
     "name": "Project",
@@ -453,33 +466,6 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType"
-    ]
-  },
-  {
-    "id": "collection",
-    "layout": "database",
-    "name": "Collection",
-    "relations": [
-      "id",
-      "name",
-      "description",
-      "type",
-      "creator",
-      "createdDate",
-      "layout",
-      "lastModifiedBy",
-      "iconImage",
-      "iconEmoji",
-      "coverId",
-      "lastModifiedDate",
-      "lastOpenedDate",
-      "coverX",
-      "coverY",
-      "coverScale",
-      "toBeDeletedDate",
-      "featuredRelations",
-      "coverType",
-      "collectionOf"
     ]
   }
 ]

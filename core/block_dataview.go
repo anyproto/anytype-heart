@@ -179,8 +179,12 @@ func (mw *Middleware) BlockDataviewRecordDelete(req *pb.RpcBlockDataviewRecordDe
 
 func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(relationKey string, code pb.RpcBlockDataviewRelationAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationAddResponse {
-		m := &pb.RpcBlockDataviewRelationAddResponse{RelationKey: relationKey, Error: &pb.RpcBlockDataviewRelationAddResponseError{Code: code}}
+	response := func(relation *pbrelation.Relation, code pb.RpcBlockDataviewRelationAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationAddResponse {
+		var relKey string
+		if relation != nil {
+			relKey = relation.Key
+		}
+		m := &pb.RpcBlockDataviewRelationAddResponse{RelationKey: relKey, Relation: relation, Error: &pb.RpcBlockDataviewRelationAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -188,16 +192,17 @@ func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationA
 		}
 		return m
 	}
-	var relationKey string
+	var relation *pbrelation.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		relationKey, err = bs.AddDataviewRelation(ctx, *req)
+		relation, err = bs.AddDataviewRelation(ctx, *req)
 		return err
 	})
+
 	if err != nil {
-		return response("", pb.RpcBlockDataviewRelationAddResponseError_BAD_INPUT, err)
+		return response(nil, pb.RpcBlockDataviewRelationAddResponseError_BAD_INPUT, err)
 	}
 
-	return response(relationKey, pb.RpcBlockDataviewRelationAddResponseError_NULL, nil)
+	return response(relation, pb.RpcBlockDataviewRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockDataviewRelationUpdate(req *pb.RpcBlockDataviewRelationUpdateRequest) *pb.RpcBlockDataviewRelationUpdateResponse {

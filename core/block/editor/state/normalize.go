@@ -4,7 +4,10 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -46,6 +49,17 @@ func (s *State) normalize(withLayouts bool) (err error) {
 			s.normalizeLayoutRow(b)
 		}
 	}
+
+	s.normalizeRelations()
+
+	for _, b := range s.blocks {
+		if dv := b.Model().GetDataview(); dv != nil {
+			for i, _ := range dv.Relations {
+				s.normalizeDvRelation(dv.Relations[i])
+			}
+		}
+	}
+
 	if withLayouts {
 		return s.normalizeTree()
 	}
@@ -322,4 +336,84 @@ func CleanupLayouts(s *State) (removedCount int) {
 	}
 	cleanup(s.RootId())
 	return
+}
+
+func (s *State) normalizeRelations() {
+	for _, r := range s.ExtraRelations() {
+		var updateRelation *relation.Relation
+
+		equal, exists := bundle.EqualWithRelation(r.Key, r)
+		if exists && !equal {
+			updateRelation = bundle.MustGetRelation(bundle.RelationKey(r.Key))
+			updateRelation.SelectDict = r.SelectDict
+		}
+
+		/*if r.Format == relation.RelationFormat_status || r.Format == relation.RelationFormat_tag {
+			// remove options that doesn't have a value
+			values := pbtypes.GetStringList(s.Details(), r.Key)
+			var optsFiltered []*relation.RelationOption
+			var hasChanges bool
+			for i, opt := range r.SelectDict {
+				if slice.FindPos(values, opt.Id) >= 0 {
+					optsFiltered = append(optsFiltered, r.SelectDict[i])
+				} else {
+					log.With("thread",s.rootId).Errorf("normalizeRelations: remove option %s", opt.Id)
+					hasChanges = true
+				}
+			}
+
+			if hasChanges {
+				if updateRelation == nil {
+					updateRelation = pbtypes.CopyRelation(r)
+				}
+				updateRelation.SelectDict = optsFiltered
+			}
+		}*/
+
+		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+			if updateRelation == nil {
+				updateRelation = pbtypes.CopyRelation(r)
+			}
+			updateRelation.MaxCount = 1
+		}
+
+		if updateRelation != nil {
+			s.SetExtraRelation(updateRelation)
+		}
+	}
+}
+
+func (s *State) normalizeDvRelations(b simple.Block) {
+	dv, ok := b.(dataview.Block)
+	if !ok {
+		return
+	}
+
+	for _, r := range b.Model().GetDataview().Relations {
+		equal, exists := bundle.EqualWithRelation(r.Key, r)
+		if exists && !equal {
+			rc := bundle.MustGetRelation(bundle.RelationKey(r.Key))
+			rc.SelectDict = r.SelectDict
+			dv.UpdateRelation(r.Key, *rc)
+			continue
+		}
+
+		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+			rc := pbtypes.CopyRelation(r)
+			rc.MaxCount = 1
+
+			dv.UpdateRelation(r.Key, *rc)
+		}
+	}
+
+}
+
+func (s *State) normalizeDvRelation(r *relation.Relation) {
+	if exists, equal := bundle.EqualWithRelation(r.Key, r); exists && !equal {
+		*r = *bundle.MustGetRelation(bundle.RelationKey(r.Key))
+	}
+
+	if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+		r.MaxCount = 1
+	}
 }

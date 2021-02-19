@@ -273,7 +273,9 @@ func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAd
 	}
 	key := req.Relation.Key
 	if !s.HasRelation(key) {
-		req.Relation.Key = bson.NewObjectId().Hex()
+		if req.Relation.Key == "" {
+			req.Relation.Key = bson.NewObjectId().Hex()
+		}
 		s.AddRelation(req.Relation)
 	}
 	if rel, ok := b.(relation.Block); ok {

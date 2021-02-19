@@ -1,7 +1,10 @@
 package indexer
 
 import (
+	"context"
 	"fmt"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"sync"
 	"time"
 
@@ -22,11 +25,14 @@ func newDoc(id string, a anytype.Service) (d *doc, err error) {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return
 	}
+
 	d = &doc{
 		id:        id,
 		lastUsage: time.Now(),
 		store:     a.ObjectStore(),
+		sb:        sb,
 	}
+
 	d.tree, _, err = change.BuildMetaTree(sb)
 	if err == change.ErrEmpty {
 		d.tree = change.NewMetaTree()
@@ -51,6 +57,7 @@ type doc struct {
 	store      detailsGetter
 	lastUsage  time.Time
 	mu         sync.Mutex
+	sb         anytype.SmartBlock
 }
 
 type detailsGetter interface {
@@ -126,6 +133,35 @@ func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (lastChangeTS
 	return
 }
 
+func (d *doc) injectLocalRelations(st *state.State) {
+	if details, err := d.store.GetDetails(d.id); err == nil {
+		if details != nil && details.Details != nil {
+			for key, v := range details.Details.Fields {
+				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
+					st.SetDetail(key, v)
+				}
+			}
+		}
+	}
+}
+
+func (s *doc) findFirstChange(ctx context.Context) (c *change.Change, err error) {
+	if s.tree.RootId() == "" {
+		return nil, change.ErrEmpty
+	}
+	c = s.tree.Get(s.tree.RootId())
+	for c.LastSnapshotId != "" {
+		var rec *core.SmartblockRecordEnvelope
+		if rec, err = s.sb.GetRecord(ctx, c.LastSnapshotId); err != nil {
+			return
+		}
+		if c, err = change.NewChangeFromRecord(*rec); err != nil {
+			return
+		}
+	}
+	return
+}
+
 func (d *doc) buildState() (doc *state.State, err error) {
 	root := d.tree.Root()
 	if root == nil || root.GetSnapshot() == nil {
@@ -138,22 +174,40 @@ func (d *doc) buildState() (doc *state.State, err error) {
 		return
 	}
 
-	// set persisted local-only details (e.g. lastOpenedDate)
-	if details, err := d.store.GetDetails(d.id); err == nil {
-		if details != nil && details.Details != nil {
-			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
-					st.SetDetail(key, v)
-				}
-			}
-		}
-	}
+	d.injectLocalRelations(st)
 	st.InjectDerivedDetails()
 
+	err = d.injectCreationInfo(st)
+	if err != nil {
+		log.With("thread", d.id).Errorf("injectCreationInfo failed: %s", err.Error())
+	}
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
+	return
+}
 
+func (d *doc) injectCreationInfo(st *state.State) (err error) {
+	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
+		return nil
+	}
+
+	// protect from the big documents with a large trees
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	fc, err := d.findFirstChange(ctx)
+	if err == change.ErrEmpty {
+		err = nil
+		return nil
+	} else if err != nil {
+		return fmt.Errorf("failed to find first change to derive creation info")
+	}
+
+	st.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Float64(float64(fc.Timestamp)))
+	if profileId, e := threads.ProfileThreadIDFromAccountAddress(fc.Account); e == nil {
+		st.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(profileId.String()))
+	}
 	return
 }
 

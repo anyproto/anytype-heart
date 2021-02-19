@@ -5,7 +5,6 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/martian/log"
 )
 
 func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []string) (equal bool) {
@@ -27,11 +26,8 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 			continue
 		}
 		if v2, exists := m2[key]; !exists {
-			log.Errorf("compare: det2 doesn't has %s", key)
 			return false
 		} else if !v2.Equal(v1) {
-			log.Errorf("compare: det2 has not equal %s: %v!=%v", key, v1, v2)
-
 			return false
 		}
 	}
@@ -41,7 +37,6 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 			continue
 		}
 		if _, exists := m1[key]; !exists {
-			log.Errorf("compare: det1 doesn't has %s", key)
 			return false
 		}
 	}
@@ -114,7 +109,9 @@ func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Rel
 	if rel1.Multi != rel2.Multi {
 		return false
 	}
-
+	if rel1.MaxCount != rel2.MaxCount {
+		return false
+	}
 	if !slice.SortedEquals(rel1.ObjectTypes, rel2.ObjectTypes) {
 		return false
 	}
@@ -161,18 +158,36 @@ func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationOption) bool {
 	}
 
 	for i := 0; i < len(dict1); i++ {
-		if dict1[i].Id != dict2[i].Id {
-			return false
-		}
-		if dict1[i].Text != dict2[i].Text {
-			return false
-		}
-
-		if dict1[i].Color != dict2[i].Color {
+		if !OptionEqualOmitScope(dict1[i], dict2[i]) {
 			return false
 		}
 	}
 
+	return true
+}
+
+func OptionEqualOmitScope(opt1, opt2 *pbrelation.RelationOption) bool {
+	if (opt1 == nil) && (opt2 != nil) {
+		return false
+	}
+
+	if (opt1 != nil) && (opt2 == nil) {
+		return false
+	}
+
+	if opt1 == nil && opt2 == nil {
+		return true
+	}
+
+	if opt1.Id != opt2.Id {
+		return false
+	}
+	if opt1.Text != opt2.Text {
+		return false
+	}
+	if opt1.Color != opt2.Color {
+		return false
+	}
 	return true
 }
 

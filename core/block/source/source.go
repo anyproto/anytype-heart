@@ -15,8 +15,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
 	"github.com/textileio/go-threads/core/thread"
@@ -188,12 +190,53 @@ func (s *source) buildState() (doc state.Doc, err error) {
 			}
 		}
 	}
-	st.InjectDerivedDetails()
+	if s.Type() != pb.SmartBlockType_Archive && !s.Virtual() {
+		// we do not need details for archive or breadcrumbs
+		st.InjectDerivedDetails()
+		err = InjectCreationInfo(s, st)
+		if err != nil {
+			log.With("thread", s.id).Errorf("injectCreationInfo failed: %s", err.Error())
+		}
+	}
 
 	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
 	}
 
+	return
+}
+
+func InjectCreationInfo(s Source, st *state.State) (err error) {
+	if s.Anytype() == nil {
+		return fmt.Errorf("anytype is nil")
+	}
+
+	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
+		return nil
+	}
+
+	var (
+		createdDate = time.Now().Unix()
+		createdBy   = s.Anytype().Account()
+	)
+	// protect from the big documents with a large trees
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+	fc, err := s.FindFirstChange(ctx)
+	if err == change.ErrEmpty {
+		err = nil
+		log.Debugf("InjectCreationInfo set for the empty object")
+	} else if err != nil {
+		return fmt.Errorf("failed to find first change to derive creation info")
+	} else {
+		createdDate = fc.Timestamp
+		createdBy = fc.Account
+	}
+
+	st.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Float64(float64(createdDate)))
+	if profileId, e := threads.ProfileThreadIDFromAccountAddress(createdBy); e == nil {
+		st.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(profileId.String()))
+	}
 	return
 }
 

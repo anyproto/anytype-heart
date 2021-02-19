@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -51,7 +52,10 @@ var migrations = []migration{
 	addMissingLayout,            // 11
 	addFilesToObjects,           // 12
 	removeBundleRelationsFromDs, // 13
-	reindexAll,                  // 13
+	skipMigration,               // 14
+	skipMigration,               // 15
+	skipMigration,               // 16
+	reindexAll,                  // 17
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -87,15 +91,13 @@ func (a *Anytype) runMigrationsUnsafe() error {
 	}
 
 	if len(migrations) == version {
-		// TODO: TEMP FIX to run last migration every time, remove with release
-		version--
-		//return nil
+		return nil
 	} else if len(migrations) < version {
 		log.Errorf("repo version(%d) is higher than the total migrations number(%d)", version, len(migrations))
 		return nil
 	}
 
-	log.Debugf("migrating from %d to %d", version, len(migrations))
+	log.Errorf("migrating from %d to %d", version, len(migrations))
 
 	for i := version; i < len(migrations); i++ {
 		err := migrations[i](a, i == len(migrations)-1)
@@ -450,16 +452,37 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				total--
 				continue
 			}
+			for _, idx := range a.localStore.Objects.Indexes() {
+				if idx.Name == "objtype_relkey_setid" {
+					// skip it because we can't reindex relations in sets for now
+					continue
+				}
+
+				err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
+				if err != nil {
+					log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
+				}
+			}
 			oi, err := a.localStore.Objects.GetByIDs(id)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
 				continue
 			}
+
 			if len(oi) < 1 {
 				log.Errorf("migration reindexAll: failed to get objects: not found")
 				continue
 			}
 			o := oi[0]
+			var objType string
+			if pbtypes.HasField(o.Details, bundle.RelationKeyType.String()) {
+				objTypes := pbtypes.GetStringList(o.Details, bundle.RelationKeyType.String())
+				if len(objTypes) > 0 {
+					objType = objTypes[0]
+				}
+			}
+
+			o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
 			err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())

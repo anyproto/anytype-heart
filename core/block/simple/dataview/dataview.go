@@ -399,11 +399,16 @@ func (d *Dataview) SetActiveView(activeView string) {
 }
 
 func (d *Dataview) AddRelationOption(relationKey string, option pbrelation.RelationOption) error {
+	var relFound *pbrelation.Relation
 	for _, rel := range d.content.Relations {
 		if rel.Key != relationKey {
 			continue
 		}
+		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+			return fmt.Errorf("relation has incorrect format")
+		}
 
+		relFound = pbtypes.CopyRelation(rel)
 		for _, opt := range rel.SelectDict {
 			if option.Id == opt.Id {
 				return fmt.Errorf("option already exists")
@@ -412,31 +417,63 @@ func (d *Dataview) AddRelationOption(relationKey string, option pbrelation.Relat
 		if option.Scope != pbrelation.RelationOption_local {
 			return fmt.Errorf("incorrect option scope")
 		}
-
-		rel.SelectDict = append(rel.SelectDict, &option)
+		optionCopy := option
+		rel.SelectDict = append(rel.SelectDict, &optionCopy)
+		break
 	}
+
+	if relFound == nil {
+		return fmt.Errorf("relation not found")
+	}
+
+	// add this option with format scope to other dataview relations
+	for _, rel := range d.content.Relations {
+		if rel.Key == relationKey {
+			continue
+		}
+
+		if rel.Format != relFound.Format {
+			continue
+		}
+		optionCopy := option
+
+		optionCopy.Scope = pbrelation.RelationOption_format
+		rel.SelectDict = append(rel.SelectDict, &optionCopy)
+	}
+
 	return nil
 }
 
 func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.RelationOption) error {
+	if option.Scope != pbrelation.RelationOption_local {
+		return fmt.Errorf("incorrect option scope")
+	}
+
+	relFound := pbtypes.GetRelation(d.content.Relations, relationKey)
+
 	for _, rel := range d.content.Relations {
-		if rel.Key != relationKey {
-			continue
+		if rel.Key != relationKey{
+			if relFound.Format != rel.Format {
+				continue
+			}
+			option.Scope = pbrelation.RelationOption_format
+		} else {
+			option.Scope = pbrelation.RelationOption_local
 		}
 
-		if option.Scope != pbrelation.RelationOption_local {
-			return fmt.Errorf("incorrect option scope")
-		}
-
+		var found bool
 		for i, opt := range rel.SelectDict {
 			if option.Id == opt.Id {
-				opt2 := option
-				rel.SelectDict[i] = &opt2
-				return nil
+				optionCopy := option
+				rel.SelectDict[i] = &optionCopy
+				found = true
+				break
 			}
 		}
 
-		return fmt.Errorf("option not exists")
+		if !found && rel.Key != relationKey {
+			rel.SelectDict = append(rel.SelectDict, &option)
+		}
 	}
 	return nil
 }

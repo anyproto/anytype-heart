@@ -56,6 +56,8 @@ func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPa
 
 type Service interface {
 	ThreadsCollection() (*db.Collection, error)
+	Threads() net2.NetBoostrapper
+
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error)
 
@@ -95,6 +97,10 @@ func (s *service) ThreadsCollection() (*db.Collection, error) {
 	return s.threadsCollection, nil
 }
 
+func (s *service) Threads() net2.NetBoostrapper {
+	return s.t
+}
+
 func (s *service) Close() error {
 	// close global service context to stop all work
 	s.ctxCancel()
@@ -112,6 +118,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
 	}
 
+	// todo: we have a possible trouble here, using thread.AccessControlled uvariant without actually storing the cid with access control
 	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err

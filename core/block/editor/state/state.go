@@ -45,6 +45,7 @@ type Doc interface {
 	ExtraRelations() []*pbrelation.Relation
 
 	ObjectTypes() []string
+	ObjectType() string
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
@@ -645,15 +646,31 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 			return s
 		}
 	}
-	if relation.Format == pbrelation.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
+
+	relCopy := pbtypes.CopyRelation(relation)
+	// reset the scope to object
+	relCopy.Scope = pbrelation.Relation_object
+	if relation.Format == pbrelation.RelationFormat_status {
+		relation.MaxCount = 1
 	}
 
-	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relation)
+	if relCopy.Format == pbrelation.RelationFormat_file && relCopy.ObjectTypes == nil {
+		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
+	}
+
+	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relCopy)
 	return s
 }
 
 func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
+	relationsCopy := pbtypes.CopyRelations(relations)
+	for _, rel := range relationsCopy {
+		// reset scopes for all relations
+		rel.Scope = pbrelation.Relation_object
+		if rel.Format == pbrelation.RelationFormat_status {
+			rel.MaxCount = 1
+		}
+	}
 	s.extraRelations = relations
 	return s
 }
@@ -688,13 +705,13 @@ func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelatio
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
-	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.StringList(objectTypes))
+	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
 	return s
 }
 
 func (s *State) InjectDerivedDetails() {
 	s.SetDetail(string(bundle.RelationKeyId), pbtypes.String(s.rootId))
-	s.SetDetail(string(bundle.RelationKeyType), pbtypes.StringList(s.ObjectTypes()))
+	s.SetDetail(string(bundle.RelationKeyType), pbtypes.String(s.ObjectType()))
 }
 
 // ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
@@ -734,6 +751,21 @@ func (s *State) ObjectTypes() []string {
 		return s.parent.ObjectTypes()
 	}
 	return s.objectTypes
+}
+
+// ObjectType returns only the first objectType and produce warning in case the state has more than 1 object type
+// this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
+func (s *State) ObjectType() string {
+	objTypes := s.ObjectTypes()
+	if len(objTypes) != 1 {
+		log.Errorf("obj %s has %d objectTypes instead of 1", s.RootId(), len(objTypes))
+	}
+
+	if len(objTypes) > 0 {
+		return objTypes[0]
+	}
+
+	return ""
 }
 
 func (s *State) Snippet() (snippet string) {

@@ -93,6 +93,9 @@ service ClientCommands {
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) returns (anytype.Rpc.Block.Bookmark.CreateAndFetch.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.Block.File.CreateAndUpload.Request) returns (anytype.Rpc.Block.File.CreateAndUpload.Response);
 
+    rpc BlockRelationSetKey (anytype.Rpc.Block.Relation.SetKey.Request) returns (anytype.Rpc.Block.Relation.SetKey.Response);
+    rpc BlockRelationAdd (anytype.Rpc.Block.Relation.Add.Request) returns (anytype.Rpc.Block.Relation.Add.Response);
+
     // ## Dataview
     // # View
     rpc BlockDataviewViewCreate (anytype.Rpc.Block.Dataview.ViewCreate.Request) returns (anytype.Rpc.Block.Dataview.ViewCreate.Response);
@@ -117,10 +120,6 @@ service ClientCommands {
     // set an existing object type to the object so it will appear in sets and suggests relations from this type
     // TODO: rename BlockObjectTypeSet -> ObjectObjectTypeSet
     rpc BlockObjectTypeSet (anytype.Rpc.Block.ObjectType.Set.Request) returns (anytype.Rpc.Block.ObjectType.Set.Response);
-    // TODO: rename BlockRelationSetKey -> ObjectRelationSetKey
-    rpc BlockRelationSetKey (anytype.Rpc.Block.Relation.SetKey.Request) returns (anytype.Rpc.Block.Relation.SetKey.Response);
-    // TODO: rename BlockRelationAdd -> ObjectRelationAdd
-    rpc BlockRelationAdd (anytype.Rpc.Block.Relation.Add.Request) returns (anytype.Rpc.Block.Relation.Add.Response);
 
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
@@ -162,6 +161,7 @@ service ClientCommands {
 
     rpc Export (anytype.Rpc.Export.Request) returns (anytype.Rpc.Export.Response);
 
+    rpc DebugSync (anytype.Rpc.Debug.Sync.Request) returns (anytype.Rpc.Debug.Sync.Response);
     // used only for lib-server via grpc
     rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);
 }

@@ -8,6 +8,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -101,9 +102,9 @@ func TestDsObjectStore_Query(t *testing.T) {
 	tid1, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	tid2, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
 	tid3, _ := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
-	id1 := string(tid1)
-	id2 := string(tid2)
-	id3 := string(tid3)
+	id1 := tid1.String()
+	id2 := tid2.String()
+	id3 := tid3.String()
 	require.NoError(t, ds.UpdateObject(id1, newDet("one"), nil, nil, "s1"))
 	require.NoError(t, ds.UpdateObject(id2, newDet("two"), nil, nil, "s2"))
 	require.NoError(t, ds.UpdateObject(id3, newDet("three"), nil, nil, "s3"))
@@ -214,7 +215,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	id1 := getId()
 	id2 := getId()
 	id3 := getId()
-	require.NoError(t, ds.UpdateObject(id1, newDet("one", "a1"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+	require.NoError(t, ds.UpdateObject(id1, newDet("one", "https://anytype.io/schemas/object/bundled/a1"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
 		{
 			Key:          "rel1",
 			Format:       pbrelation.RelationFormat_status,
@@ -228,13 +229,13 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 		},
 		{
 			Key:          "rel2",
-			Format:       pbrelation.RelationFormat_title,
+			Format:       pbrelation.RelationFormat_shorttext,
 			Name:         "rel 2",
 			DefaultValue: nil,
 		},
 	}}, nil, "s1"))
 
-	require.NoError(t, ds.UpdateObject(id2, newDet("two", "a2"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+	require.NoError(t, ds.UpdateObject(id2, newDet("two", "https://anytype.io/schemas/object/bundled/a2"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
 		{
 			Key:          "rel1",
 			Format:       pbrelation.RelationFormat_status,
@@ -266,22 +267,22 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 			},
 		},
 	}}, nil, "s2"))
-	require.NoError(t, ds.UpdateObject(id3, newDet("three", "a2"), nil, nil, "s3"))
+	require.NoError(t, ds.UpdateObject(id3, newDet("three", "https://anytype.io/schemas/object/bundled/a2"), nil, nil, "s3"))
 
-	restOpts, err := ds.GetAggregatedOptions("rel1", pbrelation.RelationFormat_status, "1")
+	restOpts, err := ds.GetAggregatedOptions("rel1", pbrelation.RelationFormat_status, "https://anytype.io/schemas/object/bundled/ffff")
 	require.NoError(t, err)
 	require.Len(t, restOpts, 6)
 
-	rels, err := ds.AggregateRelationsForType("a1")
+	rels, err := ds.AggregateRelationsFromObjectsOfType("https://anytype.io/schemas/object/bundled/a1")
 	require.NoError(t, err)
 	require.Len(t, rels, 2)
 
 	require.Equal(t, "rel1", rels[0].Key)
 	require.Equal(t, "rel2", rels[1].Key)
 
-	rels, err = ds.ListRelations()
+	rels, err = ds.ListRelations("https://anytype.io/schemas/object/bundled/a1")
 	require.NoError(t, err)
-	require.Len(t, rels, 4)
+	require.Len(t, rels, len(bundle.ListRelationsKeys())+4)
 
 	require.Equal(t, "rel1", rels[0].Key)
 	require.Equal(t, "rel2", rels[1].Key)

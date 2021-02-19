@@ -1,6 +1,7 @@
 package core
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -136,6 +137,102 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, block.GetDataview().Relations, len(bundle.MustGetType(bundle.TypeKeyPage).Relations)+1)
 	})
 
+	t.Run("relation_aggregate_scope", func(t *testing.T) {
+		respSet1 := mw.SetCreate(&pb.RpcSetCreateRequest{
+			ObjectTypeUrl: bundle.TypeKeyIdea.URL(),
+			Details:       nil,
+		})
+		require.Equal(t, 0, int(respSet1.Error.Code), respSet1.Error.Description)
+
+		respSet2 := mw.SetCreate(&pb.RpcSetCreateRequest{
+			ObjectTypeUrl: bundle.TypeKeyIdea.URL(),
+			Details:       nil,
+		})
+		require.Equal(t, 0, int(respSet2.Error.Code), respSet2.Error.Description)
+
+		respSetRelCreate1 := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
+			ContextId: respSet1.Id,
+			BlockId:   "dataview",
+			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_shorttext, Name: "from set1"},
+		})
+		require.Equal(t, 0, int(respSetRelCreate1.Error.Code), respSetRelCreate1.Error.Description)
+
+		respSetRelCreate2 := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
+			ContextId: respSet2.Id,
+			BlockId:   "dataview",
+			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_shorttext, Name: "from set2"},
+		})
+		require.Equal(t, 0, int(respSetRelCreate2.Error.Code), respSetRelCreate2.Error.Description)
+
+		respPageCreate := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
+			bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyIdea.URL()}),
+		}}})
+		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
+
+		time.Sleep(time.Second * 2)
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+
+		blockShow := getEventBlockShow(respOpenNewPage.Event.Messages)
+
+		relFromSet1 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate1.RelationKey)
+		require.NotNil(t, relFromSet1)
+		require.Equal(t, relFromSet1.Scope, pbrelation.Relation_setOfTheSameType)
+		relFromSet2 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate2.RelationKey)
+		require.NotNil(t, relFromSet2)
+		require.Equal(t, relFromSet2.Scope, pbrelation.Relation_setOfTheSameType)
+	})
+
+	t.Run("relation_scope_becomes_object", func(t *testing.T) {
+		respPageCreate := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
+			bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyTask.URL()}),
+		}}})
+
+		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+
+		blockShow := getEventBlockShow(respOpenNewPage.Event.Messages)
+
+		for _, rel := range bundle.MustGetType(bundle.TypeKeyTask).Relations {
+			var found bool
+			for _, relInObj := range blockShow.Relations {
+				if relInObj.Key == rel.Key {
+					found = true
+					break
+				}
+			}
+			require.True(t, found, fmt.Errorf("missing %s(%s) relation", rel.Key, rel.Name))
+			if rel.Key == bundle.RelationKeyStatus.String() {
+				require.Equal(t, pbrelation.Relation_type, rel.Scope, fmt.Errorf("relation '%s' has scope %s instead of %s", rel.Name, rel.Scope.String(), pbrelation.Relation_type.String()))
+			}
+		}
+
+		mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{ContextId: respPageCreate.PageId, Details: []*pb.RpcBlockSetDetailsDetail{
+			{Key: bundle.RelationKeyStatus.String(), Value: pbtypes.String("Done")},
+		}})
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+
+		blockShow = getEventBlockShow(respOpenNewPage.Event.Messages)
+		for _, rel := range bundle.MustGetType(bundle.TypeKeyTask).Relations {
+			var found bool
+			for _, relInObj := range blockShow.Relations {
+				if relInObj.Key == rel.Key {
+					found = true
+					if rel.Key == bundle.RelationKeyStatus.String() {
+						require.Equal(t, pbrelation.Relation_object, relInObj.Scope, fmt.Errorf("relation '%s' has scope %s instead of %s", rel.Name, rel.Scope.String(), pbrelation.Relation_object.String()))
+					}
+					break
+				}
+			}
+			require.True(t, found, fmt.Errorf("missing %s(%s) relation", rel.Key, rel.Name))
+
+		}
+	})
+
 	t.Run("update_not_existing", func(t *testing.T) {
 		respUpdate := mw.BlockDataviewRelationUpdate(&pb.RpcBlockDataviewRelationUpdateRequest{
 			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
@@ -257,6 +354,7 @@ func TestRelationAdd(t *testing.T) {
 
 		require.Equal(t, 0, int(respRecordCreate.Error.Code), respRecordCreate.Error.Description)
 		newPageId := respRecordCreate.Record.Fields["id"].GetStringValue()
+
 		respRelOptCreate := mw.BlockDataviewRecordRelationOptionAdd(&pb.RpcBlockDataviewRecordRelationOptionAddRequest{
 			ContextId: mw.Anytype.PredefinedBlocks().SetPages,
 			BlockId:   "dataview",
@@ -543,6 +641,62 @@ func TestRelationAdd(t *testing.T) {
 			require.True(t, relFound, "aggregated options for relation %s(%s) not found", test.relKey)
 		}
 	})
+
+	t.Run("new_record_creator", func(t *testing.T) {
+		f := func(event *pb.Event) {
+			return
+		}
+
+		mw.EventSender = event.NewCallbackSender(func(event *pb.Event) {
+			f(event)
+		})
+
+		respRelCreate := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
+			ContextId: mw.Anytype.PredefinedBlocks().SetPages,
+			BlockId:   "dataview",
+			Relation: &pbrelation.Relation{
+				Format: pbrelation.RelationFormat_status,
+				SelectDict: []*pbrelation.RelationOption{{
+					Text:  "opt1",
+					Color: "red",
+				}},
+				Name:     "relation2",
+				ReadOnly: false,
+			},
+		})
+		require.Equal(t, 0, int(respRelCreate.Error.Code), respRelCreate.Error.Description)
+		rel := respRelCreate.Event.GetMessages()[0].GetBlockDataviewRelationSet()
+		require.Equal(t, respRelCreate.RelationKey, rel.RelationKey)
+		// option is trimmed
+		var waitCreator = make(chan struct{})
+		f = func(event *pb.Event) {
+			for _, msg := range event.Messages {
+				for _, rec := range msg.GetBlockDataviewRecordsUpdate().Records {
+					if pbtypes.GetString(rec, bundle.RelationKeyCreator.String()) != "" {
+						close(waitCreator)
+					}
+				}
+			}
+		}
+
+		respRecordCreate := mw.BlockDataviewRecordCreate(
+			&pb.RpcBlockDataviewRecordCreateRequest{
+				ContextId: mw.Anytype.PredefinedBlocks().SetPages,
+				BlockId:   "dataview",
+			})
+
+		require.Equal(t, 0, int(respRecordCreate.Error.Code), respRecordCreate.Error.Description)
+		if pbtypes.GetString(respRecordCreate.Record, bundle.RelationKeyCreator.String()) == "" {
+			select {
+			case <-waitCreator:
+				break
+			case <-time.After(time.Second * 10):
+				require.Fail(t, "creator not found")
+			}
+		}
+
+	})
+
 }
 
 func TestCustomType(t *testing.T) {
@@ -557,7 +711,7 @@ func TestCustomType(t *testing.T) {
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
 				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/page"}},
-				{Format: pbrelation.RelationFormat_description, Name: "bio"},
+				{Format: pbrelation.RelationFormat_longtext, Name: "bio"},
 			},
 		},
 	})
@@ -597,6 +751,9 @@ func TestCustomType(t *testing.T) {
 	require.Len(t, respOpenCustomTypeObject.Event.Messages, 1)
 	show := getEventBlockShow(respOpenCustomTypeObject.Event.Messages)
 	require.NotNil(t, show)
+
+	profile := getDetailsForContext(show.Details, mw.Anytype.PredefinedBlocks().Profile)
+	require.NotNil(t, profile)
 	// should have custom obj type + profile, because it has the relation `creator`
 	require.Len(t, show.ObjectTypes, 2)
 	require.Len(t, show.ObjectTypePerObject, 2)
@@ -611,26 +768,15 @@ func TestCustomType(t *testing.T) {
 	}
 	require.True(t, found, "required custom obj type not found")
 
-	var details *types2.Struct
-	for _, detail := range show.Details {
-		if detail.Id == customObjectId {
-			details = detail.Details
-			break
-		}
-	}
+	var customObjectDetails = getDetailsForContext(show.Details, customObjectId)
+	require.NotNil(t, customObjectDetails)
+	require.Equal(t, mw.Anytype.PredefinedBlocks().Profile, pbtypes.GetString(customObjectDetails, bundle.RelationKeyCreator.String()))
+	rel := getRelationByKey(show.Relations, newRelation.Key)
+	require.NotNil(t, rel)
+	require.Equal(t, newRelation, rel)
 
-	found = false
-	for _, rel := range show.Relations {
-		if rel.Key == newRelation.Key {
-			require.Equal(t, newRelation, rel)
-			found = true
-			break
-		}
-	}
-	require.True(t, found)
-
-	require.NotNil(t, details.Fields[newRelation.Key])
-	require.Equal(t, "newRelationVal", details.Fields[newRelation.Key].GetStringValue())
+	require.NotNil(t, customObjectDetails.Fields[newRelation.Key])
+	require.Equal(t, "newRelationVal", customObjectDetails.Fields[newRelation.Key].GetStringValue())
 	for i := 0; i <= 20; i++ {
 		respOpenCustomTypeSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateCustomTypeSet.Id})
 		require.Equal(t, 0, int(respOpenCustomTypeSet.Error.Code), respOpenCustomTypeSet.Error.Description)
@@ -660,16 +806,29 @@ func TestCustomType(t *testing.T) {
 }
 
 func TestBundledType(t *testing.T) {
-
 	_, mw := start(t)
 
 	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
+	log.Errorf("page %s created", respCreatePage.PageId)
+	respOpenPage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreatePage.PageId})
+	require.Equal(t, 0, int(respOpenPage.Error.Code), respOpenPage.Error.Description)
+
+	show := getEventBlockShow(respOpenPage.Event.Messages)
+	require.NotNil(t, show)
+
+	pageDetails := getDetailsForContext(show.Details, respCreatePage.PageId)
+	require.NotNil(t, pageDetails)
+	require.Equal(t, mw.Anytype.PredefinedBlocks().Profile, pbtypes.GetString(pageDetails, bundle.RelationKeyCreator.String()))
+	profile := getDetailsForContext(show.Details, mw.Anytype.PredefinedBlocks().Profile)
+	require.NotNil(t, profile, fmt.Sprintf("%s got no details for profile", show.RootId))
+
 	time.Sleep(time.Second)
+
 	respOpenPagesSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.Anytype.PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
 
-	show := getEventBlockShow(respOpenPagesSet.Event.Messages)
+	show = getEventBlockShow(respOpenPagesSet.Event.Messages)
 	require.NotNil(t, show)
 
 	recordsSet := getEventRecordsSet(respOpenPagesSet.Event.Messages)
@@ -714,6 +873,15 @@ func getEventBlockShow(msgs []*pb.EventMessage) *pb.EventBlockShow {
 	for _, msg := range msgs {
 		if v, ok := msg.Value.(*pb.EventMessageValueOfBlockShow); ok {
 			return v.BlockShow
+		}
+	}
+	return nil
+}
+
+func getDetailsForContext(msgs []*pb.EventBlockSetDetails, contextId string) *types2.Struct {
+	for _, msg := range msgs {
+		if msg.Id == contextId {
+			return msg.Details
 		}
 	}
 	return nil

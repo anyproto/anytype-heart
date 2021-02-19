@@ -31,8 +31,12 @@ type Reader interface {
 	QueryById(ids []string) (records []Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
-	ListRelations() (relations []*pbrelation.Relation, err error)
-	AggregateRelationsForType(objType string) (relations []*pbrelation.Relation, err error)
+	GetRelation(key string) (relation *pbrelation.Relation, err error)
+
+	ListRelations(objType string) (relations []*pbrelation.Relation, err error)
+
+	AggregateRelationsFromObjectsOfType(objType string) (relations []*pbrelation.Relation, err error)
+	AggregateRelationsFromSetsOfType(objType string) (relations []*pbrelation.Relation, err error)
 	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 }
 
@@ -43,7 +47,7 @@ type Writer interface {
 	Create(relations []*pbrelation.Relation, rec Record, sub Subscription) (Record, error)
 
 	Update(id string, relations []*pbrelation.Relation, rec Record) error
-	AddRelationOption(id string, relKey string, option pbrelation.RelationOption) (optionId string, err error)
+	UpdateRelationOption(id string, relKey string, option pbrelation.RelationOption) (optionId string, err error)
 
 	Delete(id string) error
 }
@@ -200,13 +204,11 @@ func (f *filters) hasOrders() bool {
 	return f.order != nil
 }
 
-
 func dateOnly(v *types.Value) *types.Value {
 	tm := time.Unix(int64(v.GetNumberValue()), 0)
 	tm = time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location())
 	return pbtypes.Float64(float64(tm.Unix()))
 }
-
 
 func getRelationByKey(relations []*model.BlockContentDataviewRelation, key string) *model.BlockContentDataviewRelation {
 	for _, relation := range relations {

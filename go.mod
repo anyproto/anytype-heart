@@ -10,6 +10,7 @@ require (
 	github.com/blevesearch/bleve v1.0.14
 	github.com/cheggaaa/mb v1.0.2
 	github.com/dave/jennifer v1.4.1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/dgtony/collections v0.1.5
 	github.com/disintegration/imaging v1.6.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
@@ -20,6 +21,7 @@ require (
 	github.com/golang/mock v1.4.4
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.1.4
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.1
 	github.com/h2non/filetype v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hsanjuan/ipfs-lite v1.1.17

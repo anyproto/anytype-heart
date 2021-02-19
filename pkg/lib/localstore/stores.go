@@ -71,7 +71,6 @@ type ObjectStore interface {
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, relationFormat pbrelation.RelationFormat, objectType string) (options []*pbrelation.RelationOption, err error)
-	GetRelation(relationKey string) (*pbrelation.Relation, error)
 
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
@@ -126,7 +125,9 @@ func (i Index) JoinedKeys(val interface{}) []string {
 }
 
 func (ls LocalStore) Close() error {
-	ls.Objects.Close()
+	if ls.Objects != nil {
+		ls.Objects.Close()
+	}
 	return nil
 }
 
@@ -148,6 +149,21 @@ func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary
 
 func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
 	oldKeys := index.JoinedKeys(oldVal)
+	hasKey := func(key string) (exists bool, err error) {
+		return ds.Has(indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(key))
+	}
+
+	if len(oldKeys) > 0 {
+		exists, err := hasKey(oldKeys[0])
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			oldKeys = []string{}
+		}
+	}
+
 	newKeys := index.JoinedKeys(newVal)
 
 	removed, added := diffSlices(oldKeys, newKeys)
@@ -162,6 +178,8 @@ func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal inter
 		if !exists {
 			continue
 		}
+		log.Debugf("update(remove) index at %s", key.String())
+
 		err = ds.Delete(key)
 		if err != nil {
 			return err
@@ -178,6 +196,8 @@ func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal inter
 		if exists {
 			continue
 		}
+		log.Debugf("update(add) index at %s", key.String())
+
 		err = ds.Put(key, []byte{})
 		if err != nil {
 			return err
@@ -209,8 +229,9 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 			}
 		}
 
-		log.Debugf("add index at %s", key.ChildString(newValPrimary).String())
-		err := ds.Put(key.ChildString(newValPrimary), []byte{})
+		key = key.ChildString(newValPrimary)
+		log.Debugf("add index at %s", key.String())
+		err := ds.Put(key, []byte{})
 		if err != nil {
 			return err
 		}
@@ -218,19 +239,37 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 	return nil
 }
 
-func RemoveIndex(index Index, ds ds.TxnDatastore, val interface{}, valPrimary string) error {
+func EraseIndex(index Index, ds ds.TxnDatastore) error {
 	txn, err := ds.NewTransaction(false)
 	if err != nil {
 		return err
 	}
 	defer txn.Discard()
 
-	err = RemoveIndexWithTxn(index, txn, val, valPrimary)
+	err = EraseIndexWithTxn(index, txn)
 	if err != nil {
 		return err
 	}
 
 	return txn.Commit()
+}
+
+// EraseIndexWithTxn deletes the whole index
+func EraseIndexWithTxn(index Index, txn ds.Txn) error {
+	key := indexBase.ChildString(index.Prefix).ChildString(index.Name)
+	res, err := GetKeys(txn, key.String(), 0)
+	if err != nil {
+		return err
+	}
+
+	keys, err := ExtractKeysFromResults(res)
+	for _, key := range keys {
+		err = txn.Delete(ds.NewKey(key))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary string) error {

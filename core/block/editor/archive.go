@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -34,6 +35,10 @@ func (p *Archive) Init(s source.Source, allowEmpty bool, objectTypeUrls []string
 	}
 	p.SmartBlock.DisableLayouts()
 	return template.ApplyTemplate(p, nil, template.WithEmpty, template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
+}
+
+func (p *Archive) Relations() []*pbrelation.Relation {
+	return nil
 }
 
 func (p *Archive) Archive(id string) (err error) {

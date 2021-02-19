@@ -11,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -100,6 +101,9 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 		}
 	}()
 	ticker := time.NewTicker(cleanupInterval)
+	i.mu.Lock()
+	quit := i.quit
+	i.mu.Unlock()
 	for {
 		select {
 		case rec, ok := <-ch:
@@ -109,7 +113,7 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 			batch.Add(rec)
 		case <-ticker.C:
 			i.cleanup()
-		case <-i.quit:
+		case <-quit:
 			batch.Close()
 		}
 	}
@@ -172,12 +176,15 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 
 	meta := d.meta()
-	prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLastModifiedDate.String()))
 
-	if meta.Details != nil && meta.Details.Fields != nil && lastChangeTS > prevModifiedDate {
-		meta.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastChangeTS))
-		if profileId, err := threads.ProfileThreadIDFromAccountAddress(lastChangeBy); err == nil {
-			meta.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(profileId.String())
+	if meta.Details != nil && meta.Details.Fields != nil {
+		prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLastModifiedDate.String()))
+
+		if lastChangeTS > prevModifiedDate {
+			meta.Details.Fields[bundle.RelationKeyLastModifiedDate.String()] = pbtypes.Float64(float64(lastChangeTS))
+			if profileId, err := threads.ProfileThreadIDFromAccountAddress(lastChangeBy); err == nil {
+				meta.Details.Fields[bundle.RelationKeyLastModifiedBy.String()] = pbtypes.String(profileId.String())
+			}
 		}
 	}
 
@@ -192,8 +199,12 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 
 	if len(meta.ObjectTypes) == 1 && meta.ObjectTypes[0] == bundle.TypeKeySet.URL() {
 		b := d.st.Get("dataview")
-		if b != nil && b.Model().GetDataview() != nil {
-			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, b.Model().GetDataview().Source, &pbrelation.Relations{dataviewRelationsBefore}, &pbrelation.Relations{b.Model().GetDataview().Relations}); err != nil {
+		var dv *model.BlockContentDataview
+		if b != nil {
+			dv = b.Model().GetDataview()
+		}
+		if b != nil && dv != nil {
+			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, dv.Source, &pbrelation.Relations{dataviewRelationsBefore}, &pbrelation.Relations{dv.Relations}); err != nil {
 				log.With("thread", id).Errorf("failed to index dataview relations")
 			}
 		}
@@ -293,11 +304,15 @@ func (i *indexer) cleanup() {
 
 func (i *indexer) Close() {
 	i.mu.Lock()
-	defer i.mu.Unlock()
-	if i.quit != nil {
-		close(i.quit)
+	quit := i.quit
+	i.mu.Unlock()
+
+	if quit != nil {
+		close(quit)
 		i.quitWG.Wait()
+		i.mu.Lock()
 		i.quit = nil
+		i.mu.Unlock()
 	}
 }
 

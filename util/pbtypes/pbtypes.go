@@ -11,6 +11,12 @@ func Float64(v float64) *types.Value {
 	}
 }
 
+func Null() *types.Value {
+	return &types.Value{
+		Kind: &types.Value_NullValue{NullValue: types.NullValue_NULL_VALUE},
+	}
+}
+
 func String(v string) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_StringValue{StringValue: v},
@@ -108,6 +114,16 @@ func GetStringListValue(v *types.Value) []string {
 	return stringsSlice
 }
 
+func HasField(st *types.Struct, key string) bool {
+	if st == nil || st.Fields == nil {
+		return false
+	}
+
+	_, exists := st.Fields[key]
+
+	return exists
+}
+
 func HasRelation(rels []*pbrelation.Relation, key string) bool {
 	for _, rel := range rels {
 		if rel.Key == key {
@@ -152,4 +168,94 @@ func GetRelationKeys(rels []*pbrelation.Relation) []string {
 	}
 
 	return keys
+}
+
+func GetOptionIds(opts []*pbrelation.RelationOption) []string {
+	var keys []string
+	for _, opt := range opts {
+		keys = append(keys, opt.Id)
+	}
+
+	return keys
+}
+
+func MergeRelationsDicts(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) []*pbrelation.Relation {
+	rels := CopyRelations(rels1)
+	for _, rel2 := range rels2 {
+		var found bool
+
+		for i, rel := range rels {
+			if rel.Key == rel2.Key {
+				rel2Copy := CopyRelation(rel2)
+				rels[i].SelectDict = rel2Copy.SelectDict
+				rels[i].Name = rel2Copy.Name
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			rels = append(rels, CopyRelation(rel2))
+		}
+	}
+	return rels
+}
+
+// MergeOptionsPreserveScope adds and updates options from opts2 into opts1 based on the ID
+// in case opts2 doesn't have id that opts1 have it doesn't remove the existing one
+// in case opts2 has the key that opts1 already have it updates everything except scope
+func MergeOptionsPreserveScope(opts1 []*pbrelation.RelationOption, opts2 []*pbrelation.RelationOption) []*pbrelation.RelationOption {
+	opts := CopyOptions(opts1)
+	for _, opt2 := range opts2 {
+		var found bool
+		for i, opt := range opts {
+			if opt.Id == opt2.Id {
+				opts[i].Text = opt2.Text
+				opts[i].Color = opt2.Color
+				found = true
+				break
+			}
+		}
+		if !found {
+			opt2Copy := *opt2
+			opts = append(opts, &opt2Copy)
+		}
+	}
+	return opts
+}
+
+// StructToMap converts a types.Struct to a map from strings to Go types.
+// StructToMap panics if s is invalid.
+func StructToMap(s *types.Struct) map[string]interface{} {
+	if s == nil {
+		return nil
+	}
+	m := map[string]interface{}{}
+	for k, v := range s.Fields {
+		m[k] = ValueToInterface(v)
+	}
+	return m
+}
+
+func ValueToInterface(v *types.Value) interface{} {
+	switch k := v.Kind.(type) {
+	case *types.Value_NullValue:
+		return nil
+	case *types.Value_NumberValue:
+		return k.NumberValue
+	case *types.Value_StringValue:
+		return k.StringValue
+	case *types.Value_BoolValue:
+		return k.BoolValue
+	case *types.Value_StructValue:
+		return StructToMap(k.StructValue)
+	case *types.Value_ListValue:
+		s := make([]interface{}, len(k.ListValue.Values))
+		for i, e := range k.ListValue.Values {
+			s[i] = ValueToInterface(e)
+		}
+		return s
+	default:
+		panic("protostruct: unknown kind")
+	}
 }
