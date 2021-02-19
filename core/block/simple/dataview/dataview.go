@@ -449,8 +449,13 @@ func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.Re
 		return fmt.Errorf("incorrect option scope")
 	}
 
+	relFound := pbtypes.GetRelation(d.content.Relations, relationKey)
+
 	for _, rel := range d.content.Relations {
-		if rel.Key != relationKey {
+		if rel.Key != relationKey{
+			if relFound.Format != rel.Format {
+				continue
+			}
 			option.Scope = pbrelation.RelationOption_format
 		} else {
 			option.Scope = pbrelation.RelationOption_local
