@@ -1,5 +1,6 @@
 [
   {
+    "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
     "name": "Note",
@@ -52,6 +53,7 @@
     ]
   },
   {
+    "emoji": "💡",
     "id": "idea",
     "layout": "basic",
     "name": "Idea",
@@ -127,6 +129,7 @@
     ]
   },
   {
+    "emoji": "📹",
     "id": "video",
     "layout": "basic",
     "name": "Video",
@@ -278,6 +281,7 @@
     ]
   },
   {
+    "emoji": "🌅",
     "id": "image",
     "layout": "basic",
     "name": "Image",
@@ -315,6 +319,7 @@
     ]
   },
   {
+    "emoji": "🧍",
     "id": "profile",
     "layout": "profile",
     "name": "Human",
@@ -341,6 +346,7 @@
     ]
   },
   {
+    "emoji": "🎵",
     "id": "audio",
     "layout": "basic",
     "name": "Audio",
@@ -379,6 +385,7 @@
     ]
   },
   {
+    "emoji": "📄",
     "id": "document",
     "layout": "basic",
     "name": "Document",
@@ -435,6 +442,7 @@
     ]
   },
   {
+    "emoji": "🔨",
     "id": "project",
     "layout": "basic",
     "name": "Project",
