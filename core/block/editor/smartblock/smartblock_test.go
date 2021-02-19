@@ -114,6 +114,8 @@ func newFixture(t *testing.T) *fixture {
 	source := mockSource.NewMockSource(ctrl)
 	source.EXPECT().Type().AnyTimes().Return(pb.SmartBlockType_Page)
 	source.EXPECT().Anytype().AnyTimes().Return(nil)
+	source.EXPECT().Virtual().AnyTimes().Return(false)
+
 	metaSubscriber := mockMeta.NewMockSubscriber(ctrl)
 	metaPubSub := mockMeta.NewMockPubSub(ctrl)
 	metaService := mockMeta.NewMockService(ctrl)
