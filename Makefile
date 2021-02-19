@@ -165,7 +165,7 @@ protos: protos-go protos-server protos-docs
 
 protos-swift:
 	@echo 'Generating protobuf packages (Swift)...'
-	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Internal --swift_out=./dist/ios/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto pkg/lib/pb/relation/protos/*.proto
+	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto pkg/lib/pb/relation/protos/*.proto
 
 protos-js:
 	@echo 'Generating protobuf packages (JS)...'
