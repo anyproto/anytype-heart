@@ -1194,7 +1194,6 @@ func (m *dsObjectStore) updateOption(txn ds.Txn, option *pbrelation.RelationOpti
 	}
 	optionKey := relationsOptionsBase.ChildString(option.Id)
 
-	log.Errorf("updateOption %s: %v", option.Id, option)
 	return txn.Put(optionKey, b)
 
 }
@@ -1484,16 +1483,14 @@ func getRelations(txn ds.Txn, id string) (*pbrelation.Relations, error) {
 func getOption(txn ds.Txn, optionId string) (*pbrelation.RelationOption, error) {
 	var opt pbrelation.RelationOption
 	if val, err := txn.Get(relationsOptionsBase.ChildString(optionId)); err != nil {
-		log.Errorf("getOption %s: not found", optionId)
+		log.Debugf("getOption %s: not found", optionId)
 		if err != ds.ErrNotFound {
 			return nil, fmt.Errorf("failed to get option from localstore: %w", err)
 		}
 	} else if err := proto.Unmarshal(val, &opt); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal option: %w", err)
 	}
-
-	log.Errorf("getOption %s: %v", optionId, opt)
-
+	
 	return &opt, nil
 }
 

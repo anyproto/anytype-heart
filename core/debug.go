@@ -45,8 +45,8 @@ func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThr
 }
 
 func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
-	response := func(threads []*pb.RpcDebugthreadInfo, threadsWithoutRepl int32, totalRecords int32, totalSize int32, code pb.RpcDebugSyncResponseErrorCode, err error) *pb.RpcDebugSyncResponse {
-		m := &pb.RpcDebugSyncResponse{DeviceId: mw.Anytype.Device(), Threads: threads, ThreadsWithoutReplInOwnLog: threadsWithoutRepl, TotalThreads: int32(len(threads)), TotalRecords: totalRecords, TotalSize: totalSize, Error: &pb.RpcDebugSyncResponseError{Code: code}}
+	response := func(threads []*pb.RpcDebugthreadInfo, threadsWithoutRepl int32, threadsWithoutHeadDownloaded int32, totalRecords int32, totalSize int32, code pb.RpcDebugSyncResponseErrorCode, err error) *pb.RpcDebugSyncResponse {
+		m := &pb.RpcDebugSyncResponse{DeviceId: mw.Anytype.Device(), Threads: threads, ThreadsWithoutReplInOwnLog: threadsWithoutRepl, ThreadsWithoutHeadDownloaded: threadsWithoutHeadDownloaded,TotalThreads: int32(len(threads)), TotalRecords: totalRecords, TotalSize: totalSize, Error: &pb.RpcDebugSyncResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -86,7 +86,7 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 		return threads[i].Id < threads[j].Id
 	})
 
-	return response(threads, threadsWithoutRepl, totalRecords, totalSize, 0, nil)
+	return response(threads, threadsWithoutRepl, threadWithNoHeadDownloaded, totalRecords, totalSize, 0, nil)
 }
 
 func getThreadInfo(t net.NetBoostrapper, id thread.ID, ownDeviceId string, cafePeer peer.ID, skipEmptyLogs bool, downloadRemoteRecords bool) pb.RpcDebugthreadInfo {
