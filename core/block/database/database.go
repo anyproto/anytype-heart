@@ -24,7 +24,8 @@ type Ctrl interface {
 	AddExtraRelations(ctx *state.Context, id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)
 	ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error)
-	AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error)
+	UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionUpdateRequest) (err error)
+	AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (option *pbrelation.RelationOption, err error)
 
 	SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error)
 }
@@ -45,8 +46,12 @@ func (r router) Get(id string) (database.Database, error) {
 		return r.s.SetDetails(nil, req)
 	}
 
-	addOptionNoContext := func(req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error) {
-		return r.s.AddExtraRelationOption(nil, req)
+	updateOptionNoContext := func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *pbrelation.RelationOption, err error) {
+		if req.Option.Id == "" {
+			return r.s.AddExtraRelationOption(nil, pb.RpcObjectRelationOptionAddRequest{ContextId: req.ContextId, RelationKey: req.RelationKey, Option: req.Option})
+		}
+
+		return req.Option, r.s.UpdateExtraRelationOption(nil, req)
 	}
 
 	modifyExtraRelationsNoContext := func(objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error) {
@@ -56,15 +61,9 @@ func (r router) Get(id string) (database.Database, error) {
 	setOrAddRelations := func(id string, relations []*pbrelation.Relation) error {
 		newRels := pbtypes.CopyRelations(relations)
 		return r.s.ModifyExtraRelations(nil, id, func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error) {
+			newRels = pbtypes.MergeRelationsDicts(current, newRels)
 			for _, newRel := range newRels {
 				newRel.Scope = pbrelation.Relation_object
-				for _, currRel := range current {
-					if newRel.Key != currRel.Key {
-						continue
-					}
-					// do not override selectDict
-					newRel.SelectDict = currRel.SelectDict
-				}
 			}
 
 			return newRels, nil
@@ -78,7 +77,7 @@ func (r router) Get(id string) (database.Database, error) {
 		r.s.GetRelations,
 		setOrAddRelations,
 		modifyExtraRelationsNoContext,
-		addOptionNoContext,
+		updateOptionNoContext,
 		r.s.CreateSmartBlock,
 	), nil
 }

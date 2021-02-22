@@ -545,18 +545,12 @@ func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Str
 			}
 			found = true
 			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
-				objTypes := sb.ObjectTypes()
-				if len(objTypes) > 1 {
-					log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
-				}
-				var objType string
-				if len(objTypes) == 1 {
-					objType = objTypes[0]
-				}
+				objType := sb.ObjectType()
 
 				options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
 				if err != nil {
-					return fmt.Errorf("failed to get aggregated options for a select/tag relation '%s': %s", rel.Key, err.Error())
+					log.Errorf("failed to get aggregated options for a select/tag relation '%s' ot '%s' format '%s': %s", rel.Key, objType, rel.Format, err.Error())
+					return fmt.Errorf("failed to get aggregated options for a select/tag relation: %s", err.Error())
 				}
 
 				vals := pbtypes.GetStringListValue(v)
@@ -623,7 +617,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	}
 
 	s.SetDetails(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(s); err != nil {
 		return
 	}
 	return nil
@@ -730,7 +724,7 @@ mainLoop:
 		}
 		for j := range extraRelations {
 			if extraRelations[j].Key == relationsToSet[i].Key {
-				if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
+				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
 					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
 						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
 					}
@@ -1085,14 +1079,14 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	objTypes := sb.ObjectTypes()
-	var objType string
-	if len(objTypes) > 0 {
-		objType = objTypes[0]
+	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
+		return nil
 	}
+	objType := sb.ObjectType()
+
 	var err error
 	var aggregatedRelation []*pbrelation.Relation
-	if len(objTypes) > 0 {
+	if objType != "" {
 		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsFromSetsOfType(objType)
 		if err != nil {
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
@@ -1100,22 +1094,24 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 	}
 
 	rels := mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), aggregatedRelation, sb.Details())
+	sb.fillAggregatedRelations(rels)
+	return rels
+}
 
-	for _, rel := range rels {
+func (sb *smartBlock) fillAggregatedRelations(rels []*pbrelation.Relation) {
+	for i, rel := range rels {
 		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
 			continue
 		}
 
-		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
+		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, sb.ObjectType())
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
 			continue
 		}
 
-		rel.SelectDict = options
+		rels[i].SelectDict = pbtypes.MergeOptionsPreserveScope(rel.SelectDict, options)
 	}
-
-	return rels
 }
 
 func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {

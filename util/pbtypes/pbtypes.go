@@ -170,6 +170,60 @@ func GetRelationKeys(rels []*pbrelation.Relation) []string {
 	return keys
 }
 
+func GetOptionIds(opts []*pbrelation.RelationOption) []string {
+	var keys []string
+	for _, opt := range opts {
+		keys = append(keys, opt.Id)
+	}
+
+	return keys
+}
+
+func MergeRelationsDicts(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) []*pbrelation.Relation {
+	rels := CopyRelations(rels1)
+	for _, rel2 := range rels2 {
+		var found bool
+
+		for i, rel := range rels {
+			if rel.Key == rel2.Key {
+				rel2Copy := CopyRelation(rel2)
+				rels[i].SelectDict = rel2Copy.SelectDict
+				rels[i].Name = rel2Copy.Name
+				found = true
+				break
+			}
+		}
+
+		if !found {
+			rels = append(rels, CopyRelation(rel2))
+		}
+	}
+	return rels
+}
+
+// MergeOptionsPreserveScope adds and updates options from opts2 into opts1 based on the ID
+// in case opts2 doesn't have id that opts1 have it doesn't remove the existing one
+// in case opts2 has the key that opts1 already have it updates everything except scope
+func MergeOptionsPreserveScope(opts1 []*pbrelation.RelationOption, opts2 []*pbrelation.RelationOption) []*pbrelation.RelationOption {
+	opts := CopyOptions(opts1)
+	for _, opt2 := range opts2 {
+		var found bool
+		for i, opt := range opts {
+			if opt.Id == opt2.Id {
+				opts[i].Text = opt2.Text
+				opts[i].Color = opt2.Color
+				found = true
+				break
+			}
+		}
+		if !found {
+			opt2Copy := *opt2
+			opts = append(opts, &opt2Copy)
+		}
+	}
+	return opts
+}
+
 // StructToMap converts a types.Struct to a map from strings to Go types.
 // StructToMap panics if s is invalid.
 func StructToMap(s *types.Struct) map[string]interface{} {

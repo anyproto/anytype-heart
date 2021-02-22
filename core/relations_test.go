@@ -137,6 +137,52 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, block.GetDataview().Relations, len(bundle.MustGetType(bundle.TypeKeyPage).Relations)+1)
 	})
 
+	t.Run("relation_aggregate_scope", func(t *testing.T) {
+		respSet1 := mw.SetCreate(&pb.RpcSetCreateRequest{
+			ObjectTypeUrl: bundle.TypeKeyIdea.URL(),
+			Details:       nil,
+		})
+		require.Equal(t, 0, int(respSet1.Error.Code), respSet1.Error.Description)
+
+		respSet2 := mw.SetCreate(&pb.RpcSetCreateRequest{
+			ObjectTypeUrl: bundle.TypeKeyIdea.URL(),
+			Details:       nil,
+		})
+		require.Equal(t, 0, int(respSet2.Error.Code), respSet2.Error.Description)
+
+		respSetRelCreate1 := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
+			ContextId: respSet1.Id,
+			BlockId:   "dataview",
+			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_shorttext, Name: "from set1"},
+		})
+		require.Equal(t, 0, int(respSetRelCreate1.Error.Code), respSetRelCreate1.Error.Description)
+
+		respSetRelCreate2 := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
+			ContextId: respSet2.Id,
+			BlockId:   "dataview",
+			Relation:  &pbrelation.Relation{Format: pbrelation.RelationFormat_shorttext, Name: "from set2"},
+		})
+		require.Equal(t, 0, int(respSetRelCreate2.Error.Code), respSetRelCreate2.Error.Description)
+
+		respPageCreate := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
+			bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyIdea.URL()}),
+		}}})
+		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
+
+		time.Sleep(time.Second * 2)
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+
+		blockShow := getEventBlockShow(respOpenNewPage.Event.Messages)
+
+		relFromSet1 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate1.RelationKey)
+		require.NotNil(t, relFromSet1)
+		require.Equal(t, relFromSet1.Scope, pbrelation.Relation_setOfTheSameType)
+		relFromSet2 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate2.RelationKey)
+		require.NotNil(t, relFromSet2)
+		require.Equal(t, relFromSet2.Scope, pbrelation.Relation_setOfTheSameType)
+	})
+
 	t.Run("relation_scope_becomes_object", func(t *testing.T) {
 		respPageCreate := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
 			bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyTask.URL()}),
@@ -665,7 +711,7 @@ func TestCustomType(t *testing.T) {
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
 				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/page"}},
-				{Format: pbrelation.RelationFormat_description, Name: "bio"},
+				{Format: pbrelation.RelationFormat_longtext, Name: "bio"},
 			},
 		},
 	})

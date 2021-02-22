@@ -34,7 +34,7 @@ var (
 	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 
 	relationsPrefix = "relations"
-	// /relations/options/<relKey>/<relOptionId>: option model
+	// /relations/options/<relOptionId>: option model
 	relationsOptionsBase = ds.NewKey("/" + relationsPrefix + "/options")
 	// /relations/relations/<relKey>: relation model
 	relationsBase = ds.NewKey("/" + relationsPrefix + "/relations")
@@ -47,7 +47,13 @@ var (
 				var indexes []IndexKeyParts
 				for _, rk := range v.relationKeys {
 					for _, ot := range v.objectTypes {
-						indexes = append(indexes, IndexKeyParts([]string{ot, rk}))
+						otCompact, err := objTypeCompactEncode(ot)
+						if err != nil {
+							log.Errorf("objtype_relkey_objid index construction error(ot '%s'): %s", ot, err.Error())
+							continue
+						}
+
+						indexes = append(indexes, IndexKeyParts([]string{otCompact, rk}))
 					}
 				}
 				return indexes
@@ -66,7 +72,13 @@ var (
 				var indexes []IndexKeyParts
 				for _, rk := range v.relationKeys {
 					for _, ot := range v.objectTypes {
-						indexes = append(indexes, IndexKeyParts([]string{ot, rk}))
+						otCompact, err := objTypeCompactEncode(ot)
+						if err != nil {
+							log.Errorf("objtype_relkey_setid index construction error('%s'): %s", ot, err.Error())
+							continue
+						}
+
+						indexes = append(indexes, IndexKeyParts([]string{otCompact, rk}))
 					}
 				}
 				return indexes
@@ -145,18 +157,28 @@ var (
 				var indexes []IndexKeyParts
 				types := pbtypes.GetStringList(v.Details, bundle.RelationKeyType.String())
 
-				for _, t := range types {
-					indexes = append(indexes, IndexKeyParts([]string{t}))
+				for _, ot := range types {
+					otCompact, err := objTypeCompactEncode(ot)
+					if err != nil {
+						log.Errorf("type index construction error('%s'): %s", ot, err.Error())
+						continue
+					}
+					indexes = append(indexes, IndexKeyParts([]string{otCompact}))
 				}
 				return indexes
 			}
 			return nil
 		},
 		Unique: false,
-		Hash:   true,
+		Hash:   false,
 	}
 
 	_ ObjectStore = (*dsObjectStore)(nil)
+)
+
+const (
+	CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
+	BundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
 )
 
 type relationOption struct {
@@ -321,7 +343,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 				break
 			}
 		}
-		opt, err := getOption(txn, relationKey, optId)
+		opt, err := getOption(txn, optId)
 		if err != nil {
 			return nil, err
 		}
@@ -336,7 +358,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 			continue
 		}
 
-		opt2, err := getOption(txn, opt.relationKey, opt.optionId)
+		opt2, err := getOption(txn, opt.optionId)
 		if err != nil {
 			return nil, err
 		}
@@ -360,7 +382,7 @@ func (m *dsObjectStore) GetAggregatedOptionsForFormat(format pbrelation.Relation
 
 	var options []*pbrelation.RelationOption
 	for _, ro := range ros {
-		opt, err := getOption(txn, ro.relationKey, ro.optionId)
+		opt, err := getOption(txn, ro.optionId)
 		if err != nil {
 			return nil, err
 		}
@@ -622,7 +644,22 @@ func (m *dsObjectStore) ListRelations(objType string) ([]*pbrelation.Relation, e
 	defer txn.Discard()
 
 	if objType == "" {
-		return m.listRelations(txn, 0)
+		rels, err := m.listRelations(txn, 0)
+		if err != nil {
+			return nil, err
+		}
+		// todo: omit when we will have everything in index
+		relsKeys2 := bundle.ListRelationsKeys()
+		for _, relKey := range relsKeys2 {
+			if pbtypes.HasRelation(rels, relKey.String()) {
+				continue
+			}
+
+			rel := bundle.MustGetRelation(relKey)
+			rel.Scope = pbrelation.Relation_library
+			rels = append(rels, rel)
+		}
+		return rels, nil
 	}
 
 	rels, err := m.AggregateRelationsFromObjectsOfType(objType)
@@ -647,6 +684,7 @@ func (m *dsObjectStore) ListRelations(objType string) ([]*pbrelation.Relation, e
 		return nil, fmt.Errorf("failed to list relations from store index: %w", err)
 	}
 
+	// todo: omit when we will have everything in index
 	for _, relKey := range relsKeys {
 		if pbtypes.HasRelation(rels, relKey) {
 			continue
@@ -692,8 +730,11 @@ func (m *dsObjectStore) AggregateRelationsFromObjectsOfType(objType string) ([]*
 	defer txn.Discard()
 
 	var rels []*pbrelation.Relation
-
-	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, []string{objType}, "/", false, 0)
+	objTypeCompact, err := objTypeCompactEncode(objType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to encode object type '%s': %s", objType, err.Error())
+	}
+	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, []string{objTypeCompact}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -725,8 +766,11 @@ func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*pbr
 	defer txn.Discard()
 
 	var rels []*pbrelation.Relation
-
-	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objType}, "/", false, 0)
+	objTypeCompact, err := objTypeCompactEncode(objType)
+	if err != nil {
+		return nil, err
+	}
+	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objTypeCompact}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -1151,14 +1195,14 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 	return nil
 }
 
-func (m *dsObjectStore) updateOption(txn ds.Txn, relationKey string, option *pbrelation.RelationOption) error {
+func (m *dsObjectStore) updateOption(txn ds.Txn, option *pbrelation.RelationOption) error {
 	b, err := proto.Marshal(option)
 	if err != nil {
 		return err
 	}
-	relationsKey := relationsOptionsBase.ChildString(relationKey).ChildString(option.Id)
+	optionKey := relationsOptionsBase.ChildString(option.Id)
 
-	return txn.Put(relationsKey, b)
+	return txn.Put(optionKey, b)
 
 }
 
@@ -1211,12 +1255,25 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 	relationsKey := pagesRelationsBase.ChildString(id)
 	var err error
 	for _, relation := range relationsAfter.Relations {
-		// save all options
-		// todo: save only changed options
-		for _, opt := range relation.SelectDict {
-			err := m.updateOption(txn, relation.Key, opt)
-			if err != nil {
-				return err
+		if relation.Format == pbrelation.RelationFormat_status || relation.Format == pbrelation.RelationFormat_tag {
+			var relBefore *pbrelation.Relation
+			if relationsBefore != nil {
+				relBefore = pbtypes.GetRelation(relationsBefore.Relations, relation.Key)
+			}
+
+			for _, opt := range relation.SelectDict {
+				var optBefore *pbrelation.RelationOption
+				if relBefore != nil {
+					optBefore = pbtypes.GetOption(relBefore.SelectDict, opt.Id)
+				}
+
+				if !pbtypes.OptionEqualOmitScope(optBefore, opt) {
+					err := m.updateOption(txn, opt)
+					if err != nil {
+						return err
+					}
+
+				}
 			}
 		}
 
@@ -1269,7 +1326,7 @@ func (m *dsObjectStore) Prefix() string {
 }
 
 func (m *dsObjectStore) Indexes() []Index {
-	return []Index{indexRelationOptionObject, indexFormatOptionObject, indexObjectTypeObject, indexRelationObject}
+	return []Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexFormatOptionObject, indexObjectTypeObject}
 }
 
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
@@ -1291,7 +1348,7 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 }
 
 func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", true, 100)
+	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 100)
 	if err != nil {
 		return nil, err
 	}
@@ -1366,8 +1423,13 @@ func (m *dsObjectStore) listRelations(txn ds.Txn, limit int) ([]*pbrelation.Rela
 	return rels, nil
 }
 
-func isObjectBelongToType(txn ds.Txn, id, objectType string) (bool, error) {
-	return HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objectType}, "", true, id)
+func isObjectBelongToType(txn ds.Txn, id, objType string) (bool, error) {
+	objTypeCompact, err := objTypeCompactEncode(objType)
+	if err != nil {
+		return false, err
+	}
+
+	return HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
 }
 
 func isRelationBelongToType(txn ds.Txn, relKey, objectType string) (bool, error) {
@@ -1426,15 +1488,17 @@ func getRelations(txn ds.Txn, id string) (*pbrelation.Relations, error) {
 	return &relations, nil
 }
 
-func getOption(txn ds.Txn, relationKey, optionId string) (*pbrelation.RelationOption, error) {
+func getOption(txn ds.Txn, optionId string) (*pbrelation.RelationOption, error) {
 	var opt pbrelation.RelationOption
-	if val, err := txn.Get(relationsOptionsBase.ChildString(relationKey).ChildString(optionId)); err != nil {
+	if val, err := txn.Get(relationsOptionsBase.ChildString(optionId)); err != nil {
+		log.Debugf("getOption %s: not found", optionId)
 		if err != ds.ErrNotFound {
-			return nil, fmt.Errorf("failed to get relations: %w", err)
+			return nil, fmt.Errorf("failed to get option from localstore: %w", err)
 		}
 	} else if err := proto.Unmarshal(val, &opt); err != nil {
-		return nil, fmt.Errorf("failed to unmarshal relations: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal option: %w", err)
 	}
+	
 	return &opt, nil
 }
 
@@ -1611,4 +1675,24 @@ func extractIdFromKey(key string) (id string) {
 		return
 	}
 	return key[i+1:]
+}
+
+// temp func until we move to the proper ids
+func objTypeCompactEncode(objType string) (string, error) {
+	if strings.HasPrefix(objType, BundledObjectTypeURLPrefix) {
+		return "0" + strings.TrimPrefix(objType, BundledObjectTypeURLPrefix), nil
+	} else if strings.HasPrefix(objType, CustomObjectTypeURLPrefix) {
+		return "1" + strings.TrimPrefix(objType, CustomObjectTypeURLPrefix), nil
+	}
+	return "", fmt.Errorf("invalid objType")
+}
+
+// temp func until we move to the proper ids
+func objTypeCompactDecode(objTypeCompact string) (string, error) {
+	if strings.HasPrefix(objTypeCompact, "0") {
+		return BundledObjectTypeURLPrefix + strings.TrimPrefix(objTypeCompact, "0"), nil
+	} else if strings.HasPrefix(objTypeCompact, "1") {
+		return CustomObjectTypeURLPrefix + strings.TrimPrefix(objTypeCompact, "1"), nil
+	}
+	return "", fmt.Errorf("invalid objType")
 }

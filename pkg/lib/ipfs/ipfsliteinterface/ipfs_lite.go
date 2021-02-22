@@ -47,7 +47,7 @@ func (i ipfsLite) BlockStore() blockstore.Blockstore {
 }
 
 func (i ipfsLite) HasBlock(c cid.Cid) (bool, error) {
-	return i.HasBlock(c)
+	return i.l.HasBlock(c)
 }
 
 func New(p *ipfslite.Peer) ipfs.IPFS {

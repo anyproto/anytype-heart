@@ -105,6 +105,15 @@ func HasRelation(key string) bool {
 	return exists
 }
 
+func EqualWithRelation(key string, rel *relation.Relation) (equal bool, exists bool) {
+	v, exists := relations[RelationKey(key)]
+	if !exists {
+		return false, false
+	}
+
+	return pbtypes.RelationEqualOmitDictionary(v, rel), true
+}
+
 func ListTypes() ([]*relation.ObjectType, error) {
 	var otypes []*relation.ObjectType
 	for _, ot := range types {

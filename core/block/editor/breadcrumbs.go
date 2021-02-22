@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -28,6 +29,10 @@ func (p *Breadcrumbs) Init(s source.Source, allowEmpty bool, _ []string) (err er
 	}
 	p.SmartBlock.DisableLayouts()
 	return template.ApplyTemplate(p, nil, template.WithEmpty)
+}
+
+func (p *Breadcrumbs) Relations() []*pbrelation.Relation {
+	return nil
 }
 
 func (b *Breadcrumbs) SetCrumbs(ids []string) (err error) {

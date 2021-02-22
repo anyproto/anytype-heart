@@ -1,6 +1,7 @@
 package pbtypes
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -116,6 +117,18 @@ func CopyRelations(in []*pbrelation.Relation) (out []*pbrelation.Relation) {
 	return outWrapped.Relations
 }
 
+func CopyOptions(in []*pbrelation.RelationOption) (out []*pbrelation.RelationOption) {
+	if in == nil {
+		return nil
+	}
+
+	for _, inO := range in {
+		inCopy := *inO
+		out = append(out, &inCopy)
+	}
+	return
+}
+
 func CopyRelationsToMap(in []*pbrelation.Relation) (out map[string]*pbrelation.Relation) {
 	out = make(map[string]*pbrelation.Relation, len(in))
 	rels := CopyRelations(in)
@@ -123,5 +136,27 @@ func CopyRelationsToMap(in []*pbrelation.Relation) (out map[string]*pbrelation.R
 		out[rel.Key] = rel
 	}
 
+	return
+}
+
+func RelationsFilterKeys(in []*pbrelation.Relation, keys []string) (out []*pbrelation.Relation) {
+	for i, inRel := range in {
+		if slice.FindPos(keys, inRel.Key) >= 0 {
+			out = append(out, in[i])
+		}
+	}
+	return
+}
+
+func StructNotNilKeys(st *types.Struct) (keys []string) {
+	if st == nil || st.Fields == nil {
+		return nil
+	}
+
+	for k, v := range st.Fields {
+		if v != nil {
+			keys = append(keys, k)
+		}
+	}
 	return
 }

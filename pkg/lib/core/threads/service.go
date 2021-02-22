@@ -56,6 +56,8 @@ func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPa
 
 type Service interface {
 	ThreadsCollection() (*db.Collection, error)
+	Threads() net2.NetBoostrapper
+
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error)
 
@@ -93,6 +95,10 @@ func (s *service) ThreadsCollection() (*db.Collection, error) {
 	}
 
 	return s.threadsCollection, nil
+}
+
+func (s *service) Threads() net2.NetBoostrapper {
+	return s.t
 }
 
 func (s *service) Close() error {

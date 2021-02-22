@@ -809,7 +809,22 @@ func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDatavie
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		var err error
 		relation, err = b.AddRelation(ctx, req.BlockId, *req.Relation, true)
-		return err
+		if err != nil {
+			return err
+		}
+		rels, err := b.GetDataviewRelations(req.BlockId)
+		if err != nil {
+			return err
+		}
+
+		relation = pbtypes.GetRelation(rels, relation.Key)
+		if relation.Format == pbrelation.RelationFormat_status || relation.Format == pbrelation.RelationFormat_tag {
+			err = b.FillAggregatedOptions(nil)
+			if err != nil {
+				log.Errorf("FillAggregatedOptions failed: %s", err.Error())
+			}
+		}
+		return nil
 	})
 
 	return
@@ -1076,8 +1091,22 @@ func (s *service) BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBook
 }
 
 func (s *service) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error {
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.SetRelationKey(ctx, req)
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		rels := b.Relations()
+		rel := pbtypes.GetRelation(rels, req.Key)
+		if rel == nil {
+			var err error
+			rels, err = s.Anytype().ObjectStore().ListRelations("")
+			if err != nil {
+				return err
+			}
+			rel = pbtypes.GetRelation(rels, req.Key)
+			if rel == nil {
+				return fmt.Errorf("relation with provided key not found")
+			}
+		}
+
+		return b.(basic.Basic).AddRelationAndSet(ctx, pb.RpcBlockRelationAddRequest{Relation: rel, BlockId: req.BlockId, ContextId: req.ContextId})
 	})
 }
 
@@ -1499,7 +1528,11 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 
 	var relations []*model.BlockContentDataviewRelation
 	for _, rel := range objType.Relations {
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
+		visible := !rel.Hidden
+		if rel.Key == bundle.RelationKeyType.String() {
+			visible = false
+		}
+		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
 	}
 
 	dataview := model.BlockContentOfDataview{
@@ -1582,7 +1615,7 @@ func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations [
 		}
 
 		for _, rel := range agRels {
-			if pbtypes.HasRelation(agRels, rel.Key) {
+			if pbtypes.HasRelation(aggregatedRelations, rel.Key) {
 				continue
 			}
 			aggregatedRelations = append(aggregatedRelations, pbtypes.CopyRelation(rel))

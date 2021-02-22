@@ -958,7 +958,7 @@ func (m *ChangeRelationUpdate) GetFormat() relation.RelationFormat {
 	if x, ok := m.GetValue().(*ChangeRelationUpdateValueOfFormat); ok {
 		return x.Format
 	}
-	return relation.RelationFormat_description
+	return relation.RelationFormat_longtext
 }
 
 func (m *ChangeRelationUpdate) GetName() string {

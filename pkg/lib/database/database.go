@@ -48,7 +48,7 @@ type Writer interface {
 	Create(relations []*pbrelation.Relation, rec Record, sub Subscription) (Record, error)
 
 	Update(id string, relations []*pbrelation.Relation, rec Record) error
-	AddRelationOption(id string, relKey string, option pbrelation.RelationOption) (optionId string, err error)
+	UpdateRelationOption(id string, relKey string, option pbrelation.RelationOption) (optionId string, err error)
 
 	Delete(id string) error
 }

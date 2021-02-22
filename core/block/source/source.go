@@ -190,10 +190,13 @@ func (s *source) buildState() (doc state.Doc, err error) {
 			}
 		}
 	}
-	st.InjectDerivedDetails()
-	err = InjectCreationInfo(s, st)
-	if err != nil {
-		log.With("thread", s.id).Errorf("injectCreationInfo failed: %s", err.Error())
+	if s.Type() != pb.SmartBlockType_Archive && !s.Virtual() {
+		// we do not need details for archive or breadcrumbs
+		st.InjectDerivedDetails()
+		err = InjectCreationInfo(s, st)
+		if err != nil {
+			log.With("thread", s.id).Errorf("injectCreationInfo failed: %s", err.Error())
+		}
 	}
 
 	if _, _, err = state.ApplyState(st, false); err != nil {

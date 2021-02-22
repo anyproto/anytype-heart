@@ -365,6 +365,17 @@
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
     - [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response)
     - [Rpc.Config.Get.Response.Error](#anytype.Rpc.Config.Get.Response.Error)
+    - [Rpc.Debug](#anytype.Rpc.Debug)
+    - [Rpc.Debug.Sync](#anytype.Rpc.Debug.Sync)
+    - [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request)
+    - [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response)
+    - [Rpc.Debug.Sync.Response.Error](#anytype.Rpc.Debug.Sync.Response.Error)
+    - [Rpc.Debug.Thread](#anytype.Rpc.Debug.Thread)
+    - [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request)
+    - [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response)
+    - [Rpc.Debug.Thread.Response.Error](#anytype.Rpc.Debug.Thread.Response.Error)
+    - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
+    - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
     - [Rpc.Export](#anytype.Rpc.Export)
     - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
     - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
@@ -607,6 +618,8 @@
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.BlockList.TurnInto.Response.Error.Code](#anytype.Rpc.BlockList.TurnInto.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
+    - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
+    - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
@@ -989,6 +1002,8 @@
 | HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
+| DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
+| DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
 
  
@@ -6134,6 +6149,192 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.Debug"></a>
+
+### Rpc.Debug
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Sync"></a>
+
+### Rpc.Debug.Sync
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Sync.Request"></a>
+
+### Rpc.Debug.Sync.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| recordsTraverseLimit | [int32](#int32) |  | 0 means no limit |
+| skipEmptyLogs | [bool](#bool) |  | do not set if you want the whole picture |
+| tryToDownloadRemoteRecords | [bool](#bool) |  | if try we will try to download remote records in case missing |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Sync.Response"></a>
+
+### Rpc.Debug.Sync.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.Sync.Response.Error](#anytype.Rpc.Debug.Sync.Response.Error) |  |  |
+| threads | [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo) | repeated |  |
+| deviceId | [string](#string) |  |  |
+| totalThreads | [int32](#int32) |  |  |
+| threadsWithoutReplInOwnLog | [int32](#int32) |  |  |
+| threadsWithoutHeadDownloaded | [int32](#int32) |  |  |
+| totalRecords | [int32](#int32) |  |  |
+| totalSize | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Sync.Response.Error"></a>
+
+### Rpc.Debug.Sync.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Thread"></a>
+
+### Rpc.Debug.Thread
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Thread.Request"></a>
+
+### Rpc.Debug.Thread.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| threadId | [string](#string) |  |  |
+| skipEmptyLogs | [bool](#bool) |  | do not set if you want the whole picture |
+| tryToDownloadRemoteRecords | [bool](#bool) |  | if try we will try to download remote records in case missing |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Thread.Response"></a>
+
+### Rpc.Debug.Thread.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.Thread.Response.Error](#anytype.Rpc.Debug.Thread.Response.Error) |  |  |
+| info | [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Thread.Response.Error"></a>
+
+### Rpc.Debug.Thread.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.logInfo"></a>
+
+### Rpc.Debug.logInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| head | [string](#string) |  |  |
+| headDownloaded | [bool](#bool) |  |  |
+| totalRecords | [int32](#int32) |  |  |
+| totalSize | [int32](#int32) |  |  |
+| firstRecordTs | [int32](#int32) |  |  |
+| firstRecordVer | [int32](#int32) |  |  |
+| lastRecordTs | [int32](#int32) |  |  |
+| lastRecordVer | [int32](#int32) |  |  |
+| lastPullSecAgo | [int32](#int32) |  |  |
+| upStatus | [string](#string) |  |  |
+| downStatus | [string](#string) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.threadInfo"></a>
+
+### Rpc.Debug.threadInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| logsWithDownloadedHead | [int32](#int32) |  |  |
+| logsWithWholeTreeDownloaded | [int32](#int32) |  |  |
+| logs | [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo) | repeated |  |
+| ownLogHasCafeReplicator | [bool](#bool) |  |  |
+| cafeLastPullSecAgo | [int32](#int32) |  |  |
+| cafeUpStatus | [string](#string) |  |  |
+| cafeDownStatus | [string](#string) |  |  |
+| totalRecords | [int32](#int32) |  |  |
+| totalSize | [int32](#int32) |  |  |
+| error | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Export"></a>
 
 ### Rpc.Export
@@ -9477,6 +9678,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NODE_NOT_STARTED | 101 |  |
+
+
+
+<a name="anytype.Rpc.Debug.Sync.Response.Error.Code"></a>
+
+### Rpc.Debug.Sync.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Debug.Thread.Response.Error.Code"></a>
+
+### Rpc.Debug.Thread.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -13014,8 +13241,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| description | 0 | plain string |
-| title | 1 | string, usually short enough. May be truncated |
+| longtext | 0 | string |
+| shorttext | 1 | string, usually short enough. May be truncated |
 | number | 2 | double |
 | status | 3 | string (choose one from a list) |
 | tag | 11 | list of string (choose multiple from a list) |

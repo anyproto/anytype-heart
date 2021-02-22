@@ -91,8 +91,8 @@ message Relation {
 
 // RelationFormat describes how the underlying data is stored in the google.protobuf.Value and how it should be validated/sanitized
 enum RelationFormat {
-    description = 0; // plain string
-    title = 1; // string, usually short enough. May be truncated
+    longtext = 0; // string
+    shorttext = 1; // string, usually short enough. May be truncated
     number = 2; // double
     status = 3; // string (choose one from a list)
     tag = 11; // list of string (choose multiple from a list)
