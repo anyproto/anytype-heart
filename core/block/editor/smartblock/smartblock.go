@@ -601,6 +601,10 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 
 					for _, missingOptsId := range missingOptsIds {
 						opt := pbtypes.GetOption(opts, missingOptsId)
+						if opt == nil {
+							log.Errorf("relation %s is missing option: %s", rel.Key, missingOptsId)
+							continue
+						}
 						optCopy := *opt
 						// reset scope
 						optCopy.Scope = pbrelation.RelationOption_local

@@ -1490,7 +1490,7 @@ func getOption(txn ds.Txn, optionId string) (*pbrelation.RelationOption, error) 
 	} else if err := proto.Unmarshal(val, &opt); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal option: %w", err)
 	}
-	
+
 	return &opt, nil
 }
 

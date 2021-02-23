@@ -81,11 +81,11 @@ func TestSmartBlock_Apply(t *testing.T) {
 	t.Run("no flags", func(t *testing.T) {
 		fx := newFixture(t)
 		defer fx.tearDown()
+
 		fx.init([]*model.Block{{Id: "1"}})
 		s := fx.NewState()
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
-		fx.metaService.EXPECT().FetchObjectTypes(gomock.Any())
 		fx.source.EXPECT().PushChange(gomock.Any())
 		var event *pb.Event
 		fx.SetEventFunc(func(e *pb.Event) {
@@ -121,6 +121,8 @@ func newFixture(t *testing.T) *fixture {
 	metaService := mockMeta.NewMockService(ctrl)
 	metaService.EXPECT().PubSub().AnyTimes().Return(metaPubSub)
 	metaPubSub.EXPECT().NewSubscriber().AnyTimes().Return(metaSubscriber)
+	metaService.EXPECT().FetchObjectTypes(gomock.Any()).AnyTimes()
+
 	return &fixture{
 		SmartBlock:     New(metaService),
 		t:              t,

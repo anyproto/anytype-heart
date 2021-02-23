@@ -637,8 +637,6 @@ func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
 	if !found {
 		s.extraRelations = append(s.extraRelations, relCopy)
 	}
-
-	return
 }
 
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {

@@ -209,9 +209,21 @@ func TestRelationAdd(t *testing.T) {
 			}
 		}
 
-		mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{ContextId: respPageCreate.PageId, Details: []*pb.RpcBlockSetDetailsDetail{
-			{Key: bundle.RelationKeyStatus.String(), Value: pbtypes.String("Done")},
+		optionAddResp := mw.ObjectRelationOptionAdd(&pb.RpcObjectRelationOptionAddRequest{
+			ContextId:   respPageCreate.PageId,
+			RelationKey: bundle.RelationKeyStatus.String(),
+			Option:      &pbrelation.RelationOption{
+				Text:  "Done",
+				Color: "red",
+			},
+		})
+		require.Equal(t, 0, int(optionAddResp.Error.Code), optionAddResp.Error.Description)
+
+		setDetailsResp := mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{ContextId: respPageCreate.PageId, Details: []*pb.RpcBlockSetDetailsDetail{
+			{Key: bundle.RelationKeyStatus.String(), Value: pbtypes.StringList([]string{optionAddResp.Option.Id})},
 		}})
+		require.Equal(t, 0, int(setDetailsResp.Error.Code), setDetailsResp.Error.Description)
+
 
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
@@ -341,10 +353,21 @@ func TestRelationAdd(t *testing.T) {
 			},
 		})
 		require.Equal(t, 0, int(respRelCreate.Error.Code), respRelCreate.Error.Description)
-		rel := respRelCreate.Event.GetMessages()[0].GetBlockDataviewRelationSet()
-		require.Equal(t, respRelCreate.RelationKey, rel.RelationKey)
+
+		var foundRel *pbrelation.Relation
+		for _, msg := range respRelCreate.Event.GetMessages(){
+			if rel := msg.GetBlockDataviewRelationSet(); rel != nil && rel.Relation.Name == "relation2" {
+				foundRel = rel.Relation
+				break
+			}
+		}
+		require.NotNil(t, foundRel)
+		require.Equal(t, respRelCreate.RelationKey, foundRel.Key)
 		// option is trimmed
-		require.Len(t, rel.Relation.SelectDict, 0)
+		for _, opt := range foundRel.SelectDict {
+			require.NotEqual(t, pbrelation.RelationOption_local, opt.Scope)
+			require.NotEqual(t, "relation2", opt.Text)
+		}
 
 		respRecordCreate := mw.BlockDataviewRecordCreate(
 			&pb.RpcBlockDataviewRecordCreateRequest{
@@ -375,7 +398,7 @@ func TestRelationAdd(t *testing.T) {
 				RecordId:  newPageId,
 				Record: &types2.Struct{
 					Fields: map[string]*types2.Value{
-						rel.Relation.Key: pbtypes.StringList([]string{respRelOptCreate.Option.Id}),
+						foundRel.Key: pbtypes.StringList([]string{respRelOptCreate.Option.Id}),
 					},
 				},
 			})
@@ -386,13 +409,13 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 1)
 
-		relOnPage := getRelationByKey(getEventBlockShow(respOpenNewPage.Event.Messages).Relations, rel.RelationKey)
-		require.Equal(t, rel.Relation.Key, relOnPage.Key)
+		relOnPage := getRelationByKey(getEventBlockShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
+		require.Equal(t, foundRel.Key, relOnPage.Key)
 
 		respOptAdd := mw.BlockDataviewRecordRelationOptionAdd(&pb.RpcBlockDataviewRecordRelationOptionAddRequest{
 			ContextId:   mw.Anytype.PredefinedBlocks().SetPages,
 			BlockId:     "dataview",
-			RelationKey: rel.RelationKey,
+			RelationKey: foundRel.Key,
 			RecordId:    newPageId,
 			Option: &pbrelation.RelationOption{
 				Text:  "opt2",
@@ -410,7 +433,7 @@ func TestRelationAdd(t *testing.T) {
 				RecordId:  newPageId,
 				Record: &types2.Struct{
 					Fields: map[string]*types2.Value{
-						rel.Relation.Key: pbtypes.String(respOptAdd.Option.Id),
+						foundRel.Key: pbtypes.StringList([]string{respOptAdd.Option.Id}),
 					},
 				},
 			})
@@ -419,10 +442,9 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 1)
 
-		rel.Relation.SelectDict = append(rel.Relation.SelectDict, respOptAdd.Option)
-		relOnPage = getRelationByKey(getEventBlockShow(respOpenNewPage.Event.Messages).Relations, rel.RelationKey)
-		require.Equal(t, rel.Relation.Key, relOnPage.Key)
-		require.Len(t, relOnPage.SelectDict, 2)
+		relOnPage = getRelationByKey(getEventBlockShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
+		require.Equal(t, foundRel.Key, relOnPage.Key)
+		require.Len(t, relOnPage.SelectDict, 3)
 	})
 
 	t.Run("aggregated_options", func(t *testing.T) {
