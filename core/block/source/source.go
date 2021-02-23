@@ -173,8 +173,10 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		return
 	}
 
-	if verr := st.Validate(); verr != nil {
-		log.With("thread", s.id).Errorf("not valid state: %v", verr)
+	if s.sb.Type() != smartblock.SmartBlockTypeArchive && !s.Virtual() {
+		if verr := st.Validate(); verr != nil {
+			log.With("thread", s.id).With("sbType", s.sb.Type()).Errorf("not valid state: %v", verr)
+		}
 	}
 	if err = st.Normalize(false); err != nil {
 		return
@@ -210,6 +212,15 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	if s.Anytype() == nil {
 		return fmt.Errorf("anytype is nil")
 	}
+
+	defer func() {
+		if !pbtypes.HasRelation(st.ExtraRelations(), bundle.RelationKeyCreator.String()) {
+			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreator))
+		}
+		if !pbtypes.HasRelation(st.ExtraRelations(), bundle.RelationKeyCreatedDate.String()) {
+			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreatedDate))
+		}
+	}()
 
 	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
 		return nil

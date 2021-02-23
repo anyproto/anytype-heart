@@ -15,6 +15,17 @@ func FindPos(s []string, v string) int {
 	return -1
 }
 
+// Difference returns the elements in `a` that aren't in `b`.
+func Difference(a, b []string) []string {
+	var diff = make([]string, 0, len(a))
+	for _, a1 := range a {
+		if FindPos(b, a1) == -1 {
+			diff = append(diff, a1)
+		}
+	}
+	return diff
+}
+
 func Insert(s []string, pos int, v ...string) []string {
 	if len(s) <= pos {
 		return append(s, v...)

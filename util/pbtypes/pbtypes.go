@@ -154,6 +154,16 @@ func GetOption(opts []*pbrelation.RelationOption, id string) *pbrelation.Relatio
 	return nil
 }
 
+func HasOption(opts []*pbrelation.RelationOption, id string) bool {
+	for _, opt := range opts {
+		if opt.Id == id {
+			return true
+		}
+	}
+
+	return false
+}
+
 func Get(st *types.Struct, key string) *types.Value {
 	if st == nil || st.Fields == nil {
 		return nil
