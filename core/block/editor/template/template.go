@@ -60,48 +60,35 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 					continue
 				}
 				s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(t.Layout)))
+				s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyLayout))
 			}
 		}
 	}
 }
 
 var WithLayout = func(layout relation.ObjectTypeLayout) StateTransformer {
-	return func(s *state.State) {
-		d := s.Details()
-		if d == nil || d.Fields == nil || d.Fields[bundle.RelationKeyLayout.String()] == nil {
-			s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(layout)))
-		}
-	}
+	return WithDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(layout)))
 }
 
 var WithDetailName = func(name string) StateTransformer {
-	return func(s *state.State) {
-		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[bundle.RelationKeyName.String()] != nil {
-			return
-		}
-
-		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
-	}
+	return WithDetail(bundle.RelationKeyName, pbtypes.String(name))
 }
 
 var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
-		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[key.String()] != nil {
-			return
+		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil {
+			s.SetDetail(key.String(), value)
 		}
 
-		s.SetDetail(key.String(), value)
+		if rel := pbtypes.GetRelation(s.ExtraRelations(), key.String()); rel == nil {
+			s.SetExtraRelation(bundle.MustGetRelation(key))
+		}
 	}
 }
 
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
-	return func(s *state.State) {
-		if s.Details() != nil && s.Details().Fields != nil && s.Details().Fields[bundle.RelationKeyIconEmoji.String()] != nil {
-			return
-		}
+	return WithDetail(bundle.RelationKeyIconEmoji, pbtypes.String(iconEmoji))
 
-		s.SetDetail(bundle.RelationKeyIconEmoji.String(), pbtypes.String(iconEmoji))
-	}
 }
 
 var WithHeader = StateTransformer(func(s *state.State) {

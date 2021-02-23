@@ -16,6 +16,22 @@ var (
 	haveUriSchemeRegex = regexp.MustCompile(`^([a-zA-Z][A-Za-z0-9+.-]*):[\S]+`)
 )
 
+func ValidateEmail(email string) bool {
+	if len(email) == 0 {
+		return false
+	}
+
+	return noPrefixEmailRegexp.MatchString(email)
+}
+
+func ValidatePhone(phone string) bool {
+	if len(phone) == 0 {
+		return false
+	}
+
+	return noPrefixTelRegexp.MatchString(phone)
+}
+
 func ProcessURI(url string) (urlOut string, err error) {
 	if len(url) == 0 {
 		return url, fmt.Errorf("url is empty")

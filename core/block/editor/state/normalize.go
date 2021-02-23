@@ -344,6 +344,7 @@ func (s *State) normalizeRelations() {
 
 		equal, exists := bundle.EqualWithRelation(r.Key, r)
 		if exists && !equal {
+			// reset bundle relation in case the bundle has it updated
 			updateRelation = bundle.MustGetRelation(bundle.RelationKey(r.Key))
 			updateRelation.SelectDict = r.SelectDict
 		}

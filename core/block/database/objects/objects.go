@@ -57,8 +57,15 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
 
+	var relsToSet []*pbrelation.Relation
+	for _, rel := range relations {
+		if pbtypes.HasField(rec.Details, rel.Key) {
+			relsToSet = append(relsToSet, rel)
+		}
+	}
+
 	rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl})
-	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, nil)
+	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, relsToSet)
 	if err != nil {
 		return rec, err
 	}
@@ -72,18 +79,6 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 
 	if sub != nil {
 		sub.Subscribe([]string{id})
-	}
-
-	var relsToSet []*pbrelation.Relation
-	for _, rel := range relations {
-		if pbtypes.HasField(rec.Details, rel.Key) {
-			relsToSet = append(relsToSet, rel)
-		}
-	}
-
-	err = sp.setRelations(id, relsToSet)
-	if err != nil {
-		return rec, err
 	}
 
 	return rec, nil
