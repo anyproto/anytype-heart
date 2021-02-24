@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -28,6 +32,10 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -653,6 +661,9 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -776,6 +787,9 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -787,6 +801,9 @@
   
     - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -831,6 +848,9 @@
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
+  
+  
+
 - [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
     - [Layout](#anytype.relation.Layout)
     - [ObjectType](#anytype.relation.ObjectType)
@@ -845,6 +865,9 @@
     - [Relation.Scope](#anytype.relation.Relation.Scope)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -6101,6 +6124,8 @@ commands acceptable only for text blocks, others will be ignored
 | homeBlockId | [string](#string) |  | home dashboard block id |
 | archiveBlockId | [string](#string) |  | archive block id |
 | profileBlockId | [string](#string) |  | profile block id |
+| marketplaceTypeId | [string](#string) |  | marketplace type id |
+| marketplaceRelationId | [string](#string) |  | marketplace relation id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
@@ -12168,6 +12193,8 @@ Precondition: user A and user B opened the same block
 | Set | 5 | only have dataview simpleblock |
 | ObjectType | 6 | have relations list |
 | File | 7 |  |
+| MarketplaceType | 8 |  |
+| MarketplaceRelation | 9 |  |
 
 
  

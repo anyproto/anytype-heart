@@ -259,6 +259,14 @@ func (s *service) init() {
 	s.Do(s.anytype.PredefinedBlocks().SetPages, func(b smartblock.SmartBlock) error {
 		return nil
 	})
+
+	s.Do(s.anytype.PredefinedBlocks().MarketplaceType, func(b smartblock.SmartBlock) error {
+		return nil
+	})
+
+	s.Do(s.anytype.PredefinedBlocks().MarketplaceRelation, func(b smartblock.SmartBlock) error {
+		return nil
+	})
 }
 
 func (s *service) Anytype() anytype.Service {
@@ -1198,6 +1206,10 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 		sb = editor.NewObjectType(s.meta)
 	case pb.SmartBlockType_File:
 		sb = editor.NewFiles(s.meta)
+	case pb.SmartBlockType_MarketplaceType:
+		sb = editor.NewMarketplaceType(s.meta, s)
+	case pb.SmartBlockType_MarketplaceRelation:
+		sb = editor.NewMarketplaceRelation(s.meta, s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

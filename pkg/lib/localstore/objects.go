@@ -400,6 +400,8 @@ func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q dat
 	m.l.Lock()
 	defer m.l.Unlock()
 
+
+
 	records, total, err = m.Query(schema, q)
 
 	var ids []string
@@ -472,12 +474,18 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	if !q.WithSystemObjects {
+		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
 			return
 		}
 	}
+	for _, f := range dsq.Filters {
+		log.Warnf("query filter: %+v", f)
+	}
+
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)

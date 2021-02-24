@@ -1323,7 +1323,10 @@ func (m *ObjectInfo) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1409,7 +1412,10 @@ func (m *ObjectDetails) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1523,7 +1529,10 @@ func (m *ObjectLinks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1641,7 +1650,10 @@ func (m *ObjectLinksInfo) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1795,7 +1807,10 @@ func (m *ObjectInfoWithLinks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1947,7 +1962,10 @@ func (m *ObjectInfoWithOutboundLinks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -2097,7 +2115,10 @@ func (m *ObjectInfoWithOutboundLinksIDs) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {

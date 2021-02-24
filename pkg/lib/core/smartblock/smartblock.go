@@ -11,14 +11,16 @@ import (
 type SmartBlockType uint64
 
 const (
-	SmartBlockTypePage        SmartBlockType = 0x10
-	SmartBlockTypeProfilePage SmartBlockType = 0x11
-	SmartBlockTypeHome        SmartBlockType = 0x20
-	SmartBlockTypeArchive     SmartBlockType = 0x30
-	SmartBlockTypeDatabase    SmartBlockType = 0x40
-	SmartBlockTypeSet         SmartBlockType = 0x41
-	SmartBlockTypeObjectType  SmartBlockType = 0x60
-	SmartBlockTypeFile        SmartBlockType = 0x100
+	SmartBlockTypePage                SmartBlockType = 0x10
+	SmartBlockTypeProfilePage         SmartBlockType = 0x11
+	SmartBlockTypeHome                SmartBlockType = 0x20
+	SmartBlockTypeArchive             SmartBlockType = 0x30
+	SmartBlockTypeDatabase            SmartBlockType = 0x40
+	SmartBlockTypeSet                 SmartBlockType = 0x41
+	SmartBlockTypeObjectType          SmartBlockType = 0x60
+	SmartBlockTypeFile                SmartBlockType = 0x100
+	SmartblockTypeMarketplaceType     SmartBlockType = 0x110
+	SmartblockTypeMarketplaceRelation SmartBlockType = 0x111
 
 	SmartBlockTypeBundledRelation  SmartBlockType = 0x200 // temp
 	SmartBlockTypeIndexedRelation  SmartBlockType = 0x201 // temp
@@ -72,6 +74,8 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 	case SmartBlockTypeArchive:
 		return model.ObjectInfo_Archive
 	case SmartBlockTypeSet:
+		return model.ObjectInfo_Set
+	case SmartblockTypeMarketplaceType:
 		return model.ObjectInfo_Set
 	default:
 		return model.ObjectInfo_Page
