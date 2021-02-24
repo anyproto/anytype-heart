@@ -15,8 +15,8 @@ import (
 )
 
 const (
-	CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	BundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
+	//CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
+	BundledObjectTypeURLPrefix = "_ot"
 )
 
 func New(

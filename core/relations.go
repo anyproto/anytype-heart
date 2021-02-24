@@ -5,7 +5,6 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -13,11 +12,6 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-)
-
-const (
-	customObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	bundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
 )
 
 func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
@@ -64,10 +58,9 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 	}
 
 	var relations []*pbrelation.Relation
-	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddExtraRelations(nil, id, req.Relations)
+		relations, err = bs.AddExtraRelations(nil, objType.Url, req.Relations)
 		if err != nil {
 			return err
 		}
@@ -102,9 +95,8 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
-	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.UpdateExtraRelations(nil, id, []*pbrelation.Relation{req.Relation}, false)
+		err = bs.UpdateExtraRelations(nil, objType.Url, []*pbrelation.Relation{req.Relation}, false)
 		if err != nil {
 			return err
 		}
@@ -138,10 +130,9 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
-	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.RemoveExtraRelations(nil, id, []string{req.RelationKey})
+		err = bs.RemoveExtraRelations(nil, objType.Url, []string{req.RelationKey})
 		if err != nil {
 			return err
 		}
@@ -208,7 +199,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 
 	otype := req.ObjectType
 	otype.Relations = req.ObjectType.Relations
-	otype.Url = customObjectTypeURLPrefix + sbId
+	otype.Url = sbId
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }
 
@@ -233,7 +224,7 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 
 	for _, id := range threadIds {
 		err = mw.doBlockService(func(bs block.Service) (err error) {
-			otype, err := bs.GetObjectType(objects.CustomObjectTypeURLPrefix + id.String())
+			otype, err := bs.GetObjectType(id.String())
 			if err != nil {
 				return err
 			}

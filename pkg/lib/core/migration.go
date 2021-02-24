@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
@@ -55,7 +54,9 @@ var migrations = []migration{
 	skipMigration,               // 14
 	skipMigration,               // 15
 	skipMigration,               // 16
-	reindexAll,                  // 17
+	skipMigration,               // 17
+	reindexAll,                  // 18
+	reindexStoredRelations,      // 19
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -453,10 +454,10 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				continue
 			}
 			for _, idx := range a.localStore.Objects.Indexes() {
-				if idx.Name == "objtype_relkey_setid" {
+				//if idx.Name == "objtype_relkey_setid" {
 					// skip it because we can't reindex relations in sets for now
-					continue
-				}
+				//	continue
+				//}
 
 				err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
 				if err != nil {
@@ -482,6 +483,14 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				}
 			}
 
+			if strings.HasPrefix(objType, localstore.OldCustomObjectTypeURLPrefix){
+				objType = strings.TrimPrefix(objType, localstore.OldCustomObjectTypeURLPrefix)
+			} else if strings.HasPrefix(objType, localstore.OldBundledObjectTypeURLPrefix){
+				objType = localstore.BundledObjectTypeURLPrefix+strings.TrimPrefix(objType, localstore.OldBundledObjectTypeURLPrefix)
+			} else if bundle.HasObjectType(objType) {
+				objType = localstore.BundledObjectTypeURLPrefix+objType
+			}
+
 			o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
 			err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
 			if err != nil {
@@ -496,6 +505,16 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 			log.Debugf("migration reindexAll completed for %d objects", migrated)
 		}
 		return nil
+	})
+}
+
+func reindexStoredRelations(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		rels, err := a.localStore.Objects.ListRelations("")
+		if err != nil {
+			return err
+		}
+		return a.localStore.Objects.StoreRelations(rels)
 	})
 }
 
@@ -545,8 +564,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 					layout = t.Layout
 				}
 			} else {
-				otId := strings.TrimPrefix(otUrl, objects.CustomObjectTypeURLPrefix)
-				oi, err := a.localStore.Objects.GetByIDs(otId)
+				oi, err := a.localStore.Objects.GetByIDs(otUrl)
 				if err != nil {
 					log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
 					continue

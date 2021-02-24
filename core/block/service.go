@@ -1366,12 +1366,11 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 			return nil, err
 		}
 		return objectType, nil
-	} else if !strings.HasPrefix(url, objects.CustomObjectTypeURLPrefix) {
+	} else if !strings.HasPrefix(url, "b") {
 		return nil, fmt.Errorf("incorrect object type URL format")
 	}
 
-	sbid := strings.TrimPrefix(url, objects.CustomObjectTypeURLPrefix)
-	sb, err := s.anytype.GetBlock(sbid)
+	sb, err := s.anytype.GetBlock(url)
 	if err != nil {
 		return nil, err
 	}

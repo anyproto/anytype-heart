@@ -51,7 +51,7 @@
   {
     "description": "Done checkbox used to render action layout. ",
     "format": "checkbox",
-    "hidden": false,
+    "hidden": true,
     "key": "done",
     "maxCount": 1,
     "name": "Done",
@@ -269,7 +269,7 @@
     "format": "emoji",
     "hidden": true,
     "key": "iconEmoji",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Emoji",
     "readonly": false,
     "source": "details"
@@ -350,6 +350,19 @@
     "source": "details"
   },
   {
+    "description": "Type that is used for templating",
+    "format": "object",
+    "hidden": true,
+    "key": "templateType",
+    "maxCount": 1,
+    "name": "Template's Type",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Audio record's genre name",
     "format": "shorttext",
     "hidden": false,
@@ -381,7 +394,7 @@
   {
     "description": "Used to order tasks in list/canban",
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "priority",
     "maxCount": 1,
     "name": "Priority",
@@ -472,7 +485,7 @@
     "format": "object",
     "hidden": true,
     "key": "id",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Anytype ID",
     "readonly": false,
     "source": "derived"
@@ -555,7 +568,7 @@
     "format": "checkbox",
     "hidden": true,
     "key": "mpAddedToLibrary",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Added to library",
     "readonly": false,
     "source": "account"

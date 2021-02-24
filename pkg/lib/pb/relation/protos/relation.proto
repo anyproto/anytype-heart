@@ -16,7 +16,7 @@ message ObjectType {
     enum Layout {
         basic = 0;
         profile = 1;
-        action = 2;
+        todo = 2;
         set = 3;
         objectType = 4;
         relation = 5;

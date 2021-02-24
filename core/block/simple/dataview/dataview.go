@@ -339,7 +339,7 @@ func (td *Dataview) ModelToSave() *model.Block {
 }
 
 func (d *Dataview) SetSource(source string) error {
-	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, objects.CustomObjectTypeURLPrefix) {
+	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, "b") {
 		return fmt.Errorf("invalid source URL")
 	}
 
@@ -452,7 +452,7 @@ func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.Re
 	relFound := pbtypes.GetRelation(d.content.Relations, relationKey)
 
 	for _, rel := range d.content.Relations {
-		if rel.Key != relationKey{
+		if rel.Key != relationKey {
 			if relFound.Format != rel.Format {
 				continue
 			}

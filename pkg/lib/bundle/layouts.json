@@ -31,8 +31,8 @@
     "name": "Dashboard"
   },
   {
-    "id": "action",
-    "name": "Action",
+    "id": "todo",
+    "name": "to-do",
     "requiredRelations": [
       "done",
       "name"

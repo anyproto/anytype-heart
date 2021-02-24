@@ -105,6 +105,12 @@ func HasRelation(key string) bool {
 	return exists
 }
 
+func HasObjectType(key string) bool {
+	_, exists := types[TypeKey(key)]
+
+	return exists
+}
+
 func EqualWithRelation(key string, rel *relation.Relation) (equal bool, exists bool) {
 	v, exists := relations[RelationKey(key)]
 	if !exists {
@@ -121,4 +127,13 @@ func ListTypes() ([]*relation.ObjectType, error) {
 	}
 
 	return otypes, nil
+}
+
+func ListTypesKeys() []TypeKey {
+	var keys []TypeKey
+	for k, _ := range types {
+		keys = append(keys, k)
+	}
+
+	return keys
 }

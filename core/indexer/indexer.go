@@ -1,6 +1,9 @@
 package indexer
 
 import (
+	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"sync"
 	"time"
 
@@ -45,6 +48,7 @@ func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
 	if err := i.ftInit(); err != nil {
 		log.Errorf("can't init ft: %v", err)
 	}
+	go i.reindexBundled()
 	go i.detailsLoop(ch)
 	go i.ftLoop()
 	return i, nil
@@ -78,6 +82,48 @@ type indexer struct {
 	threadIdsBuf []string
 	recBuf       []core.SmartblockRecordEnvelope
 	mu           sync.Mutex
+}
+
+
+func (i *indexer) openDoc(id string) (state.Doc, error){
+	s, err := source.NewSource(i.anytype, nil, id)
+	if err != nil {
+		err = fmt.Errorf("anytype.GetBlock error: %v", err)
+		return nil, err
+	}
+	return s.ReadDoc(nil, false)
+}
+
+func (i *indexer) reindexBundled() {
+	var (
+		d state.Doc
+		err error
+	)
+
+	for _, rk := range bundle.ListRelationsKeys() {
+		id := "_br"+rk.String()
+		if d, err = i.openDoc(id); err != nil {
+			log.Errorf("reindexBundled failed to open %s: %s", id, err.Error())
+			return
+		}
+
+		if err := i.store.UpdateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
+			log.With("thread", id).Errorf("can't update object store: %v", err)
+		}
+	}
+
+	for _, rk := range bundle.ListTypesKeys() {
+		id := "_ot"+rk.String()
+		if d, err = i.openDoc(id); err != nil {
+			log.Errorf("reindexBundled failed to open %s: %s", id, err.Error())
+			return
+		}
+
+		if err := i.store.UpdateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
+			log.With("thread", id).Errorf("can't update object store: %v", err)
+		}
+	}
+
 }
 
 func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
@@ -172,6 +218,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 			dataviewSourceBefore = b.Model().GetDataview().Source
 		}
 	}
+
 	d.mu.Unlock()
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 

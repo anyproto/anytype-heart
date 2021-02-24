@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -161,6 +160,7 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err er
 	if err := sb.NormalizeRelations(); err != nil {
 		return err
 	}
+
 	return
 }
 
@@ -277,6 +277,9 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 								if ot == "" {
 									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
 								} else {
+									if strings.HasPrefix(ot, "http") {
+										log.Errorf("dv rels has http source")
+									}
 									uniqueObjTypes = append(uniqueObjTypes, ot)
 								}
 							}
@@ -404,9 +407,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		ids = append(ids, sb.Id())
 
 		for _, ot := range sb.ObjectTypes() {
-			if strings.HasSuffix(ot, objects.CustomObjectTypeURLPrefix) {
-				ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
-			}
+			ids = append(ids, ot)
 		}
 
 		details := sb.Details()
@@ -417,9 +418,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 			}
 			// add all custom object types as dependents
 			for _, ot := range rel.ObjectTypes {
-				if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
-					ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
-				}
+				ids = append(ids, ot)
 			}
 
 			if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
@@ -547,12 +546,12 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 
 func (sb *smartBlock) NewState() *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewState()
+	return sb.Doc.NewState().SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewStateCtx(ctx)
+	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) History() undo.History {

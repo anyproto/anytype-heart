@@ -82,6 +82,7 @@ type State struct {
 
 	bufIterateParentIds []string
 	groupId             string
+	noObjectType        bool
 }
 
 func (s *State) RootId() string {
@@ -104,11 +105,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType}
 }
 
 func (s *State) NewStateCtx(ctx *Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType}
 }
 
 func (s *State) Context() *Context {
@@ -702,6 +703,11 @@ func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelatio
 	return &option, nil
 }
 
+
+func (s *State) SetObjectType(objectType string) *State {
+	return s.SetObjectTypes([]string{objectType})
+}
+
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
@@ -766,7 +772,7 @@ func (s *State) ObjectTypes() []string {
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
 func (s *State) ObjectType() string {
 	objTypes := s.ObjectTypes()
-	if len(objTypes) != 1 {
+	if len(objTypes) != 1 && !s.noObjectType {
 		log.Errorf("obj %s has %d objectTypes instead of 1", s.RootId(), len(objTypes))
 	}
 
@@ -966,6 +972,7 @@ func (s *State) Copy() *State {
 		details:        pbtypes.CopyStruct(s.details),
 		extraRelations: pbtypes.CopyRelations(s.extraRelations),
 		objectTypes:    objTypes,
+		noObjectType:   s.noObjectType,
 	}
 	return copy
 }
@@ -985,6 +992,11 @@ func (s *State) Len() (l int) {
 		return true
 	})
 	return
+}
+
+func (s *State) SetNoObjectType(noObjectType bool) *State {
+	s.noObjectType = noObjectType
+	return s
 }
 
 type linkSource interface {

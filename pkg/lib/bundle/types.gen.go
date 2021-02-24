@@ -16,7 +16,7 @@ func (tk TypeKey) URL() string {
 }
 
 const (
-	TypePrefix = "https://anytype.io/schemas/object/bundled/"
+	TypePrefix = "_ot"
 )
 const (
 	TypeKeyNote       TypeKey = "note"
@@ -27,6 +27,7 @@ const (
 	TypeKeyVideo      TypeKey = "video"
 	TypeKeyDashboard  TypeKey = "dashboard"
 	TypeKeyObjectType TypeKey = "objectType"
+	TypeKeyTemplate   TypeKey = "template"
 	TypeKeySet        TypeKey = "set"
 	TypeKeyPage       TypeKey = "page"
 	TypeKeyImage      TypeKey = "image"
@@ -42,6 +43,7 @@ var (
 		TypeKeyAudio: {
 
 			Description: "",
+			Hidden:      true,
 			IconEmoji:   "🎵",
 			Layout:      relation.ObjectType_basic,
 			Name:        "Audio",
@@ -51,6 +53,7 @@ var (
 		TypeKeyContact: {
 
 			Description: "",
+			IconEmoji:   "📇",
 			Layout:      relation.ObjectType_profile,
 			Name:        "Contact",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType]},
@@ -77,6 +80,7 @@ var (
 		TypeKeyFile: {
 
 			Description: "",
+			IconEmoji:   "🗂️",
 			Layout:      relation.ObjectType_basic,
 			Name:        "File",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyFileMimeType], relations[RelationKeySizeInBytes], relations[RelationKeyAddedDate], relations[RelationKeyFileExt]},
@@ -121,6 +125,7 @@ var (
 		TypeKeyPage: {
 
 			Description: "Base type to start with",
+			IconEmoji:   "📄",
 			Layout:      relation.ObjectType_basic,
 			Name:        "Draft",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType]},
@@ -156,6 +161,7 @@ var (
 		TypeKeySet: {
 
 			Description: "",
+			Hidden:      true,
 			Layout:      relation.ObjectType_set,
 			Name:        "All sets",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeySetOf]},
@@ -164,10 +170,18 @@ var (
 		TypeKeyTask: {
 
 			Description: "",
-			Layout:      relation.ObjectType_action,
+			Layout:      relation.ObjectType_todo,
 			Name:        "Task",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyAssignee], relations[RelationKeyDueDate], relations[RelationKeyAttachments], relations[RelationKeyStatus], relations[RelationKeyDone], relations[RelationKeyPriority], relations[RelationKeyLinkedTasks], relations[RelationKeyLinkedProjects], relations[RelationKeyTag]},
 			Url:         TypePrefix + "task",
+		},
+		TypeKeyTemplate: {
+
+			Description: "Special type to create objects from",
+			Layout:      relation.ObjectType_basic,
+			Name:        "Template",
+			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyTemplateType]},
+			Url:         TypePrefix + "template",
 		},
 		TypeKeyVideo: {
 

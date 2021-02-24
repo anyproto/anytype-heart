@@ -732,7 +732,7 @@ func TestCustomType(t *testing.T) {
 			Name: "1",
 			Relations: []*pbrelation.Relation{
 				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
-				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/page"}},
+				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"_otpage"}},
 				{Format: pbrelation.RelationFormat_longtext, Name: "bio"},
 			},
 		},
@@ -740,7 +740,7 @@ func TestCustomType(t *testing.T) {
 
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
 	require.Len(t, respObjectTypeCreate.ObjectType.Relations, len(bundle.RequiredInternalRelations)+3) // including relation.RequiredInternalRelations
-	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
+	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "b"))
 	var newRelation *pbrelation.Relation
 	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
 		if rel.Name == "bio" {

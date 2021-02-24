@@ -2,6 +2,8 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -51,6 +53,7 @@ func (s *State) normalize(withLayouts bool) (err error) {
 	}
 
 	s.normalizeRelations()
+	s.migrateObjectTypes()
 
 	for _, b := range s.blocks {
 		if dv := b.Model().GetDataview(); dv != nil {
@@ -336,6 +339,60 @@ func CleanupLayouts(s *State) (removedCount int) {
 	}
 	cleanup(s.RootId())
 	return
+}
+
+func (s *State) migrateObjectTypes() {
+	ot := s.ObjectType()
+
+	migrate := func(old string) (new string, hasChanges bool) {
+		if strings.HasPrefix(old, localstore.CustomObjectTypeURLPrefix){
+			new = strings.TrimPrefix(ot, localstore.CustomObjectTypeURLPrefix)
+			hasChanges = true
+		} else if strings.HasPrefix(ot, localstore.BundledObjectTypeURLPrefix){
+			new = "_ot"+strings.TrimPrefix(ot, localstore.BundledObjectTypeURLPrefix)
+			hasChanges = true
+		} else {
+			new = old
+		}
+		return
+	}
+
+	newObjObjType, hasChanges1 := migrate(s.ObjectType())
+	if hasChanges1 {
+		s.SetObjectType(newObjObjType)
+	}
+
+	b := s.Get("dataview")
+	if b != nil {
+		dv := b.Model().GetDataview()
+		dvBlock, ok := b.(dataview.Block)
+		if dv != nil && ok {
+			newDvSource, hasChanges1 := migrate(dv.Source)
+			if hasChanges1 {
+				dvBlock.SetSource(newDvSource)
+				s.Set(dvBlock)
+			}
+
+			for _, rel := range dv.Relations {
+				if len(rel.ObjectTypes) == 0 {
+					continue
+				}
+				var newOts []string
+				var hasChanges2 bool
+				for _, ot := range rel.ObjectTypes {
+					newOt, hasChanges1 := migrate(ot)
+					hasChanges2 = hasChanges2 || hasChanges1
+					newOts = append(newOts, newOt)
+				}
+
+				if hasChanges2 {
+					relCopy := pbtypes.CopyRelation(rel)
+					relCopy.ObjectTypes = newOts
+					dvBlock.UpdateRelation(relCopy.Key, *relCopy)
+				}
+			}
+		}
+	}
 }
 
 func (s *State) normalizeRelations() {

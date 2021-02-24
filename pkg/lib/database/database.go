@@ -115,7 +115,7 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 					Value: pbtypes.String(sch.ObjType.Url),
 				},
 			}
-			if sch.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+			if sch.ObjType.Url == bundle.TypeKeyPage.URL() {
 				relTypeFilter = append(relTypeFilter, filter.Empty{
 					Key: bundle.RelationKeyType.String(),
 				})

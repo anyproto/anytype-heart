@@ -54,7 +54,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				Source:    "https://anytype.io/schemas/object/bundled/page",
+				Source:    "_otpage",
 				Relations: bundle.MustGetType(bundle.TypeKeyPage).Relations,
 				Views: []*model.BlockContentDataviewView{
 					{

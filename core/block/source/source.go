@@ -37,6 +37,7 @@ type Source interface {
 	Anytype() anytype.Service
 	Type() pb.SmartBlockType
 	Virtual() bool
+	//ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
@@ -51,6 +52,19 @@ func NewSource(a anytype.Service, ss status.Service, id string) (s Source, err e
 	if st == smartblock.SmartBlockTypeFile {
 		return NewFiles(a, id), nil
 	}
+
+	if st == smartblock.SmartBlockTypeBundledObjectType {
+		return NewBundledObjectType(a, id), nil
+	}
+
+	if st == smartblock.SmartBlockTypeBundledRelation {
+		return NewBundledRelation(a, id), nil
+	}
+
+	if st == smartblock.SmartBlockTypeIndexedRelation {
+		return NewIndexedRelation(a, id), nil
+	}
+
 	return newSource(a, ss, id)
 }
 

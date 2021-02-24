@@ -27,6 +27,7 @@
     ]
   },
   {
+    "emoji": "📇",
     "id": "contact",
     "layout": "profile",
     "name": "Contact",
@@ -82,7 +83,7 @@
   },
   {
     "id": "task",
-    "layout": "action",
+    "layout": "todo",
     "name": "Task",
     "relations": [
       "id",
@@ -227,6 +228,20 @@
     ]
   },
   {
+    "description": "Special type to create objects from",
+    "id": "template",
+    "layout": "basic",
+    "name": "Template",
+    "relations": [
+      "id",
+      "name",
+      "layout",
+      "description",
+      "templateType"
+    ]
+  },
+  {
+    "hidden": true,
     "id": "set",
     "layout": "set",
     "name": "All sets",
@@ -255,6 +270,7 @@
   },
   {
     "description": "Base type to start with",
+    "emoji": "📄",
     "id": "page",
     "layout": "basic",
     "name": "Draft",
@@ -347,6 +363,7 @@
   },
   {
     "emoji": "🎵",
+    "hidden": true,
     "id": "audio",
     "layout": "basic",
     "name": "Audio",
@@ -412,6 +429,7 @@
     ]
   },
   {
+    "emoji": "🗂️",
     "id": "file",
     "layout": "basic",
     "name": "File",

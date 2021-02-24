@@ -13156,7 +13156,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | ---- | ------ | ----------- |
 | basic | 0 |  |
 | profile | 1 |  |
-| action | 2 |  |
+| todo | 2 |  |
 | set | 3 |  |
 | objectType | 4 |  |
 | relation | 5 |  |

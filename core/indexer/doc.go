@@ -3,7 +3,6 @@ package indexer
 import (
 	"context"
 	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"sync"
 	"time"
