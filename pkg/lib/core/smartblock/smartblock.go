@@ -22,9 +22,9 @@ const (
 	SmartblockTypeMarketplaceType     SmartBlockType = 0x110
 	SmartblockTypeMarketplaceRelation SmartBlockType = 0x111
 
-	SmartBlockTypeBundledRelation  SmartBlockType = 0x200 // temp
-	SmartBlockTypeIndexedRelation  SmartBlockType = 0x201 // temp
-	SmartBlockTypeBundledObjectType  SmartBlockType = 0x202 // temp
+	SmartBlockTypeBundledRelation   SmartBlockType = 0x200 // temp
+	SmartBlockTypeIndexedRelation   SmartBlockType = 0x201 // temp
+	SmartBlockTypeBundledObjectType SmartBlockType = 0x202 // temp
 
 )
 

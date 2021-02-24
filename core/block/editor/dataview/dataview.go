@@ -756,7 +756,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				continue
 			}
 
-			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
+			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) && (len(rel.ObjectTypes) == 0 || rel.ObjectTypes[0] != bundle.TypeKeyRelation.URL()) {
 				depIdsToAdd := pbtypes.GetStringListValue(item)
 				for _, depId := range depIdsToAdd {
 					if _, exists := depIdsMap[depId]; !exists {

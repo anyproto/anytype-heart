@@ -457,7 +457,7 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 			}
 			for _, idx := range a.localStore.Objects.Indexes() {
 				//if idx.Name == "objtype_relkey_setid" {
-					// skip it because we can't reindex relations in sets for now
+				// skip it because we can't reindex relations in sets for now
 				//	continue
 				//}
 
@@ -485,12 +485,12 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				}
 			}
 
-			if strings.HasPrefix(objType, localstore.OldCustomObjectTypeURLPrefix){
+			if strings.HasPrefix(objType, localstore.OldCustomObjectTypeURLPrefix) {
 				objType = strings.TrimPrefix(objType, localstore.OldCustomObjectTypeURLPrefix)
-			} else if strings.HasPrefix(objType, localstore.OldBundledObjectTypeURLPrefix){
-				objType = localstore.BundledObjectTypeURLPrefix+strings.TrimPrefix(objType, localstore.OldBundledObjectTypeURLPrefix)
+			} else if strings.HasPrefix(objType, localstore.OldBundledObjectTypeURLPrefix) {
+				objType = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(objType, localstore.OldBundledObjectTypeURLPrefix)
 			} else if bundle.HasObjectType(objType) {
-				objType = localstore.BundledObjectTypeURLPrefix+objType
+				objType = localstore.BundledObjectTypeURLPrefix + objType
 			}
 
 			o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
@@ -517,11 +517,11 @@ func reindexStoredRelations(a *Anytype, lastMigration bool) error {
 			return err
 		}
 		migrate := func(old string) (new string, hasChanges bool) {
-			if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix){
+			if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix) {
 				new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
 				hasChanges = true
-			} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix){
-				new = localstore.BundledObjectTypeURLPrefix+strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
+			} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix) {
+				new = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
 				hasChanges = true
 			} else {
 				new = old

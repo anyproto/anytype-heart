@@ -126,6 +126,7 @@
       "name",
       "layout",
       "description",
+      "creator",
       "mpAddedToLibrary",
       "relationFormat",
       "isHidden"

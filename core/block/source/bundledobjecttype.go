@@ -33,7 +33,7 @@ func (v *bundledObjectType) Anytype() anytype.Service {
 }
 
 func (v *bundledObjectType) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_File
+	return pb.SmartBlockType_ObjectType
 }
 
 func (v *bundledObjectType) Virtual() bool {
@@ -42,27 +42,27 @@ func (v *bundledObjectType) Virtual() bool {
 
 func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation, p *types.Struct, err error) {
 	ot, err := bundle.GetTypeByUrl(id)
-	if err != nil{
+	if err != nil {
 		return nil, nil, err
 	}
 
 	var relationKeys []string
-	for i := range ot.Relations{
+	for i := range ot.Relations {
 		extraRels = append(extraRels, ot.Relations[i])
 		relationKeys = append(relationKeys, "_br"+ot.Relations[i].Key)
 	}
 
 	det := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyObjectType.String()),
-		bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
-		bundle.RelationKeyName.String(): pbtypes.String(ot.Name),
-		bundle.RelationKeyCreator.String(): pbtypes.String("_anytype_profile"),
-		bundle.RelationKeyIconEmoji.String(): pbtypes.String(ot.IconEmoji),
+		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.String()),
+		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
+		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
+		bundle.RelationKeyCreator.String():              pbtypes.String("_anytype_profile"),
+		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
 		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),
-		bundle.RelationKeyRecommendedLayout.String(): pbtypes.Float64(float64(ot.Layout)),
-		bundle.RelationKeyDescription.String(): pbtypes.String(ot.Description),
-		bundle.RelationKeyId.String(): pbtypes.String(id),
-		bundle.RelationKeyIsHidden.String(): pbtypes.Bool(ot.Hidden),
+		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),
+		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),
+		bundle.RelationKeyId.String():                   pbtypes.String(id),
+		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
 	}}
 
 	return extraRels, det, nil
@@ -94,6 +94,7 @@ func (v *bundledObjectType) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error
 	s.SetDetails(d)
 	s.SetObjectType(bundle.TypeKeyObjectType.URL())
 	return s, nil
+
 }
 
 func (v *bundledObjectType) PushChange(params PushChangeParams) (id string, err error) {

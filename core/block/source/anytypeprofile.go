@@ -12,7 +12,6 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-
 func NewAnytypeProfile(a anytype.Service, id string) (s Source) {
 	return &anytypeProfile{
 		id: id,
@@ -43,12 +42,13 @@ func (v *anytypeProfile) Virtual() bool {
 
 func (v *anytypeProfile) getDetails() (p *types.Struct) {
 	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String(): pbtypes.String("Anytype"),
+		bundle.RelationKeyName.String():        pbtypes.String("Anytype"),
 		bundle.RelationKeyDescription.String(): pbtypes.String("Authored by Anytype team"),
-		bundle.RelationKeyIconImage.String(): pbtypes.String("bafybeigpvcr42wobigjm63hmx3223gktsz4hpwp3jmiwkpcawo7wtpimv4"),
-		bundle.RelationKeyId.String(): pbtypes.String(v.id),
-		bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(relation.ObjectType_profile)),
-	}}}
+		bundle.RelationKeyIconImage.String():   pbtypes.String("bafybeigpvcr42wobigjm63hmx3223gktsz4hpwp3jmiwkpcawo7wtpimv4"),
+		bundle.RelationKeyId.String():          pbtypes.String(v.id),
+		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(relation.ObjectType_profile)),
+	}}
+}
 
 func (v *anytypeProfile) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)

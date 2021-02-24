@@ -101,7 +101,7 @@ var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransform
 
 var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
-		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil || !s.Details().Fields[key.String()].Equal(value)  {
+		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil || !s.Details().Fields[key.String()].Equal(value) {
 			s.SetDetail(key.String(), value)
 		}
 
@@ -214,7 +214,12 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
 				return true
 			} else {
-				if dvBlock.Model().GetDataview().Source == "pages" || len(dvBlock.Model().GetDataview().Relations) == 0 || dvBlock.Model().GetDataview().Source != dataview.Dataview.Source || forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) {
+				if dvBlock.Model().GetDataview().Source == "pages" ||
+					len(dvBlock.Model().GetDataview().Relations) == 0 ||
+					dvBlock.Model().GetDataview().Source != dataview.Dataview.Source ||
+					len(dvBlock.Model().GetDataview().Views) == 0 ||
+					forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
+					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) {
 					// remove old pages set
 					s.Unlink(b.Model().Id)
 					return false

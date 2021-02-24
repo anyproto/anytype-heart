@@ -48,8 +48,8 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
 						RelationKey: bundle.RelationKeyIsHidden.String(),
-						Condition: model.BlockContentDataviewFilter_NotEqual,
-						Value: pbtypes.Bool(true),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
 					}},
 				},
 				{
@@ -65,8 +65,8 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
 						RelationKey: bundle.RelationKeyIsHidden.String(),
-						Condition: model.BlockContentDataviewFilter_NotEqual,
-						Value: pbtypes.Bool(true),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
 					}},
 				},
 			},
@@ -117,8 +117,8 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
 						RelationKey: bundle.RelationKeyIsHidden.String(),
-						Condition: model.BlockContentDataviewFilter_NotEqual,
-						Value: pbtypes.Bool(true),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
 					}},
 				},
 				{
@@ -133,7 +133,7 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
 						Condition: model.BlockContentDataviewFilter_NotEqual,
-						Value: pbtypes.Bool(true),
+						Value:     pbtypes.Bool(true),
 					}},
 				},
 			},

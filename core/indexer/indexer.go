@@ -84,8 +84,7 @@ type indexer struct {
 	mu           sync.Mutex
 }
 
-
-func (i *indexer) openDoc(id string) (state.Doc, error){
+func (i *indexer) openDoc(id string) (state.Doc, error) {
 	s, err := source.NewSource(i.anytype, nil, id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
@@ -96,7 +95,7 @@ func (i *indexer) openDoc(id string) (state.Doc, error){
 
 func (i *indexer) reindexBundled() {
 	var (
-		d state.Doc
+		d   state.Doc
 		err error
 	)
 

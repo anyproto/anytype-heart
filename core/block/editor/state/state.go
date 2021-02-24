@@ -703,7 +703,6 @@ func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelatio
 	return &option, nil
 }
 
-
 func (s *State) SetObjectType(objectType string) *State {
 	return s.SetObjectTypes([]string{objectType})
 }

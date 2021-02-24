@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 	"strings"
 )
@@ -42,29 +43,31 @@ func (v *indexedRelation) Virtual() bool {
 	return false
 }
 
-func (v *indexedRelation) getDetails(id string) (p *types.Struct, err error) {
-	if !strings.HasPrefix(id, indexedRelationPrefix){
-		return nil, fmt.Errorf("incorrect relation id: not an indexed relation id")
+func (v *indexedRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
+	if !strings.HasPrefix(id, indexedRelationPrefix) {
+		return nil, nil, fmt.Errorf("incorrect relation id: not an indexed relation id")
 	}
 
 	key := strings.TrimPrefix(id, indexedRelationPrefix)
 	rel, err := v.Anytype().ObjectStore().GetRelation(key)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
-	return getDetailsForRelation(indexedRelationPrefix, rel), nil
+	rels, d := getDetailsForRelation(bundledRelationPrefix, rel)
+	return rels, d, nil
 }
 
 func (v *indexedRelation) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
-	d, err := v.getDetails(v.id)
+	rels, d, err := v.getDetails(v.id)
 	if err != nil {
 		return nil, err
 	}
 
 	s.SetDetails(d)
+	s.SetExtraRelations(rels)
 	s.SetObjectType(bundle.TypeKeyRelation.URL())
 	return s, nil
 }
@@ -72,12 +75,13 @@ func (v *indexedRelation) ReadDoc(receiver ChangeReceiver, empty bool) (doc stat
 func (v *indexedRelation) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 	s := &state.State{}
 
-	d, err := v.getDetails(v.id)
+	rels, d, err := v.getDetails(v.id)
 	if err != nil {
 		return nil, err
 	}
 
 	s.SetDetails(d)
+	s.SetExtraRelations(rels)
 	s.SetObjectType(bundle.TypeKeyRelation.URL())
 	return s, nil
 }

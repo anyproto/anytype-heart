@@ -212,7 +212,7 @@ func TestRelationAdd(t *testing.T) {
 		optionAddResp := mw.ObjectRelationOptionAdd(&pb.RpcObjectRelationOptionAddRequest{
 			ContextId:   respPageCreate.PageId,
 			RelationKey: bundle.RelationKeyStatus.String(),
-			Option:      &pbrelation.RelationOption{
+			Option: &pbrelation.RelationOption{
 				Text:  "Done",
 				Color: "red",
 			},
@@ -223,7 +223,6 @@ func TestRelationAdd(t *testing.T) {
 			{Key: bundle.RelationKeyStatus.String(), Value: pbtypes.StringList([]string{optionAddResp.Option.Id})},
 		}})
 		require.Equal(t, 0, int(setDetailsResp.Error.Code), setDetailsResp.Error.Description)
-
 
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
@@ -355,7 +354,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respRelCreate.Error.Code), respRelCreate.Error.Description)
 
 		var foundRel *pbrelation.Relation
-		for _, msg := range respRelCreate.Event.GetMessages(){
+		for _, msg := range respRelCreate.Event.GetMessages() {
 			if rel := msg.GetBlockDataviewRelationSet(); rel != nil && rel.Relation.Name == "relation2" {
 				foundRel = rel.Relation
 				break

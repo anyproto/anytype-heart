@@ -343,11 +343,11 @@ func CleanupLayouts(s *State) (removedCount int) {
 
 func (s *State) MigrateObjectTypes() {
 	migrate := func(old string) (new string, hasChanges bool) {
-		if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix){
+		if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix) {
 			new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
 			hasChanges = true
-		} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix){
-			new = localstore.BundledObjectTypeURLPrefix+strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
+		} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix) {
+			new = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
 			hasChanges = true
 		} else {
 			new = old

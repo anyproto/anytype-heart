@@ -155,7 +155,7 @@ var (
 			Hidden:      true,
 			Layout:      relation.ObjectType_relation,
 			Name:        "Relation",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyRelationFormat], relations[RelationKeyIsHidden]},
+			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyCreator], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyRelationFormat], relations[RelationKeyIsHidden]},
 			Url:         TypePrefix + "relation",
 		},
 		TypeKeySet: {

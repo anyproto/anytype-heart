@@ -178,7 +178,7 @@ var (
 
 const (
 	OldCustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	OldBundledObjectTypeURLPrefix  = "https://anytype.io/schemas/object/bundled/"
+	OldBundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
 
 	BundledObjectTypeURLPrefix = "_ot"
 )
@@ -398,8 +398,6 @@ func (m *dsObjectStore) GetAggregatedOptionsForFormat(format pbrelation.Relation
 func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
-
-
 
 	records, total, err = m.Query(schema, q)
 
@@ -1276,10 +1274,10 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 			Relations: &pbrelation.Relations{},
 			Details:   &types.Struct{Fields: map[string]*types.Value{}},
 		}, &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String(): pbtypes.String(relation.Name),
+			bundle.RelationKeyName.String():        pbtypes.String(relation.Name),
 			bundle.RelationKeyDescription.String(): pbtypes.String(relation.Description),
-			bundle.RelationKeyId.String(): pbtypes.String("_ir"+relation.Key),
-			bundle.RelationKeyType.String(): pbtypes.String(bundle.RelationKeyType.String()),
+			bundle.RelationKeyId.String():          pbtypes.String("_ir" + relation.Key),
+			bundle.RelationKeyType.String():        pbtypes.String(bundle.RelationKeyType.String()),
 		}}, nil, nil, relation.Description)
 		if err != nil {
 			return err
@@ -1294,7 +1292,7 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 		return nil
 	}
 
-	if relationsBefore != nil && pbtypes.RelationsEqual(relationsBefore.Relations, relationsAfter.Relations){
+	if relationsBefore != nil && pbtypes.RelationsEqual(relationsBefore.Relations, relationsAfter.Relations) {
 		return nil
 	}
 

@@ -44,41 +44,48 @@ func (v *bundledRelation) Virtual() bool {
 	return false
 }
 
-func getDetailsForRelation(prefix string, rel *relation.Relation) *types.Struct {
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String(): pbtypes.String(rel.Name),
-		bundle.RelationKeyDescription.String(): pbtypes.String(rel.Description),
-		bundle.RelationKeyId.String(): pbtypes.String(prefix+rel.Key),
-		bundle.RelationKeyCreator.String(): pbtypes.String("_anytype_profile"),
-		bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(relation.ObjectType_relation)),
+func getDetailsForRelation(prefix string, rel *relation.Relation) ([]*relation.Relation, *types.Struct) {
+	d := &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():           pbtypes.String(rel.Name),
+		bundle.RelationKeyDescription.String():    pbtypes.String(rel.Description),
+		bundle.RelationKeyId.String():             pbtypes.String(prefix + rel.Key),
+		bundle.RelationKeyCreator.String():        pbtypes.String("_anytype_profile"),
+		bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(relation.ObjectType_relation)),
 		bundle.RelationKeyRelationFormat.String(): pbtypes.Float64(float64(rel.Format)),
-
-		bundle.RelationKeyIsHidden.String(): pbtypes.Bool(rel.Hidden),
+		bundle.RelationKeyIsHidden.String():       pbtypes.Bool(rel.Hidden),
 	}}
+
+	var rels []*relation.Relation
+	for k := range d.Fields {
+		rels = append(rels, bundle.MustGetRelation(bundle.RelationKey(k)))
+	}
+	return rels, d
 }
 
-func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
+func (v *bundledRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
 	if !strings.HasPrefix(id, bundledRelationPrefix) {
-		return nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
+		return nil, nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}
 
 	rel, err := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, bundledRelationPrefix)))
-	if err != nil{
-		return nil, err
+	if err != nil {
+		return nil, nil, err
 	}
 
-	return getDetailsForRelation(bundledRelationPrefix, rel), nil
+	rels, d := getDetailsForRelation(bundledRelationPrefix, rel)
+	return rels, d, nil
 }
 
 func (v *bundledRelation) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
-	d, err := v.getDetails(v.id)
+	rels, d, err := v.getDetails(v.id)
 	if err != nil {
 		return nil, err
 	}
 
 	s.SetDetails(d)
+	s.SetExtraRelations(rels)
 	s.SetObjectType(bundle.TypeKeyRelation.URL())
 	return s, nil
 }
@@ -86,12 +93,13 @@ func (v *bundledRelation) ReadDoc(receiver ChangeReceiver, empty bool) (doc stat
 func (v *bundledRelation) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 	s := &state.State{}
 
-	d, err := v.getDetails(v.id)
+	rels, d, err := v.getDetails(v.id)
 	if err != nil {
 		return nil, err
 	}
 
 	s.SetDetails(d)
+	s.SetExtraRelations(rels)
 	s.SetObjectType(bundle.TypeKeyRelation.URL())
 	return s, nil
 }
