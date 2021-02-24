@@ -247,7 +247,7 @@
     "hidden": true,
     "id": "set",
     "layout": "set",
-    "name": "All sets",
+    "name": "Set",
     "relations": [
       "id",
       "name",

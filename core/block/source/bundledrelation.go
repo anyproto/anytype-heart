@@ -49,6 +49,7 @@ func getDetailsForRelation(prefix string, rel *relation.Relation) *types.Struct 
 		bundle.RelationKeyName.String(): pbtypes.String(rel.Name),
 		bundle.RelationKeyDescription.String(): pbtypes.String(rel.Description),
 		bundle.RelationKeyId.String(): pbtypes.String(prefix+rel.Key),
+		bundle.RelationKeyCreator.String(): pbtypes.String("_anytype_profile"),
 		bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(relation.ObjectType_relation)),
 		bundle.RelationKeyRelationFormat.String(): pbtypes.Float64(float64(rel.Format)),
 

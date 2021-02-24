@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/google/uuid"
 )
 
@@ -24,10 +25,14 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 		return err
 	}
 
-	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
+	ot := bundle.TypeKeyObjectType.URL()
+	templates := []template.StateTransformer{
+		template.WithTitle,
+		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot})),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    "_otobjectType",
+			Source:    ot,
 			Relations: bundle.MustGetType(bundle.TypeKeyObjectType).Relations,
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -41,7 +46,11 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
-					Filters: nil,
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition: model.BlockContentDataviewFilter_NotEqual,
+						Value: pbtypes.Bool(true),
+					}},
 				},
 				{
 					Id:    uuid.New().String(),
@@ -54,12 +63,16 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
-					Filters: nil,
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition: model.BlockContentDataviewFilter_NotEqual,
+						Value: pbtypes.Bool(true),
+					}},
 				},
 			},
 		},
 	}
-	templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Types"), template.WithDetailIconEmoji("📒"))
+	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Types"), template.WithDetailIconEmoji("📒"))
 
 	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
 		return
@@ -82,10 +95,14 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 		return err
 	}
 
-	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
+	ot := bundle.TypeKeyRelation.URL()
+	templates := []template.StateTransformer{
+		template.WithTitle,
+		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot})),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    "_otrelation",
+			Source:    ot,
 			Relations: bundle.MustGetType(bundle.TypeKeyRelation).Relations,
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -98,7 +115,11 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
-					Filters: nil,
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition: model.BlockContentDataviewFilter_NotEqual,
+						Value: pbtypes.Bool(true),
+					}},
 				},
 				{
 					Id:    uuid.New().String(),
@@ -110,12 +131,15 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
-					Filters: nil,
+					Filters: []*model.BlockContentDataviewFilter{{
+						Condition: model.BlockContentDataviewFilter_NotEqual,
+						Value: pbtypes.Bool(true),
+					}},
 				},
 			},
 		},
 	}
-	templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"))
+	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"))
 
 	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
 		return

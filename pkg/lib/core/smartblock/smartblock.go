@@ -38,6 +38,10 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	if strings.HasPrefix(id, "_ot") {
 		return SmartBlockTypeBundledObjectType, nil
 	}
+	if strings.HasPrefix(id, "_anytype_profile") {
+		return SmartBlockTypeProfilePage, nil
+	}
+
 	c, err := cid.Decode(id)
 	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
 	if err == nil && c.Prefix().Codec == 0x70 && c.Prefix().MhType == multihash.SHA2_256 {

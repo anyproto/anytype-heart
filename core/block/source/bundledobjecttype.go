@@ -56,6 +56,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 		bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyObjectType.String()),
 		bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
 		bundle.RelationKeyName.String(): pbtypes.String(ot.Name),
+		bundle.RelationKeyCreator.String(): pbtypes.String("_anytype_profile"),
 		bundle.RelationKeyIconEmoji.String(): pbtypes.String(ot.IconEmoji),
 		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),
 		bundle.RelationKeyRecommendedLayout.String(): pbtypes.Float64(float64(ot.Layout)),
@@ -69,7 +70,6 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 
 func (v *bundledObjectType) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
-
 
 	rels, d, err := getDetailsForBundledObjectType(v.id)
 	if err != nil {

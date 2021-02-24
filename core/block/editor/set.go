@@ -78,7 +78,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 				},
 			},
 		}
-		templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
+		templates = append(templates, template.WithDataview(dataview, false), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
 		templates = append(templates, template.WithDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}
@@ -94,8 +94,8 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 	s := p.NewState()
 	return template.ApplyTemplate(p, s,
 		template.WithDetailName(name),
-		template.WithDetail(bundle.RelationKeySetOf, pbtypes.String(blockContent.Dataview.Source)),
+		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
 		template.WithDetailIconEmoji(icon),
-		template.WithDataview(blockContent),
+		template.WithDataview(blockContent, false),
 	)
 }

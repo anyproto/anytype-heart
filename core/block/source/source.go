@@ -49,6 +49,11 @@ var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgr
 
 func NewSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
 	st, err := smartblock.SmartBlockTypeFromID(id)
+
+	if id == "_anytype_profile" {
+		return NewAnytypeProfile(a, id), nil
+	}
+
 	if st == smartblock.SmartBlockTypeFile {
 		return NewFiles(a, id), nil
 	}

@@ -100,8 +100,17 @@ func (i *indexer) reindexBundled() {
 		err error
 	)
 
+	var ids []string
+
 	for _, rk := range bundle.ListRelationsKeys() {
-		id := "_br"+rk.String()
+		ids = append(ids, "_br"+rk.String())
+	}
+	for _, tk := range bundle.ListTypesKeys() {
+		ids = append(ids, "_ot"+tk.String())
+	}
+
+	ids = append(ids, "_anytype_profile")
+	for _, id := range ids {
 		if d, err = i.openDoc(id); err != nil {
 			log.Errorf("reindexBundled failed to open %s: %s", id, err.Error())
 			return
@@ -111,19 +120,6 @@ func (i *indexer) reindexBundled() {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
 		}
 	}
-
-	for _, rk := range bundle.ListTypesKeys() {
-		id := "_ot"+rk.String()
-		if d, err = i.openDoc(id); err != nil {
-			log.Errorf("reindexBundled failed to open %s: %s", id, err.Error())
-			return
-		}
-
-		if err := i.store.CreateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
-			log.With("thread", id).Errorf("can't update object store: %v", err)
-		}
-	}
-
 }
 
 func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
