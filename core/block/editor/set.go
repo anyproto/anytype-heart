@@ -80,7 +80,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		}
 		templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
-		templates = append(templates, template.WithDetail(bundle.RelationKeySetOf, pbtypes.String(dvBlock.Model().GetDataview().Source)))
+		templates = append(templates, template.WithDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}
 
 	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
