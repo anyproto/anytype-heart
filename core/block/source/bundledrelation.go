@@ -50,6 +50,7 @@ func getDetailsForRelation(prefix string, rel *relation.Relation) *types.Struct 
 		bundle.RelationKeyDescription.String(): pbtypes.String(rel.Description),
 		bundle.RelationKeyId.String(): pbtypes.String(prefix+rel.Key),
 		bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(relation.ObjectType_relation)),
+		"isHidden": pbtypes.Bool(rel.Hidden),
 	}}
 }
 
