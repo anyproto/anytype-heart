@@ -55,8 +55,10 @@ var migrations = []migration{
 	skipMigration,               // 15
 	skipMigration,               // 16
 	skipMigration,               // 17
-	reindexAll,                  // 18
-	reindexStoredRelations,      // 19
+	skipMigration,               // 18
+	skipMigration,               // 19
+	reindexAll,                  // 20
+	reindexStoredRelations,      // 21
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -514,6 +516,36 @@ func reindexStoredRelations(a *Anytype, lastMigration bool) error {
 		if err != nil {
 			return err
 		}
+		migrate := func(old string) (new string, hasChanges bool) {
+			if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix){
+				new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
+				hasChanges = true
+			} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix){
+				new = localstore.BundledObjectTypeURLPrefix+strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
+				hasChanges = true
+			} else {
+				new = old
+			}
+			return
+		}
+
+		for i, rel := range rels {
+			if len(rel.ObjectTypes) == 0 {
+				continue
+			}
+			var newOts []string
+			var hasChanges2 bool
+			for _, ot := range rel.ObjectTypes {
+				newOt, hasChanges1 := migrate(ot)
+				hasChanges2 = hasChanges2 || hasChanges1
+				newOts = append(newOts, newOt)
+			}
+
+			if hasChanges2 {
+				rels[i].ObjectTypes = newOts
+			}
+		}
+
 		return a.localStore.Objects.StoreRelations(rels)
 	})
 }

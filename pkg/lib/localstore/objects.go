@@ -180,7 +180,6 @@ const (
 	OldCustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
 	OldBundledObjectTypeURLPrefix  = "https://anytype.io/schemas/object/bundled/"
 
-	CustomObjectTypeURLPrefix  = "b"
 	BundledObjectTypeURLPrefix = "_ot"
 )
 

@@ -22,8 +22,9 @@ message ObjectType {
         relation = 5;
         file = 6;
         dashboard = 7;
+        image = 8;
 
-        database = 8; // to be released later
+        database = 20; // to be released later
     }
 }
 

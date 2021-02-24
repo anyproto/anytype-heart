@@ -52,8 +52,8 @@ func (s *State) normalize(withLayouts bool) (err error) {
 		}
 	}
 
-	s.normalizeRelations()
-	s.migrateObjectTypes()
+	s.NormalizeRelations()
+	s.MigrateObjectTypes()
 
 	for _, b := range s.blocks {
 		if dv := b.Model().GetDataview(); dv != nil {
@@ -341,15 +341,13 @@ func CleanupLayouts(s *State) (removedCount int) {
 	return
 }
 
-func (s *State) migrateObjectTypes() {
-	ot := s.ObjectType()
-
+func (s *State) MigrateObjectTypes() {
 	migrate := func(old string) (new string, hasChanges bool) {
-		if strings.HasPrefix(old, localstore.CustomObjectTypeURLPrefix){
-			new = strings.TrimPrefix(ot, localstore.CustomObjectTypeURLPrefix)
+		if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix){
+			new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
 			hasChanges = true
-		} else if strings.HasPrefix(ot, localstore.BundledObjectTypeURLPrefix){
-			new = "_ot"+strings.TrimPrefix(ot, localstore.BundledObjectTypeURLPrefix)
+		} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix){
+			new = localstore.BundledObjectTypeURLPrefix+strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
 			hasChanges = true
 		} else {
 			new = old
@@ -393,9 +391,28 @@ func (s *State) migrateObjectTypes() {
 			}
 		}
 	}
+
+	for _, rel := range s.ExtraRelations() {
+		if len(rel.ObjectTypes) == 0 {
+			continue
+		}
+		var newOts []string
+		var hasChanges2 bool
+		for _, ot := range rel.ObjectTypes {
+			newOt, hasChanges1 := migrate(ot)
+			hasChanges2 = hasChanges2 || hasChanges1
+			newOts = append(newOts, newOt)
+		}
+
+		if hasChanges2 {
+			relCopy := pbtypes.CopyRelation(rel)
+			relCopy.ObjectTypes = newOts
+			s.SetExtraRelation(relCopy)
+		}
+	}
 }
 
-func (s *State) normalizeRelations() {
+func (s *State) NormalizeRelations() {
 	for _, r := range s.ExtraRelations() {
 		var updateRelation *relation.Relation
 
@@ -415,7 +432,7 @@ func (s *State) normalizeRelations() {
 				if slice.FindPos(values, opt.Id) >= 0 {
 					optsFiltered = append(optsFiltered, r.SelectDict[i])
 				} else {
-					log.With("thread",s.rootId).Errorf("normalizeRelations: remove option %s", opt.Id)
+					log.With("thread",s.rootId).Errorf("NormalizeRelations: remove option %s", opt.Id)
 					hasChanges = true
 				}
 			}

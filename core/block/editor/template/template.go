@@ -46,6 +46,19 @@ var WithObjectTypes = func(otypes []string) StateTransformer {
 	}
 }
 
+var WithObjectTypeLayoutMigration = func() StateTransformer {
+	return func(s *state.State) {
+		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())
+
+		if layout == float64(relation.ObjectType_objectType) {
+			return
+		}
+
+		s.SetDetail(bundle.RelationKeyRecommendedLayout.String(), pbtypes.Float64(layout))
+		s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(relation.ObjectType_objectType)))
+	}
+}
+
 var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {
@@ -189,7 +202,7 @@ var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer 
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
 				return true
 			} else {
-				if dvBlock.Model().GetDataview().Source == "pages" || len(dvBlock.Model().GetDataview().Relations) == 0 {
+				if dvBlock.Model().GetDataview().Source == "pages" || len(dvBlock.Model().GetDataview().Relations) == 0 || dvBlock.Model().GetDataview().Source != dataview.Dataview.Source {
 					// remove old pages set
 					s.Unlink(b.Model().Id)
 					return false

@@ -54,6 +54,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 
 	det := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyObjectType.String()),
+		bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
 		bundle.RelationKeyName.String(): pbtypes.String(ot.Name),
 		bundle.RelationKeyIconEmoji.String(): pbtypes.String(ot.IconEmoji),
 		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),

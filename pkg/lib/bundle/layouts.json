@@ -39,6 +39,13 @@
     ]
   },
   {
+    "id": "image",
+    "name": "Image",
+    "requiredRelations": [
+      "iconImage"
+    ]
+  },
+  {
     "id": "profile",
     "name": "Profile",
     "requiredRelations": [

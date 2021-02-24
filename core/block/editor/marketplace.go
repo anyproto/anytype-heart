@@ -27,7 +27,7 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    "https://anytype.io/schemas/object/bundled/objectType",
+			Source:    "_otobjectType",
 			Relations: bundle.MustGetType(bundle.TypeKeyObjectType).Relations,
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -85,7 +85,7 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source:    "https://anytype.io/schemas/object/bundled/relation",
+			Source:    "_otrelation",
 			Relations: bundle.MustGetType(bundle.TypeKeyRelation).Relations,
 			Views: []*model.BlockContentDataviewView{
 				{

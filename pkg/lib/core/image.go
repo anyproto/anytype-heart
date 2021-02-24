@@ -124,6 +124,7 @@ func (i *image) Details() (*types.Struct, error) {
 		Fields: map[string]*types.Value{
 			"id":   pbtypes.String(i.hash),
 			"type": pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
+			"layout": pbtypes.Float64(float64(relation.ObjectType_image)),
 		},
 	}
 

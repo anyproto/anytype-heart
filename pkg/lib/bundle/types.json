@@ -299,7 +299,7 @@
   {
     "emoji": "🌅",
     "id": "image",
-    "layout": "basic",
+    "layout": "image",
     "name": "Image",
     "relations": [
       "id",

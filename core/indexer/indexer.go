@@ -107,7 +107,7 @@ func (i *indexer) reindexBundled() {
 			return
 		}
 
-		if err := i.store.UpdateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
+		if err := i.store.CreateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
 		}
 	}
@@ -119,7 +119,7 @@ func (i *indexer) reindexBundled() {
 			return
 		}
 
-		if err := i.store.UpdateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
+		if err := i.store.CreateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
 		}
 	}

@@ -25,5 +25,6 @@ func (p *ObjectType) Init(s source.Source, _ bool, _ []string) (err error) {
 	}
 	return template.ApplyTemplate(p, nil,
 		template.WithEmpty,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}))
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
+		template.WithObjectTypeLayoutMigration())
 }

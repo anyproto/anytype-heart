@@ -400,7 +400,7 @@ func TestState_Normalize(t *testing.T) {
 		r.AddRelation(r1)
 
 		s := r.NewState()
-		s.normalizeRelations()
+		s.NormalizeRelations()
 		ApplyState(s, true)
 		assert.Equal(t, int32(1), pbtypes.GetRelation(s.ExtraRelations(), "a1").MaxCount)
 	})
@@ -412,7 +412,7 @@ func TestState_Normalize(t *testing.T) {
 		r.AddRelation(r1)
 
 		s := r.NewState()
-		s.normalizeRelations()
+		s.NormalizeRelations()
 		ApplyState(s, true)
 		assert.Equal(t, "Done", pbtypes.GetRelation(s.ExtraRelations(), bundle.RelationKeyDone.String()).Name)
 	})

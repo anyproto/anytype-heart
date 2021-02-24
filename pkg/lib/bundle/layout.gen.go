@@ -29,6 +29,12 @@ var (
 			Id:   relation.ObjectType_file,
 			Name: "File",
 		},
+		relation.ObjectType_image: {
+
+			Id:                relation.ObjectType_image,
+			Name:              "Image",
+			RequiredRelations: []*relation.Relation{relations[RelationKeyIconImage]},
+		},
 		relation.ObjectType_objectType: {
 
 			Id:                relation.ObjectType_objectType,

@@ -175,6 +175,8 @@ func (d *doc) buildState() (doc *state.State, err error) {
 
 	d.injectLocalRelations(st)
 	st.InjectDerivedDetails()
+	st.NormalizeRelations()
+	st.MigrateObjectTypes()
 
 	err = d.injectCreationInfo(st)
 	if err != nil {
