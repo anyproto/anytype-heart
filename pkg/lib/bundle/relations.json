@@ -181,6 +181,16 @@
     "source": "details"
   },
   {
+    "description": "Specify if object is hidden",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isHidden",
+    "maxCount": 1,
+    "name": "Hidden",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "shorttext",
     "hidden": false,
     "key": "aperture",
@@ -422,6 +432,16 @@
     ],
     "readonly": false,
     "source": "derived"
+  },
+  {
+    "description": "Type of the underlying value",
+    "format": "number",
+    "hidden": true,
+    "key": "relationFormat",
+    "maxCount": 1,
+    "name": "Relation Format",
+    "readonly": false,
+    "source": "details"
   },
   {
     "description": "Anytype layout ID(from pb enum)",

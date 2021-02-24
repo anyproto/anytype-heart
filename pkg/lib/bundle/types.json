@@ -126,7 +126,9 @@
       "name",
       "layout",
       "description",
-      "mpAddedToLibrary"
+      "mpAddedToLibrary",
+      "relationFormat",
+      "isHidden"
     ]
   },
   {
@@ -224,7 +226,8 @@
       "coverType",
       "recommendedRelations",
       "recommendedLayout",
-      "mpAddedToLibrary"
+      "mpAddedToLibrary",
+      "isHidden"
     ]
   },
   {

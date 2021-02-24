@@ -30,6 +30,7 @@ const (
 	RelationKeyAudioAlbum            RelationKey = "audioAlbum"
 	RelationKeyStatus                RelationKey = "status"
 	RelationKeyDurationInSeconds     RelationKey = "durationInSeconds"
+	RelationKeyIsHidden              RelationKey = "isHidden"
 	RelationKeyAperture              RelationKey = "aperture"
 	RelationKeyLastModifiedDate      RelationKey = "lastModifiedDate"
 	RelationKeyRecommendedRelations  RelationKey = "recommendedRelations"
@@ -53,6 +54,7 @@ const (
 	RelationKeyPriority              RelationKey = "priority"
 	RelationKeyFileMimeType          RelationKey = "fileMimeType"
 	RelationKeyType                  RelationKey = "type"
+	RelationKeyRelationFormat        RelationKey = "relationFormat"
 	RelationKeyLayout                RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber RelationKey = "audioAlbumTrackNumber"
 	RelationKeyPlaceOfBirth          RelationKey = "placeOfBirth"
@@ -460,6 +462,18 @@ var (
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},
+		RelationKeyIsHidden: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Specify if object is hidden",
+			Format:      relation.RelationFormat_checkbox,
+			Hidden:      true,
+			Key:         "isHidden",
+			MaxCount:    1,
+			Name:        "Hidden",
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
 		RelationKeyLastModifiedBy: {
 
 			DataSource:  relation.Relation_derived,
@@ -593,6 +607,18 @@ var (
 			Key:         "recommendedRelations",
 			Name:        "Recommended relations",
 			ObjectTypes: []string{TypePrefix + "relation"},
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyRelationFormat: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Type of the underlying value",
+			Format:      relation.RelationFormat_number,
+			Hidden:      true,
+			Key:         "relationFormat",
+			MaxCount:    1,
+			Name:        "Relation Format",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},
