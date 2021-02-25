@@ -233,11 +233,10 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 
 		if blockNeedToUpdate || !s.Exists(DataviewBlockId) {
 			s.Set(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
-		}
-
-		err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
-		if err != nil {
-			log.Errorf("template WithDataview failed to insert: %w", err)
+			err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
+			if err != nil {
+				log.Errorf("template WithDataview failed to insert: %w", err)
+			}
 		}
 	}
 }
