@@ -2,6 +2,7 @@ package objects
 
 import (
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -11,13 +12,14 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/martian/log"
 )
 
 const (
 	//CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
 	BundledObjectTypeURLPrefix = "_ot"
 )
+
+var log = logging.Logger("anytype-core-db")
 
 func New(
 	pageStore localstore.ObjectStore,

@@ -7,8 +7,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pb/service"
-	"github.com/google/martian/log"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
+
+var log = logging.Logger("anytype-grpc")
 
 func NewGrpcSender() *GrpcSender {
 	return &GrpcSender{}

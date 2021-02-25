@@ -173,17 +173,25 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		}
 	}
 
+	var recommendedRelationKeys []string
 	for _, rel := range requiredRelationByKey {
 		req.ObjectType.Relations = append(req.ObjectType.Relations, rel)
+		if bundle.HasRelation(rel.Key) {
+			recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.Key)
+		} else {
+			recommendedRelationKeys = append(recommendedRelationKeys, "_ir"+rel.Key)
+		}
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		sbId, _, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():      pbtypes.String(req.ObjectType.Name),
-				bundle.RelationKeyIconEmoji.String(): pbtypes.String(req.ObjectType.IconEmoji),
-				bundle.RelationKeyType.String():      pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
-				bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
+				bundle.RelationKeyName.String():                 pbtypes.String(req.ObjectType.Name),
+				bundle.RelationKeyIconEmoji.String():            pbtypes.String(req.ObjectType.IconEmoji),
+				bundle.RelationKeyType.String():                 pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
+				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_set)),
+				bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
+				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(recommendedRelationKeys),
 			},
 		}, req.ObjectType.Relations)
 		if err != nil {

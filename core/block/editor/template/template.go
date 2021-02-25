@@ -8,12 +8,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/martian/log"
 )
 
 const (
@@ -21,6 +21,8 @@ const (
 	TitleBlockId    = "title"
 	DataviewBlockId = "dataview"
 )
+
+var log = logging.Logger("anytype-state-template")
 
 type StateTransformer func(s *state.State)
 
@@ -210,6 +212,7 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		// remove old dataview
+		var blockNeedToUpdate bool
 		s.Iterate(func(b simple.Block) (isContinue bool) {
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
 				return true
@@ -220,20 +223,18 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 					len(dvBlock.Model().GetDataview().Views) == 0 ||
 					forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
 					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) {
-					// remove old pages set
-					s.Unlink(b.Model().Id)
+					log.With("thread", s.RootId()).Warnf("dataview needs to be updated")
+					blockNeedToUpdate = true
 					return false
 				}
 			}
 			return true
 		})
 
-		// todo: move to the begin of func
-		if s.Exists(DataviewBlockId) {
-			return
+		if blockNeedToUpdate || !s.Exists(DataviewBlockId) {
+			s.Set(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
 		}
 
-		s.Add(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
 		err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
 		if err != nil {
 			log.Errorf("template WithDataview failed to insert: %w", err)

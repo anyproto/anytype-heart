@@ -1,7 +1,7 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -12,13 +12,12 @@ import (
 )
 
 type ObjectType struct {
-	smartblock.SmartBlock
+	*Set
 }
 
-func NewObjectType(m meta.Service) *ObjectType {
-	sb := smartblock.New(m)
+func NewObjectType(m meta.Service, dbCtrl database.Ctrl) *ObjectType {
 	return &ObjectType{
-		SmartBlock: sb,
+		Set: NewSet(m, dbCtrl),
 	}
 }
 
