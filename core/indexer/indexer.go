@@ -148,6 +148,7 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 	for {
 		select {
 		case rec, ok := <-ch:
+			log.Debugf("indexer got change on %s(%s): %s", rec.ThreadID, rec.LogID, rec.ID)
 			if !ok {
 				return
 			}
