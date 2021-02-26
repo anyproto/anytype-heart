@@ -199,6 +199,20 @@ func (s *State) GetParentOf(id string) (res simple.Block) {
 	return
 }
 
+
+func (s *State) IsParentOf(parentId string, childId string) bool {
+	p := s.Pick(parentId)
+	if p == nil {
+		return false
+	}
+
+	if slice.FindPos(p.Model().ChildrenIds, childId) !=-1 {
+		return true
+	}
+
+	return false
+}
+
 func (s *State) PickParentOf(id string) (res simple.Block) {
 	s.Iterate(func(b simple.Block) bool {
 		if slice.FindPos(b.Model().ChildrenIds, id) != -1 {
