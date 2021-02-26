@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/libp2p/go-libp2p-core/peer"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/strkey"
 	"github.com/libp2p/go-libp2p-core/crypto"
@@ -18,6 +19,7 @@ const (
 type Keypair interface {
 	Seed() string
 	Address() string
+	PeerId() (peer.ID, error)
 	KeypairType() KeypairType
 	MarshalBinary() ([]byte, error)
 
@@ -115,6 +117,10 @@ func UnmarshalBinary(b []byte) (Keypair, error) {
 
 func (kp keypair) KeypairType() KeypairType {
 	return kp.keyType
+}
+
+func (kp keypair) PeerId() (peer.ID, error) {
+	return getPeer(kp.keyType, kp.GetPublic())
 }
 
 func (kp keypair) Address() string {

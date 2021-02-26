@@ -83,21 +83,33 @@ func (s *service) addMissingReplicators() error {
 	}
 
 	for _, threadId := range threadsIds {
-		ctx, _ := context.WithTimeout(s.ctx, time.Second*30)
-		thrd, err := s.t.GetThread(ctx, threadId)
+		thrdLogs, err := s.t.Logstore().GetManagedLogs(threadId)
 		if err != nil {
 			log.Errorf("failed to get thread %s: %s", threadId.String(), err.Error())
 			continue
 		}
 
-		if !util.MultiAddressHasReplicator(thrd.Addrs, s.replicatorAddr) {
-			err = s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
-			if err != nil {
-				log.Errorf("failed to add missing replicator for %s: %s", thrd.ID, err.Error())
-			} else {
-				log.Warnf("added missing replicator for %s", thrd.ID)
+		for _, thrdLog := range thrdLogs {
+			if !util.MultiAddressHasReplicator(thrdLog.Addrs, s.replicatorAddr) {
+				ctx, cancel := context.WithTimeout(s.ctx, time.Second*30)
+				thrd, err := s.t.GetThread(ctx, threadId)
+				cancel()
+				if err != nil {
+					log.Errorf("addMissingReplicators failed to get thread %s: %s", threadId, err.Error())
+					continue
+				}
+
+				err = s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
+				if err != nil {
+					log.Errorf("failed to add missing replicator for %s: %s", thrd.ID, err.Error())
+				} else {
+					log.Warnf("added missing replicator for %s", thrd.ID)
+					// we can break here, because thread.addReplicator has successfully added replicator for each managed log
+					break
+				}
 			}
 		}
+
 	}
 	return nil
 }
@@ -110,18 +122,20 @@ func (s *service) addReplicatorWithAttempts(ctx context.Context, thrd thread.Inf
 		return fmt.Errorf("replicatorAddr is nil")
 	}
 
-	if util.MultiAddressHasReplicator(thrd.Addrs, replicatorAddr) {
-		return nil
-	}
-
-	cafeAddrWithThread, err := util.MultiAddressAddThread(replicatorAddr, thrd.ID)
+	pId, err := s.device.PeerId()
 	if err != nil {
 		return err
 	}
 
+	ownLog := util.GetLog(thrd.Logs, pId)
+	if util.MultiAddressHasReplicator(ownLog.Addrs, replicatorAddr) {
+		return nil
+	}
+
+	log.With("thread", thrd.ID.String()).Debugf("no cafe addr found for own log")
 	for {
 		start := time.Now()
-		_, err = s.t.AddReplicator(ctx, thrd.ID, cafeAddrWithThread)
+		_, err = s.t.AddReplicator(ctx, thrd.ID, replicatorAddr)
 		if err == nil {
 			return
 		}

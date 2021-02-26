@@ -179,12 +179,12 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	var localThreadInfo thread.Info
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
-		replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, tid)
-		if err != nil {
-			return err
-		}
-
 		if !util2.MultiAddressHasReplicator(multiAddrs, s.replicatorAddr) {
+			replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, tid)
+			if err != nil {
+				return err
+			}
+
 			log.Warn("processNewExternalThread: cafe addr not found among thread addresses, will add it")
 			multiAddrs = append(multiAddrs, replAddrWithThread)
 		}
@@ -264,7 +264,8 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 		return fmt.Errorf("failed to add thread from any provided remote address")
 	}
 
-	if s.replicatorAddr != nil && !util2.MultiAddressHasReplicator(localThreadInfo.Addrs, s.replicatorAddr) {
+	if s.replicatorAddr != nil {
+		// add replicator for own logs
 		_, err = s.t.AddReplicator(s.ctx, tid, replAddrWithThread)
 		if err != nil {
 			log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
