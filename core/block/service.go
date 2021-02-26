@@ -483,6 +483,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 
 	log.Debugf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
 
+	// todo: move into createSmartblock params to make a single tx
 	if relations != nil {
 		var setDetails []*pb.RpcBlockSetDetailsDetail
 		for k, v := range details.Fields {
@@ -491,9 +492,12 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
+		sb.Lock()
 		if _, err = sb.AddExtraRelations(nil, relations); err != nil {
+			sb.Unlock()
 			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
 		}
+		sb.Unlock()
 	}
 
 	if details != nil && details.Fields != nil {
@@ -504,9 +508,13 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
+		sb.Lock()
 		if err = sb.SetDetails(nil, setDetails); err != nil {
+			sb.Unlock()
 			return id, nil, fmt.Errorf("can't set details to object: %v", err)
 		}
+		sb.Unlock()
+
 	}
 
 	return id, sb.Details(), nil
