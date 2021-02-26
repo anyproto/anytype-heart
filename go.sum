@@ -38,8 +38,8 @@ github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW5
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51/go.mod h1:SoKy+W8Mf6v7XBV30xFWkIFMs7UnXwsNGrGV12yVkEs=
-github.com/anytypeio/go-threads v1.0.2-0.20210225153104-96fbe9a54e8f h1:6UHPT3EqiwwZd9nZDEabsM0O59Uu+odQ5fs5A6CB1J8=
-github.com/anytypeio/go-threads v1.0.2-0.20210225153104-96fbe9a54e8f/go.mod h1:WwGXFHSbOZHO/b49PSe2xUk/KKAs1W9M9pn7hKK2VQY=
+github.com/anytypeio/go-threads v1.0.2-0.20210226120045-66502c6ed5eb h1:tRIbDxY0L2NuUP/pAz7zEhHBDTZvnLiyZk7UWbcF0/w=
+github.com/anytypeio/go-threads v1.0.2-0.20210226120045-66502c6ed5eb/go.mod h1:WwGXFHSbOZHO/b49PSe2xUk/KKAs1W9M9pn7hKK2VQY=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1 h1:g/LEIEQ0ACBOKX9MhORhlmluUKvuxvrIDbGMI0cqF5A=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 h1:G1bPvciwNyF7IUmKXNt9Ak3m6u9DE1rF+RmtIkBpVdA=
