@@ -1,6 +1,7 @@
 package indexer
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -31,8 +32,10 @@ var (
 )
 
 func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
-	ch, err := a.SubscribeForNewRecords()
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := a.SubscribeForNewRecords(ctx)
 	if err != nil {
+		cancel()
 		return nil, err
 	}
 
@@ -44,6 +47,11 @@ func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
 		quitWG:     &sync.WaitGroup{},
 		quit:       make(chan struct{}),
 	}
+	go func(){
+		<-i.quit
+		cancel()
+	}()
+
 	i.quitWG.Add(2)
 	if err := i.ftInit(); err != nil {
 		log.Errorf("can't init ft: %v", err)

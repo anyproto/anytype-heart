@@ -102,7 +102,7 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
-	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error)
+	SubscribeForNewRecords(ctx context.Context) (ch chan SmartblockRecordWithThreadID, err error)
 
 	ProfileInfo
 }
@@ -460,8 +460,8 @@ func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
-func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (a *Anytype) SubscribeForNewRecords(ctx context.Context) (ch chan SmartblockRecordWithThreadID, err error) {
+	ctx, cancel := context.WithCancel(ctx)
 	ch = make(chan SmartblockRecordWithThreadID)
 	threadsCh, err := a.t.Subscribe(ctx)
 	if err != nil {
