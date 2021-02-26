@@ -40,17 +40,14 @@ func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
 	}
 
 	i := &indexer{
-		store:      a.ObjectStore(),
-		anytype:    a,
-		searchInfo: searchInfo,
-		cache:      make(map[string]*doc),
-		quitWG:     &sync.WaitGroup{},
-		quit:       make(chan struct{}),
+		store:              a.ObjectStore(),
+		anytype:            a,
+		searchInfo:         searchInfo,
+		cache:              make(map[string]*doc),
+		quitWG:             &sync.WaitGroup{},
+		quit:               make(chan struct{}),
+		subscriptionCancel: cancel,
 	}
-	go func(){
-		<-i.quit
-		cancel()
-	}()
 
 	i.quitWG.Add(2)
 	if err := i.ftInit(); err != nil {
@@ -80,12 +77,13 @@ type GetSearchInfo interface {
 }
 
 type indexer struct {
-	store      localstore.ObjectStore
-	anytype    anytype.Service
-	searchInfo GetSearchInfo
-	cache      map[string]*doc
-	quitWG     *sync.WaitGroup
-	quit       chan struct{}
+	store              localstore.ObjectStore
+	anytype            anytype.Service
+	searchInfo         GetSearchInfo
+	cache              map[string]*doc
+	quitWG             *sync.WaitGroup
+	quit               chan struct{}
+	subscriptionCancel context.CancelFunc
 
 	threadIdsBuf []string
 	recBuf       []core.SmartblockRecordEnvelope
@@ -357,6 +355,9 @@ func (i *indexer) cleanup() {
 func (i *indexer) Close() {
 	i.mu.Lock()
 	quit := i.quit
+	if i.subscriptionCancel != nil {
+		i.subscriptionCancel()
+	}
 	i.mu.Unlock()
 
 	if quit != nil {
