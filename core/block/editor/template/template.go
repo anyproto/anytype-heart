@@ -61,6 +61,31 @@ var WithObjectTypeLayoutMigration = func() StateTransformer {
 	}
 }
 
+var WithObjectTypeRecommendedRelationsMigration = func(relations []*relation.Relation) StateTransformer {
+	return func(s *state.State) {
+		var keys []string
+		if len(pbtypes.GetStringList(s.Details(), bundle.RelationKeyRecommendedRelations.String())) > 0 {
+			return
+		}
+
+		for _, rel := range relations {
+			keys = append(keys, rel.Key)
+			var found bool
+			for _, exRel := range s.ExtraRelations() {
+				if exRel.Key == rel.Key {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.AddRelation(rel)
+			}
+		}
+
+		s.SetDetail(bundle.RelationKeyRecommendedRelations.String(), pbtypes.StringList(keys))
+	}
+}
+
 var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {
@@ -217,13 +242,18 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
 				return true
 			} else {
-				if dvBlock.Model().GetDataview().Source == "pages" ||
-					len(dvBlock.Model().GetDataview().Relations) == 0 ||
+				if len(dvBlock.Model().GetDataview().Relations) == 0 ||
 					dvBlock.Model().GetDataview().Source != dataview.Dataview.Source ||
 					len(dvBlock.Model().GetDataview().Views) == 0 ||
 					forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
 					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) {
-					log.With("thread", s.RootId()).Warnf("dataview needs to be updated")
+
+					log.With("thread", s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",
+						len(dvBlock.Model().GetDataview().Relations) == 0,
+						dvBlock.Model().GetDataview().Source != dataview.Dataview.Source,
+						len(dvBlock.Model().GetDataview().Views) == 0,
+						forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
+							forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations))
 					blockNeedToUpdate = true
 					return false
 				}
@@ -238,6 +268,7 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 				log.Errorf("template WithDataview failed to insert: %w", err)
 			}
 		}
+
 	}
 }
 

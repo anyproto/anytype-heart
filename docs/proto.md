@@ -667,6 +667,7 @@
     - [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate)
     - [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete)
     - [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet)
+    - [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet)
     - [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete)
     - [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
@@ -10451,6 +10452,22 @@ sent when the dataview relation has been changed or added
 
 
 
+<a name="anytype.Event.Block.Dataview.SourceSet"></a>
+
+### Event.Block.Dataview.SourceSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| source | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Dataview.ViewDelete"></a>
 
 ### Event.Block.Dataview.ViewDelete
@@ -11747,6 +11764,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate) |  |  |
 | blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype.Event.Block.Dataview.RecordsInsert) |  |  |
 | blockDataviewRecordsDelete | [Event.Block.Dataview.RecordsDelete](#anytype.Event.Block.Dataview.RecordsDelete) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |

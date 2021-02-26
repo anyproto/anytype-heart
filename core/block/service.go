@@ -1389,13 +1389,22 @@ func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, 
 
 	err = s.Do(sb.ID(), func(b smartblock.SmartBlock) error {
 		details := b.Details()
-		objectType.Relations = b.ExtraRelations()
+		rels := b.ExtraRelations()
+		for _, rk := range pbtypes.GetStringList(b.Details(), bundle.RelationKeyRecommendedRelations.String()) {
+			r := pbtypes.GetRelation(rels, rk)
+			if r == nil {
+				log.Errorf("invalid state of objectType %s: missing recommended relation %s", sb.ID(), rk)
+				continue
+			}
+			objectType.Relations = append(objectType.Relations, pbtypes.CopyRelation(r))
+		}
+
 		objectType.Url = url
 		if details != nil && details.Fields != nil {
 			if v, ok := details.Fields[bundle.RelationKeyName.String()]; ok {
 				objectType.Name = v.GetStringValue()
 			}
-			if v, ok := details.Fields[bundle.RelationKeyLayout.String()]; ok {
+			if v, ok := details.Fields[bundle.RelationKeyRecommendedLayout.String()]; ok {
 				objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
 			}
 			if v, ok := details.Fields[bundle.RelationKeyIconEmoji.String()]; ok {

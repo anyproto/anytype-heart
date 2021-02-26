@@ -81,6 +81,10 @@ func CopyRelation(in *pbrelation.Relation) (out *pbrelation.Relation) {
 	return out
 }
 
+func CopyLayout(in *pbrelation.Layout) (out *pbrelation.Layout) {
+	return &pbrelation.Layout{Id: in.Id, Name: in.Name, RequiredRelations: CopyRelations(in.RequiredRelations)}
+}
+
 func CopyObjectType(in *pbrelation.ObjectType) (out *pbrelation.ObjectType) {
 	if in == nil {
 		return nil

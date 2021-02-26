@@ -81,6 +81,17 @@ func GetRelation(rk RelationKey) (*relation.Relation, error) {
 	return nil, ErrNotFound
 }
 
+// MustGetLayout returns built-in layout by predefined Layout constant
+// PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
+func MustGetLayout(lk relation.ObjectTypeLayout) *relation.Layout {
+	if v, exists := Layouts[lk]; exists {
+		return pbtypes.CopyLayout(&v)
+	}
+
+	// we can safely panic in case RelationKey is a generated constant
+	panic(ErrNotFound)
+}
+
 func ListRelations() []*relation.Relation {
 	var rels []*relation.Relation
 	for _, rel := range relations {

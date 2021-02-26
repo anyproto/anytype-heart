@@ -45,6 +45,7 @@ message Event {
             Block.Dataview.RecordsInsert blockDataviewRecordsInsert = 27;
             Block.Dataview.RecordsDelete blockDataviewRecordsDelete = 28;
 
+            Block.Dataview.SourceSet blockDataviewSourceSet = 35;
             Block.Dataview.ViewSet blockDataviewViewSet = 19;
             Block.Dataview.ViewDelete blockDataviewViewDelete = 20;
             Block.Dataview.RelationDelete blockDataviewRelationDelete = 24;
@@ -511,6 +512,11 @@ message Event {
             message ViewDelete {
                 string id = 1; // dataview block's id
                 string viewId = 2; // view id to remove
+            }
+
+            message SourceSet {
+                string id = 1; // dataview block's id
+                string source = 2;
             }
 
             message RelationDelete {

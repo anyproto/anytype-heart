@@ -163,6 +163,14 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		}
 	}
 
+	if dv.content.Source != d.content.Source {
+		msgs = append(msgs,
+			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewSourceSet{
+				&pb.EventBlockDataviewSourceSet{
+					Id:     dv.Id,
+					Source: dv.content.Source,
+				}}}})
+	}
 	return
 }
 
