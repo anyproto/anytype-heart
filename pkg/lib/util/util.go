@@ -2,6 +2,7 @@ package util
 
 import (
 	"fmt"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -43,15 +44,29 @@ func MultiAddressTrimThread(addr ma.Multiaddr) (ma.Multiaddr, error) {
 	return trimmed, nil
 }
 
+func GetLog(logs []thread.LogInfo, id peer.ID) thread.LogInfo {
+	for _, l := range logs {
+		if l.ID == id {
+			return l
+		}
+	}
+
+	return thread.LogInfo{}
+}
+
 func MultiAddressHasReplicator(addrs []ma.Multiaddr, multiaddr ma.Multiaddr) bool {
+	replicatorP2PAddr, err := multiaddr.ValueForProtocol(ma.P_P2P)
+	if err != nil {
+		log.Errorf("invalid replicator addr: %s", multiaddr.String())
+		return false
+	}
+
 	for _, addr := range addrs {
-		addr, err := MultiAddressTrimThread(addr)
+		p2pAddr, err := addr.ValueForProtocol(ma.P_P2P)
 		if err != nil {
-			log.Error("failed to trim multiaddr: %s", err.Error())
 			continue
 		}
-
-		if addr.Equal(multiaddr) {
+		if p2pAddr == replicatorP2PAddr {
 			return true
 		}
 	}
