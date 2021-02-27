@@ -93,19 +93,33 @@ func (pk pubKey) KeypairType() KeypairType {
 }
 
 func getAddress(keyType KeypairType, key crypto.PubKey) (string, error) {
-	b, err := key.Raw()
-	if err != nil {
-		return "", err
-	}
 
 	if keyType == KeypairTypeAccount {
+		b, err := key.Raw()
+		if err != nil {
+			return "", err
+		}
+
 		return strkey.Encode(accountAddressVersionByte, b)
+	} else {
+		peerId, err := getPeer(keyType, key)
+		if err != nil {
+			return "", err
+		}
+		return peerId.String(), nil
+	}
+
+}
+
+func getPeer(keyType KeypairType, key crypto.PubKey) (peer.ID, error) {
+	if keyType == KeypairTypeAccount {
+		return peer.ID(""), fmt.Errorf("unsupported")
 	} else {
 		peerId, err := peer.IDFromPublicKey(key)
 		if err != nil {
 			return "", err
 		}
 
-		return peerId.String(), nil
+		return peerId, nil
 	}
 }
