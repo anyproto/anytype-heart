@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -235,6 +236,7 @@ func (block *smartBlock) GetSnapshots(offset vclock.VClock, limit int, metaOnly 
 }
 
 func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err error) {
+	metrics.ChangeCreatedCounter.Inc()
 	payloadB, err := payload.Marshal()
 	if err != nil {
 		return "", err
@@ -279,6 +281,7 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 					return
 				}
 
+				metrics.ChangeReceivedCounter.Inc()
 				rec, err := block.decodeRecord(ctx, val.Value(), false)
 				if err != nil {
 					log.Errorf("failed to decode thread record: %s", err.Error())

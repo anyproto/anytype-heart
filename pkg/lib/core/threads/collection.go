@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"path/filepath"
 	"time"
 
@@ -114,6 +115,7 @@ func (s *service) threadsDbListen() error {
 						continue
 					}
 
+					metrics.ExternalThreadReceivedCounter.Inc()
 					go func() {
 						s.processNewExternalThreadUntilSuccess(tid, ti)
 
@@ -138,14 +140,17 @@ func (s *service) threadsDbListen() error {
 func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) {
 	log := log.With("thread", tid.String())
 	log.With("threadAddrs", ti.Addrs).Info("got new thread")
-
+	start := time.Now()
 	var attempt int
 	for {
+		metrics.ExternalThreadHandlingAttempts.Inc()
 		attempt++
 		err := s.processNewExternalThread(tid, ti)
 		if err != nil {
 			log.Errorf("processNewExternalThread failed after %d attempt: %s", attempt, err.Error())
 		} else {
+			metrics.ServedThreads.Inc()
+			metrics.ExternalThreadHandlingDuration.Observe(time.Since(start).Seconds())
 			log.Debugf("processNewExternalThread succeed after %d attempt", attempt)
 			return
 		}
@@ -266,7 +271,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 
 	if s.replicatorAddr != nil {
 		// add replicator for own logs
-		_, err = s.t.AddReplicator(s.ctx, tid, replAddrWithThread)
+		_, err = s.t.AddReplicator(s.ctx, tid, s.replicatorAddr)
 		if err != nil {
 			log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
 		}

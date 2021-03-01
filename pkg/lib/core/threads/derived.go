@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -106,7 +107,13 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 				log.Infof("account pull done")
 			}
 
-			err = s.threadsDbMigration(account.ID.String())
+			if !justCreated {
+				ids, _ := s.t.Logstore().Threads()
+				metrics.ServedThreads.Set(float64(len(ids)))
+				err = s.threadsDbMigration(account.ID.String())
+			} else {
+				metrics.ServedThreads.Set(0)
+			}
 		}()
 
 		if justCreated {
@@ -305,6 +312,8 @@ func (s *service) derivedThreadCreate(index threadDerivedIndex) (thread.Info, er
 		return thread.Info{}, err
 	}
 
+	metrics.ServedThreads.Inc()
+	metrics.ThreadAdded.Inc()
 	// because this thread just have been created locally we can safely put all networking in the background
 	go func() {
 		if s.replicatorAddr == nil {
@@ -370,6 +379,9 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 	if err != nil {
 		return
 	}
+
+	metrics.ServedThreads.Inc()
+	metrics.ThreadAdded.Inc()
 
 	justCreated = true
 
