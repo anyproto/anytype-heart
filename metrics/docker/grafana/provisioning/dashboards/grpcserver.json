@@ -283,7 +283,7 @@
       "tableColumn": "",
       "targets": [
         {
-          "expr": "sum(irate(grpc_server_started_total{job=\"$job\"}[$interval]))",
+          "expr": "sum(irate(grpc_server_started_total{job=\"$job\",grpc_service=\"net.pb.Service\"}[$interval]))",
           "format": "time_series",
           "intervalFactor": 1,
           "refId": "A"
@@ -913,7 +913,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "sum(irate(grpc_server_started_total{job=\"$job\"}[$interval])) by (grpc_service)",
+          "expr": "sum(irate(grpc_server_started_total{job=\"$job\",grpc_service=\"net.pb.Service\"}[$interval])) by (grpc_service)",
           "format": "time_series",
           "intervalFactor": 1,
           "legendFormat": "{{grpc_service}}",
