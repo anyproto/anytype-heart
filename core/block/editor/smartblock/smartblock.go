@@ -61,6 +61,7 @@ func New(ms meta.Service) SmartBlock {
 }
 
 type SmartblockOpenListner interface {
+	// should not do any Do operations inside
 	SmartblockOpened(*state.Context)
 }
 

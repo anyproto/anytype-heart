@@ -29,7 +29,7 @@ func NewSet(
 
 	sb.Basic = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)
-	sb.Dataview = dataview.NewDataview(sb, dbCtrl)
+	sb.Dataview = dataview.NewDataview(sb)
 	sb.Router = database.New(dbCtrl)
 	sb.Text = stext.NewText(sb.SmartBlock)
 	return sb

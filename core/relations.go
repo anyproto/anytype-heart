@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -231,14 +232,12 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 	}
 
 	for _, id := range threadIds {
-		err = mw.doBlockService(func(bs block.Service) (err error) {
-			otype, err := bs.GetObjectType(id.String())
-			if err != nil {
-				return err
-			}
-			otypes = append(otypes, otype)
-			return nil
-		})
+		otype, err := mw.getObjectType(id.String())
+		if err != nil {
+			log.Errorf("failed to get objectType info: %s", err.Error())
+			continue
+		}
+		otypes = append(otypes, otype)
 	}
 
 	return response(pb.RpcObjectTypeListResponseError_NULL, otypes, nil)
@@ -273,14 +272,5 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 }
 
 func (mw *Middleware) getObjectType(url string) (*pbrelation.ObjectType, error) {
-	var objType = &pbrelation.ObjectType{}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		objType, err = bs.GetObjectType(url)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
-	return objType, err
+	return localstore.GetObjectType(mw.Anytype.ObjectStore(), url)
 }

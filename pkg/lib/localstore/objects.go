@@ -1736,3 +1736,58 @@ func objTypeCompactDecode(objTypeCompact string) (string, error) {
 	}
 	return "", fmt.Errorf("invalid objType")
 }
+
+func GetObjectType(store ObjectStore, url string) (*pbrelation.ObjectType, error) {
+	objectType := &pbrelation.ObjectType{}
+	if strings.HasPrefix(url, BundledObjectTypeURLPrefix) {
+		var err error
+		objectType, err = bundle.GetTypeByUrl(url)
+		if err != nil {
+			if err == bundle.ErrNotFound {
+				return nil, fmt.Errorf("unknown object type")
+			}
+			return nil, err
+		}
+		return objectType, nil
+	} else if !strings.HasPrefix(url, "b") {
+		return nil, fmt.Errorf("incorrect object type URL format")
+	}
+
+	ois, err := store.GetByIDs(url)
+	if err != nil {
+		return nil, err
+	}
+	if len(ois) == 0 {
+		return nil, fmt.Errorf("object type not found in the index")
+	}
+
+	details := ois[0].Details
+	var relations []*pbrelation.Relation
+	if ois[0].Relations != nil {
+		relations = ois[0].Relations.Relations
+	}
+
+	for _, rk := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		r := pbtypes.GetRelation(relations, rk)
+		if r == nil {
+			log.Errorf("invalid state of objectType %s: missing recommended relation %s", url, rk)
+			continue
+		}
+		objectType.Relations = append(objectType.Relations, pbtypes.CopyRelation(r))
+	}
+
+	objectType.Url = url
+	if details != nil && details.Fields != nil {
+		if v, ok := details.Fields[bundle.RelationKeyName.String()]; ok {
+			objectType.Name = v.GetStringValue()
+		}
+		if v, ok := details.Fields[bundle.RelationKeyRecommendedLayout.String()]; ok {
+			objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
+		}
+		if v, ok := details.Fields[bundle.RelationKeyIconEmoji.String()]; ok {
+			objectType.IconEmoji = v.GetStringValue()
+		}
+	}
+
+	return objectType, err
+}
