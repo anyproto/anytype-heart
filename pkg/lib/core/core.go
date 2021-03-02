@@ -69,6 +69,7 @@ type PredefinedBlockIds struct {
 type Service interface {
 	Account() string
 	Device() string
+	CafePeer() ma.Multiaddr
 
 	Start() error
 	Stop() error
@@ -174,6 +175,14 @@ func (a *Anytype) Account() string {
 		return ""
 	}
 	return a.opts.Account.Address()
+}
+
+func (a *Anytype) CafePeer() ma.Multiaddr {
+	if a.opts.CafeP2PAddr == nil {
+		return nil
+	}
+
+	return a.opts.CafeP2PAddr
 }
 
 func (a *Anytype) Device() string {
