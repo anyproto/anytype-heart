@@ -71,3 +71,13 @@ https://github.com/uw-labs/bloomrpc
 **CLI**
 
 https://github.com/njpatel/grpcc
+
+### Running with prometheus and grafana
+- `cd metrics/docker` – cd into folder with docker-compose file
+- `docker-compose up` - run the prometheus/grafana
+- use `ANYTYPE_PROM=0.0.0.0:9094` when running middleware to enable metrics collection. Client commands metrics available only in gRPC mode
+- open http://127.0.0.1:3000 to view collected metrics in Grafana. You can find several dashboards there:
+    - **Threads gRPC client** for go-threads client metrics(when you make requests to other nodes)
+    - **Threads gRPC server** for go-threads server metrics(when other nodes make requests to you)
+    - **MW** internal middleware metrics such as changes, added and created threads histograms
+    - **MW commands server** metrics for clients commands. Works only in grpc-server mode

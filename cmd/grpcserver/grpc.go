@@ -4,6 +4,8 @@ package main
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -81,8 +83,17 @@ func main() {
 	}
 	webaddr = webLis.Addr().String()
 
-	server := grpc.NewServer(grpc.MaxRecvMsgSize(20 * 1024 * 1024))
+	var unaryServerInterceptor grpc.UnaryServerInterceptor
+	if metrics.Enabled {
+		unaryServerInterceptor = grpc_prometheus.UnaryServerInterceptor
+	}
+
+	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024), grpc.UnaryInterceptor(unaryServerInterceptor))
 	service.RegisterClientCommandsServer(server, mw)
+	if metrics.Enabled {
+		grpc_prometheus.EnableHandlingTimeHistogram()
+		//grpc_prometheus.Register(server)
+	}
 
 	webrpc := grpcweb.WrapServer(
 		server,

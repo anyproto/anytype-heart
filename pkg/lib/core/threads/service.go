@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"sync"
 	"time"
 
@@ -138,6 +139,9 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		return thread.Info{}, err
 	}
 
+	metrics.ServedThreads.Inc()
+	metrics.ThreadAdded.Inc()
+
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
 		replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, thrdId)
@@ -166,9 +170,11 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	if replAddrWithThread != nil {
 		go func() {
 			attempt := 0
+			start := time.Now()
 			// todo: rewrite to job queue in badger
 			for {
 				attempt++
+				metrics.ThreadAddReplicatorAttempts.Inc()
 				p, err := s.t.AddReplicator(context.TODO(), thrd.ID, replAddrWithThread)
 				if err != nil {
 					log.Errorf("failed to add log replicator after %d attempt: %s", attempt, err.Error())
@@ -180,6 +186,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 					continue
 				}
 
+				metrics.ThreadAddReplicatorDuration.Observe(time.Since(start).Seconds())
 				log.With("thread", thrd.ID.String()).Infof("added log replicator after %d attempt: %s", attempt, p.String())
 				return
 			}

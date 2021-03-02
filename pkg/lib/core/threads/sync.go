@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
@@ -133,10 +134,12 @@ func (s *service) addReplicatorWithAttempts(ctx context.Context, thrd thread.Inf
 	}
 
 	log.With("thread", thrd.ID.String()).Debugf("no cafe addr found for own log")
+	start := time.Now()
 	for {
-		start := time.Now()
+		metrics.ThreadAddReplicatorAttempts.Inc()
 		_, err = s.t.AddReplicator(ctx, thrd.ID, replicatorAddr)
 		if err == nil {
+			metrics.ThreadAddReplicatorDuration.Observe(time.Since(start).Seconds())
 			return
 		}
 

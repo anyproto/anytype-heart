@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"io"
 	"path/filepath"
 	"strings"
@@ -21,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -433,6 +435,18 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 }
 
 func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
+	var (
+		unaryServerInterceptor grpc.UnaryServerInterceptor
+		unaryClientInterceptor grpc.UnaryClientInterceptor
+	)
+
+	if metrics.Enabled {
+		unaryServerInterceptor = grpc_prometheus.UnaryServerInterceptor
+		unaryClientInterceptor = grpc_prometheus.UnaryClientInterceptor
+		grpc_prometheus.EnableHandlingTimeHistogram()
+		grpc_prometheus.EnableClientHandlingTimeHistogram()
+	}
+
 	var opts = []litenet.NetOption{
 		litenet.WithInMemoryDS(a.opts.InMemoryDS),
 		litenet.WithOffline(a.opts.Offline),
@@ -440,16 +454,15 @@ func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
 		litenet.WithNetPubSub(a.opts.NetPubSub),
 		litenet.WithNetSyncTracking(a.opts.SyncTracking),
 		litenet.WithNetGRPCServerOptions(
-			grpc.MaxRecvMsgSize(5 << 20), // 5Mb max message size
+			grpc.MaxRecvMsgSize(5<<20), // 5Mb max message size
+			grpc.UnaryInterceptor(unaryServerInterceptor),
 		),
 		litenet.WithNetGRPCDialOptions(
 			grpc.WithDefaultCallOptions(
 				grpc.MaxCallRecvMsgSize(5<<20),
 				grpc.MaxCallSendMsgSize(5<<20),
 			),
-			// gRPC metrics
-			//grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-			//grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+			grpc.WithUnaryInterceptor(unaryClientInterceptor),
 		),
 	}
 
