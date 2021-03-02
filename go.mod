@@ -20,10 +20,10 @@ require (
 	github.com/golang/mock v1.4.4
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.1.4
-	github.com/grpc-ecosystem/go-grpc-middleware v1.2.1
+	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/h2non/filetype v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/hsanjuan/ipfs-lite v1.1.17
+	github.com/hsanjuan/ipfs-lite v1.1.18
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
