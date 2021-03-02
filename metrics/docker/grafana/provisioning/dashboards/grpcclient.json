@@ -1014,7 +1014,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(rate(grpc_client_handling_seconds_sum{job=\"$job\",grpc_service=\"net.pb.Service\",grpc_type=\"unary\"}[$interval])) by (grpc_method) * 1000",
+          "expr": "avg(rate(grpc_client_handling_seconds_sum{job=\"$job\",grpc_service=\"net.pb.Service\",grpc_type=\"unary\"}[$interval])) by (grpc_method)",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
