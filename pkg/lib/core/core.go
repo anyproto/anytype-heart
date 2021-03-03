@@ -30,6 +30,7 @@ import (
 	tcn "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	tnet "github.com/textileio/go-threads/net"
+	tq "github.com/textileio/go-threads/net/queue"
 	"github.com/textileio/go-threads/util"
 	"google.golang.org/grpc"
 )
@@ -47,8 +48,6 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 
 const (
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
-
-	pullInterval = 3 * time.Minute
 )
 
 var BootstrapNodes = []string{
@@ -534,13 +533,31 @@ func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID
 }
 
 func init() {
-	// redefine thread pulling interval
-	tnet.PullInterval = pullInterval
+	/* adjust ThreadsDB parameters */
 
-	// redefine timeouts for threads
+	// thread pulling cycle
+	tnet.PullStartAfter = 5 * time.Second
+	tnet.InitialPullInterval = 20 * time.Second
+	tnet.PullInterval = 3 * time.Minute
+
+	// communication timeouts
 	tnet.DialTimeout = 10 * time.Second
 	tnet.PushTimeout = 30 * time.Second
 	tnet.PullTimeout = 2 * time.Minute
+
+	// event bus input buffer
+	tnet.EventBusCapacity = 3
+
+	// exchange edges
+	tnet.MaxThreadsExchanged = 10
+	tnet.ExchangeCompressionTimeout = 20 * time.Second
+	tnet.QueuePollInterval = 1 * time.Second
+
+	// thread packer queue
+	tq.InBufSize = 5
+	tq.OutBufSize = 2
+
+	/* logs */
 
 	// apply log levels in go-threads and go-ipfs deps
 	logging.ApplyLevelsFromEnv()
