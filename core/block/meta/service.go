@@ -115,7 +115,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 		if name := pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()); name != "" {
 			objectType.Name = name
 		}
-		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLayout.String()); layout != 0.0 {
+		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyRecommendedLayout.String()); layout != 0.0 {
 			objectType.Layout = pbrelation.ObjectTypeLayout(int(layout))
 		}
 
