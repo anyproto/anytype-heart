@@ -433,7 +433,7 @@ func (s *service) MarkArchived(id string, archived bool) (err error) {
 				Key:   "isArchived",
 				Value: pbtypes.Bool(archived),
 			},
-		})
+		}, true)
 	})
 }
 
@@ -505,7 +505,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 			})
 		}
 		sb.Lock()
-		if err = sb.SetDetails(nil, setDetails); err != nil {
+		if err = sb.SetDetails(nil, setDetails, true); err != nil {
 			sb.Unlock()
 			return id, nil, fmt.Errorf("can't set details to object: %v", err)
 		}
@@ -715,7 +715,7 @@ func (s *service) SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest)
 
 func (s *service) SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		return b.SetDetails(ctx, req.Details)
+		return b.SetDetails(ctx, req.Details, false)
 	})
 }
 

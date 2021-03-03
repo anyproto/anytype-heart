@@ -75,7 +75,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() anytype.Service
-	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
@@ -149,7 +149,7 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectType []string) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -158,6 +158,13 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err er
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
+	if len(objectType) > 0 && len(sb.ObjectTypes()) == 0 {
+		err = sb.SetObjectTypes(nil, objectType)
+		if err != nil {
+			return err
+		}
+	}
+
 	if err := sb.NormalizeRelations(); err != nil {
 		return err
 	}
@@ -493,6 +500,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
+	log.Errorf("sb(%s).Apply changeId: %s: %v", sb.Id(), id, pushChangeParams)
+
 	sb.Doc.(*state.State).SetChangeId(id)
 	if sb.undo != nil && addHistory {
 		act.Group = s.GroupId()
@@ -563,7 +572,7 @@ func (sb *smartBlock) Anytype() anytype.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
 	detCopy := pbtypes.CopyStruct(s.Details())
 	if detCopy == nil || detCopy.Fields == nil {
@@ -630,7 +639,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	}
 
 	s.SetDetails(detCopy)
-	if err = sb.Apply(s); err != nil {
+	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
 	return nil
@@ -1139,12 +1148,12 @@ func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
-		if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
-			// do not fetch objectTypes for object type type to avoid universe collapse
-			for _, objType := range objectTypes {
-				relations = append(relations, objType.Relations...)
-			}
+		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
+		// do not fetch objectTypes for object type type to avoid universe collapse
+		for _, objType := range objectTypes {
+			relations = append(relations, objType.Relations...)
 		}
+		//}
 	}
 	return relations
 }
