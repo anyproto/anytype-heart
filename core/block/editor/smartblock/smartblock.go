@@ -639,8 +639,26 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	}
 
 	s.SetDetails(detCopy)
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(s); err != nil {
 		return
+	}
+
+	// filter-out setDetails event
+	if !showEvent && ctx != nil {
+		var filtered []*pb.EventMessage
+		msgs := ctx.GetMessages()
+		var isFiltered bool
+		for i, msg := range msgs {
+			if sd := msg.GetBlockSetDetails(); sd == nil || sd.Id != sb.Id() {
+				filtered = append(filtered, msgs[i])
+			} else {
+				isFiltered = true
+			}
+		}
+		if isFiltered {
+			ctx.SetMessages(sb.Id(), filtered)
+		}
+
 	}
 	return nil
 }
