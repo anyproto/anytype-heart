@@ -728,11 +728,12 @@ func TestCustomType(t *testing.T) {
 
 	respObjectTypeCreate := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
 		ObjectType: &pbrelation.ObjectType{
-			Name: "1",
+			Name:   "1",
+			Layout: pbrelation.ObjectType_todo,
 			Relations: []*pbrelation.Relation{
-				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
+				{Format: pbrelation.RelationFormat_date, Name: "date of birth", MaxCount: 1},
 				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"_otpage"}},
-				{Format: pbrelation.RelationFormat_longtext, Name: "bio"},
+				{Format: pbrelation.RelationFormat_longtext, Name: "bio", MaxCount: 1},
 			},
 		},
 	})

@@ -445,7 +445,7 @@ func (s *State) NormalizeRelations() {
 			}
 		}*/
 
-		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+		if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
 			if updateRelation == nil {
 				updateRelation = pbtypes.CopyRelation(r)
 			}
@@ -473,7 +473,7 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 			continue
 		}
 
-		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+		if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
 			rc := pbtypes.CopyRelation(r)
 			rc.MaxCount = 1
 
@@ -488,7 +488,7 @@ func (s *State) normalizeDvRelation(r *relation.Relation) {
 		*r = *bundle.MustGetRelation(bundle.RelationKey(r.Key))
 	}
 
-	if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+	if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
 		r.MaxCount = 1
 	}
 }

@@ -199,14 +199,13 @@ func (s *State) GetParentOf(id string) (res simple.Block) {
 	return
 }
 
-
 func (s *State) IsParentOf(parentId string, childId string) bool {
 	p := s.Pick(parentId)
 	if p == nil {
 		return false
 	}
 
-	if slice.FindPos(p.Model().ChildrenIds, childId) !=-1 {
+	if slice.FindPos(p.Model().ChildrenIds, childId) != -1 {
 		return true
 	}
 
@@ -664,7 +663,7 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	relCopy := pbtypes.CopyRelation(relation)
 	// reset the scope to object
 	relCopy.Scope = pbrelation.Relation_object
-	if relCopy.Format == pbrelation.RelationFormat_status {
+	if !pbtypes.RelationFormatCanHaveListValue(relCopy.Format) && relCopy.MaxCount != 1 {
 		relCopy.MaxCount = 1
 	}
 
@@ -681,7 +680,7 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	for _, rel := range relationsCopy {
 		// reset scopes for all relations
 		rel.Scope = pbrelation.Relation_object
-		if rel.Format == pbrelation.RelationFormat_status {
+		if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
 			rel.MaxCount = 1
 		}
 	}
@@ -786,7 +785,7 @@ func (s *State) ObjectTypes() []string {
 func (s *State) ObjectType() string {
 	objTypes := s.ObjectTypes()
 	if len(objTypes) != 1 && !s.noObjectType {
-		log.Errorf("obj %s has %d objectTypes instead of 1", s.RootId(), len(objTypes))
+		log.Errorf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
 	}
 
 	if len(objTypes) > 0 {
