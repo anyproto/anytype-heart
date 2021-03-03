@@ -57,8 +57,10 @@ var migrations = []migration{
 	skipMigration,               // 17
 	skipMigration,               // 18
 	skipMigration,               // 19
-	reindexAll,                  // 20
-	reindexStoredRelations,      // 21
+	skipMigration,               // 20
+	skipMigration,               // 21
+	reindexAll,                  // 22
+	reindexStoredRelations,      // 23
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
