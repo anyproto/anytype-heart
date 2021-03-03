@@ -15,7 +15,7 @@ require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gobwas/glob v0.2.3
 	github.com/goccy/go-graphviz v0.0.9
-	github.com/gogo/protobuf v1.3.1
+	github.com/gogo/protobuf v1.3.2
 	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.1.4
