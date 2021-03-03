@@ -114,12 +114,6 @@ func (s *service) Threads() net2.NetBoostrapper {
 func (s *service) Close() error {
 	// close global service context to stop all work
 	s.ctxCancel()
-	// lock in order to wait for work to finish and, e.g. db to init
-	s.Lock()
-	defer s.Unlock()
-	if db := s.db; db != nil {
-		return db.Close()
-	}
 	return nil
 }
 
