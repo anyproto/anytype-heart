@@ -221,9 +221,17 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			Key:     "key",
 		})
 		require.NoError(t, err)
-		require.Len(t, sb.Results.Events, 1)
-		require.Len(t, sb.Results.Events[0], 1)
-		assert.Equal(t, "key", sb.Results.Events[0][0].Msg.GetBlockSetRelation().GetKey().Value)
+		var setRelationEvent *pb.EventBlockSetRelation
+		for _, ev := range sb.Results.Events {
+			for _, em := range ev {
+				if m := em.Msg.GetBlockSetRelation(); m != nil {
+					setRelationEvent = m
+					break
+				}
+			}
+		}
+		require.NotNil(t, setRelationEvent)
+		assert.Equal(t, "key", setRelationEvent.GetKey().Value)
 		assert.Equal(t, "key", sb.NewState().Pick("2").Model().GetRelation().Key)
 	})
 	t.Run("not relation block", func(t *testing.T) {

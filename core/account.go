@@ -179,8 +179,11 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	newAcc.Name = req.Name
+	var cafePeer string
+	if mw.Anytype.CafePeer() != nil {
+		cafePeer, _ = mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
+	}
 
-	cafePeer, _ := mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
 	if cafePeer == "" {
 		cafePeer = defaultCafePeerId
 	}
@@ -521,7 +524,11 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
 	}
 
-	cafePeer, _ := mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
+	var cafePeer string
+	if mw.Anytype.CafePeer() != nil {
+		cafePeer, _ = mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
+	}
+
 	if cafePeer == "" {
 		cafePeer = defaultCafePeerId
 	}

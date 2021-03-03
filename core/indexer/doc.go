@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+	"strings"
 	"sync"
 	"time"
 
@@ -19,6 +20,9 @@ import (
 )
 
 func newDoc(id string, a anytype.Service) (d *doc, err error) {
+	if strings.HasPrefix(id, "_ot") {
+		return nil, fmt.Errorf("not indexable")
+	}
 	sb, err := a.GetBlock(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)

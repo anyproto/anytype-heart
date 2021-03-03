@@ -777,8 +777,8 @@ func TestCustomType(t *testing.T) {
 	profile := getDetailsForContext(show.Details, mw.Anytype.PredefinedBlocks().Profile)
 	require.NotNil(t, profile)
 	// should have custom obj type + profile, because it has the relation `creator`
-	require.Len(t, show.ObjectTypes, 2)
-	require.Len(t, show.ObjectTypePerObject, 2)
+	require.Len(t, show.ObjectTypes, 3)
+	//require.Len(t, show.ObjectTypePerObject, 2)
 	var found bool
 	for _, ot := range show.ObjectTypes {
 		if ot.Url == respObjectTypeCreate.ObjectType.Url {
