@@ -212,7 +212,7 @@
   {
     "description": "List of recommended relations",
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "recommendedRelations",
     "maxCount": 0,
     "name": "Recommended relations",

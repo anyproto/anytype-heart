@@ -82,6 +82,7 @@
     ]
   },
   {
+    "emoji": "✔️",
     "id": "task",
     "layout": "todo",
     "name": "Task",
@@ -233,6 +234,7 @@
   },
   {
     "description": "Special type to create objects from",
+    "hidden": true,
     "id": "template",
     "layout": "basic",
     "name": "Template",

@@ -604,6 +604,7 @@ var (
 			DataSource:  relation.Relation_details,
 			Description: "List of recommended relations",
 			Format:      relation.RelationFormat_object,
+			Hidden:      true,
 			Key:         "recommendedRelations",
 			Name:        "Recommended relations",
 			ObjectTypes: []string{TypePrefix + "relation"},

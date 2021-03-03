@@ -170,6 +170,7 @@ var (
 		TypeKeyTask: {
 
 			Description: "",
+			IconEmoji:   "✔️",
 			Layout:      relation.ObjectType_todo,
 			Name:        "Task",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyAssignee], relations[RelationKeyDueDate], relations[RelationKeyAttachments], relations[RelationKeyStatus], relations[RelationKeyDone], relations[RelationKeyPriority], relations[RelationKeyLinkedTasks], relations[RelationKeyLinkedProjects], relations[RelationKeyTag]},
@@ -178,6 +179,7 @@ var (
 		TypeKeyTemplate: {
 
 			Description: "Special type to create objects from",
+			Hidden:      true,
 			Layout:      relation.ObjectType_basic,
 			Name:        "Template",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyTemplateType]},
