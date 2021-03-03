@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/globalsign/mgo/bson"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -162,19 +163,28 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		requiredRelationByKey[rel.String()] = bundle.MustGetRelation(rel)
 	}
 
+	var recommendedRelationKeys []string
 	for _, rel := range req.ObjectType.Relations {
-		if rel.Key == "" {
-			continue
-		}
 		if v, exists := requiredRelationByKey[rel.Key]; exists {
 			if !pbtypes.RelationEqual(v, rel) {
 				return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("required relation %s not equals the bundled one", rel.Key))
 			}
+			recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.Key)
 			delete(requiredRelationByKey, rel.Key)
+		} else {
+			if rel.Key == "" {
+				rel.Key = bson.NewObjectId().Hex()
+			}
+
+			if bundle.HasRelation(rel.Key) {
+				recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.Key)
+			} else {
+				recommendedRelationKeys = append(recommendedRelationKeys, "_ir"+rel.Key)
+			}
 		}
 	}
 
-	var recommendedRelationKeys []string
+	// add missing required relations that should exist for every object type
 	for _, rel := range requiredRelationByKey {
 		req.ObjectType.Relations = append(req.ObjectType.Relations, rel)
 		if bundle.HasRelation(rel.Key) {
@@ -183,6 +193,14 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 			recommendedRelationKeys = append(recommendedRelationKeys, "_ir"+rel.Key)
 		}
 	}
+
+	/*ot := bundle.MustGetType(bundle.TypeKeyObjectType)
+	// mix in recommended relations for the objectType itself
+	for _, rel := range ot.Relations {
+		if !pbtypes.HasRelation(req.ObjectType.Relations, rel.Key) {
+			req.ObjectType.Relations = append(req.ObjectType.Relations, pbtypes.CopyRelation(rel))
+		}
+	}*/
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		sbId, _, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{

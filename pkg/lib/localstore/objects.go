@@ -1277,7 +1277,7 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 			bundle.RelationKeyName.String():        pbtypes.String(relation.Name),
 			bundle.RelationKeyDescription.String(): pbtypes.String(relation.Description),
 			bundle.RelationKeyId.String():          pbtypes.String("_ir" + relation.Key),
-			bundle.RelationKeyType.String():        pbtypes.String(bundle.RelationKeyType.String()),
+			bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyObjectType.URL()),
 		}}, nil, nil, relation.Description)
 		if err != nil {
 			return err
@@ -1724,15 +1724,10 @@ func extractIdFromKey(key string) (id string) {
 // temp func until we move to the proper ids
 func objTypeCompactEncode(objType string) (string, error) {
 	if strings.HasPrefix(objType, BundledObjectTypeURLPrefix) {
-		return "0" + strings.TrimPrefix(objType, BundledObjectTypeURLPrefix), nil
+		return objType, nil
 	}
-	return "", fmt.Errorf("invalid objType")
-}
-
-// temp func until we move to the proper ids
-func objTypeCompactDecode(objTypeCompact string) (string, error) {
-	if strings.HasPrefix(objTypeCompact, "0") {
-		return BundledObjectTypeURLPrefix + strings.TrimPrefix(objTypeCompact, "0"), nil
+	if strings.HasPrefix(objType, "ba") {
+		return objType, nil
 	}
 	return "", fmt.Errorf("invalid objType")
 }
@@ -1767,7 +1762,13 @@ func GetObjectType(store ObjectStore, url string) (*pbrelation.ObjectType, error
 		relations = ois[0].Relations.Relations
 	}
 
-	for _, rk := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		rk, err := pbtypes.RelationIdToKey(relId)
+		if err != nil {
+			log.Errorf("GetObjectType failed to get relation key from id: %s", err.Error())
+			continue
+		}
+
 		r := pbtypes.GetRelation(relations, rk)
 		if r == nil {
 			log.Errorf("invalid state of objectType %s: missing recommended relation %s", url, rk)
