@@ -749,6 +749,7 @@ func TestCustomType(t *testing.T) {
 		}
 	}
 
+	time.Sleep(time.Second)
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
