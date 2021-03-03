@@ -4,7 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"sync"
 	"time"
 
@@ -14,7 +14,6 @@ import (
 	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -101,8 +100,6 @@ type Service interface {
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
 
-	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
-
 	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
 	UpdateExtraRelations(ctx *state.Context, id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error)
@@ -150,7 +147,6 @@ type Service interface {
 	DeletePages(req pb.RpcBlockListDeletePageRequest) error
 
 	GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error)
-	GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (string, error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error
 	UpdateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewUpdateRequest) error
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error
@@ -257,6 +253,14 @@ func (s *service) init() {
 	})
 
 	s.Do(s.anytype.PredefinedBlocks().SetPages, func(b smartblock.SmartBlock) error {
+		return nil
+	})
+
+	s.Do(s.anytype.PredefinedBlocks().MarketplaceType, func(b smartblock.SmartBlock) error {
+		return nil
+	})
+
+	s.Do(s.anytype.PredefinedBlocks().MarketplaceRelation, func(b smartblock.SmartBlock) error {
 		return nil
 	})
 }
@@ -429,7 +433,7 @@ func (s *service) MarkArchived(id string, archived bool) (err error) {
 				Key:   "isArchived",
 				Value: pbtypes.Bool(archived),
 			},
-		})
+		}, true)
 	})
 }
 
@@ -475,6 +479,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 
 	log.Debugf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
 
+	// todo: move into createSmartblock params to make a single tx
 	if relations != nil {
 		var setDetails []*pb.RpcBlockSetDetailsDetail
 		for k, v := range details.Fields {
@@ -483,9 +488,12 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
+		sb.Lock()
 		if _, err = sb.AddExtraRelations(nil, relations); err != nil {
+			sb.Unlock()
 			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
 		}
+		sb.Unlock()
 	}
 
 	if details != nil && details.Fields != nil {
@@ -496,9 +504,13 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 				Value: v,
 			})
 		}
-		if err = sb.SetDetails(nil, setDetails); err != nil {
+		sb.Lock()
+		if err = sb.SetDetails(nil, setDetails, true); err != nil {
+			sb.Unlock()
 			return id, nil, fmt.Errorf("can't set details to object: %v", err)
 		}
+		sb.Unlock()
+
 	}
 
 	return id, sb.Details(), nil
@@ -703,7 +715,7 @@ func (s *service) SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest)
 
 func (s *service) SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		return b.SetDetails(ctx, req.Details)
+		return b.SetDetails(ctx, req.Details, false)
 	})
 }
 
@@ -716,15 +728,6 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 func (s *service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		relations, err = b.GetAggregatedRelations(req.BlockId)
-		return err
-	})
-
-	return
-}
-
-func (s *service) GetDataviewObjectType(ctx *state.Context, contextId string, blockId string) (objectType string, err error) {
-	err = s.DoDataview(contextId, func(b dataview.Dataview) error {
-		objectType, err = b.GetObjectTypeURL(ctx, blockId)
 		return err
 	})
 
@@ -1195,9 +1198,13 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	case pb.SmartBlockType_ObjectType:
-		sb = editor.NewObjectType(s.meta)
+		sb = editor.NewObjectType(s.meta, s)
 	case pb.SmartBlockType_File:
 		sb = editor.NewFiles(s.meta)
+	case pb.SmartBlockType_MarketplaceType:
+		sb = editor.NewMarketplaceType(s.meta, s)
+	case pb.SmartBlockType_MarketplaceRelation:
+		sb = editor.NewMarketplaceRelation(s.meta, s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -1354,49 +1361,6 @@ func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error
 	return apply(sb)
 }
 
-func (s *service) GetObjectType(url string) (objectType *pbrelation.ObjectType, err error) {
-	objectType = &pbrelation.ObjectType{}
-	if strings.HasPrefix(url, objects.BundledObjectTypeURLPrefix) {
-		var err error
-		objectType, err = bundle.GetTypeByUrl(url)
-		if err != nil {
-			if err == bundle.ErrNotFound {
-				return nil, ErrUnknownObjectType
-			}
-			return nil, err
-		}
-		return objectType, nil
-	} else if !strings.HasPrefix(url, objects.CustomObjectTypeURLPrefix) {
-		return nil, fmt.Errorf("incorrect object type URL format")
-	}
-
-	sbid := strings.TrimPrefix(url, objects.CustomObjectTypeURLPrefix)
-	sb, err := s.anytype.GetBlock(sbid)
-	if err != nil {
-		return nil, err
-	}
-
-	err = s.Do(sb.ID(), func(b smartblock.SmartBlock) error {
-		details := b.Details()
-		objectType.Relations = b.ExtraRelations()
-		objectType.Url = url
-		if details != nil && details.Fields != nil {
-			if v, ok := details.Fields[bundle.RelationKeyName.String()]; ok {
-				objectType.Name = v.GetStringValue()
-			}
-			if v, ok := details.Fields[bundle.RelationKeyLayout.String()]; ok {
-				objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
-			}
-			if v, ok := details.Fields[bundle.RelationKeyIconEmoji.String()]; ok {
-				objectType.IconEmoji = v.GetStringValue()
-			}
-		}
-		return nil
-	})
-
-	return objectType, err
-}
-
 func (s *service) GetRelations(objectId string) (relations []*pbrelation.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		relations = b.Relations()
@@ -1493,7 +1457,7 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	objType, err := s.GetObjectType(req.ObjectTypeUrl)
+	objType, err := localstore.GetObjectType(s.anytype.ObjectStore(), req.ObjectTypeUrl)
 	if err != nil {
 		return "", "", err
 	}

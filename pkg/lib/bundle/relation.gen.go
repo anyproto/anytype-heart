@@ -30,6 +30,7 @@ const (
 	RelationKeyAudioAlbum            RelationKey = "audioAlbum"
 	RelationKeyStatus                RelationKey = "status"
 	RelationKeyDurationInSeconds     RelationKey = "durationInSeconds"
+	RelationKeyIsHidden              RelationKey = "isHidden"
 	RelationKeyAperture              RelationKey = "aperture"
 	RelationKeyLastModifiedDate      RelationKey = "lastModifiedDate"
 	RelationKeyRecommendedRelations  RelationKey = "recommendedRelations"
@@ -46,12 +47,14 @@ const (
 	RelationKeyAddedDate             RelationKey = "addedDate"
 	RelationKeyAssignee              RelationKey = "assignee"
 	RelationKeyExposure              RelationKey = "exposure"
+	RelationKeyTemplateType          RelationKey = "templateType"
 	RelationKeyAudioGenre            RelationKey = "audioGenre"
 	RelationKeyName                  RelationKey = "name"
 	RelationKeyFocalRatio            RelationKey = "focalRatio"
 	RelationKeyPriority              RelationKey = "priority"
 	RelationKeyFileMimeType          RelationKey = "fileMimeType"
 	RelationKeyType                  RelationKey = "type"
+	RelationKeyRelationFormat        RelationKey = "relationFormat"
 	RelationKeyLayout                RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber RelationKey = "audioAlbumTrackNumber"
 	RelationKeyPlaceOfBirth          RelationKey = "placeOfBirth"
@@ -314,6 +317,7 @@ var (
 			DataSource:  relation.Relation_details,
 			Description: "Done checkbox used to render action layout. ",
 			Format:      relation.RelationFormat_checkbox,
+			Hidden:      true,
 			Key:         "done",
 			MaxCount:    1,
 			Name:        "Done",
@@ -428,6 +432,7 @@ var (
 			Format:      relation.RelationFormat_emoji,
 			Hidden:      true,
 			Key:         "iconEmoji",
+			MaxCount:    1,
 			Name:        "Emoji",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
@@ -452,7 +457,20 @@ var (
 			Format:      relation.RelationFormat_object,
 			Hidden:      true,
 			Key:         "id",
+			MaxCount:    1,
 			Name:        "Anytype ID",
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyIsHidden: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Specify if object is hidden",
+			Format:      relation.RelationFormat_checkbox,
+			Hidden:      true,
+			Key:         "isHidden",
+			MaxCount:    1,
+			Name:        "Hidden",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},
@@ -531,6 +549,7 @@ var (
 			Format:      relation.RelationFormat_checkbox,
 			Hidden:      true,
 			Key:         "mpAddedToLibrary",
+			MaxCount:    1,
 			Name:        "Added to library",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
@@ -562,7 +581,6 @@ var (
 			DataSource:  relation.Relation_details,
 			Description: "Used to order tasks in list/canban",
 			Format:      relation.RelationFormat_number,
-			Hidden:      true,
 			Key:         "priority",
 			MaxCount:    1,
 			Name:        "Priority",
@@ -586,9 +604,22 @@ var (
 			DataSource:  relation.Relation_details,
 			Description: "List of recommended relations",
 			Format:      relation.RelationFormat_object,
+			Hidden:      true,
 			Key:         "recommendedRelations",
 			Name:        "Recommended relations",
 			ObjectTypes: []string{TypePrefix + "relation"},
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyRelationFormat: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Type of the underlying value",
+			Format:      relation.RelationFormat_number,
+			Hidden:      true,
+			Key:         "relationFormat",
+			MaxCount:    1,
+			Name:        "Relation Format",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},
@@ -643,6 +674,19 @@ var (
 			Format:      relation.RelationFormat_tag,
 			Key:         "tag",
 			Name:        "Tag",
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyTemplateType: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Type that is used for templating",
+			Format:      relation.RelationFormat_object,
+			Hidden:      true,
+			Key:         "templateType",
+			MaxCount:    1,
+			Name:        "Template's Type",
+			ObjectTypes: []string{TypePrefix + "objectType"},
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},

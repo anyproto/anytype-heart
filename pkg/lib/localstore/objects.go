@@ -177,8 +177,10 @@ var (
 )
 
 const (
-	CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	BundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
+	OldCustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
+	OldBundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
+
+	BundledObjectTypeURLPrefix = "_ot"
 )
 
 type relationOption struct {
@@ -469,12 +471,18 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Offset = 0
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
-	dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	if !q.WithSystemObjects {
+		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
 			return
 		}
 	}
+	for _, f := range dsq.Filters {
+		log.Warnf("query filter: %+v", f)
+	}
+
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
@@ -986,6 +994,8 @@ func diffSlices(a, b []string) (removed []string, added []string) {
 }
 
 func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -1006,6 +1016,8 @@ func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations
 }
 
 func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -1044,8 +1056,6 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 }
 
 func (m *dsObjectStore) updateObject(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
-	m.l.Lock()
-	defer m.l.Unlock()
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		return fmt.Errorf("failed to extract smartblock type: %w", err)
@@ -1218,6 +1228,26 @@ func (m *dsObjectStore) UpdateRelationsInSet(setId, objTypeBefore, objTypeAfter 
 	return txn.Commit()
 }
 
+func (m *dsObjectStore) StoreRelations(relations []*pbrelation.Relation) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+	if relations == nil {
+		return nil
+	}
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	err = m.storeRelations(txn, relations)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
 func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relation) error {
 	var relBytes []byte
 	var err error
@@ -1239,11 +1269,33 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 		if err != nil {
 			return err
 		}
+
+		err = m.updateObject(txn, "_ir"+relation.Key, model.ObjectInfo{
+			Relations: &pbrelation.Relations{},
+			Details:   &types.Struct{Fields: map[string]*types.Value{}},
+		}, &types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyName.String():        pbtypes.String(relation.Name),
+			bundle.RelationKeyDescription.String(): pbtypes.String(relation.Description),
+			bundle.RelationKeyId.String():          pbtypes.String("_ir" + relation.Key),
+			bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyObjectType.URL()),
+		}}, nil, nil, relation.Description)
+		if err != nil {
+			return err
+		}
+
 	}
 	return nil
 }
 
 func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id string, relationsBefore *pbrelation.Relations, relationsAfter *pbrelation.Relations) error {
+	if relationsAfter == nil {
+		return nil
+	}
+
+	if relationsBefore != nil && pbtypes.RelationsEqual(relationsBefore.Relations, relationsAfter.Relations) {
+		return nil
+	}
+
 	relationsKey := pagesRelationsBase.ChildString(id)
 	var err error
 	for _, relation := range relationsAfter.Relations {
@@ -1672,19 +1724,71 @@ func extractIdFromKey(key string) (id string) {
 // temp func until we move to the proper ids
 func objTypeCompactEncode(objType string) (string, error) {
 	if strings.HasPrefix(objType, BundledObjectTypeURLPrefix) {
-		return "0" + strings.TrimPrefix(objType, BundledObjectTypeURLPrefix), nil
-	} else if strings.HasPrefix(objType, CustomObjectTypeURLPrefix) {
-		return "1" + strings.TrimPrefix(objType, CustomObjectTypeURLPrefix), nil
+		return objType, nil
+	}
+	if strings.HasPrefix(objType, "ba") {
+		return objType, nil
 	}
 	return "", fmt.Errorf("invalid objType")
 }
 
-// temp func until we move to the proper ids
-func objTypeCompactDecode(objTypeCompact string) (string, error) {
-	if strings.HasPrefix(objTypeCompact, "0") {
-		return BundledObjectTypeURLPrefix + strings.TrimPrefix(objTypeCompact, "0"), nil
-	} else if strings.HasPrefix(objTypeCompact, "1") {
-		return CustomObjectTypeURLPrefix + strings.TrimPrefix(objTypeCompact, "1"), nil
+func GetObjectType(store ObjectStore, url string) (*pbrelation.ObjectType, error) {
+	objectType := &pbrelation.ObjectType{}
+	if strings.HasPrefix(url, BundledObjectTypeURLPrefix) {
+		var err error
+		objectType, err = bundle.GetTypeByUrl(url)
+		if err != nil {
+			if err == bundle.ErrNotFound {
+				return nil, fmt.Errorf("unknown object type")
+			}
+			return nil, err
+		}
+		return objectType, nil
+	} else if !strings.HasPrefix(url, "b") {
+		return nil, fmt.Errorf("incorrect object type URL format")
 	}
-	return "", fmt.Errorf("invalid objType")
+
+	ois, err := store.GetByIDs(url)
+	if err != nil {
+		return nil, err
+	}
+	if len(ois) == 0 {
+		return nil, fmt.Errorf("object type not found in the index")
+	}
+
+	details := ois[0].Details
+	var relations []*pbrelation.Relation
+	if ois[0].Relations != nil {
+		relations = ois[0].Relations.Relations
+	}
+
+	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
+		rk, err := pbtypes.RelationIdToKey(relId)
+		if err != nil {
+			log.Errorf("GetObjectType failed to get relation key from id: %s", err.Error())
+			continue
+		}
+
+		r := pbtypes.GetRelation(relations, rk)
+		if r == nil {
+			log.Errorf("invalid state of objectType %s: missing recommended relation %s", url, rk)
+			continue
+		}
+		objectType.Relations = append(objectType.Relations, pbtypes.CopyRelation(r))
+	}
+
+	objectType.Url = url
+	if details != nil && details.Fields != nil {
+		if v, ok := details.Fields[bundle.RelationKeyName.String()]; ok {
+			objectType.Name = v.GetStringValue()
+		}
+		if v, ok := details.Fields[bundle.RelationKeyRecommendedLayout.String()]; ok {
+			objectType.Layout = pbrelation.ObjectTypeLayout(int(v.GetNumberValue()))
+		}
+		if v, ok := details.Fields[bundle.RelationKeyIconEmoji.String()]; ok {
+			objectType.IconEmoji = v.GetStringValue()
+		}
+	}
+
+	return objectType, err
 }

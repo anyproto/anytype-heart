@@ -49,11 +49,12 @@ type Page struct {
 }
 
 func (p *Page) Init(s source.Source, _ bool, objectTypeUrls []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
-		return
-	}
 	if objectTypeUrls == nil {
 		objectTypeUrls = []string{bundle.TypeKeyPage.URL()}
+	}
+
+	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+		return
 	}
 
 	var layout relation.ObjectTypeLayout

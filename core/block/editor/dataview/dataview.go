@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	bundle "github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -28,7 +29,6 @@ const defaultLimit = 50
 var log = logging.Logger("anytype-mw-editor")
 
 type Dataview interface {
-	GetObjectTypeURL(ctx *state.Context, blockId string) (string, error)
 	GetAggregatedRelations(blockId string) ([]*pbrelation.Relation, error)
 	GetDataviewRelations(blockId string) ([]*pbrelation.Relation, error)
 
@@ -48,11 +48,13 @@ type Dataview interface {
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
 	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
+	WithSystemObjects(yes bool)
+
 	smartblock.SmartblockOpenListner
 }
 
-func NewDataview(sb smartblock.SmartBlock, objTypeGetter ObjectTypeGetter) Dataview {
-	return &dataviewCollectionImpl{SmartBlock: sb, ObjectTypeGetter: objTypeGetter}
+func NewDataview(sb smartblock.SmartBlock) Dataview {
+	return &dataviewCollectionImpl{SmartBlock: sb}
 }
 
 type dataviewImpl struct {
@@ -69,14 +71,14 @@ type dataviewImpl struct {
 	recordsUpdatesCancel context.CancelFunc
 }
 
-type ObjectTypeGetter interface {
-	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
-}
-
 type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
-	ObjectTypeGetter
-	dataviews []*dataviewImpl
+	dataviews         []*dataviewImpl
+	withSystemObjects bool
+}
+
+func (d *dataviewCollectionImpl) WithSystemObjects(yes bool) {
+	d.withSystemObjects = yes
 }
 
 func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string, relation pbrelation.Relation, showEvent bool) (*pbrelation.Relation, error) {
@@ -288,7 +290,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*pbre
 		return nil, err
 	}
 
-	objectType, err := d.GetObjectType(tb.GetSource())
+	objectType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
 	if err != nil {
 		return nil, err
 	}
@@ -473,7 +475,7 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	}
 
 	if len(view.Relations) == 0 {
-		objType, err := d.ObjectTypeGetter.GetObjectType(tb.GetSource())
+		objType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
 		if err != nil {
 			return nil, fmt.Errorf("object type not found")
 		}
@@ -574,7 +576,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 	}
 	dv := d.getDataviewImpl(dvBlock)
 
-	objectType, err := d.GetObjectType(source)
+	objectType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), source)
 	if err != nil {
 		return err
 	}
@@ -704,7 +706,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	// todo: inject schema
-	objectType, err := d.GetObjectType(source)
+	objectType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), source)
 	if err != nil {
 		return nil, err
 	}
@@ -722,12 +724,13 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	recordsSub := database.NewSubscription(nil, recordsCh)
 	depRecordsSub := database.NewSubscription(nil, depRecordsCh)
 
-	entries, cancelRecordSubscripton, total, err := db.QueryAndSubscribeForChanges(&sch, database.Query{
-		Relations: activeView.Relations,
-		Filters:   activeView.Filters,
-		Sorts:     activeView.Sorts,
-		Limit:     dv.limit,
-		Offset:    dv.offset,
+	entries, cancelRecordSubscription, total, err := db.QueryAndSubscribeForChanges(&sch, database.Query{
+		Relations:         activeView.Relations,
+		Filters:           activeView.Filters,
+		Sorts:             activeView.Sorts,
+		Limit:             dv.limit,
+		Offset:            dv.offset,
+		WithSystemObjects: d.withSystemObjects,
 	}, recordsSub)
 	if err != nil {
 		return nil, err
@@ -748,7 +751,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				continue
 			}
 
-			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) {
+			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == pbrelation.RelationFormat_object || rel.GetFormat() == pbrelation.RelationFormat_file) && (len(rel.ObjectTypes) == 0 || rel.ObjectTypes[0] != bundle.TypeKeyRelation.URL()) {
 				depIdsToAdd := pbtypes.GetStringListValue(item)
 				for _, depId := range depIdsToAdd {
 					if _, exists := depIdsMap[depId]; !exists {
@@ -768,7 +771,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	dv.depsUpdatesSubscription = depRecordsSub
 	dv.recordsUpdatesCancel = func() {
 		cancelDepsSubscripton()
-		cancelRecordSubscripton()
+		cancelRecordSubscription()
 	}
 
 	var msgs = []*pb.EventMessage{

@@ -2,6 +2,8 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -50,7 +52,8 @@ func (s *State) normalize(withLayouts bool) (err error) {
 		}
 	}
 
-	s.normalizeRelations()
+	s.NormalizeRelations()
+	s.MigrateObjectTypes()
 
 	for _, b := range s.blocks {
 		if dv := b.Model().GetDataview(); dv != nil {
@@ -338,7 +341,78 @@ func CleanupLayouts(s *State) (removedCount int) {
 	return
 }
 
-func (s *State) normalizeRelations() {
+func (s *State) MigrateObjectTypes() {
+	migrate := func(old string) (new string, hasChanges bool) {
+		if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix) {
+			new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
+			hasChanges = true
+		} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix) {
+			new = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
+			hasChanges = true
+		} else {
+			new = old
+		}
+		return
+	}
+
+	newObjObjType, hasChanges1 := migrate(s.ObjectType())
+	if hasChanges1 {
+		s.SetObjectType(newObjObjType)
+	}
+
+	b := s.Get("dataview")
+	if b != nil {
+		dv := b.Model().GetDataview()
+		dvBlock, ok := b.(dataview.Block)
+		if dv != nil && ok {
+			newDvSource, hasChanges1 := migrate(dv.Source)
+			if hasChanges1 {
+				dvBlock.SetSource(newDvSource)
+				s.Set(dvBlock)
+			}
+
+			for _, rel := range dv.Relations {
+				if len(rel.ObjectTypes) == 0 {
+					continue
+				}
+				var newOts []string
+				var hasChanges2 bool
+				for _, ot := range rel.ObjectTypes {
+					newOt, hasChanges1 := migrate(ot)
+					hasChanges2 = hasChanges2 || hasChanges1
+					newOts = append(newOts, newOt)
+				}
+
+				if hasChanges2 {
+					relCopy := pbtypes.CopyRelation(rel)
+					relCopy.ObjectTypes = newOts
+					dvBlock.UpdateRelation(relCopy.Key, *relCopy)
+				}
+			}
+		}
+	}
+
+	for _, rel := range s.ExtraRelations() {
+		if len(rel.ObjectTypes) == 0 {
+			continue
+		}
+		var newOts []string
+		var hasChanges2 bool
+		for _, ot := range rel.ObjectTypes {
+			newOt, hasChanges1 := migrate(ot)
+			hasChanges2 = hasChanges2 || hasChanges1
+			newOts = append(newOts, newOt)
+		}
+
+		if hasChanges2 {
+			relCopy := pbtypes.CopyRelation(rel)
+			relCopy.ObjectTypes = newOts
+			s.SetExtraRelation(relCopy)
+		}
+	}
+}
+
+func (s *State) NormalizeRelations() {
 	for _, r := range s.ExtraRelations() {
 		var updateRelation *relation.Relation
 
@@ -358,7 +432,7 @@ func (s *State) normalizeRelations() {
 				if slice.FindPos(values, opt.Id) >= 0 {
 					optsFiltered = append(optsFiltered, r.SelectDict[i])
 				} else {
-					log.With("thread",s.rootId).Errorf("normalizeRelations: remove option %s", opt.Id)
+					log.With("thread",s.rootId).Errorf("NormalizeRelations: remove option %s", opt.Id)
 					hasChanges = true
 				}
 			}
@@ -371,7 +445,7 @@ func (s *State) normalizeRelations() {
 			}
 		}*/
 
-		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+		if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
 			if updateRelation == nil {
 				updateRelation = pbtypes.CopyRelation(r)
 			}
@@ -399,7 +473,7 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 			continue
 		}
 
-		if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+		if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
 			rc := pbtypes.CopyRelation(r)
 			rc.MaxCount = 1
 
@@ -414,7 +488,7 @@ func (s *State) normalizeDvRelation(r *relation.Relation) {
 		*r = *bundle.MustGetRelation(bundle.RelationKey(r.Key))
 	}
 
-	if r.Format == relation.RelationFormat_status && r.MaxCount != 1 {
+	if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
 		r.MaxCount = 1
 	}
 }

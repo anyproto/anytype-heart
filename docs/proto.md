@@ -667,6 +667,7 @@
     - [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate)
     - [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete)
     - [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet)
+    - [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet)
     - [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete)
     - [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
@@ -6101,6 +6102,8 @@ commands acceptable only for text blocks, others will be ignored
 | homeBlockId | [string](#string) |  | home dashboard block id |
 | archiveBlockId | [string](#string) |  | archive block id |
 | profileBlockId | [string](#string) |  | profile block id |
+| marketplaceTypeId | [string](#string) |  | marketplace type id |
+| marketplaceRelationId | [string](#string) |  | marketplace relation id |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
@@ -10449,6 +10452,22 @@ sent when the dataview relation has been changed or added
 
 
 
+<a name="anytype.Event.Block.Dataview.SourceSet"></a>
+
+### Event.Block.Dataview.SourceSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| source | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Dataview.ViewDelete"></a>
 
 ### Event.Block.Dataview.ViewDelete
@@ -11745,6 +11764,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate) |  |  |
 | blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype.Event.Block.Dataview.RecordsInsert) |  |  |
 | blockDataviewRecordsDelete | [Event.Block.Dataview.RecordsDelete](#anytype.Event.Block.Dataview.RecordsDelete) |  |  |
+| blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
@@ -12168,6 +12188,8 @@ Precondition: user A and user B opened the same block
 | Set | 5 | only have dataview simpleblock |
 | ObjectType | 6 | have relations list |
 | File | 7 |  |
+| MarketplaceType | 8 |  |
+| MarketplaceRelation | 9 |  |
 
 
  
@@ -13156,13 +13178,14 @@ default dictionary with unique values to choose for select/multiSelect format |
 | ---- | ------ | ----------- |
 | basic | 0 |  |
 | profile | 1 |  |
-| action | 2 |  |
+| todo | 2 |  |
 | set | 3 |  |
 | objectType | 4 |  |
 | relation | 5 |  |
 | file | 6 |  |
 | dashboard | 7 |  |
-| database | 8 | to be released later |
+| image | 8 |  |
+| database | 20 | to be released later |
 
 
 

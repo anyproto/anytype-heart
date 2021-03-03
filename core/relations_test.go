@@ -212,7 +212,7 @@ func TestRelationAdd(t *testing.T) {
 		optionAddResp := mw.ObjectRelationOptionAdd(&pb.RpcObjectRelationOptionAddRequest{
 			ContextId:   respPageCreate.PageId,
 			RelationKey: bundle.RelationKeyStatus.String(),
-			Option:      &pbrelation.RelationOption{
+			Option: &pbrelation.RelationOption{
 				Text:  "Done",
 				Color: "red",
 			},
@@ -223,7 +223,6 @@ func TestRelationAdd(t *testing.T) {
 			{Key: bundle.RelationKeyStatus.String(), Value: pbtypes.StringList([]string{optionAddResp.Option.Id})},
 		}})
 		require.Equal(t, 0, int(setDetailsResp.Error.Code), setDetailsResp.Error.Description)
-
 
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
@@ -355,7 +354,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respRelCreate.Error.Code), respRelCreate.Error.Description)
 
 		var foundRel *pbrelation.Relation
-		for _, msg := range respRelCreate.Event.GetMessages(){
+		for _, msg := range respRelCreate.Event.GetMessages() {
 			if rel := msg.GetBlockDataviewRelationSet(); rel != nil && rel.Relation.Name == "relation2" {
 				foundRel = rel.Relation
 				break
@@ -729,18 +728,19 @@ func TestCustomType(t *testing.T) {
 
 	respObjectTypeCreate := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
 		ObjectType: &pbrelation.ObjectType{
-			Name: "1",
+			Name:   "1",
+			Layout: pbrelation.ObjectType_todo,
 			Relations: []*pbrelation.Relation{
-				{Format: pbrelation.RelationFormat_date, Name: "date of birth"},
-				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"https://anytype.io/schemas/object/bundled/page"}},
-				{Format: pbrelation.RelationFormat_longtext, Name: "bio"},
+				{Format: pbrelation.RelationFormat_date, Name: "date of birth", MaxCount: 1},
+				{Format: pbrelation.RelationFormat_object, Name: "assignee", ObjectTypes: []string{"_otpage"}},
+				{Format: pbrelation.RelationFormat_longtext, Name: "bio", MaxCount: 1},
 			},
 		},
 	})
 
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
 	require.Len(t, respObjectTypeCreate.ObjectType.Relations, len(bundle.RequiredInternalRelations)+3) // including relation.RequiredInternalRelations
-	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "https://anytype.io/schemas/object/custom/"))
+	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "b"))
 	var newRelation *pbrelation.Relation
 	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
 		if rel.Name == "bio" {
@@ -749,6 +749,7 @@ func TestCustomType(t *testing.T) {
 		}
 	}
 
+	time.Sleep(time.Second)
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
@@ -777,8 +778,8 @@ func TestCustomType(t *testing.T) {
 	profile := getDetailsForContext(show.Details, mw.Anytype.PredefinedBlocks().Profile)
 	require.NotNil(t, profile)
 	// should have custom obj type + profile, because it has the relation `creator`
-	require.Len(t, show.ObjectTypes, 2)
-	require.Len(t, show.ObjectTypePerObject, 2)
+	require.Len(t, show.ObjectTypes, 3)
+	//require.Len(t, show.ObjectTypePerObject, 2)
 	var found bool
 	for _, ot := range show.ObjectTypes {
 		if ot.Url == respObjectTypeCreate.ObjectType.Url {

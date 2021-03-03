@@ -32,9 +32,10 @@ func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThr
 		return m
 	}
 
+	cafePeerStr, _ := mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
 	t := mw.Anytype.(*core.Anytype).ThreadService().Threads()
-	cafePeer, _ := peer.Decode(cafePeerId)
 
+	cafePeer, _ := peer.Decode(cafePeerStr)
 	tid, err := thread.Decode(req.ThreadId)
 	if err != nil {
 		return response(nil, pb.RpcDebugThreadResponseError_BAD_INPUT, err)
@@ -57,7 +58,8 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	var threads []*pb.RpcDebugthreadInfo
 	t := mw.Anytype.(*core.Anytype).ThreadService().Threads()
 	ids, _ := t.Logstore().Threads()
-	cafePeer, _ := peer.Decode(cafePeerId)
+	cafePeerStr, _ := mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
+	cafePeer, _ := peer.Decode(cafePeerStr)
 
 	var (
 		threadsWithoutRepl         int32
@@ -113,7 +115,7 @@ func getThreadInfo(t net.NetBoostrapper, id thread.ID, ownDeviceId string, cafeP
 		if lg.ID.String() == ownDeviceId {
 			for _, ad := range lg.Addrs {
 				adHost, _ := ad.ValueForProtocol(ma.P_P2P)
-				if adHost == cafePeerId {
+				if adHost == cafePeer.String() {
 					tinfo.OwnLogHasCafeReplicator = true
 				}
 			}

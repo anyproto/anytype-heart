@@ -8,12 +8,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/martian/log"
 )
 
 const (
@@ -21,6 +21,8 @@ const (
 	TitleBlockId    = "title"
 	DataviewBlockId = "dataview"
 )
+
+var log = logging.Logger("anytype-state-template")
 
 type StateTransformer func(s *state.State)
 
@@ -43,6 +45,44 @@ var WithObjectTypes = func(otypes []string) StateTransformer {
 		if len(s.ObjectTypes()) == 0 {
 			s.SetObjectTypes(otypes)
 		}
+	}
+}
+
+var WithObjectTypeLayoutMigration = func() StateTransformer {
+	return func(s *state.State) {
+		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())
+
+		if layout == float64(relation.ObjectType_objectType) {
+			return
+		}
+
+		s.SetDetail(bundle.RelationKeyRecommendedLayout.String(), pbtypes.Float64(layout))
+		s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(relation.ObjectType_objectType)))
+	}
+}
+
+var WithObjectTypeRecommendedRelationsMigration = func(relations []*relation.Relation) StateTransformer {
+	return func(s *state.State) {
+		var keys []string
+		if len(pbtypes.GetStringList(s.Details(), bundle.RelationKeyRecommendedRelations.String())) > 0 {
+			return
+		}
+
+		for _, rel := range relations {
+			keys = append(keys, rel.Key)
+			var found bool
+			for _, exRel := range s.ExtraRelations() {
+				if exRel.Key == rel.Key {
+					found = true
+					break
+				}
+			}
+			if !found {
+				s.AddRelation(rel)
+			}
+		}
+
+		s.SetDetail(bundle.RelationKeyRecommendedRelations.String(), pbtypes.StringList(keys))
 	}
 }
 
@@ -77,6 +117,18 @@ var WithDetailName = func(name string) StateTransformer {
 var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil {
+			s.SetDetail(key.String(), value)
+		}
+
+		if rel := pbtypes.GetRelation(s.ExtraRelations(), key.String()); rel == nil {
+			s.SetExtraRelation(bundle.MustGetRelation(key))
+		}
+	}
+}
+
+var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
+	return func(s *state.State) {
+		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil || !s.Details().Fields[key.String()].Equal(value) {
 			s.SetDetail(key.String(), value)
 		}
 
@@ -182,32 +234,43 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 	}
 }
 
-var WithDataview = func(dataview model.BlockContentOfDataview) StateTransformer {
+var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		// remove old dataview
+		var blockNeedToUpdate bool
 		s.Iterate(func(b simple.Block) (isContinue bool) {
 			if dvBlock, ok := b.(simpleDataview.Block); !ok {
 				return true
 			} else {
-				if dvBlock.Model().GetDataview().Source == "pages" || len(dvBlock.Model().GetDataview().Relations) == 0 {
-					// remove old pages set
-					s.Unlink(b.Model().Id)
+				if len(dvBlock.Model().GetDataview().Relations) == 0 ||
+					dvBlock.Model().GetDataview().Source != dataview.Dataview.Source ||
+					len(dvBlock.Model().GetDataview().Views) == 0 ||
+					forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
+					forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations) {
+
+					log.With("thread", s.RootId()).With("name", pbtypes.GetString(s.Details(), "name")).Warnf("dataview needs to be migrated: %v, %v, %v, %v",
+						len(dvBlock.Model().GetDataview().Relations) == 0,
+						dvBlock.Model().GetDataview().Source != dataview.Dataview.Source,
+						len(dvBlock.Model().GetDataview().Views) == 0,
+						forceViews && len(dvBlock.Model().GetDataview().Views[0].Filters) != len(dataview.Dataview.Views[0].Filters) ||
+							forceViews && len(dvBlock.Model().GetDataview().Relations) != len(dataview.Dataview.Relations))
+					blockNeedToUpdate = true
 					return false
 				}
 			}
 			return true
 		})
 
-		// todo: move to the begin of func
-		if s.Exists(DataviewBlockId) {
-			return
+		if blockNeedToUpdate || !s.Exists(DataviewBlockId) {
+			s.Set(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
+			if !s.IsParentOf(s.RootId(), DataviewBlockId) {
+				err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
+				if err != nil {
+					log.Errorf("template WithDataview failed to insert: %w", err)
+				}
+			}
 		}
 
-		s.Add(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
-		err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
-		if err != nil {
-			log.Errorf("template WithDataview failed to insert: %w", err)
-		}
 	}
 }
 

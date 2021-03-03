@@ -62,6 +62,8 @@ type ObjectStore interface {
 
 	CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
 	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
+	StoreRelations(relations []*pbrelation.Relation) error
+
 	DeleteObject(id string) error
 	RemoveRelationFromCache(key string) error
 

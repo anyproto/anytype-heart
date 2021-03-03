@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -62,6 +61,7 @@ func New(ms meta.Service) SmartBlock {
 }
 
 type SmartblockOpenListner interface {
+	// should not do any Do operations inside
 	SmartblockOpened(*state.Context)
 }
 
@@ -75,7 +75,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() anytype.Service
-	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
@@ -149,7 +149,7 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectType []string) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -158,9 +158,17 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err er
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
+	if len(objectType) > 0 && len(sb.ObjectTypes()) == 0 {
+		err = sb.SetObjectTypes(nil, objectType)
+		if err != nil {
+			return err
+		}
+	}
+
 	if err := sb.NormalizeRelations(); err != nil {
 		return err
 	}
+
 	return
 }
 
@@ -277,6 +285,9 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 								if ot == "" {
 									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
 								} else {
+									if strings.HasPrefix(ot, "http") {
+										log.Errorf("dv rels has http source")
+									}
 									uniqueObjTypes = append(uniqueObjTypes, ot)
 								}
 							}
@@ -404,9 +415,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		ids = append(ids, sb.Id())
 
 		for _, ot := range sb.ObjectTypes() {
-			if strings.HasSuffix(ot, objects.CustomObjectTypeURLPrefix) {
-				ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
-			}
+			ids = append(ids, ot)
 		}
 
 		details := sb.Details()
@@ -417,9 +426,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 			}
 			// add all custom object types as dependents
 			for _, ot := range rel.ObjectTypes {
-				if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
-					ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
-				}
+				ids = append(ids, ot)
 			}
 
 			if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
@@ -493,6 +500,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
+	log.Errorf("sb(%s).Apply changeId: %s: %v", sb.Id(), id, pushChangeParams)
+
 	sb.Doc.(*state.State).SetChangeId(id)
 	if sb.undo != nil && addHistory {
 		act.Group = s.GroupId()
@@ -547,12 +556,12 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 
 func (sb *smartBlock) NewState() *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewState()
+	return sb.Doc.NewState().SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewStateCtx(ctx)
+	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) History() undo.History {
@@ -563,7 +572,7 @@ func (sb *smartBlock) Anytype() anytype.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
 	detCopy := pbtypes.CopyStruct(s.Details())
 	if detCopy == nil || detCopy.Fields == nil {
@@ -632,6 +641,24 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	s.SetDetails(detCopy)
 	if err = sb.Apply(s); err != nil {
 		return
+	}
+
+	// filter-out setDetails event
+	if !showEvent && ctx != nil {
+		var filtered []*pb.EventMessage
+		msgs := ctx.GetMessages()
+		var isFiltered bool
+		for i, msg := range msgs {
+			if sd := msg.GetBlockSetDetails(); sd == nil || sd.Id != sb.Id() {
+				filtered = append(filtered, msgs[i])
+			} else {
+				isFiltered = true
+			}
+		}
+		if isFiltered {
+			ctx.SetMessages(sb.Id(), filtered)
+		}
+
 	}
 	return nil
 }
@@ -1139,12 +1166,12 @@ func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
-		if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
-			// do not fetch objectTypes for object type type to avoid universe collapse
-			for _, objType := range objectTypes {
-				relations = append(relations, objType.Relations...)
-			}
+		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
+		// do not fetch objectTypes for object type type to avoid universe collapse
+		for _, objType := range objectTypes {
+			relations = append(relations, objType.Relations...)
 		}
+		//}
 	}
 	return relations
 }

@@ -11,6 +11,11 @@ import (
 )
 
 func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
+	if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
+		// allow null value for any field
+		return nil
+	}
+
 	switch rel.Format {
 	case pbrelation.RelationFormat_longtext, pbrelation.RelationFormat_shorttext:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {

@@ -16,14 +16,15 @@ message ObjectType {
     enum Layout {
         basic = 0;
         profile = 1;
-        action = 2;
+        todo = 2;
         set = 3;
         objectType = 4;
         relation = 5;
         file = 6;
         dashboard = 7;
+        image = 8;
 
-        database = 8; // to be released later
+        database = 20; // to be released later
     }
 }
 

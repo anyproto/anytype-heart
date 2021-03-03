@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
@@ -55,7 +54,13 @@ var migrations = []migration{
 	skipMigration,               // 14
 	skipMigration,               // 15
 	skipMigration,               // 16
-	reindexAll,                  // 17
+	skipMigration,               // 17
+	skipMigration,               // 18
+	skipMigration,               // 19
+	skipMigration,               // 20
+	skipMigration,               // 21
+	reindexAll,                  // 22
+	reindexStoredRelations,      // 23
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -453,10 +458,10 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				continue
 			}
 			for _, idx := range a.localStore.Objects.Indexes() {
-				if idx.Name == "objtype_relkey_setid" {
-					// skip it because we can't reindex relations in sets for now
-					continue
-				}
+				//if idx.Name == "objtype_relkey_setid" {
+				// skip it because we can't reindex relations in sets for now
+				//	continue
+				//}
 
 				err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
 				if err != nil {
@@ -482,6 +487,14 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 				}
 			}
 
+			if strings.HasPrefix(objType, localstore.OldCustomObjectTypeURLPrefix) {
+				objType = strings.TrimPrefix(objType, localstore.OldCustomObjectTypeURLPrefix)
+			} else if strings.HasPrefix(objType, localstore.OldBundledObjectTypeURLPrefix) {
+				objType = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(objType, localstore.OldBundledObjectTypeURLPrefix)
+			} else if bundle.HasObjectType(objType) {
+				objType = localstore.BundledObjectTypeURLPrefix + objType
+			}
+
 			o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
 			err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
 			if err != nil {
@@ -496,6 +509,46 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 			log.Debugf("migration reindexAll completed for %d objects", migrated)
 		}
 		return nil
+	})
+}
+
+func reindexStoredRelations(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		rels, err := a.localStore.Objects.ListRelations("")
+		if err != nil {
+			return err
+		}
+		migrate := func(old string) (new string, hasChanges bool) {
+			if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix) {
+				new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
+				hasChanges = true
+			} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix) {
+				new = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
+				hasChanges = true
+			} else {
+				new = old
+			}
+			return
+		}
+
+		for i, rel := range rels {
+			if len(rel.ObjectTypes) == 0 {
+				continue
+			}
+			var newOts []string
+			var hasChanges2 bool
+			for _, ot := range rel.ObjectTypes {
+				newOt, hasChanges1 := migrate(ot)
+				hasChanges2 = hasChanges2 || hasChanges1
+				newOts = append(newOts, newOt)
+			}
+
+			if hasChanges2 {
+				rels[i].ObjectTypes = newOts
+			}
+		}
+
+		return a.localStore.Objects.StoreRelations(rels)
 	})
 }
 
@@ -545,8 +598,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 					layout = t.Layout
 				}
 			} else {
-				otId := strings.TrimPrefix(otUrl, objects.CustomObjectTypeURLPrefix)
-				oi, err := a.localStore.Objects.GetByIDs(otId)
+				oi, err := a.localStore.Objects.GetByIDs(otUrl)
 				if err != nil {
 					log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
 					continue

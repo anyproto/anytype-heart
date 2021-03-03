@@ -1,8 +1,10 @@
 package pbtypes
 
 import (
+	"fmt"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
+	"strings"
 )
 
 func Float64(v float64) *types.Value {
@@ -268,4 +270,26 @@ func ValueToInterface(v *types.Value) interface{} {
 	default:
 		panic("protostruct: unknown kind")
 	}
+}
+
+func RelationFormatCanHaveListValue(format pbrelation.RelationFormat) bool {
+	switch format {
+	case pbrelation.RelationFormat_tag,
+		pbrelation.RelationFormat_file,
+		pbrelation.RelationFormat_object:
+		return true
+	default:
+		return false
+	}
+}
+
+func RelationIdToKey(id string) (string, error) {
+	if strings.HasPrefix(id, "_ir") {
+		return strings.TrimPrefix(id, "_ir"), nil
+	}
+
+	if strings.HasPrefix(id, "_br") {
+		return strings.TrimPrefix(id, "_br"), nil
+	}
+	return "", fmt.Errorf("incorrect id format")
 }

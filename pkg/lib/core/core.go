@@ -68,6 +68,7 @@ type PredefinedBlockIds struct {
 type Service interface {
 	Account() string
 	Device() string
+	CafePeer() ma.Multiaddr
 
 	Start() error
 	Stop() error
@@ -103,7 +104,7 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
-	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error)
+	SubscribeForNewRecords(ctx context.Context) (ch chan SmartblockRecordWithThreadID, err error)
 
 	ProfileInfo
 }
@@ -173,6 +174,14 @@ func (a *Anytype) Account() string {
 		return ""
 	}
 	return a.opts.Account.Address()
+}
+
+func (a *Anytype) CafePeer() ma.Multiaddr {
+	if a.opts.CafeP2PAddr == nil {
+		return nil
+	}
+
+	return a.opts.CafeP2PAddr
 }
 
 func (a *Anytype) Device() string {
@@ -472,8 +481,8 @@ func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
-func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (a *Anytype) SubscribeForNewRecords(ctx context.Context) (ch chan SmartblockRecordWithThreadID, err error) {
+	ctx, cancel := context.WithCancel(ctx)
 	ch = make(chan SmartblockRecordWithThreadID)
 	threadsCh, err := a.t.Subscribe(ctx)
 	if err != nil {

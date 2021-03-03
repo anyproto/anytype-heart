@@ -21,7 +21,7 @@ func TestProfile_SetDetails(t *testing.T) {
 			Key:   "key",
 			Value: pbtypes.String("value"),
 		},
-	})
+	}, false)
 	require.NoError(t, err)
 	require.NotNil(t, event)
 }

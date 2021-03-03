@@ -98,10 +98,10 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 				continue
 			}
 			objectTypes = append(objectTypes, objectType)
-		} else if !strings.HasPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix) {
+		} else if !strings.HasPrefix(otypeUrl, "b") {
 			log.Errorf("failed to get objectType %s: incorrect url", otypeUrl)
 		} else {
-			customOtypeIds = append(customOtypeIds, strings.TrimPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix))
+			customOtypeIds = append(customOtypeIds, otypeUrl)
 		}
 	}
 
@@ -115,7 +115,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 		if name := pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()); name != "" {
 			objectType.Name = name
 		}
-		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLayout.String()); layout != 0.0 {
+		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyRecommendedLayout.String()); layout != 0.0 {
 			objectType.Layout = pbrelation.ObjectTypeLayout(int(layout))
 		}
 
@@ -123,7 +123,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 			objectType.IconEmoji = iconEmoji
 		}
 
-		objectType.Url = objects.CustomObjectTypeURLPrefix + meta.BlockId
+		objectType.Url = meta.BlockId
 		objectType.Relations = meta.Relations
 
 		objectTypes = append(objectTypes, objectType)
