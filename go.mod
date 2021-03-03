@@ -22,7 +22,7 @@ require (
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/h2non/filetype v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/hsanjuan/ipfs-lite v1.1.17
+	github.com/hsanjuan/ipfs-lite v1.1.18
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
@@ -58,7 +58,7 @@ require (
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/stretchr/testify v1.7.0
-	github.com/textileio/go-threads v1.0.2-0.20210224171828-e25d8178ed6d
+	github.com/textileio/go-threads v1.0.2-0.20210302142003-1b78475a3590
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/yuin/goldmark v1.3.1
 	go.uber.org/zap v1.16.0
@@ -70,7 +70,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20210224171828-e25d8178ed6d
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20210302142003-1b78475a3590
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
