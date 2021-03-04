@@ -15,8 +15,7 @@
   "editable": true,
   "gnetId": 9186,
   "graphTooltip": 0,
-  "id": 3,
-  "iteration": 1614439793691,
+  "iteration": 1614862047771,
   "links": [],
   "panels": [
     {
@@ -842,7 +841,8 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "$$hashKey": "object:342",
+          "format": "reqps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -850,7 +850,8 @@
           "show": true
         },
         {
-          "format": "Bps",
+          "$$hashKey": "object:343",
+          "format": "reqps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1014,7 +1015,7 @@
       "steppedLine": false,
       "targets": [
         {
-          "expr": "avg(rate(grpc_client_handling_seconds_sum{job=\"$job\",grpc_service=\"net.pb.Service\",grpc_type=\"unary\"}[$interval])) by (grpc_method)",
+          "expr": "histogram_quantile(0.5, sum(rate(grpc_client_handling_seconds_bucket{job=\"$job\",grpc_service=\"net.pb.Service\",grpc_type=\"unary\"}[$interval])) by (grpc_method,le))",
           "format": "time_series",
           "interval": "",
           "intervalFactor": 1,
@@ -1042,7 +1043,8 @@
       },
       "yaxes": [
         {
-          "format": "ms",
+          "$$hashKey": "object:284",
+          "format": "s",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1050,6 +1052,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:285",
           "format": "none",
           "label": null,
           "logBase": 1,
@@ -1171,7 +1174,8 @@
       },
       "yaxes": [
         {
-          "format": "decbytes",
+          "$$hashKey": "object:94",
+          "format": "reqps",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1179,12 +1183,13 @@
           "show": true
         },
         {
+          "$$hashKey": "object:95",
           "format": "Bps",
           "label": null,
           "logBase": 1,
           "max": null,
           "min": null,
-          "show": true
+          "show": false
         }
       ],
       "yaxis": {
@@ -1277,7 +1282,8 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "$$hashKey": "object:198",
+          "format": "percentunit",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1285,6 +1291,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:199",
           "format": "percentunit",
           "label": null,
           "logBase": 1,
@@ -1383,7 +1390,8 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "$$hashKey": "object:255",
+          "format": "s",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1391,6 +1399,7 @@
           "show": true
         },
         {
+          "$$hashKey": "object:256",
           "format": "short",
           "label": null,
           "logBase": 1,
@@ -1489,7 +1498,8 @@
       },
       "yaxes": [
         {
-          "format": "short",
+          "$$hashKey": "object:313",
+          "format": "percent",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1497,7 +1507,8 @@
           "show": true
         },
         {
-          "format": "short",
+          "$$hashKey": "object:314",
+          "format": "percent",
           "label": null,
           "logBase": 1,
           "max": null,
@@ -1740,5 +1751,5 @@
   "timezone": "",
   "title": "Threads gRPC client",
   "uid": "7_VAvbQac",
-  "version": 3
+  "version": 7
 }
