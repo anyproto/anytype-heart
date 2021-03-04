@@ -57,6 +57,7 @@ require (
 	github.com/otiai10/opengraph v1.1.3
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
+	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.7.0
 	github.com/textileio/go-threads v1.0.2-0.20210304072541-d0f91da84404
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
