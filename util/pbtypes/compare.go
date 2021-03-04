@@ -217,6 +217,19 @@ func DataviewFiltersEqualSorted(filters1, filters2 []*model.BlockContentDataview
 	return true
 }
 
+func DataviewViewsEqualSorted(views1, views2 []*model.BlockContentDataviewView) bool {
+	if len(views1) != len(views2) {
+		return false
+	}
+	for i := range views1 {
+		if !DataviewViewEqual(views1[i], views2[i]) {
+			return false
+		}
+	}
+
+	return true
+}
+
 func DataviewSortEqual(sort1, sort2 *model.BlockContentDataviewSort) bool {
 	if sort1 == nil && sort2 != nil {
 		return false
@@ -260,6 +273,39 @@ func DataviewFilterEqual(filter1, filter2 *model.BlockContentDataviewFilter) boo
 	}
 	if filter1.Value.Compare(filter2.Value) != 0 {
 		return false
+	}
+
+	return true
+}
+
+func DataviewViewEqual(view1, view2 *model.BlockContentDataviewView) bool {
+	if view1 == nil && view2 != nil {
+		return false
+	}
+	if view1 != nil && view2 == nil {
+		return false
+	}
+	if view1 == nil && view2 == nil {
+		return true
+	}
+	if view1.Id != view2.Id {
+		return false
+	}
+	if view1.Name != view2.Name {
+		return false
+	}
+	if view1.Type != view2.Type {
+		return false
+	}
+	if !DataviewFiltersEqualSorted(view1.Filters, view2.Filters) {
+		return false
+	}
+	if !DataviewSortsEqualSorted(view1.Sorts, view2.Sorts) {
+		return false
+	}
+	if len(view1.Relations) != len(view2.Relations) {
+		return false
+		// todo add relations check
 	}
 
 	return true
