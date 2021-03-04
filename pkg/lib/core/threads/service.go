@@ -23,18 +23,18 @@ import (
 
 var log = logging.Logger("anytype-threads")
 
-const simultaneousRequests = 10
+const simultaneousRequests = 20
 
 type service struct {
-	t                 net2.NetBoostrapper
-	db                *db.DB
-	threadsCollection *db.Collection
-	threadsGetter     ThreadsGetter
-	device            wallet.Keypair
-	account           wallet.Keypair
-	repoRootPath      string
-	newHeadProcessor  func(id thread.ID) error
-	newThreadChan     chan<- string
+	t                          net2.NetBoostrapper
+	db                         *db.DB
+	threadsCollection          *db.Collection
+	threadsGetter              ThreadsGetter
+	device                     wallet.Keypair
+	account                    wallet.Keypair
+	repoRootPath               string
+	newHeadProcessor           func(id thread.ID) error
+	newThreadChan              chan<- string
 	newThreadProcessingLimiter chan struct{}
 
 	replicatorAddr ma.Multiaddr
@@ -51,16 +51,16 @@ func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPa
 	}
 
 	return &service{
-		t:                threadsAPI,
-		threadsGetter:    threadsGetter,
-		device:           deviceKeypair,
-		repoRootPath:     repoRootPath,
-		account:          accountKeypair,
-		newHeadProcessor: newHeadProcessor,
-		replicatorAddr:   replicatorAddr,
-		newThreadProcessingLimiter:  limiter,
-		ctx:              ctx,
-		ctxCancel:        cancel,
+		t:                          threadsAPI,
+		threadsGetter:              threadsGetter,
+		device:                     deviceKeypair,
+		repoRootPath:               repoRootPath,
+		account:                    accountKeypair,
+		newHeadProcessor:           newHeadProcessor,
+		replicatorAddr:             replicatorAddr,
+		newThreadProcessingLimiter: limiter,
+		ctx:                        ctx,
+		ctxCancel:                  cancel,
 	}
 }
 

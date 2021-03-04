@@ -117,7 +117,10 @@ func (s *service) threadsDbListen() error {
 
 					metrics.ExternalThreadReceivedCounter.Inc()
 					go func() {
-						s.processNewExternalThreadUntilSuccess(tid, ti)
+						if s.processNewExternalThreadUntilSuccess(tid, ti) != nil {
+							log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
+							return
+						}
 
 						ch := s.getNewThreadChan()
 						if ch != nil {
@@ -137,7 +140,7 @@ func (s *service) threadsDbListen() error {
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
 // supposed to be run in goroutine
-func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) {
+func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) error {
 	log := log.With("thread", tid.String())
 	log.With("threadAddrs", ti.Addrs).Info("got new thread")
 	start := time.Now()
@@ -145,18 +148,21 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 	for {
 		metrics.ExternalThreadHandlingAttempts.Inc()
 		attempt++
+		<-s.newThreadProcessingLimiter
 		err := s.processNewExternalThread(tid, ti)
 		if err != nil {
+			s.newThreadProcessingLimiter <- struct{}{}
 			log.Errorf("processNewExternalThread failed after %d attempt: %s", attempt, err.Error())
 		} else {
+			s.newThreadProcessingLimiter <- struct{}{}
 			metrics.ServedThreads.Inc()
 			metrics.ExternalThreadHandlingDuration.Observe(time.Since(start).Seconds())
 			log.Debugf("processNewExternalThread succeed after %d attempt", attempt)
-			return
+			return nil
 		}
 		select {
 		case <-s.ctx.Done():
-			return
+			return context.Canceled
 		case <-time.After(time.Duration(5*attempt) * time.Second):
 			continue
 		}
