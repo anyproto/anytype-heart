@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"strings"
 	"time"
 
@@ -68,15 +69,27 @@ func (s *service) addMissingThreadsFromCollection() error {
 		}
 
 		if _, err = s.t.GetThread(context.Background(), tid); err != nil && errors.Is(err, logstore.ErrThreadNotFound) {
+			metrics.ExternalThreadReceivedCounter.Add(1)
 			missingThreadsAdded++
 			go func() {
-				s.processNewExternalThreadUntilSuccess(tid, ti)
+				if s.processNewExternalThreadUntilSuccess(tid, ti) != nil {
+					log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
+					return
+				}
+
+				ch := s.getNewThreadChan()
+				if ch != nil {
+					select {
+					case <-s.ctx.Done():
+					case ch <- tid.String():
+					}
+				}
 			}()
 		}
 	}
 
 	if missingThreadsAdded > 0 {
-		log.Warnf("addMissingThreadsFromCollection: adding %d missing threads in background...", missingThreadsAdded)
+		log.Warnf("addMissingThreadsFromCollection: processing %d missing threads in background...", missingThreadsAdded)
 	}
 	return nil
 }
