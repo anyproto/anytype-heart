@@ -108,7 +108,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			// pull only after threadsDbInit to handle all events
 			_, err = s.pullThread(ctxPull, account.ID)
 			if err != nil {
-				log.Errorf("account pull failed")
+				log.Errorf("account pull failed: %s", err.Error())
 				return
 			} else {
 				log.Infof("account pull done")

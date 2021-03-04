@@ -435,80 +435,85 @@ func removeBundleRelationsFromDs(a *Anytype, lastMigration bool) error {
 	})
 }
 
+func ReindexAll(a *Anytype) (int, error) {
+	ids, err := a.localStore.Objects.ListIds()
+	if err != nil {
+		return 0, err
+	}
+	total := len(ids)
+	var migrated int
+	for _, id := range ids {
+		sbt, err := smartblock.SmartBlockTypeFromID(id)
+		if err != nil {
+			return 0, fmt.Errorf("migration reindexAll:failed to extract smartblock type: %w", err)
+		}
+		if sbt == smartblock.SmartBlockTypeArchive {
+			// remove archive we have accidentally indexed
+			err = a.localStore.Objects.DeleteObject(id)
+			if err != nil {
+				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
+			}
+			total--
+			continue
+		}
+		for _, idx := range a.localStore.Objects.Indexes() {
+			//if idx.Name == "objtype_relkey_setid" {
+			// skip it because we can't reindex relations in sets for now
+			//	continue
+			//}
+
+			err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
+			if err != nil {
+				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
+			}
+		}
+		oi, err := a.localStore.Objects.GetByIDs(id)
+		if err != nil {
+			log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
+			continue
+		}
+
+		if len(oi) < 1 {
+			log.Errorf("migration reindexAll: failed to get objects: not found")
+			continue
+		}
+		o := oi[0]
+		var objType string
+		if pbtypes.HasField(o.Details, bundle.RelationKeyType.String()) {
+			objTypes := pbtypes.GetStringList(o.Details, bundle.RelationKeyType.String())
+			if len(objTypes) > 0 {
+				objType = objTypes[0]
+			}
+		}
+
+		if strings.HasPrefix(objType, localstore.OldCustomObjectTypeURLPrefix) {
+			objType = strings.TrimPrefix(objType, localstore.OldCustomObjectTypeURLPrefix)
+		} else if strings.HasPrefix(objType, localstore.OldBundledObjectTypeURLPrefix) {
+			objType = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(objType, localstore.OldBundledObjectTypeURLPrefix)
+		} else if bundle.HasObjectType(objType) {
+			objType = localstore.BundledObjectTypeURLPrefix + objType
+		}
+
+		o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
+		err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
+		if err != nil {
+			log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
+			continue
+		}
+		migrated++
+	}
+	if migrated != total {
+		log.Errorf("migration reindexAll: %d/%d completed", migrated, len(ids))
+	} else {
+		log.Debugf("migration reindexAll completed for %d objects", migrated)
+	}
+	return migrated, nil
+}
+
 func reindexAll(a *Anytype, lastMigration bool) error {
 	return doWithRunningNode(a, true, !lastMigration, func() error {
-		ids, err := a.localStore.Objects.ListIds()
-		if err != nil {
-			return err
-		}
-		total := len(ids)
-		var migrated int
-		for _, id := range ids {
-			sbt, err := smartblock.SmartBlockTypeFromID(id)
-			if err != nil {
-				return fmt.Errorf("migration reindexAll:failed to extract smartblock type: %w", err)
-			}
-			if sbt == smartblock.SmartBlockTypeArchive {
-				// remove archive we have accidentally indexed
-				err = a.localStore.Objects.DeleteObject(id)
-				if err != nil {
-					log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
-				}
-				total--
-				continue
-			}
-			for _, idx := range a.localStore.Objects.Indexes() {
-				//if idx.Name == "objtype_relkey_setid" {
-				// skip it because we can't reindex relations in sets for now
-				//	continue
-				//}
-
-				err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
-				if err != nil {
-					log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
-				}
-			}
-			oi, err := a.localStore.Objects.GetByIDs(id)
-			if err != nil {
-				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
-				continue
-			}
-
-			if len(oi) < 1 {
-				log.Errorf("migration reindexAll: failed to get objects: not found")
-				continue
-			}
-			o := oi[0]
-			var objType string
-			if pbtypes.HasField(o.Details, bundle.RelationKeyType.String()) {
-				objTypes := pbtypes.GetStringList(o.Details, bundle.RelationKeyType.String())
-				if len(objTypes) > 0 {
-					objType = objTypes[0]
-				}
-			}
-
-			if strings.HasPrefix(objType, localstore.OldCustomObjectTypeURLPrefix) {
-				objType = strings.TrimPrefix(objType, localstore.OldCustomObjectTypeURLPrefix)
-			} else if strings.HasPrefix(objType, localstore.OldBundledObjectTypeURLPrefix) {
-				objType = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(objType, localstore.OldBundledObjectTypeURLPrefix)
-			} else if bundle.HasObjectType(objType) {
-				objType = localstore.BundledObjectTypeURLPrefix + objType
-			}
-
-			o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
-			err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
-			if err != nil {
-				log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
-				continue
-			}
-			migrated++
-		}
-		if migrated != total {
-			log.Errorf("migration reindexAll: %d/%d completed", migrated, len(ids))
-		} else {
-			log.Debugf("migration reindexAll completed for %d objects", migrated)
-		}
-		return nil
+		_, err := ReindexAll(a)
+		return err
 	})
 }
 

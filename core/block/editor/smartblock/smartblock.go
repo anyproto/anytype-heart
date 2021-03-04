@@ -500,7 +500,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
-	log.Errorf("sb(%s).Apply changeId: %s: %v", sb.Id(), id, pushChangeParams)
 
 	sb.Doc.(*state.State).SetChangeId(id)
 	if sb.undo != nil && addHistory {
