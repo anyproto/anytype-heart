@@ -8,7 +8,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/google/uuid"
+)
+
+const (
+	viewIdLibrary     = "library"
+	viewIdMarketplace = "marketplace"
 )
 
 func NewMarketplaceType(ms meta.Service, dbCtrl database.Ctrl) *MarketplaceType {
@@ -36,7 +40,7 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 			Relations: bundle.MustGetType(bundle.TypeKeyObjectType).Relations,
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:    uuid.New().String(),
+					Id:    viewIdMarketplace,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Marketplace",
 					Sorts: []*model.BlockContentDataviewSort{},
@@ -53,7 +57,7 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 					}},
 				},
 				{
-					Id:    uuid.New().String(),
+					Id:    viewIdLibrary,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Library",
 					Sorts: []*model.BlockContentDataviewSort{},
@@ -106,7 +110,7 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 			Relations: bundle.MustGetType(bundle.TypeKeyRelation).Relations,
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:    uuid.New().String(),
+					Id:    viewIdMarketplace,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Marketplace",
 					Sorts: []*model.BlockContentDataviewSort{},
@@ -122,7 +126,7 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 					}},
 				},
 				{
-					Id:    uuid.New().String(),
+					Id:    viewIdLibrary,
 					Type:  model.BlockContentDataviewView_Gallery,
 					Name:  "Library",
 					Sorts: []*model.BlockContentDataviewSort{},
