@@ -39,7 +39,7 @@ var reindex = &cobra.Command{
 			c.PrintErrf("failed to run reindex migration: %s\n", resp.Error.Description)
 		}
 		c.Printf("reindexed %d objects\n", migrated)
-		c.Printf("Shutting down account...\n", migrated)
+		c.Println("Shutting down account...")
 		mw.Shutdown(&pb.RpcShutdownRequest{})
 	},
 }
