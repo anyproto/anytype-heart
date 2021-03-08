@@ -17,7 +17,7 @@ import (
 )
 
 //export SetEventHandler
-func SetEventHandler(proxyFunc C.proxyFunc, ctx unsafe.Pointer) {
+func SetEventHandler(pf C.proxyFunc, ctx unsafe.Pointer) {
 	service.SetEventHandler(func(event *pb.Event) {
 		b, err := proto.Marshal(event)
 		if err != nil {
@@ -25,8 +25,8 @@ func SetEventHandler(proxyFunc C.proxyFunc, ctx unsafe.Pointer) {
 			return
 		}
 
-		if proxyFunc != nil {
-			C.ProxyCall(proxyFunc, ctx, C.CString(""), C.CString(string(b)), C.int(len(b)))
+		if pf != nil {
+			C.ProxyCall(pf, ctx, C.CString(""), C.CString(string(b)), C.int(len(b)))
 		} else {
 			eventB, _ := json.Marshal(event)
 			fmt.Printf("failed to send event to nil eventHandler: %s", string(eventB))
