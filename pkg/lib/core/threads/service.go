@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"io"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ const simultaneousRequests = 20
 type service struct {
 	t                          net2.NetBoostrapper
 	db                         *db.DB
+	dbCloser                   io.Closer
 	threadsCollection          *db.Collection
 	threadsGetter              ThreadsGetter
 	device                     wallet.Keypair
@@ -114,7 +116,12 @@ func (s *service) Threads() net2.NetBoostrapper {
 func (s *service) Close() error {
 	// close global service context to stop all work
 	s.ctxCancel()
-	return nil
+	err := s.db.Close()
+	if err != nil {
+		return err
+	}
+
+	return s.dbCloser.Close()
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {

@@ -44,6 +44,22 @@ const (
 	defaultLogstorePath = "logstore"
 )
 
+type NoCloserDatastore struct {
+	datastore.Batching
+}
+
+func (ncd *NoCloserDatastore) NewTransaction(readOnly bool) (datastore.Txn, error) {
+	if v, ok := ncd.Batching.(datastore.TxnDatastore); ok {
+		return v.NewTransaction(readOnly)
+	}
+	return nil, fmt.Errorf("not implementing datastore.TxnDatastore")
+}
+
+func (ncd *NoCloserDatastore) Close() error {
+	log.Errorf("NoCloserDatastore close called()")
+	return nil
+}
+
 func DefaultNetwork(
 	repoPath string,
 	privKey crypto.PrivKey,
@@ -80,8 +96,9 @@ func DefaultNetwork(
 		}
 	}
 
+	noCloserDs := &NoCloserDatastore{ds}
 	ctx, cancel := context.WithCancel(context.Background())
-	pstore, err := pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
+	pstore, err := pstoreds.NewPeerstore(ctx, noCloserDs, pstoreds.DefaultOpts())
 	if err != nil {
 		ds.Close()
 		cancel()
@@ -98,7 +115,7 @@ func DefaultNetwork(
 		privKey,
 		pnet,
 		[]ma.Multiaddr{config.HostAddr},
-		ds,
+		noCloserDs,
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),
 		libp2p.Peerstore(pstore),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
@@ -110,7 +127,7 @@ func DefaultNetwork(
 		return nil, err
 	}
 
-	lite, err := ipfslite.New(ctx, ds, h, d, &ipfslite.Config{Offline: config.Offline})
+	lite, err := ipfslite.New(ctx, noCloserDs, h, d, &ipfslite.Config{Offline: config.Offline})
 	if err != nil {
 		cancel()
 		ds.Close()
@@ -127,7 +144,8 @@ func DefaultNetwork(
 		ds.Close()
 		return nil, err
 	}
-	tstore, err := lstoreds.NewLogstore(ctx, logstore, lstoreds.DefaultOpts())
+
+	tstore, err := lstoreds.NewLogstore(ctx, &NoCloserDatastore{logstore}, lstoreds.DefaultOpts())
 	if err != nil {
 		cancel()
 		if err := logstore.Close(); err != nil {
@@ -245,11 +263,12 @@ func WithNetSyncTracking(enabled bool) NetOption {
 type netBoostrapper struct {
 	cancel context.CancelFunc
 	app.Net
-	ipfs              ipfs.IPFS
-	pstore            peerstore.Peerstore
-	logstoreDatastore datastore.Batching
-	litestore         datastore.Batching
-	logstore          logstore.Logstore
+	ipfs     ipfs.IPFS
+	pstore   peerstore.Peerstore
+	logstore logstore.Logstore
+
+	logstoreDatastore datastore.Batching // need to close
+	litestore         datastore.Batching // need to close
 
 	host   host.Host
 	wanDht *dht.IpfsDHT
@@ -288,20 +307,17 @@ func (tsb *netBoostrapper) Close() error {
 	if err := tsb.wanDht.Close(); err != nil {
 		return err
 	}
-	log.Debug("closing libp2p host...")
-	if err := tsb.host.Close(); err != nil {
-		return err
-	}
-	log.Debug("closing pstore...")
-	if err := tsb.pstore.Close(); err != nil {
-		return err
-	}
 	log.Debug("closing litestore...")
 	if err := tsb.litestore.Close(); err != nil {
 		return err
 	}
+
 	log.Debug("closing logstore...")
-	return tsb.logstoreDatastore.Close()
+	if err := tsb.logstoreDatastore.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func LoadKey(repoPath string) (crypto.PrivKey, error) {
