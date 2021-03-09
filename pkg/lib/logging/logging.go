@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"fmt"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -61,12 +62,15 @@ func getLoggingConfig() logging.Config {
 }
 
 func init() {
+	// should it be in goroutine?
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
-		log.Error(err)
-		return
+		fmt.Printf("failed to init gelf tls: %s", err.Error())
+	} else {
+		tlsWriter.MaxReconnect = 0
+		tlsWriter.ReconnectDelay = 1 // bug within geld, will be multiplied by time.Second
+		gelfSinkWrapper.gelfWriter = tlsWriter
 	}
-	gelfSinkWrapper.gelfWriter = tlsWriter
 
 	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
 		// init tlsWriter outside to make sure it is available
@@ -76,7 +80,6 @@ func init() {
 	if err != nil {
 		log.Error("failed to register zap sink", err.Error())
 	}
-
 	cfg := getLoggingConfig()
 	logging.SetupLogging(cfg)
 }

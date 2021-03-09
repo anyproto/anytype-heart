@@ -76,4 +76,4 @@ replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
-replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20200813115635-198b2af80f88
+replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20210309123244-863840d21dbd
