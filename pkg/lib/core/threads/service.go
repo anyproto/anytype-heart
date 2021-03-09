@@ -116,12 +116,21 @@ func (s *service) Threads() net2.NetBoostrapper {
 func (s *service) Close() error {
 	// close global service context to stop all work
 	s.ctxCancel()
-	err := s.db.Close()
-	if err != nil {
-		return err
+	if s.db != nil {
+		err := s.db.Close()
+		if err != nil {
+			return err
+		}
+	}
+	if s.dbCloser != nil {
+		// close underlying badger datastore, because threadsDb does not close datastore it have constructed with
+		err := s.dbCloser.Close()
+		if err != nil {
+			return err
+		}
 	}
 
-	return s.dbCloser.Close()
+	return nil
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
