@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
@@ -24,6 +23,7 @@ import (
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
 	libp2ptls "github.com/libp2p/go-libp2p-tls"
+	"github.com/libp2p/go-tcp-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/app"
 	"github.com/textileio/go-threads/core/logstore"
@@ -34,6 +34,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/ipfsliteinterface"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	tnet "github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 )
 
@@ -119,6 +120,7 @@ func DefaultNetwork(
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),
 		libp2p.Peerstore(pstore),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
+		libp2p.Transport(tcp.NewTCPTransport), // connection timeout overridden in core.go init
 	)
 
 	if err != nil {

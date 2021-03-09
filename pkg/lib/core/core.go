@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/libp2p/go-tcp-transport"
 	"io"
 	"path/filepath"
 	"strings"
@@ -550,7 +551,8 @@ func init() {
 	tnet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
-	tnet.DialTimeout = 10 * time.Second
+	tnet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
+	tcp.DefaultConnectTimeout = tnet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
 	tnet.PushTimeout = 30 * time.Second
 	tnet.PullTimeout = 2 * time.Minute
 
