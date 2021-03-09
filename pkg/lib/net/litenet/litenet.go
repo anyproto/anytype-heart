@@ -17,11 +17,13 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	libp2ptls "github.com/libp2p/go-libp2p-tls"
 	"github.com/libp2p/go-tcp-transport"
 	ma "github.com/multiformats/go-multiaddr"
@@ -44,6 +46,8 @@ const (
 	defaultIpfsLitePath = "ipfslite"
 	defaultLogstorePath = "logstore"
 )
+
+var permanentConnectionRetryDelay = time.Second * 5
 
 type NoCloserDatastore struct {
 	datastore.Batching
@@ -178,6 +182,48 @@ func DefaultNetwork(
 		return nil, err
 	}
 
+	if config.PermanentConnection != nil {
+		pidStr, _ := config.PermanentConnection.ValueForProtocol(ma.P_P2P)
+		pid, err := peer.Decode(pidStr)
+		if err != nil {
+			cancel()
+			if err := logstore.Close(); err != nil {
+				return nil, err
+			}
+			ds.Close()
+			return nil, fmt.Errorf("PermanentConnection invalid addr: %s", err.Error())
+		}
+
+		go func() {
+			for {
+				state := h.Network().Connectedness(pid)
+				// do not handle CanConnect purposefully
+				if state == network.NotConnected || state == network.CannotConnect {
+					if swrm, ok := h.Network().(*swarm.Swarm); ok {
+						// clear backoff in order to connect more aggressively
+						swrm.Backoff().Clear(pid)
+					}
+					err = h.Connect(ctx, peer.AddrInfo{
+						ID:    pid,
+						Addrs: []ma.Multiaddr{config.PermanentConnection},
+					})
+					if err != nil {
+						log.Warnf("PermanentConnection failed: %s", err.Error())
+					} else {
+						log.Debugf("PermanentConnection %s reconnected succesfully", pid.String())
+					}
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(permanentConnectionRetryDelay):
+					continue
+				}
+			}
+		}()
+	}
+
 	return &netBoostrapper{
 		cancel:            cancel,
 		Net:               api,
@@ -193,13 +239,15 @@ func DefaultNetwork(
 }
 
 type NetConfig struct {
-	HostAddr          ma.Multiaddr
-	GRPCServerOptions []grpc.ServerOption
-	GRPCDialOptions   []grpc.DialOption
-	SyncTracking      bool
-	Debug             bool
-	Offline           bool
-	InMemoryDS        bool // should be used for tests only
+	HostAddr ma.Multiaddr
+
+	GRPCServerOptions   []grpc.ServerOption
+	GRPCDialOptions     []grpc.DialOption
+	SyncTracking        bool
+	Debug               bool
+	Offline             bool
+	InMemoryDS          bool         // should be used for tests only
+	PermanentConnection ma.Multiaddr // explicitly watch the connection to this peer and reconnect in case the connection has failed
 
 	PubSub bool
 }
@@ -209,6 +257,13 @@ type NetOption func(c *NetConfig) error
 func WithNetHostAddr(addr ma.Multiaddr) NetOption {
 	return func(c *NetConfig) error {
 		c.HostAddr = addr
+		return nil
+	}
+}
+
+func WithPermanentConnection(addr ma.Multiaddr) NetOption {
+	return func(c *NetConfig) error {
+		c.PermanentConnection = addr
 		return nil
 	}
 }

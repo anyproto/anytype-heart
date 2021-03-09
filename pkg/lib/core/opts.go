@@ -87,7 +87,7 @@ func WithRootPathAndAccount(rootPath string, account string) ServiceOption {
 			WithInMemoryDS(cfg.InMemoryDS),
 			WithFullTextSearch(cfg.FullTextSearch),
 			WithNetDebug(false),
-			WithNetPubSub(true),
+			WithNetPubSub(!cfg.DisablePubsub),
 			WithNetSyncTracking(true),
 		}
 

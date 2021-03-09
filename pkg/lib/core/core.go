@@ -475,6 +475,10 @@ func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
 		),
 	}
 
+	if a.opts.CafeP2PAddr != nil {
+		opts = append(opts, litenet.WithPermanentConnection(a.opts.CafeP2PAddr))
+	}
+
 	if useHostAddr {
 		opts = append(opts, litenet.WithNetHostAddr(a.opts.HostAddr))
 	}
