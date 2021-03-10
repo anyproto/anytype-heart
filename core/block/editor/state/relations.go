@@ -4,10 +4,8 @@ import (
 	"fmt"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/gogo/protobuf/types"
 	"net/url"
-	"strings"
 )
 
 func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
@@ -77,33 +75,35 @@ func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
-		u, err := url.Parse(v.GetStringValue())
+		_, err := url.Parse(v.GetStringValue())
 		if err != nil {
 			return fmt.Errorf("failed to parse URL: %s", err.Error())
 		}
-		if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
-			return fmt.Errorf("url scheme %s not supported", u.Scheme)
-		}
+		// todo: should we allow schemas other than http/https?
+		//if !strings.EqualFold(u.Scheme, "http") && !strings.EqualFold(u.Scheme, "https") {
+		//	return fmt.Errorf("url scheme %s not supported", u.Scheme)
+		//}
 		return nil
 	case pbrelation.RelationFormat_email:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
-
-		valid := uri.ValidateEmail(v.GetStringValue())
+		// todo: revise regexp and reimplement
+		/*valid := uri.ValidateEmail(v.GetStringValue())
 		if !valid {
 			return fmt.Errorf("failed to validate email")
-		}
+		}*/
 		return nil
 	case pbrelation.RelationFormat_phone:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 
-		valid := uri.ValidatePhone(v.GetStringValue())
+		// todo: revise regexp and reimplement
+		/*valid := uri.ValidatePhone(v.GetStringValue())
 		if !valid {
 			return fmt.Errorf("failed to validate phone")
-		}
+		}*/
 		return nil
 	case pbrelation.RelationFormat_emoji:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
