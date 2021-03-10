@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
 	"time"
@@ -123,8 +124,30 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 			objectType.IconEmoji = iconEmoji
 		}
 
+		recommendedRelationsKeys := pbtypes.GetStringList(meta.Details, bundle.RelationKeyRecommendedRelations.String())
+		for _, rel := range bundle.RequiredInternalRelations {
+			if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
+				recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
+			}
+		}
+
+		var recommendedRelations []*pbrelation.Relation
+		for _, rk := range recommendedRelationsKeys {
+			rel := pbtypes.GetRelation(meta.Relations, rk)
+			if rel == nil {
+				rel, _ = bundle.GetRelation(bundle.RelationKey(rk))
+				if rel == nil {
+					continue
+				}
+			}
+
+			relCopy := pbtypes.CopyRelation(rel)
+			relCopy.Scope = pbrelation.Relation_type
+			recommendedRelations = append(recommendedRelations, relCopy)
+		}
+
 		objectType.Url = meta.BlockId
-		objectType.Relations = meta.Relations
+		objectType.Relations = recommendedRelations
 
 		objectTypes = append(objectTypes, objectType)
 	}

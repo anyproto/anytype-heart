@@ -1774,7 +1774,10 @@ func GetObjectType(store ObjectStore, url string) (*pbrelation.ObjectType, error
 			log.Errorf("invalid state of objectType %s: missing recommended relation %s", url, rk)
 			continue
 		}
-		objectType.Relations = append(objectType.Relations, pbtypes.CopyRelation(r))
+		relCopy := pbtypes.CopyRelation(r)
+		relCopy.Scope = pbrelation.Relation_type
+
+		objectType.Relations = append(objectType.Relations, relCopy)
 	}
 
 	objectType.Url = url
