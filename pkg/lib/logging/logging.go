@@ -67,7 +67,7 @@ func init() {
 	if err != nil {
 		fmt.Printf("failed to init gelf tls: %s", err.Error())
 	} else {
-		tlsWriter.MaxReconnect = 0
+		tlsWriter.MaxReconnect = 1
 		tlsWriter.ReconnectDelay = 1 // bug within geld, will be multiplied by time.Second
 		gelfSinkWrapper.gelfWriter = tlsWriter
 	}
