@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"io"
 	"sync"
 	"time"
 
@@ -28,6 +29,7 @@ const simultaneousRequests = 20
 type service struct {
 	t                          net2.NetBoostrapper
 	db                         *db.DB
+	dbCloser                   io.Closer
 	threadsCollection          *db.Collection
 	threadsGetter              ThreadsGetter
 	device                     wallet.Keypair
@@ -114,6 +116,20 @@ func (s *service) Threads() net2.NetBoostrapper {
 func (s *service) Close() error {
 	// close global service context to stop all work
 	s.ctxCancel()
+	if s.db != nil {
+		err := s.db.Close()
+		if err != nil {
+			return err
+		}
+	}
+	if s.dbCloser != nil {
+		// close underlying badger datastore, because threadsDb does not close datastore it have constructed with
+		err := s.dbCloser.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 

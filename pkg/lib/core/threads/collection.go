@@ -55,6 +55,7 @@ func (s *service) threadsDbInit() error {
 	}
 
 	s.db = d
+	s.dbCloser = store
 
 	s.threadsCollection = s.db.GetCollection(ThreadInfoCollectionName)
 	err = s.threadsDbListen()

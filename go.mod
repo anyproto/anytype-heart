@@ -43,7 +43,9 @@ require (
 	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
+	github.com/libp2p/go-libp2p-swarm v0.4.2
 	github.com/libp2p/go-libp2p-tls v0.1.3
+	github.com/libp2p/go-tcp-transport v0.2.1
 	github.com/magiconair/properties v1.8.4
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
@@ -71,8 +73,8 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20210304072541-d0f91da84404
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20210310115034-a6122e977ff0
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
-replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20200813115635-198b2af80f88
+replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20210309123244-863840d21dbd
