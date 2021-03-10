@@ -1401,26 +1401,13 @@ func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
 }
 
 func (m *dsObjectStore) listRelationsKeys(txn ds.Txn) ([]string, error) {
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexRelationObject.Name, nil, "", false, 0)
+	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
+	defer txn.Discard()
 
-	keys, err := ExtractKeysFromResults(res)
-	if err != nil {
-		return nil, err
-	}
-
-	var relKeys []string
-	for _, key := range keys {
-		relKey, err := CarveKeyParts(key, -2, -1)
-		if err != nil {
-			return nil, err
-		}
-		relKeys = append(relKeys, relKey)
-	}
-
-	return relKeys, nil
+	return findByPrefix(txn, relationsBase.String()+"/", 0)
 }
 
 func (m *dsObjectStore) getRelation(txn ds.Txn, key string) (*pbrelation.Relation, error) {
