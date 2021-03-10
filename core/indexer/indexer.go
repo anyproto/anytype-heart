@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"sync"
 	"time"
 
@@ -108,13 +109,13 @@ func (i *indexer) reindexBundled() {
 	var ids []string
 
 	for _, rk := range bundle.ListRelationsKeys() {
-		ids = append(ids, "_br"+rk.String())
+		ids = append(ids, addr.BundledRelationURLPrefix+rk.String())
 	}
 	for _, tk := range bundle.ListTypesKeys() {
-		ids = append(ids, "_ot"+tk.String())
+		ids = append(ids, tk.URL())
 	}
 
-	ids = append(ids, "_anytype_profile")
+	ids = append(ids, addr.AnytypeProfileId)
 	for _, id := range ids {
 		if d, err = i.openDoc(id); err != nil {
 			log.Errorf("reindexBundled failed to open %s: %s", id, err.Error())

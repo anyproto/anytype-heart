@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -29,16 +30,16 @@ const (
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
-	if strings.HasPrefix(id, "_br") {
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return SmartBlockTypeBundledRelation, nil
 	}
-	if strings.HasPrefix(id, "_ir") {
+	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
 		return SmartBlockTypeIndexedRelation, nil
 	}
-	if strings.HasPrefix(id, "_ot") {
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
 		return SmartBlockTypeBundledObjectType, nil
 	}
-	if strings.HasPrefix(id, "_anytype_profile") {
+	if strings.HasPrefix(id, addr.AnytypeProfileId) {
 		return SmartBlockTypeProfilePage, nil
 	}
 

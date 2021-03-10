@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -49,14 +50,14 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 	var relationKeys []string
 	for i := range ot.Relations {
 		extraRels = append(extraRels, ot.Relations[i])
-		relationKeys = append(relationKeys, "_br"+ot.Relations[i].Key)
+		relationKeys = append(relationKeys, addr.BundledRelationURLPrefix+ot.Relations[i].Key)
 	}
 
 	det := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.String()),
+		bundle.RelationKeyType.String():                 pbtypes.StringList([]string{bundle.TypeKeyObjectType.String()}),
 		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
 		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
-		bundle.RelationKeyCreator.String():              pbtypes.String("_anytype_profile"),
+		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
 		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
 		bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(relationKeys),
 		bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(ot.Layout)),

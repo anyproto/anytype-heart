@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"math/rand"
 	"sync"
 	"time"
@@ -50,7 +51,7 @@ var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgr
 func NewSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
 	st, err := smartblock.SmartBlockTypeFromID(id)
 
-	if id == "_anytype_profile" {
+	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(a, id), nil
 	}
 

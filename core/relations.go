@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/globalsign/mgo/bson"
 	"strings"
 
@@ -162,7 +163,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	var recommendedRelationKeys []string
 	for _, rel := range bundle.RequiredInternalRelations {
 		requiredRelationByKey[rel.String()] = bundle.MustGetRelation(rel)
-		recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.String())
+		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
 	}
 
 	for _, rel := range req.ObjectType.Relations {
@@ -176,9 +177,9 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 			}
 
 			if bundle.HasRelation(rel.Key) {
-				recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.Key)
+				recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.Key)
 			} else {
-				recommendedRelationKeys = append(recommendedRelationKeys, "_ir"+rel.Key)
+				recommendedRelationKeys = append(recommendedRelationKeys, addr.CustomRelationURLPrefix+rel.Key)
 			}
 		}
 	}

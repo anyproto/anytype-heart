@@ -2,6 +2,8 @@ package bundle
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	types2 "github.com/gogo/protobuf/types"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -147,4 +149,31 @@ func ListTypesKeys() []TypeKey {
 	}
 
 	return keys
+}
+
+func GetDetailsForRelation(bundled bool, rel *relation.Relation) ([]*relation.Relation, *types2.Struct) {
+	var prefix string
+	if bundled {
+		prefix = addr.BundledRelationURLPrefix
+	} else {
+		prefix = addr.CustomRelationURLPrefix
+	}
+
+	d := &types2.Struct{Fields: map[string]*types2.Value{
+		RelationKeyName.String():             pbtypes.String(rel.Name),
+		RelationKeyDescription.String():      pbtypes.String(rel.Description),
+		RelationKeyId.String():               pbtypes.String(prefix + rel.Key),
+		RelationKeyType.String():             pbtypes.StringList([]string{TypeKeyRelation.URL()}),
+		RelationKeyCreator.String():          pbtypes.String(rel.Creator),
+		RelationKeyLayout.String():           pbtypes.Float64(float64(relation.ObjectType_relation)),
+		RelationKeyRelationFormat.String():   pbtypes.Float64(float64(rel.Format)),
+		RelationKeyIsHidden.String():         pbtypes.Bool(rel.Hidden),
+		RelationKeyMpAddedToLibrary.String(): pbtypes.Bool(true), // temp
+	}}
+
+	var rels []*relation.Relation
+	for k := range d.Fields {
+		rels = append(rels, MustGetRelation(RelationKey(k)))
+	}
+	return rels, d
 }

@@ -2,6 +2,7 @@ package pbtypes
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 	"strings"
@@ -284,12 +285,12 @@ func RelationFormatCanHaveListValue(format pbrelation.RelationFormat) bool {
 }
 
 func RelationIdToKey(id string) (string, error) {
-	if strings.HasPrefix(id, "_ir") {
-		return strings.TrimPrefix(id, "_ir"), nil
+	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
+		return strings.TrimPrefix(id, addr.CustomRelationURLPrefix), nil
 	}
 
-	if strings.HasPrefix(id, "_br") {
-		return strings.TrimPrefix(id, "_br"), nil
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		return strings.TrimPrefix(id, addr.BundledRelationURLPrefix), nil
 	}
 	return "", fmt.Errorf("incorrect id format")
 }

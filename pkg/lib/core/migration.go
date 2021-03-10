@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -486,22 +487,63 @@ func ReindexAll(a *Anytype) (int, error) {
 			}
 		}
 
-		if strings.HasPrefix(objType, localstore.OldCustomObjectTypeURLPrefix) {
-			objType = strings.TrimPrefix(objType, localstore.OldCustomObjectTypeURLPrefix)
-		} else if strings.HasPrefix(objType, localstore.OldBundledObjectTypeURLPrefix) {
-			objType = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(objType, localstore.OldBundledObjectTypeURLPrefix)
+		if strings.HasPrefix(objType, addr.OldCustomObjectTypeURLPrefix) {
+			objType = strings.TrimPrefix(objType, addr.OldCustomObjectTypeURLPrefix)
+		} else if strings.HasPrefix(objType, addr.OldBundledObjectTypeURLPrefix) {
+			objType = addr.BundledObjectTypeURLPrefix + strings.TrimPrefix(objType, addr.OldBundledObjectTypeURLPrefix)
 		} else if bundle.HasObjectType(objType) {
-			objType = localstore.BundledObjectTypeURLPrefix + objType
+			objType = addr.BundledObjectTypeURLPrefix + objType
+		}
+
+		if sbt == smartblock.SmartBlockTypeIndexedRelation {
+			err = a.localStore.Objects.DeleteObject(id)
+			if err != nil {
+				log.Errorf("deletion of indexed relation failed: %s", err.Error())
+			}
+			// will be reindexed below
+			continue
 		}
 
 		o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
 		err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
 		if err != nil {
-			log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
+			log.Errorf("migration reindexAll: createObject failed: %s", err.Error())
 			continue
 		}
 		migrated++
 	}
+	relations, _ := a.localStore.Objects.ListRelations("")
+	for _, rel := range relations {
+		if bundle.HasRelation(rel.Key) {
+			rel.Creator = a.ProfileID()
+		} else {
+			rel.Creator = addr.AnytypeProfileId
+		}
+	}
+	var indexedRelations int
+	var divided [][]*pbrelation.Relation
+	chunkSize := 30
+	for i := 0; i < len(relations); i += chunkSize {
+		end := i + chunkSize
+
+		if end > len(relations) {
+			end = len(relations)
+		}
+
+		divided = append(divided, relations[i:end])
+	}
+	for _, chunk := range divided {
+		err = a.localStore.Objects.StoreRelations(chunk)
+		if err != nil {
+			log.Errorf("reindex relations failed: %s", err.Error())
+		} else {
+			indexedRelations += len(chunk)
+		}
+	}
+
+	log.Debugf("%d relations reindexed", indexedRelations)
+	migrated += indexedRelations
+
 	if migrated != total {
 		log.Errorf("migration reindexAll: %d/%d completed", migrated, len(ids))
 	} else {
@@ -524,11 +566,11 @@ func reindexStoredRelations(a *Anytype, lastMigration bool) error {
 			return err
 		}
 		migrate := func(old string) (new string, hasChanges bool) {
-			if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix) {
-				new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
+			if strings.HasPrefix(old, addr.OldCustomObjectTypeURLPrefix) {
+				new = strings.TrimPrefix(old, addr.OldCustomObjectTypeURLPrefix)
 				hasChanges = true
-			} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix) {
-				new = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
+			} else if strings.HasPrefix(old, addr.OldBundledObjectTypeURLPrefix) {
+				new = addr.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, addr.OldBundledObjectTypeURLPrefix)
 				hasChanges = true
 			} else {
 				new = old
@@ -605,7 +647,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 			} else {
 				oi, err := a.localStore.Objects.GetByIDs(otUrl)
 				if err != nil {
-					log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
+					log.Errorf("migration addMissingLayout: failed to get objects type by id: %s", err.Error())
 					continue
 				} else if len(oi) == 0 {
 					log.Errorf("migration addMissingLayout: failed to get custom type '%s'", otUrl)
@@ -622,7 +664,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 			o.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(layout))
 			err = a.localStore.Objects.UpdateObject(id, o.Details, o.Relations, nil, o.Snippet)
 			if err != nil {
-				log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
+				log.Errorf("migration addMissingLayout: failed to UpdateObject: %s", err.Error())
 				continue
 			}
 			migrated++
