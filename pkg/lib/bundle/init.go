@@ -94,6 +94,14 @@ func MustGetLayout(lk relation.ObjectTypeLayout) *relation.Layout {
 	panic(ErrNotFound)
 }
 
+func GetLayout(lk relation.ObjectTypeLayout) (*relation.Layout, error) {
+	if v, exists := Layouts[lk]; exists {
+		return pbtypes.CopyLayout(&v), nil
+	}
+
+	return nil, ErrNotFound
+}
+
 func ListRelations() []*relation.Relation {
 	var rels []*relation.Relation
 	for _, rel := range relations {
