@@ -5,6 +5,7 @@ set -e
 
 function stop_and_cleanup() {
   EXIT_CODE=$?
+  docker-compose logs --no-color --tail="all" > /tmp/docker_nodes.log 2>&1
   docker-compose run --rm test python ./utils/send_results.py --build-id=${CIRCLE_BUILD_NUM} --build-url=${CIRCLE_BUILD_URL} --git-branch=${CIRCLE_BRANCH} --exit-code=${EXIT_CODE}
   docker-compose down
 }
