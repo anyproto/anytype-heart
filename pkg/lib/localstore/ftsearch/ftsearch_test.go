@@ -71,6 +71,10 @@ func TestFtSearch_Search(t *testing.T) {
 		{
 			Id: "somelongidentifier",
 		},
+		{
+			Id:    "eczq5t",
+			Title: "FERRARI styling CENter with somethinglong ",
+		},
 	}
 	for _, d := range docs {
 		require.NoError(t, ft.Index(d))
@@ -103,6 +107,10 @@ func TestFtSearch_Search(t *testing.T) {
 		{
 			"somelongidentifier",
 			[]string{"somelongidentifier"},
+		},
+		{
+			"FeRRa",
+			[]string{"eczq5t"},
 		},
 	}
 
