@@ -158,16 +158,16 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		return m
 	}
 	var sbId string
-	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(bundle.RequiredInternalRelations))
-
 	var recommendedRelationKeys []string
+	var relations = make([]*pbrelation.Relation, 0, len(req.ObjectType.Relations)+len(bundle.RequiredInternalRelations))
+
 	for _, rel := range bundle.RequiredInternalRelations {
-		requiredRelationByKey[rel.String()] = bundle.MustGetRelation(rel)
+		relations = append(relations, bundle.MustGetRelation(rel))
 		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
 	}
 
-	for _, rel := range req.ObjectType.Relations {
-		if v, exists := requiredRelationByKey[rel.Key]; exists {
+	for i, rel := range req.ObjectType.Relations {
+		if v := pbtypes.GetRelation(relations, rel.Key); v != nil {
 			if !pbtypes.RelationEqual(v, rel) {
 				return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("required relation %s not equals the bundled one", rel.Key))
 			}
@@ -181,6 +181,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 			} else {
 				recommendedRelationKeys = append(recommendedRelationKeys, addr.CustomRelationURLPrefix+rel.Key)
 			}
+			relations = append(relations, req.ObjectType.Relations[i])
 		}
 	}
 
@@ -206,7 +207,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 
 	otype := req.ObjectType
-	otype.Relations = req.ObjectType.Relations
+	otype.Relations = relations
 	otype.Url = sbId
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }

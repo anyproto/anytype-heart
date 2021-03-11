@@ -1070,16 +1070,16 @@ func (m *dsObjectStore) updateObject(txn ds.Txn, id string, before model.ObjectI
 		removedLinks, addedLinks = diffSlices(exLinks, links)
 	}
 
-	if relations != nil && relations.Relations != nil {
-		// intentionally do not pass txn, as this tx may be huge
-		if err = m.updateRelations(before.ObjectTypeUrls, objTypes, id, before.Relations, relations); err != nil {
+	if details != nil {
+		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
+		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
 	}
 
-	if details != nil {
-		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
+	if relations != nil && relations.Relations != nil {
+		// intentionally do not pass txn, as this tx may be huge
+		if err = m.updateRelations(txn, before.ObjectTypeUrls, objTypes, id, before.Relations, relations); err != nil {
 			return err
 		}
 	}
@@ -1278,13 +1278,7 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 	return nil
 }
 
-func (m *dsObjectStore) updateRelations(objTypesBefore []string, objTypesAfter []string, id string, relationsBefore *pbrelation.Relations, relationsAfter *pbrelation.Relations) error {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
+func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id string, relationsBefore *pbrelation.Relations, relationsAfter *pbrelation.Relations) error {
 	if relationsAfter == nil {
 		return nil
 	}
@@ -1317,13 +1311,13 @@ func (m *dsObjectStore) updateRelations(objTypesBefore []string, objTypesAfter [
 			}
 		}
 
-		err = AddIndexesWithTxn(m, txn, relation, id)
+		err := AddIndexesWithTxn(m, txn, relation, id)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = UpdateIndexWithTxn(indexObjectTypeRelationObjectId, txn, &relationObjectType{
+	err := UpdateIndexWithTxn(indexObjectTypeRelationObjectId, txn, &relationObjectType{
 		relationKeys: pbtypes.GetRelationKeys(relationsBefore.Relations),
 		objectTypes:  objTypesBefore,
 	}, &relationObjectType{
