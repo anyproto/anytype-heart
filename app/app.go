@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
 
 var (
@@ -15,6 +15,8 @@ var (
 	version string
 	name    string
 )
+
+var log = logging.Logger("anytype-mw-status")
 
 // Component is a minimal interface for a common app.Component
 type Component interface {
@@ -111,7 +113,7 @@ func (app *App) Start() (err error) {
 		for i := idx; i >= 0; i-- {
 			if serviceClose, ok := app.components[i].(ComponentRunnable); ok {
 				if e := serviceClose.Close(); e != nil {
-					logrus.Warnf("Component '%s' close error: %v", serviceClose.Name(), e)
+					log.Warnf("Component '%s' close error: %v", serviceClose.Name(), e)
 				}
 			}
 		}
@@ -139,7 +141,7 @@ func (app *App) Start() (err error) {
 // Close stops the application
 // All components with ComponentRunnable implementation will be closed in the reversed order
 func (app *App) Close() error {
-	logrus.Infof("Close components...")
+	log.Infof("Close components...")
 	app.mu.RLock()
 	defer app.mu.RUnlock()
 	done := make(chan struct{})
@@ -155,7 +157,7 @@ func (app *App) Close() error {
 	var errs []string
 	for i := len(app.components) - 1; i >= 0; i-- {
 		if serviceClose, ok := app.components[i].(ComponentRunnable); ok {
-			logrus.Debugf("Close '%s'", serviceClose.Name())
+			log.Debugf("Close '%s'", serviceClose.Name())
 			if e := serviceClose.Close(); e != nil {
 				errs = append(errs, fmt.Sprintf("Component '%s' close error: %v", serviceClose.Name(), e))
 			}
