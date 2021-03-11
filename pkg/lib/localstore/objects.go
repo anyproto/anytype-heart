@@ -3,6 +3,7 @@ package localstore
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"strings"
 	"sync"
 	"time"
@@ -174,13 +175,6 @@ var (
 	}
 
 	_ ObjectStore = (*dsObjectStore)(nil)
-)
-
-const (
-	OldCustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	OldBundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
-
-	BundledObjectTypeURLPrefix = "_ot"
 )
 
 type relationOption struct {
@@ -1084,6 +1078,7 @@ func (m *dsObjectStore) updateObject(txn ds.Txn, id string, before model.ObjectI
 	}
 
 	if relations != nil && relations.Relations != nil {
+		// intentionally do not pass txn, as this tx may be huge
 		if err = m.updateRelations(txn, before.ObjectTypeUrls, objTypes, id, before.Relations, relations); err != nil {
 			return err
 		}
@@ -1252,33 +1247,29 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 	var relBytes []byte
 	var err error
 	for _, relation := range relations {
-		if bundle.HasRelation(relation.Key) {
-			// do not store bundled relations
-			continue
-		}
 		relCopy := pbtypes.CopyRelation(relation)
 		relCopy.SelectDict = nil
+		var bundled = true
+		if !bundle.HasRelation(relation.Key) {
+			bundled = false
+			// do not store bundled relations
+			relationKey := relationsBase.ChildString(relation.Key)
+			relBytes, err = proto.Marshal(relCopy)
+			if err != nil {
+				return err
+			}
 
-		relationKey := relationsBase.ChildString(relation.Key)
-		relBytes, err = proto.Marshal(relCopy)
-		if err != nil {
-			return err
+			err = txn.Put(relationKey, relBytes)
+			if err != nil {
+				return err
+			}
 		}
 
-		err = txn.Put(relationKey, relBytes)
-		if err != nil {
-			return err
-		}
-
-		err = m.updateObject(txn, "_ir"+relation.Key, model.ObjectInfo{
+		_, details := bundle.GetDetailsForRelation(bundled, relCopy)
+		err = m.updateObject(txn, addr.CustomRelationURLPrefix+relation.Key, model.ObjectInfo{
 			Relations: &pbrelation.Relations{},
 			Details:   &types.Struct{Fields: map[string]*types.Value{}},
-		}, &types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String():        pbtypes.String(relation.Name),
-			bundle.RelationKeyDescription.String(): pbtypes.String(relation.Description),
-			bundle.RelationKeyId.String():          pbtypes.String("_ir" + relation.Key),
-			bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyObjectType.URL()),
-		}}, nil, nil, relation.Description)
+		}, details, nil, nil, relation.Description)
 		if err != nil {
 			return err
 		}
@@ -1297,7 +1288,6 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 	}
 
 	relationsKey := pagesRelationsBase.ChildString(id)
-	var err error
 	for _, relation := range relationsAfter.Relations {
 		if relation.Format == pbrelation.RelationFormat_status || relation.Format == pbrelation.RelationFormat_tag {
 			var relBefore *pbrelation.Relation
@@ -1321,13 +1311,13 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 			}
 		}
 
-		err = AddIndexesWithTxn(m, txn, relation, id)
+		err := AddIndexesWithTxn(m, txn, relation, id)
 		if err != nil {
 			return err
 		}
 	}
 
-	err = UpdateIndexWithTxn(indexObjectTypeRelationObjectId, txn, &relationObjectType{
+	err := UpdateIndexWithTxn(indexObjectTypeRelationObjectId, txn, &relationObjectType{
 		relationKeys: pbtypes.GetRelationKeys(relationsBefore.Relations),
 		objectTypes:  objTypesBefore,
 	}, &relationObjectType{
@@ -1401,26 +1391,13 @@ func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
 }
 
 func (m *dsObjectStore) listRelationsKeys(txn ds.Txn) ([]string, error) {
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexRelationObject.Name, nil, "", false, 0)
+	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
+	defer txn.Discard()
 
-	keys, err := ExtractKeysFromResults(res)
-	if err != nil {
-		return nil, err
-	}
-
-	var relKeys []string
-	for _, key := range keys {
-		relKey, err := CarveKeyParts(key, -2, -1)
-		if err != nil {
-			return nil, err
-		}
-		relKeys = append(relKeys, relKey)
-	}
-
-	return relKeys, nil
+	return findByPrefix(txn, relationsBase.String()+"/", 0)
 }
 
 func (m *dsObjectStore) getRelation(txn ds.Txn, key string) (*pbrelation.Relation, error) {
@@ -1723,7 +1700,7 @@ func extractIdFromKey(key string) (id string) {
 
 // temp func until we move to the proper ids
 func objTypeCompactEncode(objType string) (string, error) {
-	if strings.HasPrefix(objType, BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(objType, addr.BundledObjectTypeURLPrefix) {
 		return objType, nil
 	}
 	if strings.HasPrefix(objType, "ba") {
@@ -1734,7 +1711,7 @@ func objTypeCompactEncode(objType string) (string, error) {
 
 func GetObjectType(store ObjectStore, url string) (*pbrelation.ObjectType, error) {
 	objectType := &pbrelation.ObjectType{}
-	if strings.HasPrefix(url, BundledObjectTypeURLPrefix) {
+	if strings.HasPrefix(url, addr.BundledObjectTypeURLPrefix) {
 		var err error
 		objectType, err = bundle.GetTypeByUrl(url)
 		if err != nil {
@@ -1774,7 +1751,10 @@ func GetObjectType(store ObjectStore, url string) (*pbrelation.ObjectType, error
 			log.Errorf("invalid state of objectType %s: missing recommended relation %s", url, rk)
 			continue
 		}
-		objectType.Relations = append(objectType.Relations, pbtypes.CopyRelation(r))
+		relCopy := pbtypes.CopyRelation(r)
+		relCopy.Scope = pbrelation.Relation_type
+
+		objectType.Relations = append(objectType.Relations, relCopy)
 	}
 
 	objectType.Url = url

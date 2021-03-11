@@ -82,6 +82,7 @@ func (p *ObjectType) Init(s source.Source, _ bool, _ []string) (err error) {
 		}
 
 		relCopy := pbtypes.CopyRelation(rel)
+		relCopy.Scope = relation.Relation_type
 		recommendedRelations = append(recommendedRelations, relCopy)
 		dataview.Dataview.Relations = append(dataview.Dataview.Relations, relCopy)
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{

@@ -13112,6 +13112,7 @@ default dictionary with unique values to choose for select/multiSelect format |
 | maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
 | description | [string](#string) |  |  |
 | scope | [Relation.Scope](#anytype.relation.Relation.Scope) |  | on-store should be only local |
+| creator | [string](#string) |  | on-store should be only local |
 
 
 

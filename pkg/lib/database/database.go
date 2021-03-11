@@ -34,6 +34,7 @@ type Reader interface {
 
 	GetRelation(key string) (relation *pbrelation.Relation, err error)
 
+	// ListRelations returns both indexed and bundled relations
 	ListRelations(objType string) (relations []*pbrelation.Relation, err error)
 
 	AggregateRelationsFromObjectsOfType(objType string) (relations []*pbrelation.Relation, err error)

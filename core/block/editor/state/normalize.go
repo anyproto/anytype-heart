@@ -2,7 +2,7 @@ package state
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -343,11 +343,11 @@ func CleanupLayouts(s *State) (removedCount int) {
 
 func (s *State) MigrateObjectTypes() {
 	migrate := func(old string) (new string, hasChanges bool) {
-		if strings.HasPrefix(old, localstore.OldCustomObjectTypeURLPrefix) {
-			new = strings.TrimPrefix(old, localstore.OldCustomObjectTypeURLPrefix)
+		if strings.HasPrefix(old, addr.OldCustomObjectTypeURLPrefix) {
+			new = strings.TrimPrefix(old, addr.OldCustomObjectTypeURLPrefix)
 			hasChanges = true
-		} else if strings.HasPrefix(old, localstore.OldBundledObjectTypeURLPrefix) {
-			new = localstore.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, localstore.OldBundledObjectTypeURLPrefix)
+		} else if strings.HasPrefix(old, addr.OldBundledObjectTypeURLPrefix) {
+			new = addr.BundledObjectTypeURLPrefix + strings.TrimPrefix(old, addr.OldBundledObjectTypeURLPrefix)
 			hasChanges = true
 		} else {
 			new = old

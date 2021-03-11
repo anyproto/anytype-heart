@@ -684,7 +684,7 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 			rel.MaxCount = 1
 		}
 	}
-	s.extraRelations = relations
+	s.extraRelations = relationsCopy
 	return s
 }
 

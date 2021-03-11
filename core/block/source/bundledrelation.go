@@ -8,13 +8,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"strings"
 )
-
-const bundledRelationPrefix = "_br"
 
 func NewBundledRelation(a anytype.Service, id string) (s Source) {
 	return &bundledRelation{
@@ -44,35 +42,18 @@ func (v *bundledRelation) Virtual() bool {
 	return false
 }
 
-func getDetailsForRelation(prefix string, rel *relation.Relation) ([]*relation.Relation, *types.Struct) {
-	d := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():           pbtypes.String(rel.Name),
-		bundle.RelationKeyDescription.String():    pbtypes.String(rel.Description),
-		bundle.RelationKeyId.String():             pbtypes.String(prefix + rel.Key),
-		bundle.RelationKeyCreator.String():        pbtypes.String("_anytype_profile"),
-		bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(relation.ObjectType_relation)),
-		bundle.RelationKeyRelationFormat.String(): pbtypes.Float64(float64(rel.Format)),
-		bundle.RelationKeyIsHidden.String():       pbtypes.Bool(rel.Hidden),
-	}}
-
-	var rels []*relation.Relation
-	for k := range d.Fields {
-		rels = append(rels, bundle.MustGetRelation(bundle.RelationKey(k)))
-	}
-	return rels, d
-}
-
 func (v *bundledRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
-	if !strings.HasPrefix(id, bundledRelationPrefix) {
+	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return nil, nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}
 
-	rel, err := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, bundledRelationPrefix)))
+	rel, err := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rels, d := getDetailsForRelation(bundledRelationPrefix, rel)
+	rel.Creator = addr.AnytypeProfileId
+	rels, d := bundle.GetDetailsForRelation(true, rel)
 	return rels, d, nil
 }
 

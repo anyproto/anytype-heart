@@ -8,12 +8,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 	"strings"
 )
-
-const indexedRelationPrefix = "_ir"
 
 func NewIndexedRelation(a anytype.Service, id string) (s Source) {
 	return &indexedRelation{
@@ -44,17 +43,19 @@ func (v *indexedRelation) Virtual() bool {
 }
 
 func (v *indexedRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
-	if !strings.HasPrefix(id, indexedRelationPrefix) {
+	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return nil, nil, fmt.Errorf("incorrect relation id: not an indexed relation id")
 	}
 
-	key := strings.TrimPrefix(id, indexedRelationPrefix)
+	key := strings.TrimPrefix(id, addr.CustomRelationURLPrefix)
 	rel, err := v.Anytype().ObjectStore().GetRelation(key)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	rels, d := getDetailsForRelation(bundledRelationPrefix, rel)
+	// todo: store source objectType and extract real profileId
+	rel.Creator = v.a.ProfileID()
+	rels, d := bundle.GetDetailsForRelation(false, rel)
 	return rels, d, nil
 }
 

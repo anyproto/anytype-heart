@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/globalsign/mgo/bson"
 	"strings"
 
@@ -157,50 +158,32 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		return m
 	}
 	var sbId string
-	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(bundle.RequiredInternalRelations))
+	var recommendedRelationKeys []string
+	var relations = make([]*pbrelation.Relation, 0, len(req.ObjectType.Relations)+len(bundle.RequiredInternalRelations))
 
 	for _, rel := range bundle.RequiredInternalRelations {
-		requiredRelationByKey[rel.String()] = bundle.MustGetRelation(rel)
+		relations = append(relations, bundle.MustGetRelation(rel))
+		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
 	}
 
-	var recommendedRelationKeys []string
-	for _, rel := range req.ObjectType.Relations {
-		if v, exists := requiredRelationByKey[rel.Key]; exists {
+	for i, rel := range req.ObjectType.Relations {
+		if v := pbtypes.GetRelation(relations, rel.Key); v != nil {
 			if !pbtypes.RelationEqual(v, rel) {
 				return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("required relation %s not equals the bundled one", rel.Key))
 			}
-			recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.Key)
-			delete(requiredRelationByKey, rel.Key)
 		} else {
 			if rel.Key == "" {
 				rel.Key = bson.NewObjectId().Hex()
 			}
 
 			if bundle.HasRelation(rel.Key) {
-				recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.Key)
+				recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.Key)
 			} else {
-				recommendedRelationKeys = append(recommendedRelationKeys, "_ir"+rel.Key)
+				recommendedRelationKeys = append(recommendedRelationKeys, addr.CustomRelationURLPrefix+rel.Key)
 			}
+			relations = append(relations, req.ObjectType.Relations[i])
 		}
 	}
-
-	// add missing required relations that should exist for every object type
-	for _, rel := range requiredRelationByKey {
-		req.ObjectType.Relations = append(req.ObjectType.Relations, rel)
-		if bundle.HasRelation(rel.Key) {
-			recommendedRelationKeys = append(recommendedRelationKeys, "_br"+rel.Key)
-		} else {
-			recommendedRelationKeys = append(recommendedRelationKeys, "_ir"+rel.Key)
-		}
-	}
-
-	/*ot := bundle.MustGetType(bundle.TypeKeyObjectType)
-	// mix in recommended relations for the objectType itself
-	for _, rel := range ot.Relations {
-		if !pbtypes.HasRelation(req.ObjectType.Relations, rel.Key) {
-			req.ObjectType.Relations = append(req.ObjectType.Relations, pbtypes.CopyRelation(rel))
-		}
-	}*/
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		sbId, _, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
@@ -208,7 +191,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 				bundle.RelationKeyName.String():                 pbtypes.String(req.ObjectType.Name),
 				bundle.RelationKeyIconEmoji.String():            pbtypes.String(req.ObjectType.IconEmoji),
 				bundle.RelationKeyType.String():                 pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
-				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_set)),
+				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
 				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(recommendedRelationKeys),
 			},
@@ -219,13 +202,12 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 
 		return nil
 	})
-
 	if err != nil {
 		return response(pb.RpcObjectTypeCreateResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
 	otype := req.ObjectType
-	otype.Relations = req.ObjectType.Relations
+	otype.Relations = relations
 	otype.Url = sbId
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }
