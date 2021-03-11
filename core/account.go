@@ -17,14 +17,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/libp2p/go-libp2p-core/peer"
 )
 
 const cafeUrl = "https://cafe1.anytype.io"
@@ -120,10 +117,8 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return m
 	}
 
-	if mw.Anytype != nil {
-		if err := mw.stop(); err != nil {
-			response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
-		}
+	if err := mw.stop(); err != nil {
+		response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
 	index := len(mw.foundAccounts)
@@ -158,48 +153,27 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if mw.Anytype, err = core.New(
+	at, err := core.New(
 		core.WithRootPathAndAccount(mw.rootPath, account.Address()),
 		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	); err != nil {
+	)
+	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
 	newAcc := &model.Account{Id: account.Address()}
 
-	if err = mw.start(); err != nil {
+	if mw.app, err = anytype.StartNewApp(at, mw.EventSender); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
-	if err = mw.Anytype.InitPredefinedBlocks(context.TODO(), false); err != nil {
+	if err = at.InitPredefinedBlocks(context.TODO(), false); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
 	newAcc.Name = req.Name
-
-	var (
-		cafePid, _  = peer.Decode(cafePeerId)
-		ownDevice   = mw.Anytype.Device()
-		profileInfo = mw.Anytype
-		fileStatus  = mw.Anytype.FileStatus()
-		syncStatus  = mw.Anytype.SyncStatus()
-		eventSender = mw.EventSender.Send
-		details     = []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
-
-		ss = status.NewService(syncStatus, fileStatus, profileInfo, eventSender, cafePid.String(), ownDevice)
-		bs = block.NewService(newAcc.Id, anytype.NewService(mw.Anytype), mw.linkPreview, ss, eventSender)
-	)
-
-	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := ss.Start(); err != nil {
-		// app misconfiguration
-		panic(err)
-	}
-
+	bs := mw.app.MustComponent(block.CName).(block.Service)
+	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 	if req.GetAvatarLocalPath() != "" {
 		hash, err := bs.UploadFile(pb.RpcUploadFileRequest{
 			LocalPath:         req.GetAvatarLocalPath(),
@@ -223,16 +197,13 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	if err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
-		ContextId: mw.Anytype.PredefinedBlocks().Profile,
+		ContextId: at.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
 	}
 
 	mw.foundAccounts = append(mw.foundAccounts, newAcc)
-	mw.setStatusService(ss)
-	mw.setBlockService(bs)
-	mw.setIndexer(is)
 	return response(newAcc, pb.RpcAccountCreateResponseError_NULL, nil)
 }
 
@@ -306,10 +277,11 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
 	// it is ok to unlock just after we've started with the 1st account
-	if mw.Anytype, err = core.New(
+	at, err := core.New(
 		core.WithRootPathAndAccount(mw.rootPath, zeroAccount.Address()),
 		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	); err != nil {
+	)
+	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 	}
 
@@ -320,7 +292,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	mw.accountSearchCancel = func() { searchQueryCancel() }
 	defer searchQueryCancel()
 
-	if err = mw.start(); err != nil {
+	if mw.app, err = anytype.StartNewApp(at, mw.EventSender); err != nil {
 		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
 			return response(pb.RpcAccountRecoverResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
 		}
@@ -385,7 +357,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 	}()
 
-	findProfilesErr := mw.Anytype.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
+	findProfilesErr := at.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
 	if findProfilesErr != nil {
 
 		log.Errorf("remote profiles request failed: %s", findProfilesErr.Error())
@@ -434,16 +406,11 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
-	if mw.Anytype == nil || req.Id != mw.Anytype.Account() || !mw.Anytype.IsStarted() {
+	if mw.app == nil || req.Id != mw.app.MustComponent(core.CName).(core.Service).Account() {
 		// in case user selected account other than the first one(used to perform search)
 		// or this is the first time in this session we run the Anytype node
-		if mw.Anytype != nil {
-			log.Debugf("AccountSelect wrong account %s instead of %s. stop it", mw.Anytype.Account(), req.Id)
-			// user chose account other than the first one
-			// we need to stop the first node that what used to search other accounts and then start the right one
-			if err := mw.stop(); err != nil {
-				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
-			}
+		if err := mw.stop(); err != nil {
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
 		}
 
 		if req.RootPath != "" {
@@ -488,15 +455,15 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			}
 		}
 
-		var err error
-		if mw.Anytype, err = core.New(
+		at, err := core.New(
 			core.WithRootPathAndAccount(mw.rootPath, req.Id),
 			core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-		); err != nil {
+		)
+		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}
 
-		if err := mw.start(); err != nil {
+		if mw.app, err = anytype.StartNewApp(at, mw.EventSender); err != nil {
 			if err == core.ErrRepoCorrupted {
 				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 			}
@@ -507,38 +474,11 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 		}
+		if err := at.InitPredefinedBlocks(context.TODO(), true); err != nil {
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
+		}
 	}
-
-	if err := mw.Anytype.InitPredefinedBlocks(context.TODO(), true); err != nil {
-		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
-	}
-
-	var (
-		acc         = model.Account{Id: req.Id}
-		cafePid, _  = peer.Decode(cafePeerId)
-		ownDevice   = mw.Anytype.Device()
-		profileInfo = mw.Anytype
-		fileStatus  = mw.Anytype.FileStatus()
-		syncStatus  = mw.Anytype.SyncStatus()
-		eventSender = mw.EventSender.Send
-
-		ss = status.NewService(syncStatus, fileStatus, profileInfo, eventSender, cafePid.String(), ownDevice)
-		bs = block.NewService(acc.Id, mw.Anytype, mw.linkPreview, ss, eventSender)
-	)
-
-	is, err := indexer.NewIndexer(anytype.NewService(mw.Anytype), bs)
-	if err != nil {
-		panic(err)
-	}
-
-	if err := ss.Start(); err != nil {
-		// app misconfiguration
-		panic(err)
-	}
-	mw.setIndexer(is)
-	mw.setStatusService(ss)
-	mw.setBlockService(bs)
-	return response(&acc, pb.RpcAccountSelectResponseError_NULL, nil)
+	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
@@ -555,11 +495,11 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 		return m
 	}
 
-	if mw.Anytype == nil {
+	if mw.app == nil {
 		return response(pb.RpcAccountStopResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
 	}
 
-	address := mw.Anytype.Account()
+	address := mw.app.MustComponent(core.CName).(core.Service).Account()
 	err := mw.stop()
 	if err != nil {
 		return response(pb.RpcAccountStopResponseError_FAILED_TO_STOP_NODE, err)

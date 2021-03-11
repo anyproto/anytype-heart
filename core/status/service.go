@@ -5,6 +5,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -13,6 +15,7 @@ import (
 	"github.com/dgtony/collections/hashset"
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
+	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -20,10 +23,15 @@ import (
 var log = logging.Logger("anytype-mw-status")
 
 const (
+	CName = "status"
+
 	threadStatusUpdatePeriod     = 5 * time.Second
 	threadStatusEventBatchPeriod = 2 * time.Second
 	profileInformationLifetime   = 30 * time.Second
 	cafeLastPullTimeout          = 10 * time.Minute
+
+	// TODO: move to global config component
+	cafePeerId = "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
 
 	// truncate device names and account IDs to last symbols
 	maxNameLength = 8
@@ -40,8 +48,7 @@ type Service interface {
 	Unwatch(thread.ID)
 	UpdateTimeline(thread.ID, []LogTime)
 
-	Start() error
-	Stop()
+	app.ComponentRunnable
 }
 
 var _ Service = (*service)(nil)
@@ -68,28 +75,29 @@ type service struct {
 	mu        sync.Mutex
 }
 
-func NewService(
-	ts net.SyncInfo,
-	fs pin.FilePinService,
-	profile core.ProfileInfo,
-	emitter func(event *pb.Event),
-	cafe string,
-	device string,
-) *service {
-	return &service{
-		tInfo:       ts,
-		fInfo:       fs,
-		profile:     profile,
-		emitter:     emitter,
-		cafeID:      cafe,
-		ownDeviceID: device,
-		watchers:    make(map[thread.ID]func()),
-		threads:     make(map[thread.ID]*threadStatus),
-		devThreads:  make(map[string]hashset.HashSet),
-		devAccount:  make(map[string]string),
-		connMap:     make(map[string]bool),
-		tsTrigger:   queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2),
-	}
+func New() Service {
+	return new(service)
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.watchers = make(map[thread.ID]func())
+	s.threads = make(map[thread.ID]*threadStatus)
+	s.devThreads = make(map[string]hashset.HashSet)
+	s.devAccount = make(map[string]string)
+	s.connMap = make(map[string]bool)
+	s.tsTrigger = queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2)
+
+	anytype := a.MustComponent(core.CName).(core.Service)
+
+	s.profile = anytype
+	s.emitter = a.MustComponent(event.CName).(event.Sender).Send
+	cafePid, _ := peer.Decode(cafePeerId)
+	s.cafeID = cafePid.String()
+	return
+}
+
+func (s *service) Name() string {
+	return CName
 }
 
 func (s *service) Watch(tid thread.ID, fList func() []string) bool {
@@ -194,7 +202,12 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 	}
 }
 
-func (s *service) Start() error {
+func (s *service) Run() error {
+	anytype := s.profile.(core.Service)
+	s.ownDeviceID = anytype.Device()
+	s.tInfo = anytype.SyncStatus()
+	s.fInfo = anytype.FileStatus()
+
 	if err := s.startConnectivityTracking(); err != nil {
 		return err
 	}
@@ -202,7 +215,7 @@ func (s *service) Start() error {
 	return nil
 }
 
-func (s *service) Stop() {
+func (s *service) Close() error {
 	s.tsTrigger.Stop()
 
 	s.mu.Lock()
@@ -214,6 +227,7 @@ func (s *service) Stop() {
 		delete(s.watchers, tid)
 		stop()
 	}
+	return nil
 }
 
 func (s *service) startConnectivityTracking() error {

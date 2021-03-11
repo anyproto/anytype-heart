@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -74,7 +73,7 @@ type SmartBlock interface {
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
-	Anytype() anytype.Service
+	Anytype() core.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
 	Relations() []*pbrelation.Relation
 	HasRelation(relationKey string) bool
@@ -519,7 +518,7 @@ func (sb *smartBlock) History() undo.History {
 	return sb.undo
 }
 
-func (sb *smartBlock) Anytype() anytype.Service {
+func (sb *smartBlock) Anytype() core.Service {
 	return sb.source.Anytype()
 }
 

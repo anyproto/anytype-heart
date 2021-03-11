@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
@@ -44,6 +45,8 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 )
 
 const (
+	CName = "anytype"
+
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
 
 	pullInterval = 3 * time.Minute
@@ -105,6 +108,8 @@ type Service interface {
 	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error)
 
 	ProfileInfo
+
+	app.ComponentRunnable
 }
 
 var _ Service = (*Anytype)(nil)
@@ -165,6 +170,18 @@ func New(options ...ServiceOption) (*Anytype, error) {
 	}
 
 	return a, nil
+}
+
+func (a *Anytype) Init(_ *app.App) (err error) {
+	return
+}
+
+func (a *Anytype) Name() string {
+	return CName
+}
+
+func (a *Anytype) Run() (err error) {
+	return a.Start()
 }
 
 func (a *Anytype) Account() string {
@@ -375,6 +392,10 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, accountSelect bool) 
 
 	//a.runPeriodicJobsInBackground()
 	return nil
+}
+
+func (a *Anytype) Close() (err error) {
+	return a.Stop()
 }
 
 func (a *Anytype) Stop() error {

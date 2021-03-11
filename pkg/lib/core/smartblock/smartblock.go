@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
@@ -94,4 +95,40 @@ func uvarint(buf string) (uint64, int) {
 		s += 7
 	}
 	return 0, 0
+}
+
+func SmartBlockTypeToProto(t SmartBlockType) pb.SmartBlockType {
+	switch t {
+	case SmartBlockTypePage:
+		return pb.SmartBlockType_Page
+	case SmartBlockTypeArchive:
+		return pb.SmartBlockType_Archive
+	case SmartBlockTypeHome:
+		return pb.SmartBlockType_Home
+	case SmartBlockTypeProfilePage:
+		return pb.SmartBlockType_ProfilePage
+	case SmartBlockTypeSet:
+		return pb.SmartBlockType_Set
+	case SmartBlockTypeObjectType:
+		return pb.SmartBlockType_ObjectType
+	}
+	return 0
+}
+
+func SmartBlockTypeToCore(t pb.SmartBlockType) SmartBlockType {
+	switch t {
+	case pb.SmartBlockType_Page:
+		return SmartBlockTypePage
+	case pb.SmartBlockType_Archive:
+		return SmartBlockTypeArchive
+	case pb.SmartBlockType_Home:
+		return SmartBlockTypeHome
+	case pb.SmartBlockType_ProfilePage:
+		return SmartBlockTypeProfilePage
+	case pb.SmartBlockType_Set:
+		return SmartBlockTypeSet
+	case pb.SmartBlockType_ObjectType:
+		return SmartBlockTypeObjectType
+	}
+	return 0
 }

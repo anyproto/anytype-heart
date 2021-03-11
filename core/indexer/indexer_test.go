@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -81,9 +82,12 @@ func TestNewIndexer(t *testing.T) {
 
 func newFixture(t *testing.T) *fixture {
 	var err error
+	a := new(app.App)
 	fx := &fixture{
+		a:    a,
 		ctrl: gomock.NewController(t),
 	}
+
 	fx.getSerach = mockIndexer.NewMockGetSearchInfo(fx.ctrl)
 	fx.anytype = testMock.NewMockService(fx.ctrl)
 	fx.objectStore = testMock.NewMockObjectStore(fx.ctrl)
@@ -91,7 +95,13 @@ func newFixture(t *testing.T) *fixture {
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.ch = make(chan core.SmartblockRecordWithThreadID)
 	fx.anytype.EXPECT().SubscribeForNewRecords().Return(fx.ch, nil)
-	fx.Indexer, err = indexer.NewIndexer(fx.anytype, fx.getSerach)
+	fx.Indexer = indexer.New()
+	a.Register(fx.getSerach).
+		Register(fx.anytype).
+		Register(fx.objectStore).
+		Register(fx.Indexer)
+
+	err = a.Start()
 	require.NoError(t, err)
 	return fx
 }
@@ -103,8 +113,10 @@ type fixture struct {
 	objectStore *testMock.MockObjectStore
 	getSerach   *mockIndexer.MockGetSearchInfo
 	ch          chan core.SmartblockRecordWithThreadID
+	a           *app.App
 }
 
 func (fx *fixture) tearDown() {
+	fx.a.Close()
 	fx.ctrl.Finish()
 }

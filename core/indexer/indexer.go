@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
@@ -19,6 +19,8 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
+const CName = "indexer"
+
 var log = logging.Logger("anytype-doc-indexer")
 
 var (
@@ -27,32 +29,13 @@ var (
 	docTTL          = time.Minute * 2
 )
 
-func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
-	ch, err := a.SubscribeForNewRecords()
-	if err != nil {
-		return nil, err
-	}
-
-	i := &indexer{
-		store:      a.ObjectStore(),
-		anytype:    a,
-		searchInfo: searchInfo,
-		cache:      make(map[string]*doc),
-		quitWG:     &sync.WaitGroup{},
-		quit:       make(chan struct{}),
-	}
-	i.quitWG.Add(2)
-	if err := i.ftInit(); err != nil {
-		log.Errorf("can't init ft: %v", err)
-	}
-	go i.detailsLoop(ch)
-	go i.ftLoop()
-	return i, nil
+func New() Indexer {
+	return &indexer{}
 }
 
 type Indexer interface {
 	SetDetail(id string, key string, val *types.Value) error
-	Close()
+	app.ComponentRunnable
 }
 
 type SearchInfo struct {
@@ -69,7 +52,7 @@ type GetSearchInfo interface {
 
 type indexer struct {
 	store      localstore.ObjectStore
-	anytype    anytype.Service
+	anytype    core.Service
 	searchInfo GetSearchInfo
 	cache      map[string]*doc
 	quitWG     *sync.WaitGroup
@@ -78,6 +61,34 @@ type indexer struct {
 	threadIdsBuf []string
 	recBuf       []core.SmartblockRecordEnvelope
 	mu           sync.Mutex
+}
+
+func (i *indexer) Init(a *app.App) (err error) {
+	i.anytype = a.MustComponent(core.CName).(core.Service)
+	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
+	i.cache = make(map[string]*doc)
+	i.quitWG = new(sync.WaitGroup)
+	i.quit = make(chan struct{})
+	return
+}
+
+func (i *indexer) Name() (name string) {
+	return CName
+}
+
+func (i *indexer) Run() (err error) {
+	i.store = i.anytype.ObjectStore()
+	if ftErr := i.ftInit(); ftErr != nil {
+		log.Errorf("can't init ft: %v", ftErr)
+	}
+	ch, err := i.anytype.SubscribeForNewRecords()
+	if err != nil {
+		return
+	}
+	i.quitWG.Add(2)
+	go i.detailsLoop(ch)
+	go i.ftLoop()
+	return
 }
 
 func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
@@ -302,7 +313,7 @@ func (i *indexer) cleanup() {
 	log.Infof("indexer cleanup: removed %d from %d", removed, count)
 }
 
-func (i *indexer) Close() {
+func (i *indexer) Close() error {
 	i.mu.Lock()
 	quit := i.quit
 	i.mu.Unlock()
@@ -314,6 +325,7 @@ func (i *indexer) Close() {
 		i.quit = nil
 		i.mu.Unlock()
 	}
+	return nil
 }
 
 func (i *indexer) SetDetail(id string, key string, val *types.Value) error {

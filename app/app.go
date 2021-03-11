@@ -30,11 +30,11 @@ type ComponentRunnable interface {
 	Component
 	// Run will be called after init stage
 	// Non-nil error also will be aborted app start
-	Run() error
+	Run() (err error)
 	// Close will be called when app shutting down
 	// Also will be called when service return error on Init or Run stage
 	// Non-nil error will be printed to log
-	Close() error
+	Close() (err error)
 }
 
 // App is the central part of the application

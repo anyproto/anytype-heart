@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/google/uuid"
 )
 
-func NewVirtual(a anytype.Service, t pb.SmartBlockType) (s Source) {
+func NewVirtual(a core.Service, t pb.SmartBlockType) (s Source) {
 	return &virtual{
 		id:     uuid.New().String(),
 		a:      a,
@@ -20,7 +20,7 @@ func NewVirtual(a anytype.Service, t pb.SmartBlockType) (s Source) {
 
 type virtual struct {
 	id     string
-	a      anytype.Service
+	a      core.Service
 	sbType pb.SmartBlockType
 }
 
@@ -28,7 +28,7 @@ func (v *virtual) Id() string {
 	return v.id
 }
 
-func (v *virtual) Anytype() anytype.Service {
+func (v *virtual) Anytype() core.Service {
 	return v.a
 }
 

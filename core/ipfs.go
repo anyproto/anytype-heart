@@ -21,15 +21,17 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 		return m
 	}
 
-	if mw.Anytype == nil {
+	if mw.app == nil {
 		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
-	if !mw.Anytype.IsStarted() {
+	at := mw.app.MustComponent(core.CName).(core.Service)
+
+	if !at.IsStarted() {
 		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
-	image, err := mw.Anytype.ImageByHash(context.TODO(), req.GetHash())
+	image, err := at.ImageByHash(context.TODO(), req.GetHash())
 	if err != nil {
 		if err == core.ErrFileNotFound {
 			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)

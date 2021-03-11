@@ -105,6 +105,8 @@ github.com/census-instrumentation/opencensus-proto v0.2.1 h1:glEXhBS5PSLLv4IXzLA
 github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA12rnyqOA5BBL4O983OfeGPqjHWSTneU=
 github.com/cespare/xxhash v1.1.0 h1:a6HrQnmkObjyL+Gs60czilIUGqrzKutQD6XZog3p+ko=
 github.com/cespare/xxhash v1.1.0/go.mod h1:XrSqR1VqqWfGrhpAt58auRo0WTKS1nRRg3ghfAqPWnc=
+github.com/cheggaaa/go-exit v1.0.5 h1:WYbi84ckDAsrU1LwFWPufHEh/nHau5JwPp9KZ5CDhKQ=
+github.com/cheggaaa/go-exit v1.0.5/go.mod h1:fINMUoc/qfXnKwsx5AjxoQMDdRC9C/Dus486LDEp1ro=
 github.com/cheggaaa/mb v1.0.2 h1:YZO20cG1uCyIsBxxZyo9fvaqyVlCD94VQhnjmjcOaW4=
 github.com/cheggaaa/mb v1.0.2/go.mod h1:GLKG3DLryeF3F4iC+5b5mSjDq5o7skhK2qGWEOzF6g8=
 github.com/chris-ramon/douceur v0.2.0 h1:IDMEdxlEUUBYBKE4z/mJnFyVXox+MjuEVDJNN27glkU=

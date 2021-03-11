@@ -9,8 +9,8 @@ import (
 	"io/ioutil"
 	"strconv"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
@@ -55,12 +55,12 @@ const (
 		</html>`
 )
 
-func NewHTMLConverter(a anytype.Service, s *state.State) *HTML {
+func NewHTMLConverter(a core.Service, s *state.State) *HTML {
 	return &HTML{a: a, s: s}
 }
 
 type HTML struct {
-	a   anytype.Service
+	a   core.Service
 	s   *state.State
 	buf *bytes.Buffer
 }

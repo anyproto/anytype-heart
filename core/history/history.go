@@ -4,8 +4,9 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -16,22 +17,21 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
+const CName = "history"
+
 const versionGroupInterval = time.Minute * 5
 
 var log = logging.Logger("anytype-mw-history")
 
-func NewHistory(a anytype.Service, bs BlockService, m meta.Service) History {
-	return &history{
-		a:    a,
-		bs:   bs,
-		meta: m,
-	}
+func New() History {
+	return new(history)
 }
 
 type History interface {
 	Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error)
 	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersionsVersion, err error)
 	SetVersion(pageId, versionId string) (err error)
+	app.Component
 }
 
 type BlockService interface {
@@ -39,9 +39,20 @@ type BlockService interface {
 }
 
 type history struct {
-	a    anytype.Service
+	a    core.Service
 	bs   BlockService
 	meta meta.Service
+}
+
+func (h *history) Init(a *app.App) (err error) {
+	h.a = a.MustComponent(core.CName).(core.Service)
+	h.bs = a.MustComponent(block.CName).(BlockService)
+	h.meta = a.MustComponent(meta.CName).(meta.Service)
+	return
+}
+
+func (h *history) Name() (name string) {
+	return CName
 }
 
 func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error) {
@@ -82,7 +93,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb
 	objectTypes := h.meta.FetchObjectTypes(uniqueObjTypes)
 	return &pb.EventBlockShow{
 		RootId:              pageId,
-		Type:                anytype.SmartBlockTypeToProto(sbType),
+		Type:                smartblock.SmartBlockTypeToProto(sbType),
 		Blocks:              s.Blocks(),
 		Details:             details,
 		ObjectTypePerObject: objectTypePerObject,

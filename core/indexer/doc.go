@@ -3,13 +3,12 @@ package indexer
 import (
 	"context"
 	"fmt"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -19,7 +18,7 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-func newDoc(id string, a anytype.Service) (d *doc, err error) {
+func newDoc(id string, a core.Service) (d *doc, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
@@ -57,7 +56,7 @@ type doc struct {
 	store      detailsGetter
 	lastUsage  time.Time
 	mu         sync.Mutex
-	sb         anytype.SmartBlock
+	sb         core.SmartBlock
 }
 
 type detailsGetter interface {

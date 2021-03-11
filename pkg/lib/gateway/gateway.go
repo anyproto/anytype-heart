@@ -10,21 +10,31 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 )
+
+const CName = "gateway"
 
 const defaultPort = 47800
 
 var log = logging.Logger("anytype-gateway")
 
-// Host is the instance used by the daemon
-var Host *Gateway
+func New() Gateway {
+	return new(gateway)
+}
 
 // Gateway is a HTTP API for getting files and links from IPFS
-type Gateway struct {
+type Gateway interface {
+	Addr() string
+	app.ComponentRunnable
+}
+
+type gateway struct {
 	Node   core.Service
 	server *http.Server
+	addr   string
 }
 
 func getRandomPort() (int, error) {
@@ -56,15 +66,24 @@ func GatewayAddr() string {
 	return fmt.Sprintf("127.0.0.1:%d", port)
 }
 
-// Start creates a gateway server
-func (g *Gateway) Start(addr string) error {
+func (g *gateway) Init(a *app.App) (err error) {
+	g.Node = a.MustComponent(core.CName).(core.Service)
+	g.addr = GatewayAddr()
+	return nil
+}
+
+func (g *gateway) Name() string {
+	return CName
+}
+
+func (g *gateway) Run() error {
 	if g.server != nil {
 		return fmt.Errorf("gateway already started")
 	}
 
 	handler := http.NewServeMux()
 	g.server = &http.Server{
-		Addr:    addr,
+		Addr:    g.addr,
 		Handler: handler,
 	}
 
@@ -72,7 +91,7 @@ func (g *Gateway) Start(addr string) error {
 	handler.HandleFunc("/image/", g.imageHandler)
 
 	// check port first
-	listener, err := net.Listen("tcp", addr)
+	listener, err := net.Listen("tcp", g.addr)
 	if err != nil {
 		// todo: choose next available port
 		return err
@@ -108,16 +127,16 @@ func (g *Gateway) Start(addr string) error {
 	return nil
 }
 
-// Stop stops the gateway
-func (g *Gateway) Stop() error {
+// Close stops the gateway
+func (g *gateway) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	return g.server.Shutdown(ctx)
 }
 
 // Addr returns the gateway's address
-func (g *Gateway) Addr() string {
-	return g.server.Addr
+func (g *gateway) Addr() string {
+	return g.addr
 }
 
 func enableCors(w http.ResponseWriter) {
@@ -126,7 +145,7 @@ func enableCors(w http.ResponseWriter) {
 }
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
-func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
+func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 	fileHash := r.URL.Path[len("/file/"):]
 	enableCors(w)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
@@ -157,7 +176,7 @@ func (g *Gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
-func (g *Gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
+func (g *gateway) imageHandler(w http.ResponseWriter, r *http.Request) {
 	urlParts := strings.Split(r.URL.Path, "/")
 	imageHash := urlParts[2]
 	query := r.URL.Query()

@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -34,7 +33,7 @@ type ChangeReceiver interface {
 
 type Source interface {
 	Id() string
-	Anytype() anytype.Service
+	Anytype() core.Service
 	Type() pb.SmartBlockType
 	Virtual() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
@@ -46,7 +45,7 @@ type Source interface {
 
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-func NewSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
+func NewSource(a core.Service, ss status.Service, id string) (s Source, err error) {
 	st, err := smartblock.SmartBlockTypeFromID(id)
 	if st == smartblock.SmartBlockTypeFile {
 		return NewFiles(a, id), nil
@@ -54,7 +53,7 @@ func NewSource(a anytype.Service, ss status.Service, id string) (s Source, err e
 	return newSource(a, ss, id)
 }
 
-func newSource(a anytype.Service, ss status.Service, id string) (s Source, err error) {
+func newSource(a core.Service, ss status.Service, id string) (s Source, err error) {
 	sb, err := a.GetBlock(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %w", err)
@@ -81,7 +80,7 @@ func newSource(a anytype.Service, ss status.Service, id string) (s Source, err e
 type source struct {
 	id, logId      string
 	tid            thread.ID
-	a              anytype.Service
+	a              core.Service
 	ss             status.Service
 	sb             core.SmartBlock
 	tree           *change.Tree
@@ -97,12 +96,12 @@ func (s *source) Id() string {
 	return s.id
 }
 
-func (s *source) Anytype() anytype.Service {
+func (s *source) Anytype() core.Service {
 	return s.a
 }
 
 func (s *source) Type() pb.SmartBlockType {
-	return anytype.SmartBlockTypeToProto(s.sb.Type())
+	return smartblock.SmartBlockTypeToProto(s.sb.Type())
 }
 
 func (s *source) Virtual() bool {

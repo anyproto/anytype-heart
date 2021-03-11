@@ -8,12 +8,14 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/globalsign/mgo/bson"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -33,7 +35,6 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -45,6 +46,8 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 )
+
+const CName = "blockService"
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
@@ -181,9 +184,7 @@ type Service interface {
 
 	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
 
-	History() history.History
-
-	Close() error
+	app.ComponentRunnable
 }
 
 func newOpenedBlock(sb smartblock.SmartBlock, setLastUsage bool) *openedBlock {
@@ -210,48 +211,38 @@ type openedBlock struct {
 	refs      int32
 }
 
-func NewService(
-	accountId string,
-	a anytype.Service,
-	lp linkpreview.LinkPreview,
-	ss status.Service,
-	sendEvent func(event *pb.Event),
-) Service {
-	s := &service{
-		accountId: accountId,
-		anytype:   a,
-		status:    ss,
-		meta:      meta.NewService(a, ss),
-		sendEvent: func(event *pb.Event) {
-			sendEvent(event)
-		},
-		openedBlocks: make(map[string]*openedBlock),
-		linkPreview:  lp,
-		process:      process.NewService(sendEvent),
-	}
-
-	s.history = history.NewHistory(a, s, s.meta)
-	go s.cleanupTicker()
-	s.init()
-	log.Info("block service started")
-	return s
+func New() Service {
+	return new(service)
 }
 
 type service struct {
-	anytype      anytype.Service
+	anytype      core.Service
 	meta         meta.Service
 	status       status.Service
-	accountId    string
 	sendEvent    func(event *pb.Event)
 	openedBlocks map[string]*openedBlock
 	closed       bool
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
-	history      history.History
 	m            sync.Mutex
 }
 
-func (s *service) init() {
+func (s *service) Name() string {
+	return CName
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.anytype = a.MustComponent(core.CName).(core.Service)
+	s.meta = a.MustComponent(meta.CName).(meta.Service)
+	s.status = a.MustComponent(status.CName).(status.Service)
+	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	s.process = a.MustComponent(process.CName).(process.Service)
+	s.openedBlocks = make(map[string]*openedBlock)
+	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	return
+}
+
+func (s *service) Run() (err error) {
 	s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		return nil
 	})
@@ -259,9 +250,11 @@ func (s *service) init() {
 	s.Do(s.anytype.PredefinedBlocks().SetPages, func(b smartblock.SmartBlock) error {
 		return nil
 	})
+	go s.cleanupTicker()
+	return
 }
 
-func (s *service) Anytype() anytype.Service {
+func (s *service) Anytype() core.Service {
 	return s.anytype
 }
 
@@ -1656,8 +1649,4 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
 		return sb.ResetToVersion(state)
 	})
-}
-
-func (s *service) History() history.History {
-	return s.history
 }

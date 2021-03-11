@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -277,7 +276,7 @@ func (st *SmartTest) History() undo.History {
 	return st.hist
 }
 
-func (st *SmartTest) Anytype() anytype.Service {
+func (st *SmartTest) Anytype() core.Service {
 	return st.anytype
 }
 
