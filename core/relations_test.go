@@ -739,7 +739,7 @@ func TestCustomType(t *testing.T) {
 	})
 
 	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
-	require.Len(t, respObjectTypeCreate.ObjectType.Relations, len(bundle.RequiredInternalRelations)+3) // including relation.RequiredInternalRelations
+	require.Len(t, respObjectTypeCreate.ObjectType.Relations, len(bundle.RequiredInternalRelations)+3+1) // including relation.RequiredInternalRelations and done from the to-do layout
 	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "b"))
 	var newRelation *pbrelation.Relation
 	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
