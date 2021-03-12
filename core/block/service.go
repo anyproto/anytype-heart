@@ -1150,11 +1150,9 @@ func (s *service) Close() error {
 	s.m.Unlock()
 
 	for _, sb := range blocks {
-		sb.Lock()
 		if err := sb.Close(); err != nil {
 			log.Errorf("block[%s] close error: %v", sb.Id(), err)
 		}
-		sb.Unlock()
 	}
 	log.Infof("block service closed")
 	return nil

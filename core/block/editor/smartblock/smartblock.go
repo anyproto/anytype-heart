@@ -981,7 +981,9 @@ func (sb *smartBlock) BlockClose() {
 }
 
 func (sb *smartBlock) Close() (err error) {
+	sb.Lock()
 	sb.execHooks(HookOnClose)
+	sb.Unlock()
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
