@@ -1138,13 +1138,18 @@ func (s *service) Close() error {
 		log.Errorf("close error: %v", err)
 	}
 	s.m.Lock()
-	defer s.m.Unlock()
-
 	if s.closed {
+		s.m.Unlock()
 		return nil
 	}
 	s.closed = true
+	var blocks []*openedBlock
 	for _, sb := range s.openedBlocks {
+		blocks = append(blocks, sb)
+	}
+	s.m.Unlock()
+
+	for _, sb := range blocks {
 		sb.Lock()
 		if err := sb.Close(); err != nil {
 			log.Errorf("block[%s] close error: %v", sb.Id(), err)
