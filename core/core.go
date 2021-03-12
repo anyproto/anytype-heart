@@ -104,6 +104,14 @@ func (mw *Middleware) start() error {
 		return err
 	}
 
+	if gateway.Host != nil {
+		// workaround for stopping existing gateway
+		err = gateway.Host.Stop()
+		if err != nil {
+			log.Errorf("failed to stop gateway: %s", err.Error())
+		}
+	}
+
 	// start the local http gateway
 	gateway.Host = &gateway.Gateway{
 		Node: mw.Anytype,
