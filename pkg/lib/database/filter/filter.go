@@ -108,6 +108,7 @@ type Getter interface {
 
 type Filter interface {
 	FilterObject(g Getter) bool
+	String() string
 }
 
 type AndFilters []Filter
@@ -119,6 +120,14 @@ func (a AndFilters) FilterObject(g Getter) bool {
 		}
 	}
 	return true
+}
+
+func (a AndFilters) String() string {
+	var andS []string
+	for _, f := range a {
+		andS = append(andS, f.String())
+	}
+	return fmt.Sprintf("(%s)", strings.Join(andS, " AND "))
 }
 
 type OrFilters []Filter
@@ -135,6 +144,14 @@ func (a OrFilters) FilterObject(g Getter) bool {
 	return false
 }
 
+func (a OrFilters) String() string {
+	var orS []string
+	for _, f := range a {
+		orS = append(orS, f.String())
+	}
+	return fmt.Sprintf("(%s)", strings.Join(orS, " OR "))
+}
+
 type Not struct {
 	Filter
 }
@@ -144,6 +161,10 @@ func (n Not) FilterObject(g Getter) bool {
 		return false
 	}
 	return !n.Filter.FilterObject(g)
+}
+
+func (n Not) String() string {
+	return fmt.Sprintf("NOT(%s)", n.Filter.String())
 }
 
 type Eq struct {
@@ -181,6 +202,23 @@ func (e Eq) filterObject(v *types.Value) bool {
 	return false
 }
 
+func (e Eq) String() string {
+	var eq string
+	switch e.Cond {
+	case model.BlockContentDataviewFilter_Equal:
+		eq = "="
+	case model.BlockContentDataviewFilter_Greater:
+		eq = ">"
+	case model.BlockContentDataviewFilter_GreaterOrEqual:
+		eq = ">="
+	case model.BlockContentDataviewFilter_Less:
+		eq = "<"
+	case model.BlockContentDataviewFilter_LessOrEqual:
+		eq = "<="
+	}
+	return fmt.Sprintf("%s %s '%s'", e.Key, eq, e.Value)
+}
+
 type In struct {
 	Key   string
 	Value *types.ListValue
@@ -195,6 +233,10 @@ func (i In) FilterObject(g Getter) bool {
 		}
 	}
 	return false
+}
+
+func (i In) String() string {
+	return fmt.Sprintf("%v IN(%v)", i.Key, i.Value)
 }
 
 type Like struct {
@@ -212,6 +254,10 @@ func (l Like) FilterObject(g Getter) bool {
 		return false
 	}
 	return strings.Contains(strings.ToLower(valStr), strings.ToLower(l.Value.GetStringValue()))
+}
+
+func (l Like) String() string {
+	return fmt.Sprintf("%v LIKE '%v'", l.Key, l.Value)
 }
 
 type Empty struct {
@@ -243,6 +289,10 @@ func (e Empty) FilterObject(g Getter) bool {
 	return false
 }
 
+func (e Empty) String() string {
+	return fmt.Sprintf("%v IS EMPTY", e.Key)
+}
+
 type AllIn struct {
 	Key   string
 	Value *types.ListValue
@@ -271,4 +321,8 @@ func (l AllIn) FilterObject(g Getter) bool {
 		}
 	}
 	return true
+}
+
+func (l AllIn) String() string {
+	return fmt.Sprintf("%s ALLIN(%v)", l.Key, l.Value)
 }

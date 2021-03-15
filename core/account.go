@@ -24,8 +24,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-const cafeUrl = "https://cafe1.anytype.io"
-const cafePeerId = "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+const defaultCafeUrl = "https://cafe1.anytype.io"
+const defaultCafePeerId = "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
 
 // we cannot check the constant error from badger because they hardcoded it there
 const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
@@ -53,7 +53,9 @@ func checkInviteCode(code string, account string) error {
 		Account: account,
 	})
 
-	req, err := http.NewRequest("POST", cafeUrl+"/alpha-invite", bytes.NewBuffer(jsonStr))
+	// TODO: here we always using the default cafe address, because we want to check invite code only on our server
+	// this code should be removed with a public release
+	req, err := http.NewRequest("POST", defaultCafeUrl+"/alpha-invite", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -81,7 +83,7 @@ func checkInviteCode(code string, account string) error {
 		return fmt.Errorf("failed to decode response json: %s", err.Error())
 	}
 
-	pubk, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeDevice, cafePeerId)
+	pubk, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeDevice, defaultCafePeerId)
 	if err != nil {
 		return fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
 	}

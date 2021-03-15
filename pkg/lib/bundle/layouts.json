@@ -31,11 +31,18 @@
     "name": "Dashboard"
   },
   {
-    "id": "action",
-    "name": "Action",
+    "id": "todo",
+    "name": "to-do",
     "requiredRelations": [
       "done",
       "name"
+    ]
+  },
+  {
+    "id": "image",
+    "name": "Image",
+    "requiredRelations": [
+      "iconImage"
     ]
   },
   {

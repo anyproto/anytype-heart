@@ -53,8 +53,8 @@ func (p *Profile) Init(s source.Source, _ bool, _ []string) (err error) {
 	)
 }
 
-func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
-	if err = p.SmartBlock.SetDetails(ctx, details); err != nil {
+func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
+	if err = p.SmartBlock.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
 	meta := p.SmartBlock.Meta()

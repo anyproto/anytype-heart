@@ -238,9 +238,13 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 }
 
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
-	for i, ot := range s.ObjectTypes() {
+	otypes := s.ObjectTypes()
+	otypesCopy := make([]string, len(otypes))
+	copy(otypesCopy, otypes)
+
+	for i, ot := range otypesCopy {
 		if ot == remove.Url {
-			s.objectTypes = append(s.objectTypes[:i], s.objectTypes[i+1:]...)
+			s.objectTypes = append(otypesCopy[:i], otypesCopy[i+1:]...)
 			return nil
 		}
 	}
@@ -333,6 +337,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 				}
 			}
 
+		case *pb.EventMessageValueOfBlockDataviewSourceSet:
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewViewSet:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewViewDelete:

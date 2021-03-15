@@ -45,6 +45,7 @@ message Event {
             Block.Dataview.RecordsInsert blockDataviewRecordsInsert = 27;
             Block.Dataview.RecordsDelete blockDataviewRecordsDelete = 28;
 
+            Block.Dataview.SourceSet blockDataviewSourceSet = 35;
             Block.Dataview.ViewSet blockDataviewViewSet = 19;
             Block.Dataview.ViewDelete blockDataviewViewDelete = 20;
             Block.Dataview.RelationDelete blockDataviewRelationDelete = 24;
@@ -513,6 +514,11 @@ message Event {
                 string viewId = 2; // view id to remove
             }
 
+            message SourceSet {
+                string id = 1; // dataview block's id
+                string source = 2;
+            }
+
             message RelationDelete {
                 string id = 1; // dataview block's id
                 string relationKey = 2; // relation key to remove
@@ -684,6 +690,9 @@ enum SmartBlockType {
     ObjectType = 6; // have relations list
 
     File = 7;
+
+    MarketplaceType = 8;
+    MarketplaceRelation = 9;
 }
 
 message ResponseEvent {

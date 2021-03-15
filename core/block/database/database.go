@@ -19,7 +19,6 @@ type Ctrl interface {
 	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)
 
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
-	GetObjectType(url string) (objectType *pbrelation.ObjectType, err error)
 	UpdateExtraRelations(ctx *state.Context, id string, relations []*pbrelation.Relation, createIfMissing bool) (err error)
 	AddExtraRelations(ctx *state.Context, id string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)

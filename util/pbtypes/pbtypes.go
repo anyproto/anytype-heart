@@ -1,8 +1,11 @@
 package pbtypes
 
 import (
+	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
+	"strings"
 )
 
 func Float64(v float64) *types.Value {
@@ -154,6 +157,16 @@ func GetOption(opts []*pbrelation.RelationOption, id string) *pbrelation.Relatio
 	return nil
 }
 
+func HasOption(opts []*pbrelation.RelationOption, id string) bool {
+	for _, opt := range opts {
+		if opt.Id == id {
+			return true
+		}
+	}
+
+	return false
+}
+
 func Get(st *types.Struct, key string) *types.Value {
 	if st == nil || st.Fields == nil {
 		return nil
@@ -258,4 +271,26 @@ func ValueToInterface(v *types.Value) interface{} {
 	default:
 		panic("protostruct: unknown kind")
 	}
+}
+
+func RelationFormatCanHaveListValue(format pbrelation.RelationFormat) bool {
+	switch format {
+	case pbrelation.RelationFormat_tag,
+		pbrelation.RelationFormat_file,
+		pbrelation.RelationFormat_object:
+		return true
+	default:
+		return false
+	}
+}
+
+func RelationIdToKey(id string) (string, error) {
+	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
+		return strings.TrimPrefix(id, addr.CustomRelationURLPrefix), nil
+	}
+
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		return strings.TrimPrefix(id, addr.BundledRelationURLPrefix), nil
+	}
+	return "", fmt.Errorf("incorrect id format")
 }

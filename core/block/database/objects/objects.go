@@ -2,6 +2,7 @@ package objects
 
 import (
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -11,13 +12,14 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/martian/log"
 )
 
 const (
-	CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	BundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
+	//CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
+	BundledObjectTypeURLPrefix = "_ot"
 )
+
+var log = logging.Logger("anytype-core-db")
 
 func New(
 	pageStore localstore.ObjectStore,
@@ -57,8 +59,15 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
 
+	var relsToSet []*pbrelation.Relation
+	for _, rel := range relations {
+		if pbtypes.HasField(rec.Details, rel.Key) {
+			relsToSet = append(relsToSet, rel)
+		}
+	}
+
 	rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl})
-	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, nil)
+	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, relsToSet)
 	if err != nil {
 		return rec, err
 	}
@@ -72,18 +81,6 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 
 	if sub != nil {
 		sub.Subscribe([]string{id})
-	}
-
-	var relsToSet []*pbrelation.Relation
-	for _, rel := range relations {
-		if pbtypes.HasField(rec.Details, rel.Key) {
-			relsToSet = append(relsToSet, rel)
-		}
-	}
-
-	err = sp.setRelations(id, relsToSet)
-	if err != nil {
-		return rec, err
 	}
 
 	return rec, nil

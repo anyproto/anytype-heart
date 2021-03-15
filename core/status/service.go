@@ -16,6 +16,7 @@ import (
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
 	"github.com/libp2p/go-libp2p-core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -91,9 +92,29 @@ func (s *service) Init(a *app.App) (err error) {
 
 	s.profile = anytype
 	s.emitter = a.MustComponent(event.CName).(event.Sender).Send
-	cafePid, _ := peer.Decode(cafePeerId)
-	s.cafeID = cafePid.String()
 	return
+}
+
+func (s *service) Run() error {
+	anytype := s.profile.(core.Service)
+	s.ownDeviceID = anytype.Device()
+	s.tInfo = anytype.SyncStatus()
+	s.fInfo = anytype.FileStatus()
+	var cafePeer string
+	if anytype.CafePeer() != nil {
+		cafePeer, _ = anytype.CafePeer().ValueForProtocol(ma.P_P2P)
+	}
+	if cafePeer == "" {
+		cafePeer = cafePeerId
+	}
+	cafePid, _ := peer.Decode(cafePeer)
+	s.cafeID = cafePid.String()
+
+	if err := s.startConnectivityTracking(); err != nil {
+		return err
+	}
+	go s.startSendingThreadStatus()
+	return nil
 }
 
 func (s *service) Name() string {
@@ -200,19 +221,6 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 	if modified && !s.tsTrigger.PushTimeout(tid, 2*time.Second) {
 		log.Warn("unable to submit timeline update notification for more than 2 seconds")
 	}
-}
-
-func (s *service) Run() error {
-	anytype := s.profile.(core.Service)
-	s.ownDeviceID = anytype.Device()
-	s.tInfo = anytype.SyncStatus()
-	s.fInfo = anytype.FileStatus()
-
-	if err := s.startConnectivityTracking(); err != nil {
-		return err
-	}
-	go s.startSendingThreadStatus()
-	return nil
 }
 
 func (s *service) Close() error {

@@ -2,4 +2,5 @@ server
 lib.a
 lib.h
 ios/Lib.framework
-android/mobile.aar
+android/lib.aar
+cli

@@ -4,8 +4,11 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/globalsign/mgo/bson"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -16,11 +19,6 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-const (
-	customObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
-	bundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
-)
-
 func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRequest) *pb.RpcObjectTypeRelationListResponse {
 	response := func(code pb.RpcObjectTypeRelationListResponseErrorCode, relations []*pbrelation.Relation, err error) *pb.RpcObjectTypeRelationListResponse {
 		m := &pb.RpcObjectTypeRelationListResponse{Relations: relations, Error: &pb.RpcObjectTypeRelationListResponseError{Code: code}}
@@ -29,8 +27,12 @@ func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRe
 		}
 		return m
 	}
+	at := mw.getAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
+	}
 
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -51,7 +53,12 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 		return m
 	}
 
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+	at := mw.getAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
+	}
+
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -65,10 +72,9 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 	}
 
 	var relations []*pbrelation.Relation
-	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddExtraRelations(nil, id, req.Relations)
+		relations, err = bs.AddExtraRelations(nil, objType.Url, req.Relations)
 		if err != nil {
 			return err
 		}
@@ -90,7 +96,13 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		}
 		return m
 	}
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+
+	at := mw.getAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationUpdateResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
+	}
+
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationUpdateResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
@@ -103,9 +115,8 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
 
-	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.UpdateExtraRelations(nil, id, []*pbrelation.Relation{req.Relation}, false)
+		err = bs.UpdateExtraRelations(nil, objType.Url, []*pbrelation.Relation{req.Relation}, false)
 		if err != nil {
 			return err
 		}
@@ -127,7 +138,13 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 		}
 		return m
 	}
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+
+	at := mw.getAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
+	}
+
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
@@ -139,10 +156,9 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 	if strings.HasPrefix(objType.Url, bundle.TypePrefix) {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_READONLY_OBJECT_TYPE, fmt.Errorf("can't modify bundled object type"))
 	}
-	id := strings.TrimPrefix(objType.Url, objects.CustomObjectTypeURLPrefix)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.RemoveExtraRelations(nil, id, []string{req.RelationKey})
+		err = bs.RemoveExtraRelations(nil, objType.Url, []string{req.RelationKey})
 		if err != nil {
 			return err
 		}
@@ -165,35 +181,42 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 		return m
 	}
 	var sbId string
-	var requiredRelationByKey = make(map[string]*pbrelation.Relation, len(bundle.RequiredInternalRelations))
+	var recommendedRelationKeys []string
+	var relations = make([]*pbrelation.Relation, 0, len(req.ObjectType.Relations)+len(bundle.RequiredInternalRelations))
 
 	for _, rel := range bundle.RequiredInternalRelations {
-		requiredRelationByKey[rel.String()] = bundle.MustGetRelation(rel)
+		relations = append(relations, bundle.MustGetRelation(rel))
+		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
 	}
 
-	for _, rel := range req.ObjectType.Relations {
-		if rel.Key == "" {
-			continue
-		}
-		if v, exists := requiredRelationByKey[rel.Key]; exists {
+	for i, rel := range req.ObjectType.Relations {
+		if v := pbtypes.GetRelation(relations, rel.Key); v != nil {
 			if !pbtypes.RelationEqual(v, rel) {
 				return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("required relation %s not equals the bundled one", rel.Key))
 			}
-			delete(requiredRelationByKey, rel.Key)
-		}
-	}
+		} else {
+			if rel.Key == "" {
+				rel.Key = bson.NewObjectId().Hex()
+			}
 
-	for _, rel := range requiredRelationByKey {
-		req.ObjectType.Relations = append(req.ObjectType.Relations, rel)
+			if bundle.HasRelation(rel.Key) {
+				recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.Key)
+			} else {
+				recommendedRelationKeys = append(recommendedRelationKeys, addr.CustomRelationURLPrefix+rel.Key)
+			}
+			relations = append(relations, req.ObjectType.Relations[i])
+		}
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		sbId, _, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyName.String():      pbtypes.String(req.ObjectType.Name),
-				bundle.RelationKeyIconEmoji.String(): pbtypes.String(req.ObjectType.IconEmoji),
-				bundle.RelationKeyType.String():      pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
-				bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
+				bundle.RelationKeyName.String():                 pbtypes.String(req.ObjectType.Name),
+				bundle.RelationKeyIconEmoji.String():            pbtypes.String(req.ObjectType.IconEmoji),
+				bundle.RelationKeyType.String():                 pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
+				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
+				bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
+				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(recommendedRelationKeys),
 			},
 		}, req.ObjectType.Relations)
 		if err != nil {
@@ -202,14 +225,13 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 
 		return nil
 	})
-
 	if err != nil {
 		return response(pb.RpcObjectTypeCreateResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
 	otype := req.ObjectType
-	otype.Relations = req.ObjectType.Relations
-	otype.Url = customObjectTypeURLPrefix + sbId
+	otype.Relations = relations
+	otype.Url = sbId
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }
 
@@ -227,14 +249,10 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-
-	if mw.app == nil {
+	at := mw.getAnytype()
+	if at == nil {
 		return response(pb.RpcObjectTypeListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
-
-	at := mw.app.MustComponent(core.CName).(core.Service)
 
 	threadIds, err := at.ThreadService().ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
 	if err != nil {
@@ -242,14 +260,12 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 	}
 
 	for _, id := range threadIds {
-		err = mw.doBlockService(func(bs block.Service) (err error) {
-			otype, err := bs.GetObjectType(objects.CustomObjectTypeURLPrefix + id.String())
-			if err != nil {
-				return err
-			}
-			otypes = append(otypes, otype)
-			return nil
-		})
+		otype, err := mw.getObjectType(at, id.String())
+		if err != nil {
+			log.Errorf("failed to get objectType info: %s", err.Error())
+			continue
+		}
+		otypes = append(otypes, otype)
 	}
 
 	return response(pb.RpcObjectTypeListResponseError_NULL, otypes, nil)
@@ -283,15 +299,6 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 	return response(pb.RpcSetCreateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) getObjectType(url string) (*pbrelation.ObjectType, error) {
-	var objType = &pbrelation.ObjectType{}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		objType, err = bs.GetObjectType(url)
-		if err != nil {
-			return err
-		}
-		return nil
-	})
-
-	return objType, err
+func (mw *Middleware) getObjectType(at core.Service, url string) (*pbrelation.ObjectType, error) {
+	return localstore.GetObjectType(at.ObjectStore(), url)
 }

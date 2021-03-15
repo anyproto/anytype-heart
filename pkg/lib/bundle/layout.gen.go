@@ -8,12 +8,6 @@ import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
 var (
 	Layouts = map[relation.ObjectTypeLayout]relation.Layout{
-		relation.ObjectType_action: {
-
-			Id:                relation.ObjectType_action,
-			Name:              "Action",
-			RequiredRelations: []*relation.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
-		},
 		relation.ObjectType_basic: {
 
 			Id:                relation.ObjectType_basic,
@@ -34,6 +28,12 @@ var (
 
 			Id:   relation.ObjectType_file,
 			Name: "File",
+		},
+		relation.ObjectType_image: {
+
+			Id:                relation.ObjectType_image,
+			Name:              "Image",
+			RequiredRelations: []*relation.Relation{relations[RelationKeyIconImage]},
 		},
 		relation.ObjectType_objectType: {
 
@@ -57,6 +57,12 @@ var (
 			Id:                relation.ObjectType_set,
 			Name:              "Set",
 			RequiredRelations: []*relation.Relation{relations[RelationKeySetOf], relations[RelationKeyName]},
+		},
+		relation.ObjectType_todo: {
+
+			Id:                relation.ObjectType_todo,
+			Name:              "to-do",
+			RequiredRelations: []*relation.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
 		},
 	}
 )

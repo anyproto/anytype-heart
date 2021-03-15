@@ -1,14 +1,19 @@
 package indexer
 
 import (
+	"context"
+	"fmt"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -51,12 +56,13 @@ type GetSearchInfo interface {
 }
 
 type indexer struct {
-	store      localstore.ObjectStore
-	anytype    core.Service
-	searchInfo GetSearchInfo
-	cache      map[string]*doc
-	quitWG     *sync.WaitGroup
-	quit       chan struct{}
+	store              localstore.ObjectStore
+	anytype            core.Service
+	searchInfo         GetSearchInfo
+	cache              map[string]*doc
+	quitWG             *sync.WaitGroup
+	quit               chan struct{}
+	subscriptionCancel context.CancelFunc
 
 	threadIdsBuf []string
 	recBuf       []core.SmartblockRecordEnvelope
@@ -81,14 +87,54 @@ func (i *indexer) Run() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
-	ch, err := i.anytype.SubscribeForNewRecords()
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := i.anytype.SubscribeForNewRecords(ctx)
 	if err != nil {
-		return
+		cancel()
+		return err
 	}
+	i.subscriptionCancel = cancel
 	i.quitWG.Add(2)
 	go i.detailsLoop(ch)
 	go i.ftLoop()
 	return
+}
+
+func (i *indexer) openDoc(id string) (state.Doc, error) {
+	s, err := source.NewSource(i.anytype, nil, id)
+	if err != nil {
+		err = fmt.Errorf("anytype.GetBlock error: %v", err)
+		return nil, err
+	}
+	return s.ReadDoc(nil, false)
+}
+
+func (i *indexer) reindexBundled() {
+	var (
+		d   state.Doc
+		err error
+	)
+
+	var ids []string
+
+	for _, rk := range bundle.ListRelationsKeys() {
+		ids = append(ids, addr.BundledRelationURLPrefix+rk.String())
+	}
+	for _, tk := range bundle.ListTypesKeys() {
+		ids = append(ids, tk.URL())
+	}
+
+	ids = append(ids, addr.AnytypeProfileId)
+	for _, id := range ids {
+		if d, err = i.openDoc(id); err != nil {
+			log.Errorf("reindexBundled failed to open %s: %s", id, err.Error())
+			return
+		}
+
+		if err := i.store.CreateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
+			log.With("thread", id).Errorf("can't update object store: %v", err)
+		}
+	}
 }
 
 func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
@@ -118,6 +164,7 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 	for {
 		select {
 		case rec, ok := <-ch:
+			//log.Debugf("indexer got change on %s(%s): %s", rec.ThreadID, rec.LogID, rec.ID)
 			if !ok {
 				return
 			}
@@ -126,6 +173,7 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 			i.cleanup()
 		case <-quit:
 			batch.Close()
+			return
 		}
 	}
 }
@@ -183,6 +231,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 			dataviewSourceBefore = b.Model().GetDataview().Source
 		}
 	}
+
 	d.mu.Unlock()
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 
@@ -316,6 +365,9 @@ func (i *indexer) cleanup() {
 func (i *indexer) Close() error {
 	i.mu.Lock()
 	quit := i.quit
+	if i.subscriptionCancel != nil {
+		i.subscriptionCancel()
+	}
 	i.mu.Unlock()
 
 	if quit != nil {

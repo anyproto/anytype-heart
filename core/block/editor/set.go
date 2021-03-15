@@ -29,7 +29,7 @@ func NewSet(
 
 	sb.Basic = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)
-	sb.Dataview = dataview.NewDataview(sb, dbCtrl)
+	sb.Dataview = dataview.NewDataview(sb)
 	sb.Router = database.New(dbCtrl)
 	sb.Text = stext.NewText(sb.SmartBlock)
 	return sb
@@ -54,7 +54,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				Source:    "https://anytype.io/schemas/object/bundled/page",
+				Source:    "_otpage",
 				Relations: bundle.MustGetType(bundle.TypeKeyPage).Relations,
 				Views: []*model.BlockContentDataviewView{
 					{
@@ -78,18 +78,13 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 				},
 			},
 		}
-		templates = append(templates, template.WithDataview(dataview), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
+		templates = append(templates, template.WithDataview(dataview, false), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
-		templates = append(templates, template.WithDetail(bundle.RelationKeySetOf, pbtypes.String(dvBlock.Model().GetDataview().Source)))
-	}
-	st := p.NewState()
-	if err = template.ApplyTemplate(p, st, templates...); err != nil {
-		return
+		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}
 
-	err = p.Apply(st)
-	if err != nil {
-		log.Errorf("failed to apply state: %s", err.Error())
+	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
+		return
 	}
 
 	return p.FillAggregatedOptions(nil)
@@ -99,8 +94,8 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 	s := p.NewState()
 	return template.ApplyTemplate(p, s,
 		template.WithDetailName(name),
-		template.WithDetail(bundle.RelationKeySetOf, pbtypes.String(blockContent.Dataview.Source)),
+		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
 		template.WithDetailIconEmoji(icon),
-		template.WithDataview(blockContent),
+		template.WithDataview(blockContent, false),
 	)
 }

@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/libp2p/go-tcp-transport"
 	"io"
 	"path/filepath"
 	"strings"
@@ -22,6 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/litenet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -29,6 +32,7 @@ import (
 	tcn "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	tnet "github.com/textileio/go-threads/net"
+	tq "github.com/textileio/go-threads/net/queue"
 	"github.com/textileio/go-threads/util"
 	"google.golang.org/grpc"
 )
@@ -48,8 +52,6 @@ const (
 	CName = "anytype"
 
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
-
-	pullInterval = 3 * time.Minute
 )
 
 var BootstrapNodes = []string{
@@ -70,6 +72,7 @@ type PredefinedBlockIds struct {
 type Service interface {
 	Account() string
 	Device() string
+	CafePeer() ma.Multiaddr
 
 	Start() error
 	Stop() error
@@ -105,7 +108,7 @@ type Service interface {
 
 	SyncStatus() tcn.SyncInfo
 	FileStatus() pin.FilePinService
-	SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error)
+	SubscribeForNewRecords(ctx context.Context) (ch chan SmartblockRecordWithThreadID, err error)
 
 	ProfileInfo
 
@@ -189,6 +192,14 @@ func (a *Anytype) Account() string {
 		return ""
 	}
 	return a.opts.Account.Address()
+}
+
+func (a *Anytype) CafePeer() ma.Multiaddr {
+	if a.opts.CafeP2PAddr == nil {
+		return nil
+	}
+
+	return a.opts.CafeP2PAddr
 }
 
 func (a *Anytype) Device() string {
@@ -454,6 +465,18 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 }
 
 func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
+	var (
+		unaryServerInterceptor grpc.UnaryServerInterceptor
+		unaryClientInterceptor grpc.UnaryClientInterceptor
+	)
+
+	if metrics.Enabled {
+		unaryServerInterceptor = grpc_prometheus.UnaryServerInterceptor
+		unaryClientInterceptor = grpc_prometheus.UnaryClientInterceptor
+		grpc_prometheus.EnableHandlingTimeHistogram()
+		grpc_prometheus.EnableClientHandlingTimeHistogram()
+	}
+
 	var opts = []litenet.NetOption{
 		litenet.WithInMemoryDS(a.opts.InMemoryDS),
 		litenet.WithOffline(a.opts.Offline),
@@ -461,17 +484,20 @@ func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
 		litenet.WithNetPubSub(a.opts.NetPubSub),
 		litenet.WithNetSyncTracking(a.opts.SyncTracking),
 		litenet.WithNetGRPCServerOptions(
-			grpc.MaxRecvMsgSize(5 << 20), // 5Mb max message size
+			grpc.MaxRecvMsgSize(5<<20), // 5Mb max message size
+			grpc.UnaryInterceptor(unaryServerInterceptor),
 		),
 		litenet.WithNetGRPCDialOptions(
 			grpc.WithDefaultCallOptions(
 				grpc.MaxCallRecvMsgSize(5<<20),
 				grpc.MaxCallSendMsgSize(5<<20),
 			),
-			// gRPC metrics
-			//grpc.WithUnaryInterceptor(grpc_prometheus.UnaryClientInterceptor),
-			//grpc.WithStreamInterceptor(grpc_prometheus.StreamClientInterceptor),
+			grpc.WithUnaryInterceptor(unaryClientInterceptor),
 		),
+	}
+
+	if a.opts.CafeP2PAddr != nil {
+		opts = append(opts, litenet.WithPermanentConnection(a.opts.CafeP2PAddr))
 	}
 
 	if useHostAddr {
@@ -481,8 +507,8 @@ func (a *Anytype) startNetwork(useHostAddr bool) (net.NetBoostrapper, error) {
 	return litenet.DefaultNetwork(a.opts.Repo, a.opts.Device, []byte(ipfsPrivateNetworkKey), opts...)
 }
 
-func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID, err error) {
-	ctx, cancel := context.WithCancel(context.Background())
+func (a *Anytype) SubscribeForNewRecords(ctx context.Context) (ch chan SmartblockRecordWithThreadID, err error) {
+	ctx, cancel := context.WithCancel(ctx)
 	ch = make(chan SmartblockRecordWithThreadID)
 	threadsCh, err := a.t.Subscribe(ctx)
 	if err != nil {
@@ -542,13 +568,32 @@ func (a *Anytype) SubscribeForNewRecords() (ch chan SmartblockRecordWithThreadID
 }
 
 func init() {
-	// redefine thread pulling interval
-	tnet.PullInterval = pullInterval
+	/* adjust ThreadsDB parameters */
 
-	// redefine timeouts for threads
-	tnet.DialTimeout = 10 * time.Second
+	// thread pulling cycle
+	tnet.PullStartAfter = 5 * time.Second
+	tnet.InitialPullInterval = 20 * time.Second
+	tnet.PullInterval = 3 * time.Minute
+
+	// communication timeouts
+	tnet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
+	tcp.DefaultConnectTimeout = tnet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
 	tnet.PushTimeout = 30 * time.Second
 	tnet.PullTimeout = 2 * time.Minute
+
+	// event bus input buffer
+	tnet.EventBusCapacity = 3
+
+	// exchange edges
+	tnet.MaxThreadsExchanged = 10
+	tnet.ExchangeCompressionTimeout = 20 * time.Second
+	tnet.QueuePollInterval = 1 * time.Second
+
+	// thread packer queue
+	tq.InBufSize = 5
+	tq.OutBufSize = 2
+
+	/* logs */
 
 	// apply log levels in go-threads and go-ipfs deps
 	logging.ApplyLevelsFromEnv()

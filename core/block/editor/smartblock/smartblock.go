@@ -8,7 +8,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -61,6 +60,7 @@ func New(ms meta.Service) SmartBlock {
 }
 
 type SmartblockOpenListner interface {
+	// should not do any Do operations inside
 	SmartblockOpened(*state.Context)
 }
 
@@ -74,7 +74,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() core.Service
-	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
@@ -148,7 +148,7 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
+func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectType []string) (err error) {
 	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
@@ -157,7 +157,55 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool, _ []string) (err er
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
+	if len(objectType) > 0 && len(sb.ObjectTypes()) == 0 {
+		err = sb.SetObjectTypes(nil, objectType)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := sb.NormalizeRelations(); err != nil {
+		return err
+	}
+
 	return
+}
+
+func (sb *smartBlock) NormalizeRelations() error {
+	st := sb.NewState()
+
+	relations := sb.Relations()
+	details := sb.Details()
+	if details == nil || details.Fields == nil {
+		return nil
+	}
+	var stateChanged bool
+	for k := range details.Fields {
+		rel := pbtypes.GetRelation(relations, k)
+		if rel == nil {
+			if bundleRel, _ := bundle.GetRelation(bundle.RelationKey(k)); bundleRel != nil {
+				st.AddRelation(bundleRel)
+				stateChanged = true
+				log.Warnf("NormalizeRelations bundle relation is missing, have been added: %s", k)
+			} else {
+				log.Errorf("NormalizeRelations relation is missing: %s", k)
+			}
+
+			continue
+		}
+
+		if rel.Scope != pbrelation.Relation_object {
+			log.Warnf("NormalizeRelations change scope for relation %s", rel.Key)
+			st.SetExtraRelation(rel)
+			stateChanged = true
+		}
+	}
+
+	if stateChanged {
+		return sb.Apply(st)
+	}
+
+	return nil
 }
 
 func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
@@ -236,6 +284,9 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 								if ot == "" {
 									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
 								} else {
+									if strings.HasPrefix(ot, "http") {
+										log.Errorf("dv rels has http source")
+									}
 									uniqueObjTypes = append(uniqueObjTypes, ot)
 								}
 							}
@@ -363,9 +414,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 		ids = append(ids, sb.Id())
 
 		for _, ot := range sb.ObjectTypes() {
-			if strings.HasSuffix(ot, objects.CustomObjectTypeURLPrefix) {
-				ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
-			}
+			ids = append(ids, ot)
 		}
 
 		details := sb.Details()
@@ -376,9 +425,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 			}
 			// add all custom object types as dependents
 			for _, ot := range rel.ObjectTypes {
-				if strings.HasPrefix(ot, objects.CustomObjectTypeURLPrefix) {
-					ids = append(ids, strings.TrimPrefix(ot, objects.CustomObjectTypeURLPrefix))
-				}
+				ids = append(ids, ot)
 			}
 
 			if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
@@ -452,6 +499,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		return
 	}
+
 	sb.Doc.(*state.State).SetChangeId(id)
 	if sb.undo != nil && addHistory {
 		act.Group = s.GroupId()
@@ -506,12 +554,12 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 
 func (sb *smartBlock) NewState() *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewState()
+	return sb.Doc.NewState().SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewStateCtx(ctx)
+	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) History() undo.History {
@@ -522,102 +570,93 @@ func (sb *smartBlock) Anytype() core.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) validateDetailsAndAddOptions(st *state.State, d *types.Struct) (err error) {
-	if d == nil || d.Fields == nil {
-		return nil
-	}
-	rels := sb.Relations()
-	for k, v := range d.Fields {
-		var found bool
-		for _, rel := range rels {
-			if rel.Key != k {
-				continue
-			}
-			/*if rel.DataSource != pbrelation.Relation_details {
-				delete(d.Fields, k)
-				found = true
-				break
-			}*/
-			if rel.Scope != pbrelation.Relation_object {
-				rel.Scope = pbrelation.Relation_object
-				st.AddRelation(rel)
-			}
-			found = true
-			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
-				objType := sb.ObjectType()
-
-				options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
-				if err != nil {
-					log.Errorf("failed to get aggregated options for a select/tag relation '%s' ot '%s' format '%s': %s", rel.Key, objType, rel.Format, err.Error())
-					return fmt.Errorf("failed to get aggregated options for a select/tag relation: %s", err.Error())
-				}
-
-				vals := pbtypes.GetStringListValue(v)
-				if len(vals) == 0 {
-					continue
-				}
-				var valsFiltered []string
-				for _, val := range vals {
-					var optFound bool
-					for _, opt := range options {
-						if opt.Id == val {
-							optFound = true
-							optCopy := *opt
-							// reset scope
-							optCopy.Scope = pbrelation.RelationOption_local
-							_, err = st.AddExtraRelationOption(*rel, optCopy)
-							if err != nil {
-								return fmt.Errorf("failed to add an option for a select/tag relation '%s': %s", rel.Key, err.Error())
-							}
-							break
-						}
-					}
-					if !optFound {
-						log.Errorf("failed to find an option for a select/tag relation '%s'", rel.Key)
-						continue
-					}
-					valsFiltered = append(valsFiltered, val)
-				}
-				d.Fields[k] = pbtypes.StringList(valsFiltered)
-			}
-		}
-		if !found {
-			// todo: make this an error after stabilizing of relations names and creating of migrations
-			log.Errorf("relation for detail '%s' doesn't exist", k)
-		}
-	}
-
-	return nil
-}
-
-func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail) (err error) {
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
-	copy := pbtypes.CopyStruct(s.Details())
-	if copy == nil || copy.Fields == nil {
-		copy = &types.Struct{
+	detCopy := pbtypes.CopyStruct(s.Details())
+	if detCopy == nil || detCopy.Fields == nil {
+		detCopy = &types.Struct{
 			Fields: make(map[string]*types.Value),
 		}
 	}
 
+	relations := sb.Relations()
 	for _, detail := range details {
 		if detail.Value != nil {
-			copy.Fields[detail.Key] = detail.Value
+			rel := pbtypes.GetRelation(relations, detail.Key)
+			if rel == nil {
+				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
+				return fmt.Errorf("relation not found: you should add the missing relation first")
+			}
+
+			if rel.Scope != pbrelation.Relation_object {
+				s.SetExtraRelation(rel)
+			}
+			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
+				newOptsIds := slice.Difference(pbtypes.GetStringListValue(detail.Value), pbtypes.GetStringListValue(detCopy.Fields[detail.Key]))
+				var missingOptsIds []string
+				for _, newOptId := range newOptsIds {
+					if !pbtypes.HasOption(rel.SelectDict, newOptId) {
+						missingOptsIds = append(missingOptsIds, newOptId)
+					}
+				}
+
+				if len(missingOptsIds) > 0 {
+					opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+					if err != nil {
+						return err
+					}
+
+					for _, missingOptsId := range missingOptsIds {
+						opt := pbtypes.GetOption(opts, missingOptsId)
+						if opt == nil {
+							log.Errorf("relation %s is missing option: %s", rel.Key, missingOptsId)
+							continue
+						}
+						optCopy := *opt
+						// reset scope
+						optCopy.Scope = pbrelation.RelationOption_local
+						_, err := s.AddExtraRelationOption(*rel, optCopy)
+						if err != nil {
+							return err
+						}
+					}
+				}
+			}
+
+			err = s.ValidateNewDetail(detail.Key, detail.Value)
+			if err != nil {
+				return fmt.Errorf("relation %s validation failed: %s", detail.Key, err.Error())
+			}
+			detCopy.Fields[detail.Key] = detail.Value
 		} else {
-			delete(copy.Fields, detail.Key)
+			delete(detCopy.Fields, detail.Key)
 		}
 	}
-	if copy.Equal(sb.Details()) {
+	if detCopy.Equal(sb.Details()) {
 		return
 	}
 
-	err = sb.validateDetailsAndAddOptions(s, copy)
-	if err != nil {
-		return err
-	}
-
-	s.SetDetails(copy)
+	s.SetDetails(detCopy)
 	if err = sb.Apply(s); err != nil {
 		return
+	}
+
+	// filter-out setDetails event
+	if !showEvent && ctx != nil {
+		var filtered []*pb.EventMessage
+		msgs := ctx.GetMessages()
+		var isFiltered bool
+		for i, msg := range msgs {
+			if sd := msg.GetBlockSetDetails(); sd == nil || sd.Id != sb.Id() {
+				filtered = append(filtered, msgs[i])
+			} else {
+				isFiltered = true
+			}
+		}
+		if isFiltered {
+			ctx.SetMessages(sb.Id(), filtered)
+		}
+
 	}
 	return nil
 }
@@ -653,7 +692,6 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 	if err = sb.Apply(s, NoEvent); err != nil {
 		return
 	}
-
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
@@ -1077,10 +1115,19 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 	return rels
 }
 
+func (sb *smartBlock) baseRelations() []*pbrelation.Relation {
+	rels := []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji)}
+	for _, rel := range rels {
+		rel.Scope = pbrelation.Relation_object
+	}
+	return rels
+}
+
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
 	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
-		return nil
+		return sb.baseRelations()
 	}
+
 	objType := sb.ObjectType()
 
 	var err error
@@ -1117,12 +1164,12 @@ func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
-		if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
-			// do not fetch objectTypes for object type type to avoid universe collapse
-			for _, objType := range objectTypes {
-				relations = append(relations, objType.Relations...)
-			}
+		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
+		// do not fetch objectTypes for object type type to avoid universe collapse
+		for _, objType := range objectTypes {
+			relations = append(relations, objType.Relations...)
 		}
+		//}
 	}
 	return relations
 }

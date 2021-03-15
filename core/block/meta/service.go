@@ -1,6 +1,7 @@
 package meta
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
 	"time"
@@ -112,10 +113,10 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 				continue
 			}
 			objectTypes = append(objectTypes, objectType)
-		} else if !strings.HasPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix) {
+		} else if !strings.HasPrefix(otypeUrl, "b") {
 			log.Errorf("failed to get objectType %s: incorrect url", otypeUrl)
 		} else {
-			customOtypeIds = append(customOtypeIds, strings.TrimPrefix(otypeUrl, objects.CustomObjectTypeURLPrefix))
+			customOtypeIds = append(customOtypeIds, otypeUrl)
 		}
 	}
 
@@ -129,7 +130,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 		if name := pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()); name != "" {
 			objectType.Name = name
 		}
-		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLayout.String()); layout != 0.0 {
+		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyRecommendedLayout.String()); layout != 0.0 {
 			objectType.Layout = pbrelation.ObjectTypeLayout(int(layout))
 		}
 
@@ -137,8 +138,30 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 			objectType.IconEmoji = iconEmoji
 		}
 
-		objectType.Url = objects.CustomObjectTypeURLPrefix + meta.BlockId
-		objectType.Relations = meta.Relations
+		recommendedRelationsKeys := pbtypes.GetStringList(meta.Details, bundle.RelationKeyRecommendedRelations.String())
+		for _, rel := range bundle.RequiredInternalRelations {
+			if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
+				recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
+			}
+		}
+
+		var recommendedRelations []*pbrelation.Relation
+		for _, rk := range recommendedRelationsKeys {
+			rel := pbtypes.GetRelation(meta.Relations, rk)
+			if rel == nil {
+				rel, _ = bundle.GetRelation(bundle.RelationKey(rk))
+				if rel == nil {
+					continue
+				}
+			}
+
+			relCopy := pbtypes.CopyRelation(rel)
+			relCopy.Scope = pbrelation.Relation_type
+			recommendedRelations = append(recommendedRelations, relCopy)
+		}
+
+		objectType.Url = meta.BlockId
+		objectType.Relations = recommendedRelations
 
 		objectTypes = append(objectTypes, objectType)
 	}

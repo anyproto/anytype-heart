@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -77,6 +78,15 @@ func (mw *Middleware) stop() error {
 
 		mw.app = nil
 		mw.accountSearchCancel()
+	}
+	return nil
+}
+
+func (mw *Middleware) getAnytype() core.Service {
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+	if mw.app != nil {
+		return mw.app.MustComponent(core.CName).(core.Service)
 	}
 	return nil
 }

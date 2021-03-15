@@ -2,6 +2,8 @@ package bundle
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	types2 "github.com/gogo/protobuf/types"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -81,6 +83,17 @@ func GetRelation(rk RelationKey) (*relation.Relation, error) {
 	return nil, ErrNotFound
 }
 
+// MustGetLayout returns built-in layout by predefined Layout constant
+// PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
+func MustGetLayout(lk relation.ObjectTypeLayout) *relation.Layout {
+	if v, exists := Layouts[lk]; exists {
+		return pbtypes.CopyLayout(&v)
+	}
+
+	// we can safely panic in case RelationKey is a generated constant
+	panic(ErrNotFound)
+}
+
 func ListRelations() []*relation.Relation {
 	var rels []*relation.Relation
 	for _, rel := range relations {
@@ -105,6 +118,12 @@ func HasRelation(key string) bool {
 	return exists
 }
 
+func HasObjectType(key string) bool {
+	_, exists := types[TypeKey(key)]
+
+	return exists
+}
+
 func EqualWithRelation(key string, rel *relation.Relation) (equal bool, exists bool) {
 	v, exists := relations[RelationKey(key)]
 	if !exists {
@@ -121,4 +140,40 @@ func ListTypes() ([]*relation.ObjectType, error) {
 	}
 
 	return otypes, nil
+}
+
+func ListTypesKeys() []TypeKey {
+	var keys []TypeKey
+	for k, _ := range types {
+		keys = append(keys, k)
+	}
+
+	return keys
+}
+
+func GetDetailsForRelation(bundled bool, rel *relation.Relation) ([]*relation.Relation, *types2.Struct) {
+	var prefix string
+	if bundled {
+		prefix = addr.BundledRelationURLPrefix
+	} else {
+		prefix = addr.CustomRelationURLPrefix
+	}
+
+	d := &types2.Struct{Fields: map[string]*types2.Value{
+		RelationKeyName.String():             pbtypes.String(rel.Name),
+		RelationKeyDescription.String():      pbtypes.String(rel.Description),
+		RelationKeyId.String():               pbtypes.String(prefix + rel.Key),
+		RelationKeyType.String():             pbtypes.StringList([]string{TypeKeyRelation.URL()}),
+		RelationKeyCreator.String():          pbtypes.String(rel.Creator),
+		RelationKeyLayout.String():           pbtypes.Float64(float64(relation.ObjectType_relation)),
+		RelationKeyRelationFormat.String():   pbtypes.Float64(float64(rel.Format)),
+		RelationKeyIsHidden.String():         pbtypes.Bool(rel.Hidden),
+		RelationKeyMpAddedToLibrary.String(): pbtypes.Bool(true), // temp
+	}}
+
+	var rels []*relation.Relation
+	for k := range d.Fields {
+		rels = append(rels, MustGetRelation(RelationKey(k)))
+	}
+	return rels, d
 }

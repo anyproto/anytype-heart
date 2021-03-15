@@ -12,7 +12,7 @@ import (
 
 const (
 	relPbPkg   = "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	typePrefix = "https://anytype.io/schemas/object/bundled/"
+	typePrefix = "_ot"
 )
 
 type Relation struct {

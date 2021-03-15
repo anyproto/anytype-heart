@@ -163,6 +163,14 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		}
 	}
 
+	if dv.content.Source != d.content.Source {
+		msgs = append(msgs,
+			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewSourceSet{
+				&pb.EventBlockDataviewSourceSet{
+					Id:     dv.Id,
+					Source: dv.content.Source,
+				}}}})
+	}
 	return
 }
 
@@ -339,7 +347,7 @@ func (td *Dataview) ModelToSave() *model.Block {
 }
 
 func (d *Dataview) SetSource(source string) error {
-	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, objects.CustomObjectTypeURLPrefix) {
+	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, "b") {
 		return fmt.Errorf("invalid source URL")
 	}
 
@@ -452,7 +460,7 @@ func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.Re
 	relFound := pbtypes.GetRelation(d.content.Relations, relationKey)
 
 	for _, rel := range d.content.Relations {
-		if rel.Key != relationKey{
+		if rel.Key != relationKey {
 			if relFound.Format != rel.Format {
 				continue
 			}

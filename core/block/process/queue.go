@@ -43,7 +43,7 @@ func (s *service) NewQueue(info pb.ModelProcess, workers int) Queue {
 		info.Id = bson.NewObjectId().Hex()
 	}
 	q := &queue{
-		id:    info.Id ,
+		id:      info.Id,
 		info:    info,
 		state:   pb.ModelProcess_None,
 		msgs:    mb.New(0),

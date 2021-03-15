@@ -3,6 +3,8 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"io"
 	"sync"
 	"time"
 
@@ -22,16 +24,20 @@ import (
 
 var log = logging.Logger("anytype-threads")
 
+const simultaneousRequests = 20
+
 type service struct {
-	t                 net2.NetBoostrapper
-	db                *db.DB
-	threadsCollection *db.Collection
-	threadsGetter     ThreadsGetter
-	device            wallet.Keypair
-	account           wallet.Keypair
-	repoRootPath      string
-	newHeadProcessor  func(id thread.ID) error
-	newThreadChan     chan<- string
+	t                          net2.NetBoostrapper
+	db                         *db.DB
+	dbCloser                   io.Closer
+	threadsCollection          *db.Collection
+	threadsGetter              ThreadsGetter
+	device                     wallet.Keypair
+	account                    wallet.Keypair
+	repoRootPath               string
+	newHeadProcessor           func(id thread.ID) error
+	newThreadChan              chan<- string
+	newThreadProcessingLimiter chan struct{}
 
 	replicatorAddr ma.Multiaddr
 	ctx            context.Context
@@ -41,16 +47,22 @@ type service struct {
 
 func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPath string, deviceKeypair wallet.Keypair, accountKeypair wallet.Keypair, newHeadProcessor func(id thread.ID) error, newThreadChan chan string, replicatorAddr ma.Multiaddr) Service {
 	ctx, cancel := context.WithCancel(context.Background())
+	limiter := make(chan struct{}, simultaneousRequests)
+	for i := 0; i < cap(limiter); i++ {
+		limiter <- struct{}{}
+	}
+
 	return &service{
-		t:                threadsAPI,
-		threadsGetter:    threadsGetter,
-		device:           deviceKeypair,
-		repoRootPath:     repoRootPath,
-		account:          accountKeypair,
-		newHeadProcessor: newHeadProcessor,
-		replicatorAddr:   replicatorAddr,
-		ctx:              ctx,
-		ctxCancel:        cancel,
+		t:                          threadsAPI,
+		threadsGetter:              threadsGetter,
+		device:                     deviceKeypair,
+		repoRootPath:               repoRootPath,
+		account:                    accountKeypair,
+		newHeadProcessor:           newHeadProcessor,
+		replicatorAddr:             replicatorAddr,
+		newThreadProcessingLimiter: limiter,
+		ctx:                        ctx,
+		ctxCancel:                  cancel,
 	}
 }
 
@@ -104,12 +116,20 @@ func (s *service) Threads() net2.NetBoostrapper {
 func (s *service) Close() error {
 	// close global service context to stop all work
 	s.ctxCancel()
-	// lock in order to wait for work to finish and, e.g. db to init
-	s.Lock()
-	defer s.Unlock()
-	if db := s.db; db != nil {
-		return db.Close()
+	if s.db != nil {
+		err := s.db.Close()
+		if err != nil {
+			return err
+		}
 	}
+	if s.dbCloser != nil {
+		// close underlying badger datastore, because threadsDb does not close datastore it have constructed with
+		err := s.dbCloser.Close()
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
@@ -137,6 +157,9 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	if err != nil {
 		return thread.Info{}, err
 	}
+
+	metrics.ServedThreads.Inc()
+	metrics.ThreadAdded.Inc()
 
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
@@ -166,9 +189,11 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	if replAddrWithThread != nil {
 		go func() {
 			attempt := 0
+			start := time.Now()
 			// todo: rewrite to job queue in badger
 			for {
 				attempt++
+				metrics.ThreadAddReplicatorAttempts.Inc()
 				p, err := s.t.AddReplicator(context.TODO(), thrd.ID, replAddrWithThread)
 				if err != nil {
 					log.Errorf("failed to add log replicator after %d attempt: %s", attempt, err.Error())
@@ -180,6 +205,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 					continue
 				}
 
+				metrics.ThreadAddReplicatorDuration.Observe(time.Since(start).Seconds())
 				log.With("thread", thrd.ID.String()).Infof("added log replicator after %d attempt: %s", attempt, p.String())
 				return
 			}

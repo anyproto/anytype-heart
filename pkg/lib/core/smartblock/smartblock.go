@@ -2,26 +2,48 @@ package smartblock
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/core/thread"
+	"strings"
 )
 
 type SmartBlockType uint64
 
 const (
-	SmartBlockTypePage        SmartBlockType = 0x10
-	SmartBlockTypeProfilePage SmartBlockType = 0x11
-	SmartBlockTypeHome        SmartBlockType = 0x20
-	SmartBlockTypeArchive     SmartBlockType = 0x30
-	SmartBlockTypeDatabase    SmartBlockType = 0x40
-	SmartBlockTypeSet         SmartBlockType = 0x41
-	SmartBlockTypeObjectType  SmartBlockType = 0x60
-	SmartBlockTypeFile        SmartBlockType = 0x100
+	SmartBlockTypePage                SmartBlockType = 0x10
+	SmartBlockTypeProfilePage         SmartBlockType = 0x11
+	SmartBlockTypeHome                SmartBlockType = 0x20
+	SmartBlockTypeArchive             SmartBlockType = 0x30
+	SmartBlockTypeDatabase            SmartBlockType = 0x40
+	SmartBlockTypeSet                 SmartBlockType = 0x41
+	SmartBlockTypeObjectType          SmartBlockType = 0x60
+	SmartBlockTypeFile                SmartBlockType = 0x100
+	SmartblockTypeMarketplaceType     SmartBlockType = 0x110
+	SmartblockTypeMarketplaceRelation SmartBlockType = 0x111
+
+	SmartBlockTypeBundledRelation   SmartBlockType = 0x200 // temp
+	SmartBlockTypeIndexedRelation   SmartBlockType = 0x201 // temp
+	SmartBlockTypeBundledObjectType SmartBlockType = 0x202 // temp
+
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
+	if strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+		return SmartBlockTypeBundledRelation, nil
+	}
+	if strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
+		return SmartBlockTypeIndexedRelation, nil
+	}
+	if strings.HasPrefix(id, addr.BundledObjectTypeURLPrefix) {
+		return SmartBlockTypeBundledObjectType, nil
+	}
+	if strings.HasPrefix(id, addr.AnytypeProfileId) {
+		return SmartBlockTypeProfilePage, nil
+	}
+
 	c, err := cid.Decode(id)
 	// TODO: discard this fragile condition as soon as we will move to the multiaddr with prefix
 	if err == nil && c.Prefix().Codec == 0x70 && c.Prefix().MhType == multihash.SHA2_256 {
@@ -58,6 +80,8 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 	case SmartBlockTypeArchive:
 		return model.ObjectInfo_Archive
 	case SmartBlockTypeSet:
+		return model.ObjectInfo_Set
+	case SmartblockTypeMarketplaceType:
 		return model.ObjectInfo_Set
 	default:
 		return model.ObjectInfo_Page

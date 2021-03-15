@@ -1,6 +1,7 @@
 package database
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -33,6 +34,7 @@ type Reader interface {
 
 	GetRelation(key string) (relation *pbrelation.Relation, err error)
 
+	// ListRelations returns both indexed and bundled relations
 	ListRelations(objType string) (relations []*pbrelation.Relation, err error)
 
 	AggregateRelationsFromObjectsOfType(objType string) (relations []*pbrelation.Relation, err error)
@@ -60,12 +62,13 @@ type Database interface {
 }
 
 type Query struct {
-	FullText  string
-	Relations []*model.BlockContentDataviewRelation // relations used to provide relations options
-	Filters   []*model.BlockContentDataviewFilter   // filters results. apply sequentially
-	Sorts     []*model.BlockContentDataviewSort     // order results. apply hierarchically
-	Limit     int                                   // maximum number of results
-	Offset    int                                   // skip given number of results
+	FullText          string
+	Relations         []*model.BlockContentDataviewRelation // relations used to provide relations options
+	Filters           []*model.BlockContentDataviewFilter   // filters results. apply sequentially
+	Sorts             []*model.BlockContentDataviewSort     // order results. apply hierarchically
+	Limit             int                                   // maximum number of results
+	Offset            int                                   // skip given number of results
+	WithSystemObjects bool
 }
 
 func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
@@ -79,6 +82,7 @@ func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
 	if f.hasOrders() {
 		qq.Orders = []query.Order{f}
 	}
+	qq.String()
 	return
 }
 
@@ -115,7 +119,7 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 					Value: pbtypes.String(sch.ObjType.Url),
 				},
 			}
-			if sch.ObjType.Url == "https://anytype.io/schemas/object/bundled/page" {
+			if sch.ObjType.Url == bundle.TypeKeyPage.URL() {
 				relTypeFilter = append(relTypeFilter, filter.Empty{
 					Key: bundle.RelationKeyType.String(),
 				})
@@ -202,6 +206,15 @@ func (f *filters) unmarshal(e query.Entry) filter.Getter {
 
 func (f *filters) hasOrders() bool {
 	return f.order != nil
+}
+
+func (f *filters) String() string {
+	var fs string
+	if f.filter != nil {
+		fs = fmt.Sprintf("WHERE %v", f.filter.String())
+	}
+	// TODO: order to string
+	return fs
 }
 
 func dateOnly(v *types.Value) *types.Value {

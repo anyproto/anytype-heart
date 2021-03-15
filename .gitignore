@@ -8,3 +8,4 @@ package-lock.json
 /vendor/
 *_mock.go
 lib-server/service.pb.go
+dist/cli

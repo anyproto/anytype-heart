@@ -9,7 +9,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	ipfslite "github.com/hsanjuan/ipfs-lite"
 	"github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/sync"
@@ -18,12 +17,15 @@ import (
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p-core/pnet"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p-peerstore/pstoreds"
+	swarm "github.com/libp2p/go-libp2p-swarm"
 	libp2ptls "github.com/libp2p/go-libp2p-tls"
+	"github.com/libp2p/go-tcp-transport"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/app"
 	"github.com/textileio/go-threads/core/logstore"
@@ -34,6 +36,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/ipfsliteinterface"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	tnet "github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 )
 
@@ -43,6 +46,24 @@ const (
 	defaultIpfsLitePath = "ipfslite"
 	defaultLogstorePath = "logstore"
 )
+
+var permanentConnectionRetryDelay = time.Second * 5
+
+type NoCloserDatastore struct {
+	datastore.Batching
+}
+
+func (ncd *NoCloserDatastore) NewTransaction(readOnly bool) (datastore.Txn, error) {
+	if v, ok := ncd.Batching.(datastore.TxnDatastore); ok {
+		return v.NewTransaction(readOnly)
+	}
+	return nil, fmt.Errorf("not implementing datastore.TxnDatastore")
+}
+
+func (ncd *NoCloserDatastore) Close() error {
+	log.Errorf("NoCloserDatastore close called()")
+	return nil
+}
 
 func DefaultNetwork(
 	repoPath string,
@@ -80,8 +101,9 @@ func DefaultNetwork(
 		}
 	}
 
+	noCloserDs := &NoCloserDatastore{ds}
 	ctx, cancel := context.WithCancel(context.Background())
-	pstore, err := pstoreds.NewPeerstore(ctx, ds, pstoreds.DefaultOpts())
+	pstore, err := pstoreds.NewPeerstore(ctx, noCloserDs, pstoreds.DefaultOpts())
 	if err != nil {
 		ds.Close()
 		cancel()
@@ -98,10 +120,11 @@ func DefaultNetwork(
 		privKey,
 		pnet,
 		[]ma.Multiaddr{config.HostAddr},
-		ds,
+		noCloserDs,
 		libp2p.ConnectionManager(connmgr.NewConnManager(100, 400, time.Minute)),
 		libp2p.Peerstore(pstore),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
+		libp2p.Transport(tcp.NewTCPTransport), // connection timeout overridden in core.go init
 	)
 
 	if err != nil {
@@ -110,7 +133,7 @@ func DefaultNetwork(
 		return nil, err
 	}
 
-	lite, err := ipfslite.New(ctx, ds, h, d, &ipfslite.Config{Offline: config.Offline})
+	lite, err := ipfslite.New(ctx, noCloserDs, h, d, &ipfslite.Config{Offline: config.Offline})
 	if err != nil {
 		cancel()
 		ds.Close()
@@ -127,7 +150,8 @@ func DefaultNetwork(
 		ds.Close()
 		return nil, err
 	}
-	tstore, err := lstoreds.NewLogstore(ctx, logstore, lstoreds.DefaultOpts())
+
+	tstore, err := lstoreds.NewLogstore(ctx, &NoCloserDatastore{logstore}, lstoreds.DefaultOpts())
 	if err != nil {
 		cancel()
 		if err := logstore.Close(); err != nil {
@@ -158,6 +182,48 @@ func DefaultNetwork(
 		return nil, err
 	}
 
+	if config.PermanentConnection != nil {
+		pidStr, _ := config.PermanentConnection.ValueForProtocol(ma.P_P2P)
+		pid, err := peer.Decode(pidStr)
+		if err != nil {
+			cancel()
+			if err := logstore.Close(); err != nil {
+				return nil, err
+			}
+			ds.Close()
+			return nil, fmt.Errorf("PermanentConnection invalid addr: %s", err.Error())
+		}
+
+		go func() {
+			for {
+				state := h.Network().Connectedness(pid)
+				// do not handle CanConnect purposefully
+				if state == network.NotConnected || state == network.CannotConnect {
+					if swrm, ok := h.Network().(*swarm.Swarm); ok {
+						// clear backoff in order to connect more aggressively
+						swrm.Backoff().Clear(pid)
+					}
+					err = h.Connect(ctx, peer.AddrInfo{
+						ID:    pid,
+						Addrs: []ma.Multiaddr{config.PermanentConnection},
+					})
+					if err != nil {
+						log.Warnf("PermanentConnection failed: %s", err.Error())
+					} else {
+						log.Debugf("PermanentConnection %s reconnected succesfully", pid.String())
+					}
+				}
+
+				select {
+				case <-ctx.Done():
+					return
+				case <-time.After(permanentConnectionRetryDelay):
+					continue
+				}
+			}
+		}()
+	}
+
 	return &netBoostrapper{
 		cancel:            cancel,
 		Net:               api,
@@ -173,13 +239,15 @@ func DefaultNetwork(
 }
 
 type NetConfig struct {
-	HostAddr          ma.Multiaddr
-	GRPCServerOptions []grpc.ServerOption
-	GRPCDialOptions   []grpc.DialOption
-	SyncTracking      bool
-	Debug             bool
-	Offline           bool
-	InMemoryDS        bool // should be used for tests only
+	HostAddr ma.Multiaddr
+
+	GRPCServerOptions   []grpc.ServerOption
+	GRPCDialOptions     []grpc.DialOption
+	SyncTracking        bool
+	Debug               bool
+	Offline             bool
+	InMemoryDS          bool         // should be used for tests only
+	PermanentConnection ma.Multiaddr // explicitly watch the connection to this peer and reconnect in case the connection has failed
 
 	PubSub bool
 }
@@ -189,6 +257,13 @@ type NetOption func(c *NetConfig) error
 func WithNetHostAddr(addr ma.Multiaddr) NetOption {
 	return func(c *NetConfig) error {
 		c.HostAddr = addr
+		return nil
+	}
+}
+
+func WithPermanentConnection(addr ma.Multiaddr) NetOption {
+	return func(c *NetConfig) error {
+		c.PermanentConnection = addr
 		return nil
 	}
 }
@@ -245,11 +320,12 @@ func WithNetSyncTracking(enabled bool) NetOption {
 type netBoostrapper struct {
 	cancel context.CancelFunc
 	app.Net
-	ipfs              ipfs.IPFS
-	pstore            peerstore.Peerstore
-	logstoreDatastore datastore.Batching
-	litestore         datastore.Batching
-	logstore          logstore.Logstore
+	ipfs     ipfs.IPFS
+	pstore   peerstore.Peerstore
+	logstore logstore.Logstore
+
+	logstoreDatastore datastore.Batching // need to close
+	litestore         datastore.Batching // need to close
 
 	host   host.Host
 	wanDht *dht.IpfsDHT
@@ -288,20 +364,17 @@ func (tsb *netBoostrapper) Close() error {
 	if err := tsb.wanDht.Close(); err != nil {
 		return err
 	}
-	log.Debug("closing libp2p host...")
-	if err := tsb.host.Close(); err != nil {
-		return err
-	}
-	log.Debug("closing pstore...")
-	if err := tsb.pstore.Close(); err != nil {
-		return err
-	}
 	log.Debug("closing litestore...")
 	if err := tsb.litestore.Close(); err != nil {
 		return err
 	}
+
 	log.Debug("closing logstore...")
-	return tsb.logstoreDatastore.Close()
+	if err := tsb.logstoreDatastore.Close(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func LoadKey(repoPath string) (crypto.PrivKey, error) {

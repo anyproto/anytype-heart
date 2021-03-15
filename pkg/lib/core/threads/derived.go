@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -27,6 +28,9 @@ const (
 
 	threadDerivedIndexSetPages threadDerivedIndex = 20
 
+	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30
+	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31
+
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
 	// derivation as described in SEP-00XX. Use with `fmt.Sprintf` and `DeriveForPath`.
@@ -39,11 +43,13 @@ const (
 )
 
 type DerivedSmartblockIds struct {
-	Account  string
-	Profile  string
-	Home     string
-	Archive  string
-	SetPages string
+	Account             string
+	Profile             string
+	Home                string
+	Archive             string
+	SetPages            string
+	MarketplaceType     string
+	MarketplaceRelation string
 }
 
 var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
@@ -52,10 +58,12 @@ var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
 	threadDerivedIndexArchive:     "archive",
 }
 var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.SmartBlockType{
-	threadDerivedIndexProfilePage: smartblock.SmartBlockTypeProfilePage,
-	threadDerivedIndexHome:        smartblock.SmartBlockTypeHome,
-	threadDerivedIndexArchive:     smartblock.SmartBlockTypeArchive,
-	threadDerivedIndexSetPages:    smartblock.SmartBlockTypeSet,
+	threadDerivedIndexProfilePage:         smartblock.SmartBlockTypeProfilePage,
+	threadDerivedIndexHome:                smartblock.SmartBlockTypeHome,
+	threadDerivedIndexArchive:             smartblock.SmartBlockTypeArchive,
+	threadDerivedIndexSetPages:            smartblock.SmartBlockTypeSet,
+	threadDerivedIndexMarketplaceType:     smartblock.SmartblockTypeMarketplaceType,
+	threadDerivedIndexMarketplaceRelation: smartblock.SmartblockTypeMarketplaceRelation,
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
@@ -100,13 +108,19 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			// pull only after threadsDbInit to handle all events
 			_, err = s.pullThread(ctxPull, account.ID)
 			if err != nil {
-				log.Errorf("account pull failed")
+				log.Errorf("account pull failed: %s", err.Error())
 				return
 			} else {
 				log.Infof("account pull done")
 			}
 
-			err = s.threadsDbMigration(account.ID.String())
+			if !justCreated {
+				ids, _ := s.t.Logstore().Threads()
+				metrics.ServedThreads.Set(float64(len(ids)))
+				err = s.threadsDbMigration(account.ID.String())
+			} else {
+				metrics.ServedThreads.Set(0)
+			}
 		}()
 
 		if justCreated {
@@ -159,6 +173,20 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return ids, err
 	}
 	ids.SetPages = setPages.ID.String()
+
+	// marketplace
+	marketplace, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceType, newAccount, true)
+	if err != nil {
+		return ids, err
+	}
+	ids.MarketplaceType = marketplace.ID.String()
+
+	// marketplace library
+	marketplaceLib, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceRelation, newAccount, true)
+	if err != nil {
+		return ids, err
+	}
+	ids.MarketplaceRelation = marketplaceLib.ID.String()
 
 	return ids, nil
 }
@@ -305,6 +333,8 @@ func (s *service) derivedThreadCreate(index threadDerivedIndex) (thread.Info, er
 		return thread.Info{}, err
 	}
 
+	metrics.ServedThreads.Inc()
+	metrics.ThreadAdded.Inc()
 	// because this thread just have been created locally we can safely put all networking in the background
 	go func() {
 		if s.replicatorAddr == nil {
@@ -370,6 +400,9 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 	if err != nil {
 		return
 	}
+
+	metrics.ServedThreads.Inc()
+	metrics.ThreadAdded.Inc()
 
 	justCreated = true
 

@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"math/rand"
 	"sync"
 	"time"
@@ -36,6 +37,7 @@ type Source interface {
 	Anytype() core.Service
 	Type() pb.SmartBlockType
 	Virtual() bool
+	//ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
@@ -47,9 +49,27 @@ var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgr
 
 func NewSource(a core.Service, ss status.Service, id string) (s Source, err error) {
 	st, err := smartblock.SmartBlockTypeFromID(id)
+
+	if id == addr.AnytypeProfileId {
+		return NewAnytypeProfile(a, id), nil
+	}
+
 	if st == smartblock.SmartBlockTypeFile {
 		return NewFiles(a, id), nil
 	}
+
+	if st == smartblock.SmartBlockTypeBundledObjectType {
+		return NewBundledObjectType(a, id), nil
+	}
+
+	if st == smartblock.SmartBlockTypeBundledRelation {
+		return NewBundledRelation(a, id), nil
+	}
+
+	if st == smartblock.SmartBlockTypeIndexedRelation {
+		return NewIndexedRelation(a, id), nil
+	}
+
 	return newSource(a, ss, id)
 }
 
@@ -172,8 +192,10 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		return
 	}
 
-	if verr := st.Validate(); verr != nil {
-		log.With("thread", s.id).Errorf("not valid state: %v", verr)
+	if s.sb.Type() != smartblock.SmartBlockTypeArchive && !s.Virtual() {
+		if verr := st.Validate(); verr != nil {
+			log.With("thread", s.id).With("sbType", s.sb.Type()).Errorf("not valid state: %v", verr)
+		}
 	}
 	if err = st.Normalize(false); err != nil {
 		return
@@ -209,6 +231,15 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	if s.Anytype() == nil {
 		return fmt.Errorf("anytype is nil")
 	}
+
+	defer func() {
+		if !pbtypes.HasRelation(st.ExtraRelations(), bundle.RelationKeyCreator.String()) {
+			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreator))
+		}
+		if !pbtypes.HasRelation(st.ExtraRelations(), bundle.RelationKeyCreatedDate.String()) {
+			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreatedDate))
+		}
+	}()
 
 	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
 		return nil

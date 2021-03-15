@@ -82,6 +82,7 @@ type State struct {
 
 	bufIterateParentIds []string
 	groupId             string
+	noObjectType        bool
 }
 
 func (s *State) RootId() string {
@@ -104,11 +105,11 @@ func (s *State) RootId() string {
 }
 
 func (s *State) NewState() *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, noObjectType: s.noObjectType}
 }
 
 func (s *State) NewStateCtx(ctx *Context) *State {
-	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx}
+	return &State{parent: s, blocks: make(map[string]simple.Block), rootId: s.rootId, ctx: ctx, noObjectType: s.noObjectType}
 }
 
 func (s *State) Context() *Context {
@@ -196,6 +197,19 @@ func (s *State) GetParentOf(id string) (res simple.Block) {
 		return s.Get(parent.Model().Id)
 	}
 	return
+}
+
+func (s *State) IsParentOf(parentId string, childId string) bool {
+	p := s.Pick(parentId)
+	if p == nil {
+		return false
+	}
+
+	if slice.FindPos(p.Model().ChildrenIds, childId) != -1 {
+		return true
+	}
+
+	return false
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
@@ -626,6 +640,7 @@ func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
 		s.extraRelations = pbtypes.CopyRelations(s.parent.ExtraRelations())
 	}
 	relCopy := pbtypes.CopyRelation(rel)
+	relCopy.Scope = pbrelation.Relation_object
 	var found bool
 	for i, exRel := range s.extraRelations {
 		if exRel.Key == rel.Key {
@@ -636,8 +651,6 @@ func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
 	if !found {
 		s.extraRelations = append(s.extraRelations, relCopy)
 	}
-
-	return
 }
 
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {
@@ -650,8 +663,8 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	relCopy := pbtypes.CopyRelation(relation)
 	// reset the scope to object
 	relCopy.Scope = pbrelation.Relation_object
-	if relation.Format == pbrelation.RelationFormat_status {
-		relation.MaxCount = 1
+	if !pbtypes.RelationFormatCanHaveListValue(relCopy.Format) && relCopy.MaxCount != 1 {
+		relCopy.MaxCount = 1
 	}
 
 	if relCopy.Format == pbrelation.RelationFormat_file && relCopy.ObjectTypes == nil {
@@ -667,11 +680,11 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	for _, rel := range relationsCopy {
 		// reset scopes for all relations
 		rel.Scope = pbrelation.Relation_object
-		if rel.Format == pbrelation.RelationFormat_status {
+		if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
 			rel.MaxCount = 1
 		}
 	}
-	s.extraRelations = relations
+	s.extraRelations = relationsCopy
 	return s
 }
 
@@ -703,15 +716,29 @@ func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelatio
 	return &option, nil
 }
 
+func (s *State) SetObjectType(objectType string) *State {
+	return s.SetObjectTypes([]string{objectType})
+}
+
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
+	if pbtypes.GetRelation(s.ExtraRelations(), bundle.RelationKeyType.String()) == nil {
+		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyType))
+	}
 	return s
 }
 
 func (s *State) InjectDerivedDetails() {
 	s.SetDetail(string(bundle.RelationKeyId), pbtypes.String(s.rootId))
 	s.SetDetail(string(bundle.RelationKeyType), pbtypes.String(s.ObjectType()))
+	if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyId.String()) {
+		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyId))
+	}
+
+	if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyType.String()) {
+		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyType))
+	}
 }
 
 // ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
@@ -757,8 +784,8 @@ func (s *State) ObjectTypes() []string {
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
 func (s *State) ObjectType() string {
 	objTypes := s.ObjectTypes()
-	if len(objTypes) != 1 {
-		log.Errorf("obj %s has %d objectTypes instead of 1", s.RootId(), len(objTypes))
+	if len(objTypes) != 1 && !s.noObjectType {
+		log.Errorf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
 	}
 
 	if len(objTypes) > 0 {
@@ -857,11 +884,47 @@ func (s *State) DepSmartIds() (ids []string) {
 	return
 }
 
+func (s *State) ValidateNewDetail(key string, v *types.Value) (err error) {
+	rel := pbtypes.GetRelation(s.ExtraRelations(), key)
+	if rel == nil {
+		return fmt.Errorf("relation for detail not found")
+	}
+
+	if err := validateRelationFormat(rel, v); err != nil {
+		log.Errorf("relation %s(%s) failed to validate: %s", rel.Key, rel.Format, err.Error())
+		return fmt.Errorf("format validation failed: %s", err.Error())
+	}
+
+	return nil
+}
+
+func (s *State) ValidateRelations() (err error) {
+	var details = s.Details()
+	if details == nil {
+		return nil
+	}
+
+	for k, v := range details.Fields {
+		rel := pbtypes.GetRelation(s.ExtraRelations(), k)
+		if rel == nil {
+			return fmt.Errorf("relation for detail %s not found", k)
+		}
+		if err := validateRelationFormat(rel, v); err != nil {
+			return fmt.Errorf("relation %s(%s) failed to validate: %s", rel.Key, rel.Format.String(), err.Error())
+		}
+	}
+	return nil
+}
+
 func (s *State) Validate() (err error) {
 	var (
 		err2        error
 		childrenIds = make(map[string]string)
 	)
+
+	if err = s.ValidateRelations(); err != nil {
+		return fmt.Errorf("failed to validate relations: %s", err.Error())
+	}
 
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		for _, cid := range b.Model().ChildrenIds {
@@ -879,6 +942,7 @@ func (s *State) Validate() (err error) {
 	}); err != nil {
 		return
 	}
+
 	return err2
 }
 
@@ -920,6 +984,7 @@ func (s *State) Copy() *State {
 		details:        pbtypes.CopyStruct(s.details),
 		extraRelations: pbtypes.CopyRelations(s.extraRelations),
 		objectTypes:    objTypes,
+		noObjectType:   s.noObjectType,
 	}
 	return copy
 }
@@ -939,6 +1004,11 @@ func (s *State) Len() (l int) {
 		return true
 	})
 	return
+}
+
+func (s *State) SetNoObjectType(noObjectType bool) *State {
+	s.noObjectType = noObjectType
+	return s
 }
 
 type linkSource interface {

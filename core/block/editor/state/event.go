@@ -88,6 +88,15 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+	case *pb.EventMessageValueOfBlockDataviewSourceSet:
+		if err = apply(o.BlockDataviewSourceSet.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				return f.SetSource(o.BlockDataviewSourceSet.Source)
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
 	case *pb.EventMessageValueOfBlockDataviewViewSet:
 		if err = apply(o.BlockDataviewViewSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok && o.BlockDataviewViewSet.View != nil {

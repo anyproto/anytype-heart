@@ -16,14 +16,15 @@ message ObjectType {
     enum Layout {
         basic = 0;
         profile = 1;
-        action = 2;
+        todo = 2;
         set = 3;
         objectType = 4;
         relation = 5;
         file = 6;
         dashboard = 7;
+        image = 8;
 
-        database = 8; // to be released later
+        database = 20; // to be released later
     }
 }
 
@@ -58,7 +59,10 @@ message Relation {
     repeated Option selectDict = 12; // default dictionary with unique values to choose for select/multiSelect format
     int32 maxCount = 13; // max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field
     string description = 14;
-    Scope scope = 20; // on-store should be only local
+
+    // on-store fields, injected only locally
+    Scope scope = 20; // scope from which this relation have been aggregated
+    string creator = 21; // creator profile id
 
     message Option {
         string id = 1; // id generated automatically if omitted

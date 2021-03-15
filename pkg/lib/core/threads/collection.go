@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"path/filepath"
 	"time"
 
@@ -54,6 +55,7 @@ func (s *service) threadsDbInit() error {
 	}
 
 	s.db = d
+	s.dbCloser = store
 
 	s.threadsCollection = s.db.GetCollection(ThreadInfoCollectionName)
 	err = s.threadsDbListen()
@@ -114,8 +116,12 @@ func (s *service) threadsDbListen() error {
 						continue
 					}
 
+					metrics.ExternalThreadReceivedCounter.Inc()
 					go func() {
-						s.processNewExternalThreadUntilSuccess(tid, ti)
+						if s.processNewExternalThreadUntilSuccess(tid, ti) != nil {
+							log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
+							return
+						}
 
 						ch := s.getNewThreadChan()
 						if ch != nil {
@@ -135,23 +141,29 @@ func (s *service) threadsDbListen() error {
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
 // supposed to be run in goroutine
-func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) {
+func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) error {
 	log := log.With("thread", tid.String())
 	log.With("threadAddrs", ti.Addrs).Info("got new thread")
-
+	start := time.Now()
 	var attempt int
 	for {
+		metrics.ExternalThreadHandlingAttempts.Inc()
 		attempt++
+		<-s.newThreadProcessingLimiter
 		err := s.processNewExternalThread(tid, ti)
 		if err != nil {
+			s.newThreadProcessingLimiter <- struct{}{}
 			log.Errorf("processNewExternalThread failed after %d attempt: %s", attempt, err.Error())
 		} else {
+			s.newThreadProcessingLimiter <- struct{}{}
+			metrics.ServedThreads.Inc()
+			metrics.ExternalThreadHandlingDuration.Observe(time.Since(start).Seconds())
 			log.Debugf("processNewExternalThread succeed after %d attempt", attempt)
-			return
+			return nil
 		}
 		select {
 		case <-s.ctx.Done():
-			return
+			return context.Canceled
 		case <-time.After(time.Duration(5*attempt) * time.Second):
 			continue
 		}
@@ -179,12 +191,12 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	var localThreadInfo thread.Info
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
-		replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, tid)
-		if err != nil {
-			return err
-		}
-
 		if !util2.MultiAddressHasReplicator(multiAddrs, s.replicatorAddr) {
+			replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, tid)
+			if err != nil {
+				return err
+			}
+
 			log.Warn("processNewExternalThread: cafe addr not found among thread addresses, will add it")
 			multiAddrs = append(multiAddrs, replAddrWithThread)
 		}
@@ -264,8 +276,9 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 		return fmt.Errorf("failed to add thread from any provided remote address")
 	}
 
-	if s.replicatorAddr != nil && !util2.MultiAddressHasReplicator(localThreadInfo.Addrs, s.replicatorAddr) {
-		_, err = s.t.AddReplicator(s.ctx, tid, replAddrWithThread)
+	if s.replicatorAddr != nil {
+		// add replicator for own logs
+		_, err = s.t.AddReplicator(s.ctx, tid, s.replicatorAddr)
 		if err != nil {
 			log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
 		}
