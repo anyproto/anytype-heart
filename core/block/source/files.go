@@ -97,7 +97,7 @@ func (v *files) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
 	}
 
 	s.SetDetails(d)
-	s.SetDetail("id", pbtypes.String(v.id))
+	s.SetDetail(bundle.RelationKeyId.String(), pbtypes.String(v.id))
 	s.SetObjectTypes(pbtypes.GetStringList(d, bundle.RelationKeyType.String()))
 	return s, nil
 }

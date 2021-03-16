@@ -174,6 +174,9 @@ func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectType []string
 
 func (sb *smartBlock) NormalizeRelations() error {
 	st := sb.NewState()
+	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
+		return nil
+	}
 
 	relations := sb.Relations()
 	details := sb.Details()
@@ -720,7 +723,7 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 
 	ot := otypes[len(otypes)-1]
 	s := sb.NewState().SetObjectTypes(objectTypes)
-	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(ot.Layout)))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 
 	// send event here to send updated details to client
 	if err = sb.Apply(s); err != nil {
@@ -1119,7 +1122,7 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 }
 
 func (sb *smartBlock) baseRelations() []*pbrelation.Relation {
-	rels := []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji)}
+	rels := []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
 	for _, rel := range rels {
 		rel.Scope = pbrelation.Relation_object
 	}
