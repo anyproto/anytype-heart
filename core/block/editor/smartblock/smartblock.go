@@ -444,7 +444,7 @@ func (sb *smartBlock) dependentSmartIds() (ids []string) {
 			}
 		}
 	}
-	util.UniqueStrings(ids)
+	ids = util.UniqueStrings(ids)
 	sort.Strings(ids)
 
 	return
