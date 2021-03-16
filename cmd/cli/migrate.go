@@ -34,7 +34,7 @@ var reindex = &cobra.Command{
 			return
 		}
 
-		migrated, err := core2.ReindexAll(mw.Anytype.(*core2.Anytype))
+		migrated, err := core2.ReindexAll(mw.GetAnytype().(*core2.Anytype))
 		if err != nil {
 			c.PrintErrf("failed to run reindex migration: %s\n", resp.Error.Description)
 		}

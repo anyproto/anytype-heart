@@ -53,6 +53,7 @@ type SearchInfo struct {
 
 type GetSearchInfo interface {
 	GetSearchInfo(id string) (info SearchInfo, err error)
+	app.Component
 }
 
 type indexer struct {

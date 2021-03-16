@@ -5,7 +5,7 @@ import (
 )
 
 func (mw *Middleware) ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetResponse {
-	at := mw.getAnytype()
+	at := mw.GetAnytype()
 	if at == nil {
 		return &pb.RpcConfigGetResponse{Error: &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NODE_NOT_STARTED, "account not started"}}
 	}

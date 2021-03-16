@@ -27,7 +27,7 @@ func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRe
 		}
 		return m
 	}
-	at := mw.getAnytype()
+	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
@@ -53,7 +53,7 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 		return m
 	}
 
-	at := mw.getAnytype()
+	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
@@ -97,7 +97,7 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		return m
 	}
 
-	at := mw.getAnytype()
+	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeRelationUpdateResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
 	}
@@ -139,7 +139,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 		return m
 	}
 
-	at := mw.getAnytype()
+	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
 	}
@@ -249,7 +249,7 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	at := mw.getAnytype()
+	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}

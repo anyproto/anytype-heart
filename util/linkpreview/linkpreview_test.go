@@ -20,6 +20,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		ts := newTestServer("text/html", strings.NewReader(tetsHtml))
 		defer ts.Close()
 		lp := New()
+		lp.Init(nil)
 
 		info, err := lp.Fetch(ctx, ts.URL)
 		require.NoError(t, err)
@@ -37,6 +38,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		ts := newTestServer("text/html", strings.NewReader(tetsHtmlWithoutDescription))
 		defer ts.Close()
 		lp := New()
+		lp.Init(nil)
 
 		info, err := lp.Fetch(ctx, ts.URL)
 		require.NoError(t, err)
@@ -56,6 +58,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		defer ts.Close()
 		url := ts.URL + "/filename.jpg"
 		lp := New()
+		lp.Init(nil)
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{
@@ -73,6 +76,7 @@ func TestLinkPreview_Fetch(t *testing.T) {
 		defer ts.Close()
 		url := ts.URL + "/filename.jpg"
 		lp := New()
+		lp.Init(nil)
 		info, err := lp.Fetch(ctx, url)
 		require.NoError(t, err)
 		assert.Equal(t, model.LinkPreview{

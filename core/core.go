@@ -82,7 +82,7 @@ func (mw *Middleware) stop() error {
 	return nil
 }
 
-func (mw *Middleware) getAnytype() core.Service {
+func (mw *Middleware) GetAnytype() core.Service {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	if mw.app != nil {
