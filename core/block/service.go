@@ -4,9 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -675,14 +676,20 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 			continue
 		}
 
+		fields := map[string]*types.Value{
+			"name": pbtypes.String(blocks[blockId].GetText().Text),
+		}
+
+		if req.ObjectType != "" {
+			fields["type"] = pbtypes.String(req.ObjectType)
+		}
+
 		children := s.AllDescendantIds(blockId, blocks)
 		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,
 			Details: &types.Struct{
-				Fields: map[string]*types.Value{
-					"name": pbtypes.String(blocks[blockId].GetText().Text),
-				},
+				Fields: fields,
 			},
 			DropTargetId: blockId,
 			Position:     model.Block_Replace,
