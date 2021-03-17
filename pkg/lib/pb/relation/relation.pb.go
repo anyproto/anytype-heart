@@ -445,8 +445,9 @@ type Relation struct {
 	SelectDict  []*RelationOption `protobuf:"bytes,12,rep,name=selectDict,proto3" json:"selectDict,omitempty"`
 	MaxCount    int32             `protobuf:"varint,13,opt,name=maxCount,proto3" json:"maxCount,omitempty"`
 	Description string            `protobuf:"bytes,14,opt,name=description,proto3" json:"description,omitempty"`
-	Scope       RelationScope     `protobuf:"varint,20,opt,name=scope,proto3,enum=anytype.relation.RelationScope" json:"scope,omitempty"`
-	Creator     string            `protobuf:"bytes,21,opt,name=creator,proto3" json:"creator,omitempty"`
+	// on-store fields, injected only locally
+	Scope   RelationScope `protobuf:"varint,20,opt,name=scope,proto3,enum=anytype.relation.RelationScope" json:"scope,omitempty"`
+	Creator string        `protobuf:"bytes,21,opt,name=creator,proto3" json:"creator,omitempty"`
 }
 
 func (m *Relation) Reset()         { *m = Relation{} }
