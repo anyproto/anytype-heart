@@ -74,6 +74,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 repeated string blockIds = 2;
+				string objectType = 3;
             }
 
             message Response {
