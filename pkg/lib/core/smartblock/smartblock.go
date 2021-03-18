@@ -83,8 +83,20 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 		return model.ObjectInfo_Set
 	case SmartblockTypeMarketplaceType:
 		return model.ObjectInfo_Set
+	case SmartblockTypeMarketplaceRelation:
+		return model.ObjectInfo_Set
+	case SmartBlockTypeFile:
+		return model.ObjectInfo_File
+	case SmartBlockTypeObjectType:
+		return model.ObjectInfo_ObjectType
+	case SmartBlockTypeBundledObjectType:
+		return model.ObjectInfo_ObjectType
+	case SmartBlockTypeBundledRelation:
+		return model.ObjectInfo_Relation
+	case SmartBlockTypeIndexedRelation:
+		return model.ObjectInfo_Relation
 	default:
-		return model.ObjectInfo_Page
+		panic("unknown smartblock type")
 	}
 }
 
@@ -135,6 +147,18 @@ func SmartBlockTypeToProto(t SmartBlockType) pb.SmartBlockType {
 		return pb.SmartBlockType_Set
 	case SmartBlockTypeObjectType:
 		return pb.SmartBlockType_ObjectType
+	case SmartBlockTypeBundledObjectType:
+		return pb.SmartBlockType_ObjectType
+	case SmartBlockTypeBundledRelation:
+		return pb.SmartBlockType_Relation
+	case SmartBlockTypeIndexedRelation:
+		return pb.SmartBlockType_Relation
+	case SmartblockTypeMarketplaceRelation:
+		return pb.SmartBlockType_MarketplaceRelation
+	case SmartblockTypeMarketplaceType:
+		return pb.SmartBlockType_MarketplaceType
+	default:
+		panic("unknown smartblock type")
 	}
 	return 0
 }
@@ -153,6 +177,12 @@ func SmartBlockTypeToCore(t pb.SmartBlockType) SmartBlockType {
 		return SmartBlockTypeSet
 	case pb.SmartBlockType_ObjectType:
 		return SmartBlockTypeObjectType
+	case pb.SmartBlockType_MarketplaceType:
+		return SmartblockTypeMarketplaceType
+	case pb.SmartBlockType_MarketplaceRelation:
+		return SmartblockTypeMarketplaceRelation
+	default:
+		panic("unknown smartblock type")
 	}
 	return 0
 }

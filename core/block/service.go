@@ -245,13 +245,13 @@ func (s *service) Run() (err error) {
 
 func (s *service) initPredefinedBlocks() {
 	ids := []string{
-		s.anytype.PredefinedBlocks().Account,
-		s.anytype.PredefinedBlocks().Archive,
+		// skip account because it is not a smartblock, it's a threadsDB
 		s.anytype.PredefinedBlocks().Profile,
+		s.anytype.PredefinedBlocks().Archive,
 		s.anytype.PredefinedBlocks().Home,
+		s.anytype.PredefinedBlocks().SetPages,
 		s.anytype.PredefinedBlocks().MarketplaceType,
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
-		s.anytype.PredefinedBlocks().SetPages,
 	}
 	for _, id := range ids {
 		sb, err := s.createSmartBlock(id, &smartblock.InitContext{State: &state.State{}})
