@@ -5186,6 +5186,7 @@ Remove blocks from the childrenIds of its parents
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
+| objectType | [string](#string) |  |  |
 
 
 
