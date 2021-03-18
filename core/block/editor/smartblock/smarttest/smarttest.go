@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -215,7 +214,7 @@ func (st *SmartTest) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDet
 	return
 }
 
-func (st *SmartTest) Init(_ source.Source, _ bool, _ []string) (err error) {
+func (st *SmartTest) Init(ctx *smartblock.InitContext) (err error) {
 	return
 }
 

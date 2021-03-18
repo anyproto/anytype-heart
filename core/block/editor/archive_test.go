@@ -3,6 +3,7 @@ package editor
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -13,7 +14,7 @@ func TestArchive_Archive(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
-		require.NoError(t, a.Init(nil, true, nil))
+		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
 		require.NoError(t, a.Archive("1"))
 		require.NoError(t, a.Archive("2"))
@@ -30,7 +31,7 @@ func TestArchive_Archive(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
-		require.NoError(t, a.Init(nil, true, nil))
+		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
 		require.NoError(t, a.Archive("1"))
 		require.NoError(t, a.Archive("1"))
@@ -46,7 +47,7 @@ func TestArchive_UnArchive(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
-		require.NoError(t, a.Init(nil, true, nil))
+		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
 		require.NoError(t, a.Archive("1"))
 		require.NoError(t, a.Archive("2"))
@@ -62,7 +63,7 @@ func TestArchive_UnArchive(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
-		require.NoError(t, a.Init(nil, true, nil))
+		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
 		require.NoError(t, a.Archive("1"))
 
@@ -79,7 +80,7 @@ func TestArchive_Delete(t *testing.T) {
 		c := newCtrl()
 		a := NewArchive(nil, c)
 		a.SmartBlock = smarttest.New("root")
-		require.NoError(t, a.Init(nil, true, nil))
+		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
 		require.NoError(t, a.Archive("1"))
 		require.NoError(t, a.Archive("2"))
