@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -43,11 +42,11 @@ type Profile struct {
 	sendEvent func(e *pb.Event)
 }
 
-func (p *Profile) Init(s source.Source, _ bool, _ []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
+	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return template.ApplyTemplate(p, nil,
+	return template.ApplyTemplate(p, ctx.State,
 		template.WithTitle,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
 	)

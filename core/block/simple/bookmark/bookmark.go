@@ -11,10 +11,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -47,7 +47,7 @@ type Block interface {
 
 type FetchParams struct {
 	Url         string
-	Anytype     anytype.Service
+	Anytype     core.Service
 	Updater     Updater
 	LinkPreview linkpreview.LinkPreview
 	Sync        bool
@@ -228,7 +228,7 @@ func (f *Bookmark) FillFileHashes(hashes []string) []string {
 	return hashes
 }
 
-func loadImage(stor anytype.Service, url string) (hash string, err error) {
+func loadImage(stor core.Service, url string) (hash string, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 	defer cancel()
 

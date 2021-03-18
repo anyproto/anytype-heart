@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -14,6 +14,8 @@ import (
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
+
+const CName = "meta"
 
 type Meta struct {
 	BlockId string
@@ -23,27 +25,39 @@ type Meta struct {
 type Service interface {
 	PubSub() PubSub
 	ReportChange(m Meta)
-	Close() (err error)
 	FetchMeta(ids []string) (metas []Meta)
 	FetchObjectTypes(objectTypeUrls []string) []*pbrelation.ObjectType
+	app.ComponentRunnable
 }
 
-func NewService(a anytype.Service, ss status.Service) Service {
-	s := &service{
-		ps: newPubSub(a, ss),
-	}
+func New() Service {
+	return new(service)
+}
+
+type service struct {
+	anytype core.Service
+	ps      *pubSub
+	m       sync.Mutex
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.anytype = a.MustComponent(core.CName).(core.Service)
+	s.ps = newPubSub(s.anytype, a.MustComponent(status.CName).(status.Service))
+	return
+}
+
+func (s *service) Name() (name string) {
+	return CName
+}
+
+func (s *service) Run() (err error) {
 	var newSmartblockCh = make(chan string)
-	if err := a.InitNewSmartblocksChan(newSmartblockCh); err != nil {
+	if err := s.anytype.InitNewSmartblocksChan(newSmartblockCh); err != nil {
 		log.Errorf("can't init new smartblock chan: %v", err)
 	} else {
 		go s.newSmartblockListener(newSmartblockCh)
 	}
-	return s
-}
-
-type service struct {
-	ps *pubSub
-	m  sync.Mutex
+	return
 }
 
 func (s *service) PubSub() PubSub {

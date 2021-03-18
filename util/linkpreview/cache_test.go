@@ -12,7 +12,7 @@ import (
 func TestCache_Fetch(t *testing.T) {
 	ts := newTestServer("text/html", strings.NewReader(tetsHtml))
 	lp := NewWithCache()
-
+	lp.Init(nil)
 	info, err := lp.Fetch(ctx, ts.URL)
 	require.NoError(t, err)
 	assert.Equal(t, model.LinkPreview{

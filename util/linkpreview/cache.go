@@ -3,6 +3,7 @@ package linkpreview
 import (
 	"context"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/hashicorp/golang-lru"
 )
@@ -12,16 +13,22 @@ const (
 )
 
 func NewWithCache() LinkPreview {
-	lruCache, _ := lru.New(maxCacheEntries)
-	return &cache{
-		lp:    New(),
-		cache: lruCache,
-	}
+	return &cache{}
 }
 
 type cache struct {
 	lp    LinkPreview
 	cache *lru.Cache
+}
+
+func (c *cache) Init(_ *app.App) (err error) {
+	c.lp = New()
+	c.cache, _ = lru.New(maxCacheEntries)
+	return
+}
+
+func (c *cache) Name() string {
+	return CName
 }
 
 func (c *cache) Fetch(ctx context.Context, url string) (lp model.LinkPreview, err error) {

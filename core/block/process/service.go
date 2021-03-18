@@ -7,8 +7,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
+
+const CName = "process"
 
 var (
 	ErrNotFound = errors.New("process not found")
@@ -28,16 +32,11 @@ type Service interface {
 	Cancel(id string) (err error)
 	// NewQueue creates new queue with given workers count
 	NewQueue(info pb.ModelProcess, workers int) Queue
-	// Close closes pool and cancel all running processes
-	Close() (err error)
+	app.ComponentRunnable
 }
 
-func NewService(sendEvent func(e *pb.Event)) Service {
-	return &service{
-		processes: make(map[string]Process),
-		waiters:   make(map[string]chan struct{}),
-		sendEvent: sendEvent,
-	}
+func New() Service {
+	return &service{}
 }
 
 type service struct {
@@ -45,6 +44,21 @@ type service struct {
 	sendEvent func(e *pb.Event)
 	waiters   map[string]chan struct{}
 	m         sync.Mutex
+}
+
+func (s *service) Init(a *app.App) (err error) {
+	s.processes = make(map[string]Process)
+	s.waiters = make(map[string]chan struct{})
+	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	return nil
+}
+
+func (s *service) Name() (name string) {
+	return CName
+}
+
+func (s *service) Run() (err error) {
+	return
 }
 
 func (s *service) monitor(p Process) {

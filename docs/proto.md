@@ -12191,6 +12191,7 @@ Precondition: user A and user B opened the same block
 | File | 7 |  |
 | MarketplaceType | 8 |  |
 | MarketplaceRelation | 9 |  |
+| Relation | 10 |  |
 
 
  
@@ -12341,6 +12342,9 @@ Precondition: user A and user B opened the same block
 | ProfilePage | 2 |  |
 | Archive | 3 |  |
 | Set | 5 |  |
+| File | 6 |  |
+| ObjectType | 7 |  |
+| Relation | 8 |  |
 
 
  

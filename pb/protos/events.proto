@@ -693,6 +693,7 @@ enum SmartBlockType {
 
     MarketplaceType = 8;
     MarketplaceRelation = 9;
+    Relation = 10;
 }
 
 message ResponseEvent {

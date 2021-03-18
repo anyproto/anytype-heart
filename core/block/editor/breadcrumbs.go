@@ -5,7 +5,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -23,12 +22,12 @@ type Breadcrumbs struct {
 	smartblock.SmartBlock
 }
 
-func (p *Breadcrumbs) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+func (p *Breadcrumbs) Init(ctx *smartblock.InitContext) (err error) {
+	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 	p.SmartBlock.DisableLayouts()
-	return template.ApplyTemplate(p, nil, template.WithEmpty)
+	return template.ApplyTemplate(p, ctx.State, template.WithEmpty)
 }
 
 func (p *Breadcrumbs) Relations() []*pbrelation.Relation {

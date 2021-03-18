@@ -1,10 +1,10 @@
 package database
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -13,7 +13,7 @@ import (
 )
 
 type Ctrl interface {
-	Anytype() anytype.Service
+	Anytype() core.Service
 
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
 	GetRelations(objectId string) (relations []*pbrelation.Relation, err error)

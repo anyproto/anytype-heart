@@ -5,34 +5,45 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/md"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/globalsign/mgo/bson"
 )
 
+const CName = "export"
+
 var log = logging.Logger("anytype-mw-export")
 
-func NewExport(a anytype.Service, bs block.Service) Export {
-	return &export{
-		bs: bs,
-		a:  a,
-	}
+func New() Export {
+	return new(export)
 }
 
 type Export interface {
 	Export(req pb.RpcExportRequest) (path string, err error)
+	app.Component
 }
 
 type export struct {
 	bs block.Service
-	a  anytype.Service
+	a  core.Service
+}
+
+func (e *export) Init(a *app.App) (err error) {
+	e.bs = a.MustComponent(block.CName).(block.Service)
+	e.a = a.MustComponent(core.CName).(core.Service)
+	return
+}
+
+func (e *export) Name() (name string) {
+	return CName
 }
 
 func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {

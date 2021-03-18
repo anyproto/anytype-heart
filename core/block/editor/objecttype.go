@@ -2,9 +2,9 @@ package editor
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -23,8 +23,8 @@ func NewObjectType(m meta.Service, dbCtrl database.Ctrl) *ObjectType {
 	}
 }
 
-func (p *ObjectType) Init(s source.Source, _ bool, _ []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
+	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 
@@ -91,7 +91,7 @@ func (p *ObjectType) Init(s source.Source, _ bool, _ []string) (err error) {
 		})
 	}
 
-	return template.ApplyTemplate(p, nil,
+	return template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithDataview(dataview, true),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),

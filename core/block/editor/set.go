@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -44,8 +43,8 @@ type Set struct {
 	stext.Text
 }
 
-func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	err = p.SmartBlock.Init(s, true, nil)
+func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
+	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
 	}
@@ -83,7 +82,7 @@ func (p *Set) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}
 
-	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
+	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
 

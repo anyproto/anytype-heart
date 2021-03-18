@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -27,8 +26,8 @@ type Dashboard struct {
 	_import.Import
 }
 
-func (p *Dashboard) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
+	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 	p.DisableLayouts()

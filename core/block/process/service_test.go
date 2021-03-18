@@ -4,6 +4,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -11,7 +13,7 @@ import (
 
 func TestService_Add(t *testing.T) {
 	var events = make(chan *pb.Event, 20)
-	s := NewService(func(e *pb.Event) {
+	s := NewTest(func(e *pb.Event) {
 		events <- e
 	})
 
@@ -34,7 +36,7 @@ func TestService_Add(t *testing.T) {
 
 func TestService_Cancel(t *testing.T) {
 	var events = make(chan *pb.Event, 20)
-	s := NewService(func(e *pb.Event) {
+	s := NewTest(func(e *pb.Event) {
 		events <- e
 	})
 
@@ -83,4 +85,14 @@ func (t testProcess) Info() pb.ModelProcess {
 
 func (t *testProcess) Done() chan struct{} {
 	return t.done
+}
+
+func NewTest(se func(e *pb.Event)) Service {
+	s := New()
+	a := new(app.App)
+	a.Register(&testapp.EventSender{
+		F: se,
+	}).Register(s)
+	a.Start()
+	return s
 }

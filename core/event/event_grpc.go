@@ -5,6 +5,7 @@ package event
 import (
 	"sync"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pb/service"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -20,6 +21,14 @@ type GrpcSender struct {
 	Server      service.ClientCommands_ListenEventsServer
 	ServerMutex sync.Mutex
 	ServerCh    chan struct{}
+}
+
+func (es *GrpcSender) Init(_ *app.App) (err error) {
+	return
+}
+
+func (es *GrpcSender) Name() (name string) {
+	return CName
 }
 
 func (es *GrpcSender) Send(pb *pb.Event) {

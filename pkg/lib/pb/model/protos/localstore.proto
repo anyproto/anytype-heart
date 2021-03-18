@@ -22,6 +22,9 @@ message ObjectInfo {
         Archive = 3;
 
         Set = 5;
+        File = 6;
+        ObjectType = 7;
+        Relation = 8;
     }
 }
 

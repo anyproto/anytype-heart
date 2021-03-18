@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
@@ -28,7 +29,8 @@ func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryS
 		err  error
 	)
 	if err = mw.doBlockService(func(bs block.Service) (err error) {
-		show, ver, err = bs.History().Show(req.PageId, req.VersionId)
+		hs := mw.app.MustComponent(history.CName).(history.History)
+		show, ver, err = hs.Show(req.PageId, req.VersionId)
 		return
 	}); err != nil {
 		return response(nil, nil, err)
@@ -58,7 +60,8 @@ func (mw *Middleware) HistoryVersions(req *pb.RpcHistoryVersionsRequest) *pb.Rpc
 		err  error
 	)
 	if err = mw.doBlockService(func(bs block.Service) (err error) {
-		vers, err = bs.History().Versions(req.PageId, req.LastVersionId, int(req.Limit))
+		hs := mw.app.MustComponent(history.CName).(history.History)
+		vers, err = hs.Versions(req.PageId, req.LastVersionId, int(req.Limit))
 		return
 	}); err != nil {
 		return response(nil, err)
@@ -81,6 +84,7 @@ func (mw *Middleware) HistorySetVersion(req *pb.RpcHistorySetVersionRequest) *pb
 		return
 	}
 	return response(mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.History().SetVersion(req.PageId, req.VersionId)
+		hs := mw.app.MustComponent(history.CName).(history.History)
+		return hs.SetVersion(req.PageId, req.VersionId)
 	}))
 }

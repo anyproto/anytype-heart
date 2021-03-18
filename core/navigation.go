@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -20,10 +21,15 @@ func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequ
 
 		return m
 	}
+	mw.m.RLock()
+	defer mw.m.RUnlock()
 
-	if mw.Anytype == nil {
+	if mw.app == nil {
 		return response(pb.RpcNavigationListObjectsResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
+
+	at := mw.app.MustComponent(core.CName).(core.Service)
+
 	objectTypes := []coresb.SmartBlockType{
 		coresb.SmartBlockTypePage,
 		coresb.SmartBlockTypeProfilePage,
@@ -38,7 +44,7 @@ func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequ
 			coresb.SmartBlockTypeObjectType,
 		}
 	}
-	records, _, err := mw.Anytype.ObjectStore().QueryObjectInfo(database.Query{
+	records, _, err := at.ObjectStore().QueryObjectInfo(database.Query{
 		FullText: req.FullText,
 		Limit:    int(req.Limit),
 		Offset:   int(req.Offset),
@@ -59,10 +65,14 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetO
 
 		return m
 	}
+	mw.m.RLock()
+	defer mw.m.RUnlock()
 
-	if mw.Anytype == nil {
+	if mw.app == nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
+
+	at := mw.app.MustComponent(core.CName).(core.Service)
 
 	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
 		var filtered []*model.ObjectInfo
@@ -76,7 +86,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetO
 		return filtered
 	}
 
-	page, err := mw.Anytype.ObjectInfoWithLinks(req.ObjectId)
+	page, err := at.ObjectInfoWithLinks(req.ObjectId)
 	if err != nil {
 		return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, nil, err)
 	}

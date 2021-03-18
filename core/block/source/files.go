@@ -6,17 +6,17 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
 
 var getFileTimeout = time.Second * 5
 
-func NewFiles(a anytype.Service, id string) (s Source) {
+func NewFiles(a core.Service, id string) (s Source) {
 	return &files{
 		id: id,
 		a:  a,
@@ -25,14 +25,14 @@ func NewFiles(a anytype.Service, id string) (s Source) {
 
 type files struct {
 	id string
-	a  anytype.Service
+	a  core.Service
 }
 
 func (v *files) Id() string {
 	return v.id
 }
 
-func (v *files) Anytype() anytype.Service {
+func (v *files) Anytype() core.Service {
 	return v.a
 }
 
@@ -44,7 +44,7 @@ func (v *files) Virtual() bool {
 	return false
 }
 
-func getDetailsForFileOrImage(ctx context.Context, a anytype.Service, id string) (p *types.Struct, isImage bool, err error) {
+func getDetailsForFileOrImage(ctx context.Context, a core.Service, id string) (p *types.Struct, isImage bool, err error) {
 	f, err := a.FileByHash(ctx, id)
 	if err != nil {
 		return nil, false, err
