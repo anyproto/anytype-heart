@@ -2,13 +2,13 @@ package editor
 
 import (
 	"fmt"
+
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -29,12 +29,12 @@ type Archive struct {
 	smartblock.SmartBlock
 }
 
-func (p *Archive) Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error) {
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
+	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 	p.SmartBlock.DisableLayouts()
-	return template.ApplyTemplate(p, nil, template.WithEmpty, template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
+	return template.ApplyTemplate(p, ctx.State, template.WithEmpty, template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
 }
 
 func (p *Archive) Relations() []*pbrelation.Relation {

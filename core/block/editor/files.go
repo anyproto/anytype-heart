@@ -2,13 +2,13 @@ package editor
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/pb"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -34,15 +34,15 @@ func detectFileType(mime string) model.BlockContentFileType {
 	return model.BlockContentFile_File
 }
 
-func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	if s.Type() != pb.SmartBlockType_File {
+func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
+	if ctx.Source.Type() != pb.SmartBlockType_File {
 		return fmt.Errorf("source type should be a file")
 	}
 
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	doc, err := s.ReadDoc(nil, true)
+	doc, err := ctx.Source.ReadDoc(nil, true)
 	if err != nil {
 		return err
 	}
@@ -115,7 +115,7 @@ func (p *Files) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
 			}...)
 	}
 
-	return template.ApplyTemplate(p, nil,
+	return template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithRootBlocks(blocks),

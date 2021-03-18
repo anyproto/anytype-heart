@@ -7,16 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/globalsign/mgo/bson"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -35,14 +26,21 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 )
@@ -240,23 +238,29 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
-	s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
-		return nil
-	})
-
-	s.Do(s.anytype.PredefinedBlocks().SetPages, func(b smartblock.SmartBlock) error {
-		return nil
-	})
-
-	s.Do(s.anytype.PredefinedBlocks().MarketplaceType, func(b smartblock.SmartBlock) error {
-		return nil
-	})
-
-	s.Do(s.anytype.PredefinedBlocks().MarketplaceRelation, func(b smartblock.SmartBlock) error {
-		return nil
-	})
+	s.initPredefinedBlocks()
 	go s.cleanupTicker()
 	return
+}
+
+func (s *service) initPredefinedBlocks() {
+	ids := []string{
+		s.anytype.PredefinedBlocks().Account,
+		s.anytype.PredefinedBlocks().Archive,
+		s.anytype.PredefinedBlocks().Profile,
+		s.anytype.PredefinedBlocks().Home,
+		s.anytype.PredefinedBlocks().MarketplaceType,
+		s.anytype.PredefinedBlocks().MarketplaceRelation,
+		s.anytype.PredefinedBlocks().SetPages,
+	}
+	for _, id := range ids {
+		sb, err := s.createSmartBlock(id, &smartblock.InitContext{State: &state.State{}})
+		if err != nil {
+			log.Errorf("can't init predefined block: %v", err)
+		} else {
+			sb.Close()
+		}
+	}
 }
 
 func (s *service) Anytype() core.Service {
@@ -267,7 +271,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	s.m.Lock()
 	ob, ok := s.openedBlocks[id]
 	if !ok {
-		sb, e := s.createSmartBlock(id, false, nil)
+		sb, e := s.createSmartBlock(id, nil)
 		if e != nil {
 			s.m.Unlock()
 			return e
@@ -312,7 +316,9 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	s.m.Lock()
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs(s.meta)
-	if err = bs.Init(source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs), true, nil); err != nil {
+	if err = bs.Init(&smartblock.InitContext{
+		Source: source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs),
+	}); err != nil {
 		return
 	}
 	bs.Lock()
@@ -457,6 +463,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 	}
 	id = csm.ID()
 
+	createState := state.NewDoc(id, nil).NewState()
 	typesInDetails := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if len(typesInDetails) == 0 {
 		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
@@ -465,12 +472,15 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 			typesInDetails = []string{bundle.TypeKeyPage.URL()}
 		}
 	}
-
+	initCtx := &smartblock.InitContext{
+		State:          createState,
+		ObjectTypeUrls: typesInDetails,
+	}
 	var sb smartblock.SmartBlock
-	if sb, err = s.createSmartBlock(id, true, typesInDetails); err != nil {
+	if sb, err = s.createSmartBlock(id, initCtx); err != nil {
 		return id, nil, err
 	}
-
+	defer sb.Close()
 	log.Debugf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
 
 	// todo: move into createSmartblock params to make a single tx
@@ -1159,7 +1169,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 	}
 	ob, ok := s.openedBlocks[id]
 	if !ok {
-		sb, err = s.createSmartBlock(id, false, nil)
+		sb, err = s.createSmartBlock(id, nil)
 		if err != nil {
 			return
 		}
@@ -1175,7 +1185,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 	}, nil
 }
 
-func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectTypeUrls []string) (sb smartblock.SmartBlock, err error) {
+func (s *service) createSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
 	sc, err := source.NewSource(s.anytype, s.status, id)
 	if err != nil {
 		return
@@ -1205,7 +1215,11 @@ func (s *service) createSmartBlock(id string, initEmpty bool, initWithObjectType
 
 	sb.Lock()
 	defer sb.Unlock()
-	err = sb.Init(sc, initEmpty, initWithObjectTypeUrls)
+	if initCtx == nil {
+		initCtx = &smartblock.InitContext{}
+	}
+	initCtx.Source = sc
+	err = sb.Init(initCtx)
 	return
 }
 
@@ -1463,7 +1477,9 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	}
 	setId = csm.ID()
 
-	sb, err := s.createSmartBlock(setId, true, nil)
+	sb, err := s.createSmartBlock(setId, &smartblock.InitContext{
+		State: state.NewDoc(req.ObjectTypeUrl, nil).NewState(),
+	})
 	if err != nil {
 		return "", "", err
 	}

@@ -65,7 +65,7 @@ type SmartblockOpenListner interface {
 }
 
 type SmartBlock interface {
-	Init(s source.Source, allowEmpty bool, objectTypeUrls []string) (err error)
+	Init(ctx *InitContext) (err error)
 	Id() string
 	Type() pb.SmartBlockType
 	Meta() *core.SmartBlockMeta
@@ -100,6 +100,12 @@ type SmartBlock interface {
 	Close() (err error)
 	state.Doc
 	sync.Locker
+}
+
+type InitContext struct {
+	Source         source.Source
+	ObjectTypeUrls []string
+	State          *state.State
 }
 
 type linkSource interface {
@@ -148,44 +154,49 @@ func (sb *smartBlock) Type() pb.SmartBlockType {
 	return sb.source.Type()
 }
 
-func (sb *smartBlock) Init(s source.Source, allowEmpty bool, objectType []string) (err error) {
-	if sb.Doc, err = s.ReadDoc(sb, allowEmpty); err != nil {
+func (sb *smartBlock) Init(ctx *InitContext) (err error) {
+	if sb.Doc, err = ctx.Source.ReadDoc(sb, ctx.State != nil); err != nil {
 		return fmt.Errorf("reading document: %w", err)
 	}
 
-	sb.source = s
+	sb.source = ctx.Source
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
-	if len(objectType) > 0 && len(sb.ObjectTypes()) == 0 {
-		err = sb.SetObjectTypes(nil, objectType)
+
+	if ctx.State == nil || ctx.State.IsEmpty() {
+		ctx.State = sb.NewState()
+	} else {
+		if !sb.Doc.(*state.State).IsEmpty() {
+			return fmt.Errorf("can't init existing smartblock with non-empty state")
+		}
+		ctx.State.SetParent(sb.Doc.(*state.State))
+	}
+
+	if len(ctx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
+		err = sb.setObjectTypes(ctx.State, ctx.ObjectTypeUrls)
 		if err != nil {
 			return err
 		}
 	}
 
-	if err := sb.NormalizeRelations(); err != nil {
-		return err
+	if err = sb.normalizeRelations(ctx.State); err != nil {
+		return
 	}
-
 	return
 }
 
-func (sb *smartBlock) NormalizeRelations() error {
-	st := sb.NewState()
-
+func (sb *smartBlock) normalizeRelations(st *state.State) error {
 	relations := sb.Relations()
 	details := sb.Details()
 	if details == nil || details.Fields == nil {
 		return nil
 	}
-	var stateChanged bool
 	for k := range details.Fields {
 		rel := pbtypes.GetRelation(relations, k)
 		if rel == nil {
 			if bundleRel, _ := bundle.GetRelation(bundle.RelationKey(k)); bundleRel != nil {
 				st.AddRelation(bundleRel)
-				stateChanged = true
 				log.Warnf("NormalizeRelations bundle relation is missing, have been added: %s", k)
 			} else {
 				log.Errorf("NormalizeRelations relation is missing: %s", k)
@@ -197,14 +208,8 @@ func (sb *smartBlock) NormalizeRelations() error {
 		if rel.Scope != pbrelation.Relation_object {
 			log.Warnf("NormalizeRelations change scope for relation %s", rel.Key)
 			st.SetExtraRelation(rel)
-			stateChanged = true
 		}
 	}
-
-	if stateChanged {
-		return sb.Apply(st)
-	}
-
 	return nil
 }
 
@@ -708,18 +713,11 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 }
 
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
-	if len(objectTypes) == 0 {
-		return fmt.Errorf("you must provide at least 1 object type")
-	}
+	s := sb.NewState()
 
-	otypes := sb.meta.FetchObjectTypes(objectTypes)
-	if len(otypes) == 0 {
-		return fmt.Errorf("object types not found")
+	if err = sb.setObjectTypes(s, objectTypes); err != nil {
+		return
 	}
-
-	ot := otypes[len(otypes)-1]
-	s := sb.NewState().SetObjectTypes(objectTypes)
-	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(ot.Layout)))
 
 	// send event here to send updated details to client
 	if err = sb.Apply(s); err != nil {
@@ -737,6 +735,22 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 			},
 		}})
 	}
+	return
+}
+
+func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err error) {
+	if len(objectTypes) == 0 {
+		return fmt.Errorf("you must provide at least 1 object type")
+	}
+
+	otypes := sb.meta.FetchObjectTypes(objectTypes)
+	if len(otypes) == 0 {
+		return fmt.Errorf("object types not found")
+	}
+
+	ot := otypes[len(otypes)-1]
+	s.SetObjectTypes(objectTypes)
+	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(ot.Layout)))
 	return
 }
 

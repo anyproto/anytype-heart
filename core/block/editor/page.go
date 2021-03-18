@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -48,24 +47,24 @@ type Page struct {
 	_import.Import
 }
 
-func (p *Page) Init(s source.Source, _ bool, objectTypeUrls []string) (err error) {
-	if objectTypeUrls == nil {
-		objectTypeUrls = []string{bundle.TypeKeyPage.URL()}
+func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
+	if ctx.ObjectTypeUrls == nil {
+		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
 
-	if err = p.SmartBlock.Init(s, true, nil); err != nil {
+	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
 
 	var layout relation.ObjectTypeLayout
-	otypes := p.MetaService().FetchObjectTypes(objectTypeUrls)
+	otypes := p.MetaService().FetchObjectTypes(ctx.ObjectTypeUrls)
 	for _, ot := range otypes {
 		layout = ot.Layout
 	}
 
 	return template.ApplyTemplate(p, nil,
 		template.WithTitle,
-		template.WithObjectTypes(objectTypeUrls),
+		template.WithObjectTypes(ctx.ObjectTypeUrls),
 		template.WithLayout(layout),
 	)
 }
