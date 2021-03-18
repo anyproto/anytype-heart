@@ -56,8 +56,8 @@ var WithObjectTypeLayoutMigration = func() StateTransformer {
 			return
 		}
 
-		s.SetDetail(bundle.RelationKeyRecommendedLayout.String(), pbtypes.Float64(layout))
-		s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(relation.ObjectType_objectType)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, pbtypes.Float64(layout))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(relation.ObjectType_objectType)))
 	}
 }
 
@@ -82,7 +82,7 @@ var WithObjectTypeRecommendedRelationsMigration = func(relations []*relation.Rel
 			}
 		}
 
-		s.SetDetail(bundle.RelationKeyRecommendedRelations.String(), pbtypes.StringList(keys))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(keys))
 	}
 }
 
@@ -99,7 +99,7 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 				if err != nil {
 					continue
 				}
-				s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Float64(float64(t.Layout)))
+				s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(t.Layout)))
 				s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyLayout))
 			}
 		}

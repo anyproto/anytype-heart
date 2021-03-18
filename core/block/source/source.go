@@ -202,15 +202,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 
 	// set local-only details
-	if details, err := s.a.ObjectStore().GetDetails(s.id); err == nil {
-		if details != nil && details.Details != nil {
-			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
-					st.SetDetail(key, v)
-				}
-			}
-		}
-	}
+	InjectLocalDetails(s, st)
+
 	if s.Type() != pb.SmartBlockType_Archive && !s.Virtual() {
 		// we do not need details for archive or breadcrumbs
 		st.InjectDerivedDetails()
@@ -263,13 +256,27 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 		createdBy = fc.Account
 	}
 
-	st.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Float64(float64(createdDate)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	if profileId, e := threads.ProfileThreadIDFromAccountAddress(createdBy); e == nil {
-		st.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(profileId.String()))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(profileId.String()))
 	}
 	return
 }
 
+func InjectLocalDetails(s Source, st *state.State) {
+	if details, err := s.Anytype().ObjectStore().GetDetails(s.Id()); err == nil {
+		if details != nil && details.Details != nil {
+			for key, v := range details.Details.Fields {
+				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
+					st.SetDetail(key, v)
+					if !pbtypes.HasRelation(st.ExtraRelations(), key) {
+						st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
+					}
+				}
+			}
+		}
+	}
+}
 type PushChangeParams struct {
 	State             *state.State
 	Changes           []*pb.ChangeContent

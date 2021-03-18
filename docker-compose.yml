@@ -12,16 +12,24 @@ services:
     environment:
       TEST_MIDDLEWARE_NODE_A_ADDRESS_HOST: middleware-node-a
       TEST_MIDDLEWARE_NODE_A_ADDRESS_PORT: 31007
+      TEST_MIDDLEWARE_NODE_A_ADDRESS_GATEWAY_PORT: 32007
       TEST_MIDDLEWARE_NODE_B_ADDRESS_HOST: middleware-node-b
       TEST_MIDDLEWARE_NODE_B_ADDRESS_PORT: 41007
+      TEST_MIDDLEWARE_NODE_B_ADDRESS_GATEWAY_PORT: 42007
     command: bash -c "make test"
 
   middleware-node-a:
+    stop_grace_period: 1s
+    stop_signal: SIGABRT
     image: docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG}
     environment:
+      ANYTYPE_GATEWAY_ADDR: "0.0.0.0:32007"
       ANYTYPE_GRPC_ADDR: "0.0.0.0:31007"
 
   middleware-node-b:
+    stop_grace_period: 1s
+    stop_signal: SIGABRT
     image: docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG}
     environment:
       ANYTYPE_GRPC_ADDR: "0.0.0.0:41007"
+      ANYTYPE_GATEWAY_ADDR: "0.0.0.0:42007"

@@ -118,7 +118,7 @@ func (s *service) threadsDbListen() error {
 
 					metrics.ExternalThreadReceivedCounter.Inc()
 					go func() {
-						if s.processNewExternalThreadUntilSuccess(tid, ti) != nil {
+						if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
 							log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
 							return
 						}

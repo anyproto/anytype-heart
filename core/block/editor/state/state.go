@@ -624,6 +624,15 @@ func (s *State) SetDetails(d *types.Struct) *State {
 	return s
 }
 
+// SetDetailAndBundledRelation sets the detail value and bundled relation in case it is missing
+func (s *State) SetDetailAndBundledRelation(key bundle.RelationKey, value *types.Value) {
+	s.SetDetail(key.String(), value)
+	// AddRelation adds only in case of missing relation
+	s.AddRelation(bundle.MustGetRelation(key))
+
+	return
+}
+
 func (s *State) SetDetail(key string, value *types.Value) {
 	if s.details == nil && s.parent != nil {
 		s.details = pbtypes.CopyStruct(s.parent.Details())
@@ -653,6 +662,8 @@ func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
 	}
 }
 
+// AddRelation adds new extraRelation to the state.
+// In case the one is already exists with the same key it does nothing
 func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	for _, rel := range s.ExtraRelations() {
 		if rel.Key == relation.Key {
@@ -722,23 +733,14 @@ func (s *State) SetObjectType(objectType string) *State {
 
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
-	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
-	if pbtypes.GetRelation(s.ExtraRelations(), bundle.RelationKeyType.String()) == nil {
-		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyType))
-	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
+
 	return s
 }
 
 func (s *State) InjectDerivedDetails() {
-	s.SetDetail(string(bundle.RelationKeyId), pbtypes.String(s.rootId))
-	s.SetDetail(string(bundle.RelationKeyType), pbtypes.String(s.ObjectType()))
-	if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyId.String()) {
-		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyId))
-	}
-
-	if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyType.String()) {
-		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyType))
-	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.rootId))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
 }
 
 // ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots

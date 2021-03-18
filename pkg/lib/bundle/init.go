@@ -35,7 +35,7 @@ var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
 	for _, r := range relations {
-		if r.DataSource != relation.Relation_details {
+		if r.DataSource == relation.Relation_account {
 			LocalOnlyRelationsKeys = append(LocalOnlyRelationsKeys, r.Key)
 		}
 	}
@@ -92,6 +92,14 @@ func MustGetLayout(lk relation.ObjectTypeLayout) *relation.Layout {
 
 	// we can safely panic in case RelationKey is a generated constant
 	panic(ErrNotFound)
+}
+
+func GetLayout(lk relation.ObjectTypeLayout) (*relation.Layout, error) {
+	if v, exists := Layouts[lk]; exists {
+		return pbtypes.CopyLayout(&v), nil
+	}
+
+	return nil, ErrNotFound
 }
 
 func ListRelations() []*relation.Relation {

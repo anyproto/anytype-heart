@@ -184,9 +184,22 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	var recommendedRelationKeys []string
 	var relations = make([]*pbrelation.Relation, 0, len(req.ObjectType.Relations)+len(bundle.RequiredInternalRelations))
 
+	layout, _ := bundle.GetLayout(req.ObjectType.Layout)
+	if layout == nil {
+		return response(pb.RpcObjectTypeCreateResponseError_BAD_INPUT, nil, fmt.Errorf("invalid layout"))
+	}
+
 	for _, rel := range bundle.RequiredInternalRelations {
 		relations = append(relations, bundle.MustGetRelation(rel))
 		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.String())
+	}
+
+	for _, rel := range layout.RequiredRelations {
+		if pbtypes.HasRelation(relations, rel.Key) {
+			continue
+		}
+		relations = append(relations, pbtypes.CopyRelation(rel))
+		recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.Key)
 	}
 
 	for i, rel := range req.ObjectType.Relations {

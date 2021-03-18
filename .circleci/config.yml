@@ -176,6 +176,8 @@ jobs:
           command: |
             echo ${GITHUB_TOKEN} | docker login https://docker.pkg.github.com -u ${CIRCLE_PROJECT_USERNAME} --password-stdin
             ./.circleci/run_test.sh
+      - store_artifacts:
+          path: /tmp/docker_nodes.log
 
   build-lib-darwin-windows:
     macos:

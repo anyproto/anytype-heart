@@ -141,7 +141,8 @@ func (d *doc) injectLocalRelations(st *state.State) {
 		if details != nil && details.Details != nil {
 			for key, v := range details.Details.Fields {
 				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
-					st.SetDetail(key, v)
+					// safe to call SetDetailAndBundledRelation as bundle.LocalOnlyRelationsKeys contains only bundled relations
+					st.SetDetailAndBundledRelation(bundle.RelationKey(key), v)
 				}
 			}
 		}
@@ -209,9 +210,9 @@ func (d *doc) injectCreationInfo(st *state.State) (err error) {
 		return fmt.Errorf("failed to find first change to derive creation info")
 	}
 
-	st.SetDetail(bundle.RelationKeyCreatedDate.String(), pbtypes.Float64(float64(fc.Timestamp)))
+	st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(fc.Timestamp)))
 	if profileId, e := threads.ProfileThreadIDFromAccountAddress(fc.Account); e == nil {
-		st.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(profileId.String()))
+		st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(profileId.String()))
 	}
 	return
 }
