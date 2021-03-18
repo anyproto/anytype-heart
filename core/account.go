@@ -16,6 +16,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -165,11 +166,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc := &model.Account{Id: account.Address()}
 
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender); err != nil {
-		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
-	}
-
-	if err = at.InitPredefinedBlocks(context.TODO(), false); err != nil {
+	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
@@ -294,7 +291,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	mw.accountSearchCancel = func() { searchQueryCancel() }
 	defer searchQueryCancel()
 
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender); err != nil {
+	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
 		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
 			return response(pb.RpcAccountRecoverResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
 		}
@@ -465,7 +462,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}
 
-		if mw.app, err = anytype.StartNewApp(at, mw.EventSender); err != nil {
+		if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{AccountSelect: true}); err != nil {
 			if err == core.ErrRepoCorrupted {
 				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 			}
@@ -475,9 +472,6 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			}
 
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
-		}
-		if err := at.InitPredefinedBlocks(context.TODO(), true); err != nil {
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RECOVER_PREDEFINED_BLOCKS, err)
 		}
 	}
 	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)

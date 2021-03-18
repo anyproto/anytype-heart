@@ -3,13 +3,15 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/libp2p/go-tcp-transport"
 	"io"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/libp2p/go-tcp-transport"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
@@ -139,6 +141,8 @@ type Anytype struct {
 	} // closed when node shutdown starts
 	onlineCh chan struct {
 	} // closed when became online
+
+	config *config.Config
 }
 
 func New(options ...ServiceOption) (*Anytype, error) {
@@ -175,7 +179,8 @@ func New(options ...ServiceOption) (*Anytype, error) {
 	return a, nil
 }
 
-func (a *Anytype) Init(_ *app.App) (err error) {
+func (a *Anytype) Init(ap *app.App) (err error) {
+	a.config = ap.MustComponent(config.CName).(*config.Config)
 	return
 }
 
@@ -184,7 +189,10 @@ func (a *Anytype) Name() string {
 }
 
 func (a *Anytype) Run() (err error) {
-	return a.Start()
+	if err = a.Start(); err != nil {
+		return
+	}
+	return a.InitPredefinedBlocks(context.TODO(), a.config.AccountSelect)
 }
 
 func (a *Anytype) Account() string {
@@ -576,7 +584,7 @@ func init() {
 	tnet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
-	tnet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
+	tnet.DialTimeout = 20 * time.Second          // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
 	tcp.DefaultConnectTimeout = tnet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
 	tnet.PushTimeout = 30 * time.Second
 	tnet.PullTimeout = 2 * time.Minute
