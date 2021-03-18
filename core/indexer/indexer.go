@@ -96,6 +96,7 @@ func (i *indexer) Run() (err error) {
 	}
 	i.subscriptionCancel = cancel
 	i.quitWG.Add(2)
+	i.reindexBundled()
 	go i.detailsLoop(ch)
 	go i.ftLoop()
 	return
