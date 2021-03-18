@@ -9,19 +9,19 @@ import (
 	"strings"
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func NewMDConverter(a anytype.Service, s *state.State) *MD {
+func NewMDConverter(a core.Service, s *state.State) *MD {
 	return &MD{a: a, s: s}
 }
 
 type MD struct {
-	a   anytype.Service
+	a   core.Service
 	s   *state.State
 	buf *bytes.Buffer
 

@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
@@ -90,7 +90,7 @@ func (ur UploadResult) ToBlock() file.Block {
 
 type uploader struct {
 	service      BlockService
-	anytype      anytype.Service
+	anytype      core.Service
 	block        file.Block
 	getReader    func(ctx context.Context) (*bufioSeekClose, error)
 	name         string

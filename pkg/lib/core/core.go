@@ -3,14 +3,17 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/libp2p/go-tcp-transport"
 	"io"
 	"path/filepath"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/libp2p/go-tcp-transport"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
@@ -48,6 +51,8 @@ fee6e180af8fc354d321fde5c84cab22138f9c62fec0d1bc0e99f4439968b02c`
 )
 
 const (
+	CName = "anytype"
+
 	DefaultWebGatewaySnapshotURI = "/%s/snapshotId/%s#key=%s"
 )
 
@@ -108,6 +113,8 @@ type Service interface {
 	SubscribeForNewRecords(ctx context.Context) (ch chan SmartblockRecordWithThreadID, err error)
 
 	ProfileInfo
+
+	app.ComponentRunnable
 }
 
 var _ Service = (*Anytype)(nil)
@@ -134,6 +141,8 @@ type Anytype struct {
 	} // closed when node shutdown starts
 	onlineCh chan struct {
 	} // closed when became online
+
+	config *config.Config
 }
 
 func New(options ...ServiceOption) (*Anytype, error) {
@@ -168,6 +177,22 @@ func New(options ...ServiceOption) (*Anytype, error) {
 	}
 
 	return a, nil
+}
+
+func (a *Anytype) Init(ap *app.App) (err error) {
+	a.config = ap.MustComponent(config.CName).(*config.Config)
+	return
+}
+
+func (a *Anytype) Name() string {
+	return CName
+}
+
+func (a *Anytype) Run() (err error) {
+	if err = a.Start(); err != nil {
+		return
+	}
+	return a.InitPredefinedBlocks(context.TODO(), a.config.AccountSelect)
 }
 
 func (a *Anytype) Account() string {
@@ -388,6 +413,10 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, accountSelect bool) 
 	return nil
 }
 
+func (a *Anytype) Close() (err error) {
+	return a.Stop()
+}
+
 func (a *Anytype) Stop() error {
 	fmt.Printf("stopping the library...\n")
 	defer fmt.Println("library has been successfully stopped")
@@ -555,7 +584,7 @@ func init() {
 	tnet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
-	tnet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
+	tnet.DialTimeout = 20 * time.Second          // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
 	tcp.DefaultConnectTimeout = tnet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
 	tnet.PushTimeout = 30 * time.Second
 	tnet.PullTimeout = 2 * time.Minute

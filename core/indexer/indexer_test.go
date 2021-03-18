@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -80,12 +81,17 @@ func TestNewIndexer(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
-	var err error
+	ta := testapp.New()
+
 	fx := &fixture{
 		ctrl: gomock.NewController(t),
+		ta:   ta,
 	}
+
+	fx.anytype = testMock.RegisterMockAnytype(fx.ctrl, ta)
 	fx.getSerach = mockIndexer.NewMockGetSearchInfo(fx.ctrl)
-	fx.anytype = testMock.NewMockService(fx.ctrl)
+	fx.getSerach.EXPECT().Name().AnyTimes().Return("blockService")
+	fx.getSerach.EXPECT().Init(gomock.Any())
 	fx.objectStore = testMock.NewMockObjectStore(fx.ctrl)
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
@@ -94,8 +100,10 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.ch = make(chan core.SmartblockRecordWithThreadID)
 	fx.anytype.EXPECT().SubscribeForNewRecords(gomock.Any()).Return(fx.ch, nil)
-	fx.Indexer, err = indexer.NewIndexer(fx.anytype, fx.getSerach)
-	require.NoError(t, err)
+	fx.Indexer = indexer.New()
+	ta.With(fx.Indexer).With(fx.getSerach)
+
+	require.NoError(t, ta.Start())
 	return fx
 }
 
@@ -106,8 +114,10 @@ type fixture struct {
 	objectStore *testMock.MockObjectStore
 	getSerach   *mockIndexer.MockGetSearchInfo
 	ch          chan core.SmartblockRecordWithThreadID
+	ta          *testapp.TestApp
 }
 
 func (fx *fixture) tearDown() {
+	fx.ta.Close()
 	fx.ctrl.Finish()
 }

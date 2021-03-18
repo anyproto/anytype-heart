@@ -3,18 +3,19 @@ package source
 import (
 	"context"
 	"fmt"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
-	"strings"
 )
 
-func NewBundledRelation(a anytype.Service, id string) (s Source) {
+func NewBundledRelation(a core.Service, id string) (s Source) {
 	return &bundledRelation{
 		id: id,
 		a:  a,
@@ -23,14 +24,14 @@ func NewBundledRelation(a anytype.Service, id string) (s Source) {
 
 type bundledRelation struct {
 	id string
-	a  anytype.Service
+	a  core.Service
 }
 
 func (v *bundledRelation) Id() string {
 	return v.id
 }
 
-func (v *bundledRelation) Anytype() anytype.Service {
+func (v *bundledRelation) Anytype() core.Service {
 	return v.a
 }
 

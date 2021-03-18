@@ -9,6 +9,7 @@ import (
 	"strings"
 	"unicode/utf8"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -17,8 +18,10 @@ import (
 	"github.com/otiai10/opengraph"
 )
 
+const CName = "linkpreview"
+
 func New() LinkPreview {
-	return &linkPreview{bmPolicy: bluemonday.NewPolicy().AddSpaceWhenStrippingTag(true)}
+	return &linkPreview{}
 }
 
 const (
@@ -29,10 +32,20 @@ const (
 
 type LinkPreview interface {
 	Fetch(ctx context.Context, url string) (model.LinkPreview, error)
+	app.Component
 }
 
 type linkPreview struct {
 	bmPolicy *bluemonday.Policy
+}
+
+func (l *linkPreview) Init(_ *app.App) (err error) {
+	l.bmPolicy = bluemonday.NewPolicy().AddSpaceWhenStrippingTag(true)
+	return
+}
+
+func (l *linkPreview) Name() (name string) {
+	return CName
 }
 
 func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, error) {

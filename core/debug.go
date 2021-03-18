@@ -3,9 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/textileio/go-threads/jsonpatcher"
 	"sort"
 	"time"
+
+	"github.com/textileio/go-threads/jsonpatcher"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -31,9 +32,16 @@ func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThr
 
 		return m
 	}
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+	if mw.app == nil {
+		return response(nil, 0, nil)
+	}
 
-	cafePeerStr, _ := mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
-	t := mw.Anytype.(*core.Anytype).ThreadService().Threads()
+	at := mw.app.MustComponent(core.CName).(core.Service)
+
+	cafePeerStr, _ := at.CafePeer().ValueForProtocol(ma.P_P2P)
+	t := at.(*core.Anytype).ThreadService().Threads()
 
 	cafePeer, _ := peer.Decode(cafePeerStr)
 	tid, err := thread.Decode(req.ThreadId)
@@ -41,13 +49,20 @@ func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThr
 		return response(nil, pb.RpcDebugThreadResponseError_BAD_INPUT, err)
 	}
 
-	tinfo := getThreadInfo(t, tid, mw.Anytype.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
+	tinfo := getThreadInfo(t, tid, at.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
 	return response(&tinfo, 0, nil)
 }
 
 func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse {
+	mw.m.RLock()
+	if mw.app == nil {
+		return &pb.RpcDebugSyncResponse{}
+	}
+	at := mw.app.MustComponent(core.CName).(core.Service)
+	mw.m.Unlock()
+
 	response := func(threads []*pb.RpcDebugthreadInfo, threadsWithoutRepl int32, threadsWithoutHeadDownloaded int32, totalRecords int32, totalSize int32, code pb.RpcDebugSyncResponseErrorCode, err error) *pb.RpcDebugSyncResponse {
-		m := &pb.RpcDebugSyncResponse{DeviceId: mw.Anytype.Device(), Threads: threads, ThreadsWithoutReplInOwnLog: threadsWithoutRepl, ThreadsWithoutHeadDownloaded: threadsWithoutHeadDownloaded, TotalThreads: int32(len(threads)), TotalRecords: totalRecords, TotalSize: totalSize, Error: &pb.RpcDebugSyncResponseError{Code: code}}
+		m := &pb.RpcDebugSyncResponse{DeviceId: at.Device(), Threads: threads, ThreadsWithoutReplInOwnLog: threadsWithoutRepl, ThreadsWithoutHeadDownloaded: threadsWithoutHeadDownloaded, TotalThreads: int32(len(threads)), TotalRecords: totalRecords, TotalSize: totalSize, Error: &pb.RpcDebugSyncResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -56,9 +71,9 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	}
 
 	var threads []*pb.RpcDebugthreadInfo
-	t := mw.Anytype.(*core.Anytype).ThreadService().Threads()
+	t := at.(*core.Anytype).ThreadService().Threads()
 	ids, _ := t.Logstore().Threads()
-	cafePeerStr, _ := mw.Anytype.CafePeer().ValueForProtocol(ma.P_P2P)
+	cafePeerStr, _ := at.CafePeer().ValueForProtocol(ma.P_P2P)
 	cafePeer, _ := peer.Decode(cafePeerStr)
 
 	var (
@@ -69,7 +84,7 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	)
 
 	for _, id := range ids {
-		tinfo := getThreadInfo(t, id, mw.Anytype.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
+		tinfo := getThreadInfo(t, id, at.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
 		if tinfo.LogsWithDownloadedHead == 0 {
 			threadWithNoHeadDownloaded++
 		}

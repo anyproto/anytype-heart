@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -108,7 +109,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	}
 
 	err = mw.doBlockService(func(bs block.Service) error {
-		return mw.indexer.SetDetail(req.BlockId, bundle.RelationKeyLastOpenedDate.String(), pbtypes.Float64(float64(time.Now().Unix())))
+		return mw.app.MustComponent(indexer.CName).(indexer.Indexer).SetDetail(req.BlockId, bundle.RelationKeyLastOpenedDate.String(), pbtypes.Float64(float64(time.Now().Unix())))
 	})
 	if err != nil {
 		log.Errorf("failed to update last opened for the object %s: %s", req.BlockId, err.Error())

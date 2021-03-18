@@ -5,17 +5,13 @@ import (
 	"errors"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	libCore "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
 var log = logging.Logger("anytype-mw-api")
@@ -35,13 +31,7 @@ type Middleware struct {
 
 	EventSender event.Sender
 
-	blocksService block.Service
-	linkPreview   linkpreview.LinkPreview
-	status        status.Service
-	indexer       indexer.Indexer
-	exportService export.Export
-
-	Anytype libCore.Service
+	app *app.App
 
 	m sync.RWMutex
 }
@@ -64,8 +54,8 @@ func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownRe
 func (mw *Middleware) getBlockService() (bs block.Service, err error) {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
-	if mw.blocksService != nil {
-		return mw.blocksService, nil
+	if mw.app != nil {
+		return mw.app.MustComponent(block.CName).(block.Service), nil
 	}
 	return nil, ErrNotLoggedIn
 }
@@ -78,87 +68,25 @@ func (mw *Middleware) doBlockService(f func(bs block.Service) error) (err error)
 	return f(bs)
 }
 
-func (mw *Middleware) setIndexer(is indexer.Indexer) {
-	if mw.indexer != nil {
-		mw.indexer.Close()
-	}
-	mw.indexer = is
-}
-
-func (mw *Middleware) setBlockService(bs block.Service) {
-	if mw.blocksService != nil {
-		mw.blocksService.Close()
-	}
-	mw.blocksService = bs
-	mw.exportService = export.NewExport(mw.Anytype, bs)
-}
-
-func (mw *Middleware) setStatusService(ss status.Service) {
-	mw.status = ss
-}
-
-// Start starts the anytype node and HTTP gateway
-func (mw *Middleware) start() error {
-	err := mw.Anytype.Start()
-	if err != nil {
-		return err
-	}
-
-	if gateway.Host != nil {
-		// workaround for stopping existing gateway
-		err = gateway.Host.Stop()
-		if err != nil {
-			log.Errorf("failed to stop gateway: %s", err.Error())
-		}
-	}
-
-	// start the local http gateway
-	gateway.Host = &gateway.Gateway{
-		Node: mw.Anytype,
-	}
-
-	gwAddr := gateway.GatewayAddr()
-	mw.gatewayAddr = "http://" + gwAddr
-	err = gateway.Host.Start(gwAddr)
-	if err != nil {
-		return err
-	}
-
-	log.Debug("Gateway started: " + mw.gatewayAddr)
-
-	mw.linkPreview = linkpreview.NewWithCache()
-	return nil
-}
-
 // Stop stops the anytype node and HTTP gateway
 func (mw *Middleware) stop() error {
-	if gateway.Host != nil {
-		err := gateway.Host.Stop()
-		if err != nil {
-			log.Warnf("error while stop gateway: %v", err)
-		}
-	}
-	if mw.indexer != nil {
-		mw.indexer.Close()
-	}
-	if mw.blocksService != nil {
-		if err := mw.blocksService.Close(); err != nil {
-			log.Warnf("error while stop block service: %v", err)
-		}
-	}
-
-	if mw.status != nil {
-		mw.status.Stop()
-	}
-
-	if mw != nil && mw.Anytype != nil {
-		err := mw.Anytype.Stop()
+	if mw != nil && mw.app != nil {
+		err := mw.app.Close()
 		if err != nil {
 			log.Warnf("error while stop anytype: %v", err)
 		}
 
-		mw.Anytype = nil
+		mw.app = nil
 		mw.accountSearchCancel()
+	}
+	return nil
+}
+
+func (mw *Middleware) GetAnytype() core.Service {
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+	if mw.app != nil {
+		return mw.app.MustComponent(core.CName).(core.Service)
 	}
 	return nil
 }

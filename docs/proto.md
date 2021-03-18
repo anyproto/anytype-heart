@@ -5186,6 +5186,7 @@ Remove blocks from the childrenIds of its parents
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
+| objectType | [string](#string) |  |  |
 
 
 
@@ -12190,6 +12191,7 @@ Precondition: user A and user B opened the same block
 | File | 7 |  |
 | MarketplaceType | 8 |  |
 | MarketplaceRelation | 9 |  |
+| Relation | 10 |  |
 
 
  
@@ -12340,6 +12342,9 @@ Precondition: user A and user B opened the same block
 | ProfilePage | 2 |  |
 | Archive | 3 |  |
 | Set | 5 |  |
+| File | 6 |  |
+| ObjectType | 7 |  |
+| Relation | 8 |  |
 
 
  
@@ -13111,8 +13116,10 @@ Relation describe the human-interpreted relation type. It may be something like 
 default dictionary with unique values to choose for select/multiSelect format |
 | maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
 | description | [string](#string) |  |  |
-| scope | [Relation.Scope](#anytype.relation.Relation.Scope) |  | on-store should be only local |
-| creator | [string](#string) |  | on-store should be only local |
+| scope | [Relation.Scope](#anytype.relation.Relation.Scope) |  | on-store fields, injected only locally
+
+scope from which this relation have been aggregated |
+| creator | [string](#string) |  | creator profile id |
 
 
 

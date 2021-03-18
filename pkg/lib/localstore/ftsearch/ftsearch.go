@@ -52,7 +52,7 @@ func (f *ftSearch) Index(d SearchDoc) (err error) {
 }
 
 func (f *ftSearch) Search(text string) (results []string, err error) {
-	text = strings.TrimSpace(text)
+	text = strings.ToLower(strings.TrimSpace(text))
 	var queries = make([]query.Query, 0, 4)
 
 	// id match

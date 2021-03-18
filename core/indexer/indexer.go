@@ -3,17 +3,17 @@ package indexer
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -24,6 +24,8 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
+const CName = "indexer"
+
 var log = logging.Logger("anytype-doc-indexer")
 
 var (
@@ -32,37 +34,13 @@ var (
 	docTTL          = time.Minute * 2
 )
 
-func NewIndexer(a anytype.Service, searchInfo GetSearchInfo) (Indexer, error) {
-	ctx, cancel := context.WithCancel(context.Background())
-	ch, err := a.SubscribeForNewRecords(ctx)
-	if err != nil {
-		cancel()
-		return nil, err
-	}
-
-	i := &indexer{
-		store:              a.ObjectStore(),
-		anytype:            a,
-		searchInfo:         searchInfo,
-		cache:              make(map[string]*doc),
-		quitWG:             &sync.WaitGroup{},
-		quit:               make(chan struct{}),
-		subscriptionCancel: cancel,
-	}
-
-	i.quitWG.Add(2)
-	if err := i.ftInit(); err != nil {
-		log.Errorf("can't init ft: %v", err)
-	}
-	go i.reindexBundled()
-	go i.detailsLoop(ch)
-	go i.ftLoop()
-	return i, nil
+func New() Indexer {
+	return &indexer{}
 }
 
 type Indexer interface {
 	SetDetail(id string, key string, val *types.Value) error
-	Close()
+	app.ComponentRunnable
 }
 
 type SearchInfo struct {
@@ -75,11 +53,12 @@ type SearchInfo struct {
 
 type GetSearchInfo interface {
 	GetSearchInfo(id string) (info SearchInfo, err error)
+	app.Component
 }
 
 type indexer struct {
 	store              localstore.ObjectStore
-	anytype            anytype.Service
+	anytype            core.Service
 	searchInfo         GetSearchInfo
 	cache              map[string]*doc
 	quitWG             *sync.WaitGroup
@@ -89,6 +68,38 @@ type indexer struct {
 	threadIdsBuf []string
 	recBuf       []core.SmartblockRecordEnvelope
 	mu           sync.Mutex
+}
+
+func (i *indexer) Init(a *app.App) (err error) {
+	i.anytype = a.MustComponent(core.CName).(core.Service)
+	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
+	i.cache = make(map[string]*doc)
+	i.quitWG = new(sync.WaitGroup)
+	i.quit = make(chan struct{})
+	return
+}
+
+func (i *indexer) Name() (name string) {
+	return CName
+}
+
+func (i *indexer) Run() (err error) {
+	i.store = i.anytype.ObjectStore()
+	if ftErr := i.ftInit(); ftErr != nil {
+		log.Errorf("can't init ft: %v", ftErr)
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	ch, err := i.anytype.SubscribeForNewRecords(ctx)
+	if err != nil {
+		cancel()
+		return err
+	}
+	i.subscriptionCancel = cancel
+	i.quitWG.Add(2)
+	i.reindexBundled()
+	go i.detailsLoop(ch)
+	go i.ftLoop()
+	return
 }
 
 func (i *indexer) openDoc(id string) (state.Doc, error) {
@@ -353,7 +364,7 @@ func (i *indexer) cleanup() {
 	log.Infof("indexer cleanup: removed %d from %d", removed, count)
 }
 
-func (i *indexer) Close() {
+func (i *indexer) Close() error {
 	i.mu.Lock()
 	quit := i.quit
 	if i.subscriptionCancel != nil {
@@ -368,6 +379,7 @@ func (i *indexer) Close() {
 		i.quit = nil
 		i.mu.Unlock()
 	}
+	return nil
 }
 
 func (i *indexer) SetDetail(id string, key string, val *types.Value) error {

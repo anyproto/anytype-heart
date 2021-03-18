@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 )
 
@@ -22,7 +23,18 @@ func (mw *Middleware) LinkPreview(req *pb.RpcLinkPreviewRequest) *pb.RpcLinkPrev
 		}
 	}
 
-	data, err := mw.linkPreview.Fetch(ctx, url)
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return &pb.RpcLinkPreviewResponse{
+			Error: &pb.RpcLinkPreviewResponseError{
+				Code: pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR,
+			},
+		}
+	}
+	lp := mw.app.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	data, err := lp.Fetch(ctx, url)
 	if err != nil {
 		// trim the actual url from the error
 		errTrimmed := strings.Replace(err.Error(), url, "<url>", -1)

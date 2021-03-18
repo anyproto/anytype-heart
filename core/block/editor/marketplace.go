@@ -2,9 +2,9 @@ package editor
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
-	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -23,8 +23,8 @@ type MarketplaceType struct {
 	*Set
 }
 
-func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	err = p.SmartBlock.Init(s, true, nil)
+func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
+	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
 	}
@@ -78,7 +78,7 @@ func (p *MarketplaceType) Init(s source.Source, allowEmpty bool, _ []string) (er
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Types"), template.WithDetailIconEmoji("📒"))
 
-	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
+	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
 	p.WithSystemObjects(true)
@@ -93,8 +93,8 @@ func NewMarketplaceRelation(ms meta.Service, dbCtrl database.Ctrl) *MarketplaceR
 	return &MarketplaceRelation{Set: NewSet(ms, dbCtrl)}
 }
 
-func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string) (err error) {
-	err = p.SmartBlock.Init(s, true, nil)
+func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
+	err = p.SmartBlock.Init(ctx)
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (p *MarketplaceRelation) Init(s source.Source, allowEmpty bool, _ []string)
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"))
 
-	if err = template.ApplyTemplate(p, nil, templates...); err != nil {
+	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
 

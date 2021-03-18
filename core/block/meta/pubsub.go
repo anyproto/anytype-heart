@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -43,7 +42,7 @@ type Subscriber interface {
 	Close()
 }
 
-func newPubSub(a anytype.Service, ss status.Service) *pubSub {
+func newPubSub(a core.Service, ss status.Service) *pubSub {
 	ps := &pubSub{
 		subscribers: make(map[string]map[Subscriber]struct{}),
 		collectors:  make(map[string]*collector),
@@ -58,7 +57,7 @@ func newPubSub(a anytype.Service, ss status.Service) *pubSub {
 }
 
 type pubSub struct {
-	anytype     anytype.Service
+	anytype     core.Service
 	subscribers map[string]map[Subscriber]struct{}
 	collectors  map[string]*collector
 	lastUsage   map[string]time.Time

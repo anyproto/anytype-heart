@@ -2,15 +2,17 @@ package core
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/globalsign/mgo/bson"
-	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -25,8 +27,12 @@ func (mw *Middleware) ObjectTypeRelationList(req *pb.RpcObjectTypeRelationListRe
 		}
 		return m
 	}
+	at := mw.GetAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
+	}
 
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationListResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -47,7 +53,12 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 		return m
 	}
 
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+	at := mw.GetAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
+	}
+
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_OBJECT_TYPE_URL, nil, err)
@@ -85,7 +96,13 @@ func (mw *Middleware) ObjectTypeRelationUpdate(req *pb.RpcObjectTypeRelationUpda
 		}
 		return m
 	}
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+
+	at := mw.GetAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationUpdateResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
+	}
+
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationUpdateResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
@@ -121,7 +138,13 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 		}
 		return m
 	}
-	objType, err := mw.getObjectType(req.ObjectTypeUrl)
+
+	at := mw.GetAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, fmt.Errorf("account must be started"))
+	}
+
+	objType, err := mw.getObjectType(at, req.ObjectTypeUrl)
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
 			return response(pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_OBJECT_TYPE_URL, err)
@@ -239,13 +262,18 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	threadIds, err := mw.Anytype.ThreadService().ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
+	at := mw.GetAnytype()
+	if at == nil {
+		return response(pb.RpcObjectTypeListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
+	}
+
+	threadIds, err := at.ThreadService().ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
 	if err != nil {
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
 	for _, id := range threadIds {
-		otype, err := mw.getObjectType(id.String())
+		otype, err := mw.getObjectType(at, id.String())
 		if err != nil {
 			log.Errorf("failed to get objectType info: %s", err.Error())
 			continue
@@ -284,6 +312,6 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 	return response(pb.RpcSetCreateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) getObjectType(url string) (*pbrelation.ObjectType, error) {
-	return localstore.GetObjectType(mw.Anytype.ObjectStore(), url)
+func (mw *Middleware) getObjectType(at core.Service, url string) (*pbrelation.ObjectType, error) {
+	return localstore.GetObjectType(at.ObjectStore(), url)
 }
