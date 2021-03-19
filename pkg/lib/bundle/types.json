@@ -23,7 +23,8 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign"
     ]
   },
   {
@@ -50,7 +51,8 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign"
     ]
   },
   {
@@ -78,6 +80,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "tag"
     ]
   },
@@ -106,6 +109,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "assignee",
       "dueDate",
       "attachments",
@@ -118,6 +122,7 @@
     ]
   },
   {
+    "emoji": "🔗",
     "hidden": true,
     "id": "relation",
     "layout": "relation",
@@ -128,6 +133,7 @@
       "layout",
       "description",
       "creator",
+      "layoutAlign",
       "mpAddedToLibrary",
       "relationFormat",
       "isHidden"
@@ -158,6 +164,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -197,11 +204,13 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign"
     ]
   },
   {
     "description": "Object that contains a definition of some object type",
+    "emoji": "🔮",
     "hidden": true,
     "id": "objectType",
     "layout": "objectType",
@@ -226,6 +235,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary",
@@ -234,6 +244,7 @@
   },
   {
     "description": "Special type to create objects from",
+    "emoji": "✨",
     "hidden": true,
     "id": "template",
     "layout": "basic",
@@ -241,12 +252,29 @@
     "relations": [
       "id",
       "name",
-      "layout",
       "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
       "templateType"
     ]
   },
   {
+    "emoji": "🗂️",
     "hidden": true,
     "id": "set",
     "layout": "set",
@@ -271,6 +299,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "setOf"
     ]
   },
@@ -299,7 +328,8 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign"
     ]
   },
   {
@@ -327,6 +357,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -364,7 +395,8 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign"
     ]
   },
   {
@@ -393,6 +425,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -408,7 +441,7 @@
     ]
   },
   {
-    "emoji": "📄",
+    "emoji": "📋",
     "id": "document",
     "layout": "basic",
     "name": "Document",
@@ -431,7 +464,8 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign"
     ]
   },
   {
@@ -459,6 +493,7 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -489,7 +524,8 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign"
     ]
   }
 ]
