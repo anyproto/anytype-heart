@@ -24,7 +24,6 @@ type Middleware struct {
 	rootPath            string
 	pin                 string
 	mnemonic            string
-	gatewayAddr         string
 	accountSearchCancel context.CancelFunc
 
 	foundAccounts []*model.Account // found local&remote account for the current mnemonic
