@@ -8,12 +8,12 @@ import (
 
 func (mw *Middleware) ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetResponse {
 	mw.m.RLock()
+	defer mw.m.RUnlock()
 	if mw.app == nil {
 		return &pb.RpcConfigGetResponse{Error: &pb.RpcConfigGetResponseError{pb.RpcConfigGetResponseError_NODE_NOT_STARTED, "account not started"}}
 	}
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
-	mw.m.RUnlock()
 
 	if gwAddr != "" {
 		gwAddr = "http://" + gwAddr
