@@ -756,6 +756,20 @@ func TestCustomType(t *testing.T) {
 	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
 	require.Len(t, lastObjType.Relations, len(bundle.RequiredInternalRelations)+3)
 
+	respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
+		RelationKey: "type",
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       pbtypes.String(bundle.TypeKeyObjectType.URL()),
+	}}})
+
+	var found2 bool
+	for _, rec := range respSearch.Records {
+		if pbtypes.GetString(rec, "id") == respObjectTypeCreate.ObjectType.Url {
+			found2 = true
+		}
+	}
+	require.True(t, found2, "new object type not found in search")
+
 	respCreateCustomTypeSet := mw.SetCreate(&pb.RpcSetCreateRequest{
 		ObjectTypeUrl: respObjectTypeCreate.ObjectType.Url,
 	})
@@ -814,17 +828,18 @@ func TestCustomType(t *testing.T) {
 
 		require.Equal(t, 1, len(recordsSet.Records))
 		require.Equal(t, getEventRecordsSet(respOpenCustomTypeSet.Event.Messages).Records[0].Fields["id"].GetStringValue(), respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue())
+		break
 	}
 	show = getEventBlockShow(respOpenCustomTypeSet.Event.Messages)
 	require.NotNil(t, show)
 
-	respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
+	respSearch2 := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
 		RelationKey: "type",
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       pbtypes.String(respObjectTypeCreate.ObjectType.Url),
 	}}})
-	require.Equal(t, 0, int(respSearch.Error.Code), respSearch.Error.Description)
-	require.Len(t, respSearch.Records, 1)
+	require.Equal(t, 0, int(respSearch2.Error.Code), respSearch2.Error.Description)
+	require.Len(t, respSearch2.Records, 1)
 }
 
 func TestBundledType(t *testing.T) {

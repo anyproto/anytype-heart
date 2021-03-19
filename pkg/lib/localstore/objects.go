@@ -193,7 +193,6 @@ var filterNotSystemObjects = &filterObjectTypes{
 	objectTypes: []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
-		smartblock.SmartBlockTypeObjectType,
 	},
 	not: true,
 }
