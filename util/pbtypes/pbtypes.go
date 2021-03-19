@@ -8,6 +8,12 @@ import (
 	"strings"
 )
 
+func Int64(v int64) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_NumberValue{NumberValue: float64(v)},
+	}
+}
+
 func Float64(v float64) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_NumberValue{NumberValue: v},

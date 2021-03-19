@@ -93,6 +93,7 @@ func newSource(a core.Service, ss status.Service, id string) (s Source, err erro
 		ss:    ss,
 		sb:    sb,
 		logId: a.Device(),
+		openedAt: time.Now(),
 	}
 	return
 }
@@ -110,6 +111,7 @@ type source struct {
 	unsubscribe    func()
 	metaOnly       bool
 	closed         chan struct{}
+	openedAt       time.Time
 }
 
 func (s *source) Id() string {
@@ -202,6 +204,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 
 	// set local-only details
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(s.openedAt.Unix()))
 	InjectLocalDetails(s, st)
 
 	if s.Type() != pb.SmartBlockType_Archive && !s.Virtual() {
