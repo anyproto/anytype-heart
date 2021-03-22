@@ -87,12 +87,12 @@ func newSource(a core.Service, ss status.Service, id string) (s Source, err erro
 	}
 
 	s = &source{
-		id:    id,
-		tid:   tid,
-		a:     a,
-		ss:    ss,
-		sb:    sb,
-		logId: a.Device(),
+		id:       id,
+		tid:      tid,
+		a:        a,
+		ss:       ss,
+		sb:       sb,
+		logId:    a.Device(),
 		openedAt: time.Now(),
 	}
 	return
@@ -270,7 +270,7 @@ func InjectLocalDetails(s Source, st *state.State) {
 	if details, err := s.Anytype().ObjectStore().GetDetails(s.Id()); err == nil {
 		if details != nil && details.Details != nil {
 			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
+				if slice.FindPos(bundle.LocalRelationsKeys, key) != -1 {
 					st.SetDetail(key, v)
 					if !pbtypes.HasRelation(st.ExtraRelations(), key) {
 						st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))

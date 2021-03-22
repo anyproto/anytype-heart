@@ -123,6 +123,9 @@ type smartBlock struct {
 	meta              meta.Service
 	metaSub           meta.Subscriber
 	metaData          *core.SmartBlockMeta
+	lastDepDetails    map[string]*pb.EventObjectDetailsSet
+	lastDepDetailsMutex   sync.Mutex
+
 	disableLayouts    bool
 	onNewStateHooks   []func()
 	onCloseHooks      []func()
@@ -244,12 +247,12 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-					RootId:              sb.RootId(),
-					Type:                sb.Type(),
-					Blocks:              sb.Blocks(),
-					Details:             details,
-					Relations:           sb.Relations(),
-					ObjectTypes:         objectTypes,
+					RootId:      sb.RootId(),
+					Type:        sb.Type(),
+					Blocks:      sb.Blocks(),
+					Details:     details,
+					Relations:   sb.Relations(),
+					ObjectTypes: objectTypes,
 				}},
 			},
 		})
@@ -308,17 +311,17 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 	// todo: should we use badger here?
 	timeout := time.After(DepSmartblockSyncEventsTimeout)
 
-	detailsEvents := make(map[string]*pb.EventObjectDetailsSet, len(sb.depIds))
+	sb.lastDepDetails = make(map[string]*pb.EventObjectDetailsSet, len(sb.depIds))
 loop:
-	for len(detailsEvents) < len(sb.depIds) {
+	for len(sb.lastDepDetails) < len(sb.depIds) {
 		select {
 		case <-timeout:
 			break loop
 		case d := <-ch:
 			if d.Details != nil {
-				detailsEvents[d.BlockId] = &pb.EventObjectDetailsSet{
+				sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
 					Id:      d.BlockId,
-					Details: d.SmartBlockMeta.Details,
+					Details: d.Details,
 				}
 			}
 			if d.ObjectTypes != nil {
@@ -352,8 +355,8 @@ loop:
 			}
 		}
 	}
-	
-	for _, det := range detailsEvents {
+
+	for _, det := range sb.lastDepDetails {
 		details = append(details, det)
 	}
 
@@ -375,16 +378,31 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	if sb.sendEvent != nil && d.BlockId != sb.Id() {
 		msgs := []*pb.EventMessage{}
 		if d.Details != nil {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectDetailsSet{
-					ObjectDetailsSet: &pb.EventObjectDetailsSet{
-						Id:      d.BlockId,
-						Details: d.Details,
+			sb.lastDepDetailsMutex.Lock()
+			defer sb.lastDepDetailsMutex.Unlock()
+			var details *types.Struct
+			if v, exists := sb.lastDepDetails[d.BlockId]; exists {
+				details = pbtypes.StructDiff(v.Details, d.Details)
+			} else {
+				details = d.Details
+			}
+			if details != nil && len(details.Fields) > 0 {
+				msgs = append(msgs, &pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectDetailsSet{
+						ObjectDetailsSet: &pb.EventObjectDetailsSet{
+							Id:      d.BlockId,
+							Details: details,
+						},
 					},
-				},
-			})
+				})
+			}
+
+			sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
+				Id:      d.BlockId,
+				Details: d.Details,
+			}
 		}
-		
+
 		if len(msgs) == 0 {
 			return
 		}
@@ -464,6 +482,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	err = source.InjectCreationInfo(sb.source, s)
 	if err != nil {
 		log.With("thread", sb.Id()).Errorf("injectCreationInfo failed: %s", err.Error())
+	}
+	if s.RootId() == "_otprofile" {
+		fmt.Println("")
 	}
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
