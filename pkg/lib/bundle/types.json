@@ -24,7 +24,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
-      "layoutAlign"
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -52,7 +53,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
-      "layoutAlign"
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -81,6 +83,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "tag"
     ]
   },
@@ -110,6 +113,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "assignee",
       "dueDate",
       "attachments",
@@ -134,6 +138,7 @@
       "description",
       "creator",
       "layoutAlign",
+      "isHidden",
       "mpAddedToLibrary",
       "relationFormat",
       "isHidden"
@@ -165,6 +170,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -205,7 +211,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
-      "layoutAlign"
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -236,6 +243,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary",
@@ -270,6 +278,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "templateType"
     ]
   },
@@ -300,6 +309,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "setOf"
     ]
   },
@@ -329,7 +339,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
-      "layoutAlign"
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -358,6 +369,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -396,7 +408,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
-      "layoutAlign"
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -426,6 +439,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -465,7 +479,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
-      "layoutAlign"
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -494,6 +509,7 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
+      "isHidden",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -525,7 +541,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
-      "layoutAlign"
+      "layoutAlign",
+      "isHidden"
     ]
   }
 ]

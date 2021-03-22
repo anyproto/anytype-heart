@@ -46,6 +46,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 	if err != nil {
 		return nil, nil, err
 	}
+	extraRels = []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelation(bundle.RelationKeyRecommendedLayout)}
 
 	var relationKeys []string
 	for i := range ot.Relations {
