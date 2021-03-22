@@ -112,6 +112,7 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 }
 
 func (i *indexer) reindexBundled() {
+	// todo: index only missing ones
 	var (
 		d   state.Doc
 		err error
@@ -126,6 +127,15 @@ func (i *indexer) reindexBundled() {
 		ids = append(ids, tk.URL())
 	}
 
+	for _, rk := range bundle.ListRelationsKeys() {
+		// temp code to remove accidentally indexed relations
+		// todo: remove this
+		err = i.store.DeleteObject(addr.CustomRelationURLPrefix+rk.String())
+		if err != nil {
+			log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
+		}
+	}
+
 	ids = append(ids, addr.AnytypeProfileId)
 	for _, id := range ids {
 		if d, err = i.openDoc(id); err != nil {
@@ -135,6 +145,10 @@ func (i *indexer) reindexBundled() {
 
 		if err := i.store.CreateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
+		}
+
+		if err = i.store.AddToIndexQueue(id); err != nil {
+			log.With("thread", id).Errorf("can't add to index: %v", err)
 		}
 	}
 }
