@@ -228,7 +228,7 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, objectTypeUrlByObject, objectTypes, err := sb.fetchMeta()
+		details, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
 		}
@@ -243,13 +243,12 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
-				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
+				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
 					RootId:              sb.RootId(),
 					Type:                sb.Type(),
 					Blocks:              sb.Blocks(),
 					Details:             details,
 					Relations:           sb.Relations(),
-					ObjectTypePerObject: objectTypeUrlByObject,
 					ObjectTypes:         objectTypes,
 				}},
 			},
@@ -258,7 +257,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypeUrlByObject []*pb.EventBlockShowObjectTypePerObject, objectTypes []*pbrelation.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -308,9 +307,8 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 
 	// todo: should we use badger here?
 	timeout := time.After(DepSmartblockSyncEventsTimeout)
-	var objectTypeUrlByObjectMap = map[string]string{}
 
-	detailsEvents := make(map[string]*pb.EventBlockSetDetails, len(sb.depIds))
+	detailsEvents := make(map[string]*pb.EventObjectDetailsSet, len(sb.depIds))
 loop:
 	for len(detailsEvents) < len(sb.depIds) {
 		select {
@@ -318,7 +316,7 @@ loop:
 			break loop
 		case d := <-ch:
 			if d.Details != nil {
-				detailsEvents[d.BlockId] = &pb.EventBlockSetDetails{
+				detailsEvents[d.BlockId] = &pb.EventObjectDetailsSet{
 					Id:      d.BlockId,
 					Details: d.SmartBlockMeta.Details,
 				}
@@ -335,7 +333,6 @@ loop:
 						if slice.FindPos(uniqueObjTypes, ot) == -1 {
 							uniqueObjTypes = append(uniqueObjTypes, ot)
 						}
-						objectTypeUrlByObjectMap[d.BlockId] = ot
 					}
 				}
 			}
@@ -355,14 +352,7 @@ loop:
 			}
 		}
 	}
-
-	for id, ot := range objectTypeUrlByObjectMap {
-		objectTypeUrlByObject = append(objectTypeUrlByObject, &pb.EventBlockShowObjectTypePerObject{
-			ObjectId:   id,
-			ObjectType: ot,
-		})
-	}
-
+	
 	for _, det := range detailsEvents {
 		details = append(details, det)
 	}
@@ -386,26 +376,15 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 		msgs := []*pb.EventMessage{}
 		if d.Details != nil {
 			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetDetails{
-					BlockSetDetails: &pb.EventBlockSetDetails{
+				Value: &pb.EventMessageValueOfObjectDetailsSet{
+					ObjectDetailsSet: &pb.EventObjectDetailsSet{
 						Id:      d.BlockId,
 						Details: d.Details,
 					},
 				},
 			})
 		}
-
-		if d.Relations != nil {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetRelations{
-					BlockSetRelations: &pb.EventBlockSetRelations{
-						Id:        d.BlockId,
-						Relations: d.Relations,
-					},
-				},
-			})
-		}
-
+		
 		if len(msgs) == 0 {
 			return
 		}
@@ -656,7 +635,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 		msgs := ctx.GetMessages()
 		var isFiltered bool
 		for i, msg := range msgs {
-			if sd := msg.GetBlockSetDetails(); sd == nil || sd.Id != sb.Id() {
+			if sd := msg.GetObjectDetailsSet(); sd == nil || sd.Id != sb.Id() {
 				filtered = append(filtered, msgs[i])
 			} else {
 				isFiltered = true
@@ -704,8 +683,8 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
 					Id:        s.RootId(),
 					Relations: sb.Relations(),
 				},
@@ -731,8 +710,8 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
 					Id:        s.RootId(),
 					Relations: sb.Relations(),
 				},
@@ -809,8 +788,8 @@ mainLoop:
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
 					Id:        s.RootId(),
 					Relations: sb.Relations(),
 				},
@@ -850,8 +829,8 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
 					Id:        s.RootId(),
 					Relations: sb.Relations(),
 				},

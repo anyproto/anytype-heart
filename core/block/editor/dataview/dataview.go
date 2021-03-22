@@ -786,7 +786,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	for _, depEntry := range depEntries {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDetails{BlockSetDetails: &pb.EventBlockSetDetails{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfObjectDetailsSet{ObjectDetailsSet: &pb.EventObjectDetailsSet{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
 	}
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
@@ -811,8 +811,8 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 					return
 				}
 				d.SendEvent([]*pb.EventMessage{
-					{Value: &pb.EventMessageValueOfBlockSetDetails{
-						BlockSetDetails: &pb.EventBlockSetDetails{
+					{Value: &pb.EventMessageValueOfObjectDetailsSet{
+						ObjectDetailsSet: &pb.EventObjectDetailsSet{
 							Id:      pbtypes.GetString(rec, bundle.RelationKeyId.String()),
 							Details: rec,
 						}}}})

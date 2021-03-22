@@ -60,6 +60,70 @@ func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
 	return &types.Struct{Fields: m}
 }
 
+// StructDiff returns struct which contains:
+// - st2 fields that not exist in st1
+// - st2 fields that not equal to ones exist in st1
+// - NullValue for st1 fields not exist in st2
+// In case st1 and st2 are equal returns nil
+func StructDiff(st1, st2 *types.Struct) *types.Struct {
+	var diff *types.Struct
+	if st1 == nil {
+		return st2
+	}
+	if st2 == nil {
+		diff = &types.Struct{Fields: map[string]*types.Value{}}
+		for k, _ := range st1.Fields {
+			diff.Fields[k] = Null()
+		}
+		return diff
+	}
+
+	for k, v2 := range st2.Fields {
+		v1, ok := st1.Fields[k]
+		if !ok || !v1.Equal(v2) {
+			if diff == nil {
+				diff = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			diff.Fields[k] = v2
+		}
+	}
+
+	for k, _ := range st1.Fields {
+		_, ok := st2.Fields[k]
+		if !ok {
+			if diff == nil {
+				diff = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			diff.Fields[k] = Null()
+		}
+	}
+
+	return diff
+}
+
+func RelationsDiff(rels1, rels2 []*pbrelation.Relation) (added []*pbrelation.Relation, updated []*pbrelation.Relation, removed []string) {
+	for i := 0; i < len(rels2); i++ {
+		if r := GetRelation(rels1, rels2[i].Key); r == nil {
+			added = append(added, r)
+			continue
+		} else {
+			if !RelationEqual(r, rels2[i]) {
+				updated = append(updated, rels2[i])
+				continue
+			}
+		}
+	}
+
+	for i := 0; i < len(rels1); i++ {
+		if r := GetRelation(rels2, rels1[i].Key); r == nil {
+			removed = append(removed, rels1[i].Key)
+			continue
+		}
+	}
+
+	return
+}
+
 func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) (equal bool) {
 	if len(rels1) != len(rels2) {
 		return false
