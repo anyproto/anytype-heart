@@ -725,7 +725,7 @@ func (s *service) SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest)
 
 func (s *service) SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error) {
 	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		return b.SetDetails(ctx, req.Details, false)
+		return b.SetDetails(ctx, req.Details, true)
 	})
 }
 
