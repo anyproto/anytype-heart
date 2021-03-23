@@ -60,7 +60,7 @@ func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
 	return &types.Struct{Fields: m}
 }
 
-// StructDiff returns struct which contains:
+// StructDiff returns pb struct which contains:
 // - st2 fields that not exist in st1
 // - st2 fields that not equal to ones exist in st1
 // - nil map value for st1 fields not exist in st2

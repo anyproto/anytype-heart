@@ -156,10 +156,10 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 
 func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMessage {
 	var wmsgs []simple.EventMessage
-	for i := range msgs{
+	for i := range msgs {
 		wmsgs = append(wmsgs, simple.EventMessage{
 			Virtual: virtual,
-			Msg: msgs[i],
+			Msg:     msgs[i],
 		})
 	}
 	return wmsgs
@@ -167,42 +167,41 @@ func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMess
 
 // StructDiffIntoEvents converts map into events. nil map value converts to Remove event
 func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.EventMessage) {
-	if diff == nil || len(diff.Fields) > 0 {
+	if diff == nil || len(diff.Fields) == 0 {
 		return nil
 	}
-		var (
-			removed []string
-			details []*pb.EventObjectDetailsAmendKeyValue
-		)
+	var (
+		removed []string
+		details []*pb.EventObjectDetailsAmendKeyValue
+	)
 
-		for k, v := range diff.Fields {
-			if v == nil {
-				removed = append(removed, k)
-				continue
-			}
-			details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: k, Value: v})
+	for k, v := range diff.Fields {
+		if v == nil {
+			removed = append(removed, k)
+			continue
 		}
-		if len(details) > 0 {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectDetailsAmend{
-					ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
-						Id:      contextId,
-						Details: details,
-					},
+		details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: k, Value: v})
+	}
+	if len(details) > 0 {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsAmend{
+				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+					Id:      contextId,
+					Details: details,
 				},
-			})
-		}
-		if len(removed) > 0 {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfObjectDetailsUnset{
-					ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
-						Id:      contextId,
-						Keys:	 removed,
-					},
+			},
+		})
+	}
+	if len(removed) > 0 {
+		msgs = append(msgs, &pb.EventMessage{
+			Value: &pb.EventMessageValueOfObjectDetailsUnset{
+				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+					Id:   contextId,
+					Keys: removed,
 				},
-			})
-		}
+			},
+		})
+	}
 
-		return
+	return
 }
-
