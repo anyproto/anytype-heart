@@ -21,10 +21,11 @@ message Event {
             Account.Details accountDetails = 201;
 
             Object.Details.Set objectDetailsSet = 16;
-            Object.Detail.Set objectDetailSet = 50;
+            Object.Details.Amend objectDetailsAmend = 50;
+            Object.Details.Unset objectDetailsUnset = 51;
             Object.Relations.Set objectRelationsSet = 22;
-            Object.Relation.Set objectRelationSet = 51;
-            Object.Relation.Remove objectRelationRemove = 52;
+            Object.Relations.Amend objectRelationsAmend = 52;
+            Object.Relations.Remove objectRelationsRemove = 53;
 
             Object.Show objectShow = 30;
 
@@ -87,19 +88,27 @@ message Event {
     }
 
     message Object {
-        message Detail {
-            message Set {
-                string id = 1; // context objectId
-                string key = 2;
-                google.protobuf.Value value = 3;// missing value means key should be removed
-            }
-        }
-
         message Details {
-            // currently this may be a patch instead of full state
+            // Amend existing state
+            message Amend {
+                message KeyValue {
+                    string key = 1;
+                    google.protobuf.Value value = 2; // should not be null
+                }
+                string id = 1; // context objectId
+                repeated KeyValue details = 2; // slice of changed key-values
+            }
+
+            // Overwrite current state
             message Set {
                 string id = 1; // context objectId
-                google.protobuf.Struct details = 2;// may be a partial struct here, NullValue means the value should be removed
+                google.protobuf.Struct details = 2; // can not be a partial state. Should replace client details state
+            }
+
+            // Unset existing detail keys
+            message Unset {
+                string id = 1; // context objectId
+                repeated string keys = 2;
             }
         }
 
@@ -107,6 +116,16 @@ message Event {
             message Set {
                 string id = 1; // context objectId
                 repeated anytype.relation.Relation relations = 2;
+            }
+
+            message Amend {
+                string id = 1; // context objectId
+                repeated anytype.relation.Relation relations = 2;
+            }
+
+            message Remove {
+                string id = 1; // context objectId
+                repeated string keys = 2;
             }
         }
 

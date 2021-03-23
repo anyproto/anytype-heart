@@ -446,16 +446,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 				action.Details = &undo.Details{Before: pbtypes.CopyStruct(pbtypes.StructCutKeys(prev, ignoreKeys)), After: pbtypes.CopyStruct(pbtypes.StructCutKeys(s.details, ignoreKeys))}
 			}
 
-			msgs = append(msgs, simple.EventMessage{
-				Msg: &pb.EventMessage{
-					Value: &pb.EventMessageValueOfObjectDetailsSet{
-						ObjectDetailsSet: &pb.EventObjectDetailsSet{
-							Id:      s.RootId(),
-							Details: pbtypes.CopyStruct(diff),
-						},
-					},
-				},
-			})
+			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
+
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
 			s.parent.details = s.details
@@ -467,33 +459,31 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		if added, updated, removed := pbtypes.RelationsDiff(prev, s.extraRelations); (len(added) + len(updated) + len(removed)) > 0 {
 			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
 			s.parent.extraRelations = s.extraRelations
-			for _, r := range append(added, updated...) {
+			if len(added)+len(updated) > 0 {
 				msgs = append(msgs, simple.EventMessage{
 					Msg: &pb.EventMessage{
-						Value: &pb.EventMessageValueOfObjectRelationSet{
-							ObjectRelationSet: &pb.EventObjectRelationSet{
-								Id:       s.RootId(),
-								Relation: pbtypes.CopyRelation(r),
+						Value: &pb.EventMessageValueOfObjectRelationsAmend{
+							ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
+								Id:        s.RootId(),
+								Relations: append(added, updated...),
 							},
 						},
 					},
 				})
 			}
 
-			for _, r := range removed {
+			if len(removed) > 0 {
 				msgs = append(msgs, simple.EventMessage{
 					Msg: &pb.EventMessage{
-						Value: &pb.EventMessageValueOfObjectRelationSet{
-							ObjectRelationSet: &pb.EventObjectRelationSet{
-								Id:          s.RootId(),
-								RelationKey: r,
-								Relation:    nil,
+						Value: &pb.EventMessageValueOfObjectRelationsRemove{
+							ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
+								Id:   s.RootId(),
+								Keys: removed,
 							},
 						},
 					},
 				})
 			}
-
 		}
 	}
 

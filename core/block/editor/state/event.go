@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -152,3 +153,56 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	}
 	return nil
 }
+
+func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMessage {
+	var wmsgs []simple.EventMessage
+	for i := range msgs{
+		wmsgs = append(wmsgs, simple.EventMessage{
+			Virtual: virtual,
+			Msg: msgs[i],
+		})
+	}
+	return wmsgs
+}
+
+// StructDiffIntoEvents converts map into events. nil map value converts to Remove event
+func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.EventMessage) {
+	if diff == nil || len(diff.Fields) > 0 {
+		return nil
+	}
+		var (
+			removed []string
+			details []*pb.EventObjectDetailsAmendKeyValue
+		)
+
+		for k, v := range diff.Fields {
+			if v == nil {
+				removed = append(removed, k)
+				continue
+			}
+			details = append(details, &pb.EventObjectDetailsAmendKeyValue{Key: k, Value: v})
+		}
+		if len(details) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectDetailsAmend{
+					ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
+						Id:      contextId,
+						Details: details,
+					},
+				},
+			})
+		}
+		if len(removed) > 0 {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectDetailsUnset{
+					ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
+						Id:      contextId,
+						Keys:	 removed,
+					},
+				},
+			})
+		}
+
+		return
+}
+

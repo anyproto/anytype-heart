@@ -63,7 +63,7 @@ func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
 // StructDiff returns struct which contains:
 // - st2 fields that not exist in st1
 // - st2 fields that not equal to ones exist in st1
-// - NullValue for st1 fields not exist in st2
+// - nil map value for st1 fields not exist in st2
 // In case st1 and st2 are equal returns nil
 func StructDiff(st1, st2 *types.Struct) *types.Struct {
 	var diff *types.Struct
@@ -73,7 +73,7 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 	if st2 == nil {
 		diff = &types.Struct{Fields: map[string]*types.Value{}}
 		for k, _ := range st1.Fields {
-			diff.Fields[k] = Null()
+			diff.Fields[k] = nil
 		}
 		return diff
 	}
@@ -94,7 +94,7 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 			if diff == nil {
 				diff = &types.Struct{Fields: map[string]*types.Value{}}
 			}
-			diff.Fields[k] = Null()
+			diff.Fields[k] = nil
 		}
 	}
 

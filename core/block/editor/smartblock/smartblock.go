@@ -380,23 +380,20 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 		if d.Details != nil {
 			sb.lastDepDetailsMutex.Lock()
 			defer sb.lastDepDetailsMutex.Unlock()
-			var details *types.Struct
+
 			if v, exists := sb.lastDepDetails[d.BlockId]; exists {
-				details = pbtypes.StructDiff(v.Details, d.Details)
+				diff := pbtypes.StructDiff(v.Details, d.Details)
+				msgs = append(msgs, state.StructDiffIntoEvents(d.BlockId, diff)...)
 			} else {
-				details = d.Details
-			}
-			if details != nil && len(details.Fields) > 0 {
 				msgs = append(msgs, &pb.EventMessage{
 					Value: &pb.EventMessageValueOfObjectDetailsSet{
 						ObjectDetailsSet: &pb.EventObjectDetailsSet{
 							Id:      d.BlockId,
-							Details: details,
+							Details: d.Details,
 						},
 					},
 				})
 			}
-
 			sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
 				Id:      d.BlockId,
 				Details: d.Details,
