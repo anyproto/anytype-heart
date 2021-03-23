@@ -104,7 +104,7 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 func RelationsDiff(rels1, rels2 []*pbrelation.Relation) (added []*pbrelation.Relation, updated []*pbrelation.Relation, removed []string) {
 	for i := 0; i < len(rels2); i++ {
 		if r := GetRelation(rels1, rels2[i].Key); r == nil {
-			added = append(added, r)
+			added = append(added, rels2[i])
 			continue
 		} else {
 			if !RelationEqual(r, rels2[i]) {
