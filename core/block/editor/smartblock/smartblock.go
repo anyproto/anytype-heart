@@ -484,9 +484,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if err != nil {
 		log.With("thread", sb.Id()).Errorf("injectCreationInfo failed: %s", err.Error())
 	}
-	if s.RootId() == "_otprofile" {
-		fmt.Println("")
-	}
+	
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
