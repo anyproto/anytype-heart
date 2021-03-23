@@ -1213,7 +1213,7 @@ func (s *service) createSmartBlock(id string, initCtx *smartblock.InitContext) (
 	case pb.SmartBlockType_ObjectType:
 		sb = editor.NewObjectType(s.meta, s)
 	case pb.SmartBlockType_Relation:
-		sb = editor.NewObjectType(s.meta, s)
+		sb = editor.NewRelation(s.meta, s)
 	case pb.SmartBlockType_File:
 		sb = editor.NewFiles(s.meta)
 	case pb.SmartBlockType_MarketplaceType:
