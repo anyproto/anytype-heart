@@ -27,6 +27,11 @@ type indexedRelation struct {
 	a  core.Service
 }
 
+func (v *indexedRelation) ReadOnly() bool {
+	// should be false if we proxy relation via the object type
+	return true
+}
+
 func (v *indexedRelation) Id() string {
 	return v.id
 }

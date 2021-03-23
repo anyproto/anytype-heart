@@ -25,6 +25,10 @@ type bundledObjectType struct {
 	a  core.Service
 }
 
+func (v *bundledObjectType) ReadOnly() bool {
+	return true
+}
+
 func (v *bundledObjectType) Id() string {
 	return v.id
 }

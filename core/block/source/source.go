@@ -37,7 +37,7 @@ type Source interface {
 	Anytype() core.Service
 	Type() pb.SmartBlockType
 	Virtual() bool
-	//ReadOnly() bool
+	ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
@@ -112,6 +112,10 @@ type source struct {
 	metaOnly       bool
 	closed         chan struct{}
 	openedAt       time.Time
+}
+
+func (s *source) ReadOnly() bool {
+	return false
 }
 
 func (s *source) Id() string {

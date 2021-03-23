@@ -27,6 +27,10 @@ type bundledRelation struct {
 	a  core.Service
 }
 
+func (v *bundledRelation) ReadOnly() bool {
+	return true
+}
+
 func (v *bundledRelation) Id() string {
 	return v.id
 }

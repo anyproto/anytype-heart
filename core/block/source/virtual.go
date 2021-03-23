@@ -24,6 +24,10 @@ type virtual struct {
 	sbType pb.SmartBlockType
 }
 
+func (v *virtual) ReadOnly() bool {
+	return false
+}
+
 func (v *virtual) Id() string {
 	return v.id
 }

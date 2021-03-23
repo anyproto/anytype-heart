@@ -437,7 +437,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
-
 		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
 			ignoreKeys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)
 			// cut-off local and derived keys
@@ -447,7 +446,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			}
 
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
-
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
 			s.parent.details = s.details
