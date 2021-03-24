@@ -41,7 +41,7 @@ func (v *indexedRelation) Anytype() core.Service {
 }
 
 func (v *indexedRelation) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_Page
+	return pb.SmartBlockType_Relation
 }
 
 func (v *indexedRelation) Virtual() bool {
