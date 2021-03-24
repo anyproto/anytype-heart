@@ -49,7 +49,7 @@ func (v *indexedRelation) Virtual() bool {
 }
 
 func (v *indexedRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
-	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+	if !strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
 		return nil, nil, fmt.Errorf("incorrect relation id: not an indexed relation id")
 	}
 
