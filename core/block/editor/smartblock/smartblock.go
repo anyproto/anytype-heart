@@ -467,6 +467,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			checkRestrictions = false
 		}
 	}
+	log.Debugf("sb.Apply() %s readonly %v, addHistory %v", sb.Id(), sb.source.ReadOnly(), addHistory)
 	if sb.source.ReadOnly() && addHistory {
 		// workaround to detect user-generated action
 		return fmt.Errorf("object is readonly")
