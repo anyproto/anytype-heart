@@ -124,7 +124,6 @@ type smartBlock struct {
 	metaSub           meta.Subscriber
 	metaData          *core.SmartBlockMeta
 	lastDepDetails    map[string]*pb.EventObjectDetailsSet
-	lastDepDetailsMutex   sync.Mutex
 
 	disableLayouts    bool
 	onNewStateHooks   []func()
@@ -378,9 +377,6 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	if sb.sendEvent != nil && d.BlockId != sb.Id() {
 		msgs := []*pb.EventMessage{}
 		if d.Details != nil {
-			sb.lastDepDetailsMutex.Lock()
-			defer sb.lastDepDetailsMutex.Unlock()
-
 			if v, exists := sb.lastDepDetails[d.BlockId]; exists {
 				diff := pbtypes.StructDiff(v.Details, d.Details)
 				msgs = append(msgs, state.StructDiffIntoEvents(d.BlockId, diff)...)
