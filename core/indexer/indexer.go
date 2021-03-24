@@ -127,15 +127,6 @@ func (i *indexer) reindexBundled() {
 		ids = append(ids, tk.URL())
 	}
 
-	for _, rk := range bundle.ListRelationsKeys() {
-		// temp code to remove accidentally indexed relations
-		// todo: remove this
-		err = i.store.DeleteObject(addr.CustomRelationURLPrefix+rk.String())
-		if err != nil {
-			log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
-		}
-	}
-
 	ids = append(ids, addr.AnytypeProfileId)
 	for _, id := range ids {
 		if d, err = i.openDoc(id); err != nil {
