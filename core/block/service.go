@@ -354,7 +354,7 @@ func (s *service) CloseBlocks() {
 	s.m.Lock()
 	defer s.m.Unlock()
 
-	for _, ob := range s.openedBlocks{
+	for _, ob := range s.openedBlocks {
 		ob.Lock()
 		ob.locked = true
 		ob.BlockClose()

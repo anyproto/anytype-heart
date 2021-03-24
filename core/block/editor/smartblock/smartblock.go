@@ -116,14 +116,14 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds            []string
-	sendEvent         func(e *pb.Event)
-	undo              undo.History
-	source            source.Source
-	meta              meta.Service
-	metaSub           meta.Subscriber
-	metaData          *core.SmartBlockMeta
-	lastDepDetails    map[string]*pb.EventObjectDetailsSet
+	depIds         []string
+	sendEvent      func(e *pb.Event)
+	undo           undo.History
+	source         source.Source
+	meta           meta.Service
+	metaSub        meta.Subscriber
+	metaData       *core.SmartBlockMeta
+	lastDepDetails map[string]*pb.EventObjectDetailsSet
 
 	disableLayouts    bool
 	onNewStateHooks   []func()
@@ -467,7 +467,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			checkRestrictions = false
 		}
 	}
-	log.Debugf("sb.Apply() %s readonly %v, addHistory %v", sb.Id(), sb.source.ReadOnly(), addHistory)
 	if sb.source.ReadOnly() && addHistory {
 		// workaround to detect user-generated action
 		return fmt.Errorf("object is readonly")
@@ -482,7 +481,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		log.With("thread", sb.Id()).Errorf("injectCreationInfo failed: %s", err.Error())
 	}
 	// inject lastModifiedDate
-	s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
+	if sb.Anytype() != nil {
+		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
+	}
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
