@@ -86,6 +86,7 @@ type Service interface {
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
+	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
@@ -347,6 +348,18 @@ func (s *service) CloseBlock(id string) error {
 	defer ob.Unlock()
 	ob.BlockClose()
 	return nil
+}
+
+func (s *service) CloseBlocks() {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	for _, ob := range s.openedBlocks{
+		ob.Lock()
+		ob.locked = true
+		ob.BlockClose()
+		ob.Unlock()
+	}
 }
 
 func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
