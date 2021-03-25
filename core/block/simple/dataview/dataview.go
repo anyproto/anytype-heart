@@ -385,6 +385,24 @@ func (d *Dataview) DeleteRelation(relationKey string) error {
 		}
 	}
 
+	for _, view := range d.content.Views {
+		var filteredFilters []*model.BlockContentDataviewFilter
+		for _, filter := range view.Filters {
+			if filter.RelationKey != relationKey {
+				filteredFilters = append(filteredFilters, filter)
+			}
+		}
+		view.Filters = filteredFilters
+
+		var filteredSorts []*model.BlockContentDataviewSort
+		for _, sort := range view.Sorts {
+			if sort.RelationKey != relationKey {
+				filteredSorts = append(filteredSorts, sort)
+			}
+		}
+		view.Sorts = filteredSorts
+	}
+
 	if !found {
 		return fmt.Errorf("relation not found")
 	}
@@ -522,7 +540,7 @@ func mergeSelectOptions(opts1, opts2 []*pbrelation.RelationOption) []*pbrelation
 			opt2.Color = opt2.Color
 			found = true
 		}
-		
+
 		if !found {
 			opts = append(opts, &*opt2)
 		}
