@@ -26,10 +26,6 @@ type Profile struct {
 
 func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error {
 	var errDeadlineExceeded = status.Error(codes.DeadlineExceeded, "deadline exceeded")
-	select {
-	case <-a.onlineCh:
-	case <-ctx.Done():
-	}
 
 	if a.cafe == nil {
 		close(ch)
