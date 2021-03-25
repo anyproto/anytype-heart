@@ -473,6 +473,9 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 
 			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 		}
+	} else if req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
+		// in order to stop send events we need to close all opened blocks in case client still has them
+		mw.app.MustComponent("blockService").(block.Service).CloseBlocks()
 	}
 	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
 }

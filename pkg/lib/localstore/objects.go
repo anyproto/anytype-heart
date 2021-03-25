@@ -193,7 +193,6 @@ var filterNotSystemObjects = &filterObjectTypes{
 	objectTypes: []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
-		smartblock.SmartBlockTypeObjectType,
 	},
 	not: true,
 }
@@ -1264,9 +1263,9 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 				return err
 			}
 		}
-
 		_, details := bundle.GetDetailsForRelation(bundled, relCopy)
-		err = m.updateObject(txn, addr.CustomRelationURLPrefix+relation.Key, model.ObjectInfo{
+		id := pbtypes.GetString(details, "id")
+		err = m.updateObject(txn, id, model.ObjectInfo{
 			Relations: &pbrelation.Relations{},
 			Details:   &types.Struct{Fields: map[string]*types.Value{}},
 		}, details, nil, nil, relation.Description)

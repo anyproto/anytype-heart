@@ -27,6 +27,11 @@ type indexedRelation struct {
 	a  core.Service
 }
 
+func (v *indexedRelation) ReadOnly() bool {
+	// should be false if we proxy relation via the object type
+	return true
+}
+
 func (v *indexedRelation) Id() string {
 	return v.id
 }
@@ -36,7 +41,7 @@ func (v *indexedRelation) Anytype() core.Service {
 }
 
 func (v *indexedRelation) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_Page
+	return pb.SmartBlockType_Relation
 }
 
 func (v *indexedRelation) Virtual() bool {
@@ -44,7 +49,7 @@ func (v *indexedRelation) Virtual() bool {
 }
 
 func (v *indexedRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
-	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
+	if !strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
 		return nil, nil, fmt.Errorf("incorrect relation id: not an indexed relation id")
 	}
 

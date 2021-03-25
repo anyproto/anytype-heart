@@ -28,7 +28,7 @@ func New() History {
 }
 
 type History interface {
-	Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error)
+	Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersionsVersion, err error)
 	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersionsVersion, err error)
 	SetVersion(pageId, versionId string) (err error)
 	app.Component
@@ -55,15 +55,14 @@ func (h *history) Name() (name string) {
 	return CName
 }
 
-func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error) {
+func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersionsVersion, err error) {
 	s, ver, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
 	}
 
 	metaD := h.meta.FetchMeta(s.DepSmartIds())
-	details := make([]*pb.EventBlockSetDetails, 0, len(metaD))
-	objectTypePerObject := make([]*pb.EventBlockShowObjectTypePerObject, 0, len(metaD))
+	details := make([]*pb.EventObjectDetailsSet, 0, len(metaD))
 	var uniqueObjTypes []string
 	sbType, err := smartblock.SmartBlockTypeFromID(pageId)
 	if err != nil {
@@ -71,33 +70,29 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventBlockShow, ver *pb
 	}
 	metaD = append(metaD, meta.Meta{BlockId: pageId, SmartBlockMeta: core.SmartBlockMeta{ObjectTypes: s.ObjectTypes(), Details: s.Details()}})
 	for _, m := range metaD {
-		details = append(details, &pb.EventBlockSetDetails{
+		details = append(details, &pb.EventObjectDetailsSet{
 			Id:      m.BlockId,
 			Details: m.Details,
 		})
-		e := &pb.EventBlockShowObjectTypePerObject{
-			ObjectId: m.BlockId,
-		}
+
 		if len(m.ObjectTypes) > 0 {
 			if len(m.ObjectTypes) > 1 {
 				log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
 			}
-			e.ObjectType = m.ObjectTypes[0]
+			if slice.FindPos(uniqueObjTypes, m.ObjectTypes[0]) == -1 {
+				uniqueObjTypes = append(uniqueObjTypes, m.ObjectTypes[0])
+			}
 		}
-		objectTypePerObject = append(objectTypePerObject, e)
-		if slice.FindPos(uniqueObjTypes, e.ObjectType) == -1 {
-			uniqueObjTypes = append(uniqueObjTypes, e.ObjectType)
-		}
+
 	}
 
 	objectTypes := h.meta.FetchObjectTypes(uniqueObjTypes)
-	return &pb.EventBlockShow{
-		RootId:              pageId,
-		Type:                smartblock.SmartBlockTypeToProto(sbType),
-		Blocks:              s.Blocks(),
-		Details:             details,
-		ObjectTypePerObject: objectTypePerObject,
-		ObjectTypes:         objectTypes,
+	return &pb.EventObjectShow{
+		RootId:      pageId,
+		Type:        smartblock.SmartBlockTypeToProto(sbType),
+		Blocks:      s.Blocks(),
+		Details:     details,
+		ObjectTypes: objectTypes,
 	}, ver, nil
 }
 

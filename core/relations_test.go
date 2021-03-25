@@ -85,7 +85,7 @@ func TestRelationAdd(t *testing.T) {
 	respOpenNewPage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 	require.Len(t, respOpenNewPage.Event.Messages, 2)
-	block := getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+	block := getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 
 	require.Len(t, block.GetDataview().Relations, len(bundle.MustGetType(bundle.TypeKeyPage).Relations))
 
@@ -104,7 +104,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 
 		require.Len(t, block.GetDataview().Relations, len(bundle.MustGetType(bundle.TypeKeyPage).Relations))
 	})
@@ -125,7 +125,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 		require.Len(t, block.GetDataview().Relations, len(bundle.MustGetType(bundle.TypeKeyPage).Relations)+1)
 
 		respAccountCreate := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: mw.GetAnytype().Account(), RootPath: rootPath})
@@ -133,7 +133,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 		require.Len(t, block.GetDataview().Relations, len(bundle.MustGetType(bundle.TypeKeyPage).Relations)+1)
 	})
 
@@ -173,7 +173,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 
-		blockShow := getEventBlockShow(respOpenNewPage.Event.Messages)
+		blockShow := getEventObjectShow(respOpenNewPage.Event.Messages)
 
 		relFromSet1 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate1.RelationKey)
 		require.NotNil(t, relFromSet1)
@@ -193,7 +193,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 
-		blockShow := getEventBlockShow(respOpenNewPage.Event.Messages)
+		blockShow := getEventObjectShow(respOpenNewPage.Event.Messages)
 
 		for _, rel := range bundle.MustGetType(bundle.TypeKeyTask).Relations {
 			var found bool
@@ -227,7 +227,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 
-		blockShow = getEventBlockShow(respOpenNewPage.Event.Messages)
+		blockShow = getEventObjectShow(respOpenNewPage.Event.Messages)
 		for _, rel := range bundle.MustGetType(bundle.TypeKeyTask).Relations {
 			var found bool
 			for _, relInObj := range blockShow.Relations {
@@ -255,7 +255,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 	})
 
 	t.Run("update_cant_change_format", func(t *testing.T) {
@@ -275,7 +275,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 
 		require.Equal(t, relName, block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
 	})
@@ -298,7 +298,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 
 		require.Equal(t, "new_changed", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
 	})
@@ -313,7 +313,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 	})
 
 	t.Run("delete_correct", func(t *testing.T) {
@@ -332,7 +332,7 @@ func TestRelationAdd(t *testing.T) {
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 2)
-		block = getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 
 		require.Nil(t, getRelationByKey(block.GetDataview().Relations, relKey))
 	})
@@ -408,7 +408,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 1)
 
-		relOnPage := getRelationByKey(getEventBlockShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
+		relOnPage := getRelationByKey(getEventObjectShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
 		require.Equal(t, foundRel.Key, relOnPage.Key)
 
 		respOptAdd := mw.BlockDataviewRecordRelationOptionAdd(&pb.RpcBlockDataviewRecordRelationOptionAddRequest{
@@ -441,7 +441,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 		require.Len(t, respOpenNewPage.Event.Messages, 1)
 
-		relOnPage = getRelationByKey(getEventBlockShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
+		relOnPage = getRelationByKey(getEventObjectShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
 		require.Equal(t, foundRel.Key, relOnPage.Key)
 		require.Len(t, relOnPage.SelectDict, 3)
 	})
@@ -630,7 +630,7 @@ func TestRelationAdd(t *testing.T) {
 
 		respOpenNewPage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
-		block := getBlockById("dataview", getEventBlockShow(respOpenNewPage.Event.Messages).Blocks)
+		block := getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 		for _, test := range tests {
 			var relFound bool
 			for _, rel := range block.GetDataview().Relations {
@@ -756,6 +756,20 @@ func TestCustomType(t *testing.T) {
 	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
 	require.Len(t, lastObjType.Relations, len(bundle.RequiredInternalRelations)+3)
 
+	respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
+		RelationKey: "type",
+		Condition:   model.BlockContentDataviewFilter_Equal,
+		Value:       pbtypes.String(bundle.TypeKeyObjectType.URL()),
+	}}})
+
+	var found2 bool
+	for _, rec := range respSearch.Records {
+		if pbtypes.GetString(rec, "id") == respObjectTypeCreate.ObjectType.Url {
+			found2 = true
+		}
+	}
+	require.True(t, found2, "new object type not found in search")
+
 	respCreateCustomTypeSet := mw.SetCreate(&pb.RpcSetCreateRequest{
 		ObjectTypeUrl: respObjectTypeCreate.ObjectType.Url,
 	})
@@ -771,7 +785,7 @@ func TestCustomType(t *testing.T) {
 	respOpenCustomTypeObject := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: customObjectId})
 	require.Equal(t, 0, int(respOpenCustomTypeObject.Error.Code), respOpenCustomTypeObject.Error.Description)
 	require.Len(t, respOpenCustomTypeObject.Event.Messages, 1)
-	show := getEventBlockShow(respOpenCustomTypeObject.Event.Messages)
+	show := getEventObjectShow(respOpenCustomTypeObject.Event.Messages)
 	require.NotNil(t, show)
 
 	profile := getDetailsForContext(show.Details, mw.GetAnytype().PredefinedBlocks().Profile)
@@ -814,17 +828,18 @@ func TestCustomType(t *testing.T) {
 
 		require.Equal(t, 1, len(recordsSet.Records))
 		require.Equal(t, getEventRecordsSet(respOpenCustomTypeSet.Event.Messages).Records[0].Fields["id"].GetStringValue(), respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue())
+		break
 	}
-	show = getEventBlockShow(respOpenCustomTypeSet.Event.Messages)
+	show = getEventObjectShow(respOpenCustomTypeSet.Event.Messages)
 	require.NotNil(t, show)
 
-	respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
+	respSearch2 := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
 		RelationKey: "type",
 		Condition:   model.BlockContentDataviewFilter_Equal,
 		Value:       pbtypes.String(respObjectTypeCreate.ObjectType.Url),
 	}}})
-	require.Equal(t, 0, int(respSearch.Error.Code), respSearch.Error.Description)
-	require.Len(t, respSearch.Records, 1)
+	require.Equal(t, 0, int(respSearch2.Error.Code), respSearch2.Error.Description)
+	require.Len(t, respSearch2.Records, 1)
 }
 
 func TestBundledType(t *testing.T) {
@@ -836,7 +851,7 @@ func TestBundledType(t *testing.T) {
 	respOpenPage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreatePage.PageId})
 	require.Equal(t, 0, int(respOpenPage.Error.Code), respOpenPage.Error.Description)
 
-	show := getEventBlockShow(respOpenPage.Event.Messages)
+	show := getEventObjectShow(respOpenPage.Event.Messages)
 	require.NotNil(t, show)
 
 	pageDetails := getDetailsForContext(show.Details, respCreatePage.PageId)
@@ -850,7 +865,7 @@ func TestBundledType(t *testing.T) {
 	respOpenPagesSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
 
-	show = getEventBlockShow(respOpenPagesSet.Event.Messages)
+	show = getEventObjectShow(respOpenPagesSet.Event.Messages)
 	require.NotNil(t, show)
 
 	recordsSet := getEventRecordsSet(respOpenPagesSet.Event.Messages)
@@ -866,7 +881,7 @@ func TestBundledType(t *testing.T) {
 	respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
 
-	show = getEventBlockShow(respOpenPagesSet.Event.Messages)
+	show = getEventObjectShow(respOpenPagesSet.Event.Messages)
 	require.NotNil(t, show)
 	require.Len(t, getEventRecordsSet(respOpenPagesSet.Event.Messages).Records, 2)
 
@@ -891,16 +906,16 @@ func getEventRecordsSet(msgs []*pb.EventMessage) *pb.EventBlockDataviewRecordsSe
 	return nil
 }
 
-func getEventBlockShow(msgs []*pb.EventMessage) *pb.EventBlockShow {
+func getEventObjectShow(msgs []*pb.EventMessage) *pb.EventObjectShow {
 	for _, msg := range msgs {
-		if v, ok := msg.Value.(*pb.EventMessageValueOfBlockShow); ok {
-			return v.BlockShow
+		if v, ok := msg.Value.(*pb.EventMessageValueOfObjectShow); ok {
+			return v.ObjectShow
 		}
 	}
 	return nil
 }
 
-func getDetailsForContext(msgs []*pb.EventBlockSetDetails, contextId string) *types2.Struct {
+func getDetailsForContext(msgs []*pb.EventObjectDetailsSet, contextId string) *types2.Struct {
 	for _, msg := range msgs {
 		if msg.Id == contextId {
 			return msg.Details

@@ -93,6 +93,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	return template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
+		template.WithTitle,
 		template.WithDataview(dataview, true),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),

@@ -161,6 +161,16 @@
     "source": "details"
   },
   {
+    "description": "Specify visual align of the layout",
+    "format": "number",
+    "hidden": true,
+    "key": "layoutAlign",
+    "maxCount": 1,
+    "name": "Layout align",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Task status?",
     "format": "status",
     "hidden": false,
@@ -594,11 +604,12 @@
     "source": "account"
   },
   {
+    "description": "Important relations that always appear at the top of the object",
     "format": "object",
     "hidden": true,
     "key": "featuredRelations",
     "maxCount": 0,
-    "name": "Featured relations management will be  implemented later.",
+    "name": "Featured Relations",
     "objectTypes": [
       "relation"
     ],

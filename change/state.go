@@ -44,10 +44,11 @@ func (sc *stateCache) Get(id string) *state.State {
 // Simple implementation hopes for CRDT and ignores errors. No merge
 func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error) {
 	var (
-		startId   string
-		applyRoot bool
-		st        = time.Now()
-		count     int
+		startId    string
+		applyRoot  bool
+		st         = time.Now()
+		lastChange *Change
+		count      int
 	)
 	if startId = root.ChangeId(); startId == "" {
 		startId = t.RootId()
@@ -56,6 +57,7 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 
 	t.Iterate(startId, func(c *Change) (isContinue bool) {
 		count++
+		lastChange = c
 		if startId == c.Id {
 			s = root.NewState()
 			if applyRoot {
@@ -78,6 +80,10 @@ func BuildStateSimpleCRDT(root *state.State, t *Tree) (s *state.State, err error
 	if err != nil {
 		return nil, err
 	}
+	if lastChange != nil {
+		s.SetLastModified(lastChange.Timestamp, lastChange.Account)
+	}
+
 	log.Infof("build state (crdt): changes: %d; dur: %v;", count, time.Since(st))
 	return s, err
 }
@@ -103,6 +109,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 				if err = s.ApplyChange(c.Change.Content...); err != nil {
 					return false
 				}
+				s.SetLastModified(c.Timestamp, c.Account)
 				s.AddFileKeys(c.FileKeys...)
 				count++
 			}
@@ -115,6 +122,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
+			s.SetLastModified(c.Timestamp, c.Account)
 			s.AddFileKeys(c.FileKeys...)
 			count++
 			s.SetChangeId(c.Id)
@@ -137,6 +145,7 @@ func BuildState(root *state.State, t *Tree) (s *state.State, err error) {
 			if err = s.ApplyChange(c.Change.Content...); err != nil {
 				return false
 			}
+			s.SetLastModified(c.Timestamp, c.Account)
 			s.AddFileKeys(c.FileKeys...)
 			count++
 			s.SetChangeId(c.Id)

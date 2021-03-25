@@ -20,10 +20,14 @@ message Event {
             Account.Show accountShow = 1;
             Account.Details accountDetails = 201;
 
-            Block.Set.Details blockSetDetails = 16; // to be renamed to objectSetDetails
-            Block.Set.Relations blockSetRelations = 22; // to be renamed to objectSetRelations
-            Block.Set.Restrictions blockSetRestrictions = 8; // to be renamed to objectSetRestrictions
-            Block.Show blockShow = 30; // to be renamed to objectShow
+            Object.Details.Set objectDetailsSet = 16;
+            Object.Details.Amend objectDetailsAmend = 50;
+            Object.Details.Unset objectDetailsUnset = 51;
+            Object.Relations.Set objectRelationsSet = 22;
+            Object.Relations.Amend objectRelationsAmend = 52;
+            Object.Relations.Remove objectRelationsRemove = 53;
+
+            Object.Show objectShow = 30;
 
             Block.Add blockAdd = 2;
             Block.Delete blockDelete = 3;
@@ -32,6 +36,7 @@ message Event {
 
             Block.Set.Fields blockSetFields = 6;
             Block.Set.ChildrenIds blockSetChildrenIds = 7;
+            Block.Set.Restrictions blockSetRestrictions = 8;
             Block.Set.BackgroundColor blockSetBackgroundColor = 9;
 
             Block.Set.Text blockSetText = 10;
@@ -81,6 +86,80 @@ message Event {
             google.protobuf.Struct details = 2;
         }
     }
+
+    message Object {
+        message Details {
+            // Amend existing state
+            message Amend {
+                message KeyValue {
+                    string key = 1;
+                    google.protobuf.Value value = 2; // should not be null
+                }
+                string id = 1; // context objectId
+                repeated KeyValue details = 2; // slice of changed key-values
+            }
+
+            // Overwrite current state
+            message Set {
+                string id = 1; // context objectId
+                google.protobuf.Struct details = 2; // can not be a partial state. Should replace client details state
+            }
+
+            // Unset existing detail keys
+            message Unset {
+                string id = 1; // context objectId
+                repeated string keys = 2;
+            }
+        }
+
+        message Relations {
+            message Set {
+                string id = 1; // context objectId
+                repeated anytype.relation.Relation relations = 2;
+            }
+
+            message Amend {
+                string id = 1; // context objectId
+                repeated anytype.relation.Relation relations = 2;
+            }
+
+            message Remove {
+                string id = 1; // context objectId
+                repeated string keys = 2;
+            }
+        }
+
+        message Relation {
+            message Set {
+                string id = 1; // context objectId
+                string relationKey = 2;
+                anytype.relation.Relation relation = 3; // missing value means relation should be removed
+            }
+            message Remove {
+                string id = 1; // context objectId
+                string relationKey = 2;
+            }
+        }
+
+        /*
+            * Works with a smart blocks: Page, Dashboard
+            * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+        */
+        message Show {
+            string rootId = 1; // Root block id
+            repeated anytype.model.Block blocks = 2; // dependent simple blocks (descendants)
+            repeated Object.Details.Set details = 3; // details for the current and dependent objects
+            SmartBlockType type = 4;
+
+            message RelationWithValuePerObject {
+                string objectId = 1;
+                repeated anytype.relation.RelationWithValue relations = 2;
+            }
+
+            repeated anytype.relation.ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
+            repeated anytype.relation.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
+        }
+    }
     message Block {
         /*
         * Event to show internal blocks on a client.
@@ -96,31 +175,6 @@ message Event {
         */
         message Add {
             repeated anytype.model.Block blocks = 1; // id -> block
-        }
-
-        /*
-          * Works with a smart blocks: Page, Dashboard
-          * Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
-        */
-        message Show {
-            string rootId = 1; // Root block id
-            repeated anytype.model.Block blocks = 2; // dependent simple blocks (descendants)
-            repeated Block.Set.Details details = 3; // details for the current and dependent objects
-            SmartBlockType type = 4;
-
-            message RelationWithValuePerObject {
-                string objectId = 1;
-                repeated anytype.relation.RelationWithValue relations = 2;
-            }
-
-            message ObjectTypePerObject {
-                string objectId = 1;
-                string objectType = 2;
-            }
-
-            repeated anytype.relation.ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
-            repeated ObjectTypePerObject objectTypePerObject = 6; // objectType URLs per object
-            repeated anytype.relation.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
         }
 
         /**
@@ -146,16 +200,6 @@ message Event {
         }
 
         message Set {
-
-            message Details {
-                string id = 1;
-                google.protobuf.Struct details = 2;
-            }
-
-            message Relations {
-                string id = 1;
-                repeated anytype.relation.Relation relations = 2;
-            }
 
             message Relation {
                 string id = 1;

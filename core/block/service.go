@@ -80,6 +80,7 @@ type Service interface {
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
+	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
@@ -345,6 +346,18 @@ func (s *service) CloseBlock(id string) error {
 	return nil
 }
 
+func (s *service) CloseBlocks() {
+	s.m.Lock()
+	defer s.m.Unlock()
+
+	for _, ob := range s.openedBlocks {
+		ob.Lock()
+		ob.locked = false
+		ob.BlockClose()
+		ob.Unlock()
+	}
+}
+
 func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(*editor.Archive)
@@ -589,6 +602,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	case pb.SmartBlockType_ObjectType:
 		sb = editor.NewObjectType(s.meta, s)
+	case pb.SmartBlockType_Relation:
+		sb = editor.NewRelation(s.meta, s)
 	case pb.SmartBlockType_File:
 		sb = editor.NewFiles(s.meta)
 	case pb.SmartBlockType_MarketplaceType:

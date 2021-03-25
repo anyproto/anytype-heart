@@ -2620,7 +2620,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                Event.Block.Show blockShow = 2;
+                Event.Object.Show objectShow = 2;
                 History.Versions.Version version = 3;
 
                 message Error {

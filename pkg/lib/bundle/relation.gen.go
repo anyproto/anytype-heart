@@ -28,6 +28,7 @@ const (
 	RelationKeyCoverScale            RelationKey = "coverScale"
 	RelationKeyLinkedProjects        RelationKey = "linkedProjects"
 	RelationKeyAudioAlbum            RelationKey = "audioAlbum"
+	RelationKeyLayoutAlign           RelationKey = "layoutAlign"
 	RelationKeyStatus                RelationKey = "status"
 	RelationKeyDurationInSeconds     RelationKey = "durationInSeconds"
 	RelationKeyIsHidden              RelationKey = "isHidden"
@@ -360,11 +361,11 @@ var (
 		RelationKeyFeaturedRelations: {
 
 			DataSource:  relation.Relation_details,
-			Description: "",
+			Description: "Important relations that always appear at the top of the object",
 			Format:      relation.RelationFormat_object,
 			Hidden:      true,
 			Key:         "featuredRelations",
-			Name:        "Featured relations management will be \u2028implemented later.",
+			Name:        "Featured Relations",
 			ObjectTypes: []string{TypePrefix + "relation"},
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
@@ -517,6 +518,18 @@ var (
 			Key:         "layout",
 			MaxCount:    1,
 			Name:        "Layout",
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyLayoutAlign: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Specify visual align of the layout",
+			Format:      relation.RelationFormat_number,
+			Hidden:      true,
+			Key:         "layoutAlign",
+			MaxCount:    1,
+			Name:        "Layout align",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},

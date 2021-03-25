@@ -7,7 +7,7 @@ import (
 )
 
 func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryShowResponse {
-	response := func(show *pb.EventBlockShow, ver *pb.RpcHistoryVersionsVersion, err error) (res *pb.RpcHistoryShowResponse) {
+	response := func(show *pb.EventObjectShow, ver *pb.RpcHistoryVersionsVersion, err error) (res *pb.RpcHistoryShowResponse) {
 		res = &pb.RpcHistoryShowResponse{
 			Error: &pb.RpcHistoryShowResponseError{
 				Code: pb.RpcHistoryShowResponseError_NULL,
@@ -18,13 +18,13 @@ func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryS
 			res.Error.Description = err.Error()
 			return
 		} else {
-			res.BlockShow = show
+			res.ObjectShow = show
 			res.Version = ver
 		}
 		return res
 	}
 	var (
-		show *pb.EventBlockShow
+		show *pb.EventObjectShow
 		ver  *pb.RpcHistoryVersionsVersion
 		err  error
 	)

@@ -25,6 +25,10 @@ type bundledObjectType struct {
 	a  core.Service
 }
 
+func (v *bundledObjectType) ReadOnly() bool {
+	return true
+}
+
 func (v *bundledObjectType) Id() string {
 	return v.id
 }
@@ -46,6 +50,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 	if err != nil {
 		return nil, nil, err
 	}
+	extraRels = []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelation(bundle.RelationKeyRecommendedLayout)}
 
 	var relationKeys []string
 	for i := range ot.Relations {

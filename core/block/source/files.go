@@ -28,6 +28,10 @@ type files struct {
 	a  core.Service
 }
 
+func (v *files) ReadOnly() bool {
+	return true
+}
+
 func (v *files) Id() string {
 	return v.id
 }

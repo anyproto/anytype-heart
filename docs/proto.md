@@ -735,7 +735,6 @@
     - [Event.Block.Set.Bookmark.Type](#anytype.Event.Block.Set.Bookmark.Type)
     - [Event.Block.Set.Bookmark.Url](#anytype.Event.Block.Set.Bookmark.Url)
     - [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds)
-    - [Event.Block.Set.Details](#anytype.Event.Block.Set.Details)
     - [Event.Block.Set.Div](#anytype.Event.Block.Set.Div)
     - [Event.Block.Set.Div.Style](#anytype.Event.Block.Set.Div.Style)
     - [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields)
@@ -753,7 +752,6 @@
     - [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId)
     - [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation)
     - [Event.Block.Set.Relation.Key](#anytype.Event.Block.Set.Relation.Key)
-    - [Event.Block.Set.Relations](#anytype.Event.Block.Set.Relations)
     - [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions)
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked)
@@ -761,10 +759,22 @@
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
-    - [Event.Block.Show](#anytype.Event.Block.Show)
-    - [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject)
-    - [Event.Block.Show.RelationWithValuePerObject](#anytype.Event.Block.Show.RelationWithValuePerObject)
     - [Event.Message](#anytype.Event.Message)
+    - [Event.Object](#anytype.Event.Object)
+    - [Event.Object.Details](#anytype.Event.Object.Details)
+    - [Event.Object.Details.Amend](#anytype.Event.Object.Details.Amend)
+    - [Event.Object.Details.Amend.KeyValue](#anytype.Event.Object.Details.Amend.KeyValue)
+    - [Event.Object.Details.Set](#anytype.Event.Object.Details.Set)
+    - [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset)
+    - [Event.Object.Relation](#anytype.Event.Object.Relation)
+    - [Event.Object.Relation.Remove](#anytype.Event.Object.Relation.Remove)
+    - [Event.Object.Relation.Set](#anytype.Event.Object.Relation.Set)
+    - [Event.Object.Relations](#anytype.Event.Object.Relations)
+    - [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend)
+    - [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove)
+    - [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set)
+    - [Event.Object.Show](#anytype.Event.Object.Show)
+    - [Event.Object.Show.RelationWithValuePerObject](#anytype.Event.Object.Show.RelationWithValuePerObject)
     - [Event.Ping](#anytype.Event.Ping)
     - [Event.Process](#anytype.Event.Process)
     - [Event.Process.Done](#anytype.Event.Process.Done)
@@ -858,6 +868,7 @@
   
 
 - [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
+    - [Detail](#anytype.relation.Detail)
     - [Layout](#anytype.relation.Layout)
     - [ObjectType](#anytype.relation.ObjectType)
     - [Relation](#anytype.relation.Relation)
@@ -6635,7 +6646,7 @@ returns blockShow event for given version
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.History.Show.Response.Error](#anytype.Rpc.History.Show.Response.Error) |  |  |
-| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  |  |
+| objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
 | version | [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version) |  |  |
 
 
@@ -11371,22 +11382,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.Details"></a>
-
-### Event.Block.Set.Details
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-
-
-
-
-
-
 <a name="anytype.Event.Block.Set.Div"></a>
 
 ### Event.Block.Set.Div
@@ -11654,22 +11649,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Set.Relations"></a>
-
-### Event.Block.Set.Relations
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
-
-
-
-
-
-
 <a name="anytype.Event.Block.Set.Restrictions"></a>
 
 ### Event.Block.Set.Restrictions
@@ -11781,60 +11760,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype.Event.Block.Show"></a>
-
-### Event.Block.Show
-Works with a smart blocks: Page, Dashboard
-Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| rootId | [string](#string) |  | Root block id |
-| blocks | [model.Block](#anytype.model.Block) | repeated | dependent simple blocks (descendants) |
-| details | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) | repeated | details for the current and dependent objects |
-| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
-| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| objectTypePerObject | [Event.Block.Show.ObjectTypePerObject](#anytype.Event.Block.Show.ObjectTypePerObject) | repeated | objectType URLs per object |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Show.ObjectTypePerObject"></a>
-
-### Event.Block.Show.ObjectTypePerObject
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectId | [string](#string) |  |  |
-| objectType | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Block.Show.RelationWithValuePerObject"></a>
-
-### Event.Block.Show.RelationWithValuePerObject
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| objectId | [string](#string) |  |  |
-| relations | [relation.RelationWithValue](#anytype.relation.RelationWithValue) | repeated |  |
-
-
-
-
-
-
 <a name="anytype.Event.Message"></a>
 
 ### Event.Message
@@ -11845,16 +11770,20 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
-| blockSetDetails | [Event.Block.Set.Details](#anytype.Event.Block.Set.Details) |  | to be renamed to objectSetDetails |
-| blockSetRelations | [Event.Block.Set.Relations](#anytype.Event.Block.Set.Relations) |  | to be renamed to objectSetRelations |
-| blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  | to be renamed to objectSetRestrictions |
-| blockShow | [Event.Block.Show](#anytype.Event.Block.Show) |  | to be renamed to objectShow |
+| objectDetailsSet | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) |  |  |
+| objectDetailsAmend | [Event.Object.Details.Amend](#anytype.Event.Object.Details.Amend) |  |  |
+| objectDetailsUnset | [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset) |  |  |
+| objectRelationsSet | [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set) |  |  |
+| objectRelationsAmend | [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend) |  |  |
+| objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
+| objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
 | marksInfo | [Event.Block.MarksInfo](#anytype.Event.Block.MarksInfo) |  |  |
 | blockSetFields | [Event.Block.Set.Fields](#anytype.Event.Block.Set.Fields) |  |  |
 | blockSetChildrenIds | [Event.Block.Set.ChildrenIds](#anytype.Event.Block.Set.ChildrenIds) |  |  |
+| blockSetRestrictions | [Event.Block.Set.Restrictions](#anytype.Event.Block.Set.Restrictions) |  |  |
 | blockSetBackgroundColor | [Event.Block.Set.BackgroundColor](#anytype.Event.Block.Set.BackgroundColor) |  |  |
 | blockSetText | [Event.Block.Set.Text](#anytype.Event.Block.Set.Text) |  |  |
 | blockSetFile | [Event.Block.Set.File](#anytype.Event.Block.Set.File) |  |  |
@@ -11881,6 +11810,228 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | processUpdate | [Event.Process.Update](#anytype.Event.Process.Update) |  |  |
 | processDone | [Event.Process.Done](#anytype.Event.Process.Done) |  |  |
 | threadStatus | [Event.Status.Thread](#anytype.Event.Status.Thread) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object"></a>
+
+### Event.Object
+
+
+
+
+
+
+
+<a name="anytype.Event.Object.Details"></a>
+
+### Event.Object.Details
+
+
+
+
+
+
+
+<a name="anytype.Event.Object.Details.Amend"></a>
+
+### Event.Object.Details.Amend
+Amend existing state
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| details | [Event.Object.Details.Amend.KeyValue](#anytype.Event.Object.Details.Amend.KeyValue) | repeated | slice of changed key-values |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Details.Amend.KeyValue"></a>
+
+### Event.Object.Details.Amend.KeyValue
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  | should not be null |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Details.Set"></a>
+
+### Event.Object.Details.Set
+Overwrite current state
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | can not be a partial state. Should replace client details state |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Details.Unset"></a>
+
+### Event.Object.Details.Unset
+Unset existing detail keys
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| keys | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Relation"></a>
+
+### Event.Object.Relation
+
+
+
+
+
+
+
+<a name="anytype.Event.Object.Relation.Remove"></a>
+
+### Event.Object.Relation.Remove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| relationKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Relation.Set"></a>
+
+### Event.Object.Relation.Set
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| relationKey | [string](#string) |  |  |
+| relation | [relation.Relation](#anytype.relation.Relation) |  | missing value means relation should be removed |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Relations"></a>
+
+### Event.Object.Relations
+
+
+
+
+
+
+
+<a name="anytype.Event.Object.Relations.Amend"></a>
+
+### Event.Object.Relations.Amend
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Relations.Remove"></a>
+
+### Event.Object.Relations.Remove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| keys | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Relations.Set"></a>
+
+### Event.Object.Relations.Set
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | context objectId |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Show"></a>
+
+### Event.Object.Show
+Works with a smart blocks: Page, Dashboard
+Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBlock)
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| rootId | [string](#string) |  | Root block id |
+| blocks | [model.Block](#anytype.model.Block) | repeated | dependent simple blocks (descendants) |
+| details | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) | repeated | details for the current and dependent objects |
+| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
+| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
+| relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Show.RelationWithValuePerObject"></a>
+
+### Event.Object.Show.RelationWithValuePerObject
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| relations | [relation.RelationWithValue](#anytype.relation.RelationWithValue) | repeated |  |
 
 
 
@@ -13155,6 +13306,22 @@ deprecated
 <p align="right"><a href="#top">Top</a></p>
 
 ## pkg/lib/pb/relation/protos/relation.proto
+
+
+
+<a name="anytype.relation.Detail"></a>
+
+### Detail
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
 
 
 

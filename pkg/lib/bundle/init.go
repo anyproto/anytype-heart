@@ -30,13 +30,17 @@ var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyAudio.URL()}
 
 // filled in init
-var LocalOnlyRelationsKeys []string
+var LocalRelationsKeys []string   // stored only in localstore
+var DerivedRelationsKeys []string // derived
+
 var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
 	for _, r := range relations {
 		if r.DataSource == relation.Relation_account {
-			LocalOnlyRelationsKeys = append(LocalOnlyRelationsKeys, r.Key)
+			LocalRelationsKeys = append(LocalRelationsKeys, r.Key)
+		} else if r.DataSource == relation.Relation_derived {
+			DerivedRelationsKeys = append(DerivedRelationsKeys, r.Key)
 		}
 	}
 }

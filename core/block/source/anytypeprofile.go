@@ -25,6 +25,10 @@ type anytypeProfile struct {
 	a  core.Service
 }
 
+func (v *anytypeProfile) ReadOnly() bool {
+	return true
+}
+
 func (v *anytypeProfile) Id() string {
 	return v.id
 }

@@ -12,7 +12,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewProfile(m meta.Service, fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
@@ -49,6 +51,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	return template.ApplyTemplate(p, ctx.State,
 		template.WithTitle,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
+		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 	)
 }
 
