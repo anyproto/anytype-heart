@@ -642,6 +642,14 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 			if err != nil {
 				return fmt.Errorf("relation %s validation failed: %s", detail.Key, err.Error())
 			}
+
+			// special case for type relation that we are storing in a separate object's field
+			if detail.Key == bundle.RelationKeyType.String() {
+				ot := pbtypes.GetStringListValue(detail.Value)
+				if len(ot) > 0 {
+					s.SetObjectType(ot[0])
+				}
+			}
 			detCopy.Fields[detail.Key] = detail.Value
 		} else {
 			delete(detCopy.Fields, detail.Key)
