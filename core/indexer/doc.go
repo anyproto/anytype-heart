@@ -140,7 +140,7 @@ func (d *doc) injectLocalRelations(st *state.State) {
 	if details, err := d.store.GetDetails(d.id); err == nil {
 		if details != nil && details.Details != nil {
 			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
+				if slice.FindPos(bundle.LocalRelationsKeys, key) != -1 {
 					// safe to call SetDetailAndBundledRelation as bundle.LocalOnlyRelationsKeys contains only bundled relations
 					st.SetDetailAndBundledRelation(bundle.RelationKey(key), v)
 				}

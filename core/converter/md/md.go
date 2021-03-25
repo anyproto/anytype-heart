@@ -265,7 +265,7 @@ type marksWriter struct {
 		starts []*model.BlockContentTextMark
 		ends   []*model.BlockContentTextMark
 	}
-	open       []*model.BlockContentTextMark
+	open []*model.BlockContentTextMark
 }
 
 func (mw *marksWriter) writeMarks(pos int) {

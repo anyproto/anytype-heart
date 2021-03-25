@@ -1,6 +1,8 @@
 package indexer_test
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"testing"
 	"time"
 
@@ -22,6 +24,7 @@ import (
 func TestNewIndexer(t *testing.T) {
 	t.Run("open/close", func(t *testing.T) {
 		fx := newFixture(t)
+		// should add all bundled relations to full text index
 		defer fx.tearDown()
 		defer fx.Close()
 
@@ -93,6 +96,15 @@ func newFixture(t *testing.T) *fixture {
 	fx.getSerach.EXPECT().Name().AnyTimes().Return("blockService")
 	fx.getSerach.EXPECT().Init(gomock.Any())
 	fx.objectStore = testMock.NewMockObjectStore(fx.ctrl)
+	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
+
+	for _, rk := range bundle.ListRelationsKeys() {
+		fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
+	}
+	for _, ok := range bundle.ListTypesKeys() {
+		fx.objectStore.EXPECT().AddToIndexQueue(ok.URL())
+	}
+
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 

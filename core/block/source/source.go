@@ -37,7 +37,7 @@ type Source interface {
 	Anytype() core.Service
 	Type() pb.SmartBlockType
 	Virtual() bool
-	//ReadOnly() bool
+	ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
 	PushChange(params PushChangeParams) (id string, err error)
@@ -87,12 +87,13 @@ func newSource(a core.Service, ss status.Service, id string) (s Source, err erro
 	}
 
 	s = &source{
-		id:    id,
-		tid:   tid,
-		a:     a,
-		ss:    ss,
-		sb:    sb,
-		logId: a.Device(),
+		id:       id,
+		tid:      tid,
+		a:        a,
+		ss:       ss,
+		sb:       sb,
+		logId:    a.Device(),
+		openedAt: time.Now(),
 	}
 	return
 }
@@ -110,6 +111,11 @@ type source struct {
 	unsubscribe    func()
 	metaOnly       bool
 	closed         chan struct{}
+	openedAt       time.Time
+}
+
+func (s *source) ReadOnly() bool {
+	return false
 }
 
 func (s *source) Id() string {
@@ -202,6 +208,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 
 	// set local-only details
+	st.SetDetailAndBundledRelation(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(s.openedAt.Unix()))
 	InjectLocalDetails(s, st)
 
 	if s.Type() != pb.SmartBlockType_Archive && !s.Virtual() {
@@ -267,7 +274,7 @@ func InjectLocalDetails(s Source, st *state.State) {
 	if details, err := s.Anytype().ObjectStore().GetDetails(s.Id()); err == nil {
 		if details != nil && details.Details != nil {
 			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
+				if slice.FindPos(bundle.LocalRelationsKeys, key) != -1 {
 					st.SetDetail(key, v)
 					if !pbtypes.HasRelation(st.ExtraRelations(), key) {
 						st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
@@ -277,6 +284,7 @@ func InjectLocalDetails(s Source, st *state.State) {
 		}
 	}
 }
+
 type PushChangeParams struct {
 	State             *state.State
 	Changes           []*pb.ChangeContent
@@ -315,7 +323,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	s.logHeads[s.logId] = ch
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
-		log.Infof("%s: pushed snapshot", s.id)
+		log.Errorf("%s: pushed snapshot", s.id)
 	} else {
 		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
 	}

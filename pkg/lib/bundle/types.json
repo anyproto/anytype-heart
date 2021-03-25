@@ -23,7 +23,9 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -50,7 +52,9 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -78,6 +82,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "tag"
     ]
   },
@@ -106,6 +112,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "assignee",
       "dueDate",
       "attachments",
@@ -118,6 +126,7 @@
     ]
   },
   {
+    "emoji": "🔗",
     "hidden": true,
     "id": "relation",
     "layout": "relation",
@@ -128,6 +137,8 @@
       "layout",
       "description",
       "creator",
+      "layoutAlign",
+      "isHidden",
       "mpAddedToLibrary",
       "relationFormat",
       "isHidden"
@@ -158,6 +169,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -197,11 +210,14 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
     "description": "Object that contains a definition of some object type",
+    "emoji": "🔮",
     "hidden": true,
     "id": "objectType",
     "layout": "objectType",
@@ -226,6 +242,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary",
@@ -234,6 +252,7 @@
   },
   {
     "description": "Special type to create objects from",
+    "emoji": "✨",
     "hidden": true,
     "id": "template",
     "layout": "basic",
@@ -241,12 +260,30 @@
     "relations": [
       "id",
       "name",
-      "layout",
       "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
       "templateType"
     ]
   },
   {
+    "emoji": "🗂️",
     "hidden": true,
     "id": "set",
     "layout": "set",
@@ -271,6 +308,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "setOf"
     ]
   },
@@ -299,7 +338,9 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -327,6 +368,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -364,7 +407,9 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -393,6 +438,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -408,7 +455,7 @@
     ]
   },
   {
-    "emoji": "📄",
+    "emoji": "📋",
     "id": "document",
     "layout": "basic",
     "name": "Document",
@@ -431,7 +478,9 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign",
+      "isHidden"
     ]
   },
   {
@@ -459,6 +508,8 @@
       "toBeDeletedDate",
       "featuredRelations",
       "coverType",
+      "layoutAlign",
+      "isHidden",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -489,7 +540,9 @@
       "coverScale",
       "toBeDeletedDate",
       "featuredRelations",
-      "coverType"
+      "coverType",
+      "layoutAlign",
+      "isHidden"
     ]
   }
 ]
