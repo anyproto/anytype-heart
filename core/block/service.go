@@ -356,7 +356,7 @@ func (s *service) CloseBlocks() {
 
 	for _, ob := range s.openedBlocks {
 		ob.Lock()
-		ob.locked = true
+		ob.locked = false
 		ob.BlockClose()
 		ob.Unlock()
 	}
