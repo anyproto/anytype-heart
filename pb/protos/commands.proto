@@ -74,7 +74,7 @@ message Rpc {
             message Request {
                 string contextId = 1;
                 repeated string blockIds = 2;
-				string objectType = 3;
+                string objectType = 3;
             }
 
             message Response {
@@ -1853,6 +1853,7 @@ message Rpc {
                 string targetId = 2; // id of the closest block
                 google.protobuf.Struct details = 3; // page details
                 anytype.model.Block.Position position = 4;
+                string templateId = 5; // optional template id for creating from template
             }
 
             message Response {
@@ -2691,6 +2692,7 @@ message Rpc {
             message Request {
                 string objectTypeUrl = 1;
                 google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
+                string templateId = 3; // optional template id for creating from template
             }
 
             message Response {
@@ -3089,8 +3091,34 @@ message Rpc {
         }
     }
 
+    message MakeTemplate {
+        message Request {
+            // id of block for making them template
+            string contextId = 1;
+        }
+
+        message Response {
+            Error error = 1;
+            // created template id
+            string id = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                    // ...
+                }
+            }
+        }
+
+    }
+
     message Debug {
-        message logInfo  {
+        message logInfo {
             string id = 1;
             string head = 2;
             bool headDownloaded = 3;
@@ -3131,7 +3159,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                repeated threadInfo threads =2 ;
+                repeated threadInfo threads = 2;
                 string deviceId = 3;
                 int32 totalThreads = 4;
                 int32 threadsWithoutReplInOwnLog = 5;
@@ -3156,7 +3184,7 @@ message Rpc {
         message Thread {
             message Request {
                 string threadId = 1;
-                bool skipEmptyLogs = 2;  // do not set if you want the whole picture
+                bool skipEmptyLogs = 2; // do not set if you want the whole picture
                 bool tryToDownloadRemoteRecords = 3; // if try we will try to download remote records in case missing
             }
 

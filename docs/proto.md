@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -28,6 +32,10 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -420,6 +428,10 @@
     - [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request)
     - [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response)
     - [Rpc.Log.Send.Response.Error](#anytype.Rpc.Log.Send.Response.Error)
+    - [Rpc.MakeTemplate](#anytype.Rpc.MakeTemplate)
+    - [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request)
+    - [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response)
+    - [Rpc.MakeTemplate.Response.Error](#anytype.Rpc.MakeTemplate.Response.Error)
     - [Rpc.Navigation](#anytype.Rpc.Navigation)
     - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype.Rpc.Navigation.GetObjectInfoWithLinks)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request)
@@ -625,6 +637,7 @@
     - [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code)
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
+    - [Rpc.MakeTemplate.Response.Error.Code](#anytype.Rpc.MakeTemplate.Response.Error.Code)
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
@@ -653,6 +666,9 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -777,6 +793,9 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -788,6 +807,9 @@
   
     - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -832,6 +854,9 @@
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
+  
+  
+
 - [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
     - [Layout](#anytype.relation.Layout)
     - [ObjectType](#anytype.relation.ObjectType)
@@ -846,6 +871,9 @@
     - [Relation.Scope](#anytype.relation.Relation.Scope)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -980,6 +1008,7 @@
 | HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
+| MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
@@ -1960,6 +1989,7 @@ common simple block command
 | targetId | [string](#string) |  | id of the closest block |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | page details |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| templateId | [string](#string) |  | optional template id for creating from template |
 
 
 
@@ -7048,6 +7078,63 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.MakeTemplate"></a>
+
+### Rpc.MakeTemplate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplate.Request"></a>
+
+### Rpc.MakeTemplate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of block for making them template |
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplate.Response"></a>
+
+### Rpc.MakeTemplate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MakeTemplate.Response.Error](#anytype.Rpc.MakeTemplate.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplate.Response.Error"></a>
+
+### Rpc.MakeTemplate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MakeTemplate.Response.Error.Code](#anytype.Rpc.MakeTemplate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Navigation"></a>
 
 ### Rpc.Navigation
@@ -8241,6 +8328,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | if omitted the name of page will be the same with object type |
+| templateId | [string](#string) |  | optional template id for creating from template |
 
 
 
@@ -9863,6 +9951,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.MakeTemplate.Response.Error.Code"></a>
+
+### Rpc.MakeTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
 
@@ -12192,6 +12293,7 @@ Precondition: user A and user B opened the same block
 | MarketplaceType | 8 |  |
 | MarketplaceRelation | 9 |  |
 | Relation | 10 |  |
+| Template | 11 |  |
 
 
  

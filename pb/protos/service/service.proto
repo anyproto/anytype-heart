@@ -161,6 +161,8 @@ service ClientCommands {
 
     rpc Export (anytype.Rpc.Export.Request) returns (anytype.Rpc.Export.Response);
 
+    rpc MakeTemplate (anytype.Rpc.MakeTemplate.Request) returns (anytype.Rpc.MakeTemplate.Response);
+
     rpc DebugSync (anytype.Rpc.Debug.Sync.Request) returns (anytype.Rpc.Debug.Sync.Response);
 
     rpc DebugThread (anytype.Rpc.Debug.Thread.Request) returns (anytype.Rpc.Debug.Thread.Response);

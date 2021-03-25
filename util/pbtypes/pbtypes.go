@@ -294,3 +294,13 @@ func RelationIdToKey(id string) (string, error) {
 	}
 	return "", fmt.Errorf("incorrect id format")
 }
+
+func Delete(st *types.Struct, key string) (ok bool) {
+	if st != nil && st.Fields != nil {
+		if _, ok := st.Fields[key]; ok {
+			delete(st.Fields, key)
+			return true
+		}
+	}
+	return false
+}

@@ -1,13 +1,14 @@
 package smartblock
 
 import (
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/ipfs/go-cid"
 	"github.com/multiformats/go-multihash"
 	"github.com/textileio/go-threads/core/thread"
-	"strings"
 )
 
 type SmartBlockType uint64
@@ -23,6 +24,7 @@ const (
 	SmartBlockTypeFile                SmartBlockType = 0x100
 	SmartblockTypeMarketplaceType     SmartBlockType = 0x110
 	SmartblockTypeMarketplaceRelation SmartBlockType = 0x111
+	SmartBlockTypeTemplate            SmartBlockType = 0x120
 
 	SmartBlockTypeBundledRelation   SmartBlockType = 0x200 // temp
 	SmartBlockTypeIndexedRelation   SmartBlockType = 0x201 // temp
@@ -95,6 +97,8 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 		return model.ObjectInfo_Relation
 	case SmartBlockTypeIndexedRelation:
 		return model.ObjectInfo_Relation
+	case SmartBlockTypeTemplate:
+		return model.ObjectInfo_Page
 	default:
 		panic("unknown smartblock type")
 	}
@@ -157,6 +161,8 @@ func SmartBlockTypeToProto(t SmartBlockType) pb.SmartBlockType {
 		return pb.SmartBlockType_MarketplaceRelation
 	case SmartblockTypeMarketplaceType:
 		return pb.SmartBlockType_MarketplaceType
+	case SmartBlockTypeTemplate:
+		return pb.SmartBlockType_Template
 	default:
 		panic("unknown smartblock type")
 	}
@@ -181,6 +187,8 @@ func SmartBlockTypeToCore(t pb.SmartBlockType) SmartBlockType {
 		return SmartblockTypeMarketplaceType
 	case pb.SmartBlockType_MarketplaceRelation:
 		return SmartblockTypeMarketplaceRelation
+	case pb.SmartBlockType_Template:
+		return SmartBlockTypeTemplate
 	default:
 		panic("unknown smartblock type")
 	}
