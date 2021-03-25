@@ -14,6 +14,7 @@ var CliCmd = &cobra.Command{
 func init() {
 	// subcommands
 	CliCmd.AddCommand(migrateCmd)
+	CliCmd.AddCommand(cafeCmd)
 	// local flags
 }
 
