@@ -84,6 +84,7 @@ type Service interface {
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -436,10 +437,10 @@ func (s *service) DeletePage(id string) (err error) {
 }
 
 func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error) {
-	return s.createSmartBlock(sbType, details, relations, "")
+	return s.CreateSmartBlockFromTemplate(sbType, details, relations, "")
 }
 
-func (s *service) createSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -490,7 +491,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 		return "", "", basic.ErrNotSupported
 	}
 
-	pageId, _, err = s.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil)
+	pageId, _, err = s.CreateSmartBlockFromTemplate(coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
@@ -610,6 +611,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewMarketplaceType(s.meta, s)
 	case pb.SmartBlockType_MarketplaceRelation:
 		sb = editor.NewMarketplaceRelation(s.meta, s)
+	case pb.SmartBlockType_MarketplaceTemplate:
+		sb = editor.NewMarketplaceTemplate(s.meta, s)
 	case pb.SmartBlockType_Template:
 		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
 	default:

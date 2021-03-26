@@ -24,6 +24,7 @@ const (
 	SmartBlockTypeFile                SmartBlockType = 0x100
 	SmartblockTypeMarketplaceType     SmartBlockType = 0x110
 	SmartblockTypeMarketplaceRelation SmartBlockType = 0x111
+	SmartblockTypeMarketplaceTemplate SmartBlockType = 0x112
 	SmartBlockTypeTemplate            SmartBlockType = 0x120
 
 	SmartBlockTypeBundledRelation   SmartBlockType = 0x200 // temp
@@ -84,6 +85,8 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 	case SmartBlockTypeSet:
 		return model.ObjectInfo_Set
 	case SmartblockTypeMarketplaceType:
+		return model.ObjectInfo_Set
+	case SmartblockTypeMarketplaceTemplate:
 		return model.ObjectInfo_Set
 	case SmartblockTypeMarketplaceRelation:
 		return model.ObjectInfo_Set
@@ -161,6 +164,8 @@ func SmartBlockTypeToProto(t SmartBlockType) pb.SmartBlockType {
 		return pb.SmartBlockType_MarketplaceRelation
 	case SmartblockTypeMarketplaceType:
 		return pb.SmartBlockType_MarketplaceType
+	case SmartblockTypeMarketplaceTemplate:
+		return pb.SmartBlockType_MarketplaceTemplate
 	case SmartBlockTypeTemplate:
 		return pb.SmartBlockType_Template
 	default:

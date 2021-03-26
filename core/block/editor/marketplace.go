@@ -136,8 +136,77 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
 						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
 					Filters: []*model.BlockContentDataviewFilter{{
-						Condition: model.BlockContentDataviewFilter_NotEqual,
-						Value:     pbtypes.Bool(true),
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
+					}},
+				},
+			},
+		},
+	}
+	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"))
+
+	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
+		return
+	}
+
+	return p.FillAggregatedOptions(nil)
+}
+
+type MarketplaceTemplate struct {
+	*Set
+}
+
+func NewMarketplaceTemplate(ms meta.Service, dbCtrl database.Ctrl) *MarketplaceTemplate {
+	return &MarketplaceTemplate{Set: NewSet(ms, dbCtrl)}
+}
+
+func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
+	err = p.SmartBlock.Init(ctx)
+	if err != nil {
+		return err
+	}
+
+	ot := bundle.TypeKeyTemplate.URL()
+	templates := []template.StateTransformer{
+		template.WithTitle,
+		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot})),
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
+	dataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source:    ot,
+			Relations: bundle.MustGetType(bundle.TypeKeyTemplate).Relations,
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:    viewIdMarketplace,
+					Type:  model.BlockContentDataviewView_Gallery,
+					Name:  "Marketplace",
+					Sorts: []*model.BlockContentDataviewSort{},
+					Relations: []*model.BlockContentDataviewRelation{
+						{Key: bundle.RelationKeyId.String(), IsVisible: false},
+						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
+						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
+						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
+					}},
+				},
+				{
+					Id:    viewIdLibrary,
+					Type:  model.BlockContentDataviewView_Gallery,
+					Name:  "Library",
+					Sorts: []*model.BlockContentDataviewSort{},
+					Relations: []*model.BlockContentDataviewRelation{
+						{Key: bundle.RelationKeyId.String(), IsVisible: false},
+						{Key: bundle.RelationKeyDescription.String(), IsVisible: true},
+						{Key: bundle.RelationKeyIconImage.String(), IsVisible: true},
+						{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: bundle.RelationKeyIsHidden.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.Bool(true),
 					}},
 				},
 			},
