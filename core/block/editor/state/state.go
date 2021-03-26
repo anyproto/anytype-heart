@@ -809,6 +809,8 @@ func (s *State) ObjectType() string {
 	return ""
 }
 
+
+
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title {

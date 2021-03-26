@@ -435,16 +435,25 @@ func (s *service) DeletePage(id string) (err error) {
 	return s.anytype.DeleteBlock(id)
 }
 
-
 func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error) {
+	return s.createSmartBlock(sbType, details, relations, "")
+}
+
+func (s *service) createSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
 	id = csm.ID()
-
-	createState := state.NewDoc(id, nil).NewState()
+	var createState *state.State
+	if templateId != "" {
+		if createState, err = s.stateFromTemplate(templateId) ; err != nil {
+			return
+		}
+	} else {
+		createState = state.NewDoc(id, nil).NewState()
+	}
 	typesInDetails := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if len(typesInDetails) == 0 {
 		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
@@ -459,23 +468,14 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 	initCtx := &smartblock.InitContext{
 		State:          createState,
 		ObjectTypeUrls: typesInDetails,
+		Relations : relations,
 	}
 	var sb smartblock.SmartBlock
 	if sb, err = s.newSmartBlock(id, initCtx); err != nil {
 		return id, nil, err
 	}
 	defer sb.Close()
-	log.Debugf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
-
-	// todo: move into createSmartblock params to make a single tx
-	if relations != nil {
-		sb.Lock()
-		if _, err = sb.AddExtraRelations(nil, relations); err != nil {
-			sb.Unlock()
-			return id, nil, fmt.Errorf("can't add relations to object: %v", err)
-		}
-		sb.Unlock()
-	}
+	log.Errorf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
 	return id, sb.Details(), nil
 }
 
