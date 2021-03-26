@@ -16,7 +16,7 @@ var (
 	name    string
 )
 
-var log = logging.Logger("anytype-mw-status")
+var log = logging.Logger("anytype-mw-app")
 
 // Component is a minimal interface for a common app.Component
 type Component interface {
@@ -134,7 +134,7 @@ func (app *App) Start() (err error) {
 			}
 		}
 	}
-
+	log.Debugf("All components started")
 	return
 }
 
@@ -167,5 +167,7 @@ func (app *App) Close() error {
 	if len(errs) > 0 {
 		return errors.New(strings.Join(errs, "\n"))
 	}
+	log.Debugf("All components have been closed")
+
 	return nil
 }
