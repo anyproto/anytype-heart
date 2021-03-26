@@ -168,7 +168,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
 
-	if ctx.State == nil || ctx.State.IsEmpty() {
+	if ctx.State == nil {
 		ctx.State = sb.NewState()
 	} else {
 		if !sb.Doc.(*state.State).IsEmpty() {

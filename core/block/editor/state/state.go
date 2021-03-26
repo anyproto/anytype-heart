@@ -887,6 +887,7 @@ func (s *State) CheckRestrictions() (err error) {
 }
 
 func (s *State) SetParent(parent *State) {
+	s.rootId = parent.rootId
 	s.parent = parent
 }
 
