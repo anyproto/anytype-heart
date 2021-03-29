@@ -254,8 +254,10 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 			if v.Hidden != rel.Hidden {
 				return fmt.Errorf("changing hidden flag of existing relation is retricted")
 			}
+			rel.SelectDict = v.SelectDict
 
-			if rel.Format == pbrelation.RelationFormat_status {
+			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
+				rel.SelectDict = mergeSelectOptions(v.SelectDict, rel.SelectDict)
 				for i := range rel.SelectDict {
 					if rel.SelectDict[i].Id == "" {
 						rel.SelectDict[i].Id = bson.NewObjectId().Hex()
@@ -383,6 +385,24 @@ func (d *Dataview) DeleteRelation(relationKey string) error {
 		}
 	}
 
+	for _, view := range d.content.Views {
+		var filteredFilters []*model.BlockContentDataviewFilter
+		for _, filter := range view.Filters {
+			if filter.RelationKey != relationKey {
+				filteredFilters = append(filteredFilters, filter)
+			}
+		}
+		view.Filters = filteredFilters
+
+		var filteredSorts []*model.BlockContentDataviewSort
+		for _, sort := range view.Sorts {
+			if sort.RelationKey != relationKey {
+				filteredSorts = append(filteredSorts, sort)
+			}
+		}
+		view.Sorts = filteredSorts
+	}
+
 	if !found {
 		return fmt.Errorf("relation not found")
 	}
@@ -502,4 +522,28 @@ func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error 
 		return fmt.Errorf("option not exists")
 	}
 	return nil
+}
+
+func mergeSelectOptions(opts1, opts2 []*pbrelation.RelationOption) []*pbrelation.RelationOption {
+	var opts []*pbrelation.RelationOption
+	for _, opt1 := range opts1 {
+		opts = append(opts, &*opt1)
+	}
+
+	for _, opt2 := range opts2 {
+		var found bool
+		for _, opt := range opts {
+			if opt.Id != opt2.Id {
+				continue
+			}
+			opt.Text = opt2.Text
+			opt2.Color = opt2.Color
+			found = true
+		}
+
+		if !found {
+			opts = append(opts, &*opt2)
+		}
+	}
+	return opts
 }
