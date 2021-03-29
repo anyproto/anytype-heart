@@ -1964,7 +1964,10 @@ func (m *WithSignature) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2082,7 +2085,10 @@ func (m *AuthGetTokenRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2199,7 +2205,10 @@ func (m *AuthGetTokenResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2300,7 +2309,10 @@ func (m *AuthGetTokenResponseTokenInfo) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2418,7 +2430,10 @@ func (m *ThreadLogFollowRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2468,7 +2483,10 @@ func (m *ThreadLogFollowResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2550,7 +2568,10 @@ func (m *FilePinRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2600,7 +2621,10 @@ func (m *FilePinResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2682,7 +2706,10 @@ func (m *ProfileFindRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2860,7 +2887,10 @@ func (m *ProfileFindResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2910,7 +2940,10 @@ func (m *GetFilePinsRequest) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -2994,7 +3027,10 @@ func (m *GetFilePinsResponse) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {
@@ -3095,7 +3131,10 @@ func (m *GetFilePinsResponseFilePinStatus) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthApi
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthApi
 			}
 			if (iNdEx + skippy) > l {

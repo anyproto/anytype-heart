@@ -600,6 +600,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 	var curMap = make(map[string]struct{}, len(s.objectTypes))
 
 	for _, v := range s.objectTypes {
+		curMap[v] = struct{}{}
 		_, ok := prevMap[v]
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{

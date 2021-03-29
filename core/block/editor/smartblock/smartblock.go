@@ -76,6 +76,7 @@ type SmartBlock interface {
 	Anytype() core.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*pbrelation.Relation
+	RelationsState(s *state.State) []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error)
@@ -106,6 +107,7 @@ type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
 	State          *state.State
+	Relations      []*pbrelation.Relation
 }
 
 type linkSource interface {
@@ -166,7 +168,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
 
-	if ctx.State == nil || ctx.State.IsEmpty() {
+	if ctx.State == nil {
 		ctx.State = sb.NewState()
 	} else {
 		if !sb.Doc.(*state.State).IsEmpty() {
@@ -182,19 +184,25 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 	}
 
+	if len(ctx.Relations) > 0 {
+		if _, err = sb.addExtraRelations(ctx.State, ctx.Relations); err != nil {
+			return
+		}
+	}
+
 	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
 	return
 }
 
-func (sb *smartBlock) normalizeRelations(st *state.State) error {
+func (sb *smartBlock) normalizeRelations(s *state.State) error {
 	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
 		return nil
 	}
 
-	relations := sb.Relations()
-	details := sb.Details()
+	relations := sb.RelationsState(s)
+	details := s.Details()
 	if details == nil || details.Fields == nil {
 		return nil
 	}
@@ -202,7 +210,7 @@ func (sb *smartBlock) normalizeRelations(st *state.State) error {
 		rel := pbtypes.GetRelation(relations, k)
 		if rel == nil {
 			if bundleRel, _ := bundle.GetRelation(bundle.RelationKey(k)); bundleRel != nil {
-				st.AddRelation(bundleRel)
+				s.AddRelation(bundleRel)
 				log.Warnf("NormalizeRelations bundle relation is missing, have been added: %s", k)
 			} else {
 				log.Errorf("NormalizeRelations relation is missing: %s", k)
@@ -213,7 +221,7 @@ func (sb *smartBlock) normalizeRelations(st *state.State) error {
 
 		if rel.Scope != pbrelation.Relation_object {
 			log.Warnf("NormalizeRelations change scope for relation %s", rel.Key)
-			st.SetExtraRelation(rel)
+			s.SetExtraRelation(rel)
 		}
 	}
 	return nil
@@ -634,6 +642,14 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 			if err != nil {
 				return fmt.Errorf("relation %s validation failed: %s", detail.Key, err.Error())
 			}
+
+			// special case for type relation that we are storing in a separate object's field
+			if detail.Key == bundle.RelationKeyType.String() {
+				ot := pbtypes.GetStringListValue(detail.Value)
+				if len(ot) > 0 {
+					s.SetObjectType(ot[0])
+				}
+			}
 			detCopy.Fields[detail.Key] = detail.Value
 		} else {
 			delete(detCopy.Fields, detail.Key)
@@ -669,9 +685,33 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 }
 
 func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.Relations())
-
 	s := sb.NewStateCtx(ctx)
+
+	if relationsWithKeys, err = sb.addExtraRelations(s, relations); err != nil {
+		return
+	}
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	if ctx != nil {
+		// todo: send an atomic event for each changed relation
+		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
+					Id:        s.RootId(),
+					Relations: sb.Relations(),
+				},
+			},
+		}})
+	}
+
+	return
+}
+
+func (sb *smartBlock) addExtraRelations(s *state.State, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	copy := pbtypes.CopyRelations(sb.RelationsState(s))
+
 	var existsMap = map[string]*pbrelation.Relation{}
 	for _, rel := range copy {
 		existsMap[rel.Key] = rel
@@ -696,21 +736,6 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 	}
 
 	s = s.SetExtraRelations(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
-		return
-	}
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
-	}
-
 	return
 }
 
@@ -1142,11 +1167,15 @@ func (sb *smartBlock) baseRelations() []*pbrelation.Relation {
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
+	return sb.RelationsState(sb.Doc.(*state.State))
+}
+
+func (sb *smartBlock) RelationsState(s *state.State) []*pbrelation.Relation {
 	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
 		return sb.baseRelations()
 	}
 
-	objType := sb.ObjectType()
+	objType := s.ObjectType()
 
 	var err error
 	var aggregatedRelation []*pbrelation.Relation
@@ -1157,7 +1186,7 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 		}
 	}
 
-	rels := mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), aggregatedRelation, sb.Details())
+	rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
 	sb.fillAggregatedRelations(rels)
 	return rels
 }
@@ -1179,9 +1208,13 @@ func (sb *smartBlock) fillAggregatedRelations(rels []*pbrelation.Relation) {
 }
 
 func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
+	return sb.objectTypeRelations(sb.Doc.(*state.State))
+}
+
+func (sb *smartBlock) objectTypeRelations(s *state.State) []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
-		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
+		objectTypes := sb.meta.FetchObjectTypes(s.ObjectTypes())
 		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
 		// do not fetch objectTypes for object type type to avoid universe collapse
 		for _, objType := range objectTypes {

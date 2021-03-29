@@ -72,10 +72,15 @@ func (d *doc) meta() core.SmartBlockMeta {
 	defer d.mu.Unlock()
 	objectTypes := make([]string, len(d.st.ObjectTypes()))
 	copy(objectTypes, d.st.ObjectTypes())
+	details := pbtypes.CopyStruct(d.st.Details())
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList(objectTypes)
 	return core.SmartBlockMeta{
 		ObjectTypes: objectTypes,
 		Relations:   pbtypes.CopyRelations(d.st.ExtraRelations()),
-		Details:     pbtypes.CopyStruct(d.st.Details()),
+		Details:     details,
 	}
 }
 

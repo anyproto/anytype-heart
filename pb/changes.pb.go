@@ -3258,7 +3258,10 @@ func (m *Change) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -3418,7 +3421,7 @@ func (m *ChangeSnapshot) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if (skippy < 0) || (iNdEx+skippy) < 0 {
+					if skippy < 0 {
 						return ErrInvalidLengthChanges
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -3505,7 +3508,10 @@ func (m *ChangeSnapshot) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -3697,7 +3703,7 @@ func (m *ChangeFileKeys) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if (skippy < 0) || (iNdEx+skippy) < 0 {
+					if skippy < 0 {
 						return ErrInvalidLengthChanges
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -3714,7 +3720,10 @@ func (m *ChangeFileKeys) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4184,7 +4193,10 @@ func (m *ChangeContent) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4319,7 +4331,10 @@ func (m *ChangeBlockCreate) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4403,7 +4418,10 @@ func (m *ChangeBlockUpdate) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4485,7 +4503,10 @@ func (m *ChangeBlockRemove) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4618,7 +4639,10 @@ func (m *ChangeBlockMove) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4751,7 +4775,10 @@ func (m *ChangeBlockDuplicate) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4869,7 +4896,10 @@ func (m *ChangeDetailsSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -4951,7 +4981,10 @@ func (m *ChangeDetailsUnset) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -5037,7 +5070,10 @@ func (m *ChangeRelationAdd) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -5297,7 +5333,10 @@ func (m *ChangeRelationUpdate) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -5381,7 +5420,10 @@ func (m *ChangeRelationUpdateDict) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -5463,7 +5505,10 @@ func (m *ChangeRelationUpdateObjectTypes) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -5545,7 +5590,10 @@ func (m *ChangeRelationRemove) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -5627,7 +5675,10 @@ func (m *ChangeObjectTypeAdd) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {
@@ -5709,7 +5760,10 @@ func (m *ChangeObjectTypeRemove) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthChanges
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthChanges
 			}
 			if (iNdEx + skippy) > l {

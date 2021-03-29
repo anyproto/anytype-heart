@@ -300,3 +300,35 @@ func RelationIdToKey(id string) (string, error) {
 	}
 	return "", fmt.Errorf("incorrect id format")
 }
+
+func Delete(st *types.Struct, key string) (ok bool) {
+	if st != nil && st.Fields != nil {
+		if _, ok := st.Fields[key]; ok {
+			delete(st.Fields, key)
+			return true
+		}
+	}
+	return false
+}
+
+type Getter interface {
+	Get(key string) *types.Value
+}
+
+type structGetter struct{
+	st *types.Struct
+}
+
+func ValueGetter(s *types.Struct) Getter {
+	return &structGetter{s}
+}
+
+func (sg *structGetter) Get(key string) *types.Value{
+	if sg == nil {
+		return nil
+	}
+	if sg.st.Fields == nil {
+		return nil
+	}
+	return sg.st.Fields[key]
+}

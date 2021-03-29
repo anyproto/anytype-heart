@@ -1741,7 +1741,7 @@ func GetObjectType(store ObjectStore, url string) (*pbrelation.ObjectType, error
 	for _, relId := range pbtypes.GetStringList(details, bundle.RelationKeyRecommendedRelations.String()) {
 		rk, err := pbtypes.RelationIdToKey(relId)
 		if err != nil {
-			log.Errorf("GetObjectType failed to get relation key from id: %s", err.Error())
+			log.Errorf("GetObjectType failed to get relation key from id: %s (%s)", err.Error(), relId)
 			continue
 		}
 

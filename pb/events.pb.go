@@ -36,9 +36,11 @@ const (
 	SmartBlockType_Set                 SmartBlockType = 5
 	SmartBlockType_ObjectType          SmartBlockType = 6
 	SmartBlockType_File                SmartBlockType = 7
+	SmartBlockType_Relation            SmartBlockType = 10
+	SmartBlockType_Template            SmartBlockType = 11
 	SmartBlockType_MarketplaceType     SmartBlockType = 8
 	SmartBlockType_MarketplaceRelation SmartBlockType = 9
-	SmartBlockType_Relation            SmartBlockType = 10
+	SmartBlockType_MarketplaceTemplate SmartBlockType = 12
 )
 
 var SmartBlockType_name = map[int32]string{
@@ -50,9 +52,11 @@ var SmartBlockType_name = map[int32]string{
 	5:  "Set",
 	6:  "ObjectType",
 	7:  "File",
+	10: "Relation",
+	11: "Template",
 	8:  "MarketplaceType",
 	9:  "MarketplaceRelation",
-	10: "Relation",
+	12: "MarketplaceTemplate",
 }
 
 var SmartBlockType_value = map[string]int32{
@@ -64,9 +68,11 @@ var SmartBlockType_value = map[string]int32{
 	"Set":                 5,
 	"ObjectType":          6,
 	"File":                7,
+	"Relation":            10,
+	"Template":            11,
 	"MarketplaceType":     8,
 	"MarketplaceRelation": 9,
-	"Relation":            10,
+	"MarketplaceTemplate": 12,
 }
 
 func (x SmartBlockType) String() string {
@@ -1700,10 +1706,8 @@ type EventObjectShowRelationWithValuePerObject struct {
 func (m *EventObjectShowRelationWithValuePerObject) Reset() {
 	*m = EventObjectShowRelationWithValuePerObject{}
 }
-func (m *EventObjectShowRelationWithValuePerObject) String() string {
-	return proto.CompactTextString(m)
-}
-func (*EventObjectShowRelationWithValuePerObject) ProtoMessage() {}
+func (m *EventObjectShowRelationWithValuePerObject) String() string { return proto.CompactTextString(m) }
+func (*EventObjectShowRelationWithValuePerObject) ProtoMessage()    {}
 func (*EventObjectShowRelationWithValuePerObject) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 3, 0}
 }
@@ -7373,13 +7377,13 @@ func init() {
 func init() { proto.RegisterFile("pb/protos/events.proto", fileDescriptor_a966342d378ae5f5) }
 
 var fileDescriptor_a966342d378ae5f5 = []byte{
-	// 3586 bytes of a gzipped FileDescriptorProto
+	// 3600 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x5b, 0xcd, 0x6f, 0x1c, 0xc7,
 	0x95, 0x9f, 0x8f, 0x9e, 0xaf, 0x37, 0x22, 0x35, 0x5b, 0x92, 0xa5, 0x46, 0x8b, 0xa6, 0x64, 0xea,
 	0xc3, 0xb2, 0x25, 0x8f, 0xbc, 0x92, 0x6d, 0xca, 0xb2, 0x25, 0x99, 0x22, 0x25, 0x0c, 0x25, 0x4b,
 	0xa2, 0x6b, 0x44, 0x7b, 0xe1, 0x5d, 0x2c, 0xd0, 0x9c, 0x29, 0x0e, 0xdb, 0xec, 0xe9, 0x1e, 0x74,
 	0xf7, 0x50, 0xa2, 0x17, 0x7b, 0xf2, 0x61, 0x17, 0x0b, 0xec, 0xc2, 0x58, 0x04, 0xc9, 0x29, 0xc8,
-	0x21, 0x87, 0x20, 0x08, 0xe2, 0x43, 0x82, 0x20, 0xf9, 0x07, 0x12, 0x24, 0x37, 0x1f, 0x7d, 0x09,
+	0x21, 0x87, 0x20, 0x08, 0xe2, 0x4b, 0x10, 0x24, 0xff, 0x40, 0x82, 0xe4, 0xe6, 0xa3, 0x73, 0x08,
 	0x10, 0xc8, 0x97, 0x5c, 0xf3, 0x07, 0x38, 0x08, 0xea, 0xab, 0xbb, 0xba, 0xa7, 0x7b, 0x7a, 0xe8,
 	0xd8, 0x41, 0x02, 0xfb, 0x36, 0x55, 0xf5, 0xde, 0xaf, 0xaa, 0x5e, 0xbd, 0x7a, 0xf5, 0x7b, 0xd5,
 	0x35, 0x70, 0x6c, 0xb4, 0x75, 0x69, 0xe4, 0xb9, 0x81, 0xeb, 0x5f, 0x22, 0x7b, 0xc4, 0x09, 0xfc,
@@ -7387,14 +7391,14 @@ var fileDescriptor_a966342d378ae5f5 = []byte{
 	0xd6, 0xd6, 0xa5, 0xd1, 0xd6, 0xa5, 0xa1, 0xdb, 0x27, 0xb6, 0x14, 0x67, 0x05, 0x21, 0x6e, 0xbc,
 	0xa0, 0x48, 0x79, 0xc4, 0x36, 0x03, 0xcb, 0x75, 0xa4, 0xa0, 0x2c, 0x0b, 0xd1, 0x85, 0x81, 0xeb,
 	0x0e, 0x6c, 0xc2, 0x5b, 0xb7, 0xc6, 0xdb, 0x97, 0xfc, 0xc0, 0x1b, 0xf7, 0x02, 0xde, 0xba, 0xf4,
-	0x9b, 0x5d, 0xa8, 0xdc, 0xa6, 0x03, 0x41, 0x97, 0xa1, 0x3e, 0x24, 0xbe, 0x6f, 0x0e, 0x88, 0xaf,
+	0xeb, 0x5d, 0xa8, 0xdc, 0xa6, 0x03, 0x41, 0x97, 0xa1, 0x3e, 0x24, 0xbe, 0x6f, 0x0e, 0x88, 0xaf,
 	0x17, 0x4f, 0x95, 0xcf, 0x37, 0x2f, 0x1f, 0x6b, 0x8b, 0x41, 0xb5, 0x99, 0x44, 0xfb, 0x3e, 0x6f,
 	0xc6, 0xa1, 0x1c, 0x5a, 0x80, 0x46, 0xcf, 0x75, 0x02, 0xf2, 0x24, 0x58, 0xef, 0xeb, 0xa5, 0x53,
 	0xc5, 0xf3, 0x0d, 0x1c, 0x55, 0xa0, 0x57, 0xa0, 0x61, 0x39, 0x56, 0x60, 0x99, 0x81, 0xeb, 0xe9,
 	0xe5, 0x53, 0xc5, 0x18, 0x24, 0x9b, 0x4e, 0x7b, 0xa5, 0xd7, 0x73, 0xc7, 0x4e, 0x80, 0x23, 0x41,
 	0xe3, 0xcf, 0x06, 0xd4, 0x44, 0x4f, 0xe8, 0x26, 0x34, 0x4d, 0x2e, 0xd1, 0xdd, 0x71, 0x1f, 0xeb,
 	0x45, 0x86, 0x71, 0x22, 0x31, 0x2c, 0x81, 0xd1, 0xa6, 0x22, 0x9d, 0x02, 0x56, 0x35, 0xd0, 0x3a,
-	0xcc, 0x8b, 0xe2, 0x1a, 0x09, 0x4c, 0xcb, 0xf6, 0xf5, 0xdf, 0x71, 0x90, 0xc5, 0x0c, 0x10, 0x21,
+	0xcc, 0x8b, 0xe2, 0x1a, 0x09, 0x4c, 0xcb, 0xf6, 0xf5, 0xdf, 0x72, 0x90, 0xc5, 0x0c, 0x10, 0x21,
 	0xd6, 0x29, 0xe0, 0x84, 0x22, 0x7a, 0x08, 0x2d, 0x77, 0xeb, 0x03, 0xd2, 0x93, 0x15, 0x5d, 0x12,
 	0xe8, 0x2d, 0x86, 0xf5, 0x5c, 0x02, 0xeb, 0x21, 0x13, 0x93, 0x50, 0xed, 0x2e, 0x09, 0x3a, 0x05,
 	0x3c, 0xa1, 0x8c, 0x36, 0x01, 0xc5, 0xea, 0x56, 0x86, 0xc4, 0xe9, 0xeb, 0x97, 0x19, 0xe4, 0xe9,
@@ -7447,7 +7451,7 @@ var fileDescriptor_a966342d378ae5f5 = []byte{
 	0xea, 0x91, 0x26, 0x01, 0xc2, 0x80, 0x19, 0xd7, 0xa2, 0x8c, 0x4e, 0x54, 0xac, 0xb9, 0x0e, 0xd1,
 	0x07, 0xa9, 0x8c, 0x4e, 0x82, 0x50, 0x11, 0x7a, 0x72, 0x28, 0x1a, 0xe8, 0x16, 0x1c, 0x0a, 0x76,
 	0x3c, 0x62, 0xf6, 0xbb, 0x81, 0x19, 0x8c, 0x7d, 0xdd, 0x49, 0x3d, 0x7c, 0x78, 0x63, 0xfb, 0x11,
-	0x93, 0xa4, 0x07, 0xab, 0xaa, 0x73, 0xab, 0x06, 0x95, 0x3d, 0xd3, 0x1e, 0x13, 0xe3, 0x17, 0x45,
+	0x93, 0xa4, 0x07, 0xab, 0xaa, 0x73, 0xab, 0x06, 0x95, 0x3d, 0xd3, 0x1e, 0x13, 0xe3, 0xe7, 0x45,
 	0xa8, 0x89, 0x74, 0xc8, 0x78, 0x00, 0x1a, 0xe3, 0xaa, 0x47, 0xa1, 0x62, 0x39, 0x7d, 0xf2, 0x84,
 	0xa5, 0x60, 0x15, 0xcc, 0x0b, 0xe8, 0x65, 0xa8, 0x89, 0x24, 0x49, 0x10, 0xd8, 0xac, 0xf4, 0x4e,
 	0x8a, 0x19, 0xef, 0x43, 0x4d, 0xe6, 0x53, 0x0b, 0xd0, 0x18, 0x79, 0x2e, 0x65, 0x94, 0xeb, 0x7d,
@@ -7461,7 +7465,7 @@ var fileDescriptor_a966342d378ae5f5 = []byte{
 	0xb1, 0x10, 0x68, 0xbb, 0x64, 0x9f, 0xcf, 0xb9, 0x81, 0xd9, 0x6f, 0xe3, 0xf7, 0x45, 0x68, 0x84,
 	0xd9, 0x8d, 0xf1, 0x30, 0x7d, 0x10, 0x57, 0xa1, 0x21, 0xef, 0x16, 0xa4, 0xc5, 0xa2, 0xad, 0x12,
 	0xde, 0x3a, 0x48, 0x18, 0x1c, 0x09, 0x1b, 0xef, 0x64, 0x2d, 0xc1, 0x97, 0x87, 0xbc, 0x08, 0x55,
-	0x91, 0x85, 0xcd, 0x32, 0xbf, 0x5f, 0x16, 0xa1, 0x2e, 0x51, 0x0c, 0x37, 0x7d, 0x7a, 0xa7, 0xa0,
+	0x91, 0x85, 0xcd, 0x32, 0xbf, 0x5f, 0x14, 0xa1, 0x2e, 0x51, 0x0c, 0x37, 0x7d, 0x7a, 0xa7, 0xa0,
 	0x29, 0xe1, 0xef, 0x91, 0x7d, 0x71, 0x9d, 0xa1, 0x56, 0xd1, 0x8c, 0x4d, 0x16, 0x45, 0xda, 0x35,
 	0x6d, 0xb0, 0xa1, 0xac, 0x71, 0x2d, 0x73, 0xac, 0xb9, 0x7d, 0x1a, 0x3f, 0x2d, 0x8b, 0x2d, 0x78,
 	0x0c, 0xaa, 0x9e, 0xeb, 0x06, 0xe1, 0x66, 0x11, 0x25, 0x74, 0x11, 0xaa, 0xec, 0x10, 0x91, 0xf6,
@@ -7523,7 +7527,7 @@ var fileDescriptor_a966342d378ae5f5 = []byte{
 	0x75, 0xec, 0x0d, 0x8f, 0xb0, 0x7b, 0x4c, 0x35, 0x18, 0x7d, 0x76, 0x9c, 0x9d, 0x61, 0xb6, 0xf1,
 	0x76, 0x74, 0x0b, 0xf3, 0x15, 0x5c, 0x34, 0x3c, 0x82, 0xc3, 0x6b, 0x66, 0x60, 0x6e, 0x99, 0x3e,
 	0x11, 0x97, 0xe3, 0x69, 0xa8, 0x1e, 0x6f, 0x12, 0x59, 0x55, 0x36, 0xaa, 0x90, 0xfb, 0x96, 0xc5,
-	0xff, 0xfd, 0xb0, 0xf8, 0x9f, 0x67, 0xb1, 0xf8, 0xe5, 0x18, 0x8b, 0x3f, 0x9d, 0xf5, 0x05, 0xd9,
+	0xff, 0xfd, 0xb0, 0xf8, 0x9f, 0x65, 0xb1, 0xf8, 0xe5, 0x18, 0x8b, 0x3f, 0x9d, 0xf5, 0x05, 0xd9,
 	0x9e, 0xa0, 0xf1, 0xd7, 0xe2, 0x07, 0xca, 0x99, 0x1c, 0xcd, 0xd8, 0x89, 0x72, 0x2d, 0xce, 0xe3,
 	0xf3, 0x74, 0x63, 0x44, 0xfe, 0xad, 0x24, 0x91, 0x3f, 0x97, 0xa3, 0x3d, 0xc1, 0xe4, 0xaf, 0xc5,
 	0x99, 0x7c, 0x5e, 0xef, 0xdf, 0x60, 0x2a, 0xff, 0xbd, 0x0c, 0x2a, 0xff, 0x7a, 0x9c, 0xca, 0x4f,
@@ -7554,7 +7558,7 @@ var fileDescriptor_a966342d378ae5f5 = []byte{
 	0x7a, 0x30, 0x73, 0x60, 0x7d, 0xf5, 0xc3, 0x64, 0x29, 0xfe, 0x61, 0xf2, 0x45, 0xa8, 0x78, 0xec,
 	0x13, 0x22, 0x77, 0xf4, 0xe4, 0xe7, 0x4e, 0xd6, 0x21, 0xe6, 0x22, 0x06, 0x81, 0xa6, 0xfa, 0x1c,
 	0xe8, 0xe0, 0xc3, 0x38, 0x23, 0x1e, 0x6f, 0xae, 0xf7, 0xfd, 0x15, 0xcf, 0x33, 0xf7, 0x45, 0xf6,
-	0x1e, 0xaf, 0xa4, 0xbc, 0x6b, 0xc3, 0x72, 0x06, 0xe9, 0xaf, 0x58, 0x8c, 0x5f, 0x15, 0xa1, 0x26,
+	0x1e, 0xaf, 0xa4, 0xbc, 0x6b, 0xc3, 0x72, 0x06, 0xe9, 0xaf, 0x58, 0x8c, 0x5f, 0x16, 0xa1, 0x26,
 	0x1e, 0xd7, 0x18, 0xcb, 0x50, 0x7e, 0x40, 0x1e, 0xd3, 0x81, 0x88, 0xe7, 0x35, 0x13, 0x03, 0xb9,
 	0xcf, 0x66, 0x21, 0xe4, 0xb1, 0x14, 0x33, 0xae, 0x41, 0x55, 0xb8, 0xe3, 0xc1, 0x75, 0xaf, 0x82,
 	0xc6, 0x5e, 0xf1, 0x1c, 0x5c, 0xf3, 0xbf, 0xeb, 0x50, 0xe5, 0xcf, 0x77, 0x8c, 0x2f, 0x6a, 0x50,
@@ -7562,7 +7566,7 @@ var fileDescriptor_a966342d378ae5f5 = []byte{
 	0x0f, 0x81, 0xda, 0x5d, 0x2e, 0x8b, 0xa5, 0x12, 0x7a, 0x15, 0xb4, 0x9e, 0xb9, 0x4d, 0x26, 0xae,
 	0x31, 0xd2, 0x94, 0x57, 0xcd, 0x6d, 0x82, 0x99, 0x38, 0x7a, 0x0b, 0xea, 0x62, 0x59, 0xe4, 0xa6,
 	0x9f, 0xde, 0xaf, 0x5c, 0xcc, 0x50, 0xcb, 0xb8, 0x0b, 0x35, 0x31, 0x18, 0x74, 0x13, 0xaa, 0x3e,
-	0x7f, 0xcb, 0x94, 0x64, 0x7d, 0xa9, 0x53, 0xd8, 0x77, 0x7a, 0xbc, 0x06, 0x0b, 0x35, 0xe3, 0xd7,
+	0x7f, 0xcb, 0x94, 0x64, 0x7d, 0xa9, 0x53, 0xd8, 0x77, 0x7a, 0xbc, 0x06, 0x0b, 0x35, 0xe3, 0x57,
 	0x25, 0xd0, 0xe8, 0xe0, 0xfe, 0x6a, 0x24, 0xb4, 0x08, 0x60, 0x9b, 0x7e, 0xb0, 0x31, 0xb6, 0x6d,
 	0xc2, 0xbd, 0xbd, 0x8c, 0x95, 0x1a, 0x74, 0x1e, 0x0e, 0xf3, 0x92, 0xbf, 0xd3, 0x1d, 0xf7, 0x7a,
 	0x84, 0xf4, 0x99, 0xeb, 0xd7, 0x71, 0xb2, 0x1a, 0xad, 0x40, 0x85, 0xbd, 0xa0, 0x17, 0xa4, 0xed,
@@ -7588,17 +7592,17 @@ var fileDescriptor_a966342d378ae5f5 = []byte{
 	0xf7, 0x3b, 0xad, 0x02, 0x5d, 0x9d, 0xf5, 0xe1, 0xc8, 0xf5, 0x82, 0x56, 0x91, 0xfe, 0xbe, 0xfd,
 	0x84, 0xfd, 0x2e, 0x2d, 0xad, 0xc8, 0xfb, 0x8c, 0x3a, 0x68, 0x0f, 0x5c, 0x87, 0xf0, 0xe5, 0xc6,
 	0x63, 0xb6, 0x73, 0x5b, 0x45, 0x5a, 0x4d, 0x8f, 0x83, 0x56, 0x09, 0x1d, 0x82, 0xfa, 0xaa, 0xe9,
-	0xf4, 0x88, 0xcd, 0x56, 0xbb, 0x01, 0x95, 0xdb, 0x9e, 0xe7, 0x7a, 0x2d, 0xed, 0xc5, 0x9f, 0x15,
+	0xf4, 0x88, 0xcd, 0x56, 0xbb, 0x01, 0x95, 0xdb, 0x9e, 0xe7, 0x7a, 0x2d, 0xed, 0xc5, 0xdf, 0x15,
 	0x61, 0x3e, 0xfe, 0xe8, 0x8a, 0x6a, 0x6d, 0x98, 0x03, 0x0a, 0x56, 0x07, 0xad, 0xe3, 0x0e, 0xa9,
 	0xe3, 0x1c, 0x86, 0xe6, 0x06, 0x7f, 0x51, 0xc9, 0x9a, 0x4a, 0xb4, 0x9f, 0x15, 0xaf, 0xb7, 0x63,
 	0xed, 0x91, 0x56, 0x99, 0xb6, 0xde, 0xa2, 0xbb, 0xa1, 0xe7, 0x8d, 0x87, 0x5b, 0x7e, 0x4b, 0x43,
 	0x35, 0xf6, 0x62, 0xa7, 0x55, 0x41, 0xf3, 0x00, 0xd1, 0xab, 0xac, 0x56, 0x95, 0x22, 0xd2, 0x49,
-	0xb5, 0x6a, 0xe8, 0x08, 0x1c, 0xbe, 0x6f, 0x7a, 0xbb, 0x24, 0x18, 0xd9, 0x66, 0x8f, 0xb0, 0xe6,
-	0x3a, 0x3a, 0x0e, 0x47, 0x94, 0x4a, 0x49, 0x63, 0x5b, 0x0d, 0x3a, 0xfe, 0xb0, 0x04, 0xb7, 0x16,
-	0x7e, 0xfb, 0x74, 0xb1, 0xf8, 0xe9, 0xd3, 0xc5, 0xe2, 0x1f, 0x9e, 0x2e, 0x16, 0x3f, 0xfe, 0x7c,
-	0xb1, 0xf0, 0xe9, 0xe7, 0x8b, 0x85, 0xcf, 0x3e, 0x5f, 0x2c, 0xbc, 0x5f, 0x1a, 0x6d, 0x6d, 0x55,
-	0x19, 0x09, 0xbb, 0xf2, 0x97, 0x00, 0x00, 0x00, 0xff, 0xff, 0xf3, 0xed, 0x72, 0x5e, 0x21, 0x39,
-	0x00, 0x00,
+	0xb5, 0x6a, 0x74, 0x44, 0x92, 0xa6, 0xb6, 0x80, 0x96, 0x1e, 0x91, 0xe1, 0xc8, 0x36, 0x03, 0xd2,
+	0x6a, 0xa2, 0x23, 0x70, 0xf8, 0xbe, 0xe9, 0xed, 0x92, 0x60, 0x64, 0x9b, 0x3d, 0xc2, 0x54, 0xeb,
+	0xe8, 0x38, 0x1c, 0x51, 0x2a, 0x43, 0xdd, 0x46, 0xa2, 0x21, 0x84, 0x39, 0x74, 0x6b, 0xe1, 0x37,
+	0x4f, 0x17, 0x8b, 0x9f, 0x3e, 0x5d, 0x2c, 0xfe, 0xe1, 0xe9, 0x62, 0xf1, 0xe3, 0xcf, 0x17, 0x0b,
+	0x9f, 0x7e, 0xbe, 0x58, 0xf8, 0xec, 0xf3, 0xc5, 0xc2, 0xfb, 0xa5, 0xd1, 0xd6, 0x56, 0x95, 0x71,
+	0xb5, 0x2b, 0x7f, 0x09, 0x00, 0x00, 0xff, 0xff, 0xcc, 0xde, 0xb8, 0xe7, 0x48, 0x39, 0x00, 0x00,
 }
 
 func (m *Event) Marshal() (dAtA []byte, err error) {
@@ -16285,7 +16289,10 @@ func (m *Event) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -17805,7 +17812,10 @@ func (m *EventMessage) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -17855,7 +17865,10 @@ func (m *EventAccount) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -17960,7 +17973,10 @@ func (m *EventAccountShow) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18078,7 +18094,10 @@ func (m *EventAccountDetails) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18128,7 +18147,10 @@ func (m *EventObject) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18178,7 +18200,10 @@ func (m *EventObjectDetails) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18294,7 +18319,10 @@ func (m *EventObjectDetailsAmend) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18412,7 +18440,10 @@ func (m *EventObjectDetailsAmendKeyValue) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18530,7 +18561,10 @@ func (m *EventObjectDetailsSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18644,7 +18678,10 @@ func (m *EventObjectDetailsUnset) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18694,7 +18731,10 @@ func (m *EventObjectRelations) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18810,7 +18850,10 @@ func (m *EventObjectRelationsSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -18926,7 +18969,10 @@ func (m *EventObjectRelationsAmend) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19040,7 +19086,10 @@ func (m *EventObjectRelationsRemove) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19090,7 +19139,10 @@ func (m *EventObjectRelation) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19240,7 +19292,10 @@ func (m *EventObjectRelationSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19354,7 +19409,10 @@ func (m *EventObjectRelationRemove) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19591,7 +19649,10 @@ func (m *EventObjectShow) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19707,7 +19768,10 @@ func (m *EventObjectShowRelationWithValuePerObject) Unmarshal(dAtA []byte) error
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19757,7 +19821,10 @@ func (m *EventBlock) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19841,7 +19908,10 @@ func (m *EventBlockAdd) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -19955,7 +20025,10 @@ func (m *EventBlockFilesUpload) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20037,7 +20110,10 @@ func (m *EventBlockDelete) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20156,7 +20232,10 @@ func (m *EventBlockMarksInfo) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20206,7 +20285,10 @@ func (m *EventBlockSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20324,7 +20406,10 @@ func (m *EventBlockSetRelation) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20406,7 +20491,10 @@ func (m *EventBlockSetRelationKey) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20524,7 +20612,10 @@ func (m *EventBlockSetFields) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20638,7 +20729,10 @@ func (m *EventBlockSetChildrenIds) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20756,7 +20850,10 @@ func (m *EventBlockSetRestrictions) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20870,7 +20967,10 @@ func (m *EventBlockSetBackgroundColor) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -20971,7 +21071,10 @@ func (m *EventBlockSetAlign) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21233,7 +21336,10 @@ func (m *EventBlockSetText) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21315,7 +21421,10 @@ func (m *EventBlockSetTextText) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21384,7 +21493,10 @@ func (m *EventBlockSetTextStyle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21470,7 +21582,10 @@ func (m *EventBlockSetTextMarks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21540,7 +21655,10 @@ func (m *EventBlockSetTextChecked) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21622,7 +21740,10 @@ func (m *EventBlockSetTextColor) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21740,7 +21861,10 @@ func (m *EventBlockSetDiv) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -21809,7 +21933,10 @@ func (m *EventBlockSetDivStyle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22107,7 +22234,10 @@ func (m *EventBlockSetFile) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22189,7 +22319,10 @@ func (m *EventBlockSetFileName) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22258,7 +22391,10 @@ func (m *EventBlockSetFileWidth) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22327,7 +22463,10 @@ func (m *EventBlockSetFileState) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22396,7 +22535,10 @@ func (m *EventBlockSetFileType) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22478,7 +22620,10 @@ func (m *EventBlockSetFileHash) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22560,7 +22705,10 @@ func (m *EventBlockSetFileMime) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22629,7 +22777,10 @@ func (m *EventBlockSetFileSize) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22819,7 +22970,10 @@ func (m *EventBlockSetLink) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22901,7 +23055,10 @@ func (m *EventBlockSetLinkTargetBlockId) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -22970,7 +23127,10 @@ func (m *EventBlockSetLinkStyle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23056,7 +23216,10 @@ func (m *EventBlockSetLinkFields) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23354,7 +23517,10 @@ func (m *EventBlockSetBookmark) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23436,7 +23602,10 @@ func (m *EventBlockSetBookmarkUrl) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23518,7 +23687,10 @@ func (m *EventBlockSetBookmarkTitle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23600,7 +23772,10 @@ func (m *EventBlockSetBookmarkDescription) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23682,7 +23857,10 @@ func (m *EventBlockSetBookmarkImageHash) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23764,7 +23942,10 @@ func (m *EventBlockSetBookmarkFaviconHash) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23833,7 +24014,10 @@ func (m *EventBlockSetBookmarkType) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -23883,7 +24067,10 @@ func (m *EventBlockFill) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24001,7 +24188,10 @@ func (m *EventBlockFillDetails) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24117,7 +24307,10 @@ func (m *EventBlockFillDatabaseRecords) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24235,7 +24428,10 @@ func (m *EventBlockFillFields) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24349,7 +24545,10 @@ func (m *EventBlockFillChildrenIds) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24467,7 +24666,10 @@ func (m *EventBlockFillRestrictions) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24581,7 +24783,10 @@ func (m *EventBlockFillBackgroundColor) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24682,7 +24887,10 @@ func (m *EventBlockFillAlign) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -24944,7 +25152,10 @@ func (m *EventBlockFillText) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25026,7 +25237,10 @@ func (m *EventBlockFillTextText) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25095,7 +25309,10 @@ func (m *EventBlockFillTextStyle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25181,7 +25398,10 @@ func (m *EventBlockFillTextMarks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25251,7 +25471,10 @@ func (m *EventBlockFillTextChecked) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25333,7 +25556,10 @@ func (m *EventBlockFillTextColor) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25451,7 +25677,10 @@ func (m *EventBlockFillDiv) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25520,7 +25749,10 @@ func (m *EventBlockFillDivStyle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25818,7 +26050,10 @@ func (m *EventBlockFillFile) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25900,7 +26135,10 @@ func (m *EventBlockFillFileName) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -25969,7 +26207,10 @@ func (m *EventBlockFillFileWidth) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26038,7 +26279,10 @@ func (m *EventBlockFillFileState) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26107,7 +26351,10 @@ func (m *EventBlockFillFileType) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26189,7 +26436,10 @@ func (m *EventBlockFillFileHash) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26271,7 +26521,10 @@ func (m *EventBlockFillFileMime) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26340,7 +26593,10 @@ func (m *EventBlockFillFileSize) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26530,7 +26786,10 @@ func (m *EventBlockFillLink) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26612,7 +26871,10 @@ func (m *EventBlockFillLinkTargetBlockId) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26681,7 +26943,10 @@ func (m *EventBlockFillLinkStyle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -26767,7 +27032,10 @@ func (m *EventBlockFillLinkFields) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27065,7 +27333,10 @@ func (m *EventBlockFillBookmark) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27147,7 +27418,10 @@ func (m *EventBlockFillBookmarkUrl) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27229,7 +27503,10 @@ func (m *EventBlockFillBookmarkTitle) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27311,7 +27588,10 @@ func (m *EventBlockFillBookmarkDescription) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27393,7 +27673,10 @@ func (m *EventBlockFillBookmarkImageHash) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27475,7 +27758,10 @@ func (m *EventBlockFillBookmarkFaviconHash) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27544,7 +27830,10 @@ func (m *EventBlockFillBookmarkType) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27594,7 +27883,10 @@ func (m *EventBlockDataview) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27782,7 +28074,10 @@ func (m *EventBlockDataviewViewSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -27896,7 +28191,10 @@ func (m *EventBlockDataviewViewDelete) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28010,7 +28308,10 @@ func (m *EventBlockDataviewSourceSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28124,7 +28425,10 @@ func (m *EventBlockDataviewRelationDelete) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28274,7 +28578,10 @@ func (m *EventBlockDataviewRelationSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28441,7 +28748,10 @@ func (m *EventBlockDataviewRecordsSet) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28608,7 +28918,10 @@ func (m *EventBlockDataviewRecordsInsert) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28756,7 +29069,10 @@ func (m *EventBlockDataviewRecordsUpdate) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28902,7 +29218,10 @@ func (m *EventBlockDataviewRecordsDelete) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -28952,7 +29271,10 @@ func (m *EventUser) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29002,7 +29324,10 @@ func (m *EventUserBlock) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29088,7 +29413,10 @@ func (m *EventUserBlockJoin) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29174,7 +29502,10 @@ func (m *EventUserBlockLeft) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29328,7 +29659,10 @@ func (m *EventUserBlockTextRange) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29446,7 +29780,10 @@ func (m *EventUserBlockSelectRange) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29515,7 +29852,10 @@ func (m *EventPing) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29565,7 +29905,10 @@ func (m *EventProcess) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29651,7 +29994,10 @@ func (m *EventProcessNew) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29737,7 +30083,10 @@ func (m *EventProcessUpdate) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29823,7 +30172,10 @@ func (m *EventProcessDone) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -29873,7 +30225,10 @@ func (m *EventStatus) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30029,7 +30384,10 @@ func (m *EventStatusThread) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30098,7 +30456,10 @@ func (m *EventStatusThreadSummary) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30242,7 +30603,10 @@ func (m *EventStatusThreadCafe) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30368,7 +30732,10 @@ func (m *EventStatusThreadCafePinStatus) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30606,7 +30973,10 @@ func (m *EventStatusThreadAccount) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30746,7 +31116,10 @@ func (m *EventStatusThreadDevice) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30862,7 +31235,10 @@ func (m *ResponseEvent) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -30912,7 +31288,10 @@ func (m *Model) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -31068,7 +31447,10 @@ func (m *ModelProcess) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
@@ -31188,7 +31570,10 @@ func (m *ModelProcessProgress) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
+			if skippy < 0 {
+				return ErrInvalidLengthEvents
+			}
+			if (iNdEx + skippy) < 0 {
 				return ErrInvalidLengthEvents
 			}
 			if (iNdEx + skippy) > l {
