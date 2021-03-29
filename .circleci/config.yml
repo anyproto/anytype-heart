@@ -181,7 +181,7 @@ jobs:
 
   build-lib-darwin-windows:
     macos:
-      xcode: '11.4.1'
+      xcode: '12.4.0'
     environment:
       GOPATH: /Users/distiller/go
       GOROOT: /usr/local/go
@@ -316,7 +316,7 @@ jobs:
 
   build-ios-framework:
     macos:
-      xcode: '11.4.1'
+      xcode: '12.4.0'
     environment:
       GOPATH: /Users/distiller/go
       GOROOT: /usr/local/go
