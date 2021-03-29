@@ -88,13 +88,13 @@ jobs:
             git fetch
             git checkout db6184738b77fbd5089e5fa1112177f391c91b24
             go install github.com/mitchellh/gox
-            curl -L -O https://github.com/protocolbuffers/protobuf/releases/download/v3.12.3/protoc-3.12.3-linux-x86_64.zip
-            unzip protoc-3.12.3-linux-x86_64.zip -d protoc
+            curl -L -O https://github.com/protocolbuffers/protobuf/releases/download/v3.15.6/protoc-3.15.6-linux-x86_64.zip
+            unzip protoc-3.15.6-linux-x86_64.zip -d protoc
             sudo cp -R ./protoc/* /usr/
             sudo chmod +x /usr/bin/protoc
             go get github.com/gogo/protobuf/protoc-gen-gogofaster
-            curl -L -O https://github.com/grpc/grpc-web/releases/download/1.2.0/protoc-gen-grpc-web-1.2.0-linux-x86_64
-            sudo mv ./protoc-gen-grpc-web-1.2.0-linux-x86_64 /usr/bin/protoc-gen-grpc-web
+            curl -L -O https://github.com/grpc/grpc-web/releases/download/1.2.1/protoc-gen-grpc-web-1.2.1-linux-x86_64
+            sudo mv ./protoc-gen-grpc-web-1.2.1-linux-x86_64 /usr/bin/protoc-gen-grpc-web
             sudo chmod +x /usr/bin/protoc-gen-grpc-web
             sudo chmod -R 655 /usr/include/google
       - run:
@@ -219,7 +219,7 @@ jobs:
             git fetch
             git checkout db6184738b77fbd5089e5fa1112177f391c91b24
             go install github.com/mitchellh/gox
-            curl -L -O https://github.com/grpc/grpc-web/releases/download/1.2.0/protoc-gen-grpc-web-1.2.0-darwin-x86_64
+            curl -L -O https://github.com/grpc/grpc-web/releases/download/1.2.1/protoc-gen-grpc-web-1.2.1-darwin-x86_64
             mv ./protoc-gen-grpc-web-1.2.1-darwin-x86_64 /usr/local/bin/protoc-gen-grpc-web
             chmod +x /usr/local/bin/protoc-gen-grpc-web
             rm -rf $GOPATH/src/github.com/gogo
@@ -441,8 +441,8 @@ jobs:
           command: |
             sudo apt-get update -qq
             sudo apt install jq -qq
-            curl -L -O https://github.com/protocolbuffers/protobuf/releases/download/v3.12.3/protoc-3.12.3-linux-x86_64.zip
-            unzip protoc-3.12.3-linux-x86_64.zip -d protoc3
+            curl -L -O https://github.com/protocolbuffers/protobuf/releases/download/v3.15.6/protoc-3.15.6-linux-x86_64.zip
+            unzip protoc-3.15.6-linux-x86_64.zip -d protoc3
             sudo mv protoc3/bin/* /usr/local/bin/
             sudo mv protoc3/include/* /usr/local/include/
       - restore_cache:
