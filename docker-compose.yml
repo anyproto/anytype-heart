@@ -6,9 +6,11 @@ services:
     image: docker.pkg.github.com/anytypeio/python-anytype-testing/tests:latest
     volumes:
       - ./allure-results:/app/allure-results
+      - shared-temp:/tmp/shared
     links:
       - middleware-node-a
       - middleware-node-b
+      - middleware-node-base
     environment:
       TEST_MIDDLEWARE_NODE_A_ADDRESS_HOST: middleware-node-a
       TEST_MIDDLEWARE_NODE_A_ADDRESS_PORT: 31007
@@ -16,6 +18,9 @@ services:
       TEST_MIDDLEWARE_NODE_B_ADDRESS_HOST: middleware-node-b
       TEST_MIDDLEWARE_NODE_B_ADDRESS_PORT: 41007
       TEST_MIDDLEWARE_NODE_B_ADDRESS_GATEWAY_PORT: 42007
+      TEST_MIDDLEWARE_NODE_BASE_ADDRESS_HOST: middleware-node-base
+      TEST_MIDDLEWARE_NODE_BASE_ADDRESS_PORT: 51007
+      TEST_MIDDLEWARE_NODE_BASE_ADDRESS_GATEWAY_PORT: 52007
     command: bash -c "make test"
 
   middleware-node-a:
@@ -24,6 +29,7 @@ services:
     image: docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG}
     environment:
       ANYTYPE_GRPC_ADDR: "0.0.0.0:31007"
+      ANYTYPE_GATEWAY_ADDR: "0.0.0.0:32007"
       ANYTYPE_LOG_LEVEL: "anytype-mw-app=DEBUG;grpc=DEBUG;anytype-gateway=DEBUG"
       ANYTYPE_LOG_NOGELF: 1
       ANYTYPE_GRPC_LOG: 3
@@ -31,7 +37,8 @@ services:
       #ANYTYPE_GRPC_TRACE: 3
       #JAEGER_AGENT_HOST: "docker.for.mac.localhost"
       #JAEGER_SERVICE_NAME: "mw-a"
-
+    volumes:
+      - shared-temp:/tmp/shared  
   middleware-node-b:
     stop_grace_period: 1s
     stop_signal: SIGABRT
@@ -47,3 +54,24 @@ services:
       #JAEGER_AGENT_HOST: "docker.for.mac.localhost"
       #JAEGER_SERVICE_NAME: "mw-b"
       #JAEGER_SERVICE_NAME: "mw-b"
+    volumes:
+      - shared-temp:/tmp/shared
+  middleware-node-base:
+    stop_grace_period: 1s
+    stop_signal: SIGABRT
+    image: docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${BASE_TAG}
+    environment:
+      ANYTYPE_GRPC_ADDR: "0.0.0.0:51007"
+      ANYTYPE_GATEWAY_ADDR: "0.0.0.0:52007"
+      ANYTYPE_LOG_LEVEL: "anytype-mw-app=DEBUG;grpc=DEBUG;anytype-gateway=DEBUG"
+      ANYTYPE_LOG_NOGELF: 1
+      ANYTYPE_GRPC_LOG: 3
+      # local tracing
+      #ANYTYPE_GRPC_TRACE: 3
+      #JAEGER_AGENT_HOST: "docker.for.mac.localhost"
+      #JAEGER_SERVICE_NAME: "mw-b"
+      #JAEGER_SERVICE_NAME: "mw-b"
+    volumes:
+      - shared-temp:/tmp/shared
+volumes:
+  shared-temp:

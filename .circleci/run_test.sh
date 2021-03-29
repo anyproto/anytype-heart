@@ -20,10 +20,12 @@ trap stop_and_cleanup SIGINT SIGTERM EXIT
 docker-compose pull test
 
 TAG="latest"
+BASE_TAG="master"
 if [ "${CIRCLE_SHA1}" != "" ]; then
   TAG=${CIRCLE_SHA1}
 fi
 
 export TAG
+export BASE_TAG
 
 start_test
