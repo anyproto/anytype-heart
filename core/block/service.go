@@ -250,6 +250,7 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().SetPages,
 		s.anytype.PredefinedBlocks().MarketplaceType,
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
+		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 	}
 	for _, id := range ids {
 		sb, err := s.newSmartBlock(id, &smartblock.InitContext{State: state.NewDoc(id,nil).(*state.State)})
