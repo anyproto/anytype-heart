@@ -23,8 +23,9 @@ services:
     stop_signal: SIGABRT
     image: docker.pkg.github.com/anytypeio/go-anytype-middleware/server:${TAG}
     environment:
-      ANYTYPE_GATEWAY_ADDR: "0.0.0.0:32007"
       ANYTYPE_GRPC_ADDR: "0.0.0.0:31007"
+      ANYTYPE_GATEWAY_ADDR: "0.0.0.0:32007"
+      ANYTYPE_LOG_LEVEL: "*=DEBUG"
 
   middleware-node-b:
     stop_grace_period: 1s
@@ -33,3 +34,4 @@ services:
     environment:
       ANYTYPE_GRPC_ADDR: "0.0.0.0:41007"
       ANYTYPE_GATEWAY_ADDR: "0.0.0.0:42007"
+      ANYTYPE_LOG_LEVEL: "*=DEBUG"
