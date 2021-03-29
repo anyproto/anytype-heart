@@ -247,8 +247,9 @@ jobs:
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+            SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
-            gox -buildmode=c-archive -tags nogrpcserver -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/clientlibrary/clib
+            gox -buildmode=c-archive -tags nogrpcserver -cgo=true -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/clientlibrary/clib
             make protos-server
             CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
       - save_cache:
