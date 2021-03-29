@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -169,9 +170,8 @@ func SmartBlockTypeToProto(t SmartBlockType) pb.SmartBlockType {
 	case SmartBlockTypeTemplate:
 		return pb.SmartBlockType_Template
 	default:
-		panic("unknown smartblock type")
+		panic(fmt.Errorf("unknown smartblock type: %v", t))
 	}
-	return 0
 }
 
 func SmartBlockTypeToCore(t pb.SmartBlockType) SmartBlockType {
@@ -195,7 +195,6 @@ func SmartBlockTypeToCore(t pb.SmartBlockType) SmartBlockType {
 	case pb.SmartBlockType_Template:
 		return SmartBlockTypeTemplate
 	default:
-		panic("unknown smartblock type")
+		panic(fmt.Errorf("unknown smartblock type: %v", t))
 	}
-	return 0
 }

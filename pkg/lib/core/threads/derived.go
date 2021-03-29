@@ -67,6 +67,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 	threadDerivedIndexSetPages:            smartblock.SmartBlockTypeSet,
 	threadDerivedIndexMarketplaceType:     smartblock.SmartblockTypeMarketplaceType,
 	threadDerivedIndexMarketplaceRelation: smartblock.SmartblockTypeMarketplaceRelation,
+	threadDerivedIndexMarketplaceTemplate: smartblock.SmartblockTypeMarketplaceTemplate,
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
