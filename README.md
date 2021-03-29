@@ -2,7 +2,7 @@
 [![CircleCI](https://circleci.com/gh/anytypeio/go-anytype-middleware/tree/master.svg?style=svg&circle-token=eb74d38301ec933d25eb6778f662c94b175186ef)](https://circleci.com/gh/anytypeio/go-anytype-middleware/tree/master)
 
 ### Build from Source
-1. Install Golang 1.13.* [from here](http://golang.org/dl/)
+1. Install Golang 1.16.* [from here](http://golang.org/dl/)
 2. Follow instructions below for the target systems
 
 #### Build and install for the [desktop client](https://github.com/anytypeio/js-anytype)

@@ -7,7 +7,7 @@ checkout-linux: &checkout-linux
 jobs:
   persist-checkout:
     docker:
-      - image: circleci/golang:1.14.7
+      - image: circleci/golang:1.16.2
     steps:
       - checkout
       - run:
@@ -25,7 +25,7 @@ jobs:
 
   unit-test:
     docker:
-      - image: circleci/golang:1.14.7
+      - image: circleci/golang:1.16.2
     steps:
       - *checkout-linux
       - add_ssh_keys:
@@ -65,7 +65,7 @@ jobs:
 
   build-lib-linux:
     docker:
-      - image: circleci/golang:1.14.7
+      - image: circleci/golang:1.16.2
     steps:
       - *checkout-linux
       - add_ssh_keys:
@@ -141,7 +141,7 @@ jobs:
 
   functional-test:
     docker:
-      - image: circleci/golang:1.13.12
+      - image: circleci/golang:1.16.2
     steps:
       - *checkout-linux
       - add_ssh_keys:
@@ -197,8 +197,8 @@ jobs:
       - run:
           name: install golang
           command: |
-            curl -L -O https://dl.google.com/go/go1.14.7.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.14.7.darwin-amd64.tar.gz
+            curl -L -O https://dl.google.com/go/go1.16.2.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.16.2.darwin-amd64.tar.gz
       - restore_cache:
           keys:
             - go-pkg-v3-mac-{{ arch }}-{{ checksum "go.sum" }}
@@ -220,7 +220,7 @@ jobs:
             git checkout db6184738b77fbd5089e5fa1112177f391c91b24
             go install github.com/mitchellh/gox
             curl -L -O https://github.com/grpc/grpc-web/releases/download/1.2.0/protoc-gen-grpc-web-1.2.0-darwin-x86_64
-            mv ./protoc-gen-grpc-web-1.2.0-darwin-x86_64 /usr/local/bin/protoc-gen-grpc-web
+            mv ./protoc-gen-grpc-web-1.2.1-darwin-x86_64 /usr/local/bin/protoc-gen-grpc-web
             chmod +x /usr/local/bin/protoc-gen-grpc-web
             rm -rf $GOPATH/src/github.com/gogo
             mkdir -p $GOPATH/src/github.com/gogo
@@ -248,7 +248,7 @@ jobs:
             COMMIT=$(echo $CIRCLE_SHA1 | cut -c -7)
             DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
             FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
-            gox -buildmode=c-archive -tags nogrpcserver -ldflags="$FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/clientlibrary/clib
+            gox -buildmode=c-archive -tags nogrpcserver -ldflags="$FLAGS" -osarch="darwin/amd64 darwin/arm64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/clientlibrary/clib
             make protos-server
             CC="x86_64-w64-mingw32-gcc" CXX="x86_64-w64-mingw32-g++" gox -ldflags="$FLAGS" -osarch="windows/amd64" -output="{{.OS}}-{{.Arch}}" github.com/anytypeio/go-anytype-middleware/cmd/grpcserver
       - save_cache:
@@ -332,8 +332,8 @@ jobs:
           name: install golang
           command: |
             export PATH=$PATH:$GOROOT/bin:$GOPATH/bin
-            curl -L -O https://dl.google.com/go/go1.14.7.darwin-amd64.tar.gz
-            sudo tar -C /usr/local -xzf go1.14.7.darwin-amd64.tar.gz
+            curl -L -O https://dl.google.com/go/go1.16.2.darwin-amd64.tar.gz
+            sudo tar -C /usr/local -xzf go1.16.2.darwin-amd64.tar.gz
           # see the https://github.com/golang/go/issues/31628
           # uncomment if go not fixes this issue and we will need to publish to the appstore
           # cd ~ && mkdir gosrc && cd gosrc
@@ -551,11 +551,6 @@ workflows:
       - build-lib-darwin-windows:
           requires:
             - unit-test
-          filters:
-            branches:
-              only: master
-            tags:
-              only: /.*/
       - build-lib-linux:
           requires:
             - unit-test
