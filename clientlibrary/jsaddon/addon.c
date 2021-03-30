@@ -204,6 +204,10 @@ static napi_value GetMethod(napi_env env, napi_callback_info info) {
 }
 
 static void addon_is_unloading(napi_env env, void * data, void * hint) {
+  printf("native addon is unloading\n");
+  SetEventHandler(NULL, NULL);
+  Shutdown();
+
   AddonData * addon_data = (AddonData * ) data;
   assert(napi_delete_reference(env,
     addon_data->thread_item_constructor) == napi_ok);
@@ -351,6 +355,8 @@ NAPI_MODULE_INIT( /*napi_env env, napi_value exports*/ ) {
   // addon.
   AddonData * addon_data =
     memset(malloc(sizeof( * addon_data)), 0, sizeof( * addon_data));
+
+  printf("native addon init\n");
 
   // Attach the addon data to the exports object to ensure that they are
   // destroyed together.
