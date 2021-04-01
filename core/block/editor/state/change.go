@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -38,6 +39,15 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	}
 
 	return s
+}
+
+func (s *State) SetLastModified(ts int64, accountId string) {
+	if ts > 0 {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedDate, pbtypes.Int64(ts))
+	}
+	if profileId, err := threads.ProfileThreadIDFromAccountAddress(accountId); err == nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLastModifiedBy, pbtypes.String(profileId.String()))
+	}
 }
 
 func (s *State) SetChangeId(id string) {
@@ -590,6 +600,7 @@ func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {
 	var curMap = make(map[string]struct{}, len(s.objectTypes))
 
 	for _, v := range s.objectTypes {
+		curMap[v] = struct{}{}
 		_, ok := prevMap[v]
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{

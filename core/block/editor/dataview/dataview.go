@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	bundle "github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -786,11 +787,15 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	for _, depEntry := range depEntries {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetDetails{BlockSetDetails: &pb.EventBlockSetDetails{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
+		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfObjectDetailsSet{ObjectDetailsSet: &pb.EventObjectDetailsSet{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
 	}
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries
+	qFilter, err := filter.MakeAndFilter(activeView.Filters)
+	if err != nil {
+		return nil, err
+	}
 
 	go func() {
 		for {
@@ -799,20 +804,32 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				if !ok {
 					return
 				}
-				d.SendEvent([]*pb.EventMessage{
-					{Value: &pb.EventMessageValueOfBlockDataviewRecordsUpdate{
-						&pb.EventBlockDataviewRecordsUpdate{
-							Id:      dv.blockId,
-							ViewId:  activeView.Id,
-							Records: []*types.Struct{rec},
-						}}}})
+				ots := pbtypes.GetStringList(rec, bundle.RelationKeyType.String())
+				if (len(ots) > 0 && ots[0] != source) || !qFilter.FilterObject(pbtypes.ValueGetter(rec)) {
+					d.SendEvent([]*pb.EventMessage{
+						{Value: &pb.EventMessageValueOfBlockDataviewRecordsDelete{
+							&pb.EventBlockDataviewRecordsDelete{
+								Id:      dv.blockId,
+								ViewId:  activeView.Id,
+								Removed: []string{pbtypes.GetString(rec, bundle.RelationKeyId.String())},
+							}}}})
+
+				} else {
+					d.SendEvent([]*pb.EventMessage{
+						{Value: &pb.EventMessageValueOfBlockDataviewRecordsUpdate{
+							&pb.EventBlockDataviewRecordsUpdate{
+								Id:      dv.blockId,
+								ViewId:  activeView.Id,
+								Records: []*types.Struct{rec},
+							}}}})
+				}
 			case rec, ok := <-depRecordsCh:
 				if !ok {
 					return
 				}
 				d.SendEvent([]*pb.EventMessage{
-					{Value: &pb.EventMessageValueOfBlockSetDetails{
-						BlockSetDetails: &pb.EventBlockSetDetails{
+					{Value: &pb.EventMessageValueOfObjectDetailsSet{
+						ObjectDetailsSet: &pb.EventObjectDetailsSet{
 							Id:      pbtypes.GetString(rec, bundle.RelationKeyId.String()),
 							Details: rec,
 						}}}})

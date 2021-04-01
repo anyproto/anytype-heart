@@ -5,6 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -30,6 +31,7 @@ const (
 
 	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30
 	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31
+	threadDerivedIndexMarketplaceTemplate threadDerivedIndex = 32
 
 	anytypeThreadSymmetricKeyPathPrefix = "m/SLIP-0021/anytype"
 	// TextileAccountPathFormat is a path format used for Anytype keypair
@@ -50,6 +52,7 @@ type DerivedSmartblockIds struct {
 	SetPages            string
 	MarketplaceType     string
 	MarketplaceRelation string
+	MarketplaceTemplate string
 }
 
 var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
@@ -64,6 +67,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 	threadDerivedIndexSetPages:            smartblock.SmartBlockTypeSet,
 	threadDerivedIndexMarketplaceType:     smartblock.SmartblockTypeMarketplaceType,
 	threadDerivedIndexMarketplaceRelation: smartblock.SmartblockTypeMarketplaceRelation,
+	threadDerivedIndexMarketplaceTemplate: smartblock.SmartblockTypeMarketplaceTemplate,
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
@@ -187,6 +191,13 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return ids, err
 	}
 	ids.MarketplaceRelation = marketplaceLib.ID.String()
+
+	// marketplace template
+	marketplaceTemplate, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceTemplate, newAccount, true)
+	if err != nil {
+		return ids, err
+	}
+	ids.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
 	return ids, nil
 }

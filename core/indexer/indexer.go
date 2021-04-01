@@ -112,6 +112,7 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 }
 
 func (i *indexer) reindexBundled() {
+	// todo: index only missing ones
 	var (
 		d   state.Doc
 		err error
@@ -135,6 +136,10 @@ func (i *indexer) reindexBundled() {
 
 		if err := i.store.CreateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
+		}
+
+		if err = i.store.AddToIndexQueue(id); err != nil {
+			log.With("thread", id).Errorf("can't add to index: %v", err)
 		}
 	}
 }

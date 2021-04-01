@@ -72,10 +72,15 @@ func (d *doc) meta() core.SmartBlockMeta {
 	defer d.mu.Unlock()
 	objectTypes := make([]string, len(d.st.ObjectTypes()))
 	copy(objectTypes, d.st.ObjectTypes())
+	details := pbtypes.CopyStruct(d.st.Details())
+	if details == nil || details.Fields == nil {
+		details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList(objectTypes)
 	return core.SmartBlockMeta{
 		ObjectTypes: objectTypes,
 		Relations:   pbtypes.CopyRelations(d.st.ExtraRelations()),
-		Details:     pbtypes.CopyStruct(d.st.Details()),
+		Details:     details,
 	}
 }
 
@@ -140,7 +145,7 @@ func (d *doc) injectLocalRelations(st *state.State) {
 	if details, err := d.store.GetDetails(d.id); err == nil {
 		if details != nil && details.Details != nil {
 			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalOnlyRelationsKeys, key) != -1 {
+				if slice.FindPos(bundle.LocalRelationsKeys, key) != -1 {
 					// safe to call SetDetailAndBundledRelation as bundle.LocalOnlyRelationsKeys contains only bundled relations
 					st.SetDetailAndBundledRelation(bundle.RelationKey(key), v)
 				}

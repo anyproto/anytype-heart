@@ -437,18 +437,15 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
-		if !pbtypes.StructEqualIgnore(prev, s.details, bundle.LocalOnlyRelationsKeys) {
-			action.Details = &undo.Details{Before: pbtypes.CopyStruct(pbtypes.StructCutKeys(prev, bundle.LocalOnlyRelationsKeys)), After: pbtypes.CopyStruct(pbtypes.StructCutKeys(s.details, bundle.LocalOnlyRelationsKeys))}
-			msgs = append(msgs, simple.EventMessage{
-				Msg: &pb.EventMessage{
-					Value: &pb.EventMessageValueOfBlockSetDetails{
-						BlockSetDetails: &pb.EventBlockSetDetails{
-							Id:      s.RootId(),
-							Details: pbtypes.CopyStruct(s.details),
-						},
-					},
-				},
-			})
+		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
+			ignoreKeys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)
+			// cut-off local and derived keys
+			diffPersisted := pbtypes.StructCutKeys(diff, ignoreKeys)
+			if diffPersisted != nil && len(diffPersisted.Fields) > 0 {
+				action.Details = &undo.Details{Before: pbtypes.CopyStruct(pbtypes.StructCutKeys(prev, ignoreKeys)), After: pbtypes.CopyStruct(pbtypes.StructCutKeys(s.details, ignoreKeys))}
+			}
+
+			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
 			s.parent.details = s.details
@@ -457,19 +454,34 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.extraRelations != nil {
 		prev := s.parent.ExtraRelations()
 
-		if !pbtypes.RelationsEqual(prev, s.extraRelations) {
+		if added, updated, removed := pbtypes.RelationsDiff(prev, s.extraRelations); (len(added) + len(updated) + len(removed)) > 0 {
 			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
 			s.parent.extraRelations = s.extraRelations
-			msgs = append(msgs, simple.EventMessage{
-				Msg: &pb.EventMessage{
-					Value: &pb.EventMessageValueOfBlockSetRelations{
-						BlockSetRelations: &pb.EventBlockSetRelations{
-							Id:        s.RootId(),
-							Relations: pbtypes.CopyRelations(s.extraRelations),
+			if len(added)+len(updated) > 0 {
+				msgs = append(msgs, simple.EventMessage{
+					Msg: &pb.EventMessage{
+						Value: &pb.EventMessageValueOfObjectRelationsAmend{
+							ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
+								Id:        s.RootId(),
+								Relations: append(added, updated...),
+							},
 						},
 					},
-				},
-			})
+				})
+			}
+
+			if len(removed) > 0 {
+				msgs = append(msgs, simple.EventMessage{
+					Msg: &pb.EventMessage{
+						Value: &pb.EventMessageValueOfObjectRelationsRemove{
+							ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
+								Id:   s.RootId(),
+								Keys: removed,
+							},
+						},
+					},
+				})
+			}
 		}
 	}
 
@@ -757,7 +769,7 @@ func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
 	if s.details == nil || s.details.Fields == nil {
 		return nil
 	}
-	return pbtypes.StructCutKeys(s.Details(), bundle.LocalOnlyRelationsKeys)
+	return pbtypes.StructCutKeys(s.Details(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
 }
 
 func (s *State) Details() *types.Struct {
@@ -796,6 +808,8 @@ func (s *State) ObjectType() string {
 
 	return ""
 }
+
+
 
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
@@ -873,6 +887,7 @@ func (s *State) CheckRestrictions() (err error) {
 }
 
 func (s *State) SetParent(parent *State) {
+	s.rootId = parent.rootId
 	s.parent = parent
 }
 

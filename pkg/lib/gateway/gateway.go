@@ -69,6 +69,7 @@ func GatewayAddr() string {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.Node = a.MustComponent(core.CName).(core.Service)
 	g.addr = GatewayAddr()
+	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
 }
 
@@ -81,6 +82,7 @@ func (g *gateway) Run() error {
 		return fmt.Errorf("gateway already started")
 	}
 
+	log.Infof("gateway.Run: %s", g.addr)
 	handler := http.NewServeMux()
 	g.server = &http.Server{
 		Addr:    g.addr,
@@ -129,9 +131,13 @@ func (g *gateway) Run() error {
 
 // Close stops the gateway
 func (g *gateway) Close() error {
+	log.Debugf("gateway.Close: %s", g.addr)
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
-	return g.server.Shutdown(ctx)
+	err := g.server.Shutdown(ctx)
+	defer log.Errorf("gateway.Close finished: %s: %v", g.addr, err)
+	return err
 }
 
 // Addr returns the gateway's address

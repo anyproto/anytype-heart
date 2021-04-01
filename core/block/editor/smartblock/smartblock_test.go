@@ -71,7 +71,7 @@ func TestSmartBlock_Show(t *testing.T) {
 
 	msgs := ctx.GetMessages()
 	require.Len(t, msgs, 1)
-	msg := msgs[0].GetBlockShow()
+	msg := msgs[0].GetObjectShow()
 	require.NotNil(t, msg)
 	assert.Len(t, msg.Blocks, 3)
 	assert.Equal(t, "1", msg.RootId)
@@ -86,6 +86,7 @@ func TestSmartBlock_Apply(t *testing.T) {
 		s := fx.NewState()
 		s.Add(simple.New(&model.Block{Id: "2"}))
 		require.NoError(t, s.InsertTo("1", model.Block_Inner, "2"))
+		fx.source.EXPECT().ReadOnly()
 		fx.source.EXPECT().PushChange(gomock.Any())
 		var event *pb.Event
 		fx.SetEventFunc(func(e *pb.Event) {
@@ -144,9 +145,9 @@ func (fx *fixture) init(blocks []*model.Block) {
 		bm[b.Id] = simple.New(b)
 	}
 	doc := state.NewDoc(id, bm)
-	fx.source.EXPECT().ReadDoc(gomock.Any(), true).Return(doc, nil)
+	fx.source.EXPECT().ReadDoc(gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
 
-	err := fx.Init(&InitContext{Source: fx.source, State: new(state.State)})
+	err := fx.Init(&InitContext{Source: fx.source})
 	require.NoError(fx.t, err)
 }

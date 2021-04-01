@@ -76,6 +76,7 @@ type SmartBlock interface {
 	Anytype() core.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*pbrelation.Relation
+	RelationsState(s *state.State) []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error)
@@ -106,6 +107,7 @@ type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
 	State          *state.State
+	Relations      []*pbrelation.Relation
 }
 
 type linkSource interface {
@@ -116,13 +118,15 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds            []string
-	sendEvent         func(e *pb.Event)
-	undo              undo.History
-	source            source.Source
-	meta              meta.Service
-	metaSub           meta.Subscriber
-	metaData          *core.SmartBlockMeta
+	depIds         []string
+	sendEvent      func(e *pb.Event)
+	undo           undo.History
+	source         source.Source
+	meta           meta.Service
+	metaSub        meta.Subscriber
+	metaData       *core.SmartBlockMeta
+	lastDepDetails map[string]*pb.EventObjectDetailsSet
+
 	disableLayouts    bool
 	onNewStateHooks   []func()
 	onCloseHooks      []func()
@@ -164,7 +168,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit()
 
-	if ctx.State == nil || ctx.State.IsEmpty() {
+	if ctx.State == nil {
 		ctx.State = sb.NewState()
 	} else {
 		if !sb.Doc.(*state.State).IsEmpty() {
@@ -180,19 +184,25 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 	}
 
+	if len(ctx.Relations) > 0 {
+		if _, err = sb.addExtraRelations(ctx.State, ctx.Relations); err != nil {
+			return
+		}
+	}
+
 	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
 	return
 }
 
-func (sb *smartBlock) normalizeRelations(st *state.State) error {
+func (sb *smartBlock) normalizeRelations(s *state.State) error {
 	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
 		return nil
 	}
 
-	relations := sb.Relations()
-	details := sb.Details()
+	relations := sb.RelationsState(s)
+	details := s.Details()
 	if details == nil || details.Fields == nil {
 		return nil
 	}
@@ -200,7 +210,7 @@ func (sb *smartBlock) normalizeRelations(st *state.State) error {
 		rel := pbtypes.GetRelation(relations, k)
 		if rel == nil {
 			if bundleRel, _ := bundle.GetRelation(bundle.RelationKey(k)); bundleRel != nil {
-				st.AddRelation(bundleRel)
+				s.AddRelation(bundleRel)
 				log.Warnf("NormalizeRelations bundle relation is missing, have been added: %s", k)
 			} else {
 				log.Errorf("NormalizeRelations relation is missing: %s", k)
@@ -211,7 +221,7 @@ func (sb *smartBlock) normalizeRelations(st *state.State) error {
 
 		if rel.Scope != pbrelation.Relation_object {
 			log.Warnf("NormalizeRelations change scope for relation %s", rel.Key)
-			st.SetExtraRelation(rel)
+			s.SetExtraRelation(rel)
 		}
 	}
 	return nil
@@ -228,7 +238,7 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
-		details, objectTypeUrlByObject, objectTypes, err := sb.fetchMeta()
+		details, objectTypes, err := sb.fetchMeta()
 		if err != nil {
 			return err
 		}
@@ -243,14 +253,13 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
-				Value: &pb.EventMessageValueOfBlockShow{BlockShow: &pb.EventBlockShow{
-					RootId:              sb.RootId(),
-					Type:                sb.Type(),
-					Blocks:              sb.Blocks(),
-					Details:             details,
-					Relations:           sb.Relations(),
-					ObjectTypePerObject: objectTypeUrlByObject,
-					ObjectTypes:         objectTypes,
+				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
+					RootId:      sb.RootId(),
+					Type:        sb.Type(),
+					Blocks:      sb.Blocks(),
+					Details:     details,
+					Relations:   sb.Relations(),
+					ObjectTypes: objectTypes,
 				}},
 			},
 		})
@@ -258,7 +267,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTypeUrlByObject []*pb.EventBlockShowObjectTypePerObject, objectTypes []*pbrelation.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*pbrelation.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -308,19 +317,18 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventBlockSetDetails, objectTyp
 
 	// todo: should we use badger here?
 	timeout := time.After(DepSmartblockSyncEventsTimeout)
-	var objectTypeUrlByObjectMap = map[string]string{}
 
-	detailsEvents := make(map[string]*pb.EventBlockSetDetails, len(sb.depIds))
+	sb.lastDepDetails = make(map[string]*pb.EventObjectDetailsSet, len(sb.depIds))
 loop:
-	for len(detailsEvents) < len(sb.depIds) {
+	for len(sb.lastDepDetails) < len(sb.depIds) {
 		select {
 		case <-timeout:
 			break loop
 		case d := <-ch:
 			if d.Details != nil {
-				detailsEvents[d.BlockId] = &pb.EventBlockSetDetails{
+				sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
 					Id:      d.BlockId,
-					Details: d.SmartBlockMeta.Details,
+					Details: d.Details,
 				}
 			}
 			if d.ObjectTypes != nil {
@@ -335,7 +343,6 @@ loop:
 						if slice.FindPos(uniqueObjTypes, ot) == -1 {
 							uniqueObjTypes = append(uniqueObjTypes, ot)
 						}
-						objectTypeUrlByObjectMap[d.BlockId] = ot
 					}
 				}
 			}
@@ -356,14 +363,7 @@ loop:
 		}
 	}
 
-	for id, ot := range objectTypeUrlByObjectMap {
-		objectTypeUrlByObject = append(objectTypeUrlByObject, &pb.EventBlockShowObjectTypePerObject{
-			ObjectId:   id,
-			ObjectType: ot,
-		})
-	}
-
-	for _, det := range detailsEvents {
+	for _, det := range sb.lastDepDetails {
 		details = append(details, det)
 	}
 
@@ -385,25 +385,23 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	if sb.sendEvent != nil && d.BlockId != sb.Id() {
 		msgs := []*pb.EventMessage{}
 		if d.Details != nil {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetDetails{
-					BlockSetDetails: &pb.EventBlockSetDetails{
-						Id:      d.BlockId,
-						Details: d.Details,
+			if v, exists := sb.lastDepDetails[d.BlockId]; exists {
+				diff := pbtypes.StructDiff(v.Details, d.Details)
+				msgs = append(msgs, state.StructDiffIntoEvents(d.BlockId, diff)...)
+			} else {
+				msgs = append(msgs, &pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectDetailsSet{
+						ObjectDetailsSet: &pb.EventObjectDetailsSet{
+							Id:      d.BlockId,
+							Details: d.Details,
+						},
 					},
-				},
-			})
-		}
-
-		if d.Relations != nil {
-			msgs = append(msgs, &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetRelations{
-					BlockSetRelations: &pb.EventBlockSetRelations{
-						Id:        d.BlockId,
-						Relations: d.Relations,
-					},
-				},
-			})
+				})
+			}
+			sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
+				Id:      d.BlockId,
+				Details: d.Details,
+			}
 		}
 
 		if len(msgs) == 0 {
@@ -477,6 +475,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			checkRestrictions = false
 		}
 	}
+	if sb.source.ReadOnly() && addHistory {
+		// workaround to detect user-generated action
+		return fmt.Errorf("object is readonly")
+	}
 	if checkRestrictions {
 		if err = s.CheckRestrictions(); err != nil {
 			return
@@ -485,6 +487,10 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	err = source.InjectCreationInfo(sb.source, s)
 	if err != nil {
 		log.With("thread", sb.Id()).Errorf("injectCreationInfo failed: %s", err.Error())
+	}
+	// inject lastModifiedDate
+	if sb.Anytype() != nil {
+		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
@@ -636,6 +642,14 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 			if err != nil {
 				return fmt.Errorf("relation %s validation failed: %s", detail.Key, err.Error())
 			}
+
+			// special case for type relation that we are storing in a separate object's field
+			if detail.Key == bundle.RelationKeyType.String() {
+				ot := pbtypes.GetStringListValue(detail.Value)
+				if len(ot) > 0 {
+					s.SetObjectType(ot[0])
+				}
+			}
 			detCopy.Fields[detail.Key] = detail.Value
 		} else {
 			delete(detCopy.Fields, detail.Key)
@@ -656,7 +670,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 		msgs := ctx.GetMessages()
 		var isFiltered bool
 		for i, msg := range msgs {
-			if sd := msg.GetBlockSetDetails(); sd == nil || sd.Id != sb.Id() {
+			if sd := msg.GetObjectDetailsSet(); sd == nil || sd.Id != sb.Id() {
 				filtered = append(filtered, msgs[i])
 			} else {
 				isFiltered = true
@@ -671,9 +685,33 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 }
 
 func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.Relations())
-
 	s := sb.NewStateCtx(ctx)
+
+	if relationsWithKeys, err = sb.addExtraRelations(s, relations); err != nil {
+		return
+	}
+
+	if err = sb.Apply(s, NoEvent); err != nil {
+		return
+	}
+	if ctx != nil {
+		// todo: send an atomic event for each changed relation
+		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
+					Id:        s.RootId(),
+					Relations: sb.Relations(),
+				},
+			},
+		}})
+	}
+
+	return
+}
+
+func (sb *smartBlock) addExtraRelations(s *state.State, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+	copy := pbtypes.CopyRelations(sb.RelationsState(s))
+
 	var existsMap = map[string]*pbrelation.Relation{}
 	for _, rel := range copy {
 		existsMap[rel.Key] = rel
@@ -698,21 +736,6 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 	}
 
 	s = s.SetExtraRelations(copy)
-	if err = sb.Apply(s, NoEvent); err != nil {
-		return
-	}
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
-					Id:        s.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
-	}
-
 	return
 }
 
@@ -731,8 +754,8 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
 					Id:        s.RootId(),
 					Relations: sb.Relations(),
 				},
@@ -809,8 +832,8 @@ mainLoop:
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
 					Id:        s.RootId(),
 					Relations: sb.Relations(),
 				},
@@ -850,8 +873,8 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 	if ctx != nil {
 		// todo: send an atomic event for each changed relation
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfBlockSetRelations{
-				BlockSetRelations: &pb.EventBlockSetRelations{
+			Value: &pb.EventMessageValueOfObjectRelationsSet{
+				ObjectRelationsSet: &pb.EventObjectRelationsSet{
 					Id:        s.RootId(),
 					Relations: sb.Relations(),
 				},
@@ -1144,11 +1167,15 @@ func (sb *smartBlock) baseRelations() []*pbrelation.Relation {
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
+	return sb.RelationsState(sb.Doc.(*state.State))
+}
+
+func (sb *smartBlock) RelationsState(s *state.State) []*pbrelation.Relation {
 	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
 		return sb.baseRelations()
 	}
 
-	objType := sb.ObjectType()
+	objType := s.ObjectType()
 
 	var err error
 	var aggregatedRelation []*pbrelation.Relation
@@ -1159,7 +1186,7 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 		}
 	}
 
-	rels := mergeAndSortRelations(sb.ObjectTypeRelations(), sb.ExtraRelations(), aggregatedRelation, sb.Details())
+	rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
 	sb.fillAggregatedRelations(rels)
 	return rels
 }
@@ -1181,9 +1208,13 @@ func (sb *smartBlock) fillAggregatedRelations(rels []*pbrelation.Relation) {
 }
 
 func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
+	return sb.objectTypeRelations(sb.Doc.(*state.State))
+}
+
+func (sb *smartBlock) objectTypeRelations(s *state.State) []*pbrelation.Relation {
 	var relations []*pbrelation.Relation
 	if sb.meta != nil {
-		objectTypes := sb.meta.FetchObjectTypes(sb.ObjectTypes())
+		objectTypes := sb.meta.FetchObjectTypes(s.ObjectTypes())
 		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
 		// do not fetch objectTypes for object type type to avoid universe collapse
 		for _, objType := range objectTypes {

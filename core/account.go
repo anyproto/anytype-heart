@@ -274,6 +274,11 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 	}
 
+	// stop current account
+	if err := mw.stop(); err != nil {
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
+	}
+
 	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
 	// it is ok to unlock just after we've started with the 1st account
 	at, err := core.New(
@@ -405,75 +410,80 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
-	if mw.app == nil || req.Id != mw.app.MustComponent(core.CName).(core.Service).Account() {
-		// in case user selected account other than the first one(used to perform search)
-		// or this is the first time in this session we run the Anytype node
-		if err := mw.stop(); err != nil {
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
+	// we already have this account running, lets just stop events
+	if mw.app != nil && req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
+		mw.app.MustComponent("blockService").(block.Service).CloseBlocks()
+		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
+	}
+
+	// in case user selected account other than the first one(used to perform search)
+	// or this is the first time in this session we run the Anytype node
+	if err := mw.stop(); err != nil {
+		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_STOP_SEARCHER_NODE, err)
+	}
+
+	if req.RootPath != "" {
+		mw.rootPath = req.RootPath
+	}
+
+	if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
+		if mw.mnemonic == "" {
+			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
 		}
 
-		if req.RootPath != "" {
-			mw.rootPath = req.RootPath
-		}
-
-		if _, err := os.Stat(filepath.Join(mw.rootPath, req.Id)); os.IsNotExist(err) {
-			if mw.mnemonic == "" {
-				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_NOT_EXISTS_AND_MNEMONIC_NOT_SET, err)
-			}
-
-			var account wallet.Keypair
-			for i := 0; i < 100; i++ {
-				account, err = core.WalletAccountAt(mw.mnemonic, i, "")
-				if err != nil {
-					return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
-				}
-				if account.Address() == req.Id {
-					break
-				}
-			}
-
-			var accountPreviouslyWasFoundRemotely bool
-			for _, foundAccount := range mw.foundAccounts {
-				if foundAccount.Id == account.Address() {
-					accountPreviouslyWasFoundRemotely = true
-				}
-			}
-
-			// do not allow to create repo if it wasn't previously(in the same session) found on the cafe
-			if !accountPreviouslyWasFoundRemotely {
-				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, fmt.Errorf("first you need to recover your account from remote cafe or create the new one with invite code"))
-			}
-
-			seedRaw, err := account.Raw()
+		var account wallet.Keypair
+		for i := 0; i < 100; i++ {
+			account, err = core.WalletAccountAt(mw.mnemonic, i, "")
 			if err != nil {
 				return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 			}
-
-			if err = core.WalletInitRepo(mw.rootPath, seedRaw); err != nil {
-				return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			if account.Address() == req.Id {
+				break
 			}
 		}
 
-		at, err := core.New(
-			core.WithRootPathAndAccount(mw.rootPath, req.Id),
-			core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-		)
+		var accountPreviouslyWasFoundRemotely bool
+		for _, foundAccount := range mw.foundAccounts {
+			if foundAccount.Id == account.Address() {
+				accountPreviouslyWasFoundRemotely = true
+			}
+		}
+
+		// do not allow to create repo if it wasn't previously(in the same session) found on the cafe
+		if !accountPreviouslyWasFoundRemotely {
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, fmt.Errorf("first you need to recover your account from remote cafe or create the new one with invite code"))
+		}
+
+		seedRaw, err := account.Raw()
 		if err != nil {
 			return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 		}
 
-		if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{AccountSelect: true}); err != nil {
-			if err == core.ErrRepoCorrupted {
-				return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
-			}
-
-			if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
-				return response(nil, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
-			}
-
-			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
+		if err = core.WalletInitRepo(mw.rootPath, seedRaw); err != nil {
+			return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 	}
+
+	at, err := core.New(
+		core.WithRootPathAndAccount(mw.rootPath, req.Id),
+		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
+	)
+	if err != nil {
+		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+	}
+
+	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{AccountSelect: true}); err != nil {
+		if err == core.ErrRepoCorrupted {
+			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+		}
+
+		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
+			return response(nil, pb.RpcAccountSelectResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
+		}
+
+		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
+	}
+
 	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 

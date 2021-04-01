@@ -39,30 +39,31 @@ var ErrAlreadyMigrated = fmt.Errorf("thread already migrated")
 
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
-	skipMigration,               // 1
-	alterThreadsDbSchema,        // 2
-	skipMigration,               // 3
-	skipMigration,               // 4
-	snapshotToChanges,           // 5
-	skipMigration,               // 6
-	addFilesMetaHash,            // 7
-	skipMigration,               // 8
-	skipMigration,               // 9
-	skipMigration,               // 10
-	addMissingLayout,            // 11
-	addFilesToObjects,           // 12
-	removeBundleRelationsFromDs, // 13
-	skipMigration,               // 14
-	skipMigration,               // 15
-	skipMigration,               // 16
-	skipMigration,               // 17
-	skipMigration,               // 18
-	skipMigration,               // 19
-	skipMigration,               // 20
-	skipMigration,               // 21
-	skipMigration,               // 22
-	skipMigration,               // 23
-	reindexAll,                  // 24
+	skipMigration,                     // 1
+	alterThreadsDbSchema,              // 2
+	skipMigration,                     // 3
+	skipMigration,                     // 4
+	snapshotToChanges,                 // 5
+	skipMigration,                     // 6
+	addFilesMetaHash,                  // 7
+	skipMigration,                     // 8
+	skipMigration,                     // 9
+	skipMigration,                     // 10
+	addMissingLayout,                  // 11
+	addFilesToObjects,                 // 12
+	removeBundleRelationsFromDs,       // 13
+	skipMigration,                     // 14
+	skipMigration,                     // 15
+	skipMigration,                     // 16
+	skipMigration,                     // 17
+	skipMigration,                     // 18
+	skipMigration,                     // 19
+	skipMigration,                     // 20
+	skipMigration,                     // 21
+	skipMigration,                     // 22
+	skipMigration,                     // 23
+	reindexAll,                        // 24
+	removeIncorrectlyIndexedRelations, // 25
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -551,6 +552,20 @@ func ReindexAll(a *Anytype) (int, error) {
 		log.Debugf("migration reindexAll completed for %d objects", migrated)
 	}
 	return migrated, nil
+}
+
+func removeIncorrectlyIndexedRelations(a *Anytype, lastMigration bool) error {
+	return doWithRunningNode(a, true, !lastMigration, func() error {
+		var err error
+		for _, rk := range bundle.ListRelationsKeys() {
+			// remove accidentally indexed bundled relations with custom relation prefix
+			err = a.ObjectStore().DeleteObject(addr.CustomRelationURLPrefix + rk.String())
+			if err != nil {
+				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
+			}
+		}
+		return nil
+	})
 }
 
 func reindexAll(a *Anytype, lastMigration bool) error {

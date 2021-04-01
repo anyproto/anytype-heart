@@ -31,11 +31,10 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	p.DisableLayouts()
-	return p.init()
+	return p.init(ctx.State)
 }
 
-func (p *Dashboard) init() (err error) {
-	s := p.NewState()
+func (p *Dashboard) init(s *state.State) (err error) {
 	state.CleanupLayouts(s)
 	if err = template.ApplyTemplate(p, s,
 		template.WithEmpty,

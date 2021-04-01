@@ -4,6 +4,11 @@ option go_package = "pkg/lib/pb/relation";
 
 import "google/protobuf/struct.proto";
 
+message Detail {
+    string key = 1;
+    google.protobuf.Value value = 2;
+}
+
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one
     string name = 2; // name of objectType (can be localized for bundled types)

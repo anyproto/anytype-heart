@@ -66,6 +66,10 @@ func (st *SmartTest) Relations() []*pbrelation.Relation {
 	return nil
 }
 
+func (st *SmartTest) RelationsState(s *state.State) []*pbrelation.Relation {
+	return nil
+}
+
 func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }

@@ -27,6 +27,7 @@ func (mw *Middleware) ConfigGet(*pb.RpcConfigGetRequest) *pb.RpcConfigGetRespons
 		ProfileBlockId:        pBlocks.Profile,
 		MarketplaceTypeId:     pBlocks.MarketplaceType,
 		MarketplaceRelationId: pBlocks.MarketplaceRelation,
+		MarketplaceTemplateId: pBlocks.MarketplaceTemplate,
 		GatewayUrl:            gwAddr,
 	}
 }

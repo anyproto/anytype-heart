@@ -3,6 +3,7 @@ module github.com/anytypeio/go-anytype-middleware
 go 1.14
 
 require (
+	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.6.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
@@ -19,7 +20,9 @@ require (
 	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.4.4
 	github.com/google/uuid v1.2.0
+	github.com/grpc-ecosystem/go-grpc-middleware v1.2.1
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
+	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/h2non/filetype v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hsanjuan/ipfs-lite v1.1.18
@@ -50,13 +53,14 @@ require (
 	github.com/magiconair/properties v1.8.4
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
 	github.com/mb0/diff v0.0.0-20131118162322-d8d9a906c24d
-	github.com/microcosm-cc/bluemonday v1.0.4
+	github.com/microcosm-cc/bluemonday v1.0.5
 	github.com/miolini/datacounter v1.0.2
 	github.com/mr-tron/base58 v1.2.0
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.14
+	github.com/opentracing/opentracing-go v1.2.0
 	github.com/otiai10/opengraph v1.1.3
 	github.com/prometheus/client_golang v1.9.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
@@ -64,6 +68,8 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/textileio/go-threads v1.0.2-0.20210304072541-d0f91da84404
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
+	github.com/uber/jaeger-client-go v2.25.0+incompatible
+	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	github.com/yuin/goldmark v1.3.1
 	go.uber.org/zap v1.16.0
 	golang.org/x/text v0.3.5

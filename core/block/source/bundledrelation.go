@@ -27,6 +27,10 @@ type bundledRelation struct {
 	a  core.Service
 }
 
+func (v *bundledRelation) ReadOnly() bool {
+	return true
+}
+
 func (v *bundledRelation) Id() string {
 	return v.id
 }
@@ -36,7 +40,7 @@ func (v *bundledRelation) Anytype() core.Service {
 }
 
 func (v *bundledRelation) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_File
+	return pb.SmartBlockType_Relation
 }
 
 func (v *bundledRelation) Virtual() bool {
