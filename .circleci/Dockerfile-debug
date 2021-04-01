@@ -1,4 +1,11 @@
-FROM cimg/base:2020.01
+FROM alpine:3.13
+
+RUN apk add --no-cache \
+        wget \
+        openssl \
+        ca-certificates \
+        libc6-compat \
+        libstdc++
 
 COPY ./dist/server /bin/server
 COPY .circleci/testdata /testdata

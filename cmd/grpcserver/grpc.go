@@ -3,14 +3,21 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/opentracing/opentracing-go"
+	"github.com/uber/jaeger-client-go"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
 	"os/signal"
+	"strconv"
 	"syscall"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -21,6 +28,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/pb/service"
+
+	jaegercfg "github.com/uber/jaeger-client-go/config"
 )
 
 const defaultAddr = "127.0.0.1:31007"
@@ -82,13 +91,74 @@ func main() {
 		log.Fatalf("failed to listen: %v", err)
 	}
 	webaddr = webLis.Addr().String()
+	var (
+		unaryInterceptors  []grpc.UnaryServerInterceptor
+		streamInterceptors []grpc.StreamServerInterceptor
+	)
 
-	var unaryServerInterceptor grpc.UnaryServerInterceptor
 	if metrics.Enabled {
-		unaryServerInterceptor = grpc_prometheus.UnaryServerInterceptor
+		unaryInterceptors = append(unaryInterceptors, grpc_prometheus.UnaryServerInterceptor)
 	}
 
-	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024), grpc.UnaryInterceptor(unaryServerInterceptor))
+	grpcDebug, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_LOG"))
+	if grpcDebug > 0 {
+		decider := func(_ context.Context, _ string, _ interface{}) bool {
+			return true
+		}
+
+		grpcLogger := logging.Logger("grpc")
+
+		unaryInterceptors = append(unaryInterceptors, grpc_zap.UnaryServerInterceptor(grpcLogger.Desugar()))
+		streamInterceptors = append(streamInterceptors, grpc_zap.StreamServerInterceptor(grpcLogger.Desugar()))
+		if grpcDebug > 1 {
+			unaryInterceptors = append(unaryInterceptors, grpc_zap.PayloadUnaryServerInterceptor(grpcLogger.Desugar(), decider))
+		}
+		if grpcDebug > 2 {
+			streamInterceptors = append(streamInterceptors, grpc_zap.PayloadStreamServerInterceptor(grpcLogger.Desugar(), decider))
+		}
+	}
+
+	grpcTrace, _ := strconv.Atoi(os.Getenv("ANYTYPE_GRPC_TRACE"))
+	if grpcTrace > 0 {
+		jLogger := jaeger.StdLogger
+
+		cfg, err := jaegercfg.FromEnv()
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		if cfg.ServiceName == "" {
+			cfg.ServiceName = "mw"
+		}
+		// Initialize tracer with a logger and a metrics factory
+		tracer, closer, err := cfg.NewTracer(jaegercfg.Logger(jLogger))
+		if err != nil {
+			log.Fatal(err.Error())
+		}
+		defer closer.Close()
+
+		var (
+			unaryOptions  []otgrpc.Option
+			streamOptions []otgrpc.Option
+		)
+
+		// Set the singleton opentracing.Tracer with the Jaeger tracer.
+		opentracing.SetGlobalTracer(tracer)
+		if grpcTrace > 1 {
+			unaryOptions = append(unaryOptions, otgrpc.LogPayloads())
+		}
+		if grpcTrace > 2 {
+			streamOptions = append(streamOptions, otgrpc.LogPayloads())
+		}
+
+		unaryInterceptors = append(unaryInterceptors, otgrpc.OpenTracingServerInterceptor(tracer, unaryOptions...))
+		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer, streamOptions...))
+	}
+
+	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
+		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
+		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streamInterceptors...)),
+	)
+
 	service.RegisterClientCommandsServer(server, mw)
 	if metrics.Enabled {
 		grpc_prometheus.EnableHandlingTimeHistogram()
