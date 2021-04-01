@@ -988,18 +988,19 @@ func (s *State) IsEmpty() bool {
 
 func (s *State) Copy() *State {
 	blocks := make(map[string]simple.Block, len(s.blocks))
-	for k, v := range s.blocks {
-		blocks[k] = v.Copy()
-	}
-	objTypes := make([]string, len(s.objectTypes))
-	copy(objTypes, s.objectTypes)
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		blocks[b.Model().Id] = b.Copy()
+		return true
+	})
+	objTypes := make([]string, len(s.ObjectTypes()))
+	copy(objTypes, s.ObjectTypes())
 
 	copy := &State{
 		ctx:            s.ctx,
 		blocks:         blocks,
 		rootId:         s.rootId,
-		details:        pbtypes.CopyStruct(s.details),
-		extraRelations: pbtypes.CopyRelations(s.extraRelations),
+		details:        pbtypes.CopyStruct(s.Details()),
+		extraRelations: pbtypes.CopyRelations(s.ExtraRelations()),
 		objectTypes:    objTypes,
 		noObjectType:   s.noObjectType,
 	}
