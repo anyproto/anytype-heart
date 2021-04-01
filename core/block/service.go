@@ -59,6 +59,7 @@ var (
 		coresb.SmartBlockTypeSet:         bundle.TypeKeySet,
 		coresb.SmartBlockTypeObjectType:  bundle.TypeKeyObjectType,
 		coresb.SmartBlockTypeHome:        bundle.TypeKeyDashboard,
+		coresb.SmartBlockTypeTemplate:    bundle.TypeKeyTemplate,
 	}
 )
 
@@ -85,6 +86,7 @@ type Service interface {
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, templateId string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -253,7 +255,7 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 	}
 	for _, id := range ids {
-		sb, err := s.newSmartBlock(id, &smartblock.InitContext{State: state.NewDoc(id,nil).(*state.State)})
+		sb, err := s.newSmartBlock(id, &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)})
 		if err != nil {
 			log.Errorf("can't init predefined block: %v", err)
 		} else {
@@ -438,25 +440,35 @@ func (s *service) DeletePage(id string) (err error) {
 }
 
 func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error) {
-	return s.CreateSmartBlockFromTemplate(sbType, details, relations, "")
+	return s.CreateSmartBlockFromState(sbType, details, relations, state.NewDoc("", nil).NewState())
 }
 
 func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
+	var createState *state.State
+	if templateId != "" {
+		if createState, err = s.stateFromTemplate(templateId); err != nil {
+			return
+		}
+	} else {
+		createState = state.NewDoc("", nil).NewState()
+	}
+	return s.CreateSmartBlockFromState(sbType, details, relations, createState)
+}
+
+func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
 	id = csm.ID()
-	var createState *state.State
-	if templateId != "" {
-		if createState, err = s.stateFromTemplate(templateId) ; err != nil {
-			return
+	createState.SetRootId(id)
+	if details != nil && details.Fields != nil {
+		for k, v := range details.Fields {
+			createState.SetDetail(k, v)
 		}
-	} else {
-		createState = state.NewDoc(id, nil).NewState()
 	}
-	typesInDetails := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
+	typesInDetails := pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
 	if len(typesInDetails) == 0 {
 		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
 			typesInDetails = []string{ot.URL()}
@@ -464,13 +476,11 @@ func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, det
 			typesInDetails = []string{bundle.TypeKeyPage.URL()}
 		}
 	}
-	if details != nil {
-		createState.SetDetails(details)
-	}
+
 	initCtx := &smartblock.InitContext{
 		State:          createState,
 		ObjectTypeUrls: typesInDetails,
-		Relations : relations,
+		Relations:      relations,
 	}
 	var sb smartblock.SmartBlock
 	if sb, err = s.newSmartBlock(id, initCtx); err != nil {
@@ -803,21 +813,10 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 	}
 	st.SetDetail("targetObjectType", pbtypes.String(st.ObjectType()))
 	st.SetObjectType(bundle.TypeKeyTemplate.URL())
-	var initCtx = &smartblock.InitContext{
-		State:          st,
-		ObjectTypeUrls: []string{bundle.TypeKeyTemplate.URL()},
-	}
-	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeTemplate)
+	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
-		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
 	}
-	templateId = csm.ID()
-	sb, err := s.newSmartBlock(id, initCtx)
-	if err != nil {
-		return "", err
-	}
-	defer sb.Close()
 	return
 }
 

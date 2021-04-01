@@ -615,5 +615,15 @@
     ],
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Contains original id of builtin template",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "builtinTemplateId",
+    "maxCount": 1,
+    "name": "Builtin template",
+    "readonly": false,
+    "source": "details"
   }
 ]

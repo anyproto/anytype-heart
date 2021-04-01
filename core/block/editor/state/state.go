@@ -809,8 +809,6 @@ func (s *State) ObjectType() string {
 	return ""
 }
 
-
-
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title {
@@ -1027,6 +1025,16 @@ func (s *State) Len() (l int) {
 func (s *State) SetNoObjectType(noObjectType bool) *State {
 	s.noObjectType = noObjectType
 	return s
+}
+
+func (s *State) SetRootId(newRootId string) {
+	if s.rootId != newRootId {
+		if b := s.Get(s.rootId); b != nil {
+			b.Model().Id = newRootId
+			s.Add(b)
+		}
+		s.rootId = newRootId
+	}
 }
 
 type linkSource interface {
