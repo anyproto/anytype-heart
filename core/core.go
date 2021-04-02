@@ -90,6 +90,12 @@ func (mw *Middleware) GetAnytype() core.Service {
 	return nil
 }
 
+func (mw *Middleware) GetApp() *app.App {
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+	return mw.app
+}
+
 func init() {
 	logging.SetVersion(GitSummary)
 }

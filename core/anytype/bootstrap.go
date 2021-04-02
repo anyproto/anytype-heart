@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
@@ -34,6 +35,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
+		Register(builtintemplate.New()).
 		Register(linkpreview.New())
 	return
 }

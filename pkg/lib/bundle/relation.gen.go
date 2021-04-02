@@ -72,6 +72,7 @@ const (
 	RelationKeyFileExt               RelationKey = "fileExt"
 	RelationKeyMpAddedToLibrary      RelationKey = "mpAddedToLibrary"
 	RelationKeyFeaturedRelations     RelationKey = "featuredRelations"
+	RelationKeyBuiltinTemplateId     RelationKey = "builtinTemplateId"
 )
 
 var (
@@ -161,6 +162,18 @@ var (
 			Key:         "audioGenre",
 			MaxCount:    1,
 			Name:        "Genre",
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyBuiltinTemplateId: {
+
+			DataSource:  relation.Relation_details,
+			Description: "Contains original id of builtin template",
+			Format:      relation.RelationFormat_shorttext,
+			Hidden:      true,
+			Key:         "builtinTemplateId",
+			MaxCount:    1,
+			Name:        "Builtin template",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},

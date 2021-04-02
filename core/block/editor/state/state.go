@@ -809,8 +809,6 @@ func (s *State) ObjectType() string {
 	return ""
 }
 
-
-
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title {
@@ -988,18 +986,19 @@ func (s *State) IsEmpty() bool {
 
 func (s *State) Copy() *State {
 	blocks := make(map[string]simple.Block, len(s.blocks))
-	for k, v := range s.blocks {
-		blocks[k] = v.Copy()
-	}
-	objTypes := make([]string, len(s.objectTypes))
-	copy(objTypes, s.objectTypes)
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		blocks[b.Model().Id] = b.Copy()
+		return true
+	})
+	objTypes := make([]string, len(s.ObjectTypes()))
+	copy(objTypes, s.ObjectTypes())
 
 	copy := &State{
 		ctx:            s.ctx,
 		blocks:         blocks,
 		rootId:         s.rootId,
-		details:        pbtypes.CopyStruct(s.details),
-		extraRelations: pbtypes.CopyRelations(s.extraRelations),
+		details:        pbtypes.CopyStruct(s.Details()),
+		extraRelations: pbtypes.CopyRelations(s.ExtraRelations()),
 		objectTypes:    objTypes,
 		noObjectType:   s.noObjectType,
 	}
@@ -1026,6 +1025,16 @@ func (s *State) Len() (l int) {
 func (s *State) SetNoObjectType(noObjectType bool) *State {
 	s.noObjectType = noObjectType
 	return s
+}
+
+func (s *State) SetRootId(newRootId string) {
+	if s.rootId != newRootId {
+		if b := s.Get(s.rootId); b != nil {
+			b.Model().Id = newRootId
+			s.Add(b)
+		}
+		s.rootId = newRootId
+	}
 }
 
 type linkSource interface {
