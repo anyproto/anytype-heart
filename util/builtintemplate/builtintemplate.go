@@ -48,7 +48,6 @@ func (b *builtinTemplate) Run() (err error) {
 			log.Errorf("can't save builtin template: %v", e)
 		}
 	}
-	templatesBinary = nil
 	return
 }
 
