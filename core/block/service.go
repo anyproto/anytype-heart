@@ -492,16 +492,19 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 }
 
 func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
-	var contextBlockType pb.SmartBlockType
-	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		contextBlockType = b.Type()
-		return nil
-	})
+	if req.ContextId != "" {
+		var contextBlockType pb.SmartBlockType
+		if err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+			contextBlockType = b.Type()
+			return nil
+		}); err != nil {
+			return
+		}
 
-	if contextBlockType == pb.SmartBlockType_Set {
-		return "", "", basic.ErrNotSupported
+		if contextBlockType == pb.SmartBlockType_Set {
+			return "", "", basic.ErrNotSupported
+		}
 	}
-
 	pageId, _, err = s.CreateSmartBlockFromTemplate(coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
