@@ -59,7 +59,7 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 		return &pb.RpcDebugSyncResponse{}
 	}
 	at := mw.app.MustComponent(core.CName).(core.Service)
-	mw.m.Unlock()
+	mw.m.RUnlock()
 
 	response := func(threads []*pb.RpcDebugthreadInfo, threadsWithoutRepl int32, threadsWithoutHeadDownloaded int32, totalRecords int32, totalSize int32, code pb.RpcDebugSyncResponseErrorCode, err error) *pb.RpcDebugSyncResponse {
 		m := &pb.RpcDebugSyncResponse{DeviceId: at.Device(), Threads: threads, ThreadsWithoutReplInOwnLog: threadsWithoutRepl, ThreadsWithoutHeadDownloaded: threadsWithoutHeadDownloaded, TotalThreads: int32(len(threads)), TotalRecords: totalRecords, TotalSize: totalSize, Error: &pb.RpcDebugSyncResponseError{Code: code}}
