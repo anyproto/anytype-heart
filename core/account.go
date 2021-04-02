@@ -166,7 +166,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc := &model.Account{Id: account.Address()}
 
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
+	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{NewAccount: true}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
@@ -472,7 +472,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{AccountSelect: true}); err != nil {
+	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}

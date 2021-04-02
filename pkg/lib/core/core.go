@@ -192,7 +192,7 @@ func (a *Anytype) Run() (err error) {
 	if err = a.Start(); err != nil {
 		return
 	}
-	return a.InitPredefinedBlocks(context.TODO(), a.config.AccountSelect)
+	return a.InitPredefinedBlocks(context.TODO(), a.config.NewAccount)
 }
 
 func (a *Anytype) Account() string {
@@ -389,7 +389,7 @@ func (a *Anytype) start() error {
 	return nil
 }
 
-func (a *Anytype) InitPredefinedBlocks(ctx context.Context, accountSelect bool) error {
+func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) error {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -402,7 +402,7 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, accountSelect bool) 
 		}
 	}()
 
-	ids, err := a.threadService.EnsurePredefinedThreads(cctx, !accountSelect)
+	ids, err := a.threadService.EnsurePredefinedThreads(cctx, newAccount)
 	if err != nil {
 		return err
 	}
