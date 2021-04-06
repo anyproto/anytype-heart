@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -26,6 +27,15 @@ func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, er
 }
 
 func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
+	// replaces "value == false" to "value != true" for expected work with checkboxes
+	if proto.Condition == model.BlockContentDataviewFilter_Equal && proto.Value != nil && proto.Value.Equal(pbtypes.Bool(false)) {
+		proto = &model.BlockContentDataviewFilter{
+			RelationKey:      proto.RelationKey,
+			RelationProperty: proto.RelationProperty,
+			Condition:        model.BlockContentDataviewFilter_NotEqual,
+			Value:            pbtypes.Bool(true),
+		}
+	}
 	switch proto.Condition {
 	case model.BlockContentDataviewFilter_Equal,
 		model.BlockContentDataviewFilter_Greater,
