@@ -72,7 +72,8 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 		from = req.Range.From
 		to = req.Range.To
 	}
-	if tb.Model().GetText().Style == model.BlockContentText_Title {
+	style := tb.Model().GetText().Style
+	if style == model.BlockContentText_Title || style == model.BlockContentText_Description{
 		req.Mode = pb.RpcBlockSplitRequest_TITLE
 		req.Style = model.BlockContentText_Paragraph
 	}
