@@ -124,7 +124,8 @@ func (td *textDetails) RangeSplit(from int32, to int32, top bool) (newBlock simp
 	if newBlock, err = td.Text.RangeSplit(from, to, top); err != nil {
 		return
 	}
-	if td.Model().GetText().Style == model.BlockContentText_Title {
+	style := td.Model().GetText().Style
+	if style == model.BlockContentText_Title || style == model.BlockContentText_Description {
 		newBlock.Model().GetText().Style = model.BlockContentText_Paragraph
 	}
 	td.changed = true
