@@ -122,7 +122,11 @@ func (s *service) addMissingThreadsToCollection() error {
 
 	var missingThreads int
 	for _, threadId := range threadsIds {
-		t, _ := smartblock.SmartBlockTypeFromThreadID(threadId)
+		t, err := smartblock.SmartBlockTypeFromThreadID(threadId)
+		if err != nil {
+			log.Errorf("smartblock has incorrect id(%s), failed to decode type: %v", threadId.String(), err)
+		}
+
 		if t != smartblock.SmartBlockTypePage {
 			continue
 		}

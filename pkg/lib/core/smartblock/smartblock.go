@@ -70,41 +70,56 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	_, n2 := uvarint(rawid[n:])
 	blockType, _ := uvarint(rawid[n+n2:])
 
+	// checks in order to detect invalid sb type
+	_, err := SmartBlockType(blockType).toProto()
+	if err != nil {
+		return 0, err
+	}
+
 	return SmartBlockType(blockType), nil
 }
 
+// Panics in case of incorrect sb type!
 func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
+	t, err := sbt.toProto()
+	if err != nil {
+		panic(err)
+	}
+	return t
+}
+
+func (sbt SmartBlockType) toProto() (model.ObjectInfoType, error) {
 	switch sbt {
 	case SmartBlockTypePage:
-		return model.ObjectInfo_Page
+		return model.ObjectInfo_Page, nil
 	case SmartBlockTypeProfilePage:
-		return model.ObjectInfo_ProfilePage
+		return model.ObjectInfo_ProfilePage, nil
 	case SmartBlockTypeHome:
-		return model.ObjectInfo_Home
+		return model.ObjectInfo_Home, nil
 	case SmartBlockTypeArchive:
-		return model.ObjectInfo_Archive
+		return model.ObjectInfo_Archive, nil
 	case SmartBlockTypeSet:
-		return model.ObjectInfo_Set
+		return model.ObjectInfo_Set, nil
 	case SmartblockTypeMarketplaceType:
-		return model.ObjectInfo_Set
+		return model.ObjectInfo_Set, nil
 	case SmartblockTypeMarketplaceTemplate:
-		return model.ObjectInfo_Set
+		return model.ObjectInfo_Set, nil
 	case SmartblockTypeMarketplaceRelation:
-		return model.ObjectInfo_Set
+		return model.ObjectInfo_Set, nil
 	case SmartBlockTypeFile:
-		return model.ObjectInfo_File
+		return model.ObjectInfo_File, nil
 	case SmartBlockTypeObjectType:
-		return model.ObjectInfo_ObjectType
+		return model.ObjectInfo_ObjectType, nil
 	case SmartBlockTypeBundledObjectType:
-		return model.ObjectInfo_ObjectType
+		return model.ObjectInfo_ObjectType, nil
 	case SmartBlockTypeBundledRelation:
-		return model.ObjectInfo_Relation
+		return model.ObjectInfo_Relation, nil
 	case SmartBlockTypeIndexedRelation:
-		return model.ObjectInfo_Relation
+		return model.ObjectInfo_Relation, nil
 	case SmartBlockTypeTemplate:
-		return model.ObjectInfo_Page
+		return model.ObjectInfo_Page, nil
 	default:
-		panic("unknown smartblock type")
+		return 0, fmt.Errorf("unknown smartblock type")
 	}
 }
 
