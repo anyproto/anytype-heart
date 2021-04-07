@@ -248,7 +248,7 @@ func (s *service) ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]th
 	for _, thrdId := range threads {
 		t, err := smartblock.SmartBlockTypeFromThreadID(thrdId)
 		if err != nil {
-			log.Errorf("SmartBlockTypeFromThreadID failed: %s", err.Error())
+			log.Errorf("smartblock has incorrect id(%s), failed to decode type: %v", thrdId.String(), err)
 			continue
 		}
 

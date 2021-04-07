@@ -27,7 +27,11 @@ func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
 
 	var idsS = make([]string, 0, len(ids))
 	for _, id := range ids {
-		t, _ := smartblock.SmartBlockTypeFromThreadID(id)
+		t, err := smartblock.SmartBlockTypeFromThreadID(id)
+		if err != nil {
+			log.Errorf("SmartBlockTypeFromThreadID failed for %s: %v", id, err)
+			continue
+		}
 		if t != smartblock.SmartBlockTypePage &&
 			t != smartblock.SmartBlockTypeProfilePage &&
 			t != smartblock.SmartBlockTypeHome {
