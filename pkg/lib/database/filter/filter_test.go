@@ -325,4 +325,23 @@ func TestMakeAndFilter(t *testing.T) {
 		})
 		assert.Error(t, err)
 	})
+	t.Run("replace 'value == false' to 'value != true'", func(t *testing.T) {
+		f, err := MakeAndFilter([]*model.BlockContentDataviewFilter{
+			{
+				RelationKey: "b",
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		})
+		require.NoError(t, err)
+
+		g := testGetter{"b": pbtypes.Bool(false)}
+		assert.True(t, f.FilterObject(g))
+
+		g = testGetter{"not_exists": pbtypes.Bool(false)}
+		assert.True(t, f.FilterObject(g))
+
+		g = testGetter{"b": pbtypes.Bool(true)}
+		assert.False(t, f.FilterObject(g))
+	})
 }
