@@ -490,7 +490,7 @@ jobs:
             cp ./pb/protos/*.proto protobuf/protos
             cp ./pb/protos/service/*.proto protobuf/protos
             cp ./pkg/lib/pb/model/protos/*.proto protobuf/protos
-            protoc -I ./ --java_out=./protobuf pb/protos/* pkg/lib/pb/model/protos/*.proto
+            protoc -I ./ --java_out=./protobuf pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
       - run:
           name: collect artifacts
           command: |
