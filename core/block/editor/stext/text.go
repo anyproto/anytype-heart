@@ -122,6 +122,7 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 				break
 			}
 		}
+		new.(text.Block).SetStyle(model.BlockContentText_Paragraph)
 		targetId = template.HeaderLayoutId
 		targetPos = model.Block_Bottom
 	}
