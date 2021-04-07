@@ -34,6 +34,7 @@ message Block {
         Content.Link link = 20;
         Content.Dataview dataview = 21;
         Content.Relation relation = 22;
+        Content.FeaturedRelations featuredRelations = 23;
     }
 
 
@@ -120,6 +121,9 @@ message Block {
 
         message Icon {
             string name = 1;
+        }
+
+        message FeaturedRelations {
         }
 
         message Text {

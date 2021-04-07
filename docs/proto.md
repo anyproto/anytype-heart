@@ -832,6 +832,7 @@
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
+    - [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
@@ -12674,6 +12675,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype.model.Block.Content.Relation) |  |  |
+| featuredRelations | [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations) |  |  |
 
 
 
@@ -12812,6 +12814,16 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | style | [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.FeaturedRelations"></a>
+
+### Block.Content.FeaturedRelations
+
 
 
 
