@@ -175,7 +175,12 @@ func TestDsObjectStore_Query(t *testing.T) {
 	assert.Len(t, rec, 1)
 }
 func getId() string {
-	return thread.NewIDV1(thread.Raw, 32).String()
+	thrdId, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+	if err != nil {
+		panic(err)
+	}
+
+	return thrdId.String()
 }
 func TestDsObjectStore_PrefixQuery(t *testing.T) {
 	bds := sync.MutexWrap(ds.NewMapDatastore())
