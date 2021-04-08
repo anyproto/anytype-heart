@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"path/filepath"
 	"time"
 
 	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
@@ -44,18 +43,10 @@ func (s *service) threadsDbInit() error {
 		return err
 	}
 
-	path := filepath.Join(s.repoRootPath, "collections")
-	store, err := util.NewBadgerDatastore(path, "eventstore", false)
+	s.db, err = db.NewDB(context.Background(), s.threadsDbDS, s.t, accountID, db.WithNewCollections())
 	if err != nil {
 		return err
 	}
-	d, err := db.NewDB(context.Background(), store, s.t, accountID, db.WithNewCollections())
-	if err != nil {
-		return err
-	}
-
-	s.db = d
-	s.dbCloser = store
 
 	s.threadsCollection = s.db.GetCollection(ThreadInfoCollectionName)
 	err = s.threadsDbListen()

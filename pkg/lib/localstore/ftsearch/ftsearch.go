@@ -1,10 +1,18 @@
 package ftsearch
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"path/filepath"
 	"strings"
 
 	"github.com/blevesearch/bleve"
 	"github.com/blevesearch/bleve/search/query"
+)
+
+const (
+	CName  = "fts"
+	ftsDir = "fts"
 )
 
 type SearchDoc struct {
@@ -13,25 +21,35 @@ type SearchDoc struct {
 	Text  string
 }
 
-func NewFTSearch(path string) (FTSearch, error) {
-	fts := &ftSearch{path: path}
-	if err := fts.init(); err != nil {
-		return nil, err
-	}
-	return fts, nil
+func New() FTSearch {
+	return &ftSearch{}
 }
 
 type FTSearch interface {
+	app.Component
 	Index(d SearchDoc) (err error)
 	Search(query string) (results []string, err error)
 	Delete(id string) error
 	DocCount() (uint64, error)
-	Close()
 }
 
 type ftSearch struct {
 	path  string
 	index bleve.Index
+}
+
+func (f *ftSearch) Init(a *app.App) (err error) {
+	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
+	f.path = filepath.Join(repoPath, ftsDir)
+	if err = f.init(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (f *ftSearch) Name() (name string) {
+	return CName
 }
 
 func (f *ftSearch) init() (err error) {
@@ -104,8 +122,9 @@ func (f *ftSearch) DocCount() (uint64, error) {
 	return f.index.DocCount()
 }
 
-func (f *ftSearch) Close() {
+func (f *ftSearch) Close() error {
 	if f.index != nil {
 		f.index.Close()
 	}
+	return nil
 }

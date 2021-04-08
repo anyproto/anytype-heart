@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	app2 "github.com/textileio/go-threads/core/app"
 	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -115,7 +115,7 @@ func (s *service) addMissingThreadsToCollection() error {
 
 	log.Debugf("%d threads in collection", len(threadsInCollection))
 
-	threadsIds, err := s.threadsGetter.Threads()
+	threadsIds, err := s.logstore.Threads()
 	if err != nil {
 		return err
 	}
@@ -177,7 +177,7 @@ func (s *service) handleAllMissingDbRecords(threadId string) error {
 	return nil
 }
 
-func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info, li thread.LogInfo) {
+func handleAllRecordsInLog(tdb *db.DB, net app2.Net, thrd thread.Info, li thread.LogInfo) {
 	var (
 		rid     = li.Head
 		total   = 0
@@ -225,7 +225,7 @@ func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info,
 	}
 }
 
-func getRecord(net net.NetBoostrapper, thrd thread.Info, rid cid.Cid) (net3.Record, *cbor.Event, format.Node, error) {
+func getRecord(net app2.Net, thrd thread.Info, rid cid.Cid) (net3.Record, *cbor.Event, format.Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if thrd.ID == thread.Undef {

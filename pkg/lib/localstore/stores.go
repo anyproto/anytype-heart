@@ -3,6 +3,8 @@ package localstore
 import (
 	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"strings"
 	"time"
 
@@ -17,7 +19,6 @@ import (
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
 	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/multiformats/go-base32"
@@ -32,7 +33,10 @@ var (
 	indexBase = ds.NewKey("/idx")
 )
 
+const CName = "localstore"
+
 type LocalStore struct {
+	app.Component
 	Files   FileStore
 	Objects ObjectStore
 }
@@ -61,7 +65,9 @@ type ObjectStore interface {
 	database.Reader
 
 	CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
-	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
+	UpdateObjectDetails(id string, details *types.Struct, relations *pbrelation.Relations) error
+	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
+
 	StoreRelations(relations []*pbrelation.Relation) error
 
 	DeleteObject(id string) error
@@ -82,14 +88,23 @@ type ObjectStore interface {
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
 	FTSearch() ftsearch.FTSearch
-	Close()
 }
 
-func NewLocalStore(store ds.Batching, fts ftsearch.FTSearch) LocalStore {
-	return LocalStore{
-		Files:   NewFileStore(store.(ds.TxnDatastore)),
-		Objects: NewObjectStore(store.(ds.TxnDatastore), fts),
-	}
+func New() *LocalStore {
+	return &LocalStore{}
+}
+
+func (ls *LocalStore) Init(a *app.App) (err error) {
+	store := a.MustComponent(datastore.CName).(datastore.Datastore).LocalstoreDS()
+	fts := a.MustComponent(ftsearch.CName).(ftsearch.FTSearch)
+
+	ls.Objects = NewObjectStore(store, fts)
+	ls.Files = NewFileStore(store)
+	return nil
+}
+
+func (ls *LocalStore) Name() (name string) {
+	return CName
 }
 
 type Indexable interface {
@@ -124,13 +139,6 @@ func (i Index) JoinedKeys(val interface{}) []string {
 		keys = append(keys, keyStr)
 	}
 	return keys
-}
-
-func (ls LocalStore) Close() error {
-	if ls.Objects != nil {
-		ls.Objects.Close()
-	}
-	return nil
 }
 
 func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
@@ -384,7 +392,7 @@ func GetKeyByIndex(index Index, txn ds.Txn, val interface{}) (string, error) {
 		return "", res.Error
 	}
 
-	key := datastore.RawKey(res.Key)
+	key := ds.RawKey(res.Key)
 	keyParts := key.List()
 
 	return keyParts[len(keyParts)-1], nil
@@ -493,7 +501,7 @@ func ExtractKeysFromResults(results query.Results) ([]string, error) {
 }
 
 func CarveKeyParts(key string, from, to int) (string, error) {
-	var keyParts = datastore.RawKey(key).List()
+	var keyParts = ds.RawKey(key).List()
 
 	carved, err := slices.Carve(polymorph.FromStrings(keyParts), from, to)
 	if err != nil {

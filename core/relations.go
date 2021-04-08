@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
@@ -267,7 +268,8 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return response(pb.RpcObjectTypeListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	threadIds, err := at.ThreadService().ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
+	ts := mw.app.MustComponent(threads.CName).(threads.Service)
+	threadIds, err := ts.ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
 	if err != nil {
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}

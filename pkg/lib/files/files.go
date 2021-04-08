@@ -6,6 +6,7 @@ import (
 	"crypto/aes"
 	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -34,10 +35,14 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
-const maxPinAttempts = 10
+const (
+	CName = "files"
+)
 
 var log = logging.Logger("anytype-files")
 var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
+
+var _ app.Component = (*Service)(nil)
 
 type Service struct {
 	store localstore.FileStore
@@ -45,17 +50,24 @@ type Service struct {
 	pins  pin.FilePinService
 }
 
+func (s *Service) Init(a *app.App) (err error) {
+	s.ipfs = a.MustComponent("ipfs").(ipfs.Node).GetIpfs()
+	s.store = a.MustComponent("localstore").(*localstore.LocalStore).Files
+	s.pins = a.MustComponent(pin.CName).(pin.FilePinService)
+	return nil
+}
+
+func (s *Service) Name() (name string) {
+	return CName
+}
+
 type FileKeys struct {
 	Hash string
 	Keys map[string]string
 }
 
-func New(store localstore.FileStore, ipfs ipfs.IPFS, pins pin.FilePinService) *Service {
-	return &Service{
-		store: store,
-		ipfs:  ipfs,
-		pins:  pins,
-	}
+func New() *Service {
+	return &Service{}
 }
 
 var ErrMissingMetaLink = fmt.Errorf("meta link not in node")

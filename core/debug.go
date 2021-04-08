@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"sort"
 	"time"
 
@@ -12,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/ipfs/go-cid"
 	cbornode "github.com/ipfs/go-ipld-cbor"
@@ -38,10 +39,11 @@ func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThr
 		return response(nil, 0, nil)
 	}
 
+	ts := mw.app.MustComponent(threads.CName).(threads.Service)
 	at := mw.app.MustComponent(core.CName).(core.Service)
+	ipfs := mw.app.MustComponent(ipfs.CName).(ipfs.IPFS)
 
-	cafePeerStr, _ := at.CafePeer().ValueForProtocol(ma.P_P2P)
-	t := at.(*core.Anytype).ThreadService().Threads()
+	cafePeerStr, _ := ts.CafePeer().ValueForProtocol(ma.P_P2P)
 
 	cafePeer, _ := peer.Decode(cafePeerStr)
 	tid, err := thread.Decode(req.ThreadId)
@@ -49,7 +51,7 @@ func (mw *Middleware) DebugThread(req *pb.RpcDebugThreadRequest) *pb.RpcDebugThr
 		return response(nil, pb.RpcDebugThreadResponseError_BAD_INPUT, err)
 	}
 
-	tinfo := getThreadInfo(t, tid, at.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
+	tinfo := getThreadInfo(ipfs, ts, tid, at.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
 	return response(&tinfo, 0, nil)
 }
 
@@ -59,6 +61,9 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 		return &pb.RpcDebugSyncResponse{}
 	}
 	at := mw.app.MustComponent(core.CName).(core.Service)
+	ts := mw.app.MustComponent(threads.CName).(threads.Service)
+	ipfs := mw.app.MustComponent(ipfs.CName).(ipfs.IPFS)
+
 	mw.m.RUnlock()
 
 	response := func(threads []*pb.RpcDebugthreadInfo, threadsWithoutRepl int32, threadsWithoutHeadDownloaded int32, totalRecords int32, totalSize int32, code pb.RpcDebugSyncResponseErrorCode, err error) *pb.RpcDebugSyncResponse {
@@ -71,9 +76,8 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	}
 
 	var threads []*pb.RpcDebugthreadInfo
-	t := at.(*core.Anytype).ThreadService().Threads()
-	ids, _ := t.Logstore().Threads()
-	cafePeerStr, _ := at.CafePeer().ValueForProtocol(ma.P_P2P)
+	ids, _ := ts.Logstore().Threads()
+	cafePeerStr, _ := ts.CafePeer().ValueForProtocol(ma.P_P2P)
 	cafePeer, _ := peer.Decode(cafePeerStr)
 
 	var (
@@ -84,7 +88,7 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	)
 
 	for _, id := range ids {
-		tinfo := getThreadInfo(t, id, at.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
+		tinfo := getThreadInfo(ipfs, ts, id, at.Device(), cafePeer, req.SkipEmptyLogs, req.TryToDownloadRemoteRecords)
 		if tinfo.LogsWithDownloadedHead == 0 {
 			threadWithNoHeadDownloaded++
 		}
@@ -106,7 +110,7 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	return response(threads, threadsWithoutRepl, threadWithNoHeadDownloaded, totalRecords, totalSize, 0, nil)
 }
 
-func getThreadInfo(t net.NetBoostrapper, id thread.ID, ownDeviceId string, cafePeer peer.ID, skipEmptyLogs bool, downloadRemoteRecords bool) pb.RpcDebugthreadInfo {
+func getThreadInfo(ipfs ipfs.IPFS, t threads.Service, id thread.ID, ownDeviceId string, cafePeer peer.ID, skipEmptyLogs bool, downloadRemoteRecords bool) pb.RpcDebugthreadInfo {
 	tinfo := pb.RpcDebugthreadInfo{Id: id.String()}
 	thrd, err := t.Logstore().GetThread(id)
 	if err != nil {
@@ -115,7 +119,7 @@ func getThreadInfo(t net.NetBoostrapper, id thread.ID, ownDeviceId string, cafeP
 		return tinfo
 	}
 	for _, lg := range thrd.Logs {
-		lgInfo := getLogInfo(t, thrd, lg, downloadRemoteRecords, 0)
+		lgInfo := getLogInfo(ipfs, t, thrd, lg, downloadRemoteRecords, 0)
 		if skipEmptyLogs && len(lgInfo.Head) <= 1 {
 			continue
 		}
@@ -144,7 +148,7 @@ func getThreadInfo(t net.NetBoostrapper, id thread.ID, ownDeviceId string, cafeP
 		return tinfo.Logs[i].Id < tinfo.Logs[j].Id
 	})
 
-	ss, err := t.Status(id, cafePeer)
+	ss, err := t.Threads().Status(id, cafePeer)
 	if err != nil {
 		tinfo.CafeDownStatus = err.Error()
 		tinfo.CafeUpStatus = err.Error()
@@ -161,13 +165,13 @@ func getThreadInfo(t net.NetBoostrapper, id thread.ID, ownDeviceId string, cafeP
 	return tinfo
 }
 
-func getLogInfo(t net.NetBoostrapper, thrd thread.Info, lg thread.LogInfo, downloadRemote bool, maxRecords int) pb.RpcDebuglogInfo {
+func getLogInfo(ipfs ipfs.IPFS, t threads.Service, thrd thread.Info, lg thread.LogInfo, downloadRemote bool, maxRecords int) pb.RpcDebuglogInfo {
 	lgInfo := pb.RpcDebuglogInfo{Id: lg.ID.String(), Head: lg.Head.String()}
 	if !lg.Head.Defined() {
 		return lgInfo
 	}
 
-	rec, rinfo, err := getRecord(t, thrd, lg.Head, downloadRemote)
+	rec, rinfo, err := getRecord(ipfs, t, thrd, lg.Head, downloadRemote)
 	if rec != nil && err == nil {
 		lgInfo.LastRecordTs = int32(rinfo.Time)
 		lgInfo.LastRecordVer = int32(rinfo.Version)
@@ -182,7 +186,7 @@ func getLogInfo(t net.NetBoostrapper, thrd thread.Info, lg thread.LogInfo, downl
 			if maxRecords > 0 && lgInfo.TotalRecords >= int32(maxRecords) {
 				break
 			}
-			rec, rinfo, err := getRecord(t, thrd, rid, downloadRemote)
+			rec, rinfo, err := getRecord(ipfs, t, thrd, rid, downloadRemote)
 			if rec != nil {
 				lgInfo.TotalSize += int32(rinfo.Size)
 				rid = rec.PrevID()
@@ -203,7 +207,7 @@ func getLogInfo(t net.NetBoostrapper, thrd thread.Info, lg thread.LogInfo, downl
 		lgInfo.Error = err.Error()
 	}
 
-	ss, err := t.Status(thrd.ID, lg.ID)
+	ss, err := t.Threads().Status(thrd.ID, lg.ID)
 	if err != nil {
 		lgInfo.DownStatus = err.Error()
 		lgInfo.UpStatus = err.Error()
@@ -226,13 +230,13 @@ type recordInfo struct {
 	Time    int64
 }
 
-func getRecord(net net.NetBoostrapper, thrd thread.Info, rid cid.Cid, downloadRemote bool) (net3.Record, *recordInfo, error) {
+func getRecord(ipfs ipfs.IPFS, ts threads.Service, thrd thread.Info, rid cid.Cid, downloadRemote bool) (net3.Record, *recordInfo, error) {
 	rinfo := recordInfo{}
 	if thrd.ID == thread.Undef {
 		return nil, nil, fmt.Errorf("undef id")
 	}
 
-	hasBlock, err := net.GetIpfs().HasBlock(rid)
+	hasBlock, err := ipfs.HasBlock(rid)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -243,17 +247,17 @@ func getRecord(net net.NetBoostrapper, thrd thread.Info, rid cid.Cid, downloadRe
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
-	rec, err := net.GetRecord(ctx, thrd.ID, rid)
+	rec, err := ts.Threads().GetRecord(ctx, thrd.ID, rid)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to load record: %s", err.Error())
 	}
 
-	event, err := cbor.EventFromRecord(ctx, net, rec)
+	event, err := cbor.EventFromRecord(ctx, ipfs, rec)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	node, err := event.GetBody(context.TODO(), net, thrd.Key.Read())
+	node, err := event.GetBody(context.TODO(), ipfs, thrd.Key.Read())
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to get record body: %w", err)
 	}

@@ -3,14 +3,18 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"io"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	app2 "github.com/textileio/go-threads/core/app"
+	tlcore "github.com/textileio/go-threads/core/logstore"
+	"github.com/textileio/go-threads/db/keytransform"
+	"google.golang.org/grpc"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	net2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
 	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	ma "github.com/multiformats/go-multiaddr"
@@ -22,53 +26,47 @@ import (
 	"github.com/textileio/go-threads/util"
 )
 
-var log = logging.Logger("anytype-threads")
-
 const simultaneousRequests = 20
 
 type service struct {
-	t                          net2.NetBoostrapper
+	Config
+	GRPCServerOptions []grpc.ServerOption
+	GRPCDialOptions   []grpc.DialOption
+
+	logstore    tlcore.Logstore
+	logstoreDS  datastore.DSTxnBatching
+	threadsDbDS keytransform.TxnDatastoreExtended
+
+	ctxCancel context.CancelFunc
+	ctx       context.Context
+
+	t                          app2.Net
 	db                         *db.DB
-	dbCloser                   io.Closer
 	threadsCollection          *db.Collection
-	threadsGetter              ThreadsGetter
 	device                     wallet.Keypair
 	account                    wallet.Keypair
+	ipfsNode                   ipfs.Node
 	repoRootPath               string
 	newHeadProcessor           func(id thread.ID) error
 	newThreadChan              chan<- string
 	newThreadProcessingLimiter chan struct{}
 
 	replicatorAddr ma.Multiaddr
-	ctx            context.Context
-	ctxCancel      context.CancelFunc
 	sync.Mutex
 }
 
-func New(threadsAPI net2.NetBoostrapper, threadsGetter ThreadsGetter, repoRootPath string, deviceKeypair wallet.Keypair, accountKeypair wallet.Keypair, newHeadProcessor func(id thread.ID) error, newThreadChan chan string, replicatorAddr ma.Multiaddr) Service {
-	ctx, cancel := context.WithCancel(context.Background())
-	limiter := make(chan struct{}, simultaneousRequests)
-	for i := 0; i < cap(limiter); i++ {
-		limiter <- struct{}{}
-	}
-
-	return &service{
-		t:                          threadsAPI,
-		threadsGetter:              threadsGetter,
-		device:                     deviceKeypair,
-		repoRootPath:               repoRootPath,
-		account:                    accountKeypair,
-		newHeadProcessor:           newHeadProcessor,
-		replicatorAddr:             replicatorAddr,
-		newThreadProcessingLimiter: limiter,
-		ctx:                        ctx,
-		ctxCancel:                  cancel,
-	}
+func (s *service) CafePeer() ma.Multiaddr {
+	addr, _ := ma.NewMultiaddr(s.CafeP2PAddr)
+	return addr
 }
 
 type Service interface {
+	app.ComponentRunnable
+	Logstore() tlcore.Logstore
+
 	ThreadsCollection() (*db.Collection, error)
-	Threads() net2.NetBoostrapper
+	Threads() app2.Net
+	CafePeer() ma.Multiaddr
 
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error)
@@ -77,7 +75,6 @@ type Service interface {
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
 	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
-	Close() error
 }
 
 type ThreadsGetter interface {
@@ -109,28 +106,8 @@ func (s *service) ThreadsCollection() (*db.Collection, error) {
 	return s.threadsCollection, nil
 }
 
-func (s *service) Threads() net2.NetBoostrapper {
+func (s *service) Threads() app2.Net {
 	return s.t
-}
-
-func (s *service) Close() error {
-	// close global service context to stop all work
-	s.ctxCancel()
-	if s.db != nil {
-		err := s.db.Close()
-		if err != nil {
-			return err
-		}
-	}
-	if s.dbCloser != nil {
-		// close underlying badger datastore, because threadsDb does not close datastore it have constructed with
-		err := s.dbCloser.Close()
-		if err != nil {
-			return err
-		}
-	}
-
-	return nil
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
@@ -239,7 +216,7 @@ func (s *service) DeleteThread(id string) error {
 }
 
 func (s *service) ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error) {
-	threads, err := s.threadsGetter.Threads()
+	threads, err := s.logstore.Threads()
 	if err != nil {
 		return nil, err
 	}

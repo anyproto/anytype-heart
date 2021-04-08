@@ -80,7 +80,7 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 		return nil, err
 	}
 
-	err = a.localStore.Objects.UpdateObject(f.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyFile).Relations}, nil, "")
+	err = a.localStore.Objects.UpdateObjectDetails(f.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyFile).Relations})
 	if err != nil {
 		return nil, err
 	}

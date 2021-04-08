@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"math/rand"
 	"sync"
 	"time"
@@ -15,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -247,7 +247,7 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 
 	var (
 		createdDate = time.Now().Unix()
-		createdBy   = s.Anytype().Account()
+		createdBy   string
 	)
 	// protect from the big documents with a large trees
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -255,6 +255,8 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	fc, err := s.FindFirstChange(ctx)
 	if err == change.ErrEmpty {
 		err = nil
+		// todo: fixme refactor
+		createdBy = ""
 		log.Debugf("InjectCreationInfo set for the empty object")
 	} else if err != nil {
 		return fmt.Errorf("failed to find first change to derive creation info")

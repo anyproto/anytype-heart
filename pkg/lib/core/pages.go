@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
+// Deprecated, use localstore component directly
 func (a *Anytype) ObjectStore() localstore.ObjectStore {
 	return a.localStore.Objects
 }
@@ -20,7 +21,7 @@ func (a *Anytype) ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, er
 
 // deprecated, to be removed
 func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
-	ids, err := a.t.Logstore().Threads()
+	ids, err := a.threadService.Logstore().Threads()
 	if err != nil {
 		return nil, err
 	}

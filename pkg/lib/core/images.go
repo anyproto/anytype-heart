@@ -74,7 +74,7 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		return nil, err
 	}
 
-	err = a.localStore.Objects.UpdateObject(img.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyImage).Relations}, nil, "")
+	err = a.localStore.Objects.UpdateObjectDetails(img.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyImage).Relations})
 	if err != nil {
 		return nil, err
 	}

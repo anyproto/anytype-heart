@@ -25,7 +25,8 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived"
     ]
   },
   {
@@ -54,7 +55,8 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived"
     ]
   },
   {
@@ -84,6 +86,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "tag"
     ]
   },
@@ -114,6 +117,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "assignee",
       "dueDate",
       "attachments",
@@ -171,6 +175,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -244,6 +249,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary",
@@ -279,6 +285,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "templateType"
     ]
   },
@@ -310,6 +317,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "setOf"
     ]
   },
@@ -340,7 +348,8 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived"
     ]
   },
   {
@@ -370,6 +379,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -409,7 +419,8 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived"
     ]
   },
   {
@@ -440,6 +451,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -480,7 +492,8 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived"
     ]
   },
   {
@@ -510,6 +523,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -542,7 +556,8 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived"
     ]
   }
 ]

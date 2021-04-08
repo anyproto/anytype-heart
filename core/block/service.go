@@ -190,7 +190,7 @@ func newOpenedBlock(sb smartblock.SmartBlock, setLastUsage bool) *openedBlock {
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs {
 		// decode and store corresponding threadID for appropriate block
 		if tid, err := thread.Decode(sb.Id()); err != nil {
-			log.Warnf("can't restore thread ID: %v", err)
+			log.With("thread", sb.Id()).Warnf("can't restore thread ID: %v", err)
 		} else {
 			ob.threadId = tid
 		}

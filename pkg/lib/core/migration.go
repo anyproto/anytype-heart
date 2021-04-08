@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -14,7 +15,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -67,7 +67,7 @@ var migrations = []migration{
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
-	versionB, err := ioutil.ReadFile(filepath.Join(a.opts.Repo, versionFileName))
+	versionB, err := ioutil.ReadFile(filepath.Join(a.wallet.RepoPath(), versionFileName))
 	if err != nil && !os.IsNotExist(err) {
 		return 0, err
 	}
@@ -80,7 +80,7 @@ func (a *Anytype) getRepoVersion() (int, error) {
 }
 
 func (a *Anytype) saveRepoVersion(version int) error {
-	return ioutil.WriteFile(filepath.Join(a.opts.Repo, versionFileName), []byte(strconv.Itoa(version)), 0655)
+	return ioutil.WriteFile(filepath.Join(a.wallet.RepoPath(), versionFileName), []byte(strconv.Itoa(version)), 0655)
 }
 
 func (a *Anytype) saveCurrentRepoVersion() error {
@@ -88,7 +88,8 @@ func (a *Anytype) saveCurrentRepoVersion() error {
 }
 
 func (a *Anytype) runMigrationsUnsafe() error {
-	if _, err := os.Stat(filepath.Join(a.opts.Repo, "ipfslite")); os.IsNotExist(err) {
+	// todo: FIXME refactoring
+	if _, err := os.Stat(filepath.Join(a.wallet.RepoPath(), "ipfslite")); os.IsNotExist(err) {
 		log.Debugf("repo is not inited, save all migrations as done")
 		return a.saveCurrentRepoVersion()
 	}
@@ -133,12 +134,14 @@ func (a *Anytype) RunMigrations() error {
 }
 
 func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error) error {
-	offlineWas := a.opts.Offline
+	// FIXME: refactor offline migration
+
+	/*offlineWas := a.config.Offline
 	defer func() {
 		a.opts.Offline = offlineWas
 	}()
 
-	a.opts.Offline = offline
+	a.opts.Offline = offline*/
 	if !a.isStarted {
 		err := a.start()
 		if err != nil {
@@ -216,7 +219,7 @@ func (a *Anytype) migratePageToChanges(id thread.ID) error {
 }
 
 func runSnapshotToChangesMigration(a *Anytype) error {
-	threadsIDs, err := a.t.Logstore().Threads()
+	threadsIDs, err := a.threadService.Logstore().Threads()
 	if err != nil {
 		return err
 	}
@@ -243,7 +246,8 @@ func snapshotToChanges(a *Anytype, lastMigration bool) error {
 }
 
 func alterThreadsDbSchema(a *Anytype, _ bool) error {
-	path := filepath.Join(a.opts.Repo, "collections", "eventstore")
+	// FIXME: refactor
+	path := filepath.Join(a.wallet.RepoPath(), "collections", "eventstore")
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		log.Info("migration alterThreadsDbSchema skipped because collections db not yet created")
 		return nil
@@ -365,7 +369,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.localStore.Objects.UpdateObject(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations}, nil, "")
+					err = a.localStore.Objects.UpdateObjectDetails(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations})
 					if err != nil {
 						// this shouldn't fail
 						cancel()
@@ -400,7 +404,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.localStore.Objects.UpdateObject(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations}, nil, "")
+					err = a.localStore.Objects.UpdateObjectDetails(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations})
 					if err != nil {
 						cancel()
 						return err
@@ -465,7 +469,7 @@ func ReindexAll(a *Anytype) (int, error) {
 			//	continue
 			//}
 
-			err = localstore.EraseIndex(idx, a.t.Datastore().(ds.TxnDatastore))
+			err = localstore.EraseIndex(idx, a.localStoreDS)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
 			}
@@ -678,7 +682,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 			}
 
 			o.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(layout))
-			err = a.localStore.Objects.UpdateObject(id, o.Details, o.Relations, nil, o.Snippet)
+			err = a.localStore.Objects.UpdateObjectDetails(id, o.Details, o.Relations)
 			if err != nil {
 				log.Errorf("migration addMissingLayout: failed to UpdateObject: %s", err.Error())
 				continue

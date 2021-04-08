@@ -14,9 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -110,7 +108,6 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
-
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		m := &pb.RpcAccountCreateResponse{Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
@@ -156,20 +153,19 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	at, err := core.New(
-		core.WithRootPathAndAccount(mw.rootPath, account.Address()),
-		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	)
+	newAcc := &model.Account{Id: account.Address()}
+
+	comps, err := anytype.DefaultClientComponents(true, mw.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	newAcc := &model.Account{Id: account.Address()}
-
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{NewAccount: true}); err != nil {
+	comps = append(comps, mw.EventSender)
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
+	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
 	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
@@ -196,7 +192,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	if err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
-		ContextId: at.PredefinedBlocks().Profile,
+		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
@@ -279,16 +275,17 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
-	// it is ok to unlock just after we've started with the 1st account
-	at, err := core.New(
-		core.WithRootPathAndAccount(mw.rootPath, zeroAccount.Address()),
-		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	)
+	comps, err := anytype.DefaultClientComponents(false, mw.rootPath, zeroAccount.Address())
 	if err != nil {
-		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
 	}
 
+	comps = append(comps, mw.EventSender)
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
+	}
+
+	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	recoveryFinished := make(chan struct{})
 	defer close(recoveryFinished)
 
@@ -296,7 +293,13 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	mw.accountSearchCancel = func() { searchQueryCancel() }
 	defer searchQueryCancel()
 
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
+	comps, err = anytype.DefaultClientComponents(false, mw.rootPath, zeroAccount.Address())
+	if err != nil {
+		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
+	}
+
+	comps = append(comps, mw.EventSender)
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
 			return response(pb.RpcAccountRecoverResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
 		}
@@ -358,12 +361,10 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 				sendAccountAddEvent(index, account)
 			}
 		}
-
 	}()
 
-	findProfilesErr := at.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
+	findProfilesErr := coreService.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
 	if findProfilesErr != nil {
-
 		log.Errorf("remote profiles request failed: %s", findProfilesErr.Error())
 	}
 
@@ -464,15 +465,13 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		}
 	}
 
-	at, err := core.New(
-		core.WithRootPathAndAccount(mw.rootPath, req.Id),
-		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	)
+	comps, err := anytype.DefaultClientComponents(false, mw.rootPath, req.Id)
 	if err != nil {
 		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
+	comps = append(comps, mw.EventSender)
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}

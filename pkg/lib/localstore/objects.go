@@ -1001,14 +1001,35 @@ func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations
 		Details:   &types.Struct{Fields: map[string]*types.Value{}},
 	}
 
-	err = m.updateObject(txn, id, before, details, relations, links, snippet)
+	err = m.updateObjectDetails(txn, id, before, details, relations)
+	if err != nil {
+		return err
+	}
+
+	err = m.updateObjectLinksAndSnippet(txn, id, links, snippet)
 	if err != nil {
 		return err
 	}
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
+func (m *dsObjectStore) UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	err = m.updateObjectLinksAndSnippet(txn, id, links, snippet)
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, relations *pbrelation.Relations) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -1020,7 +1041,7 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 		before model.ObjectInfo
 	)
 
-	if details != nil || len(snippet) > 0 || relations != nil {
+	if details != nil || relations != nil {
 		exInfo, err := getObjectInfo(txn, id)
 		if err != nil {
 			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
@@ -1028,10 +1049,6 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 
 		if exInfo != nil {
 			before = *exInfo
-			if exInfo.Snippet == snippet {
-				// skip updating snippet
-				snippet = ""
-			}
 		} else {
 			// init an empty state to skip nil checks later
 			before = model.ObjectInfo{
@@ -1041,48 +1058,77 @@ func (m *dsObjectStore) UpdateObject(id string, details *types.Struct, relations
 		}
 	}
 
-	err = m.updateObject(txn, id, before, details, relations, links, snippet)
+	err = m.updateObjectDetails(txn, id, before, details, relations)
 	if err != nil {
 		return err
 	}
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) updateObject(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
+func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) error {
+	exLinks, _ := findOutboundLinks(txn, id)
+	removedLinks, addedLinks := diffSlices(exLinks, links)
+	getCurrentDetails := func(id string) (*types.Struct, error) {
+		det, err := m.GetDetails(id)
+		if err != nil {
+			return nil, err
+		}
+		if det == nil || det.Details == nil || det.Details.Fields == nil {
+			return &types.Struct{
+				Fields: map[string]*types.Value{},
+			}, nil
+		}
+
+		return det.Details, nil
+	}
+
+	setArchived := func(id string, val bool) error {
+		det, err := getCurrentDetails(id)
+		if err != nil {
+			return fmt.Errorf("failed to get current details: %s", err.Error())
+		}
+		newDet := pbtypes.CopyStruct(det)
+		newDet.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(val)
+		err = m.updateDetails(txn, id, &model.ObjectDetails{det}, &model.ObjectDetails{newDet})
+		if err != nil {
+			return fmt.Errorf("updateObject failed: %s", err.Error())
+		}
+		return nil
+	}
+
+	var err error
+	for _, objId := range removedLinks {
+		err = setArchived(objId, false)
+		if err != nil {
+			log.Errorf("setArchived failed: %s", err.Error())
+		}
+	}
+
+	for _, objId := range addedLinks {
+		err = setArchived(objId, true)
+		if err != nil {
+			log.Errorf("setArchived failed: %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
+func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links []string, snippet string) error {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		return fmt.Errorf("failed to extract smartblock type: %w", err)
 	}
-	if sbt == smartblock.SmartBlockTypeArchive {
-		return ErrNotAnObject
-	}
 
-	var (
-		objTypes []string
-	)
+	if sbt == smartblock.SmartBlockTypeArchive {
+		// special case for Archive. We don't need to index the outgoing links for the navigation, instead we should use it to set archived flag on objects
+		return m.updateArchive(txn, id, links)
+	}
 
 	var addedLinks, removedLinks []string
 
-	if links != nil {
-		// todo: use links from before?
-		exLinks, _ := findOutboundLinks(txn, id)
-		removedLinks, addedLinks = diffSlices(exLinks, links)
-	}
-
-	if details != nil {
-		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
-			return err
-		}
-	}
-
-	if relations != nil && relations.Relations != nil {
-		// intentionally do not pass txn, as this tx may be huge
-		if err = m.updateRelations(txn, before.ObjectTypeUrls, objTypes, id, before.Relations, relations); err != nil {
-			return err
-		}
-	}
-
+	exLinks, _ := findOutboundLinks(txn, id)
+	removedLinks, addedLinks = diffSlices(exLinks, links)
 	if len(addedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, nil, addedLinks) {
 			if err := txn.Put(k, nil); err != nil {
@@ -1099,8 +1145,39 @@ func (m *dsObjectStore) updateObject(txn ds.Txn, id string, before model.ObjectI
 		}
 	}
 
-	if len(snippet) > 0 {
-		if err = m.updateSnippet(txn, id, snippet); err != nil {
+	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
+		if err := m.updateSnippet(txn, id, snippet); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *pbrelation.Relations) error {
+	sbt, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		return fmt.Errorf("failed to extract smartblock type: %w", err)
+	}
+
+	if sbt == smartblock.SmartBlockTypeArchive {
+		return ErrNotAnObject
+	}
+
+	var (
+		objTypes []string
+	)
+
+	if details != nil {
+		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
+		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
+			return err
+		}
+	}
+
+	if relations != nil && relations.Relations != nil {
+		// intentionally do not pass txn, as this tx may be huge
+		if err = m.updateRelations(txn, before.ObjectTypeUrls, objTypes, id, before.Relations, relations); err != nil {
 			return err
 		}
 	}
@@ -1142,7 +1219,7 @@ func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) erro
 	if err != nil {
 		return fmt.Errorf("error query txn in datastore: %w", err)
 	}
-	defer res.Close()
+	var idsToRemove []string
 	for entry := range res.Next() {
 		id := extractIdFromKey(entry.Key)
 		ts, _ := binary.Varint(entry.Value)
@@ -1150,10 +1227,20 @@ func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) erro
 			log.Warnf("can't index '%s': %v", id, indexErr)
 			continue
 		}
+		idsToRemove = append(idsToRemove, id)
+	}
+
+	err = res.Close()
+	if err != nil {
+		return err
+	}
+
+	for _, id := range idsToRemove {
 		if err := txn.Delete(indexQueueBase.ChildString(id)); err != nil {
-			return err
+			log.Error("failed to remove id from full text index queue: %s", err.Error())
 		}
 	}
+
 	return txn.Commit()
 }
 
@@ -1265,14 +1352,18 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*pbrelation.Relat
 		}
 		_, details := bundle.GetDetailsForRelation(bundled, relCopy)
 		id := pbtypes.GetString(details, "id")
-		err = m.updateObject(txn, id, model.ObjectInfo{
+		err = m.updateObjectDetails(txn, id, model.ObjectInfo{
 			Relations: &pbrelation.Relations{},
 			Details:   &types.Struct{Fields: map[string]*types.Value{}},
-		}, details, nil, nil, relation.Description)
+		}, details, nil)
 		if err != nil {
 			return err
 		}
 
+		err = m.updateObjectLinksAndSnippet(txn, id, nil, relation.Description)
+		if err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -1475,12 +1566,6 @@ func isRelationBelongToType(txn ds.Txn, relKey, objectType string) (bool, error)
 	}
 
 	return false, nil
-}
-
-func (m *dsObjectStore) Close() {
-	if m.fts != nil {
-		m.fts.Close()
-	}
 }
 
 /* internal */

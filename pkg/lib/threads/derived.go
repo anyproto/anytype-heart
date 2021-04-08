@@ -119,7 +119,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			}
 
 			if !justCreated {
-				ids, _ := s.t.Logstore().Threads()
+				ids, _ := s.Logstore().Threads()
 				metrics.ServedThreads.Set(float64(len(ids)))
 				err = s.threadsDbMigration(account.ID.String())
 			} else {

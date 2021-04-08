@@ -117,7 +117,7 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 	nowTruncatedToDay := time.Date(n.Year(), n.Month(), n.Day(), 0, 0, 0, 0, n.Location())
 
 	details1.Fields["lastOpenedDate"] = pbtypes.Float64(float64(time.Now().Unix()))
-	err = ps.UpdateObject(block1.ID(), details1, relations1, nil, "")
+	err = ps.UpdateObjectDetails(block1.ID(), details1, relations1)
 	require.NoError(t, err)
 
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{
@@ -133,10 +133,10 @@ func TestAnytype_GetDatabaseByID(t *testing.T) {
 
 	details1.Fields["lastModifiedDate"] = pbtypes.Float64(float64(time.Now().Unix()))
 	details2.Fields["lastModifiedDate"] = pbtypes.Float64(float64(time.Now().Unix()))
-	err = ps.UpdateObject(block1.ID(), details1, relations1, nil, "")
+	err = ps.UpdateObjectDetails(block1.ID(), details1, relations1)
 	require.NoError(t, err)
 
-	err = ps.UpdateObject(block2.ID(), details2, relations2, nil, "")
+	err = ps.UpdateObjectDetails(block2.ID(), details2, relations2)
 	require.NoError(t, err)
 
 	results, total, err = ps.Query(&sch, database.Query{Limit: 10, Filters: []*model.BlockContentDataviewFilter{{

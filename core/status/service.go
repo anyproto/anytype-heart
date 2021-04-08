@@ -5,13 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/dgtony/collections/hashset"
 	"github.com/dgtony/collections/queue"
 	ct "github.com/dgtony/collections/time"
@@ -19,6 +12,15 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/pb"
+	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 )
 
 var log = logging.Logger("anytype-mw-status")
@@ -55,7 +57,7 @@ type Service interface {
 var _ Service = (*service)(nil)
 
 type service struct {
-	tInfo       net.SyncInfo
+	ts          threads.Service
 	fInfo       pin.FilePinService
 	profile     core.ProfileInfo
 	ownDeviceID string
@@ -87,8 +89,28 @@ func (s *service) Init(a *app.App) (err error) {
 	s.devAccount = make(map[string]string)
 	s.connMap = make(map[string]bool)
 	s.tsTrigger = queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2)
-
 	anytype := a.MustComponent(core.CName).(core.Service)
+	s.ts = a.MustComponent(threads.CName).(threads.Service)
+
+	s.fInfo = a.MustComponent(pin.CName).(pin.FilePinService)
+
+	s.ownDeviceID = anytype.Device()
+
+	var (
+		cafePeer string
+		cafeAddr ma.Multiaddr
+	)
+	cafeAddr = a.MustComponent(threads.CName).(threads.Service).CafePeer()
+
+	if cafeAddr != nil {
+		cafePeer, _ = cafeAddr.ValueForProtocol(ma.P_P2P)
+	}
+	if cafePeer == "" {
+		cafePeer = cafePeerId
+	}
+
+	cafePid, _ := peer.Decode(cafePeer)
+	s.cafeID = cafePid.String()
 
 	s.profile = anytype
 	s.emitter = a.MustComponent(event.CName).(event.Sender).Send
@@ -96,20 +118,6 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() error {
-	anytype := s.profile.(core.Service)
-	s.ownDeviceID = anytype.Device()
-	s.tInfo = anytype.SyncStatus()
-	s.fInfo = anytype.FileStatus()
-	var cafePeer string
-	if anytype.CafePeer() != nil {
-		cafePeer, _ = anytype.CafePeer().ValueForProtocol(ma.P_P2P)
-	}
-	if cafePeer == "" {
-		cafePeer = cafePeerId
-	}
-	cafePid, _ := peer.Decode(cafePeer)
-	s.cafeID = cafePid.String()
-
 	if err := s.startConnectivityTracking(); err != nil {
 		return err
 	}
@@ -154,7 +162,7 @@ func (s *service) Watch(tid thread.ID, fList func() []string) bool {
 			}
 
 			var (
-				tStat, _ = s.tInfo.View(tid)
+				tStat, _ = s.ts.Threads().View(tid)
 				pStat    = s.fInfo.PinStatus(fList()...)
 			)
 
@@ -239,7 +247,7 @@ func (s *service) Close() error {
 }
 
 func (s *service) startConnectivityTracking() error {
-	connEvents, err := s.tInfo.Connectivity()
+	connEvents, err := s.ts.Threads().Connectivity()
 	if err != nil {
 		return err
 	}

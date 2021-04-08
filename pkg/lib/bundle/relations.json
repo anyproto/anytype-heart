@@ -585,6 +585,16 @@
     "source": "details"
   },
   {
+    "description": "Hides the object",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isArchived",
+    "maxCount": 1,
+    "name": "Archived",
+    "readonly": false,
+    "source": "account"
+  },
+  {
     "format": "shorttext",
     "hidden": false,
     "key": "fileExt",

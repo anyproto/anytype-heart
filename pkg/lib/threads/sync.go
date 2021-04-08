@@ -74,7 +74,7 @@ func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bo
 }
 
 func (s *service) addMissingReplicators() error {
-	threadsIds, err := s.threadsGetter.Threads()
+	threadsIds, err := s.logstore.Threads()
 	if err != nil {
 		return fmt.Errorf("failed to list threads: %s", err.Error())
 	}
@@ -84,7 +84,7 @@ func (s *service) addMissingReplicators() error {
 	}
 
 	for _, threadId := range threadsIds {
-		thrdLogs, err := s.t.Logstore().GetManagedLogs(threadId)
+		thrdLogs, err := s.Logstore().GetManagedLogs(threadId)
 		if err != nil {
 			log.Errorf("failed to get thread %s: %s", threadId.String(), err.Error())
 			continue

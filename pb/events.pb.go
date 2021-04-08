@@ -1706,8 +1706,10 @@ type EventObjectShowRelationWithValuePerObject struct {
 func (m *EventObjectShowRelationWithValuePerObject) Reset() {
 	*m = EventObjectShowRelationWithValuePerObject{}
 }
-func (m *EventObjectShowRelationWithValuePerObject) String() string { return proto.CompactTextString(m) }
-func (*EventObjectShowRelationWithValuePerObject) ProtoMessage()    {}
+func (m *EventObjectShowRelationWithValuePerObject) String() string {
+	return proto.CompactTextString(m)
+}
+func (*EventObjectShowRelationWithValuePerObject) ProtoMessage() {}
 func (*EventObjectShowRelationWithValuePerObject) Descriptor() ([]byte, []int) {
 	return fileDescriptor_a966342d378ae5f5, []int{0, 2, 3, 0}
 }
