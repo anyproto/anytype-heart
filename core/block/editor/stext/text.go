@@ -3,6 +3,7 @@ package stext
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -114,7 +115,11 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 			}
 			if nextBlock != nil {
 				exText := nextBlock.GetText()
-				exText = new.(text.Block).GetText() + "\n" + exText
+				if strings.TrimSpace(exText) == "" {
+					exText = new.(text.Block).GetText()
+				} else {
+					exText = new.(text.Block).GetText() + "\n" + exText
+				}
 				if err = nextBlock.SetText(exText, &model.BlockContentTextMarks{}); err != nil {
 					return
 				}
