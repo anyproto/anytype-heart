@@ -26,11 +26,8 @@ const (
 type Config struct {
 	NewAccount      bool // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	Offline         bool
-	Pubsub          bool
 	CafeAPIInsecure bool
 	CafeAPIHost     string
-
-	FullTextSearch bool
 
 	HostAddr             string
 	PrivateNetworkSecret string
@@ -48,9 +45,7 @@ const (
 )
 
 var DefaultConfig = Config{
-	FullTextSearch:       true,
 	Offline:              false,
-	Pubsub:               true,
 	SwarmLowWater:        10,
 	SwarmHighWater:       50,
 	PrivateNetworkSecret: ipfs.IpfsPrivateNetworkKey,
