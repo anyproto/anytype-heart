@@ -1,22 +1,22 @@
 package core
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"sort"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 // Deprecated, use localstore component directly
-func (a *Anytype) ObjectStore() localstore.ObjectStore {
-	return a.localStore.Objects
+func (a *Anytype) ObjectStore() objectstore.ObjectStore {
+	return a.objectStore
 }
 
 // deprecated, to be removed
 func (a *Anytype) ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error) {
-	return a.localStore.Objects.GetWithLinksInfoByID(id)
+	return a.objectStore.GetWithLinksInfoByID(id)
 }
 
 // deprecated, to be removed
@@ -42,7 +42,7 @@ func (a *Anytype) ObjectList() ([]*model.ObjectInfo, error) {
 		idsS = append(idsS, id.String())
 	}
 
-	pages, err := a.localStore.Objects.GetByIDs(idsS...)
+	pages, err := a.objectStore.GetByIDs(idsS...)
 	if err != nil {
 		return nil, err
 	}

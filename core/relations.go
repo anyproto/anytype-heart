@@ -2,10 +2,10 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/globalsign/mgo/bson"
 
@@ -315,5 +315,5 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 }
 
 func (mw *Middleware) getObjectType(at core.Service, url string) (*pbrelation.ObjectType, error) {
-	return localstore.GetObjectType(at.ObjectStore(), url)
+	return objectstore.GetObjectType(at.ObjectStore(), url)
 }

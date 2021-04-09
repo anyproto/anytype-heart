@@ -89,8 +89,8 @@ func (a *Anytype) saveCurrentRepoVersion() error {
 
 func (a *Anytype) runMigrationsUnsafe() error {
 	// todo: FIXME refactoring
-	if _, err := os.Stat(filepath.Join(a.wallet.RepoPath(), "ipfslite")); os.IsNotExist(err) {
-		log.Debugf("repo is not inited, save all migrations as done")
+	if a.config.NewAccount {
+		log.Debugf("new account")
 		return a.saveCurrentRepoVersion()
 	}
 
@@ -142,13 +142,6 @@ func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error)
 	}()
 
 	a.opts.Offline = offline*/
-	if !a.isStarted {
-		err := a.start()
-		if err != nil {
-			return err
-		}
-	}
-
 	var err error
 	if stopAfter {
 		defer func() {
@@ -290,7 +283,7 @@ func alterThreadsDbSchema(a *Anytype, _ bool) error {
 func addFilesMetaHash(a *Anytype, lastMigration bool) error {
 	// todo: better split into 2 migrations
 	return doWithRunningNode(a, true, !lastMigration, func() error {
-		files, err := a.localStore.Files.List()
+		files, err := a.fileStore.List()
 		if err != nil {
 			return err
 		}
@@ -328,7 +321,7 @@ func addFilesMetaHash(a *Anytype, lastMigration bool) error {
 func addFilesToObjects(a *Anytype, lastMigration bool) error {
 	// todo: better split into 2 migrations
 	return doWithRunningNode(a, true, !lastMigration, func() error {
-		files, err := a.localStore.Files.List()
+		files, err := a.fileStore.List()
 		if err != nil {
 			return err
 		}
@@ -369,7 +362,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.localStore.Objects.UpdateObjectDetails(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations})
+					err = a.objectStore.UpdateObjectDetails(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations})
 					if err != nil {
 						// this shouldn't fail
 						cancel()
@@ -404,7 +397,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.localStore.Objects.UpdateObjectDetails(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations})
+					err = a.objectStore.UpdateObjectDetails(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations})
 					if err != nil {
 						cancel()
 						return err
@@ -428,7 +421,7 @@ func removeBundleRelationsFromDs(a *Anytype, lastMigration bool) error {
 		keys := bundle.ListRelationsKeys()
 		var migrated int
 		for _, key := range keys {
-			err := a.localStore.Objects.RemoveRelationFromCache(key.String())
+			err := a.objectStore.RemoveRelationFromCache(key.String())
 			if err != nil {
 				continue
 			}
@@ -443,7 +436,7 @@ func removeBundleRelationsFromDs(a *Anytype, lastMigration bool) error {
 }
 
 func ReindexAll(a *Anytype) (int, error) {
-	ids, err := a.localStore.Objects.ListIds()
+	ids, err := a.objectStore.ListIds()
 	if err != nil {
 		return 0, err
 	}
@@ -456,14 +449,14 @@ func ReindexAll(a *Anytype) (int, error) {
 		}
 		if sbt == smartblock.SmartBlockTypeArchive {
 			// remove archive we have accidentally indexed
-			err = a.localStore.Objects.DeleteObject(id)
+			err = a.objectStore.DeleteObject(id)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
 			}
 			total--
 			continue
 		}
-		for _, idx := range a.localStore.Objects.Indexes() {
+		for _, idx := range a.objectStore.Indexes() {
 			//if idx.Name == "objtype_relkey_setid" {
 			// skip it because we can't reindex relations in sets for now
 			//	continue
@@ -474,7 +467,7 @@ func ReindexAll(a *Anytype) (int, error) {
 				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
 			}
 		}
-		oi, err := a.localStore.Objects.GetByIDs(id)
+		oi, err := a.objectStore.GetByIDs(id)
 		if err != nil {
 			log.Errorf("migration reindexAll: failed to get objects by id: %s", err.Error())
 			continue
@@ -502,7 +495,7 @@ func ReindexAll(a *Anytype) (int, error) {
 		}
 
 		if sbt == smartblock.SmartBlockTypeIndexedRelation {
-			err = a.localStore.Objects.DeleteObject(id)
+			err = a.objectStore.DeleteObject(id)
 			if err != nil {
 				log.Errorf("deletion of indexed relation failed: %s", err.Error())
 			}
@@ -511,14 +504,14 @@ func ReindexAll(a *Anytype) (int, error) {
 		}
 
 		o.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(objType)
-		err = a.localStore.Objects.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
+		err = a.objectStore.CreateObject(id, o.Details, o.Relations, nil, o.Snippet)
 		if err != nil {
 			log.Errorf("migration reindexAll: createObject failed: %s", err.Error())
 			continue
 		}
 		migrated++
 	}
-	relations, _ := a.localStore.Objects.ListRelations("")
+	relations, _ := a.objectStore.ListRelations("")
 	for _, rel := range relations {
 		if bundle.HasRelation(rel.Key) {
 			rel.Creator = a.ProfileID()
@@ -539,7 +532,7 @@ func ReindexAll(a *Anytype) (int, error) {
 		divided = append(divided, relations[i:end])
 	}
 	for _, chunk := range divided {
-		err = a.localStore.Objects.StoreRelations(chunk)
+		err = a.objectStore.StoreRelations(chunk)
 		if err != nil {
 			log.Errorf("reindex relations failed: %s", err.Error())
 		} else {
@@ -563,7 +556,7 @@ func removeIncorrectlyIndexedRelations(a *Anytype, lastMigration bool) error {
 		var err error
 		for _, rk := range bundle.ListRelationsKeys() {
 			// remove accidentally indexed bundled relations with custom relation prefix
-			err = a.ObjectStore().DeleteObject(addr.CustomRelationURLPrefix + rk.String())
+			err = a.objectStore.DeleteObject(addr.CustomRelationURLPrefix + rk.String())
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
 			}
@@ -581,7 +574,7 @@ func reindexAll(a *Anytype, lastMigration bool) error {
 
 func reindexStoredRelations(a *Anytype, lastMigration bool) error {
 	return doWithRunningNode(a, true, !lastMigration, func() error {
-		rels, err := a.localStore.Objects.ListRelations("")
+		rels, err := a.objectStore.ListRelations("")
 		if err != nil {
 			return err
 		}
@@ -615,20 +608,20 @@ func reindexStoredRelations(a *Anytype, lastMigration bool) error {
 			}
 		}
 
-		return a.localStore.Objects.StoreRelations(rels)
+		return a.objectStore.StoreRelations(rels)
 	})
 }
 
 func addMissingLayout(a *Anytype, lastMigration bool) error {
 	return doWithRunningNode(a, true, !lastMigration, func() error {
-		ids, err := a.localStore.Objects.ListIds()
+		ids, err := a.objectStore.ListIds()
 		if err != nil {
 			return err
 		}
 		total := len(ids)
 		var migrated int
 		for _, id := range ids {
-			oi, err := a.localStore.Objects.GetByIDs(id)
+			oi, err := a.objectStore.GetByIDs(id)
 			if err != nil {
 				log.Errorf("migration addMissingLayout: failed to get objects by id: %s", err.Error())
 				continue
@@ -665,7 +658,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 					layout = t.Layout
 				}
 			} else {
-				oi, err := a.localStore.Objects.GetByIDs(otUrl)
+				oi, err := a.objectStore.GetByIDs(otUrl)
 				if err != nil {
 					log.Errorf("migration addMissingLayout: failed to get objects type by id: %s", err.Error())
 					continue
@@ -682,7 +675,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 			}
 
 			o.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(layout))
-			err = a.localStore.Objects.UpdateObjectDetails(id, o.Details, o.Relations)
+			err = a.objectStore.UpdateObjectDetails(id, o.Details, o.Relations)
 			if err != nil {
 				log.Errorf("migration addMissingLayout: failed to UpdateObject: %s", err.Error())
 				continue

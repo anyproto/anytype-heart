@@ -1,9 +1,14 @@
-package localstore
+package objectstore
 
 import (
 	"encoding/binary"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +28,10 @@ import (
 	"github.com/ipfs/go-datastore/query"
 )
 
+var log = logging.Logger("anytype-localstore")
+
+const CName = "objectstore"
+
 var (
 	// ObjectInfo is stored in db key pattern:
 	pagesPrefix        = "pages"
@@ -40,12 +49,12 @@ var (
 	// /relations/relations/<relKey>: relation model
 	relationsBase = ds.NewKey("/" + relationsPrefix + "/relations")
 
-	indexObjectTypeRelationObjectId = Index{
+	indexObjectTypeRelationObjectId = localstore.Index{
 		Prefix: relationsPrefix,
 		Name:   "objtype_relkey_objid",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*relationObjectType); ok {
-				var indexes []IndexKeyParts
+				var indexes []localstore.IndexKeyParts
 				for _, rk := range v.relationKeys {
 					for _, ot := range v.objectTypes {
 						otCompact, err := objTypeCompactEncode(ot)
@@ -54,7 +63,7 @@ var (
 							continue
 						}
 
-						indexes = append(indexes, IndexKeyParts([]string{otCompact, rk}))
+						indexes = append(indexes, localstore.IndexKeyParts([]string{otCompact, rk}))
 					}
 				}
 				return indexes
@@ -65,12 +74,12 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
-	indexObjectTypeRelationSetId = Index{
+	indexObjectTypeRelationSetId = localstore.Index{
 		Prefix: relationsPrefix,
 		Name:   "objtype_relkey_setid",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*relationObjectType); ok {
-				var indexes []IndexKeyParts
+				var indexes []localstore.IndexKeyParts
 				for _, rk := range v.relationKeys {
 					for _, ot := range v.objectTypes {
 						otCompact, err := objTypeCompactEncode(ot)
@@ -79,7 +88,7 @@ var (
 							continue
 						}
 
-						indexes = append(indexes, IndexKeyParts([]string{otCompact, rk}))
+						indexes = append(indexes, localstore.IndexKeyParts([]string{otCompact, rk}))
 					}
 				}
 				return indexes
@@ -90,12 +99,12 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
-	indexRelationOptionObject = Index{
+	indexRelationOptionObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "relkey_optid",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*pbrelation.Relation); ok {
-				var indexes []IndexKeyParts
+				var indexes []localstore.IndexKeyParts
 				if v.Format != pbrelation.RelationFormat_tag && v.Format != pbrelation.RelationFormat_status {
 					return nil
 				}
@@ -104,7 +113,7 @@ var (
 				}
 
 				for _, opt := range v.SelectDict {
-					indexes = append(indexes, IndexKeyParts([]string{v.Key, opt.Id}))
+					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Key, opt.Id}))
 				}
 				return indexes
 			}
@@ -114,24 +123,24 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
-	indexRelationObject = Index{
+	indexRelationObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "relkey",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*pbrelation.Relation); ok {
-				return []IndexKeyParts{[]string{v.Key}}
+				return []localstore.IndexKeyParts{[]string{v.Key}}
 			}
 			return nil
 		},
 		Unique: false,
 	}
 
-	indexFormatOptionObject = Index{
+	indexFormatOptionObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "format_relkey_optid",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*pbrelation.Relation); ok {
-				var indexes []IndexKeyParts
+				var indexes []localstore.IndexKeyParts
 				if v.Format != pbrelation.RelationFormat_tag && v.Format != pbrelation.RelationFormat_status {
 					return nil
 				}
@@ -140,7 +149,7 @@ var (
 				}
 
 				for _, opt := range v.SelectDict {
-					indexes = append(indexes, IndexKeyParts([]string{v.Format.String(), v.Key, opt.Id}))
+					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Format.String(), v.Key, opt.Id}))
 				}
 				return indexes
 			}
@@ -150,12 +159,12 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
-	indexObjectTypeObject = Index{
+	indexObjectTypeObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "type",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*model.ObjectDetails); ok {
-				var indexes []IndexKeyParts
+				var indexes []localstore.IndexKeyParts
 				types := pbtypes.GetStringList(v.Details, bundle.RelationKeyType.String())
 
 				for _, ot := range types {
@@ -164,7 +173,7 @@ var (
 						log.Errorf("type index construction error('%s'): %s", ot, err.Error())
 						continue
 					}
-					indexes = append(indexes, IndexKeyParts([]string{otCompact}))
+					indexes = append(indexes, localstore.IndexKeyParts([]string{otCompact}))
 				}
 				return indexes
 			}
@@ -176,6 +185,56 @@ var (
 
 	_ ObjectStore = (*dsObjectStore)(nil)
 )
+
+func New() ObjectStore {
+	return &dsObjectStore{}
+}
+
+func (ls *dsObjectStore) Init(a *app.App) (err error) {
+	ls.ds = a.MustComponent(datastore.CName).(datastore.Datastore).LocalstoreDS()
+	fts := a.Component(ftsearch.CName)
+	if fts == nil {
+		log.Warnf("init objectstore without fulltext")
+	} else {
+		ls.fts = fts.(ftsearch.FTSearch)
+	}
+	return nil
+}
+
+func (ls *dsObjectStore) Name() (name string) {
+	return CName
+}
+
+type ObjectStore interface {
+	app.Component
+	localstore.Indexable
+	database.Reader
+
+	CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
+	UpdateObjectDetails(id string, details *types.Struct, relations *pbrelation.Relations) error
+	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
+
+	StoreRelations(relations []*pbrelation.Relation) error
+
+	DeleteObject(id string) error
+	RemoveRelationFromCache(key string) error
+
+	UpdateRelationsInSet(setId, objTypeBefore, objTypeAfter string, relationsBefore, relationsAfter *pbrelation.Relations) error
+
+	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
+	GetDetails(id string) (*model.ObjectDetails, error)
+	GetAggregatedOptions(relationKey string, relationFormat pbrelation.RelationFormat, objectType string) (options []*pbrelation.RelationOption, err error)
+
+	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
+	List() ([]*model.ObjectInfo, error)
+	ListIds() ([]string, error)
+
+	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
+	AddToIndexQueue(id string) error
+	IndexForEach(f func(id string, tm time.Time) error) error
+	FTSearch() ftsearch.FTSearch
+}
 
 type relationOption struct {
 	relationKey string
@@ -225,10 +284,6 @@ func (m *filterObjectTypes) Filter(e query.Entry) bool {
 	return m.not
 }
 
-func NewObjectStore(ds ds.TxnDatastore, fts ftsearch.FTSearch) ObjectStore {
-	return &dsObjectStore{ds: ds, fts: fts}
-}
-
 type dsObjectStore struct {
 	// underlying storage
 	ds  ds.TxnDatastore
@@ -245,12 +300,12 @@ func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string
 	txn, err := m.ds.NewTransaction(true)
 	defer txn.Discard()
 
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, "/", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, "/", false, 100)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := ExtractKeysFromResults(res)
+	keys, err := localstore.ExtractKeysFromResults(res)
 	if err != nil {
 		return nil, err
 	}
@@ -258,11 +313,11 @@ func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string
 	objectsByOptionId = make(map[string][]string)
 
 	for _, key := range keys {
-		optionId, err := CarveKeyParts(key, -2, -1)
+		optionId, err := localstore.CarveKeyParts(key, -2, -1)
 		if err != nil {
 			return nil, err
 		}
-		objId, err := CarveKeyParts(key, -1, 0)
+		objId, err := localstore.CarveKeyParts(key, -1, 0)
 		if err != nil {
 			return nil, err
 		}
@@ -280,23 +335,23 @@ func (m *dsObjectStore) getAggregatedOptionsForFormat(format pbrelation.Relation
 	txn, err := m.ds.NewTransaction(true)
 	defer txn.Discard()
 
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 100)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := ExtractKeysFromResults(res)
+	keys, err := localstore.ExtractKeysFromResults(res)
 	if err != nil {
 		return nil, err
 	}
 
 	var ex = make(map[string]struct{})
 	for _, key := range keys {
-		optionId, err := CarveKeyParts(key, -2, -1)
+		optionId, err := localstore.CarveKeyParts(key, -2, -1)
 		if err != nil {
 			return nil, err
 		}
-		relKey, err := CarveKeyParts(key, -3, -2)
+		relKey, err := localstore.CarveKeyParts(key, -3, -2)
 		if err != nil {
 			return nil, err
 		}
@@ -727,12 +782,12 @@ func (m *dsObjectStore) AggregateRelationsFromObjectsOfType(objType string) ([]*
 	if err != nil {
 		return nil, fmt.Errorf("failed to encode object type '%s': %s", objType, err.Error())
 	}
-	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, []string{objTypeCompact}, "/", false, 0)
+	res, err := localstore.GetKeysByIndexParts(txn, indexObjectTypeRelationObjectId.Prefix, indexObjectTypeRelationObjectId.Name, []string{objTypeCompact}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	relKeys, err := GetKeyPartFromResults(res, -2, -1, true)
+	relKeys, err := localstore.GetKeyPartFromResults(res, -2, -1, true)
 	if err != nil {
 		return nil, err
 	}
@@ -763,12 +818,12 @@ func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*pbr
 	if err != nil {
 		return nil, err
 	}
-	res, err := GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objTypeCompact}, "/", false, 0)
+	res, err := localstore.GetKeysByIndexParts(txn, indexObjectTypeRelationSetId.Prefix, indexObjectTypeRelationSetId.Name, []string{objTypeCompact}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	relKeys, err := GetKeyPartFromResults(res, -2, -1, true)
+	relKeys, err := localstore.GetKeyPartFromResults(res, -2, -1, true)
 	if err != nil {
 		return nil, err
 	}
@@ -963,29 +1018,6 @@ func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	return getObjectsInfo(txn, ids)
 }
 
-func diffSlices(a, b []string) (removed []string, added []string) {
-	var amap = map[string]struct{}{}
-	var bmap = map[string]struct{}{}
-
-	for _, item := range a {
-		amap[item] = struct{}{}
-	}
-
-	for _, item := range b {
-		if _, exists := amap[item]; !exists {
-			added = append(added, item)
-		}
-		bmap[item] = struct{}{}
-	}
-
-	for _, item := range a {
-		if _, exists := bmap[item]; !exists {
-			removed = append(removed, item)
-		}
-	}
-	return
-}
-
 func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -1067,7 +1099,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 
 func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) error {
 	exLinks, _ := findOutboundLinks(txn, id)
-	removedLinks, addedLinks := diffSlices(exLinks, links)
+	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
 	getCurrentDetails := func(id string) (*types.Struct, error) {
 		det, err := m.GetDetails(id)
 		if err != nil {
@@ -1128,7 +1160,7 @@ func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links
 	var addedLinks, removedLinks []string
 
 	exLinks, _ := findOutboundLinks(txn, id)
-	removedLinks, addedLinks = diffSlices(exLinks, links)
+	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
 	if len(addedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, nil, addedLinks) {
 			if err := txn.Put(k, nil); err != nil {
@@ -1266,7 +1298,7 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return err
 	}
 
-	err = UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
+	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
 	}
@@ -1401,13 +1433,13 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 			}
 		}
 
-		err := AddIndexesWithTxn(m, txn, relation, id)
+		err := localstore.AddIndexesWithTxn(m, txn, relation, id)
 		if err != nil {
 			return err
 		}
 	}
 
-	err := UpdateIndexWithTxn(indexObjectTypeRelationObjectId, txn, &relationObjectType{
+	err := localstore.UpdateIndexWithTxn(indexObjectTypeRelationObjectId, txn, &relationObjectType{
 		relationKeys: pbtypes.GetRelationKeys(relationsBefore.Relations),
 		objectTypes:  objTypesBefore,
 	}, &relationObjectType{
@@ -1431,7 +1463,7 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 }
 
 func (m *dsObjectStore) updateRelationsInSet(txn ds.Txn, setId, objTypesBefore, objTypesAfter string, relationsBefore, relationsAfter *pbrelation.Relations) error {
-	return UpdateIndexWithTxn(indexObjectTypeRelationSetId, txn, &relationObjectType{
+	return localstore.UpdateIndexWithTxn(indexObjectTypeRelationSetId, txn, &relationObjectType{
 		relationKeys: pbtypes.GetRelationKeys(relationsBefore.Relations),
 		objectTypes:  []string{objTypesBefore},
 	}, &relationObjectType{
@@ -1449,8 +1481,8 @@ func (m *dsObjectStore) Prefix() string {
 	return pagesPrefix
 }
 
-func (m *dsObjectStore) Indexes() []Index {
-	return []Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexFormatOptionObject, indexObjectTypeObject}
+func (m *dsObjectStore) Indexes() []localstore.Index {
+	return []localstore.Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexFormatOptionObject, indexObjectTypeObject}
 }
 
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
@@ -1472,12 +1504,12 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 }
 
 func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 100)
 	if err != nil {
 		return nil, err
 	}
 
-	return GetLeavesFromResults(res)
+	return localstore.GetLeavesFromResults(res)
 }
 
 func (m *dsObjectStore) listRelationsKeys(txn ds.Txn) ([]string, error) {
@@ -1540,18 +1572,18 @@ func isObjectBelongToType(txn ds.Txn, id, objType string) (bool, error) {
 		return false, err
 	}
 
-	return HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
+	return localstore.HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
 }
 
 func isRelationBelongToType(txn ds.Txn, relKey, objectType string) (bool, error) {
-	res, err := GetKeysByIndexParts(txn, pagesPrefix, indexRelationObject.Name, []string{relKey}, "", false, 0)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationObject.Name, []string{relKey}, "", false, 0)
 	if err != nil {
 		return false, err
 	}
 	i := 0
 	for v := range res.Next() {
 		i++
-		objId, err := CarveKeyParts(v.Key, -1, 0)
+		objId, err := localstore.CarveKeyParts(v.Key, -1, 0)
 		if err != nil {
 			return false, err
 		}
@@ -1696,7 +1728,7 @@ func hasInboundLinks(txn ds.Txn, id string) (bool, error) {
 	}
 
 	// max is 1
-	inboundLinks, err := CountAllKeysFromResults(inboundResults)
+	inboundLinks, err := localstore.CountAllKeysFromResults(inboundResults)
 	return inboundLinks > 0, err
 }
 
@@ -1720,7 +1752,7 @@ func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
 		return nil, err
 	}
 
-	return GetLeavesFromResults(results)
+	return localstore.GetLeavesFromResults(results)
 }
 
 func pageLinkKeys(id string, in []string, out []string) []ds.Key {

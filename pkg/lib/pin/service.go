@@ -4,12 +4,12 @@ import (
 	"context"
 	"errors"
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/dgtony/collections/hashset"
 )
@@ -44,7 +44,7 @@ type filePinService struct {
 	ctx       context.Context
 	ctxCancel context.CancelFunc
 	cafe      cafe.Client
-	store     localstore.FileStore
+	store     filestore.FileStore
 
 	files    map[string]FilePinInfo
 	activate chan struct{}

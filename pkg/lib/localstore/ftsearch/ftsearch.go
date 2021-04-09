@@ -26,7 +26,7 @@ func New() FTSearch {
 }
 
 type FTSearch interface {
-	app.Component
+	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	Search(query string) (results []string, err error)
 	Delete(id string) error
@@ -63,6 +63,11 @@ func (f *ftSearch) init() (err error) {
 		return
 	}
 	return
+}
+
+func (f *ftSearch) Run() (err error) {
+	// todo: move bleve init here?
+	return nil
 }
 
 func (f *ftSearch) Index(d SearchDoc) (err error) {

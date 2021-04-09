@@ -2,7 +2,9 @@ package main
 
 import (
 	"context"
-	"fmt"
+	app2 "github.com/anytypeio/go-anytype-middleware/app"
+	wallet2 "github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	core2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/console"
@@ -53,15 +55,14 @@ var findProfiles = &cobra.Command{
 		appAccount, err = core2.WalletAccountAt(appMnemonic, 0, "")
 
 		rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
-		rawSeed, err := appAccount.Raw()
-
-		err = core2.WalletInitRepo(rootPath, rawSeed)
-
-		var opts = []core2.ServiceOption{core2.WithRootPathAndAccount(rootPath, appAccount.Address())}
-		a, _ := core2.New(opts...)
-		err = a.Start()
+		app := new(app2.App)
+		app.Register(wallet2.NewWithRepoPathAndKeys(rootPath, appAccount, nil))
+		app.Register(cafe.New())
+		at := core2.New()
+		app.Register(at)
+		err = app.Start()
 		if err != nil {
-			fmt.Println("failed to start: "+ err.Error())
+			console.Fatal("failed to start anytype: %s", err.Error())
 			return
 		}
 		var found bool
@@ -78,7 +79,7 @@ var findProfiles = &cobra.Command{
 				console.Success("got profile: id=%s name=%s", profile.AccountAddr, profile.Name)
 			}
 		}()
-		err = a.FindProfilesByAccountIDs(context.Background(), accountsToFind, ch)
+		err = at.FindProfilesByAccountIDs(context.Background(), accountsToFind, ch)
 		if err != nil {
 			console.Fatal("failed to query cafe: " + err.Error())
 		}

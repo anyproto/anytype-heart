@@ -155,7 +155,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc := &model.Account{Id: account.Address()}
 
-	comps, err := anytype.DefaultClientComponents(true, mw.rootPath, account.Address())
+	comps, err := anytype.BootstrapConfigAndWallet(true, mw.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
@@ -275,7 +275,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	comps, err := anytype.DefaultClientComponents(false, mw.rootPath, zeroAccount.Address())
+	comps, err := anytype.BootstrapConfigAndWallet(false, mw.rootPath, zeroAccount.Address())
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
 	}
@@ -293,7 +293,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	mw.accountSearchCancel = func() { searchQueryCancel() }
 	defer searchQueryCancel()
 
-	comps, err = anytype.DefaultClientComponents(false, mw.rootPath, zeroAccount.Address())
+	comps, err = anytype.BootstrapConfigAndWallet(false, mw.rootPath, zeroAccount.Address())
 	if err != nil {
 		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
 	}
@@ -465,7 +465,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		}
 	}
 
-	comps, err := anytype.DefaultClientComponents(false, mw.rootPath, req.Id)
+	comps, err := anytype.BootstrapConfigAndWallet(false, mw.rootPath, req.Id)
 	if err != nil {
 		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 	}

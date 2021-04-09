@@ -115,14 +115,25 @@ func (r *datastore) Name() (name string) {
 }
 
 func (r *datastore) Close() (err error) {
-	err2 := r.logstoreDS.Close()
-	if err2 != nil {
-		err = multierror.Append(err, err2)
+	if r.logstoreDS != nil {
+		err2 := r.logstoreDS.Close()
+		if err2 != nil {
+			err = multierror.Append(err, err2)
+		}
 	}
 
-	err2 = r.litestoreDS.Close()
-	if err2 != nil {
-		err = multierror.Append(err, err2)
+	if r.litestoreDS != nil {
+		err2 := r.litestoreDS.Close()
+		if err2 != nil {
+			err = multierror.Append(err, err2)
+		}
+	}
+
+	if r.threadsDbDS != nil {
+		err2 := r.threadsDbDS.Close()
+		if err2 != nil {
+			err = multierror.Append(err, err2)
+		}
 	}
 
 	return err

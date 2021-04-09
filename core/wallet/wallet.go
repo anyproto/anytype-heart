@@ -40,7 +40,7 @@ func (r *wallet) GetDevicePrivkey() (wallet2.Keypair, error) {
 
 func (r *wallet) Init(a *app.App) (err error) {
 	var b []byte
-	if r.deviceKeyPath != "" {
+	if r.deviceKeypair == nil && r.deviceKeyPath != "" {
 		b, err = ioutil.ReadFile(r.deviceKeyPath)
 		if err != nil {
 			return fmt.Errorf("failed to read device keyfile: %w", err)
@@ -56,21 +56,24 @@ func (r *wallet) Init(a *app.App) (err error) {
 		}
 	}
 
-	b, err = ioutil.ReadFile(r.accountKeyPath)
-	if err != nil {
-		return fmt.Errorf("failed to read account keyfile: %w", err)
+	if r.accountKeypair == nil && r.accountKeyPath != "" {
+		b, err = ioutil.ReadFile(r.accountKeyPath)
+		if err != nil {
+			return fmt.Errorf("failed to read account keyfile: %w", err)
+		}
+
+		r.accountKeypair, err = wallet2.UnmarshalBinary(b)
+		if err != nil {
+			return err
+		}
+		if r.accountKeypair.KeypairType() != wallet2.KeypairTypeAccount {
+			return fmt.Errorf("got %s key type instead of %s", r.accountKeypair.KeypairType(), wallet2.KeypairTypeAccount)
+		}
 	}
 
-	r.accountKeypair, err = wallet2.UnmarshalBinary(b)
-	if err != nil {
-		return err
+	if r.deviceKeypair != nil {
+		logging.SetHost(r.deviceKeypair.Address())
 	}
-	if r.accountKeypair.KeypairType() != wallet2.KeypairTypeAccount {
-		return fmt.Errorf("got %s key type instead of %s", r.accountKeypair.KeypairType(), wallet2.KeypairTypeAccount)
-	}
-
-	logging.SetHost(r.deviceKeypair.Address())
-
 	return nil
 }
 
@@ -92,6 +95,14 @@ func NewWithAccountRepo(rootpath, accountId string) Wallet {
 		repoPath:       repoPath,
 		accountKeyPath: filepath.Join(repoPath, keyFileAccount),
 		deviceKeyPath:  filepath.Join(repoPath, keyFileDevice),
+	}
+}
+
+func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair wallet2.Keypair) Wallet {
+	return &wallet{
+		repoPath:       repoPath,
+		accountKeypair: accountKeypair,
+		deviceKeypair:  deviceKeypair,
 	}
 }
 

@@ -3,12 +3,15 @@ package recordsbatcher
 import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/cheggaaa/mb"
 	"sync"
 	"time"
 )
 
 const CName = "recordsbatcher"
+
+var log = logging.Logger("anytype-recordsbatcher")
 
 type recordsBatcher struct {
 	batcher   *mb.MB
@@ -17,6 +20,7 @@ type recordsBatcher struct {
 }
 
 func (r *recordsBatcher) Init(a *app.App) (err error) {
+	log.Errorf("recordsBatcher %p init", r)
 	r.batcher = mb.New(0)
 	r.packDelay = time.Millisecond * 100
 	return nil
@@ -27,7 +31,12 @@ func (r *recordsBatcher) Name() (name string) {
 }
 
 func (r *recordsBatcher) Add(msgs ...core.SmartblockRecordWithThreadID) error {
-	return r.batcher.Add(msgs)
+	var msgsIfaces []interface{}
+	for _, msg := range msgs {
+		msgsIfaces = append(msgsIfaces, interface{}(msg))
+	}
+
+	return r.batcher.Add(msgsIfaces...)
 }
 
 func (r *recordsBatcher) Read(buffer []core.SmartblockRecordWithThreadID) int {
@@ -36,19 +45,22 @@ func (r *recordsBatcher) Read(buffer []core.SmartblockRecordWithThreadID) int {
 		time.Sleep(r.packDelay)
 		r.m.Unlock()
 	}()
-	msgs := r.batcher.Wait()
+
+	msgs := r.batcher.WaitMax(len(buffer))
 	if len(msgs) == 0 {
 		return 0
 	}
-	var total int
+	var msgsCasted []core.SmartblockRecordWithThreadID
 	for _, msg := range msgs {
-		buffer = append(buffer, msg.(core.SmartblockRecordWithThreadID))
-		total++
+		msgsCasted = append(msgsCasted[0:], msg.(core.SmartblockRecordWithThreadID))
 	}
-	return total
+
+	return copy(buffer, msgsCasted)
 }
 
 func (r *recordsBatcher) Close() (err error) {
+	log.Errorf("recordsBatcher %p close", r)
+
 	return r.batcher.Close()
 }
 

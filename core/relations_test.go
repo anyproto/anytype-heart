@@ -169,7 +169,7 @@ func TestRelationAdd(t *testing.T) {
 		}}})
 		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
 
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Millisecond * 200)
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 
@@ -388,7 +388,7 @@ func TestRelationAdd(t *testing.T) {
 			RelationKey: respRelCreate.RelationKey,
 		})
 		require.Equal(t, 0, int(respRelOptCreate.Error.Code), respRelOptCreate.Error.Description)
-		time.Sleep(time.Second * 1)
+		time.Sleep(time.Millisecond * 200)
 
 		respRecordUpdate := mw.BlockDataviewRecordUpdate(
 			&pb.RpcBlockDataviewRecordUpdateRequest{
@@ -423,7 +423,7 @@ func TestRelationAdd(t *testing.T) {
 		})
 
 		require.Equal(t, 0, int(respOptAdd.Error.Code), respOptAdd.Error.Description)
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 200)
 
 		respRecordUpdate2 := mw.BlockDataviewRecordUpdate(
 			&pb.RpcBlockDataviewRecordUpdateRequest{
@@ -520,7 +520,7 @@ func TestRelationAdd(t *testing.T) {
 		})
 		require.Equal(t, 0, int(respRelAdd3.Error.Code), respRelAdd3.Error.Description)
 		rel3.Key = respRelAdd3.RelationKey
-		time.Sleep(time.Second)
+		time.Sleep(time.Millisecond * 200)
 
 		respOptionAdd1 := mw.ObjectRelationOptionAdd(&pb.RpcObjectRelationOptionAddRequest{
 			ContextId:   respPage1Create.PageId,
@@ -577,7 +577,7 @@ func TestRelationAdd(t *testing.T) {
 			},
 		})
 		require.Equal(t, 0, int(respOptionAdd5.Error.Code), respOptionAdd5.Error.Description)
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Millisecond * 200)
 		tests := []test{
 			{
 				rel1.Key,
@@ -749,7 +749,7 @@ func TestCustomType(t *testing.T) {
 		}
 	}
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 200)
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
 	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
@@ -860,7 +860,7 @@ func TestBundledType(t *testing.T) {
 	profile := getDetailsForContext(show.Details, mw.GetAnytype().PredefinedBlocks().Profile)
 	require.NotNil(t, profile, fmt.Sprintf("%s got no details for profile", show.RootId))
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 200)
 
 	respOpenPagesSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
@@ -877,7 +877,7 @@ func TestBundledType(t *testing.T) {
 	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 
-	time.Sleep(time.Second)
+	time.Sleep(time.Millisecond * 200)
 	respOpenPagesSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenPagesSet.Error.Code), respOpenPagesSet.Error.Description)
 

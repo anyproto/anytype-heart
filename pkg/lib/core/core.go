@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"io"
 	"sync"
 	"time"
@@ -22,7 +24,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
@@ -73,7 +74,7 @@ type Service interface {
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
-	ObjectStore() localstore.ObjectStore // deprecated
+	ObjectStore() objectstore.ObjectStore // deprecated
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
 
@@ -87,10 +88,12 @@ var _ app.Component = (*Anytype)(nil)
 var _ Service = (*Anytype)(nil)
 
 type Anytype struct {
-	files        *files.Service
-	cafe         cafe.Client
-	mdns         discovery.Service
-	localStore   *localstore.LocalStore
+	files       *files.Service
+	cafe        cafe.Client
+	mdns        discovery.Service
+	objectStore objectstore.ObjectStore
+	fileStore   filestore.FileStore
+
 	localStoreDS ds.TxnDatastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
@@ -132,7 +135,8 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.wallet = ap.MustComponent(wallet.CName).(wallet.Wallet)
 	a.config = ap.MustComponent(config.CName).(*config.Config)
 	a.recordsbatch = ap.MustComponent("recordsbatcher").(batchAdder)
-	a.localStore = ap.MustComponent(localstore.CName).(*localstore.LocalStore)
+	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
 	a.localStoreDS = ap.MustComponent(datastore.CName).(datastore.Datastore).LocalstoreDS()
 	a.threadService = ap.MustComponent(threads.CName).(threads.Service)
 	a.cafe = ap.MustComponent(cafe.CName).(cafe.Client)
@@ -298,7 +302,8 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 // Subscribes to new records for all threads and add them to the batcher
 func (a *Anytype) subscribeForNewRecords() (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	// do not defer cancel, cancel only on shutdown
+
 	threadsCh, err := a.threadService.Threads().Subscribe(ctx)
 	if err != nil {
 		return err

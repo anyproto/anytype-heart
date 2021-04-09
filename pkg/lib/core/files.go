@@ -3,11 +3,11 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"io"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 )
 
@@ -18,20 +18,20 @@ func (a *Anytype) FileGetKeys(hash string) (*files.FileKeys, error) {
 }
 
 func (a *Anytype) FileStoreKeys(fileKeys ...files.FileKeys) error {
-	var fks []localstore.FileKeys
+	var fks []filestore.FileKeys
 
 	for _, fk := range fileKeys {
-		fks = append(fks, localstore.FileKeys{
+		fks = append(fks, filestore.FileKeys{
 			Hash: fk.Hash,
 			Keys: fk.Keys,
 		})
 	}
 
-	return a.localStore.Files.AddFileKeys(fks...)
+	return a.fileStore.AddFileKeys(fks...)
 }
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
-	fileList, err := a.localStore.Files.ListByTarget(hash)
+	fileList, err := a.fileStore.ListByTarget(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -80,7 +80,7 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 		return nil, err
 	}
 
-	err = a.localStore.Objects.UpdateObjectDetails(f.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyFile).Relations})
+	err = a.objectStore.UpdateObjectDetails(f.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyFile).Relations})
 	if err != nil {
 		return nil, err
 	}

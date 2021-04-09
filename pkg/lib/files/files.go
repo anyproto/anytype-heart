@@ -7,6 +7,7 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -45,14 +46,14 @@ var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encr
 var _ app.Component = (*Service)(nil)
 
 type Service struct {
-	store localstore.FileStore
+	store filestore.FileStore
 	ipfs  ipfs.IPFS
 	pins  pin.FilePinService
 }
 
 func (s *Service) Init(a *app.App) (err error) {
 	s.ipfs = a.MustComponent("ipfs").(ipfs.Node).GetIpfs()
-	s.store = a.MustComponent("localstore").(*localstore.LocalStore).Files
+	s.store = a.MustComponent("filestore").(filestore.FileStore)
 	s.pins = a.MustComponent(pin.CName).(pin.FilePinService)
 	return nil
 }
@@ -98,7 +99,7 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
-	if err = s.store.AddFileKeys(localstore.FileKeys{
+	if err = s.store.AddFileKeys(filestore.FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
 	}); err != nil {
@@ -162,7 +163,7 @@ func (s *Service) FileRestoreKeys(ctx context.Context, hash string) (map[string]
 		}
 	}
 
-	err = s.store.AddFileKeys(localstore.FileKeys{
+	err = s.store.AddFileKeys(filestore.FileKeys{
 		Hash: hash,
 		Keys: fileKeys,
 	})

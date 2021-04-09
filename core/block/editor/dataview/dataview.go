@@ -3,6 +3,7 @@ package dataview
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"sync"
 
 	blockDB "github.com/anytypeio/go-anytype-middleware/core/block/database"
@@ -14,7 +15,6 @@ import (
 	bundle "github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -291,7 +291,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*pbre
 		return nil, err
 	}
 
-	objectType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
+	objectType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
 	if err != nil {
 		return nil, err
 	}
@@ -476,7 +476,7 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	}
 
 	if len(view.Relations) == 0 {
-		objType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
+		objType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
 		if err != nil {
 			return nil, fmt.Errorf("object type not found")
 		}
@@ -577,7 +577,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 	}
 	dv := d.getDataviewImpl(dvBlock)
 
-	objectType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), source)
+	objectType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), source)
 	if err != nil {
 		return err
 	}
@@ -707,7 +707,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	// todo: inject schema
-	objectType, err := localstore.GetObjectType(d.Anytype().ObjectStore(), source)
+	objectType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), source)
 	if err != nil {
 		return nil, err
 	}

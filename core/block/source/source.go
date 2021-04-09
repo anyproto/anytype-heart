@@ -247,7 +247,8 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 
 	var (
 		createdDate = time.Now().Unix()
-		createdBy   string
+		// todo: remove this default
+		createdBy = s.Anytype().Account()
 	)
 	// protect from the big documents with a large trees
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -255,8 +256,7 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	fc, err := s.FindFirstChange(ctx)
 	if err == change.ErrEmpty {
 		err = nil
-		// todo: fixme refactor
-		createdBy = ""
+		createdBy = s.Anytype().Account()
 		log.Debugf("InjectCreationInfo set for the empty object")
 	} else if err != nil {
 		return fmt.Errorf("failed to find first change to derive creation info")

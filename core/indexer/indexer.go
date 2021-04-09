@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"sync"
 	"time"
 
@@ -12,7 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -61,7 +61,7 @@ type batchReader interface {
 }
 
 type indexer struct {
-	store             localstore.ObjectStore
+	store             objectstore.ObjectStore
 	anytype           core.Service
 	searchInfo        GetSearchInfo
 	cache             map[string]*doc
@@ -76,6 +76,8 @@ type indexer struct {
 func (i *indexer) Init(a *app.App) (err error) {
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
+	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+
 	i.cache = make(map[string]*doc)
 	i.newRecordsBatcher = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
 	i.quitWG = new(sync.WaitGroup)
@@ -88,7 +90,6 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run() (err error) {
-	i.store = i.anytype.ObjectStore()
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
@@ -144,14 +145,15 @@ func (i *indexer) reindexBundled() {
 func (i *indexer) detailsLoop() {
 	go func() {
 		defer i.quitWG.Done()
-		var records []core.SmartblockRecordWithThreadID
+		var records = make([]core.SmartblockRecordWithThreadID, 100)
 		for {
-			records = records[:0]
+			records = records[0:cap(records)]
 			n := i.newRecordsBatcher.Read(records)
 			if n == 0 {
 				// means no more data is available
 				return
 			}
+			records = records[0:n]
 
 			i.applyRecords(records)
 		}
@@ -287,6 +289,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 func (i *indexer) ftLoop() {
 	defer i.quitWG.Done()
 	ticker := time.NewTicker(ftIndexInterval)
+	i.ftIndex()
 	for {
 		select {
 		case <-i.quit:

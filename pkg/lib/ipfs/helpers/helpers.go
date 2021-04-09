@@ -405,30 +405,27 @@ func ResolveLinkByNames(nd ipld.Node, names []string) (*ipld.Link, error) {
 }
 
 func PermanentConnection(ctx context.Context, addr ma.Multiaddr, host host.Host, retryInterval time.Duration) error {
-	pidStr, _ := addr.ValueForProtocol(ma.P_P2P)
-	pid, err := peer.Decode(pidStr)
+	addrInfo, err := peer.AddrInfoFromP2pAddr(addr)
 	if err != nil {
 		return fmt.Errorf("PermanentConnection invalid addr: %s", err.Error())
 	}
-	log.Errorf("PermanentConnection start %s", pid)
 
+	log.Errorf("PermanentConnection start %v", addrInfo.String())
 	go func() {
 		for {
-			state := host.Network().Connectedness(pid)
+			state := host.Network().Connectedness(addrInfo.ID)
 			// do not handle CanConnect purposefully
 			if state == network.NotConnected || state == network.CannotConnect {
 				if swrm, ok := host.Network().(*swarm.Swarm); ok {
 					// clear backoff in order to connect more aggressively
-					swrm.Backoff().Clear(pid)
+					swrm.Backoff().Clear(addrInfo.ID)
 				}
-				err = host.Connect(ctx, peer.AddrInfo{
-					ID:    pid,
-					Addrs: []ma.Multiaddr{addr},
-				})
+
+				err = host.Connect(ctx, *addrInfo)
 				if err != nil {
 					log.Warnf("PermanentConnection failed: %s", err.Error())
 				} else {
-					log.Debugf("PermanentConnection %s reconnected succesfully", pid.String())
+					log.Debugf("PermanentConnection %s reconnected succesfully", addrInfo.ID.String())
 				}
 			}
 

@@ -3,8 +3,8 @@ package files
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema/anytype"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 )
@@ -22,7 +22,7 @@ func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[in
 
 	nodeHash := node.Cid().String()
 
-	err = s.store.AddFileKeys(localstore.FileKeys{
+	err = s.store.AddFileKeys(filestore.FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
 	})
