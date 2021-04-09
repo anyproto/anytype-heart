@@ -39,10 +39,8 @@ func (r *recordsBatcher) Add(msgs ...core.SmartblockRecordWithThreadID) error {
 }
 
 func (r *recordsBatcher) Read(buffer []core.SmartblockRecordWithThreadID) int {
-	r.m.Lock()
 	defer func() {
 		time.Sleep(r.packDelay)
-		r.m.Unlock()
 	}()
 
 	msgs := r.batcher.WaitMax(len(buffer))
