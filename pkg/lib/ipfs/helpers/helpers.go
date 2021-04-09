@@ -410,7 +410,6 @@ func PermanentConnection(ctx context.Context, addr ma.Multiaddr, host host.Host,
 		return fmt.Errorf("PermanentConnection invalid addr: %s", err.Error())
 	}
 
-	log.Errorf("PermanentConnection start %v", addrInfo.String())
 	go func() {
 		for {
 			state := host.Network().Connectedness(addrInfo.ID)

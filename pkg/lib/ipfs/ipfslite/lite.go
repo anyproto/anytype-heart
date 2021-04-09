@@ -157,7 +157,6 @@ func (ln *liteNet) Run() error {
 	}
 
 	go func() {
-		log.Errorf("bootstrap started")
 		ln.Bootstrap(ln.cfg.BootstrapNodes)
 		for _, p := range ln.cfg.BootstrapNodes {
 			if ln.host.Network().Connectedness(p.ID) == network.Connected {
@@ -165,7 +164,7 @@ func (ln *liteNet) Run() error {
 				break
 			}
 		}
-		log.Errorf("bootstrap finished. succeed = %v", ln.bootstrapSucceed)
+		log.Infof("bootstrap finished. succeed = %v", ln.bootstrapSucceed)
 
 		close(ln.bootstrapFinished)
 	}()

@@ -20,7 +20,6 @@ type recordsBatcher struct {
 }
 
 func (r *recordsBatcher) Init(a *app.App) (err error) {
-	log.Errorf("recordsBatcher %p init", r)
 	r.batcher = mb.New(0)
 	r.packDelay = time.Millisecond * 100
 	return nil
@@ -59,8 +58,6 @@ func (r *recordsBatcher) Read(buffer []core.SmartblockRecordWithThreadID) int {
 }
 
 func (r *recordsBatcher) Close() (err error) {
-	log.Errorf("recordsBatcher %p close", r)
-
 	return r.batcher.Close()
 }
 

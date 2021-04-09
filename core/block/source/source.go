@@ -325,7 +325,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	s.logHeads[s.logId] = ch
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
-		log.Errorf("%s: pushed snapshot", s.id)
+		log.Infof("%s: pushed snapshot", s.id)
 	} else {
 		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
 	}

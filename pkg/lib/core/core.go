@@ -230,8 +230,6 @@ func (a *Anytype) start() error {
 		return nil
 	}
 
-	log.Errorf("anytype service start")
-
 	if err := a.subscribeForNewRecords(); err != nil {
 		return err
 	}
@@ -346,7 +344,6 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 			case <-ctx.Done():
 				return
 			case <-a.shutdownStartsCh:
-				log.Errorf("subscribeForNewRecords shutdown starts")
 				cancel()
 			}
 		}
