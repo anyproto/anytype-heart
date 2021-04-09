@@ -47,12 +47,12 @@ var _ app.Component = (*Service)(nil)
 
 type Service struct {
 	store filestore.FileStore
-	ipfs  ipfs.IPFS
+	ipfs  ipfs.Node
 	pins  pin.FilePinService
 }
 
 func (s *Service) Init(a *app.App) (err error) {
-	s.ipfs = a.MustComponent("ipfs").(ipfs.Node).GetIpfs()
+	s.ipfs = a.MustComponent("ipfs").(ipfs.Node)
 	s.store = a.MustComponent("filestore").(filestore.FileStore)
 	s.pins = a.MustComponent(pin.CName).(pin.FilePinService)
 	return nil

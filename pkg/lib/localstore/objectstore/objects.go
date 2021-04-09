@@ -191,7 +191,8 @@ func New() ObjectStore {
 }
 
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
-	ls.ds = a.MustComponent(datastore.CName).(datastore.Datastore).LocalstoreDS()
+	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
+
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
@@ -206,7 +207,7 @@ func (ls *dsObjectStore) Name() (name string) {
 }
 
 type ObjectStore interface {
-	app.Component
+	app.ComponentRunnable
 	localstore.Indexable
 	database.Reader
 
@@ -286,7 +287,9 @@ func (m *filterObjectTypes) Filter(e query.Entry) bool {
 
 type dsObjectStore struct {
 	// underlying storage
-	ds  ds.TxnDatastore
+	ds      ds.TxnDatastore
+	dsIface datastore.Datastore
+
 	fts ftsearch.FTSearch
 
 	// serializing page updates
@@ -294,6 +297,15 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) Run() (err error) {
+	m.ds, err = m.dsIface.LocalstoreDS()
+	return
+}
+
+func (m *dsObjectStore) Close() (err error) {
+	return nil
 }
 
 func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error) {

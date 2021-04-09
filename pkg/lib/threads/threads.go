@@ -46,8 +46,7 @@ func New() Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
-	s.logstoreDS = a.MustComponent(datastore.CName).(datastore.Datastore).LogstoreDS()
-	s.threadsDbDS = a.MustComponent(datastore.CName).(datastore.Datastore).ThreadsDbDS()
+	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 
 	wl := a.MustComponent(wallet2.CName).(wallet2.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
@@ -85,6 +84,16 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
+	s.logstoreDS, err = s.ds.LogstoreDS()
+	if err != nil {
+		return err
+	}
+
+	s.threadsDbDS, err = s.ds.ThreadsDbDS()
+	if err != nil {
+		return err
+	}
+
 	s.logstore, err = lstoreds.NewLogstore(s.ctx, nocloserds.NewTxnBatch(s.logstoreDS), lstoreds.DefaultOpts())
 	if err != nil {
 		return err
@@ -96,7 +105,7 @@ func (s *service) Run() (err error) {
 		syncBook = s.logstore
 	}
 
-	s.t, err = net.NewNetwork(s.ctx, s.ipfsNode.GetHost(), s.ipfsNode.GetIpfs().BlockStore(), s.ipfsNode.GetIpfs(), s.logstore, net.Config{
+	s.t, err = net.NewNetwork(s.ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, net.Config{
 		Debug:        s.Debug,
 		PubSub:       s.PubSub,
 		SyncTracking: s.SyncTracking,

@@ -10,11 +10,11 @@ const CName = "datastore"
 
 type Datastore interface {
 	app.ComponentRunnable
-	PeerstoreDS() ds.Batching
-	BlockstoreDS() ds.Batching
-	LogstoreDS() DSTxnBatching
-	LocalstoreDS() ds.TxnDatastore
-	ThreadsDbDS() keytransform.TxnDatastoreExtended
+	PeerstoreDS() (ds.Batching, error)
+	BlockstoreDS() (ds.Batching, error)
+	LogstoreDS() (DSTxnBatching, error)
+	LocalstoreDS() (ds.TxnDatastore, error)
+	ThreadsDbDS() (keytransform.TxnDatastoreExtended, error)
 }
 
 type DSTxnBatching interface {

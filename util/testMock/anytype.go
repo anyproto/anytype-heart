@@ -24,6 +24,8 @@ func RegisterMockObjectStore(ctrl *gomock.Controller, ta *testapp.TestApp) *Mock
 	ms := NewMockObjectStore(ctrl)
 	ms.EXPECT().Name().AnyTimes().Return(objectstore.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
+	ms.EXPECT().Run().AnyTimes()
+	ms.EXPECT().Close().AnyTimes()
 	ta.Register(ms)
 	return ms
 }

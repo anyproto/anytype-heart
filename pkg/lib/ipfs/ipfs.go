@@ -46,7 +46,7 @@ type IPFS interface {
 
 type Node interface {
 	app.ComponentRunnable
+	IPFS
 	GetHost() host.Host
-	GetIpfs() IPFS
 	WaitBootstrap() (success bool) // waits until network bootstrap finished. Returns tru if at least 1 bootstrap node was connected successfully
 }

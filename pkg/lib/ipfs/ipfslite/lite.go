@@ -8,19 +8,19 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	datastore2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/ipfslite/ipfsliteinterface"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
-	"github.com/libp2p/go-libp2p-core/crypto"
+	"github.com/ipfs/go-cid"
+	blockstore "github.com/ipfs/go-ipfs-blockstore"
+	ipld "github.com/ipfs/go-ipld-format"
+	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/libp2p/go-libp2p-core/network"
 	"github.com/libp2p/go-libp2p-core/peer"
 	"github.com/libp2p/go-libp2p-kad-dht/dual"
 	"github.com/textileio/go-threads/util"
-	"io/ioutil"
-	"os"
+	"io"
 	"time"
 
 	ipfslite "github.com/hsanjuan/ipfs-lite"
-	"github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p"
 	connmgr "github.com/libp2p/go-libp2p-connmgr"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -39,12 +39,12 @@ const CName = "ipfs"
 var log = logging.Logger("anytype-core-litenet")
 
 type liteNet struct {
-	cfg                *Config
-	peerDS             datastore.Batching
-	blockDS            datastore.Batching
-	host               host.Host
-	dht                *dual.DHT
-	lite               *ipfslite.Peer
+	cfg *Config
+	*ipfslite.Peer
+	ds   datastore2.Datastore
+	host host.Host
+	dht  *dual.DHT
+
 	peerStoreCtxCancel context.CancelFunc
 
 	bootstrapSucceed  bool
@@ -96,29 +96,29 @@ func (ln *liteNet) getConfig(a *app.App) (*Config, error) {
 }
 
 func (ln *liteNet) Init(a *app.App) (err error) {
-	ds := a.MustComponent(datastore2.CName).(datastore2.Datastore)
-	if ds == nil {
-		return fmt.Errorf("ds is nil")
-	}
-
+	ln.ds = a.MustComponent(datastore2.CName).(datastore2.Datastore)
 	ln.bootstrapFinished = make(chan struct{})
-	ln.peerDS = ds.PeerstoreDS()
-	ln.blockDS = ds.BlockstoreDS()
-
-	if ln.peerDS == nil {
-		return fmt.Errorf("peerDS is nil")
-	}
-	if ln.blockDS == nil {
-		return fmt.Errorf("blockDS is nil")
-	}
 
 	ln.cfg, err = ln.getConfig(a)
 	if err != nil {
 		return err
 	}
 
-	peerDS := nocloserds.NewBatch(ln.peerDS)
-	blockDS := nocloserds.NewBatch(ln.blockDS)
+	return nil
+}
+
+func (ln *liteNet) Run() error {
+	peerDS, err := ln.ds.PeerstoreDS()
+	if err != nil {
+		return fmt.Errorf("peerDS: %s", err.Error())
+	}
+	blockDS, err := ln.ds.BlockstoreDS()
+	if err != nil {
+		return fmt.Errorf("blockDS: %s", err.Error())
+	}
+
+	peerDS = nocloserds.NewBatch(peerDS)
+	blockDS = nocloserds.NewBatch(blockDS)
 
 	var (
 		ctx context.Context
@@ -151,15 +151,11 @@ func (ln *liteNet) Init(a *app.App) (err error) {
 		return err
 	}
 
-	ln.lite, err = ipfslite.New(ctx, blockDS, ln.host, ln.dht, &ipfslite.Config{Offline: ln.cfg.Offline})
+	ln.Peer, err = ipfslite.New(ctx, blockDS, ln.host, ln.dht, &ipfslite.Config{Offline: ln.cfg.Offline})
 	if err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func (ln *liteNet) Run() error {
 	go func() {
 		log.Errorf("bootstrap started")
 		ln.Bootstrap(ln.cfg.BootstrapNodes)
@@ -185,17 +181,13 @@ func (ln *liteNet) WaitBootstrap() bool {
 	return ln.bootstrapSucceed
 }
 
-func (ln *liteNet) GetIpfs() ipfs.IPFS {
-	return ipfsliteinterface.New(ln.lite)
-}
-
 func (ln *liteNet) GetHost() host.Host {
 	return ln.host
 }
 
 func (ln *liteNet) Bootstrap(addrs []peer.AddrInfo) {
 	// todo refactor: provide a way to check if bootstrap was finished or/and succesfull
-	ln.lite.Bootstrap(addrs)
+	ln.Peer.Bootstrap(addrs)
 }
 
 func (ln *liteNet) Close() (err error) {
@@ -215,28 +207,31 @@ func (ln *liteNet) Close() (err error) {
 	return nil
 }
 
-func loadKey(repoPath string) (crypto.PrivKey, error) {
-	_, err := os.Stat(repoPath)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("key file not exists")
-	} else if err != nil {
-		return nil, err
-	}
-
-	var priv crypto.PrivKey
-
-	key, err := ioutil.ReadFile(repoPath)
-	if err != nil {
-		panic(err)
-	}
-	priv, err = crypto.UnmarshalPrivateKey(key)
-	if err != nil {
-		panic(err)
-	}
-
-	return priv, nil
-}
-
 func (ln *liteNet) WaitBootstrapFinish() (success bool) {
 	panic("implement me")
+}
+
+func (i *liteNet) Session(ctx context.Context) ipld.NodeGetter {
+	return i.Peer.Session(ctx)
+}
+
+func (i *liteNet) AddFile(ctx context.Context, r io.Reader, params *ipfs.AddParams) (ipld.Node, error) {
+	if params == nil {
+		return i.Peer.AddFile(ctx, r, nil)
+	}
+
+	ipfsLiteParams := ipfslite.AddParams(*params)
+	return i.Peer.AddFile(ctx, r, &ipfsLiteParams)
+}
+
+func (i *liteNet) GetFile(ctx context.Context, c cid.Cid) (uio.ReadSeekCloser, error) {
+	return i.Peer.GetFile(ctx, c)
+}
+
+func (i *liteNet) BlockStore() blockstore.Blockstore {
+	return i.Peer.BlockStore()
+}
+
+func (i *liteNet) HasBlock(c cid.Cid) (bool, error) {
+	return i.Peer.HasBlock(c)
 }

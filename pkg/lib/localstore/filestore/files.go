@@ -64,8 +64,9 @@ var (
 )
 
 type dsFileStore struct {
-	ds ds.TxnDatastore
-	l  sync.Mutex
+	dsIface datastore.Datastore
+	ds      ds.TxnDatastore
+	l       sync.Mutex
 }
 
 var log = logging.Logger("anytype-localstore")
@@ -73,7 +74,7 @@ var log = logging.Logger("anytype-localstore")
 const CName = "filestore"
 
 type FileStore interface {
-	app.Component
+	app.ComponentRunnable
 	localstore.Indexable
 	Add(file *storage.FileInfo) error
 	AddMulti(upsert bool, files ...*storage.FileInfo) error
@@ -97,8 +98,13 @@ func New() FileStore {
 }
 
 func (ls *dsFileStore) Init(a *app.App) (err error) {
-	ls.ds = a.MustComponent(datastore.CName).(datastore.Datastore).LocalstoreDS()
+	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
 	return nil
+}
+
+func (ls *dsFileStore) Run() (err error) {
+	ls.ds, err = ls.dsIface.LocalstoreDS()
+	return
 }
 
 func (ls *dsFileStore) Name() (name string) {
@@ -531,4 +537,8 @@ func (m *dsFileStore) DeleteByHash(hash string) error {
 
 	fileInfoKey := filesInfoBase.ChildString(hash)
 	return m.ds.Delete(fileInfoKey)
+}
+
+func (ls *dsFileStore) Close() (err error) {
+	return nil
 }

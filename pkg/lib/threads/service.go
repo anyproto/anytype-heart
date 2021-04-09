@@ -34,6 +34,7 @@ type service struct {
 	GRPCDialOptions   []grpc.DialOption
 
 	logstore    tlcore.Logstore
+	ds          datastore.Datastore
 	logstoreDS  datastore.DSTxnBatching
 	threadsDbDS keytransform.TxnDatastoreExtended
 

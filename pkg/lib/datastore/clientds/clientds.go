@@ -8,12 +8,11 @@ import (
 	badger "github.com/ipfs/go-ds-badger"
 	textileBadger "github.com/textileio/go-ds-badger"
 	"os"
-
-	"github.com/textileio/go-threads/db/keytransform"
 	"path/filepath"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	datastore2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/textileio/go-threads/db/keytransform"
 )
 
 const (
@@ -24,9 +23,12 @@ const (
 )
 
 type datastore struct {
+	running     bool
 	litestoreDS *badger.Datastore
 	logstoreDS  *badger.Datastore
 	threadsDbDS *textileBadger.Datastore
+	cfg         Config
+	repoPath    string
 }
 
 type Config struct {
@@ -51,63 +53,76 @@ func (r *datastore) Init(a *app.App) (err error) {
 		return fmt.Errorf("need wallet to be inited first")
 	}
 
-	var cfg Config
-
 	if cfgGetter, ok := a.Component("config").(DSConfigGetter); ok {
-		cfg = cfgGetter.DSConfig()
+		r.cfg = cfgGetter.DSConfig()
 	} else {
 		return fmt.Errorf("ds config is missing")
 	}
 
-	repoPath := wl.(wallet.Wallet).RepoPath()
-	r.litestoreDS, err = badger.NewDatastore(filepath.Join(repoPath, liteDSDir), &cfg.Litestore)
+	r.repoPath = wl.(wallet.Wallet).RepoPath()
+	return nil
+}
+
+func (r *datastore) Run() error {
+	var err error
+	r.litestoreDS, err = badger.NewDatastore(filepath.Join(r.repoPath, liteDSDir), &r.cfg.Litestore)
 	if err != nil {
 		return err
 	}
 
-	r.logstoreDS, err = badger.NewDatastore(filepath.Join(repoPath, logstoreDSDir), &cfg.Logstore)
+	r.logstoreDS, err = badger.NewDatastore(filepath.Join(r.repoPath, logstoreDSDir), &r.cfg.Logstore)
 	if err != nil {
 		return err
 	}
 
-	threadsDbOpts := textileBadger.Options(cfg.TextileDb)
-	tdbPath := filepath.Join(repoPath, threadsDbDSDir)
+	threadsDbOpts := textileBadger.Options(r.cfg.TextileDb)
+	tdbPath := filepath.Join(r.repoPath, threadsDbDSDir)
 	err = os.MkdirAll(tdbPath, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	r.threadsDbDS, err = textileBadger.NewDatastore(filepath.Join(repoPath, threadsDbDSDir), &threadsDbOpts)
+	r.threadsDbDS, err = textileBadger.NewDatastore(filepath.Join(r.repoPath, threadsDbDSDir), &threadsDbOpts)
 	if err != nil {
 		return err
 	}
-
+	r.running = true
 	return nil
 }
 
-func (r *datastore) Run() error {
-	// we can't move badger init here, because it will require other pkgs to depend on getter iterfaces
-	return nil
+func (r *datastore) PeerstoreDS() (ds.Batching, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.litestoreDS, nil
 }
 
-func (r *datastore) PeerstoreDS() ds.Batching {
-	return r.litestoreDS
+func (r *datastore) BlockstoreDS() (ds.Batching, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.litestoreDS, nil
 }
 
-func (r *datastore) BlockstoreDS() ds.Batching {
-	return r.litestoreDS
+func (r *datastore) LogstoreDS() (datastore2.DSTxnBatching, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.logstoreDS, nil
 }
 
-func (r *datastore) LogstoreDS() datastore2.DSTxnBatching {
-	return r.logstoreDS
+func (r *datastore) ThreadsDbDS() (keytransform.TxnDatastoreExtended, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.threadsDbDS, nil
 }
 
-func (r *datastore) ThreadsDbDS() keytransform.TxnDatastoreExtended {
-	return r.threadsDbDS
-}
-
-func (r *datastore) LocalstoreDS() ds.TxnDatastore {
-	return r.logstoreDS
+func (r *datastore) LocalstoreDS() (ds.TxnDatastore, error) {
+	if !r.running {
+		return nil, fmt.Errorf("exact ds may be requested only after Run")
+	}
+	return r.logstoreDS, nil
 }
 
 func (r *datastore) Name() (name string) {

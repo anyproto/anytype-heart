@@ -436,6 +436,11 @@ func removeBundleRelationsFromDs(a *Anytype, lastMigration bool) error {
 }
 
 func ReindexAll(a *Anytype) (int, error) {
+	ds, err := a.ds.LocalstoreDS()
+	if err != nil {
+		return 0, err
+	}
+
 	ids, err := a.objectStore.ListIds()
 	if err != nil {
 		return 0, err
@@ -462,7 +467,7 @@ func ReindexAll(a *Anytype) (int, error) {
 			//	continue
 			//}
 
-			err = localstore.EraseIndex(idx, a.localStoreDS)
+			err = localstore.EraseIndex(idx, ds)
 			if err != nil {
 				log.Errorf("migration reindexAll: failed to delete archive from index: %s", err.Error())
 			}

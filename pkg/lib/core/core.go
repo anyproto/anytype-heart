@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	ds "github.com/ipfs/go-datastore"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -94,7 +93,7 @@ type Anytype struct {
 	objectStore objectstore.ObjectStore
 	fileStore   filestore.FileStore
 
-	localStoreDS ds.TxnDatastore
+	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
 	threadService      threads.Service
@@ -137,7 +136,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.recordsbatch = ap.MustComponent("recordsbatcher").(batchAdder)
 	a.objectStore = ap.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	a.fileStore = ap.MustComponent(filestore.CName).(filestore.FileStore)
-	a.localStoreDS = ap.MustComponent(datastore.CName).(datastore.Datastore).LocalstoreDS()
+	a.ds = ap.MustComponent(datastore.CName).(datastore.Datastore)
 	a.threadService = ap.MustComponent(threads.CName).(threads.Service)
 	a.cafe = ap.MustComponent(cafe.CName).(cafe.Client)
 	a.files = ap.MustComponent(files.CName).(*files.Service)
