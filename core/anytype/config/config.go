@@ -13,7 +13,6 @@ import (
 	"net"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 var log = logging.Logger("anytype-config")
@@ -43,8 +42,6 @@ type Config struct {
 	Threads threads.Config
 	DS      clientds.Config
 }
-
-var mu sync.Mutex
 
 const (
 	configFileName = "config.json"
@@ -87,9 +84,6 @@ func (c *Config) Init(a *app.App) (err error) {
 }
 
 func (cfg *Config) initFromFileAndEnv(repoPath string) error {
-	mu.Lock()
-	defer mu.Unlock()
-
 	cfgFilePath := filepath.Join(repoPath, configFileName)
 	cfgFile, err := os.OpenFile(cfgFilePath, os.O_RDONLY, 0655)
 	if err != nil && !os.IsNotExist(err) {
