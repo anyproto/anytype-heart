@@ -2,11 +2,11 @@ package main
 
 import (
 	"context"
-	app2 "github.com/anytypeio/go-anytype-middleware/app"
-	wallet2 "github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
-	core2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	coreService "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/console"
 	"github.com/spf13/cobra"
 	"io/ioutil"
@@ -28,15 +28,15 @@ var findProfiles = &cobra.Command{
 	Short: "Find profiles by mnemonic or accountId",
 	Run: func(c *cobra.Command, args []string) {
 		var (
-			appMnemonic string
-			appAccount wallet.Keypair
+			appMnemonic    string
+			appAccount     walletUtil.Keypair
 			accountsToFind []string
-			err error
+			err            error
 		)
 
 		if mnemonic != "" {
-			for i:=0; i<10; i++ {
-				ac, err := 	core2.WalletAccountAt(mnemonic, i, "")
+			for i := 0; i < 10; i++ {
+				ac, err := coreService.WalletAccountAt(mnemonic, i, "")
 				if err != nil {
 					console.Fatal("failed to get account from provided mnemonic: %s", err.Error())
 					return
@@ -50,15 +50,15 @@ var findProfiles = &cobra.Command{
 			console.Fatal("no mnemonic or account provided")
 			return
 		}
-		// create temp wallet in order to do requests to cafe
-		appMnemonic, err = core2.WalletGenerateMnemonic(12)
-		appAccount, err = core2.WalletAccountAt(appMnemonic, 0, "")
+		// create temp walletUtil in order to do requests to cafe
+		appMnemonic, err = coreService.WalletGenerateMnemonic(12)
+		appAccount, err = coreService.WalletAccountAt(appMnemonic, 0, "")
 
 		rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
-		app := new(app2.App)
-		app.Register(wallet2.NewWithRepoPathAndKeys(rootPath, appAccount, nil))
+		app := new(app.App)
+		app.Register(wallet.NewWithRepoPathAndKeys(rootPath, appAccount, nil))
 		app.Register(cafe.New())
-		at := core2.New()
+		at := coreService.New()
 		app.Register(at)
 		err = app.Start()
 		if err != nil {
@@ -66,7 +66,7 @@ var findProfiles = &cobra.Command{
 			return
 		}
 		var found bool
-		var ch = make(chan core2.Profile)
+		var ch = make(chan coreService.Profile)
 		closeCh := make(chan struct{})
 		go func() {
 			defer close(closeCh)

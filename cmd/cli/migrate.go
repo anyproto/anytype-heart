@@ -4,7 +4,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	core2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	coreService "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -34,7 +34,7 @@ var reindex = &cobra.Command{
 			return
 		}
 
-		migrated, err := core2.ReindexAll(mw.GetAnytype().(*core2.Anytype))
+		migrated, err := coreService.ReindexAll(mw.GetAnytype().(*coreService.Anytype))
 		if err != nil {
 			c.PrintErrf("failed to run reindex migration: %s\n", resp.Error.Description)
 		}
