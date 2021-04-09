@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	wallet2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"io/ioutil"
 	"path/filepath"
 )
@@ -20,18 +20,18 @@ type wallet struct {
 	accountKeyPath string
 	deviceKeyPath  string
 
-	accountKeypair wallet2.Keypair
-	deviceKeypair  wallet2.Keypair
+	accountKeypair walletUtil.Keypair
+	deviceKeypair  walletUtil.Keypair
 }
 
-func (r *wallet) GetAccountPrivkey() (wallet2.Keypair, error) {
+func (r *wallet) GetAccountPrivkey() (walletUtil.Keypair, error) {
 	if r.accountKeypair == nil {
 		return nil, fmt.Errorf("not set")
 	}
 	return r.accountKeypair, nil
 }
 
-func (r *wallet) GetDevicePrivkey() (wallet2.Keypair, error) {
+func (r *wallet) GetDevicePrivkey() (walletUtil.Keypair, error) {
 	if r.deviceKeypair == nil {
 		return nil, fmt.Errorf("not set")
 	}
@@ -46,13 +46,13 @@ func (r *wallet) Init(a *app.App) (err error) {
 			return fmt.Errorf("failed to read device keyfile: %w", err)
 		}
 
-		r.deviceKeypair, err = wallet2.UnmarshalBinary(b)
+		r.deviceKeypair, err = walletUtil.UnmarshalBinary(b)
 		if err != nil {
 			return err
 		}
 
-		if r.deviceKeypair.KeypairType() != wallet2.KeypairTypeDevice {
-			return fmt.Errorf("got %s key type instead of %s", r.deviceKeypair.KeypairType(), wallet2.KeypairTypeDevice)
+		if r.deviceKeypair.KeypairType() != walletUtil.KeypairTypeDevice {
+			return fmt.Errorf("got %s key type instead of %s", r.deviceKeypair.KeypairType(), walletUtil.KeypairTypeDevice)
 		}
 	}
 
@@ -62,12 +62,12 @@ func (r *wallet) Init(a *app.App) (err error) {
 			return fmt.Errorf("failed to read account keyfile: %w", err)
 		}
 
-		r.accountKeypair, err = wallet2.UnmarshalBinary(b)
+		r.accountKeypair, err = walletUtil.UnmarshalBinary(b)
 		if err != nil {
 			return err
 		}
-		if r.accountKeypair.KeypairType() != wallet2.KeypairTypeAccount {
-			return fmt.Errorf("got %s key type instead of %s", r.accountKeypair.KeypairType(), wallet2.KeypairTypeAccount)
+		if r.accountKeypair.KeypairType() != walletUtil.KeypairTypeAccount {
+			return fmt.Errorf("got %s key type instead of %s", r.accountKeypair.KeypairType(), walletUtil.KeypairTypeAccount)
 		}
 	}
 
@@ -98,7 +98,7 @@ func NewWithAccountRepo(rootpath, accountId string) Wallet {
 	}
 }
 
-func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair wallet2.Keypair) Wallet {
+func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair walletUtil.Keypair) Wallet {
 	return &wallet{
 		repoPath:       repoPath,
 		accountKeypair: accountKeypair,
@@ -108,7 +108,7 @@ func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair walle
 
 type Wallet interface {
 	RepoPath() string
-	GetAccountPrivkey() (wallet2.Keypair, error)
-	GetDevicePrivkey() (wallet2.Keypair, error)
+	GetAccountPrivkey() (walletUtil.Keypair, error)
+	GetDevicePrivkey() (walletUtil.Keypair, error)
 	app.Component
 }

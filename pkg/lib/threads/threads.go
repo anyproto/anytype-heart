@@ -3,7 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
-	wallet2 "github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
@@ -48,7 +48,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 
-	wl := a.MustComponent(wallet2.CName).(wallet2.Wallet)
+	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
 
 	s.device, err = wl.GetDevicePrivkey()

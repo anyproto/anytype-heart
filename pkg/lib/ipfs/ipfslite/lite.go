@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	datastore2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
 	"github.com/ipfs/go-cid"
@@ -41,7 +41,7 @@ var log = logging.Logger("anytype-core-litenet")
 type liteNet struct {
 	cfg *Config
 	*ipfslite.Peer
-	ds   datastore2.Datastore
+	ds   datastore.Datastore
 	host host.Host
 	dht  *dual.DHT
 
@@ -96,7 +96,7 @@ func (ln *liteNet) getConfig(a *app.App) (*Config, error) {
 }
 
 func (ln *liteNet) Init(a *app.App) (err error) {
-	ln.ds = a.MustComponent(datastore2.CName).(datastore2.Datastore)
+	ln.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	ln.bootstrapFinished = make(chan struct{})
 
 	ln.cfg, err = ln.getConfig(a)

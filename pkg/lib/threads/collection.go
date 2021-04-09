@@ -6,29 +6,29 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"time"
 
-	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
-	db2 "github.com/textileio/go-threads/core/db"
+	db "github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/go-threads/db"
-	"github.com/textileio/go-threads/util"
+	threadsDb "github.com/textileio/go-threads/db"
+	threadsUtil "github.com/textileio/go-threads/util"
 )
 
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
 
 var (
-	threadInfoCollection = db.CollectionConfig{
+	threadInfoCollection = threadsDb.CollectionConfig{
 		Name:   ThreadInfoCollectionName,
-		Schema: util.SchemaFromInstance(threadInfo{}, false),
+		Schema: threadsUtil.SchemaFromInstance(threadInfo{}, false),
 	}
 )
 
 type threadInfo struct {
-	ID    db2.InstanceID `json:"_id"`
+	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
 }
@@ -43,7 +43,7 @@ func (s *service) threadsDbInit() error {
 		return err
 	}
 
-	s.db, err = db.NewDB(context.Background(), s.threadsDbDS, s.t, accountID, db.WithNewCollections())
+	s.db, err = threadsDb.NewDB(context.Background(), s.threadsDbDS, s.t, accountID, threadsDb.WithNewCollections())
 	if err != nil {
 		return err
 	}
@@ -86,7 +86,7 @@ func (s *service) threadsDbListen() error {
 				return
 			case c := <-l.Channel():
 				switch c.Type {
-				case db.ActionCreate:
+				case threadsDb.ActionCreate:
 					instanceBytes, err := s.threadsCollection.FindByID(c.ID)
 					if err != nil {
 						log.Errorf("failed to find thread info for id %s: %w", c.ID.String(), err)
@@ -94,7 +94,7 @@ func (s *service) threadsDbListen() error {
 					}
 
 					ti := threadInfo{}
-					util.InstanceFromJSON(instanceBytes, &ti)
+					threadsUtil.InstanceFromJSON(instanceBytes, &ti)
 					tid, err := thread.Decode(ti.ID.String())
 					if err != nil {
 						log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
@@ -182,8 +182,8 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	var localThreadInfo thread.Info
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
-		if !util2.MultiAddressHasReplicator(multiAddrs, s.replicatorAddr) {
-			replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, tid)
+		if !util.MultiAddressHasReplicator(multiAddrs, s.replicatorAddr) {
+			replAddrWithThread, err = util.MultiAddressAddThread(s.replicatorAddr, tid)
 			if err != nil {
 				return err
 			}
@@ -220,7 +220,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 				}
 			}
 
-			peerAddr, err := util2.MultiAddressTrimThread(addr)
+			peerAddr, err := util.MultiAddressTrimThread(addr)
 			if err != nil {
 				logWithAddr.Errorf("processNewExternalThread: failed to parse addr: %s", err.Error())
 				continue
@@ -240,7 +240,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 				continue
 			}
 
-			addr, err = util2.MultiAddressAddThread(addr, tid)
+			addr, err = util.MultiAddressAddThread(addr, tid)
 			localThreadInfo, err = s.t.AddThread(s.ctx, addr, net.WithThreadKey(key), net.WithLogKey(s.device))
 			if err != nil {
 				if err == logstore.ErrLogExists || err == logstore.ErrThreadExists {

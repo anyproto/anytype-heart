@@ -20,7 +20,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 	"github.com/textileio/go-threads/cbor"
-	net3 "github.com/textileio/go-threads/core/net"
+	threadsNet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -230,7 +230,7 @@ type recordInfo struct {
 	Time    int64
 }
 
-func getRecord(ipfs ipfs.IPFS, ts threads.Service, thrd thread.Info, rid cid.Cid, downloadRemote bool) (net3.Record, *recordInfo, error) {
+func getRecord(ipfs ipfs.IPFS, ts threads.Service, thrd thread.Info, rid cid.Cid, downloadRemote bool) (threadsNet.Record, *recordInfo, error) {
 	rinfo := recordInfo{}
 	if thrd.ID == thread.Undef {
 		return nil, nil, fmt.Errorf("undef id")

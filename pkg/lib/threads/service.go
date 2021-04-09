@@ -3,27 +3,28 @@ package threads
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
-	app2 "github.com/textileio/go-threads/core/app"
-	tlcore "github.com/textileio/go-threads/core/logstore"
-	"github.com/textileio/go-threads/db/keytransform"
-	"google.golang.org/grpc"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	ma "github.com/multiformats/go-multiaddr"
-	db2 "github.com/textileio/go-threads/core/db"
+	threadsApp "github.com/textileio/go-threads/core/app"
+	"github.com/textileio/go-threads/core/db"
+	tlcore "github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 	"github.com/textileio/go-threads/crypto/symmetric"
-	"github.com/textileio/go-threads/db"
-	"github.com/textileio/go-threads/util"
+	threadsDb "github.com/textileio/go-threads/db"
+	"github.com/textileio/go-threads/db/keytransform"
+	threadsUtil "github.com/textileio/go-threads/util"
+	"google.golang.org/grpc"
+
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 )
 
 const simultaneousRequests = 20
@@ -41,9 +42,9 @@ type service struct {
 	ctxCancel context.CancelFunc
 	ctx       context.Context
 
-	t                          app2.Net
-	db                         *db.DB
-	threadsCollection          *db.Collection
+	t                          threadsApp.Net
+	db                         *threadsDb.DB
+	threadsCollection          *threadsDb.Collection
 	device                     wallet.Keypair
 	account                    wallet.Keypair
 	ipfsNode                   ipfs.Node
@@ -65,8 +66,8 @@ type Service interface {
 	app.ComponentRunnable
 	Logstore() tlcore.Logstore
 
-	ThreadsCollection() (*db.Collection, error)
-	Threads() app2.Net
+	ThreadsCollection() (*threadsDb.Collection, error)
+	Threads() threadsApp.Net
 	CafePeer() ma.Multiaddr
 
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
@@ -99,7 +100,7 @@ func (s *service) getNewThreadChan() chan<- string {
 	return s.newThreadChan
 }
 
-func (s *service) ThreadsCollection() (*db.Collection, error) {
+func (s *service) ThreadsCollection() (*threadsDb.Collection, error) {
 	if s.threadsCollection == nil {
 		return nil, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
 	}
@@ -107,7 +108,7 @@ func (s *service) ThreadsCollection() (*db.Collection, error) {
 	return s.threadsCollection, nil
 }
 
-func (s *service) Threads() app2.Net {
+func (s *service) Threads() threadsApp.Net {
 	return s.t
 }
 
@@ -141,11 +142,11 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 
 	var replAddrWithThread ma.Multiaddr
 	if s.replicatorAddr != nil {
-		replAddrWithThread, err = util2.MultiAddressAddThread(s.replicatorAddr, thrdId)
+		replAddrWithThread, err = util.MultiAddressAddThread(s.replicatorAddr, thrdId)
 		if err != nil {
 			return thread.Info{}, err
 		}
-		hasReplAddress := util2.MultiAddressHasReplicator(thrd.Addrs, s.replicatorAddr)
+		hasReplAddress := util.MultiAddressHasReplicator(thrd.Addrs, s.replicatorAddr)
 
 		if !hasReplAddress && replAddrWithThread != nil {
 			thrd.Addrs = append(thrd.Addrs, replAddrWithThread)
@@ -153,13 +154,13 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	}
 
 	threadInfo := threadInfo{
-		ID:    db2.InstanceID(thrd.ID.String()),
+		ID:    db.InstanceID(thrd.ID.String()),
 		Key:   thrd.Key.String(),
-		Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
+		Addrs: util.MultiAddressesToStrings(thrd.Addrs),
 	}
 
 	// todo: wait for threadsCollection to push?
-	_, err = s.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+	_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
 	if err != nil {
 		log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
 	}
@@ -208,7 +209,7 @@ func (s *service) DeleteThread(id string) error {
 		return err
 	}
 
-	err = s.threadsCollection.Delete(db2.InstanceID(id))
+	err = s.threadsCollection.Delete(db.InstanceID(id))
 	if err != nil {
 		// todo: here we can get an error if we didn't yet added thead keys into DB
 		log.With("thread", id).Error("DeleteThread failed to remove thread from collection: %s", err.Error())

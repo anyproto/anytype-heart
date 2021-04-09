@@ -9,9 +9,9 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	wallet2 "github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/mr-tron/base58"
 	"github.com/textileio/go-threads/core/thread"
 	"google.golang.org/grpc"
@@ -41,14 +41,14 @@ type Online struct {
 
 	limiter chan struct{}
 
-	device  wallet.Keypair
-	account wallet.Keypair
+	device  walletUtil.Keypair
+	account walletUtil.Keypair
 
 	conn *grpc.ClientConn
 }
 
 func (c *Online) Init(a *app.App) (err error) {
-	wl := a.MustComponent(wallet2.CName).(wallet2.Wallet)
+	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	cfg := a.MustComponent(config.CName).(*config.Config)
 
 	c.device, err = wl.GetDevicePrivkey()

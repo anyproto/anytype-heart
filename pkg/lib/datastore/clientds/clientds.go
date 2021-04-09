@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	datastore2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/textileio/go-threads/db/keytransform"
 )
 
@@ -22,7 +22,7 @@ const (
 	threadsDbDSDir = "collection" + string(os.PathSeparator) + "eventstore"
 )
 
-type datastore struct {
+type clientds struct {
 	running     bool
 	litestoreDS *badger.Datastore
 	logstoreDS  *badger.Datastore
@@ -47,7 +47,7 @@ type DSConfigGetter interface {
 	DSConfig() Config
 }
 
-func (r *datastore) Init(a *app.App) (err error) {
+func (r *clientds) Init(a *app.App) (err error) {
 	wl := a.Component(wallet.CName)
 	if wl == nil {
 		return fmt.Errorf("need wallet to be inited first")
@@ -63,7 +63,7 @@ func (r *datastore) Init(a *app.App) (err error) {
 	return nil
 }
 
-func (r *datastore) Run() error {
+func (r *clientds) Run() error {
 	var err error
 	r.litestoreDS, err = badger.NewDatastore(filepath.Join(r.repoPath, liteDSDir), &r.cfg.Litestore)
 	if err != nil {
@@ -90,46 +90,46 @@ func (r *datastore) Run() error {
 	return nil
 }
 
-func (r *datastore) PeerstoreDS() (ds.Batching, error) {
+func (r *clientds) PeerstoreDS() (ds.Batching, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 	return r.litestoreDS, nil
 }
 
-func (r *datastore) BlockstoreDS() (ds.Batching, error) {
+func (r *clientds) BlockstoreDS() (ds.Batching, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 	return r.litestoreDS, nil
 }
 
-func (r *datastore) LogstoreDS() (datastore2.DSTxnBatching, error) {
+func (r *clientds) LogstoreDS() (datastore.DSTxnBatching, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 	return r.logstoreDS, nil
 }
 
-func (r *datastore) ThreadsDbDS() (keytransform.TxnDatastoreExtended, error) {
+func (r *clientds) ThreadsDbDS() (keytransform.TxnDatastoreExtended, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 	return r.threadsDbDS, nil
 }
 
-func (r *datastore) LocalstoreDS() (ds.TxnDatastore, error) {
+func (r *clientds) LocalstoreDS() (ds.TxnDatastore, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 	return r.logstoreDS, nil
 }
 
-func (r *datastore) Name() (name string) {
+func (r *clientds) Name() (name string) {
 	return CName
 }
 
-func (r *datastore) Close() (err error) {
+func (r *clientds) Close() (err error) {
 	if r.logstoreDS != nil {
 		err2 := r.logstoreDS.Close()
 		if err2 != nil {
@@ -154,6 +154,6 @@ func (r *datastore) Close() (err error) {
 	return err
 }
 
-func New() datastore2.Datastore {
-	return &datastore{}
+func New() datastore.Datastore {
+	return &clientds{}
 }
