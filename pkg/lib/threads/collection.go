@@ -281,11 +281,6 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 		return fmt.Errorf("failed to pull thread: %w", err)
 	}
 
-	err = s.newHeadProcessor(tid)
-	if err != nil {
-		log.Errorf("processNewExternalThread newHeadProcessor failed: %s", err.Error())
-	}
-
 	return nil
 }
 

@@ -16,27 +16,6 @@ import (
 var ErrFailedToPullThread = fmt.Errorf("failed to pull thread")
 var ErrFailedToProcessNewHead = fmt.Errorf("failed to process new page head")
 
-// PullThread pulls the thread and run newHeadProcessor in case heads have been changed
-func (s *service) PullThread(ctx context.Context, id thread.ID) (err error) {
-	headsChanged, err := s.pullThread(ctx, id)
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrFailedToPullThread, err.Error())
-	}
-
-	if !headsChanged {
-		return nil
-	}
-
-	if s.newHeadProcessor != nil {
-		err = s.newHeadProcessor(id)
-		if err != nil {
-			return fmt.Errorf("%w: %s", ErrFailedToProcessNewHead, err.Error())
-		}
-	}
-
-	return nil
-}
-
 func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bool, err error) {
 	thrd, err := s.t.GetThread(context.Background(), id)
 	if err != nil {
