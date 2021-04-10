@@ -136,26 +136,7 @@ func (a *Anytype) RunMigrations() error {
 func doWithRunningNode(a *Anytype, offline bool, stopAfter bool, f func() error) error {
 	// FIXME: refactor offline migration
 
-	/*offlineWas := a.config.Offline
-	defer func() {
-		a.opts.Offline = offlineWas
-	}()
-
-	a.opts.Offline = offline*/
 	var err error
-	if stopAfter {
-		defer func() {
-			err = a.Stop()
-			if err != nil {
-				log.Errorf("migration failed to stop the running node: %s", err.Error())
-			}
-			a.lock.Lock()
-			defer a.lock.Unlock()
-			// @todo: possible race condition here. These chans not assumed to be replaced
-			a.shutdownStartsCh = make(chan struct{})
-			a.onlineCh = make(chan struct{})
-		}()
-	}
 
 	err = f()
 	if err != nil {
