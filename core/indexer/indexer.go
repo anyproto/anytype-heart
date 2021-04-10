@@ -224,6 +224,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		} else {
 			log.With("thread", id).Debugf("archive added to index queue")
 		}
+		d.mu.Unlock()
 		return
 	}
 	if len(d.st.ObjectTypes()) == 1 && d.st.ObjectTypes()[0] == bundle.TypeKeySet.URL() {
