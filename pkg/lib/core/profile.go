@@ -1,18 +1,10 @@
 package core
 
 import (
-	"context"
 	"errors"
-	"fmt"
-	"io"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/gogo/status"
-	"google.golang.org/grpc/codes"
 )
 
 type ProfileInfo interface {
-	FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error
 	LocalProfile() (Profile, error)
 	ProfileID() string
 }
@@ -22,55 +14,6 @@ type Profile struct {
 	Name        string
 	IconImage   string
 	IconColor   string
-}
-
-func (a *Anytype) FindProfilesByAccountIDs(ctx context.Context, AccountAddrs []string, ch chan Profile) error {
-	var errDeadlineExceeded = status.Error(codes.DeadlineExceeded, "deadline exceeded")
-
-	if a.cafe == nil {
-		close(ch)
-		return fmt.Errorf("cafe client not set")
-	}
-
-	s, err := a.cafe.ProfileFind(ctx, &pb.ProfileFindRequest{
-		AccountAddrs: AccountAddrs,
-	})
-	if err != nil {
-		close(ch)
-		return err
-	}
-	done := make(chan error)
-
-	go func() {
-		for {
-			resp, err := s.Recv()
-			if err != nil {
-				close(ch)
-				if err != io.EOF && err != errDeadlineExceeded {
-					done <- err
-					log.Errorf("failed to receive from cafe: %s", err.Error())
-				}
-
-				close(done)
-				return
-			}
-
-			ch <- Profile{
-				AccountAddr: resp.AccountAddr,
-				Name:        resp.Name,
-				IconImage:   resp.IconImage,
-				IconColor:   resp.IconColor,
-			}
-		}
-	}()
-
-	select {
-	case err := <-done:
-		return err
-	case <-ctx.Done():
-		return status.Error(codes.DeadlineExceeded, "timeouted")
-	}
-
 }
 
 func (a *Anytype) LocalProfile() (Profile, error) {

@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
@@ -22,10 +23,30 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
+
+func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
+	a = new(app.App)
+	device, err := walletUtil.NewRandomKeypair(walletUtil.KeypairTypeDevice)
+	if err != nil {
+		return nil, err
+	}
+
+	a.Register(&config.DefaultConfig).Register(wallet.NewWithRepoPathAndKeys("", accountPrivKey, device)).
+		Register(cafe.New()).
+		Register(profilefinder.New()).
+		Register(eventSender)
+
+	if err = a.Start(); err != nil {
+		return
+	}
+	return a, nil
+}
 
 func BootstrapConfigAndWallet(newAccount bool, rootPath, accountId string) ([]app.Component, error) {
 	return []app.Component{

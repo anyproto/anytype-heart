@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -256,55 +257,23 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	}
 
 	zeroAccount := accounts[0]
-	zeroAccountWasJustCreated := false
-	if !mw.isAccountExistsOnDisk(zeroAccount.Address()) {
-		seedRaw, err := zeroAccount.Raw()
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
-		}
-
-		zeroAccountWasJustCreated = true
-		err = core.WalletInitRepo(mw.rootPath, seedRaw)
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
-		}
-	}
 
 	// stop current account
 	if err := mw.stop(); err != nil {
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	comps, err := anytype.BootstrapConfigAndWallet(false, mw.rootPath, zeroAccount.Address())
-	if err != nil {
-		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
-	}
-
-	comps = append(comps, mw.EventSender)
-	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
+	if mw.app, err = anytype.StartAccountRecoverApp(mw.EventSender, zeroAccount); err != nil {
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
-	coreService := mw.app.MustComponent(core.CName).(core.Service)
+	profileFinder := mw.app.MustComponent(profilefinder.CName).(profilefinder.Service)
 	recoveryFinished := make(chan struct{})
 	defer close(recoveryFinished)
 
 	ctx, searchQueryCancel := context.WithTimeout(context.Background(), time.Second*30)
 	mw.accountSearchCancel = func() { searchQueryCancel() }
 	defer searchQueryCancel()
-
-	comps, err = anytype.BootstrapConfigAndWallet(false, mw.rootPath, zeroAccount.Address())
-	if err != nil {
-		return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
-	}
-
-	comps = append(comps, mw.EventSender)
-	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
-		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
-			return response(pb.RpcAccountRecoverResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
-		}
-		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
-	}
 
 	profilesCh := make(chan core.Profile)
 	go func() {
@@ -363,7 +332,7 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 		}
 	}()
 
-	findProfilesErr := coreService.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
+	findProfilesErr := profileFinder.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
 	if findProfilesErr != nil {
 		log.Errorf("remote profiles request failed: %s", findProfilesErr.Error())
 	}
@@ -374,21 +343,15 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	sentAccountsMutex.Lock()
 	defer sentAccountsMutex.Unlock()
 
+	err = mw.stop()
+	if err != nil {
+		log.Error("failed to stop zero account repo: %s", err.Error())
+	}
+
 	if len(sentAccounts) == 0 {
-		if zeroAccountWasJustCreated {
-			err = mw.stop()
-			if err != nil {
-				log.Error("failed to stop zero account repo: %s", err.Error())
-			}
-			err = os.RemoveAll(filepath.Join(mw.rootPath, zeroAccount.Address()))
-			if err != nil {
-				log.Error("failed to remove zero account repo: %s", err.Error())
-			}
-		}
 		if findProfilesErr != nil {
 			return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
 		}
-
 		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to find any local or remote accounts derived from this mnemonic"))
 	}
 
@@ -403,6 +366,10 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		}
 
 		return m
+	}
+
+	if req.Id == "" {
+		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_BAD_INPUT, fmt.Errorf("account id is empty"))
 	}
 
 	// cancel pending account searches and it will release the mutex
