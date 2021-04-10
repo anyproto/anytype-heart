@@ -2,15 +2,12 @@ package main
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	coreService "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/console"
 	"github.com/spf13/cobra"
-	"io/ioutil"
-	"os"
 )
 
 var cafeCmd = &cobra.Command{
@@ -53,14 +50,7 @@ var findProfiles = &cobra.Command{
 		// create temp walletUtil in order to do requests to cafe
 		appMnemonic, err = coreService.WalletGenerateMnemonic(12)
 		appAccount, err = coreService.WalletAccountAt(appMnemonic, 0, "")
-
-		rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
-		app := new(app.App)
-		app.Register(wallet.NewWithRepoPathAndKeys(rootPath, appAccount, nil))
-		app.Register(cafe.New())
-		at := coreService.New()
-		app.Register(at)
-		err = app.Start()
+		app, err := anytype.StartAccountRecoverApp(nil, appAccount)
 		if err != nil {
 			console.Fatal("failed to start anytype: %s", err.Error())
 			return
@@ -79,7 +69,8 @@ var findProfiles = &cobra.Command{
 				console.Success("got profile: id=%s name=%s", profile.AccountAddr, profile.Name)
 			}
 		}()
-		err = at.FindProfilesByAccountIDs(context.Background(), accountsToFind, ch)
+		profileFinder := app.MustComponent(profilefinder.CName).(profilefinder.Service)
+		err = profileFinder.FindProfilesByAccountIDs(context.Background(), accountsToFind, ch)
 		if err != nil {
 			console.Fatal("failed to query cafe: " + err.Error())
 		}
