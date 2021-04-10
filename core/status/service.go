@@ -1,6 +1,7 @@
 package status
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"sort"
 	"sync"
 	"time"
@@ -14,7 +15,6 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -91,9 +91,9 @@ func (s *service) Init(a *app.App) (err error) {
 	s.tsTrigger = queue.NewBulkQueue(threadStatusEventBatchPeriod, 5, 2)
 	anytype := a.MustComponent(core.CName).(core.Service)
 	s.ts = a.MustComponent(threads.CName).(threads.Service)
-
 	s.fInfo = a.MustComponent(pin.CName).(pin.FilePinService)
-
+	s.profile = anytype
+	s.emitter = a.MustComponent(event.CName).(event.Sender).Send
 	s.ownDeviceID = anytype.Device()
 
 	var (
@@ -101,7 +101,6 @@ func (s *service) Init(a *app.App) (err error) {
 		cafeAddr ma.Multiaddr
 	)
 	cafeAddr = a.MustComponent(threads.CName).(threads.Service).CafePeer()
-
 	if cafeAddr != nil {
 		cafePeer, _ = cafeAddr.ValueForProtocol(ma.P_P2P)
 	}
@@ -112,8 +111,6 @@ func (s *service) Init(a *app.App) (err error) {
 	cafePid, _ := peer.Decode(cafePeer)
 	s.cafeID = cafePid.String()
 
-	s.profile = anytype
-	s.emitter = a.MustComponent(event.CName).(event.Sender).Send
 	return
 }
 

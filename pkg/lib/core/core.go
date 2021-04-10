@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"io"
@@ -98,8 +99,8 @@ type Anytype struct {
 	predefinedBlockIds threads.DerivedSmartblockIds
 	threadService      threads.Service
 	pinService         pin.FilePinService
-
-	logLevels map[string]string
+	ipfs               ipfs.Node
+	logLevels          map[string]string
 
 	opts ServiceOptions
 
@@ -141,6 +142,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.cafe = ap.MustComponent(cafe.CName).(cafe.Client)
 	a.files = ap.MustComponent(files.CName).(*files.Service)
 	a.pinService = ap.MustComponent(pin.CName).(pin.FilePinService)
+	a.ipfs = ap.MustComponent(ipfs.CName).(ipfs.Node)
 
 	return
 }
@@ -262,6 +264,21 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) err
 }
 
 func (a *Anytype) Close() (err error) {
+	h := a.ipfs.GetHost()
+	if h != nil {
+		// SPECIAL CASE: close ipfs network first in order to disconnect from network and do no miss any incoming msg
+		err = h.Network().Close()
+		log.Errorf("explicitly stop ipfs host first: %v", err)
+		if err != nil {
+			return err
+		}
+	}
+	// SPECIAL CASE: close thread service first in order to protect from undelivered records
+	err = a.threadService.Close()
+	log.Errorf("explicitly stop threadService first: %v", err)
+	if err != nil {
+		return err
+	}
 	return a.Stop()
 }
 
@@ -300,8 +317,7 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 func (a *Anytype) subscribeForNewRecords() (err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 	// do not defer cancel, cancel only on shutdown
-
-	threadsCh, err := a.threadService.Threads().Subscribe(ctx)
+	threadsCh, err := a.threadService.PresubscribedNewRecords()
 	if err != nil {
 		return err
 	}

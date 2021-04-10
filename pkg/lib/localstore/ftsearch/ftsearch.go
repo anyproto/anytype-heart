@@ -41,10 +41,6 @@ type ftSearch struct {
 func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.path = filepath.Join(repoPath, ftsDir)
-	if err = f.init(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -52,7 +48,7 @@ func (f *ftSearch) Name() (name string) {
 	return CName
 }
 
-func (f *ftSearch) init() (err error) {
+func (f *ftSearch) Run() (err error) {
 	f.index, err = bleve.Open(f.path)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
 		mapping := bleve.NewIndexMapping()
@@ -62,11 +58,6 @@ func (f *ftSearch) init() (err error) {
 	} else if err != nil {
 		return
 	}
-	return
-}
-
-func (f *ftSearch) Run() (err error) {
-	// todo: move bleve init here?
 	return nil
 }
 

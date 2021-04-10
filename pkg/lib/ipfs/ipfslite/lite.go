@@ -131,7 +131,7 @@ func (ln *liteNet) Run() error {
 	}
 
 	r := bytes.NewReader([]byte(ln.cfg.PrivateNetSecret))
-	pnet, err := pnet.DecodeV1PSK(r)
+	privateNetworkKey, err := pnet.DecodeV1PSK(r)
 	if err != nil {
 		return err
 	}
@@ -139,7 +139,7 @@ func (ln *liteNet) Run() error {
 	ln.host, ln.dht, err = ipfslite.SetupLibp2p(
 		ctx,
 		ln.cfg.PrivKey,
-		pnet,
+		privateNetworkKey,
 		[]ma.Multiaddr{ln.cfg.HostAddr},
 		blockDS,
 		libp2p.ConnectionManager(connmgr.NewConnManager(ln.cfg.SwarmLowWater, ln.cfg.SwarmHighWater, time.Minute)),
@@ -194,13 +194,17 @@ func (ln *liteNet) Close() (err error) {
 		ln.peerStoreCtxCancel()
 	}
 
-	err = ln.dht.Close()
-	if err != nil {
-		return
+	if ln.dht != nil {
+		err = ln.dht.Close()
+		if err != nil {
+			return
+		}
 	}
-	err = ln.host.Close()
-	if err != nil {
-		return
+	if ln.host != nil {
+		err = ln.host.Close()
+		if err != nil {
+			return
+		}
 	}
 
 	return nil
