@@ -1,7 +1,11 @@
-package localstore
+package filestore
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
@@ -17,26 +21,24 @@ var (
 	filesInfoBase = ds.NewKey("/" + filesPrefix + "/info")
 	filesKeysBase = ds.NewKey("/" + filesPrefix + "/keys")
 
-	_ FileStore = (*dsFileStore)(nil)
-
-	indexMillSourceOpts = Index{
+	indexMillSourceOpts = localstore.Index{
 		Prefix: filesPrefix,
 		Name:   "mill_source_opts",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*storage.FileInfo); ok {
-				return []IndexKeyParts{[]string{v.Mill, v.Source, v.Opts}}
+				return []localstore.IndexKeyParts{[]string{v.Mill, v.Source, v.Opts}}
 			}
 			return nil
 		},
 		Unique: true,
 	}
 
-	indexTargets = Index{
+	indexTargets = localstore.Index{
 		Prefix: filesPrefix,
 		Name:   "targets",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*storage.FileInfo); ok {
-				var keys []IndexKeyParts
+				var keys []localstore.IndexKeyParts
 				for _, target := range v.Targets {
 					keys = append(keys, []string{target})
 				}
@@ -48,12 +50,12 @@ var (
 		Unique: true,
 	}
 
-	indexMillChecksum = Index{
+	indexMillChecksum = localstore.Index{
 		Prefix: filesPrefix,
 		Name:   "mill_checksum",
-		Keys: func(val interface{}) []IndexKeyParts {
+		Keys: func(val interface{}) []localstore.IndexKeyParts {
 			if v, ok := val.(*storage.FileInfo); ok {
-				return []IndexKeyParts{[]string{v.Mill, v.Checksum}}
+				return []localstore.IndexKeyParts{[]string{v.Mill, v.Checksum}}
 			}
 			return nil
 		},
@@ -62,8 +64,51 @@ var (
 )
 
 type dsFileStore struct {
-	ds ds.TxnDatastore
-	l  sync.Mutex
+	dsIface datastore.Datastore
+	ds      ds.TxnDatastore
+	l       sync.Mutex
+}
+
+var log = logging.Logger("anytype-localstore")
+
+const CName = "filestore"
+
+type FileStore interface {
+	app.ComponentRunnable
+	localstore.Indexable
+	Add(file *storage.FileInfo) error
+	AddMulti(upsert bool, files ...*storage.FileInfo) error
+	AddFileKeys(fileKeys ...FileKeys) error
+	GetFileKeys(hash string) (map[string]string, error)
+	GetByHash(hash string) (*storage.FileInfo, error)
+	GetBySource(mill string, source string, opts string) (*storage.FileInfo, error)
+	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
+	AddTarget(hash string, target string) error
+	RemoveTarget(hash string, target string) error
+	ListTargets() ([]string, error)
+	ListByTarget(target string) ([]*storage.FileInfo, error)
+	Count() (int, error)
+	DeleteByHash(hash string) error
+	DeleteFileKeys(hash string) error
+	List() ([]*storage.FileInfo, error)
+}
+
+func New() FileStore {
+	return &dsFileStore{}
+}
+
+func (ls *dsFileStore) Init(a *app.App) (err error) {
+	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
+	return nil
+}
+
+func (ls *dsFileStore) Run() (err error) {
+	ls.ds, err = ls.dsIface.LocalstoreDS()
+	return
+}
+
+func (ls *dsFileStore) Name() (name string) {
+	return CName
 }
 
 type FileKeys struct {
@@ -71,18 +116,12 @@ type FileKeys struct {
 	Keys map[string]string
 }
 
-func NewFileStore(ds ds.TxnDatastore) FileStore {
-	return &dsFileStore{
-		ds: ds,
-	}
-}
-
 func (m *dsFileStore) Prefix() string {
 	return "files"
 }
 
-func (m *dsFileStore) Indexes() []Index {
-	return []Index{
+func (m *dsFileStore) Indexes() []localstore.Index {
+	return []localstore.Index{
 		indexMillChecksum,
 		indexMillSourceOpts,
 		indexTargets,
@@ -104,7 +143,7 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 		return err
 	}
 	if exists {
-		return ErrDuplicateKey
+		return localstore.ErrDuplicateKey
 	}
 
 	b, err := proto.Marshal(file)
@@ -117,7 +156,7 @@ func (m *dsFileStore) Add(file *storage.FileInfo) error {
 		return err
 	}
 
-	err = AddIndexesWithTxn(m, txn, file, file.Hash)
+	err = localstore.AddIndexesWithTxn(m, txn, file, file.Hash)
 	if err != nil {
 		return err
 	}
@@ -153,7 +192,7 @@ func (m *dsFileStore) AddMulti(upsert bool, files ...*storage.FileInfo) error {
 			return err
 		}
 
-		err = AddIndexesWithTxn(m, txn, file, file.Hash)
+		err = localstore.AddIndexesWithTxn(m, txn, file, file.Hash)
 		if err != nil {
 			return err
 		}
@@ -172,7 +211,7 @@ func (m *dsFileStore) AddFileKeys(fileKeys ...FileKeys) error {
 	for _, fk := range fileKeys {
 		err = m.addSingleFileKeys(txn, fk.Hash, fk.Keys)
 		if err != nil {
-			if err == ErrDuplicateKey {
+			if err == localstore.ErrDuplicateKey {
 				continue
 			}
 			return err
@@ -205,7 +244,7 @@ func (m *dsFileStore) addSingleFileKeys(txn ds.Txn, hash string, keys map[string
 		return err
 	}
 	if exists {
-		return ErrDuplicateKey
+		return localstore.ErrDuplicateKey
 	}
 
 	b, err := proto.Marshal(&storage.FileKeys{
@@ -230,7 +269,7 @@ func (m *dsFileStore) GetFileKeys(hash string) (map[string]string, error) {
 	b, err := txn.Get(fileKeysKey)
 	if err != nil {
 		if err == ds.ErrNotFound {
-			return nil, ErrNotFound
+			return nil, localstore.ErrNotFound
 		}
 		return nil, err
 	}
@@ -269,7 +308,7 @@ func (m *dsFileStore) AddTarget(hash string, target string) error {
 	}
 
 	fileInfoKey := filesInfoBase.ChildString(file.Hash)
-	err = AddIndex(indexTargets, m.ds, file, file.Hash)
+	err = localstore.AddIndex(indexTargets, m.ds, file, file.Hash)
 	if err != nil {
 		return err
 	}
@@ -314,7 +353,7 @@ func (m *dsFileStore) GetByHash(hash string) (*storage.FileInfo, error) {
 	b, err := m.ds.Get(fileInfoKey)
 	if err != nil {
 		if err == ds.ErrNotFound {
-			return nil, ErrNotFound
+			return nil, localstore.ErrNotFound
 		}
 		return nil, err
 	}
@@ -334,7 +373,7 @@ func (m *dsFileStore) GetByChecksum(mill string, checksum string) (*storage.File
 	}
 	defer txn.Discard()
 
-	key, err := GetKeyByIndex(indexMillChecksum, txn, &storage.FileInfo{Mill: mill, Checksum: checksum})
+	key, err := localstore.GetKeyByIndex(indexMillChecksum, txn, &storage.FileInfo{Mill: mill, Checksum: checksum})
 	if err != nil {
 		return nil, err
 	}
@@ -360,7 +399,7 @@ func (m *dsFileStore) GetBySource(mill string, source string, opts string) (*sto
 	}
 	defer txn.Discard()
 
-	key, err := GetKeyByIndex(indexMillSourceOpts, txn, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
+	key, err := localstore.GetKeyByIndex(indexMillSourceOpts, txn, &storage.FileInfo{Mill: mill, Source: source, Opts: opts})
 	if err != nil {
 		return nil, err
 	}
@@ -386,21 +425,21 @@ func (m *dsFileStore) ListTargets() ([]string, error) {
 	}
 	defer txn.Discard()
 
-	targetPrefix := indexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
+	targetPrefix := localstore.IndexBase.ChildString(indexTargets.Prefix).ChildString(indexTargets.Name).String()
 
-	res, err := GetKeys(txn, targetPrefix, 0)
+	res, err := localstore.GetKeys(txn, targetPrefix, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := ExtractKeysFromResults(res)
+	keys, err := localstore.ExtractKeysFromResults(res)
 	if err != nil {
 		return nil, err
 	}
 
 	var targets = make([]string, len(keys))
 	for i, key := range keys {
-		target, err := CarveKeyParts(key, -2, -1)
+		target, err := localstore.CarveKeyParts(key, -2, -1)
 		if err != nil {
 			return nil, err
 		}
@@ -417,12 +456,12 @@ func (m *dsFileStore) ListByTarget(target string) ([]*storage.FileInfo, error) {
 	}
 	defer txn.Discard()
 
-	results, err := GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{target}, "", indexTargets.Hash, 0)
+	results, err := localstore.GetKeysByIndexParts(txn, indexTargets.Prefix, indexTargets.Name, []string{target}, "", indexTargets.Hash, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	keys, err := GetLeavesFromResults(results)
+	keys, err := localstore.GetLeavesFromResults(results)
 	if err != nil {
 		return nil, err
 	}
@@ -463,12 +502,12 @@ func (m *dsFileStore) List() ([]*storage.FileInfo, error) {
 	}
 	defer txn.Discard()
 
-	res, err := GetKeys(txn, filesInfoBase.String(), 0)
+	res, err := localstore.GetKeys(txn, filesInfoBase.String(), 0)
 	if err != nil {
 		return nil, err
 	}
 
-	hashes, err := GetLeavesFromResults(res)
+	hashes, err := localstore.GetLeavesFromResults(res)
 	if err != nil {
 		return nil, err
 	}
@@ -491,11 +530,15 @@ func (m *dsFileStore) DeleteByHash(hash string) error {
 		return fmt.Errorf("failed to find file by hash to remove")
 	}
 
-	err = RemoveIndexes(m, m.ds, file, file.Hash)
+	err = localstore.RemoveIndexes(m, m.ds, file, file.Hash)
 	if err != nil {
 		return err
 	}
 
 	fileInfoKey := filesInfoBase.ChildString(hash)
 	return m.ds.Delete(fileInfoKey)
+}
+
+func (ls *dsFileStore) Close() (err error) {
+	return nil
 }

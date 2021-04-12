@@ -3,6 +3,8 @@ package app
 import (
 	"errors"
 	"fmt"
+	"os"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -138,6 +140,17 @@ func (app *App) Start() (err error) {
 	return
 }
 
+func stackAllGoroutines() []byte {
+	buf := make([]byte, 1024)
+	for {
+		n := runtime.Stack(buf, true)
+		if n < len(buf) {
+			return buf[:n]
+		}
+		buf = make([]byte, 2*len(buf))
+	}
+}
+
 // Close stops the application
 // All components with ComponentRunnable implementation will be closed in the reversed order
 func (app *App) Close() error {
@@ -150,6 +163,8 @@ func (app *App) Close() error {
 		case <-done:
 			return
 		case <-time.After(time.Minute):
+			_, _ = os.Stderr.Write([]byte("app.Close timeout\n"))
+			_, _ = os.Stderr.Write(stackAllGoroutines())
 			panic("app.Close timeout")
 		}
 	}()

@@ -14,7 +14,7 @@ import (
 var ErrImageNotFound = fmt.Errorf("image not found")
 
 func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
-	files, err := a.localStore.Files.ListByTarget(hash)
+	files, err := a.fileStore.ListByTarget(hash)
 	if err != nil {
 		return nil, err
 	}
@@ -74,7 +74,7 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		return nil, err
 	}
 
-	err = a.localStore.Objects.UpdateObject(img.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyImage).Relations}, nil, "")
+	err = a.objectStore.UpdateObjectDetails(img.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyImage).Relations})
 	if err != nil {
 		return nil, err
 	}

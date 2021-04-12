@@ -6,6 +6,29 @@ import (
 	"sort"
 )
 
+func DifferenceRemovedAdded(a, b []string) (removed []string, added []string) {
+	var amap = map[string]struct{}{}
+	var bmap = map[string]struct{}{}
+
+	for _, item := range a {
+		amap[item] = struct{}{}
+	}
+
+	for _, item := range b {
+		if _, exists := amap[item]; !exists {
+			added = append(added, item)
+		}
+		bmap[item] = struct{}{}
+	}
+
+	for _, item := range a {
+		if _, exists := bmap[item]; !exists {
+			removed = append(removed, item)
+		}
+	}
+	return
+}
+
 func FindPos(s []string, v string) int {
 	for i, sv := range s {
 		if sv == v {

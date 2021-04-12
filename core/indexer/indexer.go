@@ -1,26 +1,26 @@
 package indexer
 
 import (
-	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/cheggaaa/mb"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -56,24 +56,30 @@ type GetSearchInfo interface {
 	app.Component
 }
 
-type indexer struct {
-	store              localstore.ObjectStore
-	anytype            core.Service
-	searchInfo         GetSearchInfo
-	cache              map[string]*doc
-	quitWG             *sync.WaitGroup
-	quit               chan struct{}
-	subscriptionCancel context.CancelFunc
+type batchReader interface {
+	Read(buffer []core.SmartblockRecordWithThreadID) int
+}
 
-	threadIdsBuf []string
-	recBuf       []core.SmartblockRecordEnvelope
-	mu           sync.Mutex
+type indexer struct {
+	store             objectstore.ObjectStore
+	anytype           core.Service
+	searchInfo        GetSearchInfo
+	cache             map[string]*doc
+	quitWG            *sync.WaitGroup
+	quit              chan struct{}
+	newRecordsBatcher batchReader
+	recBuf            []core.SmartblockRecordEnvelope
+	threadIdsBuf      []string
+	mu                sync.Mutex
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
+	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+
 	i.cache = make(map[string]*doc)
+	i.newRecordsBatcher = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
 	i.quitWG = new(sync.WaitGroup)
 	i.quit = make(chan struct{})
 	return
@@ -84,20 +90,12 @@ func (i *indexer) Name() (name string) {
 }
 
 func (i *indexer) Run() (err error) {
-	i.store = i.anytype.ObjectStore()
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	ch, err := i.anytype.SubscribeForNewRecords(ctx)
-	if err != nil {
-		cancel()
-		return err
-	}
-	i.subscriptionCancel = cancel
 	i.quitWG.Add(2)
 	i.reindexBundled()
-	go i.detailsLoop(ch)
+	go i.detailsLoop()
 	go i.ftLoop()
 	return
 }
@@ -144,24 +142,20 @@ func (i *indexer) reindexBundled() {
 	}
 }
 
-func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
-	batch := mb.New(0)
-	defer batch.Close()
+func (i *indexer) detailsLoop() {
 	go func() {
 		defer i.quitWG.Done()
-		var records []core.SmartblockRecordWithThreadID
+		var records = make([]core.SmartblockRecordWithThreadID, 100)
 		for {
-			msgs := batch.Wait()
-			if len(msgs) == 0 {
+			records = records[0:cap(records)]
+			n := i.newRecordsBatcher.Read(records)
+			if n == 0 {
+				// means no more data is available
 				return
 			}
-			records = records[:0]
-			for _, msg := range msgs {
-				records = append(records, msg.(core.SmartblockRecordWithThreadID))
-			}
+			records = records[0:n]
+
 			i.applyRecords(records)
-			// wait 100 millisecond for better batching
-			time.Sleep(100 * time.Millisecond)
 		}
 	}()
 	ticker := time.NewTicker(cleanupInterval)
@@ -170,16 +164,11 @@ func (i *indexer) detailsLoop(ch chan core.SmartblockRecordWithThreadID) {
 	i.mu.Unlock()
 	for {
 		select {
-		case rec, ok := <-ch:
-			//log.Debugf("indexer got change on %s(%s): %s", rec.ThreadID, rec.LogID, rec.ID)
-			if !ok {
-				return
-			}
-			batch.Add(rec)
 		case <-ticker.C:
 			i.cleanup()
 		case <-quit:
-			batch.Close()
+			// wait until we have batch closed on other side
+			i.quitWG.Wait()
 			return
 		}
 	}
@@ -224,12 +213,20 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		log.Warnf("can't get doc '%s': %v", id, err)
 		return
 	}
-
 	var (
 		dataviewRelationsBefore []*pbrelation.Relation
 		dataviewSourceBefore    string
 	)
 	d.mu.Lock()
+	if d.sb.Type() == smartblock.SmartBlockTypeArchive {
+		if err := i.store.AddToIndexQueue(id); err != nil {
+			log.With("thread", id).Errorf("can't add archive to index queue: %v", err)
+		} else {
+			log.With("thread", id).Debugf("archive added to index queue")
+		}
+		d.mu.Unlock()
+		return
+	}
 	if len(d.st.ObjectTypes()) == 1 && d.st.ObjectTypes()[0] == bundle.TypeKeySet.URL() {
 		b := d.st.Get("dataview")
 		if b != nil && b.Model().GetDataview() != nil {
@@ -256,7 +253,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	if onlyDetails {
-		if err := i.store.UpdateObject(id, meta.Details, nil, nil, ""); err != nil {
+		if err := i.store.UpdateObjectDetails(id, meta.Details, nil); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
 		} else {
 			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
@@ -277,7 +274,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		}
 	}
 
-	if err := i.store.UpdateObject(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}, nil, ""); err != nil {
+	if err := i.store.UpdateObjectDetails(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {
 		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
@@ -293,6 +290,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 func (i *indexer) ftLoop() {
 	defer i.quitWG.Done()
 	ticker := time.NewTicker(ftIndexInterval)
+	i.ftIndex()
 	for {
 		select {
 		case <-i.quit:
@@ -315,9 +313,10 @@ func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
 	if err != nil {
 		return
 	}
-	if err = i.store.UpdateObject(id, nil, nil, info.Links, info.Snippet); err != nil {
+	if err = i.store.UpdateObjectLinksAndSnippet(id, info.Links, info.Snippet); err != nil {
 		return
 	}
+
 	if fts := i.store.FTSearch(); fts != nil {
 		if err := fts.Index(ftsearch.SearchDoc{
 			Id:    id,
@@ -372,11 +371,7 @@ func (i *indexer) cleanup() {
 func (i *indexer) Close() error {
 	i.mu.Lock()
 	quit := i.quit
-	if i.subscriptionCancel != nil {
-		i.subscriptionCancel()
-	}
 	i.mu.Unlock()
-
 	if quit != nil {
 		close(quit)
 		i.quitWG.Wait()

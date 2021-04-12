@@ -17,13 +17,13 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/goccy/go-graphviz v0.0.9
 	github.com/gogo/protobuf v1.3.2
-	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.5.0
 	github.com/google/uuid v1.2.0
 	github.com/grpc-ecosystem/go-grpc-middleware v1.2.2
 	github.com/grpc-ecosystem/go-grpc-prometheus v1.2.0
 	github.com/grpc-ecosystem/grpc-opentracing v0.0.0-20180507213350-8e809c8a8645
 	github.com/h2non/filetype v1.1.1
+	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hsanjuan/ipfs-lite v1.1.18
 	github.com/improbable-eng/grpc-web v0.13.0
@@ -66,6 +66,7 @@ require (
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/spf13/cobra v0.0.5
 	github.com/stretchr/testify v1.7.0
+	github.com/textileio/go-ds-badger v0.2.7-0.20201204225019-4ee78c4a40e2
 	github.com/textileio/go-threads v1.0.2-0.20210304072541-d0f91da84404
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.25.0+incompatible
@@ -80,7 +81,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20210316173055-61330c7f1d6f
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.2-0.20210409154649-68bed5a29e74
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 

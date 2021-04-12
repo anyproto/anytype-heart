@@ -1,16 +1,19 @@
-package localstore
+package objectstore
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"io/ioutil"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -21,7 +24,6 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/ipfs/go-datastore/sync"
-	badger "github.com/ipfs/go-ds-badger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
@@ -31,10 +33,10 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
-	bds, err := badger.NewDatastore(tmpDir, nil)
+	app := testapp.New()
+	ds := New()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start()
 	require.NoError(t, err)
-
-	ds := NewObjectStore(bds, nil)
 
 	require.NoError(t, ds.AddToIndexQueue("one"))
 	require.NoError(t, ds.AddToIndexQueue("one"))
@@ -84,14 +86,12 @@ func TestDsObjectStore_Query(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
-	fts, err := ftsearch.NewFTSearch(filepath.Join(tmpDir, "fts"))
+	app := testapp.New()
+	ds := New()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
 	require.NoError(t, err)
+	fts := app.MustComponent(ftsearch.CName).(ftsearch.FTSearch)
 
-	bds, err := badger.NewDatastore(tmpDir, nil)
-	require.NoError(t, err)
-
-	ds := NewObjectStore(bds, fts)
-	defer ds.Close()
 	newDet := func(name string) *types.Struct {
 		return &types.Struct{
 			Fields: map[string]*types.Value{
@@ -105,9 +105,9 @@ func TestDsObjectStore_Query(t *testing.T) {
 	id1 := tid1.String()
 	id2 := tid2.String()
 	id3 := tid3.String()
-	require.NoError(t, ds.UpdateObject(id1, newDet("one"), nil, nil, "s1"))
-	require.NoError(t, ds.UpdateObject(id2, newDet("two"), nil, nil, "s2"))
-	require.NoError(t, ds.UpdateObject(id3, newDet("three"), nil, nil, "s3"))
+	require.NoError(t, ds.CreateObject(id1, newDet("one"), nil, nil, "s1"))
+	require.NoError(t, ds.CreateObject(id2, newDet("two"), nil, nil, "s2"))
+	require.NoError(t, ds.CreateObject(id3, newDet("three"), nil, nil, "s3"))
 	require.NoError(t, fts.Index(ftsearch.SearchDoc{
 		Id:    id1,
 		Title: "one",
@@ -201,14 +201,11 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
-	fts, err := ftsearch.NewFTSearch(filepath.Join(tmpDir, "fts"))
+	app := testapp.New()
+	ds := New()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
 	require.NoError(t, err)
 
-	bds, err := badger.NewDatastore(tmpDir, nil)
-	require.NoError(t, err)
-
-	ds := NewObjectStore(bds, fts)
-	defer ds.Close()
 	newDet := func(name, objtype string) *types.Struct {
 		return &types.Struct{
 			Fields: map[string]*types.Value{
@@ -220,7 +217,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	id1 := getId()
 	id2 := getId()
 	id3 := getId()
-	require.NoError(t, ds.UpdateObject(id1, newDet("one", "_ota1"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+	require.NoError(t, ds.CreateObject(id1, newDet("one", "_ota1"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
 		{
 			Key:          "rel1",
 			Format:       pbrelation.RelationFormat_status,
@@ -240,7 +237,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 		},
 	}}, nil, "s1"))
 
-	require.NoError(t, ds.UpdateObject(id2, newDet("two", "_ota2"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+	require.NoError(t, ds.CreateObject(id2, newDet("two", "_ota2"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
 		{
 			Key:          "rel1",
 			Format:       pbrelation.RelationFormat_status,
@@ -272,7 +269,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 			},
 		},
 	}}, nil, "s2"))
-	require.NoError(t, ds.UpdateObject(id3, newDet("three", "_ota2"), nil, nil, "s3"))
+	require.NoError(t, ds.CreateObject(id3, newDet("three", "_ota2"), nil, nil, "s3"))
 
 	restOpts, err := ds.GetAggregatedOptions("rel1", pbrelation.RelationFormat_status, "_otffff")
 	require.NoError(t, err)

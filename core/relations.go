@@ -2,9 +2,10 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/globalsign/mgo/bson"
 
@@ -267,7 +268,8 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return response(pb.RpcObjectTypeListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	threadIds, err := at.ThreadService().ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
+	ts := mw.app.MustComponent(threads.CName).(threads.Service)
+	threadIds, err := ts.ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
 	if err != nil {
 		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 	}
@@ -313,5 +315,5 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 }
 
 func (mw *Middleware) getObjectType(at core.Service, url string) (*pbrelation.ObjectType, error) {
-	return localstore.GetObjectType(at.ObjectStore(), url)
+	return objectstore.GetObjectType(at.ObjectStore(), url)
 }

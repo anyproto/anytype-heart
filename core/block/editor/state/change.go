@@ -2,7 +2,7 @@ package state
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"

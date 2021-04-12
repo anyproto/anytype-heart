@@ -5,21 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	threadsApp "github.com/textileio/go-threads/core/app"
 	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net"
-	util2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
 	"github.com/textileio/go-threads/cbor"
-	db2 "github.com/textileio/go-threads/core/db"
+	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/logstore"
-	net3 "github.com/textileio/go-threads/core/net"
+	threadsNet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
-	"github.com/textileio/go-threads/db"
-	"github.com/textileio/go-threads/util"
+	threadsDb "github.com/textileio/go-threads/db"
+	threadsUtil "github.com/textileio/go-threads/util"
 )
 
 // threadsDbMigration called on every except the first run of the account
@@ -52,7 +52,7 @@ func (s *service) threadsDbMigration(accountThreadId string) error {
 }
 
 func (s *service) addMissingThreadsFromCollection() error {
-	instancesBytes, err := s.threadsCollection.Find(&db.Query{})
+	instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
 	if err != nil {
 		return err
 	}
@@ -60,7 +60,7 @@ func (s *service) addMissingThreadsFromCollection() error {
 	var missingThreadsAdded int
 	for _, instanceBytes := range instancesBytes {
 		ti := threadInfo{}
-		util.InstanceFromJSON(instanceBytes, &ti)
+		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
 
 		tid, err := thread.Decode(ti.ID.String())
 		if err != nil {
@@ -95,7 +95,7 @@ func (s *service) addMissingThreadsFromCollection() error {
 }
 
 func (s *service) addMissingThreadsToCollection() error {
-	instancesBytes, err := s.threadsCollection.Find(&db.Query{})
+	instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
 	if err != nil {
 		return err
 	}
@@ -103,7 +103,7 @@ func (s *service) addMissingThreadsToCollection() error {
 	var threadsInCollection = make(map[string]struct{})
 	for _, instanceBytes := range instancesBytes {
 		ti := threadInfo{}
-		util.InstanceFromJSON(instanceBytes, &ti)
+		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
 
 		tid, err := thread.Decode(ti.ID.String())
 		if err != nil {
@@ -115,7 +115,7 @@ func (s *service) addMissingThreadsToCollection() error {
 
 	log.Debugf("%d threads in collection", len(threadsInCollection))
 
-	threadsIds, err := s.threadsGetter.Threads()
+	threadsIds, err := s.logstore.Threads()
 	if err != nil {
 		return err
 	}
@@ -138,12 +138,12 @@ func (s *service) addMissingThreadsToCollection() error {
 				continue
 			}
 			threadInfo := threadInfo{
-				ID:    db2.InstanceID(thrd.ID.String()),
+				ID:    db.InstanceID(thrd.ID.String()),
 				Key:   thrd.Key.String(),
-				Addrs: util2.MultiAddressesToStrings(thrd.Addrs),
+				Addrs: util.MultiAddressesToStrings(thrd.Addrs),
 			}
 
-			_, err = s.threadsCollection.Create(util.JSONFromInstance(threadInfo))
+			_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
 			if err != nil {
 				log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
 			} else {
@@ -177,7 +177,7 @@ func (s *service) handleAllMissingDbRecords(threadId string) error {
 	return nil
 }
 
-func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info, li thread.LogInfo) {
+func handleAllRecordsInLog(tdb *threadsDb.DB, net threadsApp.Net, thrd thread.Info, li thread.LogInfo) {
 	var (
 		rid     = li.Head
 		total   = 0
@@ -225,7 +225,7 @@ func handleAllRecordsInLog(tdb *db.DB, net net.NetBoostrapper, thrd thread.Info,
 	}
 }
 
-func getRecord(net net.NetBoostrapper, thrd thread.Info, rid cid.Cid) (net3.Record, *cbor.Event, format.Node, error) {
+func getRecord(net threadsApp.Net, thrd thread.Info, rid cid.Cid) (threadsNet.Record, *cbor.Event, format.Node, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	if thrd.ID == thread.Undef {

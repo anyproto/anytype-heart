@@ -26,7 +26,6 @@ var builtintemplaeCmd = &cobra.Command{
 		}
 		time.Sleep(time.Second)
 
-
 		templateService := mw.GetApp().MustComponent(builtintemplate.CName).(builtintemplate.BuiltinTemplate)
 		n, err := templateService.GenerateTemplates()
 		if err != nil {

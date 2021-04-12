@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -14,9 +15,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -110,7 +109,6 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	mw.accountSearchCancel()
 	mw.m.Lock()
 	defer mw.m.Unlock()
-
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		m := &pb.RpcAccountCreateResponse{Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
@@ -156,20 +154,19 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	at, err := core.New(
-		core.WithRootPathAndAccount(mw.rootPath, account.Address()),
-		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	)
+	newAcc := &model.Account{Id: account.Address()}
+
+	comps, err := anytype.BootstrapConfigAndWallet(true, mw.rootPath, account.Address())
 	if err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	newAcc := &model.Account{Id: account.Address()}
-
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{NewAccount: true}); err != nil {
+	comps = append(comps, mw.EventSender)
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
+	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
 	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
@@ -196,7 +193,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	if err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
-		ContextId: at.PredefinedBlocks().Profile,
+		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME, err)
@@ -260,48 +257,23 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	}
 
 	zeroAccount := accounts[0]
-	zeroAccountWasJustCreated := false
-	if !mw.isAccountExistsOnDisk(zeroAccount.Address()) {
-		seedRaw, err := zeroAccount.Raw()
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, err)
-		}
-
-		zeroAccountWasJustCreated = true
-		err = core.WalletInitRepo(mw.rootPath, seedRaw)
-		if err != nil {
-			return response(pb.RpcAccountRecoverResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
-		}
-	}
 
 	// stop current account
 	if err := mw.stop(); err != nil {
 		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
-	// do not unlock on defer because client may do AccountSelect before all remote accounts arrives
-	// it is ok to unlock just after we've started with the 1st account
-	at, err := core.New(
-		core.WithRootPathAndAccount(mw.rootPath, zeroAccount.Address()),
-		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	)
-	if err != nil {
-		return response(pb.RpcAccountRecoverResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
+	if mw.app, err = anytype.StartAccountRecoverApp(mw.EventSender, zeroAccount); err != nil {
+		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
 	}
 
+	profileFinder := mw.app.MustComponent(profilefinder.CName).(profilefinder.Service)
 	recoveryFinished := make(chan struct{})
 	defer close(recoveryFinished)
 
 	ctx, searchQueryCancel := context.WithTimeout(context.Background(), time.Second*30)
 	mw.accountSearchCancel = func() { searchQueryCancel() }
 	defer searchQueryCancel()
-
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
-		if strings.Contains(err.Error(), errSubstringMultipleAnytypeInstance) {
-			return response(pb.RpcAccountRecoverResponseError_ANOTHER_ANYTYPE_PROCESS_IS_RUNNING, err)
-		}
-		return response(pb.RpcAccountRecoverResponseError_FAILED_TO_RUN_NODE, err)
-	}
 
 	profilesCh := make(chan core.Profile)
 	go func() {
@@ -358,12 +330,10 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 				sendAccountAddEvent(index, account)
 			}
 		}
-
 	}()
 
-	findProfilesErr := at.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
+	findProfilesErr := profileFinder.FindProfilesByAccountIDs(ctx, keypairsToAddresses(accounts), profilesCh)
 	if findProfilesErr != nil {
-
 		log.Errorf("remote profiles request failed: %s", findProfilesErr.Error())
 	}
 
@@ -373,21 +343,15 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	sentAccountsMutex.Lock()
 	defer sentAccountsMutex.Unlock()
 
+	err = mw.stop()
+	if err != nil {
+		log.Error("failed to stop zero account repo: %s", err.Error())
+	}
+
 	if len(sentAccounts) == 0 {
-		if zeroAccountWasJustCreated {
-			err = mw.stop()
-			if err != nil {
-				log.Error("failed to stop zero account repo: %s", err.Error())
-			}
-			err = os.RemoveAll(filepath.Join(mw.rootPath, zeroAccount.Address()))
-			if err != nil {
-				log.Error("failed to remove zero account repo: %s", err.Error())
-			}
-		}
 		if findProfilesErr != nil {
 			return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
 		}
-
 		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to find any local or remote accounts derived from this mnemonic"))
 	}
 
@@ -402,6 +366,10 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		}
 
 		return m
+	}
+
+	if req.Id == "" {
+		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_BAD_INPUT, fmt.Errorf("account id is empty"))
 	}
 
 	// cancel pending account searches and it will release the mutex
@@ -464,15 +432,13 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		}
 	}
 
-	at, err := core.New(
-		core.WithRootPathAndAccount(mw.rootPath, req.Id),
-		core.WithSnapshotMarshalerFunc(change.NewSnapshotChange),
-	)
+	comps, err := anytype.BootstrapConfigAndWallet(false, mw.rootPath, req.Id)
 	if err != nil {
 		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if mw.app, err = anytype.StartNewApp(at, mw.EventSender, &config.Config{}); err != nil {
+	comps = append(comps, mw.EventSender)
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}

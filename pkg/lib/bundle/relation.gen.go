@@ -69,6 +69,7 @@ const (
 	RelationKeyWidthInPixels         RelationKey = "widthInPixels"
 	RelationKeySetOf                 RelationKey = "setOf"
 	RelationKeyGender                RelationKey = "gender"
+	RelationKeyIsArchived            RelationKey = "isArchived"
 	RelationKeyFileExt               RelationKey = "fileExt"
 	RelationKeyMpAddedToLibrary      RelationKey = "mpAddedToLibrary"
 	RelationKeyFeaturedRelations     RelationKey = "featuredRelations"
@@ -473,6 +474,18 @@ var (
 			Key:         "id",
 			MaxCount:    1,
 			Name:        "Anytype ID",
+			ReadOnly:    false,
+			Scope:       relation.Relation_type,
+		},
+		RelationKeyIsArchived: {
+
+			DataSource:  relation.Relation_account,
+			Description: "Hides the object",
+			Format:      relation.RelationFormat_checkbox,
+			Hidden:      true,
+			Key:         "isArchived",
+			MaxCount:    1,
+			Name:        "Archived",
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},
