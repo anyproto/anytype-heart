@@ -140,11 +140,7 @@ func (app *App) Start() (err error) {
 	return
 }
 
-func PrintStackAll() {
-	os.Stderr.Write(StackAll())
-}
-
-func StackAll() []byte {
+func stackAllGoroutines() []byte {
 	buf := make([]byte, 1024)
 	for {
 		n := runtime.Stack(buf, true)
@@ -167,8 +163,8 @@ func (app *App) Close() error {
 		case <-done:
 			return
 		case <-time.After(time.Minute):
-			fmt.Println("app.Close timeout")
-			PrintStackAll()
+			_, _ = os.Stderr.Write([]byte("app.Close timeout\n"))
+			_, _ = os.Stderr.Write(stackAllGoroutines())
 			panic("app.Close timeout")
 		}
 	}()
