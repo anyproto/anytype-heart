@@ -246,7 +246,7 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 			Remove: true,
 			Drag:   true,
 			DropOn: true,
-			Edit:   true,
+			Edit:   false,
 		},
 		Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
 	}))
