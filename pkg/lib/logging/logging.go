@@ -84,11 +84,19 @@ func init() {
 	logging.SetupLogging(cfg)
 }
 
-func Logger(system string) zap.SugaredLogger {
+type LWrapper struct{
+	zap.SugaredLogger
+}
+
+func (l *LWrapper) Warningf(template string, args ...interface{}) {
+	l.Warnf(template, args...)
+}
+
+func Logger(system string) *LWrapper {
 	logger := logging.Logger(system)
 	setSubsystemLevels()
 
-	return logger.SugaredLogger
+	return &LWrapper{logger.SugaredLogger}
 }
 
 func SetLoggingFilepath(logPath string) {

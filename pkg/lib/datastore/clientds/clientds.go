@@ -2,17 +2,20 @@ package clientds
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"os"
+	"path/filepath"
+	"time"
+
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
 	textileBadger "github.com/textileio/go-ds-badger"
-	"os"
-	"path/filepath"
+	"github.com/textileio/go-threads/db/keytransform"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/textileio/go-threads/db/keytransform"
 )
 
 const (
@@ -45,6 +48,19 @@ var DefaultConfig = Config{
 
 type DSConfigGetter interface {
 	DSConfig() Config
+}
+
+func init() {
+	// lets set badger options inside the init, otherwise we need to directly import the badger intp MW
+	DefaultConfig.Logstore.ValueLogFileSize = 64 * 1024 * 1024 // Badger will rotate value log files after 64MB. GC only works starting from the 2nd value log file
+	DefaultConfig.Logstore.GcDiscardRatio = 0.2                // allow up to 20% value log overhead
+	DefaultConfig.Logstore.GcInterval = time.Minute * 10       // run GC every 10 minutes
+	DefaultConfig.Logstore.GcSleep = time.Second * 5           // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
+	DefaultConfig.Logstore.ValueThreshold = 1024               // store up to 1KB of value within the LSM tree itself to speed-up details filter queries
+	DefaultConfig.Logstore.Logger = logging.Logger("badger-logstore")
+	DefaultConfig.Litestore.Logger = logging.Logger("badger-litestore")
+	DefaultConfig.TextileDb.Logger = logging.Logger("badger-textiledb")
+	// we don't need to tune litestore&threadsDB badger instances because they should be fine with defaults for now
 }
 
 func (r *clientds) Init(a *app.App) (err error) {
