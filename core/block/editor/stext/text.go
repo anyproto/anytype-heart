@@ -3,6 +3,7 @@ package stext
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -72,10 +73,14 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 		from = req.Range.From
 		to = req.Range.To
 	}
-	if tb.Model().GetText().Style == model.BlockContentText_Title {
+
+	if s.HasParent(req.BlockId, template.HeaderLayoutId) {
 		req.Mode = pb.RpcBlockSplitRequest_TITLE
-		req.Style = model.BlockContentText_Paragraph
 	}
+	if req.Mode == pb.RpcBlockSplitRequest_TITLE && s.Pick(template.HeaderLayoutId) == nil {
+		req.Mode = pb.RpcBlockSplitRequest_TOP
+	}
+
 	createTop := req.Mode == pb.RpcBlockSplitRequest_TOP
 	new, err := tb.RangeSplit(from, to, createTop)
 	if err != nil {
@@ -97,11 +102,39 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 			targetPos = model.Block_Top
 		}
 	case pb.RpcBlockSplitRequest_TITLE:
+		header := s.Pick(template.HeaderLayoutId).Model()
+		pos := slice.FindPos(header.ChildrenIds, req.BlockId)
+		if pos != -1 {
+			var nextBlock text.Block
+			for _, nextBlockId := range header.ChildrenIds[pos+1:] {
+				nb, nbErr := getText(s, nextBlockId)
+				if nbErr == nil {
+					nextBlock = nb
+					break
+				}
+			}
+			if nextBlock != nil {
+				exText := nextBlock.GetText()
+				if strings.TrimSpace(exText) == "" {
+					exText = new.(text.Block).GetText()
+				} else {
+					exText = new.(text.Block).GetText() + "\n" + exText
+				}
+				if err = nextBlock.SetText(exText, &model.BlockContentTextMarks{}); err != nil {
+					return
+				}
+				targetPos = model.Block_None
+				break
+			}
+		}
+		new.(text.Block).SetStyle(model.BlockContentText_Paragraph)
 		targetId = template.HeaderLayoutId
 		targetPos = model.Block_Bottom
 	}
-	if err = s.InsertTo(targetId, targetPos, newId); err != nil {
-		return
+	if targetPos != model.Block_None {
+		if err = s.InsertTo(targetId, targetPos, newId); err != nil {
+			return
+		}
 	}
 	if err = t.Apply(s); err != nil {
 		return
