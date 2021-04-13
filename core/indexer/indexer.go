@@ -30,10 +30,10 @@ const (
 	CName = "indexer"
 
 	// increasing counters below will trigger existing account to reindex their data
-	forceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
-	forceFilesReindexCounter          int32 = 0 // reindex ipfs-file-based objects
-	forceIdxRebuildCounter            int32 = 0 // erases localstore indexes and reindex all type of objects (no need to increase forceThreadsObjectsReindexCounter & forceFilesReindexCounter)
-	forceFulltextIndexCounter         int32 = 0 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
+	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
+	ForceFilesReindexCounter          int32 = 0 // reindex ipfs-file-based objects
+	ForceIdxRebuildCounter            int32 = 0 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceFulltextIndexCounter         int32 = 0 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
 var log = logging.Logger("anytype-doc-indexer")
@@ -94,7 +94,10 @@ type indexer struct {
 func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
-	i.threadService = a.MustComponent(threads.CName).(threads.Service)
+	ts := a.Component(threads.CName)
+	if ts != nil {
+		i.threadService = ts.(threads.Service)
+	}
 	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.cache = make(map[string]*doc)
@@ -113,11 +116,10 @@ func (i *indexer) saveLatestChecksums() error {
 	checksums := model.ObjectStoreChecksums{
 		BundledObjectTypes:         bundle.TypeChecksum,
 		BundledRelations:           bundle.RelationChecksum,
-		BundledLayouts:             bundle.LayoutChecksum,
-		ObjectsForceReindexCounter: forceThreadsObjectsReindexCounter,
-		FilesForceReindexCounter:   forceFilesReindexCounter,
-		IdxRebuildCounter:          forceIdxRebuildCounter,
-		FulltextRebuild:            forceFulltextIndexCounter,
+		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
+		FilesForceReindexCounter:   ForceFilesReindexCounter,
+		IdxRebuildCounter:          ForceIdxRebuildCounter,
+		FulltextRebuild:            ForceFulltextIndexCounter,
 	}
 	return i.store.SaveChecksums(&checksums)
 }
@@ -168,19 +170,19 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums.BundledObjectTypes != bundle.TypeChecksum {
 		reindexBundledTypes = true
 	}
-	if checksums.ObjectsForceReindexCounter != forceThreadsObjectsReindexCounter {
+	if checksums.ObjectsForceReindexCounter != ForceThreadsObjectsReindexCounter {
 		reindexThreadObjects = true
 	}
-	if checksums.FilesForceReindexCounter != forceFilesReindexCounter {
+	if checksums.FilesForceReindexCounter != ForceFilesReindexCounter {
 		reindexFileObjects = true
 	}
-	if checksums.FilesForceReindexCounter != forceFilesReindexCounter {
+	if checksums.FilesForceReindexCounter != ForceFilesReindexCounter {
 		reindexFileObjects = true
 	}
-	if checksums.FulltextRebuild != forceFulltextIndexCounter {
+	if checksums.FulltextRebuild != ForceFulltextIndexCounter {
 		reindexFulltext = true
 	}
-	if checksums.IdxRebuildCounter != forceIdxRebuildCounter {
+	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		eraseIndexes = true
 		reindexFileObjects = true
 		reindexThreadObjects = true
@@ -308,7 +310,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 	detailsObjectScope := pbtypes.StructCutKeys(details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
 	if curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
-		if indexesWereRemoved {
+		if indexesWereRemoved || curDetails == nil {
 			if err := i.store.CreateObject(id, details, &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
@@ -569,10 +571,12 @@ func (i *indexer) Close() error {
 	i.mu.Lock()
 	quit := i.quit
 	i.mu.Unlock()
-	err := i.threadService.Close()
-	log.Errorf("explicitly stop threadService first: %v", err)
-	if err != nil {
-		return err
+	if i.threadService != nil {
+		err := i.threadService.Close()
+		log.Errorf("explicitly stop threadService first: %v", err)
+		if err != nil {
+			return err
+		}
 	}
 	if quit != nil {
 		close(quit)
