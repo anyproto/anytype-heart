@@ -339,3 +339,14 @@ message LinkPreview {
         Text = 3;
     }
 }
+
+enum ObjectRestriction {
+    // restricts delete
+    Delete = 0;
+    // restricts work with relations
+    Relation = 1;
+    // restricts edit a header (title, description, etc.)
+    Header = 2;
+    // restricts create a new block
+    CreateBlock = 3;
+}

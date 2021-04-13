@@ -863,6 +863,7 @@
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
+    - [ObjectRestriction](#anytype.model.ObjectRestriction)
   
   
   
@@ -12017,6 +12018,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 | objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| restrictions | [model.ObjectRestriction](#anytype.model.ObjectRestriction) | repeated | object restrictions |
 
 
 
@@ -13294,6 +13296,20 @@ deprecated
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype.model.ObjectRestriction"></a>
+
+### ObjectRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Delete | 0 | restricts delete |
+| Relation | 1 | restricts work with relations |
+| Header | 2 | restricts edit a header (title, description, etc.) |
+| CreateBlock | 3 | restricts create a new block |
 
 
  
