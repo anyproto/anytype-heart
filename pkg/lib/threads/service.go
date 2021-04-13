@@ -187,13 +187,15 @@ func (s *service) Run() (err error) {
 }
 
 func (s *service) Close() (err error) {
+	s.Lock()
+	defer s.Unlock()
 	log.Errorf("threadService.Close()")
 	if s.stopped {
 		return nil
 	}
 	s.stopped = true
 
-	// todo: do we really need to close ctx in advance?
+	// close context in order to protect channel from close
 	if s.ctxCancel != nil {
 		s.ctxCancel()
 	}
