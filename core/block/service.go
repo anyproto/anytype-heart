@@ -220,6 +220,7 @@ type service struct {
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
 	m            sync.Mutex
+	app          *app.App
 }
 
 func (s *service) Name() string {
@@ -234,6 +235,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.openedBlocks = make(map[string]*openedBlock)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.app = a
 	return
 }
 
@@ -318,6 +320,7 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs(s.meta)
 	if err = bs.Init(&smartblock.InitContext{
+		App:    s.app,
 		Source: source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
@@ -637,6 +640,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	defer sb.Unlock()
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
+	}
+	if initCtx.App == nil {
+		initCtx.App = s.app
 	}
 	initCtx.Source = sc
 	err = sb.Init(initCtx)

@@ -8,8 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -108,6 +110,7 @@ type InitContext struct {
 	ObjectTypeUrls []string
 	State          *state.State
 	Relations      []*pbrelation.Relation
+	App            *app.App
 }
 
 type linkSource interface {
@@ -118,15 +121,15 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds         []string
-	sendEvent      func(e *pb.Event)
-	undo           undo.History
-	source         source.Source
-	meta           meta.Service
-	metaSub        meta.Subscriber
-	metaData       *core.SmartBlockMeta
-	lastDepDetails map[string]*pb.EventObjectDetailsSet
-
+	depIds            []string
+	sendEvent         func(e *pb.Event)
+	undo              undo.History
+	source            source.Source
+	meta              meta.Service
+	metaSub           meta.Subscriber
+	metaData          *core.SmartBlockMeta
+	lastDepDetails    map[string]*pb.EventObjectDetailsSet
+	restrictions      restriction.ObjectRestrictions
 	disableLayouts    bool
 	onNewStateHooks   []func()
 	onCloseHooks      []func()
@@ -193,6 +196,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
+	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).ObjectRestrictionsById(sb)
 	return
 }
 
@@ -254,12 +258,13 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-					RootId:      sb.RootId(),
-					Type:        sb.Type(),
-					Blocks:      sb.Blocks(),
-					Details:     details,
-					Relations:   sb.Relations(),
-					ObjectTypes: objectTypes,
+					RootId:       sb.RootId(),
+					Type:         sb.Type(),
+					Blocks:       sb.Blocks(),
+					Details:      details,
+					Relations:    sb.Relations(),
+					ObjectTypes:  objectTypes,
+					Restrictions: sb.restrictions,
 				}},
 			},
 		})
