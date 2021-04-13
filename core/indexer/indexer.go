@@ -283,7 +283,7 @@ func (i *indexer) reindexIfNeeded() error {
 				addedToQueue++
 			}
 		}
-		msg := fmt.Sprintf("%d/%d objects have been successfully added to the fulltext queue", len(ids))
+		msg := fmt.Sprintf("%d/%d objects have been successfully added to the fulltext queue", addedToQueue, len(ids))
 		if len(ids)-addedToQueue != 0 {
 			log.Error(msg)
 		} else {
