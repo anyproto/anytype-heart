@@ -17,9 +17,11 @@ import (
 )
 
 const (
-	HeaderLayoutId  = "header"
-	TitleBlockId    = "title"
-	DataviewBlockId = "dataview"
+	HeaderLayoutId      = "header"
+	TitleBlockId        = "title"
+	DescriptionBlockId  = "description"
+	DataviewBlockId     = "dataview"
+	FeaturedRelationsId = "featuredRelations"
 )
 
 var log = logging.Logger("anytype-state-template")
@@ -214,6 +216,56 @@ var WithTitle = StateTransformer(func(s *state.State) {
 
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
 		log.Errorf("template WithTitle failed to insert: %w", err)
+	}
+})
+
+var WithDescription = StateTransformer(func(s *state.State) {
+	WithHeader(s)
+
+	if s.Exists(DescriptionBlockId) {
+		return
+	}
+
+	s.Add(simple.New(&model.Block{
+		Id: DescriptionBlockId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Description}},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.String("description"),
+			},
+		},
+	}))
+
+	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, DescriptionBlockId); err != nil {
+		log.Errorf("template WithDescription failed to insert: %w", err)
+	}
+})
+
+var WithFeaturedRelations = StateTransformer(func(s *state.State) {
+	WithHeader(s)
+
+	if s.Exists(FeaturedRelationsId) {
+		return
+	}
+
+	s.Add(simple.New(&model.Block{
+		Id: FeaturedRelationsId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+			Edit:   false,
+		},
+		Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+	}))
+
+	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, FeaturedRelationsId); err != nil {
+		log.Errorf("template FeaturedRelations failed to insert: %w", err)
 	}
 })
 
