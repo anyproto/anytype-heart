@@ -2,13 +2,13 @@ package objects
 
 import (
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -22,7 +22,7 @@ const (
 var log = logging.Logger("anytype-core-db")
 
 func New(
-	pageStore localstore.ObjectStore,
+	pageStore objectstore.ObjectStore,
 	objectTypeUrl string,
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
 	getRelations func(objectId string) (relations []*pbrelation.Relation, err error),
@@ -44,7 +44,7 @@ func New(
 }
 
 type setOfObjects struct {
-	localstore.ObjectStore
+	objectstore.ObjectStore
 	objectTypeUrl             string
 	setDetails                func(req pb.RpcBlockSetDetailsRequest) error
 	getRelations              func(objectId string) (relations []*pbrelation.Relation, err error)

@@ -2,17 +2,17 @@ package threads
 
 import (
 	"github.com/libp2p/go-libp2p-core/peer"
-	net2 "github.com/textileio/go-threads/core/net"
+	threadsNet "github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
 
 type threadRecord struct {
-	net2.Record
+	threadsNet.Record
 	threadID thread.ID
 	logID    peer.ID
 }
 
-func (t threadRecord) Value() net2.Record {
+func (t threadRecord) Value() threadsNet.Record {
 	return t.Record
 }
 

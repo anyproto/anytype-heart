@@ -31,7 +31,7 @@ func (a *Anytype) DeleteBlock(id string) error {
 		return err
 	}
 
-	if err = a.localStore.Objects.DeleteObject(id); err != nil {
+	if err = a.objectStore.DeleteObject(id); err != nil {
 		return err
 	}
 
@@ -44,7 +44,7 @@ func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
 		return nil, err
 	}
 
-	thrd, err := a.t.GetThread(context.TODO(), tid)
+	thrd, err := a.threadService.Threads().GetThread(context.TODO(), tid)
 	if err != nil {
 		return nil, err
 	}

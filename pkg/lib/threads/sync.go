@@ -16,27 +16,6 @@ import (
 var ErrFailedToPullThread = fmt.Errorf("failed to pull thread")
 var ErrFailedToProcessNewHead = fmt.Errorf("failed to process new page head")
 
-// PullThread pulls the thread and run newHeadProcessor in case heads have been changed
-func (s *service) PullThread(ctx context.Context, id thread.ID) (err error) {
-	headsChanged, err := s.pullThread(ctx, id)
-	if err != nil {
-		return fmt.Errorf("%w: %s", ErrFailedToPullThread, err.Error())
-	}
-
-	if !headsChanged {
-		return nil
-	}
-
-	if s.newHeadProcessor != nil {
-		err = s.newHeadProcessor(id)
-		if err != nil {
-			return fmt.Errorf("%w: %s", ErrFailedToProcessNewHead, err.Error())
-		}
-	}
-
-	return nil
-}
-
 func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bool, err error) {
 	thrd, err := s.t.GetThread(context.Background(), id)
 	if err != nil {
@@ -74,7 +53,7 @@ func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bo
 }
 
 func (s *service) addMissingReplicators() error {
-	threadsIds, err := s.threadsGetter.Threads()
+	threadsIds, err := s.logstore.Threads()
 	if err != nil {
 		return fmt.Errorf("failed to list threads: %s", err.Error())
 	}
@@ -84,7 +63,7 @@ func (s *service) addMissingReplicators() error {
 	}
 
 	for _, threadId := range threadsIds {
-		thrdLogs, err := s.t.Logstore().GetManagedLogs(threadId)
+		thrdLogs, err := s.Logstore().GetManagedLogs(threadId)
 		if err != nil {
 			log.Errorf("failed to get thread %s: %s", threadId.String(), err.Error())
 			continue

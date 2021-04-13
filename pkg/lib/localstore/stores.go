@@ -3,21 +3,12 @@ package localstore
 import (
 	"crypto/sha256"
 	"fmt"
-	"strings"
-	"time"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"strings"
+
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
-	"github.com/gogo/protobuf/types"
-	"github.com/ipfs/go-datastore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/multiformats/go-base32"
@@ -26,71 +17,10 @@ import (
 var ErrDuplicateKey = fmt.Errorf("duplicate key")
 var ErrNotFound = fmt.Errorf("not found")
 
-var log = logging.Logger("anytype-localstore")
-
 var (
-	indexBase = ds.NewKey("/idx")
+	log       = logging.Logger("anytype-localstore")
+	IndexBase = ds.NewKey("/idx")
 )
-
-type LocalStore struct {
-	Files   FileStore
-	Objects ObjectStore
-}
-
-type FileStore interface {
-	Indexable
-	Add(file *storage.FileInfo) error
-	AddMulti(upsert bool, files ...*storage.FileInfo) error
-	AddFileKeys(fileKeys ...FileKeys) error
-	GetFileKeys(hash string) (map[string]string, error)
-	GetByHash(hash string) (*storage.FileInfo, error)
-	GetBySource(mill string, source string, opts string) (*storage.FileInfo, error)
-	GetByChecksum(mill string, checksum string) (*storage.FileInfo, error)
-	AddTarget(hash string, target string) error
-	RemoveTarget(hash string, target string) error
-	ListTargets() ([]string, error)
-	ListByTarget(target string) ([]*storage.FileInfo, error)
-	Count() (int, error)
-	DeleteByHash(hash string) error
-	DeleteFileKeys(hash string) error
-	List() ([]*storage.FileInfo, error)
-}
-
-type ObjectStore interface {
-	Indexable
-	database.Reader
-
-	CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
-	UpdateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
-	StoreRelations(relations []*pbrelation.Relation) error
-
-	DeleteObject(id string) error
-	RemoveRelationFromCache(key string) error
-
-	UpdateRelationsInSet(setId, objTypeBefore, objTypeAfter string, relationsBefore, relationsAfter *pbrelation.Relations) error
-
-	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
-	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
-	GetDetails(id string) (*model.ObjectDetails, error)
-	GetAggregatedOptions(relationKey string, relationFormat pbrelation.RelationFormat, objectType string) (options []*pbrelation.RelationOption, err error)
-
-	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
-	List() ([]*model.ObjectInfo, error)
-	ListIds() ([]string, error)
-
-	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
-	AddToIndexQueue(id string) error
-	IndexForEach(f func(id string, tm time.Time) error) error
-	FTSearch() ftsearch.FTSearch
-	Close()
-}
-
-func NewLocalStore(store ds.Batching, fts ftsearch.FTSearch) LocalStore {
-	return LocalStore{
-		Files:   NewFileStore(store.(ds.TxnDatastore)),
-		Objects: NewObjectStore(store.(ds.TxnDatastore), fts),
-	}
-}
 
 type Indexable interface {
 	Indexes() []Index
@@ -126,13 +56,6 @@ func (i Index) JoinedKeys(val interface{}) []string {
 	return keys
 }
 
-func (ls LocalStore) Close() error {
-	if ls.Objects != nil {
-		ls.Objects.Close()
-	}
-	return nil
-}
-
 func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary string) error {
 	txn, err := ds.NewTransaction(false)
 	if err != nil {
@@ -152,7 +75,7 @@ func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary
 func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
 	oldKeys := index.JoinedKeys(oldVal)
 	hasKey := func(key string) (exists bool, err error) {
-		return ds.Has(indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(key))
+		return ds.Has(IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(key))
 	}
 
 	if len(oldKeys) > 0 {
@@ -168,10 +91,10 @@ func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal inter
 
 	newKeys := index.JoinedKeys(newVal)
 
-	removed, added := diffSlices(oldKeys, newKeys)
+	removed, added := slice.DifferenceRemovedAdded(oldKeys, newKeys)
 
 	for _, removedKey := range removed {
-		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(removedKey).ChildString(newValPrimary)
+		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(removedKey).ChildString(newValPrimary)
 		exists, err := ds.Has(key)
 		if err != nil {
 			return err
@@ -189,7 +112,7 @@ func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal inter
 	}
 
 	for _, addedKey := range added {
-		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(addedKey).ChildString(newValPrimary)
+		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(addedKey).ChildString(newValPrimary)
 		exists, err := ds.Has(key)
 		if err != nil {
 			return err
@@ -220,7 +143,7 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 			keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 		}
 
-		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
+		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 		if index.Unique {
 			exists, err := ds.Has(key)
 			if err != nil {
@@ -258,7 +181,7 @@ func EraseIndex(index Index, ds ds.TxnDatastore) error {
 
 // EraseIndexWithTxn deletes the whole index
 func EraseIndexWithTxn(index Index, txn ds.Txn) error {
-	key := indexBase.ChildString(index.Prefix).ChildString(index.Name)
+	key := IndexBase.ChildString(index.Prefix).ChildString(index.Name)
 	res, err := GetKeys(txn, key.String(), 0)
 	if err != nil {
 		return err
@@ -286,7 +209,7 @@ func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary str
 			keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 		}
 
-		key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
+		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 
 		exists, err := txn.Has(key.ChildString(valPrimary))
 		if err != nil {
@@ -384,14 +307,14 @@ func GetKeyByIndex(index Index, txn ds.Txn, val interface{}) (string, error) {
 		return "", res.Error
 	}
 
-	key := datastore.RawKey(res.Key)
+	key := ds.RawKey(res.Key)
 	keyParts := key.List()
 
 	return keyParts[len(keyParts)-1], nil
 }
 
 func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool) ds.Key {
-	key := indexBase.ChildString(prefix).ChildString(keyIndexName)
+	key := IndexBase.ChildString(prefix).ChildString(keyIndexName)
 	if len(keyIndexValue) == 0 {
 		return key
 	}
@@ -493,7 +416,7 @@ func ExtractKeysFromResults(results query.Results) ([]string, error) {
 }
 
 func CarveKeyParts(key string, from, to int) (string, error) {
-	var keyParts = datastore.RawKey(key).List()
+	var keyParts = ds.RawKey(key).List()
 
 	carved, err := slices.Carve(polymorph.FromStrings(keyParts), from, to)
 	if err != nil {
@@ -525,7 +448,7 @@ func GetKeysByIndex(index Index, txn ds.Txn, val interface{}, limit int) (query.
 		keyStr = base32.RawStdEncoding.EncodeToString(keyBytesF[:])
 	}
 
-	key := indexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
+	key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(keyStr)
 	if index.Unique {
 		limit = 1
 	}

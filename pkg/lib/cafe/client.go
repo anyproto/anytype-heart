@@ -3,24 +3,30 @@ package cafe
 import (
 	"context"
 	"fmt"
+	"google.golang.org/grpc/credentials"
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/mr-tron/base58"
 	"github.com/textileio/go-threads/core/thread"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 var _ pb.APIClient = (*Online)(nil)
 
-const simultaneousRequests = 4
+const (
+	CName                = "cafeclient"
+	simultaneousRequests = 4
+)
 
 type Client interface {
+	app.Component
 	pb.APIClient
-	Shutdown() error
 }
 
 type Token struct {
@@ -35,10 +41,47 @@ type Online struct {
 
 	limiter chan struct{}
 
-	device  wallet.Keypair
-	account wallet.Keypair
+	device  walletUtil.Keypair
+	account walletUtil.Keypair
 
 	conn *grpc.ClientConn
+}
+
+func (c *Online) Init(a *app.App) (err error) {
+	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
+	cfg := a.MustComponent(config.CName).(*config.Config)
+
+	c.device, err = wl.GetDevicePrivkey()
+	if err != nil {
+		return err
+	}
+	c.account, err = wl.GetAccountPrivkey()
+	if err != nil {
+		return err
+	}
+
+	// todo: get version from component
+	var version string
+	opts := []grpc.DialOption{grpc.WithUserAgent(version), grpc.WithPerRPCCredentials(thread.Credentials{})}
+
+	if cfg.CafeAPIInsecure {
+		opts = append(opts, grpc.WithInsecure())
+	} else {
+		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
+	}
+	conn, err := grpc.Dial(cfg.CafeAPIHost, opts...)
+	if err != nil {
+		return err
+	}
+
+	c.client = pb.NewAPIClient(conn)
+	c.conn = conn
+
+	return nil
+}
+
+func (c *Online) Name() (name string) {
+	return CName
 }
 
 func (c *Online) getSignature(payload string) (*pb.WithSignature, error) {
@@ -166,19 +209,7 @@ func (c *Online) ProfileFind(ctx context.Context, in *pb.ProfileFindRequest, opt
 	return c.client.ProfileFind(ctx, in, opts...)
 }
 
-func NewClient(url string, version string, insecure bool, device wallet.Keypair, account wallet.Keypair) (Client, error) {
-	opts := []grpc.DialOption{grpc.WithUserAgent(version), grpc.WithPerRPCCredentials(thread.Credentials{})}
-
-	if insecure {
-		opts = append(opts, grpc.WithInsecure())
-	} else {
-		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
-	}
-	conn, err := grpc.Dial(url, opts...)
-	if err != nil {
-		return nil, err
-	}
-
+func New() Client {
 	limiter := make(chan struct{}, simultaneousRequests)
 
 	for i := 0; i < cap(limiter); i++ {
@@ -186,16 +217,11 @@ func NewClient(url string, version string, insecure bool, device wallet.Keypair,
 	}
 
 	return &Online{
-		pb.NewAPIClient(conn),
-		nil,
-		sync.Mutex{},
-		limiter,
-		device,
-		account,
-		conn,
-	}, nil
+		limiter:       limiter,
+		getTokenMutex: sync.Mutex{},
+	}
 }
 
-func (c *Online) Shutdown() error {
+func (c *Online) Close() error {
 	return c.conn.Close()
 }

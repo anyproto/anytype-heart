@@ -1,19 +1,39 @@
 package ftsearch
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/golang/mock/gomock"
 	"io/ioutil"
-	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
+type fixture struct {
+	ft   FTSearch
+	ta   *testapp.TestApp
+	ctrl *gomock.Controller
+}
+
+func newFixture(path string, t *testing.T) *fixture {
+	ft := New()
+	ta := testapp.New().
+		With(wallet.NewWithRepoPathAndKeys(path, nil, nil)).
+		With(ft)
+
+	require.NoError(t, ta.Start())
+	return &fixture{
+		ft: ft,
+		ta: ta,
+	}
+}
+
 func TestNewFTSearch(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-	ft, err := NewFTSearch(tmpDir)
-	require.NoError(t, err)
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
 	require.NoError(t, ft.Index(SearchDoc{
 		Id:    "test",
 		Title: "one",
@@ -23,7 +43,9 @@ func TestNewFTSearch(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, res, 1)
 	ft.Close()
-	ft, err = NewFTSearch(tmpDir)
+	fixture = newFixture(tmpDir, t)
+	ft = fixture.ft
+
 	require.NoError(t, err)
 	res, err = ft.Search("one")
 	require.NoError(t, err)
@@ -33,9 +55,8 @@ func TestNewFTSearch(t *testing.T) {
 
 func TestFtSearch_Search(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
-	defer os.RemoveAll(tmpDir)
-	ft, err := NewFTSearch(tmpDir)
-	require.NoError(t, err)
+	fixture := newFixture(tmpDir, t)
+	ft := fixture.ft
 	defer ft.Close()
 	var docs = [...]SearchDoc{
 		{
