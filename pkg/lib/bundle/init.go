@@ -10,11 +10,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-// all required internal relations will be added to any new object type
+// RequiredInternalRelations contains internal relations will be added to any new object type.
+// Missing ones will be added to object on opening or during reindex
 var RequiredInternalRelations = []RelationKey{
 	RelationKeyId,
 	RelationKeyName,
 	RelationKeyIconEmoji,
+	RelationKeyIconImage,
 	RelationKeyType,
 	RelationKeyLayout,
 	RelationKeyCreatedDate,
@@ -22,7 +24,10 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyLastModifiedDate,
 	RelationKeyLastModifiedBy,
 	RelationKeyLastOpenedDate,
+	RelationKeyIsHidden,
+	RelationKeyIsArchived,
 }
+
 var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyFile.URL(),
 	TypeKeyImage.URL(),
