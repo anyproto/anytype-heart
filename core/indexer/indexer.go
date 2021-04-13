@@ -190,8 +190,8 @@ func (i *indexer) reindexIfNeeded() error {
 		reindexBundledTypes = true
 	}
 
-	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes {
-		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes)
+	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes || reindexFulltext {
+		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes, reindexFulltext)
 	}
 
 	getIdsForTypes := func(sbt ...smartblock.SmartBlockType) ([]string, error) {
@@ -234,7 +234,12 @@ func (i *indexer) reindexIfNeeded() error {
 			return err
 		}
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
-		log.Infof("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
+		msg := fmt.Sprintf("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
+		if len(ids)-successfullyReindexed != 0 {
+			log.Error(msg)
+		} else {
+			log.Info(msg)
+		}
 	}
 	if reindexBundledRelations {
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledRelation)
@@ -242,7 +247,12 @@ func (i *indexer) reindexIfNeeded() error {
 			return err
 		}
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
-		log.Infof("%d/%d bundled relations have been successfully reindexed", successfullyReindexed, len(ids))
+		msg := fmt.Sprintf("%d/%d bundled relations have been successfully reindexed", successfullyReindexed, len(ids))
+		if len(ids)-successfullyReindexed != 0 {
+			log.Error(msg)
+		} else {
+			log.Info(msg)
+		}
 	}
 	if reindexBundledTypes {
 		// lets add anytypeProfile here, because it's seems too much to create one more counter especially for it
@@ -251,7 +261,12 @@ func (i *indexer) reindexIfNeeded() error {
 			return err
 		}
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
-		log.Infof("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
+		msg := fmt.Sprintf("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
+		if len(ids)-successfullyReindexed != 0 {
+			log.Error(msg)
+		} else {
+			log.Info(msg)
+		}
 	}
 	if reindexFulltext {
 		var ids []string
@@ -260,10 +275,19 @@ func (i *indexer) reindexIfNeeded() error {
 			return err
 		}
 
+		var addedToQueue int
 		for _, id := range ids {
 			if err := i.store.AddToIndexQueue(id); err != nil {
 				log.Errorf("failed to add to index queue: %v", err)
+			} else {
+				addedToQueue++
 			}
+		}
+		msg := fmt.Sprintf("%d/%d objects have been successfully added to the fulltext queue", len(ids))
+		if len(ids)-addedToQueue != 0 {
+			log.Error(msg)
+		} else {
+			log.Info(msg)
 		}
 	}
 
