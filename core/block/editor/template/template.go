@@ -86,10 +86,24 @@ var WithObjectTypeRecommendedRelationsMigration = func(relations []*relation.Rel
 	}
 }
 
+var WithRequiredRelations = func() StateTransformer {
+	return func(s *state.State) {
+		for _, relKey := range bundle.RequiredInternalRelations {
+			if s.HasRelation(relKey.String()) {
+				continue
+			}
+			rel := bundle.MustGetRelation(relKey)
+			s.AddRelation(rel)
+		}
+	}
+}
+
 var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {
 			s.SetObjectTypes(otypes)
+		} else {
+			otypes = s.ObjectTypes()
 		}
 
 		d := s.Details()
@@ -100,7 +114,6 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 					continue
 				}
 				s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(t.Layout)))
-				s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyLayout))
 			}
 		}
 	}

@@ -45,7 +45,32 @@ type Source interface {
 	Close() (err error)
 }
 
+type SourceType interface {
+	ListIds() ([]string, error)
+}
+
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
+
+func SourceTypeBySbType(a core.Service, blockType smartblock.SmartBlockType) (s SourceType, err error) {
+	switch blockType {
+	case smartblock.SmartBlockTypeAnytypeProfile:
+		return &anytypeProfile{a: a}, nil
+	case smartblock.SmartBlockTypeFile:
+		return &files{a: a}, nil
+	case smartblock.SmartBlockTypeBundledObjectType:
+		return &bundledObjectType{a: a}, nil
+	case smartblock.SmartBlockTypeBundledRelation:
+		return &bundledRelation{a: a}, nil
+	case smartblock.SmartBlockTypeIndexedRelation:
+		return &bundledRelation{a: a}, nil
+	default:
+		if blockType.IsValid() {
+			return &source{a: a}, nil
+		} else {
+			return nil, fmt.Errorf("sb type is invalid")
+		}
+	}
+}
 
 func NewSource(a core.Service, ss status.Service, id string) (s Source, err error) {
 	st, err := smartblock.SmartBlockTypeFromID(id)
@@ -65,24 +90,24 @@ func NewSource(a core.Service, ss status.Service, id string) (s Source, err erro
 	if st == smartblock.SmartBlockTypeBundledRelation {
 		return NewBundledRelation(a, id), nil
 	}
-
 	if st == smartblock.SmartBlockTypeIndexedRelation {
 		return NewIndexedRelation(a, id), nil
-	}
-
-	return newSource(a, ss, id)
-}
-
-func newSource(a core.Service, ss status.Service, id string) (s Source, err error) {
-	sb, err := a.GetBlock(id)
-	if err != nil {
-		err = fmt.Errorf("anytype.GetBlock error: %w", err)
-		return
 	}
 
 	tid, err := thread.Decode(id)
 	if err != nil {
 		err = fmt.Errorf("can't restore thread ID: %w", err)
+		return
+	}
+
+	return newSource(a, ss, tid)
+}
+
+func newSource(a core.Service, ss status.Service, tid thread.ID) (s Source, err error) {
+	id := tid.String()
+	sb, err := a.GetBlock(id)
+	if err != nil {
+		err = fmt.Errorf("anytype.GetBlock error: %w", err)
 		return
 	}
 
@@ -330,6 +355,16 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
 	}
 	return
+}
+
+func (v *source) ListIds() ([]string, error) {
+	ids, err := v.Anytype().ThreadsIds()
+	if err != nil {
+		return nil, err
+	}
+
+	// exclude account thread id
+	return slice.Remove(ids, v.Anytype().PredefinedBlocks().Account), nil
 }
 
 func (s *source) needSnapshot() bool {

@@ -54,7 +54,7 @@ type service struct {
 	ds          datastore.Datastore
 	logstoreDS  datastore.DSTxnBatching
 	threadsDbDS keytransform.TxnDatastoreExtended
-	stopped 						bool
+	stopped     bool
 
 	ctxCancel                  context.CancelFunc
 	ctx                        context.Context

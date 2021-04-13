@@ -44,6 +44,8 @@ var (
 	pagesInboundLinksBase  = ds.NewKey("/" + pagesPrefix + "/inbound")
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
 	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
+	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
+	indexCounter           = ds.NewKey("/" + pagesPrefix + "/indexcounter")
 
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
@@ -51,6 +53,7 @@ var (
 	// /relations/relations/<relKey>: relation model
 	relationsBase = ds.NewKey("/" + relationsPrefix + "/relations")
 
+	// /relations/objtype_relkey_objid/<objType>/<relKey>/<objId>
 	indexObjectTypeRelationObjectId = localstore.Index{
 		Prefix: relationsPrefix,
 		Name:   "objtype_relkey_objid",
@@ -76,6 +79,7 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
+	// /relations/objtype_relkey_setid/<objType>/<relKey>/<setObjId>
 	indexObjectTypeRelationSetId = localstore.Index{
 		Prefix: relationsPrefix,
 		Name:   "objtype_relkey_setid",
@@ -101,6 +105,7 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
+	// /relations/relkey_optid/<relKey>/<optId>/<objId>
 	indexRelationOptionObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "relkey_optid",
@@ -125,6 +130,7 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
+	// /relations/relkey/<relKey>/<objId>
 	indexRelationObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "relkey",
@@ -137,6 +143,7 @@ var (
 		Unique: false,
 	}
 
+	// /pages/format_relkey_optid/<relFormat>/<relKey>/<optId>/<objId>
 	indexFormatOptionObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "format_relkey_optid",
@@ -161,6 +168,7 @@ var (
 		SplitIndexKeyParts: true,
 	}
 
+	// /pages/type/<objType>/<objId>
 	indexObjectTypeObject = localstore.Index{
 		Prefix: pagesPrefix,
 		Name:   "type",
@@ -213,7 +221,9 @@ type ObjectStore interface {
 	localstore.Indexable
 	database.Reader
 
+	// CreateObject create or overwrite an existing object. Should be used if
 	CreateObject(id string, details *types.Struct, relations *pbrelation.Relations, links []string, snippet string) error
+	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	UpdateObjectDetails(id string, details *types.Struct, relations *pbrelation.Relations) error
 	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
 
@@ -237,6 +247,14 @@ type ObjectStore interface {
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
 	FTSearch() ftsearch.FTSearch
+
+	// EraseIndexes erase all indexes for objectstore.. All objects needs to be reindexed
+	EraseIndexes() error
+
+	// GetChecksums Used to get information about localstore state and decide do we need to reindex some objects
+	GetChecksums() (checksums *model.ObjectStoreChecksums, err error)
+	// SaveChecksums Used to save checksums and force reindex counter
+	SaveChecksums(checksums *model.ObjectStoreChecksums) (err error)
 }
 
 type relationOption struct {
@@ -299,6 +317,16 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) EraseIndexes() (err error) {
+	for _, idx := range m.Indexes() {
+		err = localstore.EraseIndex(idx, m.ds)
+		if err != nil {
+			return
+		}
+	}
+	return
 }
 
 func (m *dsObjectStore) Run() (err error) {
@@ -1108,6 +1136,42 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 	if err != nil {
 		return err
 	}
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	var objChecksum model.ObjectStoreChecksums
+	if val, err := txn.Get(bundledChecksums); err != nil && err != ds.ErrNotFound {
+		return nil, fmt.Errorf("failed to get details: %w", err)
+	} else if err := proto.Unmarshal(val, &objChecksum); err != nil {
+		return nil, err
+	}
+
+	return &objChecksum, nil
+}
+
+func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	b, err := checksums.Marshal()
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Put(bundledChecksums, b); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
 	return txn.Commit()
 }
 

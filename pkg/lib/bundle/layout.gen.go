@@ -6,6 +6,8 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
+const LayoutChecksum = "6679553f52d382545e0c8922879c1126ab1a49b16c6ecdb7516033eda0fb52c2"
+
 var (
 	Layouts = map[relation.ObjectTypeLayout]relation.Layout{
 		relation.ObjectType_basic: {

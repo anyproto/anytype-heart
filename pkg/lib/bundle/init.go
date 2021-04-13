@@ -124,6 +124,15 @@ func ListRelationsKeys() []RelationKey {
 	return keys
 }
 
+func ListRelationsUrls() []string {
+	var keys []string
+	for k, _ := range relations {
+		keys = append(keys, addr.BundledRelationURLPrefix+k.String())
+	}
+
+	return keys
+}
+
 func HasRelation(key string) bool {
 	_, exists := relations[RelationKey(key)]
 

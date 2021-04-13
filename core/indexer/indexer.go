@@ -2,7 +2,10 @@ package indexer
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	ds "github.com/ipfs/go-datastore"
+	"github.com/textileio/go-threads/core/thread"
 	"sync"
 	"time"
 
@@ -13,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -24,7 +26,15 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-const CName = "indexer"
+const (
+	CName = "indexer"
+
+	// increasing counters below will trigger existing account to reindex their data
+	forceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
+	forceFilesReindexCounter          int32 = 0 // reindex ipfs-file-based objects
+	forceIdxRebuildCounter            int32 = 0 // erases localstore indexes and reindex all type of objects (no need to increase forceThreadsObjectsReindexCounter & forceFilesReindexCounter)
+	forceFulltextIndexCounter         int32 = 0 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
+)
 
 var log = logging.Logger("anytype-doc-indexer")
 
@@ -60,8 +70,14 @@ type batchReader interface {
 	Read(buffer []core.SmartblockRecordWithThreadID) int
 }
 
+type ThreadLister interface {
+	Threads() (thread.IDSlice, error)
+}
+
 type indexer struct {
-	store             objectstore.ObjectStore
+	store objectstore.ObjectStore
+	// todo: move logstore to separate component?
+	threadService     threads.Service
 	anytype           core.Service
 	searchInfo        GetSearchInfo
 	cache             map[string]*doc
@@ -71,13 +87,16 @@ type indexer struct {
 	recBuf            []core.SmartblockRecordEnvelope
 	threadIdsBuf      []string
 	mu                sync.Mutex
+
+	newAccount bool
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
+	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
+	i.threadService = a.MustComponent(threads.CName).(threads.Service)
 	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-
 	i.cache = make(map[string]*doc)
 	i.newRecordsBatcher = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
 	i.quitWG = new(sync.WaitGroup)
@@ -89,15 +108,164 @@ func (i *indexer) Name() (name string) {
 	return CName
 }
 
+func (i *indexer) saveLatestChecksums() error {
+	// todo: add layout indexing when needed
+	checksums := model.ObjectStoreChecksums{
+		BundledObjectTypes:         bundle.TypeChecksum,
+		BundledRelations:           bundle.RelationChecksum,
+		BundledLayouts:             bundle.LayoutChecksum,
+		ObjectsForceReindexCounter: forceThreadsObjectsReindexCounter,
+		FilesForceReindexCounter:   forceFilesReindexCounter,
+		IdxRebuildCounter:          forceIdxRebuildCounter,
+		FulltextRebuild:            forceFulltextIndexCounter,
+	}
+	return i.store.SaveChecksums(&checksums)
+}
+
 func (i *indexer) Run() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
 	}
 	i.quitWG.Add(2)
-	i.reindexBundled()
+	err = i.reindexIfNeeded()
+	if err != nil {
+		return err
+	}
+
 	go i.detailsLoop()
 	go i.ftLoop()
 	return
+}
+
+func (i *indexer) reindexIfNeeded() error {
+	if i.newAccount {
+		return i.saveLatestChecksums()
+	}
+
+	checksums, err := i.store.GetChecksums()
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+
+	if checksums == nil {
+		// zero values are valid
+		// bundled relations needs to be always reindexed on account create
+		checksums = &model.ObjectStoreChecksums{}
+	}
+
+	var (
+		reindexBundledTypes     bool
+		reindexBundledRelations bool
+		eraseIndexes            bool
+		reindexThreadObjects    bool
+		reindexFileObjects      bool
+		reindexFulltext         bool
+	)
+
+	if checksums.BundledRelations != bundle.RelationChecksum {
+		reindexBundledRelations = true
+	}
+	if checksums.BundledObjectTypes != bundle.TypeChecksum {
+		reindexBundledTypes = true
+	}
+	if checksums.ObjectsForceReindexCounter != forceThreadsObjectsReindexCounter {
+		reindexThreadObjects = true
+	}
+	if checksums.FilesForceReindexCounter != forceFilesReindexCounter {
+		reindexFileObjects = true
+	}
+	if checksums.FilesForceReindexCounter != forceFilesReindexCounter {
+		reindexFileObjects = true
+	}
+	if checksums.FulltextRebuild != forceFulltextIndexCounter {
+		reindexFulltext = true
+	}
+	if checksums.IdxRebuildCounter != forceIdxRebuildCounter {
+		eraseIndexes = true
+		reindexFileObjects = true
+		reindexThreadObjects = true
+		reindexBundledRelations = true
+		reindexBundledTypes = true
+	}
+
+	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes {
+		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes)
+	}
+
+	getIdsForTypes := func(sbt ...smartblock.SmartBlockType) ([]string, error) {
+		var ids []string
+		for _, t := range sbt {
+			st, err := source.SourceTypeBySbType(i.anytype, t)
+			if err != nil {
+				return nil, err
+			}
+			idsT, err := st.ListIds()
+			if err != nil {
+				return nil, err
+			}
+			ids = append(ids, idsT...)
+		}
+		return ids, nil
+	}
+	var indexesWereRemoved bool
+	if eraseIndexes {
+		err = i.store.EraseIndexes()
+		if err != nil {
+			log.Errorf("reindex failed to erase indexes: %v", err.Error())
+		} else {
+			log.Infof("all store indexes succesfully erased")
+			// store this flag because underlying localstore needs to now if it needs to amend indexes based on the prev value
+			indexesWereRemoved = true
+		}
+	}
+	if reindexThreadObjects {
+		ids, err := getIdsForTypes(smartblock.SmartBlockTypePage)
+		if err != nil {
+			return err
+		}
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
+	}
+	if reindexFileObjects {
+		ids, err := getIdsForTypes(smartblock.SmartBlockTypeFile)
+		if err != nil {
+			return err
+		}
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		log.Infof("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
+	}
+	if reindexBundledRelations {
+		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledRelation)
+		if err != nil {
+			return err
+		}
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		log.Infof("%d/%d bundled relations have been successfully reindexed", successfullyReindexed, len(ids))
+	}
+	if reindexBundledTypes {
+		// lets add anytypeProfile here, because it's seems too much to create one more counter especially for it
+		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		if err != nil {
+			return err
+		}
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		log.Infof("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
+	}
+	if reindexFulltext {
+		var ids []string
+		ids, err := getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		if err != nil {
+			return err
+		}
+
+		for _, id := range ids {
+			if err := i.store.AddToIndexQueue(id); err != nil {
+				log.Errorf("failed to add to index queue: %v", err)
+			}
+		}
+	}
+
+	return i.saveLatestChecksums()
 }
 
 func (i *indexer) openDoc(id string) (state.Doc, error) {
@@ -109,37 +277,66 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 	return s.ReadDoc(nil, false)
 }
 
-func (i *indexer) reindexBundled() {
-	// todo: index only missing ones
-	var (
-		d   state.Doc
-		err error
-	)
-
-	var ids []string
-
-	for _, rk := range bundle.ListRelationsKeys() {
-		ids = append(ids, addr.BundledRelationURLPrefix+rk.String())
-	}
-	for _, tk := range bundle.ListTypesKeys() {
-		ids = append(ids, tk.URL())
+func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
+	t, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		return fmt.Errorf("incorrect sb type: %v", err)
 	}
 
-	ids = append(ids, addr.AnytypeProfileId)
+	if t == smartblock.SmartBlockTypeArchive {
+		if err := i.store.AddToIndexQueue(id); err != nil {
+			log.With("thread", id).Errorf("can't add archive to index queue: %v", err)
+		} else {
+			log.With("thread", id).Debugf("archive added to index queue")
+		}
+		return nil
+	}
+
+	d, err := i.openDoc(id)
+	if err != nil {
+		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
+		return fmt.Errorf("failed to open doc: %s", err.Error())
+	}
+
+	details := d.Details()
+	var curDetails *types.Struct
+	curDetailsO, _ := i.store.GetDetails(id)
+	if curDetailsO != nil {
+		curDetails = curDetailsO.Details
+	}
+	// compare only real object scoped details
+	detailsObjectScope := pbtypes.StructCutKeys(details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+	if curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
+		if indexesWereRemoved {
+			if err := i.store.CreateObject(id, details, &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
+				return fmt.Errorf("can't update object store: %v", err)
+			}
+		} else {
+			if err := i.store.UpdateObjectDetails(id, details, &pbrelation.Relations{d.ExtraRelations()}); err != nil {
+				return fmt.Errorf("can't update object store: %v", err)
+			}
+		}
+		if curDetails == nil {
+			// add to fulltext only in case
+			if err = i.store.AddToIndexQueue(id); err != nil {
+				log.With("thread", id).Errorf("can't add to index: %v", err)
+			}
+		}
+	}
+	return nil
+}
+
+func (i *indexer) reindexIdsIgnoreErr(indexRemoved bool, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
-		if d, err = i.openDoc(id); err != nil {
-			log.Errorf("reindexBundled failed to open %s: %s", id, err.Error())
-			return
-		}
-
-		if err := i.store.CreateObject(id, d.Details(), &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(d.Details(), bundle.RelationKeyDescription.String())); err != nil {
-			log.With("thread", id).Errorf("can't update object store: %v", err)
-		}
-
-		if err = i.store.AddToIndexQueue(id); err != nil {
-			log.With("thread", id).Errorf("can't add to index: %v", err)
+		err := i.reindexDoc(id, indexRemoved)
+		if err != nil {
+			log.With("thread", id).Errorf("failed to reindex: %v", err)
+		} else {
+			successfullyReindexed++
 		}
 	}
+	return
 }
 
 func (i *indexer) detailsLoop() {
@@ -307,7 +504,7 @@ func (i *indexer) ftIndex() {
 	}
 }
 
-func (i *indexer) ftIndexDoc(id string, tm time.Time) (err error) {
+func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
 	info, err := i.searchInfo.GetSearchInfo(id)
 	if err != nil {
@@ -372,6 +569,11 @@ func (i *indexer) Close() error {
 	i.mu.Lock()
 	quit := i.quit
 	i.mu.Unlock()
+	err := i.threadService.Close()
+	log.Errorf("explicitly stop threadService first: %v", err)
+	if err != nil {
+		return err
+	}
 	if quit != nil {
 		close(quit)
 		i.quitWG.Wait()

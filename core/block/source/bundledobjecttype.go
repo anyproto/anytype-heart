@@ -111,6 +111,14 @@ func (v *bundledObjectType) FindFirstChange(ctx context.Context) (c *change.Chan
 	return nil, change.ErrEmpty
 }
 
+func (v *bundledObjectType) ListIds() ([]string, error) {
+	var ids []string
+	for _, tk := range bundle.ListTypesKeys() {
+		ids = append(ids, tk.URL())
+	}
+	return ids, nil
+}
+
 func (v *bundledObjectType) Close() (err error) {
 	return
 }

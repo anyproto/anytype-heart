@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -32,10 +28,6 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -666,9 +658,6 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -803,9 +792,6 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -814,12 +800,10 @@
     - [ObjectInfoWithOutboundLinksIDs](#anytype.model.ObjectInfoWithOutboundLinksIDs)
     - [ObjectLinks](#anytype.model.ObjectLinks)
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
+    - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
     - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -864,9 +848,6 @@
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
   
-  
-  
-
 - [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
     - [Detail](#anytype.relation.Detail)
     - [Layout](#anytype.relation.Layout)
@@ -882,9 +863,6 @@
     - [Relation.Scope](#anytype.relation.Relation.Scope)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -12577,6 +12555,27 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | inbound | [ObjectInfo](#anytype.model.ObjectInfo) | repeated |  |
 | outbound | [ObjectInfo](#anytype.model.ObjectInfo) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.ObjectStoreChecksums"></a>
+
+### ObjectStoreChecksums
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bundledObjectTypes | [string](#string) |  |  |
+| bundledRelations | [string](#string) |  |  |
+| bundledLayouts | [string](#string) |  |  |
+| objectsForceReindexCounter | [int32](#int32) |  | increased in order to trigger all objects reindex |
+| filesForceReindexCounter | [int32](#int32) |  | increased in order to fully reindex all objects |
+| idxRebuildCounter | [int32](#int32) |  | increased in order to remove indexes and reindex everything. Automatically triggers objects and files reindex(one time only) |
+| fulltextRebuild | [int32](#int32) |  | increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
 
 
 

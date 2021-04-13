@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -23,6 +24,10 @@ func NewAnytypeProfile(a core.Service, id string) (s Source) {
 type anytypeProfile struct {
 	id string
 	a  core.Service
+}
+
+func (v *anytypeProfile) ListIds() ([]string, error) {
+	return []string{addr.AnytypeProfileId}, nil
 }
 
 func (v *anytypeProfile) ReadOnly() bool {
