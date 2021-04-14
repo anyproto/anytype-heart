@@ -2,6 +2,7 @@ package logging
 
 import (
 	"fmt"
+	"github.com/cheggaaa/mb"
 	"net/url"
 	"os"
 	"path/filepath"
@@ -62,7 +63,7 @@ func getLoggingConfig() logging.Config {
 }
 
 func init() {
-	// should it be in goroutine?
+	gelfSinkWrapper.batch = mb.New(1000)
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
 		fmt.Printf("failed to init gelf tls: %s", err.Error())
@@ -72,6 +73,7 @@ func init() {
 		gelfSinkWrapper.gelfWriter = tlsWriter
 	}
 
+	go gelfSinkWrapper.Run()
 	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
 		// init tlsWriter outside to make sure it is available
 		return &gelfSinkWrapper, nil
@@ -84,7 +86,7 @@ func init() {
 	logging.SetupLogging(cfg)
 }
 
-type LWrapper struct{
+type LWrapper struct {
 	zap.SugaredLogger
 }
 
