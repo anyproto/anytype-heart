@@ -32,7 +32,7 @@ const (
 	// increasing counters below will trigger existing account to reindex their data
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 0 // reindex ipfs-file-based objects
-	ForceIdxRebuildCounter            int32 = 0 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 1 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 0 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
