@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -38,7 +39,7 @@ func (v *bundledObjectType) Anytype() core.Service {
 }
 
 func (v *bundledObjectType) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_ObjectType
+	return pb.SmartBlockType_BundledObjectType
 }
 
 func (v *bundledObjectType) Virtual() bool {

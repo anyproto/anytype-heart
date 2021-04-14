@@ -618,9 +618,11 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
-	case pb.SmartBlockType_ObjectType:
+	case pb.SmartBlockType_ObjectType,
+		pb.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType(s.meta, s)
-	case pb.SmartBlockType_Relation:
+	case pb.SmartBlockType_BundledRelation,
+		pb.SmartBlockType_IndexedRelation:
 		sb = editor.NewRelation(s.meta, s)
 	case pb.SmartBlockType_File:
 		sb = editor.NewFiles(s.meta)

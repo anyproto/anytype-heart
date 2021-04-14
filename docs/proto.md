@@ -12436,19 +12436,22 @@ Precondition: user A and user B opened the same block
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Page | 0 |  |
-| Home | 1 | have only Link simpleblocks |
-| ProfilePage | 2 | just a usual page for now |
-| Archive | 3 | have only Link simpleblocks |
-| Breadcrumbs | 4 | have only Link simpleblocks |
-| Set | 5 | only have dataview simpleblock |
-| ObjectType | 6 | have relations list |
-| File | 7 |  |
-| Relation | 10 |  |
-| Template | 11 |  |
-| MarketplaceType | 8 |  |
-| MarketplaceRelation | 9 |  |
-| MarketplaceTemplate | 12 |  |
+| Breadcrumbs | 0 |  |
+| Page | 16 |  |
+| ProfilePage | 17 |  |
+| Home | 32 |  |
+| Archive | 48 |  |
+| Database | 64 |  |
+| Set | 65 | only have dataview simpleblock |
+| ObjectType | 96 | have relations list |
+| File | 256 |  |
+| Template | 288 |  |
+| MarketplaceType | 272 |  |
+| MarketplaceRelation | 273 |  |
+| MarketplaceTemplate | 274 |  |
+| BundledRelation | 512 |  |
+| IndexedRelation | 513 |  |
+| BundledObjectType | 514 |  |
 
 
  

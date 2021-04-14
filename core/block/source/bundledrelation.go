@@ -40,7 +40,7 @@ func (v *bundledRelation) Anytype() core.Service {
 }
 
 func (v *bundledRelation) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_Relation
+	return pb.SmartBlockType_BundledRelation
 }
 
 func (v *bundledRelation) Virtual() bool {

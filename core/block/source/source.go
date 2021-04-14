@@ -3,11 +3,12 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"math/rand"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -127,7 +128,7 @@ func (s *source) Anytype() core.Service {
 }
 
 func (s *source) Type() pb.SmartBlockType {
-	return smartblock.SmartBlockTypeToProto(s.sb.Type())
+	return pb.SmartBlockType(s.sb.Type())
 }
 
 func (s *source) Virtual() bool {

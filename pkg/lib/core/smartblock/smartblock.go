@@ -15,23 +15,21 @@ import (
 type SmartBlockType uint64
 
 const (
-	SmartBlockTypePage                SmartBlockType = 0x10
-	SmartBlockTypeProfilePage         SmartBlockType = 0x11
-	SmartBlockTypeHome                SmartBlockType = 0x20
-	SmartBlockTypeArchive             SmartBlockType = 0x30
-	SmartBlockTypeDatabase            SmartBlockType = 0x40
-	SmartBlockTypeSet                 SmartBlockType = 0x41
-	SmartBlockTypeObjectType          SmartBlockType = 0x60
-	SmartBlockTypeFile                SmartBlockType = 0x100
-	SmartblockTypeMarketplaceType     SmartBlockType = 0x110
-	SmartblockTypeMarketplaceRelation SmartBlockType = 0x111
-	SmartblockTypeMarketplaceTemplate SmartBlockType = 0x112
-	SmartBlockTypeTemplate            SmartBlockType = 0x120
-
-	SmartBlockTypeBundledRelation   SmartBlockType = 0x200 // temp
-	SmartBlockTypeIndexedRelation   SmartBlockType = 0x201 // temp
-	SmartBlockTypeBundledObjectType SmartBlockType = 0x202 // temp
-
+	SmartBlockTypePage                = SmartBlockType(pb.SmartBlockType_Page)
+	SmartBlockTypeProfilePage         = SmartBlockType(pb.SmartBlockType_ProfilePage)
+	SmartBlockTypeHome                = SmartBlockType(pb.SmartBlockType_Home)
+	SmartBlockTypeArchive             = SmartBlockType(pb.SmartBlockType_Archive)
+	SmartBlockTypeDatabase            = SmartBlockType(pb.SmartBlockType_Database)
+	SmartBlockTypeSet                 = SmartBlockType(pb.SmartBlockType_Set)
+	SmartBlockTypeObjectType          = SmartBlockType(pb.SmartBlockType_ObjectType)
+	SmartBlockTypeFile                = SmartBlockType(pb.SmartBlockType_File)
+	SmartblockTypeMarketplaceType     = SmartBlockType(pb.SmartBlockType_MarketplaceType)
+	SmartblockTypeMarketplaceRelation = SmartBlockType(pb.SmartBlockType_MarketplaceRelation)
+	SmartblockTypeMarketplaceTemplate = SmartBlockType(pb.SmartBlockType_MarketplaceTemplate)
+	SmartBlockTypeTemplate            = SmartBlockType(pb.SmartBlockType_Template)
+	SmartBlockTypeBundledRelation     = SmartBlockType(pb.SmartBlockType_BundledRelation)
+	SmartBlockTypeIndexedRelation     = SmartBlockType(pb.SmartBlockType_IndexedRelation)
+	SmartBlockTypeBundledObjectType   = SmartBlockType(pb.SmartBlockType_BundledObjectType)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -154,62 +152,4 @@ func uvarint(buf string) (uint64, int) {
 		s += 7
 	}
 	return 0, 0
-}
-
-func SmartBlockTypeToProto(t SmartBlockType) pb.SmartBlockType {
-	switch t {
-	case SmartBlockTypePage:
-		return pb.SmartBlockType_Page
-	case SmartBlockTypeArchive:
-		return pb.SmartBlockType_Archive
-	case SmartBlockTypeHome:
-		return pb.SmartBlockType_Home
-	case SmartBlockTypeProfilePage:
-		return pb.SmartBlockType_ProfilePage
-	case SmartBlockTypeSet:
-		return pb.SmartBlockType_Set
-	case SmartBlockTypeObjectType:
-		return pb.SmartBlockType_ObjectType
-	case SmartBlockTypeBundledObjectType:
-		return pb.SmartBlockType_ObjectType
-	case SmartBlockTypeBundledRelation:
-		return pb.SmartBlockType_Relation
-	case SmartBlockTypeIndexedRelation:
-		return pb.SmartBlockType_Relation
-	case SmartblockTypeMarketplaceRelation:
-		return pb.SmartBlockType_MarketplaceRelation
-	case SmartblockTypeMarketplaceType:
-		return pb.SmartBlockType_MarketplaceType
-	case SmartblockTypeMarketplaceTemplate:
-		return pb.SmartBlockType_MarketplaceTemplate
-	case SmartBlockTypeTemplate:
-		return pb.SmartBlockType_Template
-	default:
-		panic(fmt.Errorf("unknown smartblock type: %v", t))
-	}
-}
-
-func SmartBlockTypeToCore(t pb.SmartBlockType) SmartBlockType {
-	switch t {
-	case pb.SmartBlockType_Page:
-		return SmartBlockTypePage
-	case pb.SmartBlockType_Archive:
-		return SmartBlockTypeArchive
-	case pb.SmartBlockType_Home:
-		return SmartBlockTypeHome
-	case pb.SmartBlockType_ProfilePage:
-		return SmartBlockTypeProfilePage
-	case pb.SmartBlockType_Set:
-		return SmartBlockTypeSet
-	case pb.SmartBlockType_ObjectType:
-		return SmartBlockTypeObjectType
-	case pb.SmartBlockType_MarketplaceType:
-		return SmartblockTypeMarketplaceType
-	case pb.SmartBlockType_MarketplaceRelation:
-		return SmartblockTypeMarketplaceRelation
-	case pb.SmartBlockType_Template:
-		return SmartBlockTypeTemplate
-	default:
-		panic(fmt.Errorf("unknown smartblock type: %v", t))
-	}
 }
