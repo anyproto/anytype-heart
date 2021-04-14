@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -43,6 +44,15 @@ func TestBasic_Create(t *testing.T) {
 		require.NotEmpty(t, id)
 		s := sb.NewState()
 		assert.Equal(t, []string{template.HeaderLayoutId, id}, s.Pick(s.RootId()).Model().ChildrenIds)
+	})
+	t.Run("restricted", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.TestRestrictions = restriction.ObjectRestrictions{model.ObjectRestriction_CreateBlock}
+		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
+		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		b := NewBasic(sb)
+		_, err := b.Create(nil, "", pb.RpcBlockCreateRequest{})
+		assert.Equal(t, restriction.ErrRestricted, err)
 	})
 }
 

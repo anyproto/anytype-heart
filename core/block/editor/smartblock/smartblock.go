@@ -98,6 +98,7 @@ type SmartBlock interface {
 	CheckSubscriptions() (changed bool)
 	GetSearchInfo() (indexer.SearchInfo, error)
 	MetaService() meta.Service
+	Restrictions() restriction.ObjectRestrictions
 	BlockClose()
 
 	Close() (err error)
@@ -238,6 +239,10 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 			ContextId: sb.Id(),
 		})
 	}
+}
+
+func (sb *smartBlock) Restrictions() restriction.ObjectRestrictions {
+	return sb.restrictions
 }
 
 func (sb *smartBlock) Show(ctx *state.Context) error {
