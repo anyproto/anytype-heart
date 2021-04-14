@@ -36,6 +36,15 @@ func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
 			Value:            pbtypes.Bool(true),
 		}
 	}
+	// replaces "value != false" to "value == true" for expected work with checkboxes
+	if proto.Condition == model.BlockContentDataviewFilter_NotEqual && proto.Value != nil && proto.Value.Equal(pbtypes.Bool(false)) {
+		proto = &model.BlockContentDataviewFilter{
+			RelationKey:      proto.RelationKey,
+			RelationProperty: proto.RelationProperty,
+			Condition:        model.BlockContentDataviewFilter_Equal,
+			Value:            pbtypes.Bool(true),
+		}
+	}
 	switch proto.Condition {
 	case model.BlockContentDataviewFilter_Equal,
 		model.BlockContentDataviewFilter_Greater,
