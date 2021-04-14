@@ -113,9 +113,8 @@ func (s *service) threadsDbListen() error {
 							log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
 							return
 						}
-
 						ch := s.getNewThreadChan()
-						if ch != nil {
+						if ch != nil && !s.stopped{
 							select {
 							case <-s.ctx.Done():
 							case ch <- tid.String():

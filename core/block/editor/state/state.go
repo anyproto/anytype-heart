@@ -41,6 +41,7 @@ type Doc interface {
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
+	ObjectScopedDetails() *types.Struct
 	Details() *types.Struct
 	ExtraRelations() []*pbrelation.Relation
 

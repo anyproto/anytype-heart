@@ -6,6 +6,8 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
+const TypeChecksum = "5a0a63f4b18b69c99cafac23d44a5ca132944f5e19c7563bdf1b311c04316be1"
+
 type TypeKey string
 
 func (tk TypeKey) String() string {

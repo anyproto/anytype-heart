@@ -91,6 +91,15 @@ func MultiAddressesToStrings(addrs []ma.Multiaddr) []string {
 	return s
 }
 
+func ThreadIdsToStings(ids []thread.ID) []string {
+	var s []string
+	for _, id := range ids {
+		s = append(s, id.String())
+	}
+
+	return s
+}
+
 func TruncateText(text string, length int) string {
 	var ellipsis = " …"
 	if utf8.RuneCountInString(text) <= length {

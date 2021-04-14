@@ -2,6 +2,7 @@ package indexer_test
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -16,7 +17,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -114,19 +114,30 @@ func newFixture(t *testing.T) *fixture {
 	fx.getSerach.EXPECT().GetSearchInfo(gomock.Any()).AnyTimes()
 
 	for _, rk := range bundle.ListRelationsKeys() {
+		fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
 		fx.objectStore.EXPECT().AddToIndexQueue(addr.BundledRelationURLPrefix + rk.String())
 
 	}
 	for _, ok := range bundle.ListTypesKeys() {
+		fx.objectStore.EXPECT().GetDetails(ok.URL())
 		fx.objectStore.EXPECT().AddToIndexQueue(ok.URL())
 	}
+	fx.objectStore.EXPECT().GetDetails("_anytype_profile")
 	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
-
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
-
+	fx.objectStore.EXPECT().GetChecksums().Times(1)
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
+	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{
+		BundledObjectTypes:         bundle.TypeChecksum,
+		BundledRelations:           bundle.RelationChecksum,
+		BundledLayouts:             "",
+		ObjectsForceReindexCounter: indexer.ForceThreadsObjectsReindexCounter,
+		FilesForceReindexCounter:   indexer.ForceFilesReindexCounter,
+		IdxRebuildCounter:          indexer.ForceIdxRebuildCounter,
+		FulltextRebuild:            indexer.ForceFulltextIndexCounter,
+	}).Times(1)
 
 	fx.Indexer = indexer.New()
 
@@ -134,7 +145,6 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 
 	ta.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(rootPath, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(fx.rb).With(fx.Indexer).With(fx.getSerach)
-
 	require.NoError(t, ta.Start())
 	return fx
 }

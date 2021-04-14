@@ -101,5 +101,6 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
 		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent, false),
+		template.WithRequiredRelations(),
 	)
 }

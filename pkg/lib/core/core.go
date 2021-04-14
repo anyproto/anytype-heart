@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"io"
 	"sync"
 	"time"
@@ -75,6 +76,9 @@ type Service interface {
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	ObjectStore() objectstore.ObjectStore // deprecated
+	FileStore() filestore.FileStore       // deprecated
+	ThreadsIds() ([]string, error)        // deprecated
+
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
 
@@ -117,6 +121,14 @@ type Anytype struct {
 	subscribeOnce sync.Once
 	config        *config.Config
 	wallet        wallet.Wallet
+}
+
+func (a *Anytype) ThreadsIds() ([]string, error) {
+	tids, err := a.ThreadService().Logstore().Threads()
+	if err != nil {
+		return nil, err
+	}
+	return util.ThreadIdsToStings(tids), nil
 }
 
 type batchAdder interface {
@@ -264,21 +276,6 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) err
 }
 
 func (a *Anytype) Close() (err error) {
-	h := a.ipfs.GetHost()
-	if h != nil {
-		// SPECIAL CASE: close ipfs network first in order to disconnect from network and do no miss any incoming msg
-		err = h.Network().Close()
-		log.Errorf("explicitly stop ipfs host first: %v", err)
-		if err != nil {
-			return err
-		}
-	}
-	// SPECIAL CASE: close thread service first in order to protect from undelivered records
-	err = a.threadService.Close()
-	log.Errorf("explicitly stop threadService first: %v", err)
-	if err != nil {
-		return err
-	}
 	return a.Stop()
 }
 

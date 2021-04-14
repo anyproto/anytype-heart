@@ -31,6 +31,7 @@ const (
 	SmartBlockTypeBundledRelation   SmartBlockType = 0x200 // temp
 	SmartBlockTypeIndexedRelation   SmartBlockType = 0x201 // temp
 	SmartBlockTypeBundledObjectType SmartBlockType = 0x202 // temp
+	SmartBlockTypeAnytypeProfile    SmartBlockType = 0x203 // temp
 
 )
 
@@ -86,6 +87,14 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 		panic(err)
 	}
 	return t
+}
+
+func (sbt SmartBlockType) IsValid() bool {
+	_, err := sbt.toProto()
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func (sbt SmartBlockType) toProto() (model.ObjectInfoType, error) {

@@ -75,12 +75,12 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(objectstore.New()).
 		Register(filestore.New()).
 		Register(recordsbatcher.New()).
-		Register(indexer.New()).
 		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
 		Register(threads.New()).
 		Register(core.New()).
+		Register(indexer.New()).
 		Register(pin.New()).
 		Register(status.New()).
 		Register(meta.New()).
