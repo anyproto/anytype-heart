@@ -22,6 +22,7 @@ var (
 	objectRestrictionsByPbType = map[pb.SmartBlockType]ObjectRestrictions{
 		pb.SmartBlockType_Breadcrumbs: objRestrictEdit,
 		pb.SmartBlockType_ProfilePage: {},
+		pb.SmartBlockType_Page:        {},
 		pb.SmartBlockType_Home: {
 			model.ObjectRestriction_Header,
 			model.ObjectRestriction_Relation,
