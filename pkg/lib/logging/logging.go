@@ -62,6 +62,7 @@ func getLoggingConfig() logging.Config {
 }
 
 func init() {
+	gelfSinkWrapper.Lock()
 	// should it be in goroutine?
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
@@ -71,6 +72,7 @@ func init() {
 		tlsWriter.ReconnectDelay = 1 // bug within geld, will be multiplied by time.Second
 		gelfSinkWrapper.gelfWriter = tlsWriter
 	}
+	gelfSinkWrapper.Unlock()
 
 	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
 		// init tlsWriter outside to make sure it is available
