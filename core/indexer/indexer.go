@@ -124,6 +124,19 @@ func (i *indexer) saveLatestChecksums() error {
 	return i.store.SaveChecksums(&checksums)
 }
 
+func (i *indexer) saveLatestCounters() error {
+	// todo: add layout indexing when needed
+	checksums := model.ObjectStoreChecksums{
+		BundledObjectTypes:         bundle.TypeChecksum,
+		BundledRelations:           bundle.RelationChecksum,
+		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
+		FilesForceReindexCounter:   ForceFilesReindexCounter,
+		IdxRebuildCounter:          ForceIdxRebuildCounter,
+		FulltextRebuild:            ForceFulltextIndexCounter,
+	}
+	return i.store.SaveChecksums(&checksums)
+}
+
 func (i *indexer) Run() (err error) {
 	if ftErr := i.ftInit(); ftErr != nil {
 		log.Errorf("can't init ft: %v", ftErr)
@@ -140,18 +153,28 @@ func (i *indexer) Run() (err error) {
 }
 
 func (i *indexer) reindexIfNeeded() error {
+	var (
+		err       error
+		checksums *model.ObjectStoreChecksums
+	)
 	if i.newAccount {
-		return i.saveLatestChecksums()
-	}
-
-	checksums, err := i.store.GetChecksums()
-	if err != nil && err != ds.ErrNotFound {
-		return err
+		checksums = &model.ObjectStoreChecksums{
+			// do no add bundled relations checksums, because we want to index them for new accounts
+			ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
+			FilesForceReindexCounter:   ForceFilesReindexCounter,
+			IdxRebuildCounter:          ForceIdxRebuildCounter,
+			FulltextRebuild:            ForceFulltextIndexCounter,
+		}
+	} else {
+		checksums, err = i.store.GetChecksums()
+		if err != nil && err != ds.ErrNotFound {
+			return err
+		}
 	}
 
 	if checksums == nil {
 		// zero values are valid
-		// bundled relations needs to be always reindexed on account create
+		// means we didn't perform new indexer before
 		checksums = &model.ObjectStoreChecksums{}
 	}
 
