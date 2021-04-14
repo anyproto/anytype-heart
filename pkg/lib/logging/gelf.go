@@ -23,19 +23,8 @@ type gelfSink struct {
 }
 
 func (gs *gelfSink) Write(b []byte) (int, error) {
-	gs.RLock()
-	defer gs.RUnlock()
 	if gs.gelfWriter == nil {
 		return 0, fmt.Errorf("gelfWriter is nil")
-	}
-
-	msg := gelf.Message{
-		Version:  "1.1",
-		Host:     gs.host,
-		Short:    string(b),
-		TimeUnix: float64(time.Now().UnixNano()) / float64(time.Second),
-		Level:    0,
-		Extra:    map[string]interface{}{"_mwver": gs.version},
 	}
 
 	go func() {
@@ -44,6 +33,14 @@ func (gs *gelfSink) Write(b []byte) (int, error) {
 		if !gs.lastErrorAt.IsZero() && gs.lastErrorAt.Add(logWriteDiscardThreshold).After(time.Now()) {
 			// do not try to push to aggressively
 			return
+		}
+		msg := gelf.Message{
+			Version:  "1.1",
+			Host:     gs.host,
+			Short:    string(b),
+			TimeUnix: float64(time.Now().UnixNano()) / float64(time.Second),
+			Level:    0,
+			Extra:    map[string]interface{}{"_mwver": gs.version},
 		}
 		// we want to make sure we don't waiting for the network when printing logs
 		// @todo: need to be buffered sending
