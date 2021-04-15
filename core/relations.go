@@ -2,8 +2,8 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -258,26 +258,31 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		return m
 	}
 
-	otypes, err := bundle.ListTypes()
-	if err != nil {
-		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
-	}
-
 	at := mw.GetAnytype()
 	if at == nil {
 		return response(pb.RpcObjectTypeListResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	ts := mw.app.MustComponent(threads.CName).(threads.Service)
-	threadIds, err := ts.ListThreadIdsByType(smartblock.SmartBlockTypeObjectType)
-	if err != nil {
-		return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
+	var (
+		ids    []string
+		otypes []*pbrelation.ObjectType
+	)
+	for _, t := range []smartblock.SmartBlockType{smartblock.SmartBlockTypeObjectType, smartblock.SmartBlockTypeBundledObjectType} {
+		st, err := source.SourceTypeBySbType(at, t)
+		if err != nil {
+			return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
+		}
+		idsT, err := st.ListIds()
+		if err != nil {
+			return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
+		}
+		ids = append(ids, idsT...)
 	}
 
-	for _, id := range threadIds {
-		otype, err := mw.getObjectType(at, id.String())
+	for _, id := range ids {
+		otype, err := mw.getObjectType(at, id)
 		if err != nil {
-			log.Errorf("failed to get objectType info: %s", err.Error())
+			log.Errorf("failed to get objectType %s info: %s", id, err.Error())
 			continue
 		}
 		otypes = append(otypes, otype)

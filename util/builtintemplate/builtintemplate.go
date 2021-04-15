@@ -73,7 +73,7 @@ func (b *builtinTemplate) saveBuiltinTemplate(tb []byte) (err error) {
 		origId := st.RootId()
 		st = st.Copy()
 		if ot := st.ObjectType(); ot != bundle.TypeKeyTemplate.URL() {
-			st.SetDetail("targetObjectType", pbtypes.String(ot))
+			st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(ot))
 		}
 		st.SetDetail(bundle.RelationKeyBuiltinTemplateId.String(), pbtypes.String(origId))
 		st.SetObjectType(bundle.TypeKeyTemplate.URL())

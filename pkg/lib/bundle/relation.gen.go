@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
-const RelationChecksum = "2bfe0f7104f28c76b3a68af63543ffc8d2e07ac6cdcf4a450e1f9356ba6268aa"
+const RelationChecksum = "78a8e78722b7036f67676d75744ae299d015defdc0cab35c33cae8bf99a9d67f"
 
 type RelationKey string
 
@@ -47,10 +47,11 @@ const (
 	RelationKeyCoverY                RelationKey = "coverY"
 	RelationKeySizeInBytes           RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf          RelationKey = "collectionOf"
+	RelationKeyBuiltinTemplateId     RelationKey = "builtinTemplateId"
 	RelationKeyAddedDate             RelationKey = "addedDate"
 	RelationKeyAssignee              RelationKey = "assignee"
 	RelationKeyExposure              RelationKey = "exposure"
-	RelationKeyTemplateType          RelationKey = "templateType"
+	RelationKeyTargetObjectType      RelationKey = "targetObjectType"
 	RelationKeyAudioGenre            RelationKey = "audioGenre"
 	RelationKeyName                  RelationKey = "name"
 	RelationKeyFocalRatio            RelationKey = "focalRatio"
@@ -75,7 +76,6 @@ const (
 	RelationKeyFileExt               RelationKey = "fileExt"
 	RelationKeyMpAddedToLibrary      RelationKey = "mpAddedToLibrary"
 	RelationKeyFeaturedRelations     RelationKey = "featuredRelations"
-	RelationKeyBuiltinTemplateId     RelationKey = "builtinTemplateId"
 )
 
 var (
@@ -128,7 +128,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Description: "",
-			Format:      relation.RelationFormat_object,
+			Format:      relation.RelationFormat_file,
 			Key:         "attachments",
 			Name:        "Attachments",
 			ObjectTypes: []string{TypePrefix + "file", TypePrefix + "image", TypePrefix + "video", TypePrefix + "audio"},
@@ -171,7 +171,7 @@ var (
 		RelationKeyBuiltinTemplateId: {
 
 			DataSource:  relation.Relation_details,
-			Description: "Contains original id of builtin template",
+			Description: "",
 			Format:      relation.RelationFormat_shorttext,
 			Hidden:      true,
 			Key:         "builtinTemplateId",
@@ -458,7 +458,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Description: "Image icon",
-			Format:      relation.RelationFormat_object,
+			Format:      relation.RelationFormat_file,
 			Hidden:      true,
 			Key:         "iconImage",
 			MaxCount:    1,
@@ -718,13 +718,13 @@ var (
 			ReadOnly:    false,
 			Scope:       relation.Relation_type,
 		},
-		RelationKeyTemplateType: {
+		RelationKeyTargetObjectType: {
 
 			DataSource:  relation.Relation_details,
 			Description: "Type that is used for templating",
 			Format:      relation.RelationFormat_object,
 			Hidden:      true,
-			Key:         "templateType",
+			Key:         "targetObjectType",
 			MaxCount:    1,
 			Name:        "Template's Type",
 			ObjectTypes: []string{TypePrefix + "objectType"},
@@ -735,7 +735,7 @@ var (
 
 			DataSource:  relation.Relation_details,
 			Description: "",
-			Format:      relation.RelationFormat_object,
+			Format:      relation.RelationFormat_file,
 			Key:         "thumbnailImage",
 			Name:        "Thumbnail image",
 			ObjectTypes: []string{TypePrefix + "image"},
