@@ -47,7 +47,11 @@ func TestBasic_Create(t *testing.T) {
 	})
 	t.Run("restricted", func(t *testing.T) {
 		sb := smarttest.New("test")
-		sb.TestRestrictions = restriction.ObjectRestrictions{model.ObjectRestriction_CreateBlock}
+		sb.TestRestrictions = restriction.Restrictions{
+			Object: restriction.ObjectRestrictions{
+				model.Restrictions_CreateBlock,
+			},
+		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)

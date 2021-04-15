@@ -7,15 +7,15 @@ import (
 
 var (
 	objRestrictAll = ObjectRestrictions{
-		model.ObjectRestriction_CreateBlock,
-		model.ObjectRestriction_Relation,
-		model.ObjectRestriction_Header,
-		model.ObjectRestriction_Delete,
+		model.Restrictions_CreateBlock,
+		model.Restrictions_Relation,
+		model.Restrictions_Header,
+		model.Restrictions_Delete,
 	}
 	objRestrictEdit = ObjectRestrictions{
-		model.ObjectRestriction_CreateBlock,
-		model.ObjectRestriction_Relation,
-		model.ObjectRestriction_Header,
+		model.Restrictions_CreateBlock,
+		model.Restrictions_Relation,
+		model.Restrictions_Header,
 	}
 
 	objectRestrictionsByPbType = map[pb.SmartBlockType]ObjectRestrictions{
@@ -24,15 +24,15 @@ var (
 		pb.SmartBlockType_AnytypeProfile: objRestrictAll,
 		pb.SmartBlockType_Page:           {},
 		pb.SmartBlockType_Home: {
-			model.ObjectRestriction_Header,
-			model.ObjectRestriction_Relation,
+			model.Restrictions_Header,
+			model.Restrictions_Relation,
 		},
 		pb.SmartBlockType_File:                objRestrictEdit,
 		pb.SmartBlockType_MarketplaceRelation: objRestrictAll,
 		pb.SmartBlockType_MarketplaceTemplate: objRestrictAll,
 		pb.SmartBlockType_MarketplaceType:     objRestrictAll,
 		pb.SmartBlockType_Archive:             objRestrictAll,
-		pb.SmartBlockType_Set:                 {model.ObjectRestriction_CreateBlock},
+		pb.SmartBlockType_Set:                 {model.Restrictions_CreateBlock},
 		pb.SmartBlockType_BundledRelation:     objRestrictAll,
 		pb.SmartBlockType_IndexedRelation:     objRestrictAll,
 		pb.SmartBlockType_BundledObjectType:   objRestrictAll,
@@ -40,9 +40,9 @@ var (
 	}
 )
 
-type ObjectRestrictions []model.ObjectRestriction
+type ObjectRestrictions []model.RestrictionsObjectRestriction
 
-func (or ObjectRestrictions) Check(cr ...model.ObjectRestriction) (err error) {
+func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (err error) {
 	for _, r := range cr {
 		for _, er := range or {
 			if er == r {

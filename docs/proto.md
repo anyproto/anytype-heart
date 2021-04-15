@@ -847,6 +847,8 @@
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
+    - [Restrictions](#anytype.model.Restrictions)
+    - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
@@ -865,7 +867,8 @@
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
-    - [ObjectRestriction](#anytype.model.ObjectRestriction)
+    - [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction)
+    - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
   
   
   
@@ -12020,7 +12023,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 | objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
-| restrictions | [model.ObjectRestriction](#anytype.model.ObjectRestriction) | repeated | object restrictions |
+| restrictions | [model.Restrictions](#anytype.model.Restrictions) |  | object restrictions |
 
 
 
@@ -13074,6 +13077,38 @@ General purpose structure, uses in Mark.
 
 
 
+<a name="anytype.model.Restrictions"></a>
+
+### Restrictions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| object | [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction) | repeated |  |
+| dataview | [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Restrictions.DataviewRestrictions"></a>
+
+### Restrictions.DataviewRestrictions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+| restrictions | [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions) | repeated |  |
+
+
+
+
+
+
 <a name="anytype.model.SmartBlockSnapshotBase"></a>
 
 ### SmartBlockSnapshotBase
@@ -13338,9 +13373,20 @@ deprecated
 
 
 
-<a name="anytype.model.ObjectRestriction"></a>
+<a name="anytype.model.Restrictions.DataviewRestriction"></a>
 
-### ObjectRestriction
+### Restrictions.DataviewRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Todo | 0 |  |
+
+
+
+<a name="anytype.model.Restrictions.ObjectRestriction"></a>
+
+### Restrictions.ObjectRestriction
 
 
 | Name | Number | Description |

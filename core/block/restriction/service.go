@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 const CName = "restriction"
@@ -36,4 +37,14 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Name() (name string) {
 	return CName
+}
+
+type Restrictions struct {
+	Object ObjectRestrictions
+}
+
+func (r Restrictions) Proto() *model.Restrictions {
+	return &model.Restrictions{
+		Object: r.Object,
+	}
 }

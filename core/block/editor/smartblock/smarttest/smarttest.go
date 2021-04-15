@@ -42,12 +42,12 @@ type SmartTest struct {
 	hist             undo.History
 	meta             *core.SmartBlockMeta
 	ms               meta.Service
-	TestRestrictions restriction.ObjectRestrictions
+	TestRestrictions restriction.Restrictions
 	sync.Mutex
 	state.Doc
 }
 
-func (st *SmartTest) Restrictions() restriction.ObjectRestrictions {
+func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
 

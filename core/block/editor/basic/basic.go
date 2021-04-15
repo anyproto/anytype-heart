@@ -89,7 +89,7 @@ type basic struct {
 }
 
 func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
-	if err = bs.Restrictions().Check(model.ObjectRestriction_CreateBlock); err != nil {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_CreateBlock); err != nil {
 		return
 	}
 	if bs.Type() == pb.SmartBlockType_Set {

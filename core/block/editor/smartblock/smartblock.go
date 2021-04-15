@@ -98,7 +98,7 @@ type SmartBlock interface {
 	CheckSubscriptions() (changed bool)
 	GetSearchInfo() (indexer.SearchInfo, error)
 	MetaService() meta.Service
-	Restrictions() restriction.ObjectRestrictions
+	Restrictions() restriction.Restrictions
 	BlockClose()
 
 	Close() (err error)
@@ -130,7 +130,7 @@ type smartBlock struct {
 	metaSub           meta.Subscriber
 	metaData          *core.SmartBlockMeta
 	lastDepDetails    map[string]*pb.EventObjectDetailsSet
-	restrictions      restriction.ObjectRestrictions
+	restrictions      restriction.Restrictions
 	disableLayouts    bool
 	onNewStateHooks   []func()
 	onCloseHooks      []func()
@@ -197,7 +197,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
-	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).ObjectRestrictionsById(sb)
+	sb.restrictions.Object = ctx.App.MustComponent(restriction.CName).(restriction.Service).ObjectRestrictionsById(sb)
 	return
 }
 
@@ -241,7 +241,7 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 	}
 }
 
-func (sb *smartBlock) Restrictions() restriction.ObjectRestrictions {
+func (sb *smartBlock) Restrictions() restriction.Restrictions {
 	return sb.restrictions
 }
 
@@ -269,7 +269,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 					Details:      details,
 					Relations:    sb.Relations(),
 					ObjectTypes:  objectTypes,
-					Restrictions: sb.restrictions,
+					Restrictions: sb.restrictions.Proto(),
 				}},
 			},
 		})
