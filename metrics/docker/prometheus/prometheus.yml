@@ -15,4 +15,4 @@ scrape_configs:
   - job_name: 'mw'
     scrape_interval: 5s
     static_configs:
-          - targets: ['host.docker.internal:9094']
+         - targets: ['host.docker.internal:9094']

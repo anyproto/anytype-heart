@@ -3,20 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"io"
 	"sync"
-	"time"
 
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/libp2p/go-tcp-transport"
-	tnet "github.com/textileio/go-threads/net"
-	tq "github.com/textileio/go-threads/net/queue"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -25,10 +17,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 )
 
 var log = logging.Logger("anytype-core")
@@ -366,30 +362,6 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 }
 
 func init() {
-	/* adjust ThreadsDB parameters */
-
-	// thread pulling cycle
-	tnet.PullStartAfter = 5 * time.Second
-	tnet.InitialPullInterval = 20 * time.Second
-	tnet.PullInterval = 3 * time.Minute
-
-	// communication timeouts
-	tnet.DialTimeout = 20 * time.Second          // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
-	tcp.DefaultConnectTimeout = tnet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
-	tnet.PushTimeout = 30 * time.Second
-	tnet.PullTimeout = 2 * time.Minute
-
-	// event bus input buffer
-	tnet.EventBusCapacity = 3
-
-	// exchange edges
-	tnet.MaxThreadsExchanged = 10
-	tnet.ExchangeCompressionTimeout = 20 * time.Second
-	tnet.QueuePollInterval = 1 * time.Second
-
-	// thread packer queue
-	tq.InBufSize = 5
-	tq.OutBufSize = 2
 
 	/* logs */
 
