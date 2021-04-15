@@ -41,6 +41,7 @@ type Doc interface {
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
+	ObjectScopedDetails() *types.Struct
 	Details() *types.Struct
 	ExtraRelations() []*pbrelation.Relation
 
@@ -210,6 +211,19 @@ func (s *State) IsParentOf(parentId string, childId string) bool {
 	}
 
 	return false
+}
+
+func (s *State) HasParent(id, parentId string) bool {
+	for {
+		parent := s.PickParentOf(id)
+		if parent == nil {
+			return false
+		}
+		if parent.Model().Id == parentId {
+			return true
+		}
+		id = parent.Model().Id
+	}
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {

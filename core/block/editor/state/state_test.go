@@ -157,3 +157,21 @@ func TestState_IsChild(t *testing.T) {
 	assert.False(t, s.IsChild("root", "root"))
 	assert.False(t, s.IsChild("3", "2"))
 }
+
+func TestState_HasParent(t *testing.T) {
+	s := NewDoc("root", map[string]simple.Block{
+		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"1", "2"}}),
+		"1":    base.NewBase(&model.Block{Id: "1"}),
+		"2":    base.NewBase(&model.Block{Id: "2", ChildrenIds: []string{"3"}}),
+		"3":    base.NewBase(&model.Block{Id: "3"}),
+	}).NewState()
+	t.Run("not parent", func(t *testing.T) {
+		assert.False(t, s.HasParent("1", "2"))
+		assert.False(t, s.HasParent("1", ""))
+	})
+	t.Run("parent", func(t *testing.T) {
+		assert.True(t, s.HasParent("3", "2"))
+		assert.True(t, s.HasParent("3", "root"))
+		assert.True(t, s.HasParent("2", "root"))
+	})
+}

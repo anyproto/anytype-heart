@@ -98,6 +98,10 @@ func (v *bundledRelation) FindFirstChange(ctx context.Context) (c *change.Change
 	return nil, change.ErrEmpty
 }
 
+func (v *bundledRelation) ListIds() ([]string, error) {
+	return bundle.ListRelationsUrls(), nil
+}
+
 func (v *bundledRelation) Close() (err error) {
 	return
 }

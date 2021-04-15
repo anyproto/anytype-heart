@@ -43,6 +43,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 		template.WithRootLink(p.Anytype().PredefinedBlocks().Archive, model.BlockContentLink_Archive),
 		template.WithRootLink(p.Anytype().PredefinedBlocks().SetPages, model.BlockContentLink_Dataview),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
+		template.WithRequiredRelations(),
 	); err != nil {
 		return
 	}

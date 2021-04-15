@@ -60,6 +60,11 @@ func (v *virtual) FindFirstChange(ctx context.Context) (c *change.Change, err er
 	return nil, change.ErrEmpty
 }
 
+func (v *virtual) ListIds() ([]string, error) {
+	// not supported
+	return nil, nil
+}
+
 func (v *virtual) Close() (err error) {
 	return
 }

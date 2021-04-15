@@ -175,8 +175,9 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 	p.s.Add(secondBlock)
 	targetId := selText.Model().Id
+	isPasteToHeader := targetId == template.TitleBlockId || targetId == template.DescriptionBlockId
 	pos := model.Block_Bottom
-	if targetId == template.TitleBlockId {
+	if isPasteToHeader {
 		targetId = template.HeaderLayoutId
 	}
 	if err = p.s.InsertTo(targetId, pos, secondBlock.Model().Id); err != nil {
@@ -185,7 +186,7 @@ func (p *pasteCtrl) singleRange() (err error) {
 	if secondBlock.Model().GetText().Text == "" {
 		p.s.Unlink(secondBlock.Model().Id)
 	}
-	if selText.Model().Id == template.TitleBlockId && selText.GetText() == "" {
+	if isPasteToHeader && selText.GetText() == "" {
 		firstPasteText := p.getFirstPasteText()
 		if firstPasteText != nil {
 			selText.SetText(firstPasteText.GetText(), nil)
@@ -254,7 +255,7 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	)
 	if len(p.selIds) > 0 {
 		targetId = p.selIds[0]
-		if targetId == template.TitleBlockId {
+		if targetId == template.TitleBlockId || targetId == template.DescriptionBlockId {
 			targetId = template.HeaderLayoutId
 		}
 		targetPos = model.Block_Bottom

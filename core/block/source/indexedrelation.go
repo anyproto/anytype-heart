@@ -101,6 +101,10 @@ func (v *indexedRelation) FindFirstChange(ctx context.Context) (c *change.Change
 	return nil, change.ErrEmpty
 }
 
+func (v *indexedRelation) ListIds() ([]string, error) {
+	return v.Anytype().ObjectStore().ListRelationsKeys()
+}
+
 func (v *indexedRelation) Close() (err error) {
 	return
 }

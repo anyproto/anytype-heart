@@ -6,6 +6,8 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
+const RelationChecksum = "2bfe0f7104f28c76b3a68af63543ffc8d2e07ac6cdcf4a450e1f9356ba6268aa"
+
 type RelationKey string
 
 func (rk RelationKey) String() string {

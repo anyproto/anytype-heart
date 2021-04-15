@@ -30,6 +30,7 @@ const (
 	SmartBlockTypeBundledRelation     = SmartBlockType(pb.SmartBlockType_BundledRelation)
 	SmartBlockTypeIndexedRelation     = SmartBlockType(pb.SmartBlockType_IndexedRelation)
 	SmartBlockTypeBundledObjectType   = SmartBlockType(pb.SmartBlockType_BundledObjectType)
+	SmartBlockTypeAnytypeProfile      = SmartBlockType(pb.SmartBlockType_AnytypeProfile)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -84,6 +85,14 @@ func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
 		panic(err)
 	}
 	return t
+}
+
+func (sbt SmartBlockType) IsValid() bool {
+	_, err := sbt.toProto()
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func (sbt SmartBlockType) toProto() (model.ObjectInfoType, error) {

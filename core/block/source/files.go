@@ -114,6 +114,10 @@ func (v *files) FindFirstChange(ctx context.Context) (c *change.Change, err erro
 	return nil, change.ErrEmpty
 }
 
+func (v *files) ListIds() ([]string, error) {
+	return v.a.FileStore().ListTargets()
+}
+
 func (v *files) Close() (err error) {
 	return
 }

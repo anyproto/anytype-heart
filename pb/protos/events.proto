@@ -746,6 +746,7 @@ enum SmartBlockType {
     BundledRelation = 0x200;
     IndexedRelation = 0x201;
     BundledObjectType = 0x202;
+    AnytypeProfile = 0x203;
 }
 
 message ResponseEvent {

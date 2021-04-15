@@ -814,6 +814,7 @@
     - [ObjectInfoWithOutboundLinksIDs](#anytype.model.ObjectInfoWithOutboundLinksIDs)
     - [ObjectLinks](#anytype.model.ObjectLinks)
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
+    - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
     - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
   
@@ -832,6 +833,7 @@
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
+    - [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
@@ -12452,6 +12454,7 @@ Precondition: user A and user B opened the same block
 | BundledRelation | 512 |  |
 | IndexedRelation | 513 |  |
 | BundledObjectType | 514 |  |
+| AnytypeProfile | 515 |  |
 
 
  
@@ -12587,6 +12590,27 @@ Precondition: user A and user B opened the same block
 
 
 
+
+<a name="anytype.model.ObjectStoreChecksums"></a>
+
+### ObjectStoreChecksums
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bundledObjectTypes | [string](#string) |  |  |
+| bundledRelations | [string](#string) |  |  |
+| bundledLayouts | [string](#string) |  |  |
+| objectsForceReindexCounter | [int32](#int32) |  | increased in order to trigger all objects reindex |
+| filesForceReindexCounter | [int32](#int32) |  | increased in order to fully reindex all objects |
+| idxRebuildCounter | [int32](#int32) |  | increased in order to remove indexes and reindex everything. Automatically triggers objects and files reindex(one time only) |
+| fulltextRebuild | [int32](#int32) |  | increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
+
+
+
+
+
  
 
 
@@ -12679,6 +12703,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype.model.Block.Content.Relation) |  |  |
+| featuredRelations | [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations) |  |  |
 
 
 
@@ -12817,6 +12842,16 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | style | [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.FeaturedRelations"></a>
+
+### Block.Content.FeaturedRelations
+
 
 
 
@@ -13268,6 +13303,7 @@ deprecated
 | Marked | 9 |  |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
+| Description | 12 |  |
 
 
 

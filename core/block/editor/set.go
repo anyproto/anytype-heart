@@ -49,7 +49,12 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		return err
 	}
 
-	templates := []template.StateTransformer{template.WithTitle, template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
+	templates := []template.StateTransformer{
+		template.WithTitle,
+		template.WithDescription,
+		template.WithFeaturedRelations,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
+	}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
@@ -96,5 +101,6 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
 		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent, false),
+		template.WithRequiredRelations(),
 	)
 }

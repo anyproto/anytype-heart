@@ -49,9 +49,9 @@ var migrations = []migration{
 	skipMigration,                     // 8
 	skipMigration,                     // 9
 	skipMigration,                     // 10
-	addMissingLayout,                  // 11
-	addFilesToObjects,                 // 12
-	removeBundleRelationsFromDs,       // 13
+	skipMigration,                 	   // 11
+	skipMigration,                     // 12
+	skipMigration,      			   // 13
 	skipMigration,                     // 14
 	skipMigration,                     // 15
 	skipMigration,                     // 16
@@ -62,8 +62,8 @@ var migrations = []migration{
 	skipMigration,                     // 21
 	skipMigration,                     // 22
 	skipMigration,                     // 23
-	reindexAll,                        // 24
-	removeIncorrectlyIndexedRelations, // 25
+	skipMigration,                     // 24
+	skipMigration, 					   // 25
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
