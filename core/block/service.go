@@ -459,16 +459,22 @@ func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, det
 }
 
 func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
-	typesInDetails := pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
-	if len(typesInDetails) == 0 {
+	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
+	if objectTypes == nil {
+		objectTypes = createState.ObjectTypes()
+		if objectTypes == nil {
+			objectTypes = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
+		}
+	}
+	if len(objectTypes) == 0 {
 		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
-			typesInDetails = []string{ot.URL()}
+			objectTypes = []string{ot.URL()}
 		} else {
-			typesInDetails = []string{bundle.TypeKeyPage.URL()}
+			objectTypes = []string{bundle.TypeKeyPage.URL()}
 		}
 	}
 
-	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), typesInDetails[0])
+	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
 	if err != nil {
 		return "", nil, fmt.Errorf("object type not found")
 	}
@@ -476,12 +482,14 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	if details != nil && details.Fields != nil {
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
-			if !createState.HasRelation(k) {
+			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
 				rel := pbtypes.GetRelation(objType.Relations, k)
 				if rel == nil {
 					return "", nil, fmt.Errorf("relation for detail %s not found", k)
 				}
-				createState.AddRelation(rel)
+				relCopy := pbtypes.CopyRelation(rel)
+				relCopy.Scope = pbrelation.Relation_object
+				relations = append(relations, relCopy)
 			}
 		}
 	}
@@ -495,7 +503,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	createState.SetRootId(id)
 	initCtx := &smartblock.InitContext{
 		State:          createState,
-		ObjectTypeUrls: typesInDetails,
+		ObjectTypeUrls: objectTypes,
 		Relations:      relations,
 	}
 	var sb smartblock.SmartBlock
