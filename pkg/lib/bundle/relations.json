@@ -68,7 +68,7 @@
     "source": "details"
   },
   {
-    "format": "object",
+    "format": "file",
     "hidden": false,
     "key": "thumbnailImage",
     "maxCount": 0,
@@ -80,7 +80,7 @@
     "source": "details"
   },
   {
-    "format": "object",
+    "format": "file",
     "hidden": false,
     "key": "attachments",
     "maxCount": 0,
@@ -108,7 +108,7 @@
   },
   {
     "description": "Image icon",
-    "format": "object",
+    "format": "file",
     "hidden": true,
     "key": "iconImage",
     "maxCount": 1,
@@ -338,6 +338,15 @@
     "source": "details"
   },
   {
+    "format": "shorttext",
+    "hidden": true,
+    "key": "builtinTemplateId",
+    "maxCount": 1,
+    "name": "Builtin template",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Date when the file were added into the anytype",
     "format": "date",
     "hidden": false,
@@ -373,7 +382,7 @@
     "description": "Type that is used for templating",
     "format": "object",
     "hidden": true,
-    "key": "templateType",
+    "key": "targetObjectType",
     "maxCount": 1,
     "name": "Template's Type",
     "objectTypes": [
@@ -623,16 +632,6 @@
     "objectTypes": [
       "relation"
     ],
-    "readonly": false,
-    "source": "details"
-  },
-  {
-    "description": "Contains original id of builtin template",
-    "format": "shorttext",
-    "hidden": true,
-    "key": "builtinTemplateId",
-    "maxCount": 1,
-    "name": "Builtin template",
     "readonly": false,
     "source": "details"
   }

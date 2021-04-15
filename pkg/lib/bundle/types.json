@@ -286,7 +286,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "templateType"
+      "targetObjectType",
+      "builtinTemplateId"
     ]
   },
   {
