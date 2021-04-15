@@ -67,15 +67,17 @@ func (c *filePinService) Name() (name string) {
 }
 
 func (f *filePinService) Init(a *app.App) error {
-	//repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
-	// todo: add cafe client
-	// todo: add localstore
+	f.cafe = a.MustComponent(cafe.CName).(cafe.Client)
+	f.store = a.MustComponent(filestore.CName).(filestore.FileStore)
+
 	return nil
 }
 
 func (f *filePinService) Run() error {
 	if f.cafe != nil {
 		go f.syncCafe()
+	} else {
+		log.Warnf("cafe file pinning is disabled")
 	}
 
 	return nil
