@@ -203,11 +203,11 @@ var WithAlignedTitle = func(align model.BlockAlign) StateTransformer {
 	return StateTransformer(func(s *state.State) {
 		WithHeader(s)
 
-		if s.Exists(TitleBlockId) {
+		if s.Exists(TitleBlockId) && s.Get(TitleBlockId).Model().Align == align {
 			return
 		}
 
-		s.Add(simple.New(&model.Block{
+		s.Set(simple.New(&model.Block{
 			Id: TitleBlockId,
 			Restrictions: &model.BlockRestrictions{
 				Remove: true,
@@ -235,11 +235,11 @@ var WithAlignedDescription = func(align model.BlockAlign) StateTransformer {
 	return func(s *state.State) {
 		WithHeader(s)
 
-		if s.Exists(DescriptionBlockId) {
+		if s.Exists(DescriptionBlockId) && s.Get(DescriptionBlockId).Model().Align == align {
 			return
 		}
 
-		s.Add(simple.New(&model.Block{
+		s.Set(simple.New(&model.Block{
 			Id: DescriptionBlockId,
 			Restrictions: &model.BlockRestrictions{
 				Remove: true,
@@ -267,11 +267,11 @@ var WithAlignedFeaturedRelations = func(align model.BlockAlign) StateTransformer
 	return func(s *state.State) {
 		WithHeader(s)
 
-		if s.Exists(FeaturedRelationsId) {
+		if s.Exists(FeaturedRelationsId) && s.Get(FeaturedRelationsId).Model().Align == align {
 			return
 		}
 
-		s.Add(simple.New(&model.Block{
+		s.Set(simple.New(&model.Block{
 			Id: FeaturedRelationsId,
 			Restrictions: &model.BlockRestrictions{
 				Remove: true,
