@@ -244,7 +244,15 @@ func (i *indexer) reindexIfNeeded() error {
 		}
 	}
 	if reindexThreadObjects {
-		ids, err := getIdsForTypes(smartblock.SmartBlockTypePage)
+		ids, err := getIdsForTypes(
+			smartblock.SmartBlockTypePage,
+			smartblock.SmartBlockTypeSet,
+			smartblock.SmartBlockTypeObjectType,
+			smartblock.SmartBlockTypeProfilePage,
+			smartblock.SmartBlockTypeArchive,
+			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeTemplate,
+		)
 		if err != nil {
 			return err
 		}
