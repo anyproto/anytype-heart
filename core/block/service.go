@@ -535,7 +535,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 
 	if req.ContextId == "" && req.TargetId == "" {
 		// do not create a link
-		return "", pageId, nil
+		return "", pageId, err
 	}
 
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
