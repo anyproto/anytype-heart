@@ -126,7 +126,6 @@ func newFixture(t *testing.T) *fixture {
 	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
-	fx.objectStore.EXPECT().GetChecksums().Times(1)
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{
@@ -143,8 +142,9 @@ func newFixture(t *testing.T) *fixture {
 
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
-
-	ta.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(rootPath, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(fx.rb).With(fx.Indexer).With(fx.getSerach)
+	cfg := config.DefaultConfig
+	cfg.NewAccount = true
+	ta.With(&cfg).With(wallet.NewWithRepoPathAndKeys(rootPath, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(fx.rb).With(fx.Indexer).With(fx.getSerach)
 	require.NoError(t, ta.Start())
 	return fx
 }

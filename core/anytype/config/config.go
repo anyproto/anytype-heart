@@ -24,10 +24,11 @@ const (
 )
 
 type Config struct {
-	NewAccount      bool // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
-	Offline         bool
-	CafeAPIInsecure bool
-	CafeAPIHost     string
+	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
+	Offline                  bool
+	CafeAPIInsecure          bool
+	CafeAPIHost              string
+	DisableThreadsSyncEvents bool
 
 	HostAddr             string
 	PrivateNetworkSecret string
@@ -121,7 +122,7 @@ func (cfg *Config) initFromFileAndEnv(repoPath string) error {
 		}
 	}
 
-	err = envconfig.Process("ANYTYPE", &cfg)
+	err = envconfig.Process("ANYTYPE", cfg)
 
 	return nil
 }

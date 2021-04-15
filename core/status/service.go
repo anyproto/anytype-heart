@@ -1,6 +1,7 @@
 package status
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"sort"
 	"sync"
@@ -74,7 +75,7 @@ type service struct {
 	connMap map[string]bool
 
 	tsTrigger *queue.BulkQueue
-	emitter   func(event *pb.Event)
+	emitter   func(event *pb.Event) // may be nil in case events sending is disabled
 	mu        sync.Mutex
 }
 
@@ -93,7 +94,10 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ts = a.MustComponent(threads.CName).(threads.Service)
 	s.fInfo = a.MustComponent(pin.CName).(pin.FilePinService)
 	s.profile = anytype
-	s.emitter = a.MustComponent(event.CName).(event.Sender).Send
+	disableEvents := a.MustComponent(config.CName).(*config.Config).DisableThreadsSyncEvents
+	if !disableEvents {
+		s.emitter = a.MustComponent(event.CName).(event.Sender).Send
+	}
 	s.ownDeviceID = anytype.Device()
 
 	var (
@@ -473,6 +477,9 @@ func (s *service) constructEvent(ts *threadStatus, profile core.Profile) pb.Even
 }
 
 func (s *service) sendEvent(ctx string, event pb.IsEventMessageValue) {
+	if s.emitter == nil {
+		return
+	}
 	s.emitter(&pb.Event{
 		Messages:  []*pb.EventMessage{{Value: event}},
 		ContextId: ctx,
