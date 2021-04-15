@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 
-const TypeChecksum = "6d2ae1ce1ab03885c079ba4fda6046ceea3ae353ddd48cf24ee9f747c2047ad3"
+const TypeChecksum = "5a33aa3eac0e34106a995a0f087dc18e9cb324cd53518cc4a3a851477dab0069"
 
 type TypeKey string
 
@@ -130,7 +130,7 @@ var (
 			Description: "Base type to start with",
 			IconEmoji:   "📄",
 			Layout:      relation.ObjectType_basic,
-			Name:        "Draft",
+			Name:        "Page",
 			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived]},
 			Url:         TypePrefix + "page",
 		},

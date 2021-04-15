@@ -327,7 +327,7 @@
     "emoji": "📄",
     "id": "page",
     "layout": "basic",
-    "name": "Draft",
+    "name": "Page",
     "relations": [
       "id",
       "name",
