@@ -2,7 +2,6 @@ package restriction
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -20,9 +19,10 @@ var (
 	}
 
 	objectRestrictionsByPbType = map[pb.SmartBlockType]ObjectRestrictions{
-		pb.SmartBlockType_Breadcrumbs: objRestrictEdit,
-		pb.SmartBlockType_ProfilePage: {},
-		pb.SmartBlockType_Page:        {},
+		pb.SmartBlockType_Breadcrumbs:    objRestrictEdit,
+		pb.SmartBlockType_ProfilePage:    {},
+		pb.SmartBlockType_AnytypeProfile: objRestrictAll,
+		pb.SmartBlockType_Page:           {},
 		pb.SmartBlockType_Home: {
 			model.ObjectRestriction_Header,
 			model.ObjectRestriction_Relation,
@@ -33,13 +33,10 @@ var (
 		pb.SmartBlockType_MarketplaceType:     objRestrictAll,
 		pb.SmartBlockType_Archive:             objRestrictAll,
 		pb.SmartBlockType_Set:                 {model.ObjectRestriction_CreateBlock},
-	}
-
-	objectRestrictionsBySbType = map[smartblock.SmartBlockType]ObjectRestrictions{
-		smartblock.SmartBlockTypeBundledRelation:   objRestrictAll,
-		smartblock.SmartBlockTypeIndexedRelation:   objRestrictAll,
-		smartblock.SmartBlockTypeBundledObjectType: objRestrictAll,
-		smartblock.SmartBlockTypeObjectType:        objRestrictEdit,
+		pb.SmartBlockType_BundledRelation:     objRestrictAll,
+		pb.SmartBlockType_IndexedRelation:     objRestrictAll,
+		pb.SmartBlockType_BundledObjectType:   objRestrictAll,
+		pb.SmartBlockType_ObjectType:          objRestrictEdit,
 	}
 )
 
@@ -60,12 +57,6 @@ func (s *service) ObjectRestrictionsById(obj Object) (r ObjectRestrictions) {
 	var ok bool
 	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {
 		return
-	}
-	smType, err := smartblock.SmartBlockTypeFromID(obj.Id())
-	if err == nil {
-		if r, ok = objectRestrictionsBySbType[smType]; ok {
-			return
-		}
 	}
 	log.Warnf("restrctions not found for object: id='%s' type='%v'", obj.Id(), obj.Type())
 	return objRestrictAll
