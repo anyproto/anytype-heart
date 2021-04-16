@@ -49,9 +49,9 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	return template.ApplyTemplate(p, ctx.State,
-		template.WithAlignedTitle(model.Block_AlignCenter),
-		//template.WithAlignedDescription(model.Block_AlignCenter),
-		template.WithAlignedFeaturedRelations(model.Block_AlignCenter),
+		template.WithAlignedTitle(model.Block_AlignCenter, true),
+		// template.WithAlignedDescription(model.Block_AlignCenter, true),
+		template.WithAlignedFeaturedRelations(model.Block_AlignCenter, true),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
 		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 		template.WithRequiredRelations(),
