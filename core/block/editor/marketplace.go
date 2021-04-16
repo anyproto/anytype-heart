@@ -32,7 +32,7 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 	ot := bundle.TypeKeyObjectType.URL()
 	templates := []template.StateTransformer{
 		template.WithTitle,
-		template.WithDescription,
+		//template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot})),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}

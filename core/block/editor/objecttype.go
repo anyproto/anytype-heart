@@ -94,7 +94,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	return template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
-		template.WithDescription,
+		//template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithDataview(dataview, true),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
