@@ -49,11 +49,13 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 		if id == "one" {
 			return nil
 		} else {
+			// should be still removed from the queue
 			return fmt.Errorf("test err")
 		}
 	}))
 	assert.Equal(t, 2, count)
 	count = 0
+	require.NoError(t, ds.AddToIndexQueue("two"))
 	require.NoError(t, ds.IndexForEach(func(id string, tm time.Time) error {
 		assert.Equal(t, "two", id)
 		assert.NotEmpty(t, tm)
