@@ -368,9 +368,10 @@ func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context,
 	}
 
 	addReplicatorAnPullAfter := func(thrd thread.Info) {
+		var err error
 		if s.replicatorAddr != nil {
 			// if thread doesn't yet have s replicatorAddr this function will continuously try to add it in the background
-			err = s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
+			err := s.addReplicatorWithAttempts(s.ctx, thrd, s.replicatorAddr, 0)
 			if err != nil {
 				log.Errorf("existing thread failed to add replicatorAddr: %v", err)
 				return
