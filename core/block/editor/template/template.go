@@ -212,7 +212,8 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		}
 	}
 
-	if s.Exists(TitleBlockId) && (s.Get(TitleBlockId).Model().Align == align) {
+	blockExists := s.Exists(TitleBlockId)
+	if blockExists && (s.Get(TitleBlockId).Model().Align == align) {
 		return
 	}
 
@@ -232,11 +233,9 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		Align: align,
 	}))
 
-	b := s.Get(HeaderLayoutId)
-	if slice.FindPos(b.Model().ChildrenIds, TitleBlockId) != -1 {
+	if blockExists {
 		return
 	}
-
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
 		log.Errorf("template WithTitle failed to insert: %w", err)
 	}
@@ -253,7 +252,8 @@ var WithDescription = StateTransformer(func(s *state.State) {
 		}
 	}
 
-	if s.Exists(DescriptionBlockId) && (s.Get(DescriptionBlockId).Model().Align == align) {
+	blockExists := s.Exists(DescriptionBlockId)
+	if blockExists && (s.Get(DescriptionBlockId).Model().Align == align) {
 		return
 	}
 
@@ -273,8 +273,7 @@ var WithDescription = StateTransformer(func(s *state.State) {
 		Align: align,
 	}))
 
-	b := s.Get(HeaderLayoutId)
-	if slice.FindPos(b.Model().ChildrenIds, DescriptionBlockId) != -1 {
+	if blockExists {
 		return
 	}
 
@@ -294,7 +293,8 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 		}
 	}
 
-	if s.Exists(FeaturedRelationsId) && (s.Get(FeaturedRelationsId).Model().Align == align) {
+	blockExists := s.Exists(FeaturedRelationsId)
+	if blockExists && (s.Get(FeaturedRelationsId).Model().Align == align) {
 		return
 	}
 
@@ -310,8 +310,7 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 		Align:   align,
 	}))
 
-	b := s.Get(HeaderLayoutId)
-	if slice.FindPos(b.Model().ChildrenIds, FeaturedRelationsId) != -1 {
+	if blockExists {
 		return
 	}
 
