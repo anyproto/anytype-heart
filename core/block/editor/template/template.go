@@ -199,97 +199,125 @@ var WithHeader = StateTransformer(func(s *state.State) {
 	root.Model().ChildrenIds = append([]string{HeaderLayoutId}, root.Model().ChildrenIds...)
 })
 
-var WithAlignedTitle = func(align model.BlockAlign) StateTransformer {
-	return StateTransformer(func(s *state.State) {
-		WithHeader(s)
+var WithTitle = StateTransformer(func(s *state.State) {
+	WithHeader(s)
 
-		if s.Exists(TitleBlockId) && s.Get(TitleBlockId).Model().Align == align {
-			return
-		}
-
-		s.Set(simple.New(&model.Block{
-			Id: TitleBlockId,
-			Restrictions: &model.BlockRestrictions{
-				Remove: true,
-				Drag:   true,
-				DropOn: true,
-			},
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Title}},
-			Fields: &types.Struct{
-				Fields: map[string]*types.Value{
-					text.DetailsKeyFieldName: pbtypes.String("name"),
-				},
-			},
-			Align: align,
-		}))
-
-		if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
-			log.Errorf("template WithTitle failed to insert: %w", err)
-		}
-	})
-}
-
-var WithTitle = WithAlignedTitle(model.Block_AlignLeft)
-
-var WithAlignedDescription = func(align model.BlockAlign) StateTransformer {
-	return func(s *state.State) {
-		WithHeader(s)
-
-		if s.Exists(DescriptionBlockId) && s.Get(DescriptionBlockId).Model().Align == align {
-			return
-		}
-
-		s.Set(simple.New(&model.Block{
-			Id: DescriptionBlockId,
-			Restrictions: &model.BlockRestrictions{
-				Remove: true,
-				Drag:   true,
-				DropOn: true,
-			},
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Description}},
-			Fields: &types.Struct{
-				Fields: map[string]*types.Value{
-					text.DetailsKeyFieldName: pbtypes.String("description"),
-				},
-			},
-			Align: align,
-		}))
-
-		if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, DescriptionBlockId); err != nil {
-			log.Errorf("template WithDescription failed to insert: %w", err)
+	var (
+		align model.BlockAlign
+	)
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int32(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
 		}
 	}
-}
 
-var WithDescription = WithAlignedDescription(model.Block_AlignLeft)
+	blockExists := s.Exists(TitleBlockId)
+	if blockExists && (s.Get(TitleBlockId).Model().Align == align) {
+		return
+	}
 
-var WithAlignedFeaturedRelations = func(align model.BlockAlign) StateTransformer {
-	return func(s *state.State) {
-		WithHeader(s)
-
-		if s.Exists(FeaturedRelationsId) && s.Get(FeaturedRelationsId).Model().Align == align {
-			return
-		}
-
-		s.Set(simple.New(&model.Block{
-			Id: FeaturedRelationsId,
-			Restrictions: &model.BlockRestrictions{
-				Remove: true,
-				Drag:   true,
-				DropOn: true,
-				Edit:   false,
+	s.Set(simple.New(&model.Block{
+		Id: TitleBlockId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Title}},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.String("name"),
 			},
-			Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
-			Align:   align,
-		}))
+		},
+		Align: align,
+	}))
 
-		if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, FeaturedRelationsId); err != nil {
-			log.Errorf("template FeaturedRelations failed to insert: %w", err)
+	if blockExists {
+		return
+	}
+	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
+		log.Errorf("template WithTitle failed to insert: %w", err)
+	}
+})
+
+var WithDescription = StateTransformer(func(s *state.State) {
+	WithHeader(s)
+
+	var align model.BlockAlign
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
 		}
 	}
-}
 
-var WithFeaturedRelations = WithAlignedFeaturedRelations(model.Block_AlignLeft)
+	blockExists := s.Exists(DescriptionBlockId)
+	if blockExists && (s.Get(DescriptionBlockId).Model().Align == align) {
+		return
+	}
+
+	s.Set(simple.New(&model.Block{
+		Id: DescriptionBlockId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Description}},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.String("description"),
+			},
+		},
+		Align: align,
+	}))
+
+	if blockExists {
+		return
+	}
+
+	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, DescriptionBlockId); err != nil {
+		log.Errorf("template WithDescription failed to insert: %w", err)
+	}
+})
+
+var WithFeaturedRelations = StateTransformer(func(s *state.State) {
+	WithHeader(s)
+
+	var align model.BlockAlign
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
+		}
+	}
+
+	blockExists := s.Exists(FeaturedRelationsId)
+	if blockExists && (s.Get(FeaturedRelationsId).Model().Align == align) {
+		return
+	}
+
+	s.Set(simple.New(&model.Block{
+		Id: FeaturedRelationsId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+			Edit:   false,
+		},
+		Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+		Align:   align,
+	}))
+
+	if blockExists {
+		return
+	}
+
+	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, FeaturedRelationsId); err != nil {
+		log.Errorf("template FeaturedRelations failed to insert: %w", err)
+	}
+})
 
 var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
