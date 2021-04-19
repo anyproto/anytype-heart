@@ -3,6 +3,7 @@ package block
 import (
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"sync"
 	"time"
 
@@ -259,7 +260,9 @@ func (s *service) initPredefinedBlocks() {
 	for _, id := range ids {
 		sb, err := s.newSmartBlock(id, &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)})
 		if err != nil {
-			log.Errorf("can't init predefined block: %v", err)
+			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
+				log.Errorf("can't init predefined block: %v", err)
+			}
 		} else {
 			sb.Close()
 		}
@@ -459,6 +462,41 @@ func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, det
 }
 
 func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
+	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
+	if objectTypes == nil {
+		objectTypes = createState.ObjectTypes()
+		if objectTypes == nil {
+			objectTypes = pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
+		}
+	}
+	if len(objectTypes) == 0 {
+		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
+			objectTypes = []string{ot.URL()}
+		} else {
+			objectTypes = []string{bundle.TypeKeyPage.URL()}
+		}
+	}
+
+	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
+	if err != nil {
+		return "", nil, fmt.Errorf("object type not found")
+	}
+
+	if details != nil && details.Fields != nil {
+		for k, v := range details.Fields {
+			createState.SetDetail(k, v)
+			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
+				rel := pbtypes.GetRelation(objType.Relations, k)
+				if rel == nil {
+					return "", nil, fmt.Errorf("relation for detail %s not found", k)
+				}
+				relCopy := pbtypes.CopyRelation(rel)
+				relCopy.Scope = pbrelation.Relation_object
+				relations = append(relations, relCopy)
+			}
+		}
+	}
+
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -466,23 +504,9 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	}
 	id = csm.ID()
 	createState.SetRootId(id)
-	if details != nil && details.Fields != nil {
-		for k, v := range details.Fields {
-			createState.SetDetail(k, v)
-		}
-	}
-	typesInDetails := pbtypes.GetStringList(createState.Details(), bundle.RelationKeyType.String())
-	if len(typesInDetails) == 0 {
-		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
-			typesInDetails = []string{ot.URL()}
-		} else {
-			typesInDetails = []string{bundle.TypeKeyPage.URL()}
-		}
-	}
-
 	initCtx := &smartblock.InitContext{
 		State:          createState,
-		ObjectTypeUrls: typesInDetails,
+		ObjectTypeUrls: objectTypes,
 		Relations:      relations,
 	}
 	var sb smartblock.SmartBlock
@@ -490,7 +514,6 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		return id, nil, err
 	}
 	defer sb.Close()
-	log.Errorf("created new smartBlock: %v, objectType: %v", id, sb.ObjectTypes())
 	return id, sb.Details(), nil
 }
 
@@ -515,7 +538,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 
 	if req.ContextId == "" && req.TargetId == "" {
 		// do not create a link
-		return "", pageId, nil
+		return "", pageId, err
 	}
 
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
@@ -822,7 +845,7 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 	}); err != nil {
 		return
 	}
-	st.SetDetail("targetObjectType", pbtypes.String(st.ObjectType()))
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
 	st.SetObjectType(bundle.TypeKeyTemplate.URL())
 	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {

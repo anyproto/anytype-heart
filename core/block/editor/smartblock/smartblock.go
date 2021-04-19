@@ -32,7 +32,8 @@ import (
 type ApplyFlag int
 
 var (
-	ErrSimpleBlockNotFound = errors.New("simple block not found")
+	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
+	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
 )
 
 const (
@@ -176,7 +177,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State = sb.NewState()
 	} else {
 		if !sb.Doc.(*state.State).IsEmpty() {
-			return fmt.Errorf("can't init existing smartblock with non-empty state")
+			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}

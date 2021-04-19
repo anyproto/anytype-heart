@@ -9,8 +9,10 @@ import (
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-tcp-transport"
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	threadsNet "github.com/textileio/go-threads/net"
+	threadsQueue "github.com/textileio/go-threads/net/queue"
 	"sync"
 	"time"
 
@@ -74,6 +76,30 @@ type service struct {
 }
 
 func New() Service {
+	/* adjust ThreadsDB parameters */
+
+	// thread pulling cycle
+	threadsNet.PullStartAfter = 5 * time.Second
+	threadsNet.InitialPullInterval = 20 * time.Second
+	threadsNet.PullInterval = 3 * time.Minute
+
+	// communication timeouts
+	threadsNet.DialTimeout = 20 * time.Second          // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
+	tcp.DefaultConnectTimeout = threadsNet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
+	threadsNet.PushTimeout = 30 * time.Second
+	threadsNet.PullTimeout = 2 * time.Minute
+
+	// event bus input buffer
+	threadsNet.EventBusCapacity = 3
+
+	// exchange edges
+	threadsNet.MaxThreadsExchanged = 10
+	threadsNet.ExchangeCompressionTimeout = 20 * time.Second
+	threadsNet.QueuePollInterval = 1 * time.Second
+
+	// thread packer queue
+	threadsQueue.InBufSize = 5
+	threadsQueue.OutBufSize = 2
 	ctx, cancel := context.WithCancel(context.Background())
 	limiter := make(chan struct{}, simultaneousRequests)
 	for i := 0; i < cap(limiter); i++ {
@@ -246,8 +272,6 @@ type Service interface {
 	CafePeer() ma.Multiaddr
 
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
-	ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error)
-
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
@@ -391,26 +415,4 @@ func (s *service) DeleteThread(id string) error {
 		log.With("thread", id).Error("DeleteThread failed to remove thread from collection: %s", err.Error())
 	}
 	return nil
-}
-
-func (s *service) ListThreadIdsByType(blockType smartblock.SmartBlockType) ([]thread.ID, error) {
-	threads, err := s.logstore.Threads()
-	if err != nil {
-		return nil, err
-	}
-
-	var filtered []thread.ID
-	for _, thrdId := range threads {
-		t, err := smartblock.SmartBlockTypeFromThreadID(thrdId)
-		if err != nil {
-			log.Errorf("smartblock has incorrect id(%s), failed to decode type: %v", thrdId.String(), err)
-			continue
-		}
-
-		if t == blockType {
-			filtered = append(filtered, thrdId)
-		}
-	}
-
-	return filtered, nil
 }

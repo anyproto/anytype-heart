@@ -1319,8 +1319,22 @@ func (m *dsObjectStore) AddToIndexQueue(id string) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) error {
+func (m *dsObjectStore) removeFromIndexQueue(id string) error {
 	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Delete(indexQueueBase.ChildString(id)); err != nil {
+		return fmt.Errorf("failed to remove id from full text index queue: %s", err.Error())
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) error {
+	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
@@ -1329,15 +1343,21 @@ func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) erro
 	if err != nil {
 		return fmt.Errorf("error query txn in datastore: %w", err)
 	}
-	var idsToRemove []string
 	for entry := range res.Next() {
 		id := extractIdFromKey(entry.Key)
 		ts, _ := binary.Varint(entry.Value)
-		if indexErr := f(id, time.Unix(ts, 0)); indexErr != nil {
-			log.Warnf("can't index '%s': %v", id, indexErr)
-			continue
+		indexErr := f(id, time.Unix(ts, 0))
+		if indexErr != nil {
+			log.Warnf("can't index '%s'(ts %d): %v", id, ts, indexErr)
+			// in case indexation is has failed it's better to remove this document from the index
+			// so we will not stuck with this object forever
 		}
-		idsToRemove = append(idsToRemove, id)
+
+		err = m.removeFromIndexQueue(id)
+		if err != nil {
+			// if we have the error here we have nothing to do but retry later
+			log.Errorf("failed to remove %s(ts %d) from index, will redo the fulltext index: %v", id, ts, err)
+		}
 	}
 
 	err = res.Close()
@@ -1345,13 +1365,7 @@ func (m *dsObjectStore) IndexForEach(f func(id string, tm time.Time) error) erro
 		return err
 	}
 
-	for _, id := range idsToRemove {
-		if err := txn.Delete(indexQueueBase.ChildString(id)); err != nil {
-			log.Error("failed to remove id from full text index queue: %s", err.Error())
-		}
-	}
-
-	return txn.Commit()
+	return nil
 }
 
 func (m *dsObjectStore) ListIds() ([]string, error) {

@@ -752,9 +752,9 @@ func TestCustomType(t *testing.T) {
 	time.Sleep(time.Millisecond * 200)
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
-	lastObjType := respObjectTypeList.ObjectTypes[len(respObjectTypeList.ObjectTypes)-1]
-	require.Equal(t, respObjectTypeCreate.ObjectType.Url, lastObjType.Url)
-	require.Len(t, lastObjType.Relations, len(bundle.RequiredInternalRelations)+3)
+	ot := pbtypes.GetObjectType(respObjectTypeList.ObjectTypes, respObjectTypeCreate.ObjectType.Url)
+	require.NotNil(t, ot)
+	require.Len(t, ot.Relations, len(bundle.RequiredInternalRelations)+3)
 
 	respSearch := mw.ObjectSearch(&pb.RpcObjectSearchRequest{Filters: []*model.BlockContentDataviewFilter{{
 		RelationKey: "type",
@@ -784,7 +784,6 @@ func TestCustomType(t *testing.T) {
 	customObjectId := respCreateRecordInCustomTypeSet.Record.Fields["id"].GetStringValue()
 	respOpenCustomTypeObject := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: customObjectId})
 	require.Equal(t, 0, int(respOpenCustomTypeObject.Error.Code), respOpenCustomTypeObject.Error.Description)
-	require.Len(t, respOpenCustomTypeObject.Event.Messages, 1)
 	show := getEventObjectShow(respOpenCustomTypeObject.Event.Messages)
 	require.NotNil(t, show)
 

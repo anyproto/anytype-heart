@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gobwas/glob"
 	logging "github.com/ipfs/go-log/v2"
@@ -68,8 +69,8 @@ func init() {
 	if err != nil {
 		fmt.Printf("failed to init gelf tls: %s", err.Error())
 	} else {
-		tlsWriter.MaxReconnect = 1
-		tlsWriter.ReconnectDelay = 1 // bug within geld, will be multiplied by time.Second
+		tlsWriter.MaxReconnect = 0
+		tlsWriter.ReconnectDelay = time.Second
 		gelfSinkWrapper.gelfWriter = tlsWriter
 	}
 

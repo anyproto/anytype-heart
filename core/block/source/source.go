@@ -66,7 +66,7 @@ func SourceTypeBySbType(a core.Service, blockType smartblock.SmartBlockType) (s 
 		return &bundledRelation{a: a}, nil
 	default:
 		if blockType.IsValid() {
-			return &source{a: a}, nil
+			return &source{a: a, smartblockType: blockType}, nil
 		} else {
 			return nil, fmt.Errorf("sb type is invalid")
 		}
@@ -112,8 +112,14 @@ func newSource(a core.Service, ss status.Service, tid thread.ID) (s Source, err 
 		return
 	}
 
+	sbt, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		return nil, err
+	}
+
 	s = &source{
 		id:       id,
+		smartblockType: sbt,
 		tid:      tid,
 		a:        a,
 		ss:       ss,
@@ -127,6 +133,7 @@ func newSource(a core.Service, ss status.Service, tid thread.ID) (s Source, err 
 type source struct {
 	id, logId      string
 	tid            thread.ID
+	smartblockType smartblock.SmartBlockType
 	a              core.Service
 	ss             status.Service
 	sb             core.SmartBlock
@@ -363,9 +370,18 @@ func (v *source) ListIds() ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-
+	ids = slice.Filter(ids, func(id string) bool {
+		if id == v.Anytype().PredefinedBlocks().Account {
+			return false
+		}
+		t, err := smartblock.SmartBlockTypeFromID(id)
+		if err != nil {
+			return false
+		}
+		return t == v.smartblockType
+	})
 	// exclude account thread id
-	return slice.Remove(ids, v.Anytype().PredefinedBlocks().Account), nil
+	return ids, nil
 }
 
 func (s *source) needSnapshot() bool {

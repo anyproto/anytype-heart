@@ -22,12 +22,16 @@ func (mw *Middleware) ListenEvents(_ *pb.Empty, server lib.ClientCommands_Listen
 		return
 	}
 
+	sender.ServerMutex.Lock()
+	serverCh := sender.ServerCh
+	sender.ServerMutex.Unlock()
+
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
 	select {
 	case <-stopChan:
 		return
-	case <-sender.ServerCh:
+	case <-serverCh:
 		return
 	}
 }

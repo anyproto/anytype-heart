@@ -38,7 +38,11 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 		return nil, err
 	}
 
-	a.Register(&config.DefaultConfig).Register(wallet.NewWithRepoPathAndKeys("", accountPrivKey, device)).
+	cfg := config.DefaultConfig
+	cfg.DisableFileConfig = true // do not load/save config to file because we don't have a libp2p node and repo in this mode
+
+	a.Register(wallet.NewWithRepoPathAndKeys("", accountPrivKey, device)).
+		Register(&cfg).
 		Register(cafe.New()).
 		Register(profilefinder.New()).
 		Register(eventSender)
@@ -51,10 +55,10 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 
 func BootstrapConfigAndWallet(newAccount bool, rootPath, accountId string) ([]app.Component, error) {
 	return []app.Component{
+		wallet.NewWithAccountRepo(rootPath, accountId),
 		config.New(func(c *config.Config) {
 			c.NewAccount = newAccount
 		}),
-		wallet.NewWithAccountRepo(rootPath, accountId),
 	}, nil
 }
 

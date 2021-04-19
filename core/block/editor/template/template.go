@@ -50,6 +50,13 @@ var WithObjectTypes = func(otypes []string) StateTransformer {
 	}
 }
 
+// WithNoObjectTypes is a special case used only for Archive
+var WithNoObjectTypes = func() StateTransformer {
+	return func(s *state.State) {
+		s.SetNoObjectType(true)
+	}
+}
+
 var WithObjectTypeLayoutMigration = func() StateTransformer {
 	return func(s *state.State) {
 		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())
@@ -195,11 +202,22 @@ var WithHeader = StateTransformer(func(s *state.State) {
 var WithTitle = StateTransformer(func(s *state.State) {
 	WithHeader(s)
 
-	if s.Exists(TitleBlockId) {
+	var (
+		align model.BlockAlign
+	)
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int32(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
+		}
+	}
+
+	blockExists := s.Exists(TitleBlockId)
+	if blockExists && (s.Get(TitleBlockId).Model().Align == align) {
 		return
 	}
 
-	s.Add(simple.New(&model.Block{
+	s.Set(simple.New(&model.Block{
 		Id: TitleBlockId,
 		Restrictions: &model.BlockRestrictions{
 			Remove: true,
@@ -212,8 +230,12 @@ var WithTitle = StateTransformer(func(s *state.State) {
 				text.DetailsKeyFieldName: pbtypes.String("name"),
 			},
 		},
+		Align: align,
 	}))
 
+	if blockExists {
+		return
+	}
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
 		log.Errorf("template WithTitle failed to insert: %w", err)
 	}
@@ -222,11 +244,20 @@ var WithTitle = StateTransformer(func(s *state.State) {
 var WithDescription = StateTransformer(func(s *state.State) {
 	WithHeader(s)
 
-	if s.Exists(DescriptionBlockId) {
+	var align model.BlockAlign
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
+		}
+	}
+
+	blockExists := s.Exists(DescriptionBlockId)
+	if blockExists && (s.Get(DescriptionBlockId).Model().Align == align) {
 		return
 	}
 
-	s.Add(simple.New(&model.Block{
+	s.Set(simple.New(&model.Block{
 		Id: DescriptionBlockId,
 		Restrictions: &model.BlockRestrictions{
 			Remove: true,
@@ -239,7 +270,12 @@ var WithDescription = StateTransformer(func(s *state.State) {
 				text.DetailsKeyFieldName: pbtypes.String("description"),
 			},
 		},
+		Align: align,
 	}))
+
+	if blockExists {
+		return
+	}
 
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, DescriptionBlockId); err != nil {
 		log.Errorf("template WithDescription failed to insert: %w", err)
@@ -249,11 +285,20 @@ var WithDescription = StateTransformer(func(s *state.State) {
 var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 	WithHeader(s)
 
-	if s.Exists(FeaturedRelationsId) {
+	var align model.BlockAlign
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
+		}
+	}
+
+	blockExists := s.Exists(FeaturedRelationsId)
+	if blockExists && (s.Get(FeaturedRelationsId).Model().Align == align) {
 		return
 	}
 
-	s.Add(simple.New(&model.Block{
+	s.Set(simple.New(&model.Block{
 		Id: FeaturedRelationsId,
 		Restrictions: &model.BlockRestrictions{
 			Remove: true,
@@ -262,7 +307,12 @@ var WithFeaturedRelations = StateTransformer(func(s *state.State) {
 			Edit:   false,
 		},
 		Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+		Align:   align,
 	}))
+
+	if blockExists {
+		return
+	}
 
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, FeaturedRelationsId); err != nil {
 		log.Errorf("template FeaturedRelations failed to insert: %w", err)

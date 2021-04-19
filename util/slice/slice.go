@@ -70,6 +70,16 @@ func Remove(s []string, v string) []string {
 	return s[:n]
 }
 
+func Filter(vals []string, cond func(string) bool) []string {
+	var result = make([]string, 0, len(vals))
+	for i := range vals {
+		if cond(vals[i]) {
+			result = append(result, vals[i])
+		}
+	}
+	return result
+}
+
 func GetRandomString(s []string, seed string) string {
 	rand.Seed(int64(hash(seed)))
 	return s[rand.Intn(len(s))]

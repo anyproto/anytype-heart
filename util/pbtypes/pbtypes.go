@@ -143,6 +143,16 @@ func HasRelation(rels []*pbrelation.Relation, key string) bool {
 	return false
 }
 
+func GetObjectType(ots []*pbrelation.ObjectType, url string) *pbrelation.ObjectType {
+	for i, ot := range ots {
+		if ot.Url == url {
+			return ots[i]
+		}
+	}
+
+	return nil
+}
+
 func GetRelation(rels []*pbrelation.Relation, key string) *pbrelation.Relation {
 	for i, rel := range rels {
 		if rel.Key == key {
@@ -315,7 +325,7 @@ type Getter interface {
 	Get(key string) *types.Value
 }
 
-type structGetter struct{
+type structGetter struct {
 	st *types.Struct
 }
 
@@ -323,7 +333,7 @@ func ValueGetter(s *types.Struct) Getter {
 	return &structGetter{s}
 }
 
-func (sg *structGetter) Get(key string) *types.Value{
+func (sg *structGetter) Get(key string) *types.Value {
 	if sg == nil {
 		return nil
 	}
