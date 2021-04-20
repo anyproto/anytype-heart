@@ -13102,7 +13102,7 @@ General purpose structure, uses in Mark.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
-| restrictions | [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions) | repeated |  |
+| restrictions | [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction) | repeated |  |
 
 
 
@@ -13380,7 +13380,11 @@ deprecated
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Todo | 0 |  |
+| CreateView | 0 |  |
+| Filters | 1 |  |
+| CreateRelation | 2 |  |
+| CreateObject | 3 |  |
+| EditObject | 4 |  |
 
 
 

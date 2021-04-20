@@ -198,7 +198,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
-	sb.restrictions.Object = ctx.App.MustComponent(restriction.CName).(restriction.Service).ObjectRestrictionsById(sb)
+	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	return
 }
 

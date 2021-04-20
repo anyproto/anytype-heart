@@ -363,11 +363,15 @@ message Restrictions {
 
     message DataviewRestrictions {
         string blockId = 1;
-        repeated DataviewRestrictions restrictions = 2;
+        repeated DataviewRestriction restrictions = 2;
     }
 
     enum DataviewRestriction {
-        Todo = 0;
+        CreateView = 0;
+        Filters = 1;
+        CreateRelation = 2;
+        CreateObject = 3;
+        EditObject = 4;
     }
 }
 

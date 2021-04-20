@@ -25,7 +25,8 @@ type Object interface {
 }
 
 type Service interface {
-	ObjectRestrictionsById(obj Object) (r ObjectRestrictions)
+	ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions)
+	RestrictionsByObj(obj Object) (r Restrictions)
 	app.Component
 }
 
@@ -39,8 +40,18 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
+func (s *service) RestrictionsByObj(obj Object) (r Restrictions) {
+	return Restrictions{
+		Object:   s.ObjectRestrictionsByObj(obj),
+		Dataview: s.DataviewRestrictionsByObj(obj),
+	}
+}
+
+
+
 type Restrictions struct {
-	Object ObjectRestrictions
+	Object   ObjectRestrictions
+	Dataview DataviewRestrictions
 }
 
 func (r Restrictions) Proto() *model.Restrictions {

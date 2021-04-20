@@ -53,7 +53,7 @@ func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (e
 	return
 }
 
-func (s *service) ObjectRestrictionsById(obj Object) (r ObjectRestrictions) {
+func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
 	var ok bool
 	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {
 		return

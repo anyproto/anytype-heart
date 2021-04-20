@@ -23,11 +23,11 @@ func (t testObj) Type() pb.SmartBlockType {
 
 func TestService_ObjectRestrictionsById(t *testing.T) {
 	rest := New()
-	assert.Equal(t, ErrRestricted, rest.ObjectRestrictionsById(testObj{
+	assert.Equal(t, ErrRestricted, rest.ObjectRestrictionsByObj(testObj{
 		id: "",
 		tp: pb.SmartBlockType_Breadcrumbs,
 	}).Check(model.Restrictions_CreateBlock))
-	assert.NoError(t, rest.ObjectRestrictionsById(testObj{
+	assert.NoError(t, rest.ObjectRestrictionsByObj(testObj{
 		id: "",
 		tp: pb.SmartBlockType_Page,
 	}).Check(model.Restrictions_CreateBlock))
