@@ -25,7 +25,7 @@ require (
 	github.com/h2non/filetype v1.1.1
 	github.com/hashicorp/go-multierror v1.1.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/hsanjuan/ipfs-lite v1.1.18
+	github.com/hsanjuan/ipfs-lite v1.1.20
 	github.com/improbable-eng/grpc-web v0.13.0
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
@@ -34,19 +34,19 @@ require (
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
-	github.com/ipfs/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
+	github.com/ipfs/go-log/v2 v2.1.3
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.4
 	github.com/ipfs/interface-go-ipfs-core v0.4.0
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/libp2p/go-libp2p v0.13.1-0.20210219094403-69916ed4656f
+	github.com/libp2p/go-libp2p v0.13.1-0.20210319000852-ffd67fd3dcf6
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
 	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
-	github.com/libp2p/go-libp2p-swarm v0.4.2
+	github.com/libp2p/go-libp2p-swarm v0.4.3
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/libp2p/go-tcp-transport v0.2.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -59,7 +59,7 @@ require (
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multibase v0.0.3
-	github.com/multiformats/go-multihash v0.0.14
+	github.com/multiformats/go-multihash v0.0.15
 	github.com/opentracing/opentracing-go v1.2.0
 	github.com/otiai10/opengraph v1.1.3
 	github.com/prometheus/client_golang v1.10.0
@@ -86,3 +86,5 @@ replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
 replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7
+
+replace github.com/hsanjuan/ipfs-lite => github.com/anytypeio/ipfs-lite v1.1.20-0.20210420074347-ef7aa39a4fcd
