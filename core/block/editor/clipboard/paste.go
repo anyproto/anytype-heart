@@ -311,6 +311,6 @@ func (p *pasteCtrl) intoCodeBlock() (err error) {
 		},
 	}
 	p.ps.Get(p.ps.RootId()).Model().ChildrenIds = nil
-	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, false)
+	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, true)
 	return err
 }
