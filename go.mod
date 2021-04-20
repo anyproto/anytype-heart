@@ -69,7 +69,7 @@ require (
 	github.com/textileio/go-ds-badger v0.2.7-0.20201204225019-4ee78c4a40e2
 	github.com/textileio/go-threads v1.0.2-0.20210304072541-d0f91da84404
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
-	github.com/uber/jaeger-client-go v2.25.0+incompatible
+	github.com/uber/jaeger-client-go v2.27.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	github.com/yuin/goldmark v1.3.1
 	go.uber.org/zap v1.16.0
