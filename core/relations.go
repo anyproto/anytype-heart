@@ -227,7 +227,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyName.String():                 pbtypes.String(req.ObjectType.Name),
 				bundle.RelationKeyIconEmoji.String():            pbtypes.String(req.ObjectType.IconEmoji),
-				bundle.RelationKeyType.String():                 pbtypes.StringList([]string{bundle.TypeKeyObjectType.URL()}),
+				bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
 				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
 				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(recommendedRelationKeys),

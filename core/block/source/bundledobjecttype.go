@@ -59,7 +59,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 	}
 
 	det := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String():                 pbtypes.StringList([]string{bundle.TypeKeyObjectType.String()}),
+		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
 		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
 		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
 		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),

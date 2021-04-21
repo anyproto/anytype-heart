@@ -107,6 +107,25 @@ var WithRequiredRelations = func() StateTransformer {
 	}
 }
 
+var WithMaxCountMigration = func(s *state.State) {
+	d := s.Details()
+	if d == nil || d.Fields == nil {
+		return
+	}
+
+	rels := s.ExtraRelations()
+	for k, v := range d.Fields {
+		rel := pbtypes.GetRelation(rels, k)
+		if rel.MaxCount == 1 {
+			if b := v.GetListValue(); b != nil {
+				if len(b.Values) > 0 {
+					d.Fields[k] = pbtypes.String(b.Values[0].String())
+				}
+			}
+		}
+	}
+}
+
 var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {

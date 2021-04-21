@@ -102,5 +102,6 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),
+		template.WithMaxCountMigration,
 	)
 }

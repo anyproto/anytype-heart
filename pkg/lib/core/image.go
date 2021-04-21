@@ -122,9 +122,9 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 func (i *image) Details() (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			"id":     pbtypes.String(i.hash),
-			"type":   pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
-			"layout": pbtypes.Float64(float64(relation.ObjectType_image)),
+			bundle.RelationKeyId.String():     pbtypes.String(i.hash),
+			bundle.RelationKeyType.String():   pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
+			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(relation.ObjectType_image)),
 		},
 	}
 
