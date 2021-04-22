@@ -96,6 +96,54 @@ func Test_Issue605Tree(t *testing.T) {
 	t.Log(st.String())
 }
 
+func Test_Home_ecz5pu(t *testing.T) {
+	data, err := ioutil.ReadFile("./testdata/home_ecz5pu_tree.gob")
+	require.NoError(t, err)
+	var changeSet map[string][]byte
+	require.NoError(t, gob.NewDecoder(bytes.NewReader(data)).Decode(&changeSet))
+	sb := NewTestSmartBlock()
+	sb.changes = make(map[string]*core.SmartblockRecordEnvelope)
+	for k, v := range changeSet {
+		sb.changes[k] = &core.SmartblockRecordEnvelope{
+			SmartblockRecord: core.SmartblockRecord{Payload: v},
+		}
+	}
+	//t.Log("changes:", len(sb.changes))
+	sb.logs = append(sb.logs, core.SmartblockLog{
+		ID:   "one",
+		Head: "bafyreifmdv6gsspodvsm7wf6orrsi5ibznib7guooqravwvtajttpp7mka",
+	})
+
+	tree, _, e := BuildTree(sb)
+	require.NoError(t, e)
+	var cnt int
+	tree.Iterate(tree.RootId(), func(c *Change) (isContinue bool) {
+		cnt++
+		return true
+	})
+	assert.Equal(t, cnt, tree.Len())
+
+	root := tree.Root()
+	if root == nil || root.GetSnapshot() == nil {
+		require.NoError(t, fmt.Errorf("root missing or not a snapshot"))
+	}
+	doc := state.NewDocFromSnapshot("", root.GetSnapshot()).(*state.State)
+	doc.SetChangeId(root.Id)
+	doc.RootId()
+	st, err := BuildStateSimpleCRDT(doc, tree)
+	if err != nil {
+		return
+	}
+	if _, _, err = state.ApplyState(st, false); err != nil {
+		return
+	}
+	parent := st.PickParentOf("602c0b9c9f8b1f28e67540fa")
+	require.NotNil(t, parent)
+	assert.Equal(t, st.RootId(), parent.Model().Id)
+	//dt, _ := tree.Graphviz()
+	//os.WriteFile("/home/che/gv.gv", []byte(dt), 0777)
+}
+
 type TestCase struct {
 	Name     string
 	Init     *DocStruct
