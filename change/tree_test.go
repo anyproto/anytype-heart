@@ -157,13 +157,11 @@ func TestTree_Iterate(t *testing.T) {
 			newChange("1.1", "0", "1"),
 			newChange("1.2", "0", "1"),
 			newChange("1.3", "0", "1"),
-			newChange("1.4", "0", "1"),
 			newChange("1.3.1", "0", "1.3"),
 			newChange("1.2+3", "0", "1.2", "1.3.1"),
 			newChange("1.2+3.1", "0", "1.2+3"),
 			newChange("10", "0", "1.2+3.1", "1.1"),
-			newChange("11", "0", "10", "1.4"),
-			newChange("last", "0", "11"),
+			newChange("last", "0", "10"),
 		)
 		var res []string
 		tr.Iterate("0", func(c *Change) (isContinue bool) {
