@@ -213,6 +213,31 @@ func TestStateNormalizeMerge(t *testing.T) {
 	})
 }
 
+func Test_ApplyChange(t *testing.T) {
+	t.Run("object types remove", func(t *testing.T) {
+		root := NewDoc("root", nil)
+		root.(*State).SetObjectTypes([]string{"one", "two"})
+		s := root.NewState()
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfObjectTypeRemove{
+				ObjectTypeRemove: &pb.ChangeObjectTypeRemove{
+					Url: "one",
+				},
+			},
+		}))
+		assert.Equal(t, []string{"two"}, s.ObjectTypes())
+
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfObjectTypeRemove{
+				ObjectTypeRemove: &pb.ChangeObjectTypeRemove{
+					Url: "two",
+				},
+			},
+		}))
+		assert.Len(t, s.ObjectTypes(), 0)
+	})
+}
+
 func newMoveChange(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {
 	return &pb.ChangeContent{
 		Value: &pb.ChangeContentValueOfBlockMove{
