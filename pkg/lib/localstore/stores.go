@@ -14,8 +14,12 @@ import (
 	"github.com/multiformats/go-base32"
 )
 
-var ErrDuplicateKey = fmt.Errorf("duplicate key")
-var ErrNotFound = fmt.Errorf("not found")
+var (
+
+	ErrDuplicateKey = fmt.Errorf("duplicate key")
+	ErrNotFound = fmt.Errorf("not found")
+	errTxnTooBig = fmt.Errorf("Txn is too big to fit into one request")
+)
 
 var (
 	log       = logging.Logger("anytype-localstore")
@@ -164,19 +168,10 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 	return nil
 }
 
-func EraseIndex(index Index, ds ds.TxnDatastore) error {
-	txn, err := ds.NewTransaction(false)
-	if err != nil {
-		return err
-	}
-	defer txn.Discard()
-
-	err = EraseIndexWithTxn(index, txn)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
+func EraseIndex(index Index, datastore ds.TxnDatastore) error {
+	return RunLargeOperationWithRetries(datastore, func(txn ds.Txn) error {
+		return EraseIndexWithTxn(index, txn)
+	})
 }
 
 // EraseIndexWithTxn deletes the whole index
@@ -462,4 +457,36 @@ func GetKeys(tx ds.Txn, prefix string, limit int) (query.Results, error) {
 		Limit:    limit,
 		KeysOnly: true,
 	})
+}
+
+// RunLargeOperationWithRetries performs large operations within Txn. In case it faces ErrTxnTooBig it commits the txn and runs it again within the new txn
+// underlying op func MUST be aware of ds change from previous retries – e.g. it should rebuild the list of pending operations at start instead of passing the fixed list from outside
+func RunLargeOperationWithRetries(datastore ds.TxnDatastore, op func(txn ds.Txn) error) (err error) {
+	var txn ds.Txn
+	for {
+		txn, err = datastore.NewTransaction(false)
+		if err != nil {
+			return err
+		}
+
+		err = op(txn)
+		if err != nil {
+			// lets commit the current TXN and create another one
+			if err.Error() == errTxnTooBig.Error() {
+				err = txn.Commit()
+				if err != nil {
+					return err
+				}
+				continue
+			}
+			txn.Discard()
+			return
+		} else {
+			err = txn.Commit()
+			if err != nil {
+				return err
+			}
+			return
+		}
+	}
 }
