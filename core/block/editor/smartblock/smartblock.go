@@ -490,15 +490,15 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		log.With("thread", sb.Id()).Errorf("injectCreationInfo failed: %s", err.Error())
 	}
 	// inject lastModifiedDate
-	if sb.Anytype() != nil {
-		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
-	}
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
 	}
 	if act.IsEmpty() {
 		return nil
+	}
+	if sb.Anytype() != nil {
+		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
 	st := sb.Doc.(*state.State)
 	fileDetailsKeys := sb.FileRelationKeys()

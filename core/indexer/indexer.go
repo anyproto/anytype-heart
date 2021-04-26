@@ -331,7 +331,29 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return nil, err
 	}
-	return s.ReadDoc(nil, false)
+	d, err := s.ReadDoc(nil, false)
+	if err != nil {
+		return nil, err
+	}
+
+	st := d.(*state.State)
+	if d.ObjectType() == "" {
+		ot, exists := bundle.DefaultObjectTypePerSmartblockType[t]
+		if !exists {
+			ot = bundle.TypeKeyPage
+		}
+		st.SetObjectType(ot.URL())
+	}
+
+	for _, relKey := range bundle.RequiredInternalRelations {
+		if st.HasRelation(relKey.String()) {
+			continue
+		}
+		rel := bundle.MustGetRelation(relKey)
+		st.AddRelation(rel)
+	}
+
+	return st, nil
 }
 
 func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
