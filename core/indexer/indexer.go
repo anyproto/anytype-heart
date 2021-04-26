@@ -339,7 +339,7 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 
 	st := d.(*state.State)
 	if d.ObjectType() == "" {
-		ot, exists := bundle.DefaultObjectTypePerSmartblockType[smartblock.SmartBlockType(s.Type())]
+		ot, exists := bundle.DefaultObjectTypePerSmartblockType[smartblock.SmartBlockTypeToCore(s.Type())]
 		if !exists {
 			ot = bundle.TypeKeyPage
 		}
