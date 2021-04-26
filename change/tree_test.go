@@ -1,11 +1,15 @@
 package change
 
 import (
+	"bytes"
+	"encoding/gob"
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"testing"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -144,6 +148,35 @@ func TestTree_AddFuzzy(t *testing.T) {
 	}
 }
 
+func TestTree_Iterate(t *testing.T) {
+	t.Run("complex tree", func(t *testing.T) {
+		tr := new(Tree)
+		tr.Add(
+			newSnapshot("0", "", nil),
+			newChange("1", "0", "0"),
+			newChange("1.1", "0", "1"),
+			newChange("1.2", "0", "1"),
+			newChange("1.3", "0", "1"),
+			newChange("1.3.1", "0", "1.3"),
+			newChange("1.2+3", "0", "1.2", "1.3.1"),
+			newChange("1.2+3.1", "0", "1.2+3"),
+			newChange("10", "0", "1.2+3.1", "1.1"),
+			newChange("last", "0", "10"),
+		)
+		var res []string
+		tr.Iterate("0", func(c *Change) (isContinue bool) {
+			res = append(res, c.Id)
+			return true
+		})
+		res = res[:0]
+		tr.Iterate("0", func(c *Change) (isContinue bool) {
+			res = append(res, c.Id)
+			return true
+		})
+		assert.Equal(t, []string{"0", "1", "1.1", "1.2", "1.3", "1.3.1", "1.2+3", "1.2+3.1", "10", "last"}, res)
+	})
+}
+
 func TestTree_IterateBranching(t *testing.T) {
 	tr := new(Tree)
 	tr.Add(
@@ -209,6 +242,36 @@ func BenchmarkTree_Add(b *testing.B) {
 			tr.AddFast(changes...)
 		}
 	})
+}
+
+func BenchmarkTree_Iterate(b *testing.B) {
+	data, err := ioutil.ReadFile("./testdata/home_ecz5pu_tree.gob")
+	require.NoError(b, err)
+	var changeSet map[string][]byte
+	require.NoError(b, gob.NewDecoder(bytes.NewReader(data)).Decode(&changeSet))
+	sb := NewTestSmartBlock()
+	sb.changes = make(map[string]*core.SmartblockRecordEnvelope)
+	for k, v := range changeSet {
+		sb.changes[k] = &core.SmartblockRecordEnvelope{
+			SmartblockRecord: core.SmartblockRecord{Payload: v},
+		}
+	}
+	//t.Log("changes:", len(sb.changes))
+	sb.logs = append(sb.logs, core.SmartblockLog{
+		ID:   "one",
+		Head: "bafyreifmdv6gsspodvsm7wf6orrsi5ibznib7guooqravwvtajttpp7mka",
+	})
+
+	tree, _, e := BuildTree(sb)
+	require.NoError(b, e)
+	b.ReportAllocs()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		tree.Iterate(tree.RootId(), func(c *Change) (isContinue bool) {
+			return true
+		})
+	}
 }
 
 func TestTree_LastSnapshotId(t *testing.T) {

@@ -2,12 +2,13 @@ package indexer
 
 import (
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
-	"sync"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -331,7 +332,29 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return nil, err
 	}
-	return s.ReadDoc(nil, false)
+	d, err := s.ReadDoc(nil, false)
+	if err != nil {
+		return nil, err
+	}
+
+	st := d.(*state.State)
+	if d.ObjectType() == "" {
+		ot, exists := bundle.DefaultObjectTypePerSmartblockType[smartblock.SmartBlockType(s.Type())]
+		if !exists {
+			ot = bundle.TypeKeyPage
+		}
+		st.SetObjectType(ot.URL())
+	}
+
+	for _, relKey := range bundle.RequiredInternalRelations {
+		if st.HasRelation(relKey.String()) {
+			continue
+		}
+		rel := bundle.MustGetRelation(relKey)
+		st.AddRelation(rel)
+	}
+
+	return st, nil
 }
 
 func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
