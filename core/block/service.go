@@ -54,14 +54,6 @@ var log = logging.Logger("anytype-mw-service")
 var (
 	blockCacheTTL                      = time.Minute
 	blockCleanupTimeout                = time.Second * 30
-	defaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]bundle.TypeKey{
-		coresb.SmartBlockTypePage:        bundle.TypeKeyPage,
-		coresb.SmartBlockTypeProfilePage: bundle.TypeKeyPage,
-		coresb.SmartBlockTypeSet:         bundle.TypeKeySet,
-		coresb.SmartBlockTypeObjectType:  bundle.TypeKeyObjectType,
-		coresb.SmartBlockTypeHome:        bundle.TypeKeyDashboard,
-		coresb.SmartBlockTypeTemplate:    bundle.TypeKeyTemplate,
-	}
 )
 
 var (
@@ -470,7 +462,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		}
 	}
 	if len(objectTypes) == 0 {
-		if ot, exists := defaultObjectTypePerSmartblockType[sbType]; exists {
+		if ot, exists := bundle.DefaultObjectTypePerSmartblockType[sbType]; exists {
 			objectTypes = []string{ot.URL()}
 		} else {
 			objectTypes = []string{bundle.TypeKeyPage.URL()}
