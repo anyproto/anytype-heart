@@ -53,7 +53,7 @@ func (i *file) Details() (*types.Struct, error) {
 	}
 
 	if strings.HasPrefix(meta.Media, "video") {
-		t.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{bundle.TypeKeyVideo.URL()})
+		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyVideo.URL())
 	}
 
 	return t, nil

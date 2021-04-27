@@ -165,7 +165,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respSetRelCreate2.Error.Code), respSetRelCreate2.Error.Description)
 
 		respPageCreate := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
-			bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyIdea.URL()}),
+			bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyIdea.URL()),
 		}}})
 		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
 
