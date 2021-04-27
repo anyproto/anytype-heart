@@ -17,11 +17,13 @@ var (
 func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, error) {
 	var and AndFilters
 	for _, pf := range protoFilters {
-		f, err := MakeFilter(pf)
-		if err != nil {
-			return nil, err
+		if pf.Condition != model.BlockContentDataviewFilter_None {
+			f, err := MakeFilter(pf)
+			if err != nil {
+				return nil, err
+			}
+			and = append(and, f)
 		}
-		and = append(and, f)
 	}
 	return and, nil
 }
