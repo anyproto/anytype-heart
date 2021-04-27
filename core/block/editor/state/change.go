@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -248,18 +249,17 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 }
 
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
-	otypes := s.ObjectTypes()
-	otypesCopy := make([]string, len(otypes))
-	copy(otypesCopy, otypes)
-
-	for i, ot := range otypesCopy {
-		if ot == remove.Url {
-			s.objectTypes = append(otypesCopy[:i], otypesCopy[i+1:]...)
-			return nil
+	var found bool
+	s.objectTypes = slice.Filter(s.ObjectTypes(), func(s string) bool {
+		if s == remove.Url {
+			found = true
+			return false
 		}
+		return true
+	})
+	if !found {
+		log.Warnf("changeObjectTypeRemove: type to remove not found")
 	}
-
-	log.Warnf("changeObjectTypeRemove: type to remove not found")
 	return nil
 }
 

@@ -1457,10 +1457,7 @@ func (m *Step) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthFile
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthFile
 			}
 			if (iNdEx + skippy) > l {
@@ -1620,7 +1617,7 @@ func (m *FileKeys) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if skippy < 0 {
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
 						return ErrInvalidLengthFile
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -1637,10 +1634,7 @@ func (m *FileKeys) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthFile
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthFile
 			}
 			if (iNdEx + skippy) > l {
@@ -2103,10 +2097,7 @@ func (m *FileInfo) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthFile
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthFile
 			}
 			if (iNdEx + skippy) > l {
@@ -2268,7 +2259,7 @@ func (m *Directory) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if skippy < 0 {
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
 						return ErrInvalidLengthFile
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -2285,10 +2276,7 @@ func (m *Directory) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthFile
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthFile
 			}
 			if (iNdEx + skippy) > l {
@@ -2372,10 +2360,7 @@ func (m *DirectoryList) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthFile
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthFile
 			}
 			if (iNdEx + skippy) > l {
@@ -2639,7 +2624,7 @@ func (m *Node) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if skippy < 0 {
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
 						return ErrInvalidLengthFile
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -2804,7 +2789,7 @@ func (m *Node) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if skippy < 0 {
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
 						return ErrInvalidLengthFile
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -2821,10 +2806,7 @@ func (m *Node) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthFile
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthFile
 			}
 			if (iNdEx + skippy) > l {
@@ -3088,7 +3070,7 @@ func (m *Link) Unmarshal(dAtA []byte) error {
 					if err != nil {
 						return err
 					}
-					if skippy < 0 {
+					if (skippy < 0) || (iNdEx+skippy) < 0 {
 						return ErrInvalidLengthFile
 					}
 					if (iNdEx + skippy) > postIndex {
@@ -3141,10 +3123,7 @@ func (m *Link) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthFile
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthFile
 			}
 			if (iNdEx + skippy) > l {

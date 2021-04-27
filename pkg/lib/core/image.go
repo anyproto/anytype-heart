@@ -122,9 +122,10 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 func (i *image) Details() (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			bundle.RelationKeyId.String():     pbtypes.String(i.hash),
-			bundle.RelationKeyType.String():   pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
-			bundle.RelationKeyLayout.String(): pbtypes.Float64(float64(relation.ObjectType_image)),
+			bundle.RelationKeyId.String():        pbtypes.String(i.hash),
+			bundle.RelationKeyIconImage.String(): pbtypes.String(i.hash),
+			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeyImage.URL()),
+			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(relation.ObjectType_image)),
 		},
 	}
 
@@ -135,8 +136,6 @@ func (i *image) Details() (*types.Struct, error) {
 	if err != nil {
 		return details, nil
 	}
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(relation.ObjectType_file))
-
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
 	details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
 	details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)

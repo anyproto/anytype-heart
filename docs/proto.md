@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -28,6 +32,10 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -658,6 +666,9 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -792,6 +803,9 @@
     - [Model.Process.Type](#anytype.Model.Process.Type)
     - [SmartBlockType](#anytype.SmartBlockType)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -804,6 +818,9 @@
   
     - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -830,6 +847,8 @@
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
     - [LinkPreview](#anytype.model.LinkPreview)
     - [Range](#anytype.model.Range)
+    - [Restrictions](#anytype.model.Restrictions)
+    - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
@@ -848,7 +867,12 @@
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
+    - [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction)
+    - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
   
+  
+  
+
 - [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
     - [Detail](#anytype.relation.Detail)
     - [Layout](#anytype.relation.Layout)
@@ -864,6 +888,9 @@
     - [Relation.Scope](#anytype.relation.Relation.Scope)
     - [RelationFormat](#anytype.relation.RelationFormat)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -11996,6 +12023,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
 | objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| restrictions | [model.Restrictions](#anytype.model.Restrictions) |  | object restrictions |
 
 
 
@@ -12413,19 +12441,23 @@ Precondition: user A and user B opened the same block
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Page | 0 |  |
-| Home | 1 | have only Link simpleblocks |
-| ProfilePage | 2 | just a usual page for now |
-| Archive | 3 | have only Link simpleblocks |
-| Breadcrumbs | 4 | have only Link simpleblocks |
-| Set | 5 | only have dataview simpleblock |
-| ObjectType | 6 | have relations list |
-| File | 7 |  |
-| Relation | 10 |  |
-| Template | 11 |  |
-| MarketplaceType | 8 |  |
-| MarketplaceRelation | 9 |  |
-| MarketplaceTemplate | 12 |  |
+| Breadcrumbs | 0 |  |
+| Page | 16 |  |
+| ProfilePage | 17 |  |
+| Home | 32 |  |
+| Archive | 48 |  |
+| Database | 64 |  |
+| Set | 65 | only have dataview simpleblock |
+| ObjectType | 96 | have relations list |
+| File | 256 |  |
+| Template | 288 |  |
+| MarketplaceType | 272 |  |
+| MarketplaceRelation | 273 |  |
+| MarketplaceTemplate | 274 |  |
+| BundledRelation | 512 |  |
+| IndexedRelation | 513 |  |
+| BundledObjectType | 514 |  |
+| AnytypeProfile | 515 |  |
 
 
  
@@ -13045,6 +13077,38 @@ General purpose structure, uses in Mark.
 
 
 
+<a name="anytype.model.Restrictions"></a>
+
+### Restrictions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| object | [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction) | repeated |  |
+| dataview | [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Restrictions.DataviewRestrictions"></a>
+
+### Restrictions.DataviewRestrictions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+| restrictions | [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction) | repeated |  |
+
+
+
+
+
+
 <a name="anytype.model.SmartBlockSnapshotBase"></a>
 
 ### SmartBlockSnapshotBase
@@ -13086,20 +13150,21 @@ deprecated
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Equal | 0 |  |
-| NotEqual | 1 |  |
-| Greater | 2 |  |
-| Less | 3 |  |
-| GreaterOrEqual | 4 |  |
-| LessOrEqual | 5 |  |
-| Like | 6 |  |
-| NotLike | 7 |  |
-| In | 8 |  |
-| NotIn | 9 |  |
-| Empty | 10 |  |
-| NotEmpty | 11 |  |
-| AllIn | 12 |  |
-| NotAllIn | 13 |  |
+| None | 0 |  |
+| Equal | 1 |  |
+| NotEqual | 2 |  |
+| Greater | 3 |  |
+| Less | 4 |  |
+| GreaterOrEqual | 5 |  |
+| LessOrEqual | 6 |  |
+| Like | 7 |  |
+| NotLike | 8 |  |
+| In | 9 |  |
+| NotIn | 10 |  |
+| Empty | 11 |  |
+| NotEmpty | 12 |  |
+| AllIn | 13 |  |
+| NotAllIn | 14 |  |
 
 
 
@@ -13306,6 +13371,35 @@ deprecated
 | Page | 1 |  |
 | Image | 2 |  |
 | Text | 3 |  |
+
+
+
+<a name="anytype.model.Restrictions.DataviewRestriction"></a>
+
+### Restrictions.DataviewRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CreateView | 0 |  |
+| Filters | 1 |  |
+| CreateRelation | 2 |  |
+| CreateObject | 3 |  |
+| EditObject | 4 |  |
+
+
+
+<a name="anytype.model.Restrictions.ObjectRestriction"></a>
+
+### Restrictions.ObjectRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Delete | 0 | restricts delete |
+| Relation | 1 | restricts work with relations |
+| Header | 2 | restricts edit a header (title, description, etc.) |
+| CreateBlock | 3 | restricts create a new block |
 
 
  

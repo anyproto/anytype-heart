@@ -617,4 +617,5 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 	}, "")
 	require.NoError(t, err)
 	assert.Equal(t, "some\nsome text\nhere\ncode", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
+	assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
 }

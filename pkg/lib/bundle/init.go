@@ -2,6 +2,7 @@ package bundle
 
 import (
 	"fmt"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	types2 "github.com/gogo/protobuf/types"
 	"strings"
@@ -34,6 +35,15 @@ var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyImage.URL(),
 	TypeKeyVideo.URL(),
 	TypeKeyAudio.URL()}
+
+var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
+	coresb.SmartBlockTypePage:        TypeKeyPage,
+	coresb.SmartBlockTypeProfilePage: TypeKeyPage,
+	coresb.SmartBlockTypeSet:         TypeKeySet,
+	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,
+	coresb.SmartBlockTypeHome:        TypeKeyDashboard,
+	coresb.SmartBlockTypeTemplate:    TypeKeyTemplate,
+}
 
 // filled in init
 var LocalRelationsKeys []string   // stored only in localstore
