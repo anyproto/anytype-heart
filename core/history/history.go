@@ -89,7 +89,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 	objectTypes := h.meta.FetchObjectTypes(uniqueObjTypes)
 	return &pb.EventObjectShow{
 		RootId:      pageId,
-		Type:        smartblock.SmartBlockTypeToProto(sbType),
+		Type:        pb.SmartBlockType(sbType),
 		Blocks:      s.Blocks(),
 		Details:     details,
 		ObjectTypes: objectTypes,

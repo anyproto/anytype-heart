@@ -213,6 +213,7 @@ type service struct {
 	linkPreview  linkpreview.LinkPreview
 	process      process.Service
 	m            sync.Mutex
+	app          *app.App
 }
 
 func (s *service) Name() string {
@@ -227,6 +228,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.openedBlocks = make(map[string]*openedBlock)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.app = a
 	return
 }
 
@@ -313,6 +315,7 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs(s.meta)
 	if err = bs.Init(&smartblock.InitContext{
+		App:    s.app,
 		Source: source.NewVirtual(s.anytype, pb.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
@@ -630,9 +633,11 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewSet(s.meta, s)
 	case pb.SmartBlockType_ProfilePage:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
-	case pb.SmartBlockType_ObjectType:
+	case pb.SmartBlockType_ObjectType,
+		pb.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType(s.meta, s)
-	case pb.SmartBlockType_Relation:
+	case pb.SmartBlockType_BundledRelation,
+		pb.SmartBlockType_IndexedRelation:
 		sb = editor.NewRelation(s.meta, s)
 	case pb.SmartBlockType_File:
 		sb = editor.NewFiles(s.meta)
@@ -652,6 +657,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	defer sb.Unlock()
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
+	}
+	if initCtx.App == nil {
+		initCtx.App = s.app
 	}
 	initCtx.Source = sc
 	err = sb.Init(initCtx)

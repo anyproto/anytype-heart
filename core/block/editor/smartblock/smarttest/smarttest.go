@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -35,14 +36,19 @@ func NewWithMeta(id string, ms meta.Service) *SmartTest {
 }
 
 type SmartTest struct {
-	Results Results
-	anytype *testMock.MockService
-	id      string
-	hist    undo.History
-	meta    *core.SmartBlockMeta
-	ms      meta.Service
+	Results          Results
+	anytype          *testMock.MockService
+	id               string
+	hist             undo.History
+	meta             *core.SmartBlockMeta
+	ms               meta.Service
+	TestRestrictions restriction.Restrictions
 	sync.Mutex
 	state.Doc
+}
+
+func (st *SmartTest) Restrictions() restriction.Restrictions {
+	return st.TestRestrictions
 }
 
 func (st *SmartTest) GetSearchInfo() (indexer.SearchInfo, error) {

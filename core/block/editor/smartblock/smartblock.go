@@ -8,8 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -97,6 +99,7 @@ type SmartBlock interface {
 	CheckSubscriptions() (changed bool)
 	GetSearchInfo() (indexer.SearchInfo, error)
 	MetaService() meta.Service
+	Restrictions() restriction.Restrictions
 	BlockClose()
 
 	Close() (err error)
@@ -109,6 +112,7 @@ type InitContext struct {
 	ObjectTypeUrls []string
 	State          *state.State
 	Relations      []*pbrelation.Relation
+	App            *app.App
 }
 
 type linkSource interface {
@@ -119,15 +123,15 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds         []string
-	sendEvent      func(e *pb.Event)
-	undo           undo.History
-	source         source.Source
-	meta           meta.Service
-	metaSub        meta.Subscriber
-	metaData       *core.SmartBlockMeta
-	lastDepDetails map[string]*pb.EventObjectDetailsSet
-
+	depIds            []string
+	sendEvent         func(e *pb.Event)
+	undo              undo.History
+	source            source.Source
+	meta              meta.Service
+	metaSub           meta.Subscriber
+	metaData          *core.SmartBlockMeta
+	lastDepDetails    map[string]*pb.EventObjectDetailsSet
+	restrictions      restriction.Restrictions
 	disableLayouts    bool
 	onNewStateHooks   []func()
 	onCloseHooks      []func()
@@ -194,6 +198,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
+	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	return
 }
 
@@ -237,6 +242,10 @@ func (sb *smartBlock) SendEvent(msgs []*pb.EventMessage) {
 	}
 }
 
+func (sb *smartBlock) Restrictions() restriction.Restrictions {
+	return sb.restrictions
+}
+
 func (sb *smartBlock) Show(ctx *state.Context) error {
 	if ctx != nil {
 		details, objectTypes, err := sb.fetchMeta()
@@ -255,12 +264,13 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfObjectShow{ObjectShow: &pb.EventObjectShow{
-					RootId:      sb.RootId(),
-					Type:        sb.Type(),
-					Blocks:      sb.Blocks(),
-					Details:     details,
-					Relations:   sb.Relations(),
-					ObjectTypes: objectTypes,
+					RootId:       sb.RootId(),
+					Type:         sb.Type(),
+					Blocks:       sb.Blocks(),
+					Details:      details,
+					Relations:    sb.Relations(),
+					ObjectTypes:  objectTypes,
+					Restrictions: sb.restrictions.Proto(),
 				}},
 			},
 		})

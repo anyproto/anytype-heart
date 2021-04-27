@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
@@ -43,7 +44,7 @@ func (v *anytypeProfile) Anytype() core.Service {
 }
 
 func (v *anytypeProfile) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_ProfilePage
+	return pb.SmartBlockType_AnytypeProfile
 }
 
 func (v *anytypeProfile) Virtual() bool {

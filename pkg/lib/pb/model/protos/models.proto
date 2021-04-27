@@ -345,3 +345,36 @@ message LinkPreview {
         Text = 3;
     }
 }
+
+message Restrictions {
+    repeated ObjectRestriction object = 1;
+    repeated DataviewRestrictions dataview = 2;
+
+    enum ObjectRestriction {
+        // restricts delete
+        Delete = 0;
+        // restricts work with relations
+        Relation = 1;
+        // restricts edit a header (title, description, etc.)
+        Header = 2;
+        // restricts create a new block
+        CreateBlock = 3;
+    }
+
+
+    message DataviewRestrictions {
+        string blockId = 1;
+        repeated DataviewRestriction restrictions = 2;
+    }
+
+    enum DataviewRestriction {
+        CreateView = 0;
+        Filters = 1;
+        CreateRelation = 2;
+        CreateObject = 3;
+        EditObject = 4;
+    }
+}
+
+
+
