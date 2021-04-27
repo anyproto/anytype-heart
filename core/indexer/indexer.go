@@ -253,6 +253,9 @@ func (i *indexer) reindexIfNeeded() error {
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
 			smartblock.SmartBlockTypeTemplate,
+			smartblock.SmartblockTypeMarketplaceType,
+			smartblock.SmartblockTypeMarketplaceTemplate,
+			smartblock.SmartblockTypeMarketplaceRelation,
 		)
 		if err != nil {
 			return err
@@ -387,7 +390,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 	// compare only real object scoped details
 	detailsObjectScope := pbtypes.StructCutKeys(details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-	if curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
+	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails == nil {
 			if err := i.store.CreateObject(id, details, &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
