@@ -169,7 +169,7 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 }
 
 func EraseIndex(index Index, datastore ds.TxnDatastore) error {
-	return RunLargeOperationWithRetries(datastore, func(txn ds.Txn) error {
+	return RunLargeOperationWithinMultipleTxs(datastore, func(txn ds.Txn) error {
 		return EraseIndexWithTxn(index, txn)
 	})
 }
@@ -459,9 +459,9 @@ func GetKeys(tx ds.Txn, prefix string, limit int) (query.Results, error) {
 	})
 }
 
-// RunLargeOperationWithRetries performs large operations within Txn. In case it faces ErrTxnTooBig it commits the txn and runs it again within the new txn
+// RunLargeOperationWithinMultipleTxs performs large operations. In case it faces ErrTxnTooBig it commits the txn and runs it again within the new txn
 // underlying op func MUST be aware of ds change from previous retries – e.g. it should rebuild the list of pending operations at start instead of passing the fixed list from outside
-func RunLargeOperationWithRetries(datastore ds.TxnDatastore, op func(txn ds.Txn) error) (err error) {
+func RunLargeOperationWithinMultipleTxs(datastore ds.TxnDatastore, op func(txn ds.Txn) error) (err error) {
 	var txn ds.Txn
 	for {
 		txn, err = datastore.NewTransaction(false)

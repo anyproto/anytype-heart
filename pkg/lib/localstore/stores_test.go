@@ -1,6 +1,8 @@
 package localstore
 
 import (
+	"fmt"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -118,4 +120,62 @@ func TestCarveKeyParts(t *testing.T) {
 		assert.NoError(t, err)
 		assert.Equal(t, tt.expected, result)
 	}
+}
+
+
+func Test_RunLargeOperationWithRetries(t *testing.T) {
+	tempDir, err := ioutil.TempDir(os.TempDir(), "anytypetestds*")
+	require.NoError(t, err)
+
+	ds, err := badger.NewDatastore(tempDir, &badger.DefaultOptions)
+	require.NoError(t, err)
+
+	index := Index{
+		Prefix:             "test1",
+		Name:               "test1",
+		Keys:               func(val interface{}) []IndexKeyParts {
+			if v, ok := val.(int); ok {
+				return []IndexKeyParts{[]string{fmt.Sprintf("%d", v)}}
+			}
+			return nil
+		},
+		Unique:             false,
+		Hash:               false,
+		SplitIndexKeyParts: false,
+	}
+
+	for i:=0; i<30000; i++ {
+		err = AddIndex(index, ds, i, "2")
+		require.NoError(t, err)
+	}
+
+	targetPrefix := IndexBase.ChildString(index.Prefix)
+
+	tx, err := ds.NewTransaction(false)
+	require.NoError(t, err)
+	res, err := GetKeys(tx, targetPrefix.String(), 0)
+	require.NoError(t, err)
+	total, err := CountAllKeysFromResults(res)
+	require.NoError(t, err)
+	require.Equal(t, 30000, total)
+
+	err = EraseIndexWithTxn(index, tx)
+	require.Error(t, err, errTxnTooBig)
+	tx.Discard()
+
+	err = EraseIndex(index, ds)
+	require.NoError(t, err)
+	tx, err = ds.NewTransaction(false)
+	require.NoError(t, err)
+	res, err = GetKeys(tx, index.Prefix, 0)
+	require.NoError(t, err)
+	total, err = CountAllKeysFromResults(res)
+	require.NoError(t, err)
+	require.Equal(t, 0, total)
+
+	err = ds.Close()
+	require.NoError(t, err)
+	err = os.RemoveAll(tempDir)
+	require.NoError(t, err)
+
 }
