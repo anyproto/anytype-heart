@@ -41,12 +41,12 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.4.0
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/libp2p/go-libp2p v0.13.1-0.20210319000852-ffd67fd3dcf6
+	github.com/libp2p/go-libp2p v0.13.1-0.20210426194311-0b6144a02fdf
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
 	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/libp2p/go-libp2p-kad-dht v0.11.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.6
-	github.com/libp2p/go-libp2p-swarm v0.4.3
+	github.com/libp2p/go-libp2p-swarm v0.5.0
 	github.com/libp2p/go-libp2p-tls v0.1.3
 	github.com/libp2p/go-tcp-transport v0.2.1
 	github.com/logrusorgru/aurora v2.0.3+incompatible
@@ -73,7 +73,7 @@ require (
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	github.com/yuin/goldmark v1.3.1
 	go.uber.org/zap v1.16.0
-	golang.org/x/text v0.3.5
+	golang.org/x/text v0.3.6
 	google.golang.org/grpc v1.34.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
@@ -87,4 +87,4 @@ replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.202
 
 replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7
 
-replace github.com/hsanjuan/ipfs-lite => github.com/anytypeio/ipfs-lite v1.1.20-0.20210420074347-ef7aa39a4fcd
+replace github.com/hsanjuan/ipfs-lite => github.com/anytypeio/ipfs-lite v1.1.20-0.20210428105030-fc5b3446abae
