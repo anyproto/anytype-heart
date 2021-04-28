@@ -177,10 +177,10 @@ func TestRelationAdd(t *testing.T) {
 
 		relFromSet1 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate1.RelationKey)
 		require.NotNil(t, relFromSet1)
-		require.Equal(t, relFromSet1.Scope, pbrelation.Relation_setOfTheSameType)
+		require.Equal(t, pbrelation.Relation_setOfTheSameType, relFromSet1.Scope)
 		relFromSet2 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate2.RelationKey)
 		require.NotNil(t, relFromSet2)
-		require.Equal(t, relFromSet2.Scope, pbrelation.Relation_setOfTheSameType)
+		require.Equal(t, pbrelation.Relation_setOfTheSameType, relFromSet2.Scope)
 	})
 
 	t.Run("relation_scope_becomes_object", func(t *testing.T) {

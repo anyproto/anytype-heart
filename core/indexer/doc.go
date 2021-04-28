@@ -69,20 +69,15 @@ type detailsGetter interface {
 func (d *doc) meta() core.SmartBlockMeta {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	objectTypes := make([]string, len(d.st.ObjectType()))
-	copy(objectTypes, d.st.ObjectTypes())
 	details := pbtypes.CopyStruct(d.st.Details())
 	if details == nil || details.Fields == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	var otype string
-	if len(objectTypes) > 0 {
-		otype = objectTypes[0]
-	}
 
+	otype := d.st.ObjectType()
 	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(otype)
 	return core.SmartBlockMeta{
-		ObjectTypes: objectTypes,
+		ObjectTypes: []string{otype},
 		Relations:   pbtypes.CopyRelations(d.st.ExtraRelations()),
 		Details:     details,
 	}
