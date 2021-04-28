@@ -66,7 +66,7 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 		}
 	}
 
-	rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl})
+	rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
 	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, relsToSet)
 	if err != nil {
 		return rec, err

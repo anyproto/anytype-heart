@@ -200,7 +200,7 @@ func GetDetailsForRelation(bundled bool, rel *relation.Relation) ([]*relation.Re
 		RelationKeyName.String():             pbtypes.String(rel.Name),
 		RelationKeyDescription.String():      pbtypes.String(rel.Description),
 		RelationKeyId.String():               pbtypes.String(prefix + rel.Key),
-		RelationKeyType.String():             pbtypes.StringList([]string{TypeKeyRelation.URL()}),
+		RelationKeyType.String():             pbtypes.String(TypeKeyRelation.URL()),
 		RelationKeyCreator.String():          pbtypes.String(rel.Creator),
 		RelationKeyLayout.String():           pbtypes.Float64(float64(relation.ObjectType_relation)),
 		RelationKeyRelationFormat.String():   pbtypes.Float64(float64(rel.Format)),

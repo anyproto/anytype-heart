@@ -69,5 +69,6 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
 		template.WithLayout(layout),
 		template.WithRequiredRelations(),
+		template.WithMaxCountMigration,
 	)
 }

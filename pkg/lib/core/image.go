@@ -124,7 +124,7 @@ func (i *image) Details() (*types.Struct, error) {
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():        pbtypes.String(i.hash),
 			bundle.RelationKeyIconImage.String(): pbtypes.String(i.hash),
-			bundle.RelationKeyType.String():      pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
+			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeyImage.URL()),
 			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(relation.ObjectType_image)),
 		},
 	}

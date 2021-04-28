@@ -33,7 +33,7 @@ const (
 	// increasing counters below will trigger existing account to reindex their data
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 0 // reindex ipfs-file-based objects
-	ForceIdxRebuildCounter            int32 = 1 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 3 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 0 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -253,6 +253,9 @@ func (i *indexer) reindexIfNeeded() error {
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
 			smartblock.SmartBlockTypeTemplate,
+			smartblock.SmartblockTypeMarketplaceType,
+			smartblock.SmartblockTypeMarketplaceTemplate,
+			smartblock.SmartblockTypeMarketplaceRelation,
 		)
 		if err != nil {
 			return err
@@ -387,7 +390,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 	// compare only real object scoped details
 	detailsObjectScope := pbtypes.StructCutKeys(details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-	if curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
+	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails == nil {
 			if err := i.store.CreateObject(id, details, &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)

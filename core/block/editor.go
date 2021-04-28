@@ -180,7 +180,7 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 		}
 
 		if req.ObjectType != "" {
-			fields["type"] = pbtypes.String(req.ObjectType)
+			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
 
 		children := s.AllDescendantIds(blockId, blocks)

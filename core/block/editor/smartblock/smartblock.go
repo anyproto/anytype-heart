@@ -79,7 +79,7 @@ type SmartBlock interface {
 	Anytype() core.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*pbrelation.Relation
-	RelationsState(s *state.State) []*pbrelation.Relation
+	RelationsState(s *state.State, aggregateFromDS bool) []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error)
@@ -207,7 +207,7 @@ func (sb *smartBlock) normalizeRelations(s *state.State) error {
 		return nil
 	}
 
-	relations := sb.RelationsState(s)
+	relations := sb.RelationsState(s, true)
 	details := s.Details()
 	if details == nil || details.Fields == nil {
 		return nil
@@ -518,7 +518,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
 		DoSnapshot:        doSnapshot,
 		GetAllFileHashes: func() []string {
-			return st.GetAllFileHashes(sb.FileRelationKeys())
+			return st.GetAllFileHashes(fileDetailsKeys)
 		},
 	}
 	id, err := sb.source.PushChange(pushChangeParams)
@@ -721,7 +721,7 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 }
 
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.RelationsState(s))
+	copy := pbtypes.CopyRelations(sb.RelationsState(s, false))
 
 	var existsMap = map[string]*pbrelation.Relation{}
 	for _, rel := range copy {
@@ -1178,10 +1178,10 @@ func (sb *smartBlock) baseRelations() []*pbrelation.Relation {
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	return sb.RelationsState(sb.Doc.(*state.State))
+	return sb.RelationsState(sb.Doc.(*state.State), true)
 }
 
-func (sb *smartBlock) RelationsState(s *state.State) []*pbrelation.Relation {
+func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*pbrelation.Relation {
 	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
 		return sb.baseRelations()
 	}
@@ -1190,7 +1190,7 @@ func (sb *smartBlock) RelationsState(s *state.State) []*pbrelation.Relation {
 
 	var err error
 	var aggregatedRelation []*pbrelation.Relation
-	if objType != "" {
+	if objType != "" && aggregateFromDS {
 		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsFromSetsOfType(objType)
 		if err != nil {
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
@@ -1254,7 +1254,7 @@ func (sb *smartBlock) execHooks(event Hook) {
 }
 
 func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
-	for _, rel := range sb.Relations() {
+	for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
 		if rel.Format == pbrelation.RelationFormat_file {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {
 				fileKeys = append(fileKeys, rel.Key)
