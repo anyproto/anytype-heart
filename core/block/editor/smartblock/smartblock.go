@@ -283,7 +283,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		sb.metaSub.Close()
 	}
 	sb.metaSub = sb.meta.PubSub().NewSubscriber()
-	sb.depIds = sb.dependentSmartIds()
+	sb.depIds = sb.dependentSmartIds(true)
 	var ch = make(chan meta.Meta)
 	subscriber := sb.metaSub.Callback(func(d meta.Meta) {
 		ch <- d
@@ -426,27 +426,27 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	}
 }
 
-func (sb *smartBlock) dependentSmartIds() (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeObjTypes bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 
-		for _, ot := range sb.ObjectTypes() {
-			ids = append(ids, ot)
+		if includeObjTypes {
+			for _, ot := range sb.ObjectTypes() {
+				ids = append(ids, ot)
+			}
 		}
 
 		details := sb.Details()
 
-		for _, rel := range sb.Relations() {
+		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
 			if rel.Format != pbrelation.RelationFormat_object && rel.Format != pbrelation.RelationFormat_file {
 				continue
 			}
-			// add all custom object types as dependents
-			for _, ot := range rel.ObjectTypes {
-				ids = append(ids, ot)
-			}
 
-			if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
+			if rel.Key == bundle.RelationKeyId.String() ||
+				rel.Key == bundle.RelationKeyType.String()  ||
+				rel.Key == bundle.RelationKeyRecommendedRelations.String() {
 				continue
 			}
 
@@ -567,7 +567,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIds := sb.dependentSmartIds()
+	depIds := sb.dependentSmartIds(true)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
 		if sb.metaSub != nil {
@@ -1265,7 +1265,7 @@ func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
 }
 
 func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
-	depIds := slice.Remove(sb.dependentSmartIds(), sb.Id())
+	depIds := slice.Remove(sb.dependentSmartIds(false), sb.Id())
 	return indexer.SearchInfo{
 		Id:      sb.Id(),
 		Title:   pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String()),
