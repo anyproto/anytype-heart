@@ -334,6 +334,13 @@ loop:
 	for len(sb.lastDepDetails) < len(sb.depIds) {
 		select {
 		case <-timeout:
+			var missingDeps []string
+			for _, dep := range sb.depIds {
+				if _, exists := sb.lastDepDetails[dep]; !exists {
+					missingDeps = append(missingDeps, dep)
+				}
+			}
+			log.Warnf("got %d out of %d dep objects after timeout: missing %v", len(sb.lastDepDetails), len(sb.depIds), missingDeps)
 			break loop
 		case d := <-ch:
 			if d.Details != nil {
@@ -446,8 +453,9 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool) (ids []string) {
 
 			if rel.Key == bundle.RelationKeyId.String() ||
 				rel.Key == bundle.RelationKeyType.String()  ||
-				rel.Key == bundle.RelationKeyRecommendedRelations.String() {
-				continue
+				rel.Key == bundle.RelationKeyRecommendedRelations.String() ||
+				rel.Key == bundle.RelationKeyFeaturedRelations.String() {
+					continue
 			}
 
 			// add all object relation values as dependents
