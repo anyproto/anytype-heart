@@ -338,9 +338,6 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 		if slice.FindPos(inChildrens, b.Id) == -1 {
 			rootIds = append(rootIds, b.Id)
 		}
-		if t := b.GetText(); t != nil && t.Style == model.BlockContentText_Title{
-			t.Style = model.BlockContentText_Header3
-		}
 		cbs.Add(simple.New(b))
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
