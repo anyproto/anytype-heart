@@ -32,7 +32,7 @@ const (
 
 	// increasing counters below will trigger existing account to reindex their data
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
-	ForceFilesReindexCounter          int32 = 0 // reindex ipfs-file-based objects
+	ForceFilesReindexCounter          int32 = 1 // reindex ipfs-file-based objects
 	ForceIdxRebuildCounter            int32 = 3 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 1 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
@@ -196,9 +196,6 @@ func (i *indexer) reindexIfNeeded() error {
 	}
 	if checksums.ObjectsForceReindexCounter != ForceThreadsObjectsReindexCounter {
 		reindexThreadObjects = true
-	}
-	if checksums.FilesForceReindexCounter != ForceFilesReindexCounter {
-		reindexFileObjects = true
 	}
 	if checksums.FilesForceReindexCounter != ForceFilesReindexCounter {
 		reindexFileObjects = true
@@ -400,7 +397,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
 		}
-		if curDetails == nil {
+		if curDetails == nil || t == smartblock.SmartBlockTypeFile {
 			// add to fulltext only in case
 			if err = i.store.AddToIndexQueue(id); err != nil {
 				log.With("thread", id).Errorf("can't add to index: %v", err)

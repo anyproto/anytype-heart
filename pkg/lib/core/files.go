@@ -84,6 +84,10 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 	if err != nil {
 		return nil, err
 	}
+	err = a.objectStore.AddToIndexQueue(f.hash)
+	if err != nil {
+		return nil, err
+	}
 
 	return f, nil
 }

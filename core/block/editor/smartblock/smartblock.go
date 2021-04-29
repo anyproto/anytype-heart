@@ -283,7 +283,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		sb.metaSub.Close()
 	}
 	sb.metaSub = sb.meta.PubSub().NewSubscriber()
-	sb.depIds = sb.dependentSmartIds(true)
+	sb.depIds = sb.dependentSmartIds(true, true)
 	var ch = make(chan meta.Meta)
 	subscriber := sb.metaSub.Callback(func(d meta.Meta) {
 		ch <- d
@@ -433,7 +433,7 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	}
 }
 
-func (sb *smartBlock) dependentSmartIds(includeObjTypes bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
@@ -454,8 +454,9 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool) (ids []string) {
 			if rel.Key == bundle.RelationKeyId.String() ||
 				rel.Key == bundle.RelationKeyType.String()  ||
 				rel.Key == bundle.RelationKeyRecommendedRelations.String() ||
-				rel.Key == bundle.RelationKeyFeaturedRelations.String() {
-					continue
+				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
+				!includeCreator && rel.Key == bundle.RelationKeyCreator.String() {
+				continue
 			}
 
 			// add all object relation values as dependents
@@ -575,7 +576,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIds := sb.dependentSmartIds(true)
+	depIds := sb.dependentSmartIds(true, true)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
 		if sb.metaSub != nil {
@@ -1273,7 +1274,8 @@ func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
 }
 
 func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
-	depIds := slice.Remove(sb.dependentSmartIds(false), sb.Id())
+	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
+
 	return indexer.SearchInfo{
 		Id:      sb.Id(),
 		Title:   pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String()),
