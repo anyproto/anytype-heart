@@ -34,7 +34,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 0 // reindex ipfs-file-based objects
 	ForceIdxRebuildCounter            int32 = 3 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceFulltextIndexCounter         int32 = 0 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
+	ForceFulltextIndexCounter         int32 = 1 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
 var log = logging.Logger("anytype-doc-indexer")
