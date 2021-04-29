@@ -79,6 +79,11 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		return nil, err
 	}
 
+	err = a.objectStore.AddToIndexQueue(img.hash)
+	if err != nil {
+		return nil, err
+	}
+
 	return img, nil
 }
 
