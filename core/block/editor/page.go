@@ -64,7 +64,8 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 	return template.ApplyTemplate(p, ctx.State,
 		template.WithTitle,
-		//template.WithDescription,
+		template.WithDefaultFeaturedRelations,
+		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
 		template.WithLayout(layout),

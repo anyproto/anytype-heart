@@ -26,6 +26,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyLastModifiedDate,
 	RelationKeyLastModifiedBy,
 	RelationKeyLastOpenedDate,
+	RelationKeyFeaturedRelations,
 	RelationKeyIsHidden,
 	RelationKeyIsArchived,
 }
