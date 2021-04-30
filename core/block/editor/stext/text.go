@@ -124,6 +124,7 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 					return
 				}
 				targetPos = model.Block_None
+				newId = nextBlock.Model().Id
 				break
 			}
 		}

@@ -116,7 +116,9 @@ var WithMaxCountMigration = func(s *state.State) {
 	rels := s.ExtraRelations()
 	for k, v := range d.Fields {
 		rel := pbtypes.GetRelation(rels, k)
-		if rel.MaxCount == 1 {
+		if rel == nil {
+			log.Errorf("obj %s relation %s is missing but detail is set", s.RootId(), k)
+		} else if rel.MaxCount == 1 {
 			if b := v.GetListValue(); b != nil {
 				if len(b.Values) > 0 {
 					d.Fields[k] = pbtypes.String(b.Values[0].String())
@@ -260,6 +262,13 @@ var WithTitle = StateTransformer(func(s *state.State) {
 	}
 })
 
+// WithDefaultFeaturedRelations **MUST** be called before WithDescription
+var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
+	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}))
+	}
+})
+
 var WithDescription = StateTransformer(func(s *state.State) {
 	WithHeader(s)
 
@@ -272,6 +281,14 @@ var WithDescription = StateTransformer(func(s *state.State) {
 	}
 
 	blockExists := s.Exists(DescriptionBlockId)
+	blockShouldExists := slice.FindPos(pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String()), DescriptionBlockId) > -1
+	if !blockShouldExists {
+		if blockExists {
+			s.Unlink(DescriptionBlockId)
+		}
+		return
+	}
+
 	if blockExists && (s.Get(DescriptionBlockId).Model().Align == align) {
 		return
 	}
@@ -296,8 +313,8 @@ var WithDescription = StateTransformer(func(s *state.State) {
 		return
 	}
 
-	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, DescriptionBlockId); err != nil {
-		log.Errorf("template WithDescription failed to insert: %w", err)
+	if err := s.InsertTo(TitleBlockId, model.Block_Bottom, DescriptionBlockId); err != nil {
+		log.Errorf("template WithDescription failed to insert: %s", err.Error())
 	}
 })
 
