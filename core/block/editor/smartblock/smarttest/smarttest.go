@@ -231,8 +231,8 @@ func (st *SmartTest) Id() string {
 	return st.id
 }
 
-func (st *SmartTest) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_Page
+func (st *SmartTest) Type() model.SmartBlockType {
+	return model.SmartBlockType_Page
 }
 
 func (st *SmartTest) Show(*state.Context) (err error) {

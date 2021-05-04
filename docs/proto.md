@@ -801,7 +801,6 @@
     - [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus)
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
-    - [SmartBlockType](#anytype.SmartBlockType)
   
   
   
@@ -869,6 +868,7 @@
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
     - [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction)
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
+    - [SmartBlockType](#anytype.model.SmartBlockType)
   
   
   
@@ -12020,7 +12020,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent simple blocks (descendants) |
 | details | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) | repeated | details for the current and dependent objects |
-| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
+| type | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
 | objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
 | relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
 | restrictions | [model.Restrictions](#anytype.model.Restrictions) |  | object restrictions |
@@ -12431,33 +12431,6 @@ Precondition: user A and user B opened the same block
 | DropFiles | 0 |  |
 | Import | 1 |  |
 | Export | 2 |  |
-
-
-
-<a name="anytype.SmartBlockType"></a>
-
-### SmartBlockType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Breadcrumbs | 0 |  |
-| Page | 16 |  |
-| ProfilePage | 17 |  |
-| Home | 32 |  |
-| Archive | 48 |  |
-| Database | 64 |  |
-| Set | 65 | only have dataview simpleblock |
-| ObjectType | 96 | have relations list |
-| File | 256 |  |
-| Template | 288 |  |
-| MarketplaceType | 272 |  |
-| MarketplaceRelation | 273 |  |
-| MarketplaceTemplate | 274 |  |
-| BundledRelation | 512 |  |
-| IndexedRelation | 513 |  |
-| BundledObjectType | 514 |  |
-| AnytypeProfile | 515 |  |
 
 
  
@@ -13112,7 +13085,7 @@ General purpose structure, uses in Mark.
 <a name="anytype.model.SmartBlockSnapshotBase"></a>
 
 ### SmartBlockSnapshotBase
-deprecated
+
 
 
 | Field | Type | Label | Description |
@@ -13400,6 +13373,33 @@ deprecated
 | Relation | 1 | restricts work with relations |
 | Header | 2 | restricts edit a header (title, description, etc.) |
 | CreateBlock | 3 | restricts create a new block |
+
+
+
+<a name="anytype.model.SmartBlockType"></a>
+
+### SmartBlockType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Breadcrumbs | 0 |  |
+| Page | 16 |  |
+| ProfilePage | 17 |  |
+| Home | 32 |  |
+| Archive | 48 |  |
+| Database | 64 |  |
+| Set | 65 | only have dataview simpleblock |
+| ObjectType | 96 | have relations list |
+| File | 256 |  |
+| Template | 288 |  |
+| MarketplaceType | 272 |  |
+| MarketplaceRelation | 273 |  |
+| MarketplaceTemplate | 274 |  |
+| BundledRelation | 512 |  |
+| IndexedRelation | 513 |  |
+| BundledObjectType | 514 |  |
+| AnytypeProfile | 515 |  |
 
 
  

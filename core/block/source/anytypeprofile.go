@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
@@ -43,8 +43,8 @@ func (v *anytypeProfile) Anytype() core.Service {
 	return v.a
 }
 
-func (v *anytypeProfile) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_AnytypeProfile
+func (v *anytypeProfile) Type() model.SmartBlockType {
+	return model.SmartBlockType_AnytypeProfile
 }
 
 func (v *anytypeProfile) Virtual() bool {

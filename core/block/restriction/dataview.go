@@ -1,7 +1,6 @@
 package restriction
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -24,11 +23,11 @@ var (
 		},
 	}
 
-	dataviewRestrictionsByPb = map[pb.SmartBlockType]DataviewRestrictions{
-		pb.SmartBlockType_MarketplaceRelation: dvRestrictMarketplace,
-		pb.SmartBlockType_MarketplaceTemplate: dvRestrictMarketplace,
-		pb.SmartBlockType_MarketplaceType:     dvRestrictMarketplace,
-		pb.SmartBlockType_Set:                 dvRestrictNo,
+	dataviewRestrictionsByPb = map[model.SmartBlockType]DataviewRestrictions{
+		model.SmartBlockType_MarketplaceRelation: dvRestrictMarketplace,
+		model.SmartBlockType_MarketplaceTemplate: dvRestrictMarketplace,
+		model.SmartBlockType_MarketplaceType:     dvRestrictMarketplace,
+		model.SmartBlockType_Set:                 dvRestrictNo,
 	}
 )
 

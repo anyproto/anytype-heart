@@ -21,6 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -70,7 +71,7 @@ type SmartblockOpenListner interface {
 type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
-	Type() pb.SmartBlockType
+	Type() model.SmartBlockType
 	Meta() *core.SmartBlockMeta
 	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
@@ -159,7 +160,7 @@ func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	}
 }
 
-func (sb *smartBlock) Type() pb.SmartBlockType {
+func (sb *smartBlock) Type() model.SmartBlockType {
 	return sb.source.Type()
 }
 
@@ -203,7 +204,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
-	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
+	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
 		return nil
 	}
 
@@ -295,7 +296,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 
 	var uniqueObjTypes []string
 
-	if sb.Type() == pb.SmartBlockType_Set {
+	if sb.Type() == model.SmartBlockType_Set {
 		// add the object type from the dataview source
 		if b := sb.Doc.Pick("dataview"); b != nil {
 			if dv := b.Model().GetDataview(); dv != nil {
@@ -428,7 +429,7 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 
 func (sb *smartBlock) dependentSmartIds() (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
-	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
+	if sb.Type() != model.SmartBlockType_Breadcrumbs && sb.Type() != model.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 
 		for _, ot := range sb.ObjectTypes() {
@@ -580,12 +581,12 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 
 func (sb *smartBlock) NewState() *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewState().SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
+	return sb.Doc.NewState().SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
+	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) History() undo.History {
@@ -1182,7 +1183,7 @@ func (sb *smartBlock) Relations() []*pbrelation.Relation {
 }
 
 func (sb *smartBlock) RelationsState(s *state.State) []*pbrelation.Relation {
-	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
+	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
 		return sb.baseRelations()
 	}
 

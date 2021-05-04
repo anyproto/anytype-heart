@@ -1,7 +1,6 @@
 package restriction
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -18,25 +17,25 @@ var (
 		model.Restrictions_Header,
 	}
 
-	objectRestrictionsByPbType = map[pb.SmartBlockType]ObjectRestrictions{
-		pb.SmartBlockType_Breadcrumbs:    objRestrictEdit,
-		pb.SmartBlockType_ProfilePage:    {},
-		pb.SmartBlockType_AnytypeProfile: objRestrictAll,
-		pb.SmartBlockType_Page:           {},
-		pb.SmartBlockType_Home: {
+	objectRestrictionsByPbType = map[model.SmartBlockType]ObjectRestrictions{
+		model.SmartBlockType_Breadcrumbs:    objRestrictEdit,
+		model.SmartBlockType_ProfilePage:    {},
+		model.SmartBlockType_AnytypeProfile: objRestrictAll,
+		model.SmartBlockType_Page:           {},
+		model.SmartBlockType_Home: {
 			model.Restrictions_Header,
 			model.Restrictions_Relation,
 		},
-		pb.SmartBlockType_File:                objRestrictEdit,
-		pb.SmartBlockType_MarketplaceRelation: objRestrictAll,
-		pb.SmartBlockType_MarketplaceTemplate: objRestrictAll,
-		pb.SmartBlockType_MarketplaceType:     objRestrictAll,
-		pb.SmartBlockType_Archive:             objRestrictAll,
-		pb.SmartBlockType_Set:                 {model.Restrictions_CreateBlock},
-		pb.SmartBlockType_BundledRelation:     objRestrictAll,
-		pb.SmartBlockType_IndexedRelation:     objRestrictAll,
-		pb.SmartBlockType_BundledObjectType:   objRestrictAll,
-		pb.SmartBlockType_ObjectType:          objRestrictEdit,
+		model.SmartBlockType_File:                objRestrictEdit,
+		model.SmartBlockType_MarketplaceRelation: objRestrictAll,
+		model.SmartBlockType_MarketplaceTemplate: objRestrictAll,
+		model.SmartBlockType_MarketplaceType:     objRestrictAll,
+		model.SmartBlockType_Archive:             objRestrictAll,
+		model.SmartBlockType_Set:                 {model.Restrictions_CreateBlock},
+		model.SmartBlockType_BundledRelation:     objRestrictAll,
+		model.SmartBlockType_IndexedRelation:     objRestrictAll,
+		model.SmartBlockType_BundledObjectType:   objRestrictAll,
+		model.SmartBlockType_ObjectType:          objRestrictEdit,
 	}
 )
 

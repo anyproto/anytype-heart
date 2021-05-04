@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/ipfs/go-cid"
@@ -15,22 +14,22 @@ import (
 type SmartBlockType uint64
 
 const (
-	SmartBlockTypePage                = SmartBlockType(pb.SmartBlockType_Page)
-	SmartBlockTypeProfilePage         = SmartBlockType(pb.SmartBlockType_ProfilePage)
-	SmartBlockTypeHome                = SmartBlockType(pb.SmartBlockType_Home)
-	SmartBlockTypeArchive             = SmartBlockType(pb.SmartBlockType_Archive)
-	SmartBlockTypeDatabase            = SmartBlockType(pb.SmartBlockType_Database)
-	SmartBlockTypeSet                 = SmartBlockType(pb.SmartBlockType_Set)
-	SmartBlockTypeObjectType          = SmartBlockType(pb.SmartBlockType_ObjectType)
-	SmartBlockTypeFile                = SmartBlockType(pb.SmartBlockType_File)
-	SmartblockTypeMarketplaceType     = SmartBlockType(pb.SmartBlockType_MarketplaceType)
-	SmartblockTypeMarketplaceRelation = SmartBlockType(pb.SmartBlockType_MarketplaceRelation)
-	SmartblockTypeMarketplaceTemplate = SmartBlockType(pb.SmartBlockType_MarketplaceTemplate)
-	SmartBlockTypeTemplate            = SmartBlockType(pb.SmartBlockType_Template)
-	SmartBlockTypeBundledRelation     = SmartBlockType(pb.SmartBlockType_BundledRelation)
-	SmartBlockTypeIndexedRelation     = SmartBlockType(pb.SmartBlockType_IndexedRelation)
-	SmartBlockTypeBundledObjectType   = SmartBlockType(pb.SmartBlockType_BundledObjectType)
-	SmartBlockTypeAnytypeProfile      = SmartBlockType(pb.SmartBlockType_AnytypeProfile)
+	SmartBlockTypePage                = SmartBlockType(model.SmartBlockType_Page)
+	SmartBlockTypeProfilePage         = SmartBlockType(model.SmartBlockType_ProfilePage)
+	SmartBlockTypeHome                = SmartBlockType(model.SmartBlockType_Home)
+	SmartBlockTypeArchive             = SmartBlockType(model.SmartBlockType_Archive)
+	SmartBlockTypeDatabase            = SmartBlockType(model.SmartBlockType_Database)
+	SmartBlockTypeSet                 = SmartBlockType(model.SmartBlockType_Set)
+	SmartBlockTypeObjectType          = SmartBlockType(model.SmartBlockType_ObjectType)
+	SmartBlockTypeFile                = SmartBlockType(model.SmartBlockType_File)
+	SmartblockTypeMarketplaceType     = SmartBlockType(model.SmartBlockType_MarketplaceType)
+	SmartblockTypeMarketplaceRelation = SmartBlockType(model.SmartBlockType_MarketplaceRelation)
+	SmartblockTypeMarketplaceTemplate = SmartBlockType(model.SmartBlockType_MarketplaceTemplate)
+	SmartBlockTypeTemplate            = SmartBlockType(model.SmartBlockType_Template)
+	SmartBlockTypeBundledRelation     = SmartBlockType(model.SmartBlockType_BundledRelation)
+	SmartBlockTypeIndexedRelation     = SmartBlockType(model.SmartBlockType_IndexedRelation)
+	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {

@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -89,7 +90,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 	objectTypes := h.meta.FetchObjectTypes(uniqueObjTypes)
 	return &pb.EventObjectShow{
 		RootId:      pageId,
-		Type:        pb.SmartBlockType(sbType),
+		Type:        model.SmartBlockType(sbType),
 		Blocks:      s.Blocks(),
 		Details:     details,
 		ObjectTypes: objectTypes,

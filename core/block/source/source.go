@@ -36,7 +36,7 @@ type ChangeReceiver interface {
 type Source interface {
 	Id() string
 	Anytype() core.Service
-	Type() pb.SmartBlockType
+	Type() model.SmartBlockType
 	Virtual() bool
 	ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
@@ -118,14 +118,14 @@ func newSource(a core.Service, ss status.Service, tid thread.ID) (s Source, err 
 	}
 
 	s = &source{
-		id:       id,
+		id:             id,
 		smartblockType: sbt,
-		tid:      tid,
-		a:        a,
-		ss:       ss,
-		sb:       sb,
-		logId:    a.Device(),
-		openedAt: time.Now(),
+		tid:            tid,
+		a:              a,
+		ss:             ss,
+		sb:             sb,
+		logId:          a.Device(),
+		openedAt:       time.Now(),
 	}
 	return
 }
@@ -159,8 +159,8 @@ func (s *source) Anytype() core.Service {
 	return s.a
 }
 
-func (s *source) Type() pb.SmartBlockType {
-	return pb.SmartBlockType(s.sb.Type())
+func (s *source) Type() model.SmartBlockType {
+	return model.SmartBlockType(s.sb.Type())
 }
 
 func (s *source) Virtual() bool {
@@ -244,7 +244,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(s.openedAt.Unix()))
 	InjectLocalDetails(s, st)
 
-	if s.Type() != pb.SmartBlockType_Archive && !s.Virtual() {
+	if s.Type() != model.SmartBlockType_Archive && !s.Virtual() {
 		// we do not need details for archive or breadcrumbs
 		st.InjectDerivedDetails()
 		err = InjectCreationInfo(s, st)

@@ -7,10 +7,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 )
@@ -39,8 +39,8 @@ func (v *bundledRelation) Anytype() core.Service {
 	return v.a
 }
 
-func (v *bundledRelation) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_BundledRelation
+func (v *bundledRelation) Type() model.SmartBlockType {
+	return model.SmartBlockType_BundledRelation
 }
 
 func (v *bundledRelation) Virtual() bool {
