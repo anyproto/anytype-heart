@@ -63,6 +63,8 @@ func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
 	if p.mode.removeSelection {
 		p.removeSelection()
 	}
+	p.normalize()
+
 	p.processFiles()
 	return
 }
@@ -284,6 +286,19 @@ func (p *pasteCtrl) processFiles() {
 				BlockId: b.Model().Id,
 				Url:     file.Name,
 			})
+		}
+		return true
+	})
+}
+
+func (p *pasteCtrl) normalize() {
+	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
+		if txtBlock := b.Model().GetText(); txtBlock != nil {
+			if txtBlock.Style == model.BlockContentText_Title && b.Model().Id != template.TitleBlockId {
+				txtBlock.Style = model.BlockContentText_Header1
+			} else if txtBlock.Style == model.BlockContentText_Description && b.Model().Id != template.DescriptionBlockId {
+				txtBlock.Style = model.BlockContentText_Paragraph
+			}
 		}
 		return true
 	})

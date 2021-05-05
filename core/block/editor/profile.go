@@ -55,6 +55,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
 		template.WithRequiredRelations(),
+		template.WithMaxCountMigration,
 	)
 }
 

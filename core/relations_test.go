@@ -165,7 +165,7 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(respSetRelCreate2.Error.Code), respSetRelCreate2.Error.Description)
 
 		respPageCreate := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
-			bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyIdea.URL()}),
+			bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyIdea.URL()),
 		}}})
 		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
 
@@ -177,10 +177,10 @@ func TestRelationAdd(t *testing.T) {
 
 		relFromSet1 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate1.RelationKey)
 		require.NotNil(t, relFromSet1)
-		require.Equal(t, relFromSet1.Scope, pbrelation.Relation_setOfTheSameType)
+		require.Equal(t, pbrelation.Relation_setOfTheSameType, relFromSet1.Scope)
 		relFromSet2 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate2.RelationKey)
 		require.NotNil(t, relFromSet2)
-		require.Equal(t, relFromSet2.Scope, pbrelation.Relation_setOfTheSameType)
+		require.Equal(t, pbrelation.Relation_setOfTheSameType, relFromSet2.Scope)
 	})
 
 	t.Run("relation_scope_becomes_object", func(t *testing.T) {

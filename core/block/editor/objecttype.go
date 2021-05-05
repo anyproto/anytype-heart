@@ -49,7 +49,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
-	rels := p.RelationsState(ctx.State)
+	rels := p.RelationsState(ctx.State, false)
 	recommendedRelationsKeys := pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String())
 	for _, rel := range bundle.RequiredInternalRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
@@ -94,7 +94,8 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	return template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
-		//template.WithDescription,
+		template.WithDefaultFeaturedRelations,
+		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithDataview(dataview, true),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),

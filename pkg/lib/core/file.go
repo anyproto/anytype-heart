@@ -43,7 +43,7 @@ func (i *file) Details() (*types.Struct, error) {
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():           pbtypes.String(i.hash),
 			bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(relation.ObjectType_file)),
-			bundle.RelationKeyType.String():         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
+			bundle.RelationKeyType.String():         pbtypes.String(bundle.TypeKeyFile.URL()),
 			bundle.RelationKeyFileMimeType.String(): pbtypes.String(meta.Media),
 			bundle.RelationKeyName.String():         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
 			bundle.RelationKeyFileExt.String():      pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), ".")),
@@ -53,7 +53,7 @@ func (i *file) Details() (*types.Struct, error) {
 	}
 
 	if strings.HasPrefix(meta.Media, "video") {
-		t.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{bundle.TypeKeyVideo.URL()})
+		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyVideo.URL())
 	}
 
 	return t, nil

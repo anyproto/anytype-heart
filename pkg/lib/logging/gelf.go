@@ -49,7 +49,7 @@ func (gs *gelfSink) Run() {
 					fmt.Fprintf(os.Stderr, "failed to write to gelf: %v\n", err.Error())
 				}
 				gs.lastErrorAt = time.Now()
-				_ = gs.batch.Add(msg)
+				_ = gs.batch.TryAdd(msg)
 				// batch can be overflowed, let's do our best and ignore errors
 			}
 		}
@@ -72,7 +72,7 @@ func (gs *gelfSink) Write(b []byte) (int, error) {
 		Extra:    map[string]interface{}{"_mwver": gs.version},
 	}
 
-	err := gs.batch.Add(msg)
+	err := gs.batch.TryAdd(msg)
 	if err != nil {
 		return 0, err
 	}

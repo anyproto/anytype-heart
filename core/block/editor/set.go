@@ -51,7 +51,8 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 
 	templates := []template.StateTransformer{
 		template.WithTitle,
-		//template.WithDescription,
+		template.WithDefaultFeaturedRelations,
+		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
 	}
@@ -102,5 +103,6 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),
+		template.WithMaxCountMigration,
 	)
 }

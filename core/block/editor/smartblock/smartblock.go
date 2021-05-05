@@ -80,7 +80,7 @@ type SmartBlock interface {
 	Anytype() core.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*pbrelation.Relation
-	RelationsState(s *state.State) []*pbrelation.Relation
+	RelationsState(s *state.State, aggregateFromDS bool) []*pbrelation.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
 	UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error)
@@ -208,7 +208,7 @@ func (sb *smartBlock) normalizeRelations(s *state.State) error {
 		return nil
 	}
 
-	relations := sb.RelationsState(s)
+	relations := sb.RelationsState(s, true)
 	details := s.Details()
 	if details == nil || details.Fields == nil {
 		return nil
@@ -284,7 +284,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		sb.metaSub.Close()
 	}
 	sb.metaSub = sb.meta.PubSub().NewSubscriber()
-	sb.depIds = sb.dependentSmartIds()
+	sb.depIds = sb.dependentSmartIds(true, true)
 	var ch = make(chan meta.Meta)
 	subscriber := sb.metaSub.Callback(func(d meta.Meta) {
 		ch <- d
@@ -335,6 +335,13 @@ loop:
 	for len(sb.lastDepDetails) < len(sb.depIds) {
 		select {
 		case <-timeout:
+			var missingDeps []string
+			for _, dep := range sb.depIds {
+				if _, exists := sb.lastDepDetails[dep]; !exists {
+					missingDeps = append(missingDeps, dep)
+				}
+			}
+			log.Warnf("got %d out of %d dep objects after timeout: missing %v", len(sb.lastDepDetails), len(sb.depIds), missingDeps)
 			break loop
 		case d := <-ch:
 			if d.Details != nil {
@@ -427,27 +434,29 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	}
 }
 
-func (sb *smartBlock) dependentSmartIds() (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != model.SmartBlockType_Breadcrumbs && sb.Type() != model.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 
-		for _, ot := range sb.ObjectTypes() {
-			ids = append(ids, ot)
+		if includeObjTypes {
+			for _, ot := range sb.ObjectTypes() {
+				ids = append(ids, ot)
+			}
 		}
 
 		details := sb.Details()
 
-		for _, rel := range sb.Relations() {
+		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
 			if rel.Format != pbrelation.RelationFormat_object && rel.Format != pbrelation.RelationFormat_file {
 				continue
 			}
-			// add all custom object types as dependents
-			for _, ot := range rel.ObjectTypes {
-				ids = append(ids, ot)
-			}
 
-			if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
+			if rel.Key == bundle.RelationKeyId.String() ||
+				rel.Key == bundle.RelationKeyType.String() ||
+				rel.Key == bundle.RelationKeyRecommendedRelations.String() ||
+				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
+				!includeCreator && rel.Key == bundle.RelationKeyCreator.String() {
 				continue
 			}
 
@@ -519,7 +528,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
 		DoSnapshot:        doSnapshot,
 		GetAllFileHashes: func() []string {
-			return st.GetAllFileHashes(sb.FileRelationKeys())
+			return st.GetAllFileHashes(fileDetailsKeys)
 		},
 	}
 	id, err := sb.source.PushChange(pushChangeParams)
@@ -568,7 +577,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIds := sb.dependentSmartIds()
+	depIds := sb.dependentSmartIds(true, true)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
 		if sb.metaSub != nil {
@@ -722,7 +731,7 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 }
 
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.RelationsState(s))
+	copy := pbtypes.CopyRelations(sb.RelationsState(s, false))
 
 	var existsMap = map[string]*pbrelation.Relation{}
 	for _, rel := range copy {
@@ -1179,10 +1188,10 @@ func (sb *smartBlock) baseRelations() []*pbrelation.Relation {
 }
 
 func (sb *smartBlock) Relations() []*pbrelation.Relation {
-	return sb.RelationsState(sb.Doc.(*state.State))
+	return sb.RelationsState(sb.Doc.(*state.State), true)
 }
 
-func (sb *smartBlock) RelationsState(s *state.State) []*pbrelation.Relation {
+func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*pbrelation.Relation {
 	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
 		return sb.baseRelations()
 	}
@@ -1191,7 +1200,7 @@ func (sb *smartBlock) RelationsState(s *state.State) []*pbrelation.Relation {
 
 	var err error
 	var aggregatedRelation []*pbrelation.Relation
-	if objType != "" {
+	if objType != "" && aggregateFromDS {
 		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsFromSetsOfType(objType)
 		if err != nil {
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
@@ -1255,7 +1264,7 @@ func (sb *smartBlock) execHooks(event Hook) {
 }
 
 func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
-	for _, rel := range sb.Relations() {
+	for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
 		if rel.Format == pbrelation.RelationFormat_file {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {
 				fileKeys = append(fileKeys, rel.Key)
@@ -1266,7 +1275,8 @@ func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
 }
 
 func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
-	depIds := slice.Remove(sb.dependentSmartIds(), sb.Id())
+	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
+
 	return indexer.SearchInfo{
 		Id:      sb.Id(),
 		Title:   pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String()),
