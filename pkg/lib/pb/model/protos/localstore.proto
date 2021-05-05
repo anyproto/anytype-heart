@@ -4,6 +4,7 @@ option go_package = "pkg/lib/pb/model";
 
 import "google/protobuf/struct.proto";
 import "pkg/lib/pb/relation/protos/relation.proto";
+import "pkg/lib/pb/model/protos/models.proto";
 
 message ObjectInfo {
     string id = 1;
@@ -13,19 +14,7 @@ message ObjectInfo {
 
     string snippet = 5;
     bool hasInboundLinks = 6;
-    Type objectType = 7;
-
-    enum Type {
-        Page = 0;
-        Home = 1;
-        ProfilePage = 2;
-        Archive = 3;
-
-        Set = 5;
-        File = 6;
-        ObjectType = 7;
-        Relation = 8;
-    }
+    SmartBlockType objectType = 7;
 }
 
 message ObjectDetails {

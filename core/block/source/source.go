@@ -65,10 +65,10 @@ func SourceTypeBySbType(a core.Service, blockType smartblock.SmartBlockType) (s 
 	case smartblock.SmartBlockTypeIndexedRelation:
 		return &bundledRelation{a: a}, nil
 	default:
-		if blockType.IsValid() {
-			return &source{a: a, smartblockType: blockType}, nil
+		if err := blockType.Valid(); err != nil {
+			return nil, err
 		} else {
-			return nil, fmt.Errorf("sb type is invalid")
+			return &source{a: a, smartblockType: blockType}, nil
 		}
 	}
 }

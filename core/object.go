@@ -63,7 +63,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	var records2 []*types.Struct
+	var records2 = make([]*types.Struct, 0, len(records))
 	for _, rec := range records {
 		records2 = append(records2, rec.Details)
 	}

@@ -17,7 +17,7 @@ message ObjectType {
     string iconEmoji = 5; // emoji symbol
     string description = 6;
     bool hidden = 7;
-    
+
     enum Layout {
         basic = 0;
         profile = 1;
@@ -96,7 +96,6 @@ message Relation {
         account = 2; // stored in the account DB. means existing only for specific anytype account
     }
 }
-
 
 // RelationFormat describes how the underlying data is stored in the google.protobuf.Value and how it should be validated/sanitized
 enum RelationFormat {

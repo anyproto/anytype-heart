@@ -815,7 +815,6 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
-    - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
   
   
   
@@ -12477,7 +12476,7 @@ Precondition: user A and user B opened the same block
 | relations | [anytype.relation.Relations](#anytype.relation.Relations) |  |  |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
-| objectType | [ObjectInfo.Type](#anytype.model.ObjectInfo.Type) |  |  |
+| objectType | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |
 
 
 
@@ -12588,24 +12587,6 @@ Precondition: user A and user B opened the same block
 
 
  
-
-
-<a name="anytype.model.ObjectInfo.Type"></a>
-
-### ObjectInfo.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Page | 0 |  |
-| Home | 1 |  |
-| ProfilePage | 2 |  |
-| Archive | 3 |  |
-| Set | 5 |  |
-| File | 6 |  |
-| ObjectType | 7 |  |
-| Relation | 8 |  |
-
 
  
 

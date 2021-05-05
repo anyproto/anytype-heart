@@ -69,8 +69,7 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	blockType, _ := uvarint(rawid[n+n2:])
 
 	// checks in order to detect invalid sb type
-	_, err := SmartBlockType(blockType).toProto()
-	if err != nil {
+	if err := SmartBlockType(blockType).Valid(); err != nil {
 		return 0, err
 	}
 
@@ -78,55 +77,15 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 }
 
 // Panics in case of incorrect sb type!
-func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
-	t, err := sbt.toProto()
-	if err != nil {
-		panic(err)
-	}
-	return t
+func (sbt SmartBlockType) ToProto() model.SmartBlockType {
+	return model.SmartBlockType(sbt)
 }
 
-func (sbt SmartBlockType) IsValid() bool {
-	_, err := sbt.toProto()
-	if err != nil {
-		return false
+func (sbt SmartBlockType) Valid() (err error) {
+	if _, ok := model.SmartBlockType_name[int32(sbt)]; ok {
+		return nil
 	}
-	return true
-}
-
-func (sbt SmartBlockType) toProto() (model.ObjectInfoType, error) {
-	switch sbt {
-	case SmartBlockTypePage:
-		return model.ObjectInfo_Page, nil
-	case SmartBlockTypeProfilePage:
-		return model.ObjectInfo_ProfilePage, nil
-	case SmartBlockTypeHome:
-		return model.ObjectInfo_Home, nil
-	case SmartBlockTypeArchive:
-		return model.ObjectInfo_Archive, nil
-	case SmartBlockTypeSet:
-		return model.ObjectInfo_Set, nil
-	case SmartblockTypeMarketplaceType:
-		return model.ObjectInfo_Set, nil
-	case SmartblockTypeMarketplaceTemplate:
-		return model.ObjectInfo_Set, nil
-	case SmartblockTypeMarketplaceRelation:
-		return model.ObjectInfo_Set, nil
-	case SmartBlockTypeFile:
-		return model.ObjectInfo_File, nil
-	case SmartBlockTypeObjectType:
-		return model.ObjectInfo_ObjectType, nil
-	case SmartBlockTypeBundledObjectType:
-		return model.ObjectInfo_ObjectType, nil
-	case SmartBlockTypeBundledRelation:
-		return model.ObjectInfo_Relation, nil
-	case SmartBlockTypeIndexedRelation:
-		return model.ObjectInfo_Relation, nil
-	case SmartBlockTypeTemplate:
-		return model.ObjectInfo_Page, nil
-	default:
-		return 0, fmt.Errorf("unknown smartblock type")
-	}
+	return fmt.Errorf("unknown smartblock type")
 }
 
 // Snapshot of varint function that work with a string rather than
