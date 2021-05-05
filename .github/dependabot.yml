@@ -1,0 +1,56 @@
+version: 2
+updates:
+- package-ecosystem: gomod
+  directory: "/"
+  schedule:
+    interval: daily
+  open-pull-requests-limit: 10
+  ignore:
+  - dependency-name: github.com/ipfs/go-path
+    versions:
+    - "> 0.0.7"
+  - dependency-name: github.com/yuin/goldmark
+    versions:
+    - "> 1.3.1"
+  - dependency-name: google.golang.org/grpc
+    versions:
+    - 1.35.0
+    - 1.36.0
+    - 1.36.1
+    - 1.37.0
+  - dependency-name: github.com/libp2p/go-libp2p-swarm
+    versions:
+    - 0.4.3
+    - 0.5.0
+  - dependency-name: github.com/grpc-ecosystem/go-grpc-middleware
+    versions:
+    - 1.3.0
+  - dependency-name: github.com/improbable-eng/grpc-web
+    versions:
+    - 0.14.0
+  - dependency-name: github.com/hsanjuan/ipfs-lite
+    versions:
+    - 1.1.18
+    - 1.1.19
+  - dependency-name: golang.org/x/text
+    versions:
+    - 0.3.6
+  - dependency-name: github.com/uber/jaeger-client-go
+    versions:
+    - 2.26.0+incompatible
+  - dependency-name: github.com/microcosm-cc/bluemonday
+    versions:
+    - 1.0.6
+    - 1.0.7
+  - dependency-name: github.com/libp2p/go-libp2p
+    versions:
+    - 0.13.0
+  - dependency-name: github.com/dgtony/collections
+    versions:
+    - 0.1.6
+  - dependency-name: github.com/libp2p/go-libp2p-core
+    versions:
+    - 0.8.0
+    - 0.8.2
+    - 0.8.4
+    - 0.8.5
