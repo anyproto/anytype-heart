@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -25,7 +25,7 @@ type Details struct {
 }
 
 type Relations struct {
-	Before, After []*pbrelation.Relation
+	Before, After []*model.Relation
 }
 
 type ObjectType struct {

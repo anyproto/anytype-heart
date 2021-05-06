@@ -8,7 +8,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -32,14 +31,14 @@ type Reader interface {
 	QueryById(ids []string) (records []Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
 
-	GetRelation(key string) (relation *pbrelation.Relation, err error)
+	GetRelation(key string) (relation *model.Relation, err error)
 
 	// ListRelations returns both indexed and bundled relations
-	ListRelations(objType string) (relations []*pbrelation.Relation, err error)
+	ListRelations(objType string) (relations []*model.Relation, err error)
 	ListRelationsKeys() ([]string, error)
 
-	AggregateRelationsFromObjectsOfType(objType string) (relations []*pbrelation.Relation, err error)
-	AggregateRelationsFromSetsOfType(objType string) (relations []*pbrelation.Relation, err error)
+	AggregateRelationsFromObjectsOfType(objType string) (relations []*model.Relation, err error)
+	AggregateRelationsFromSetsOfType(objType string) (relations []*model.Relation, err error)
 	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 }
 
@@ -47,10 +46,10 @@ type Writer interface {
 	// Creating record involves some additional operations that may change
 	// the record. So we return potentially modified record as a result.
 	// in case subscription is not nil it will be subscribed to the record updates
-	Create(relations []*pbrelation.Relation, rec Record, sub Subscription) (Record, error)
+	Create(relations []*model.Relation, rec Record, sub Subscription) (Record, error)
 
-	Update(id string, relations []*pbrelation.Relation, rec Record) error
-	UpdateRelationOption(id string, relKey string, option pbrelation.RelationOption) (optionId string, err error)
+	Update(id string, relations []*model.Relation, rec Record) error
+	UpdateRelationOption(id string, relKey string, option model.RelationOption) (optionId string, err error)
 
 	Delete(id string) error
 }
@@ -92,7 +91,7 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 	var preFilter filter.Filter
 	if sch != nil {
 		for _, rel := range sch.Relations {
-			if rel.Format == pbrelation.RelationFormat_date {
+			if rel.Format == model.RelationFormat_date {
 				if relation := getRelationByKey(q.Relations, rel.Key); relation == nil || !relation.DateIncludeTime {
 					f.dateKeys = append(f.dateKeys, rel.Key)
 				}
@@ -100,7 +99,7 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 		}
 		if sch.ObjType != nil {
 			for _, rel := range sch.ObjType.Relations {
-				if rel.Format == pbrelation.RelationFormat_date {
+				if rel.Format == model.RelationFormat_date {
 					if relation := getRelationByKey(q.Relations, rel.Key); relation == nil || !relation.DateIncludeTime {
 						f.dateKeys = append(f.dateKeys, rel.Key)
 					}

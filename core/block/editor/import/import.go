@@ -21,7 +21,6 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -63,7 +62,7 @@ type fileInfo struct {
 }
 
 type Services interface {
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error

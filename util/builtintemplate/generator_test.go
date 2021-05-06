@@ -10,7 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -29,7 +29,7 @@ func newTestState(rootId string) *state.State {
 			"key": pbtypes.String("value"),
 		},
 	})
-	st.SetExtraRelation(&pbrelation.Relation{
+	st.SetExtraRelation(&model.Relation{
 		Key: "testRel",
 	})
 	st.SetObjectType("testObjType")

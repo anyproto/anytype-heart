@@ -1,17 +1,18 @@
 package meta
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -26,7 +27,7 @@ type Service interface {
 	PubSub() PubSub
 	ReportChange(m Meta)
 	FetchMeta(ids []string) (metas []Meta)
-	FetchObjectTypes(objectTypeUrls []string) []*pbrelation.ObjectType
+	FetchObjectTypes(objectTypeUrls []string) []*model.ObjectType
 	app.ComponentRunnable
 }
 
@@ -98,11 +99,11 @@ func (s *service) FetchMeta(ids []string) (metas []Meta) {
 	return
 }
 
-func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.ObjectType {
+func (s *service) FetchObjectTypes(objectTypeUrls []string) []*model.ObjectType {
 	if len(objectTypeUrls) == 0 {
 		return nil
 	}
-	var objectTypes = []*pbrelation.ObjectType{}
+	var objectTypes = []*model.ObjectType{}
 	var customOtypeIds = []string{}
 	for _, otypeUrl := range objectTypeUrls {
 		if strings.HasPrefix(otypeUrl, objects.BundledObjectTypeURLPrefix) {
@@ -126,12 +127,12 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 
 	metas := s.FetchMeta(customOtypeIds)
 	for _, meta := range metas {
-		objectType := &pbrelation.ObjectType{}
+		objectType := &model.ObjectType{}
 		if name := pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()); name != "" {
 			objectType.Name = name
 		}
 		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyRecommendedLayout.String()); layout != 0.0 {
-			objectType.Layout = pbrelation.ObjectTypeLayout(int(layout))
+			objectType.Layout = model.ObjectTypeLayout(int(layout))
 		}
 
 		if iconEmoji := pbtypes.GetString(meta.Details, bundle.RelationKeyIconEmoji.String()); iconEmoji != "" {
@@ -145,7 +146,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 			}
 		}
 
-		var recommendedRelations []*pbrelation.Relation
+		var recommendedRelations []*model.Relation
 		for _, rk := range recommendedRelationsKeys {
 			rel := pbtypes.GetRelation(meta.Relations, rk)
 			if rel == nil {
@@ -156,7 +157,7 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*pbrelation.Object
 			}
 
 			relCopy := pbtypes.CopyRelation(rel)
-			relCopy.Scope = pbrelation.Relation_type
+			relCopy.Scope = model.Relation_type
 			recommendedRelations = append(recommendedRelations, relCopy)
 		}
 

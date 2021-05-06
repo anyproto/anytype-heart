@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -43,7 +42,7 @@ type Doc interface {
 	Pick(id string) (b simple.Block)
 	ObjectScopedDetails() *types.Struct
 	Details() *types.Struct
-	ExtraRelations() []*pbrelation.Relation
+	ExtraRelations() []*model.Relation
 
 	ObjectTypes() []string
 	ObjectType() string
@@ -76,7 +75,7 @@ type State struct {
 	changes        []*pb.ChangeContent
 	fileKeys       []pb.ChangeFileKeys
 	details        *types.Struct
-	extraRelations []*pbrelation.Relation
+	extraRelations []*model.Relation
 	objectTypes    []string
 
 	changesStructureIgnoreIds []string
@@ -671,12 +670,12 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	return
 }
 
-func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
+func (s *State) SetExtraRelation(rel *model.Relation) {
 	if s.extraRelations == nil && s.parent != nil {
 		s.extraRelations = pbtypes.CopyRelations(s.parent.ExtraRelations())
 	}
 	relCopy := pbtypes.CopyRelation(rel)
-	relCopy.Scope = pbrelation.Relation_object
+	relCopy.Scope = model.Relation_object
 	var found bool
 	for i, exRel := range s.extraRelations {
 		if exRel.Key == rel.Key {
@@ -691,7 +690,7 @@ func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
 
 // AddRelation adds new extraRelation to the state.
 // In case the one is already exists with the same key it does nothing
-func (s *State) AddRelation(relation *pbrelation.Relation) *State {
+func (s *State) AddRelation(relation *model.Relation) *State {
 	for _, rel := range s.ExtraRelations() {
 		if rel.Key == relation.Key {
 			return s
@@ -700,12 +699,12 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 
 	relCopy := pbtypes.CopyRelation(relation)
 	// reset the scope to object
-	relCopy.Scope = pbrelation.Relation_object
+	relCopy.Scope = model.Relation_object
 	if !pbtypes.RelationFormatCanHaveListValue(relCopy.Format) && relCopy.MaxCount != 1 {
 		relCopy.MaxCount = 1
 	}
 
-	if relCopy.Format == pbrelation.RelationFormat_file && relCopy.ObjectTypes == nil {
+	if relCopy.Format == model.RelationFormat_file && relCopy.ObjectTypes == nil {
 		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
@@ -713,11 +712,11 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 	return s
 }
 
-func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
+func (s *State) SetExtraRelations(relations []*model.Relation) *State {
 	relationsCopy := pbtypes.CopyRelations(relations)
 	for _, rel := range relationsCopy {
 		// reset scopes for all relations
-		rel.Scope = pbrelation.Relation_object
+		rel.Scope = model.Relation_object
 		if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
 			rel.MaxCount = 1
 		}
@@ -726,7 +725,7 @@ func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
 	return s
 }
 
-func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelation.RelationOption) (*pbrelation.RelationOption, error) {
+func (s *State) AddExtraRelationOption(rel model.Relation, option model.RelationOption) (*model.RelationOption, error) {
 	exRel := pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
 	if exRel == nil {
 		rel.SelectDict = nil
@@ -735,7 +734,7 @@ func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelatio
 	}
 	exRel = pbtypes.CopyRelation(exRel)
 
-	if exRel.Format != pbrelation.RelationFormat_status && exRel.Format != pbrelation.RelationFormat_tag {
+	if exRel.Format != model.RelationFormat_status && exRel.Format != model.RelationFormat_tag {
 		return nil, fmt.Errorf("relation has incorrect format")
 	}
 
@@ -795,7 +794,7 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-func (s *State) ExtraRelations() []*pbrelation.Relation {
+func (s *State) ExtraRelations() []*model.Relation {
 	if s.extraRelations == nil && s.parent != nil {
 		return s.parent.ExtraRelations()
 	}

@@ -1,13 +1,8 @@
 syntax = "proto3";
-package anytype.relation;
-option go_package = "pkg/lib/pb/relation";
+package anytype.model;
+option go_package = "pkg/lib/pb/model";
 
 import "google/protobuf/struct.proto";
-
-message Detail {
-    string key = 1;
-    google.protobuf.Value value = 2;
-}
 
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one

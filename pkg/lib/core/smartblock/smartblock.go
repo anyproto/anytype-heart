@@ -20,7 +20,7 @@ const (
 	SmartBlockTypeArchive             = SmartBlockType(model.SmartBlockType_Archive)
 	SmartBlockTypeDatabase            = SmartBlockType(model.SmartBlockType_Database)
 	SmartBlockTypeSet                 = SmartBlockType(model.SmartBlockType_Set)
-	SmartBlockTypeObjectType          = SmartBlockType(model.SmartBlockType_ObjectType)
+	SmartBlockTypeObjectType          = SmartBlockType(model.SmartBlockType_STObjectType)
 	SmartBlockTypeFile                = SmartBlockType(model.SmartBlockType_File)
 	SmartblockTypeMarketplaceType     = SmartBlockType(model.SmartBlockType_MarketplaceType)
 	SmartblockTypeMarketplaceRelation = SmartBlockType(model.SmartBlockType_MarketplaceRelation)

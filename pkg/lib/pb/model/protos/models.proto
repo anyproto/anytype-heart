@@ -2,14 +2,14 @@ syntax = "proto3";
 package anytype.model;
 option go_package = "pkg/lib/pb/model";
 
-import "pkg/lib/pb/relation/protos/relation.proto";
+import "pkg/lib/pb/model/protos/relation.proto";
 import "google/protobuf/struct.proto";
 
 message SmartBlockSnapshotBase {
     repeated Block blocks = 1;
     google.protobuf.Struct details = 2;
     google.protobuf.Struct fileKeys = 3;
-    repeated anytype.relation.Relation extraRelations = 4;
+    repeated Relation extraRelations = 4;
     repeated string objectTypes = 5;
 }
 
@@ -22,7 +22,7 @@ enum SmartBlockType {
     Archive = 0x30;
     Database = 0x40;
     Set = 0x41; // only have dataview simpleblock
-    ObjectType = 0x60; // have relations list
+    STObjectType = 0x60; // have relations list
 
     File = 0x100;
 
@@ -228,7 +228,7 @@ message Block {
             string source = 1;
             repeated View views = 2;
             // index 3 is deprecated, was used for schemaURL in old-format sets
-            repeated anytype.relation.Relation relations = 4;
+            repeated model.Relation relations = 4;
             string activeView = 3; // saved within a session
 
             message View {

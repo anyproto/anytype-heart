@@ -2,12 +2,13 @@ package bundle
 
 import (
 	"fmt"
-	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	types2 "github.com/gogo/protobuf/types"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	types2 "github.com/gogo/protobuf/types"
+
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -54,15 +55,15 @@ var ErrNotFound = fmt.Errorf("not found")
 
 func init() {
 	for _, r := range relations {
-		if r.DataSource == relation.Relation_account {
+		if r.DataSource == model.Relation_account {
 			LocalRelationsKeys = append(LocalRelationsKeys, r.Key)
-		} else if r.DataSource == relation.Relation_derived {
+		} else if r.DataSource == model.Relation_derived {
 			DerivedRelationsKeys = append(DerivedRelationsKeys, r.Key)
 		}
 	}
 }
 
-func GetTypeByUrl(u string) (*relation.ObjectType, error) {
+func GetTypeByUrl(u string) (*model.ObjectType, error) {
 	if !strings.HasPrefix(u, TypePrefix) {
 		return nil, fmt.Errorf("invalid url with no bundled type prefix")
 	}
@@ -76,7 +77,7 @@ func GetTypeByUrl(u string) (*relation.ObjectType, error) {
 
 // MustGetType returns built-in object type by predefined TypeKey constant
 // PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
-func MustGetType(tk TypeKey) *relation.ObjectType {
+func MustGetType(tk TypeKey) *model.ObjectType {
 	if v, exists := types[tk]; exists {
 		return pbtypes.CopyObjectType(v)
 	}
@@ -87,7 +88,7 @@ func MustGetType(tk TypeKey) *relation.ObjectType {
 
 // MustGetRelation returns built-in relation by predefined RelationKey constant
 // PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
-func MustGetRelation(rk RelationKey) *relation.Relation {
+func MustGetRelation(rk RelationKey) *model.Relation {
 	if v, exists := relations[rk]; exists {
 		return pbtypes.CopyRelation(v)
 	}
@@ -96,7 +97,7 @@ func MustGetRelation(rk RelationKey) *relation.Relation {
 	panic(ErrNotFound)
 }
 
-func GetRelation(rk RelationKey) (*relation.Relation, error) {
+func GetRelation(rk RelationKey) (*model.Relation, error) {
 	if v, exists := relations[rk]; exists {
 		return pbtypes.CopyRelation(v), nil
 	}
@@ -106,7 +107,7 @@ func GetRelation(rk RelationKey) (*relation.Relation, error) {
 
 // MustGetLayout returns built-in layout by predefined Layout constant
 // PANICS IN CASE RELATION KEY IS NOT EXISTS – DO NOT USE WITH ARBITRARY STRING
-func MustGetLayout(lk relation.ObjectTypeLayout) *relation.Layout {
+func MustGetLayout(lk model.ObjectTypeLayout) *model.Layout {
 	if v, exists := Layouts[lk]; exists {
 		return pbtypes.CopyLayout(&v)
 	}
@@ -115,7 +116,7 @@ func MustGetLayout(lk relation.ObjectTypeLayout) *relation.Layout {
 	panic(ErrNotFound)
 }
 
-func GetLayout(lk relation.ObjectTypeLayout) (*relation.Layout, error) {
+func GetLayout(lk model.ObjectTypeLayout) (*model.Layout, error) {
 	if v, exists := Layouts[lk]; exists {
 		return pbtypes.CopyLayout(&v), nil
 	}
@@ -123,8 +124,8 @@ func GetLayout(lk relation.ObjectTypeLayout) (*relation.Layout, error) {
 	return nil, ErrNotFound
 }
 
-func ListRelations() []*relation.Relation {
-	var rels []*relation.Relation
+func ListRelations() []*model.Relation {
+	var rels []*model.Relation
 	for _, rel := range relations {
 		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
@@ -162,7 +163,7 @@ func HasObjectType(key string) bool {
 	return exists
 }
 
-func EqualWithRelation(key string, rel *relation.Relation) (equal bool, exists bool) {
+func EqualWithRelation(key string, rel *model.Relation) (equal bool, exists bool) {
 	v, exists := relations[RelationKey(key)]
 	if !exists {
 		return false, false
@@ -171,8 +172,8 @@ func EqualWithRelation(key string, rel *relation.Relation) (equal bool, exists b
 	return pbtypes.RelationEqualOmitDictionary(v, rel), true
 }
 
-func ListTypes() ([]*relation.ObjectType, error) {
-	var otypes []*relation.ObjectType
+func ListTypes() ([]*model.ObjectType, error) {
+	var otypes []*model.ObjectType
 	for _, ot := range types {
 		otypes = append(otypes, ot)
 	}
@@ -189,7 +190,7 @@ func ListTypesKeys() []TypeKey {
 	return keys
 }
 
-func GetDetailsForRelation(bundled bool, rel *relation.Relation) ([]*relation.Relation, *types2.Struct) {
+func GetDetailsForRelation(bundled bool, rel *model.Relation) ([]*model.Relation, *types2.Struct) {
 	var prefix string
 	if bundled {
 		prefix = addr.BundledRelationURLPrefix
@@ -203,13 +204,13 @@ func GetDetailsForRelation(bundled bool, rel *relation.Relation) ([]*relation.Re
 		RelationKeyId.String():               pbtypes.String(prefix + rel.Key),
 		RelationKeyType.String():             pbtypes.String(TypeKeyRelation.URL()),
 		RelationKeyCreator.String():          pbtypes.String(rel.Creator),
-		RelationKeyLayout.String():           pbtypes.Float64(float64(relation.ObjectType_relation)),
+		RelationKeyLayout.String():           pbtypes.Float64(float64(model.ObjectType_relation)),
 		RelationKeyRelationFormat.String():   pbtypes.Float64(float64(rel.Format)),
 		RelationKeyIsHidden.String():         pbtypes.Bool(rel.Hidden),
 		RelationKeyMpAddedToLibrary.String(): pbtypes.Bool(true), // temp
 	}}
 
-	var rels []*relation.Relation
+	var rels []*model.Relation
 	for k := range d.Fields {
 		rels = append(rels, MustGetRelation(RelationKey(k)))
 	}

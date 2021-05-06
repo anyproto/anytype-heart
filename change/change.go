@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 )
@@ -76,7 +75,7 @@ func (ch *Change) HasMeta() bool {
 	return false
 }
 
-func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler {
+func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*model.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler {
 	fkeys := make([]*pb.ChangeFileKeys, len(fileKeys))
 	for i, k := range fileKeys {
 		fkeys[i] = &pb.ChangeFileKeys{

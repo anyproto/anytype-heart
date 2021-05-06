@@ -1,15 +1,6 @@
 package indexer_test
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"io"
 	"io/ioutil"
 	"os"
@@ -17,10 +8,18 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockIndexer"
@@ -70,7 +69,7 @@ func TestNewIndexer(t *testing.T) {
 		fx.objectStore.EXPECT().AddToIndexQueue(sbId)
 		fx.objectStore.EXPECT().GetDetails(sbId)
 
-		fx.objectStore.EXPECT().UpdateObjectDetails(sbId, gomock.Any(), gomock.Any()).DoAndReturn(func(id string, details *types.Struct, relations *pbrelation.Relations) (err error) {
+		fx.objectStore.EXPECT().UpdateObjectDetails(sbId, gomock.Any(), gomock.Any()).DoAndReturn(func(id string, details *types.Struct, relations *model.Relations) (err error) {
 			assert.Equal(t, "value", pbtypes.GetString(det, "key"))
 			close(updatedCh)
 			return

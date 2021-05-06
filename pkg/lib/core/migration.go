@@ -4,8 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -13,11 +11,14 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -39,31 +40,31 @@ var ErrAlreadyMigrated = fmt.Errorf("thread already migrated")
 
 // ⚠️ NEVER REMOVE THE EXISTING MIGRATION FROM THE LIST, JUST REPLACE WITH skipMigration
 var migrations = []migration{
-	skipMigration,                     // 1
-	alterThreadsDbSchema,              // 2
-	skipMigration,                     // 3
-	skipMigration,                     // 4
-	snapshotToChanges,                 // 5
-	skipMigration,                     // 6
-	addFilesMetaHash,                  // 7
-	skipMigration,                     // 8
-	skipMigration,                     // 9
-	skipMigration,                     // 10
-	skipMigration,                 	   // 11
-	skipMigration,                     // 12
-	skipMigration,      			   // 13
-	skipMigration,                     // 14
-	skipMigration,                     // 15
-	skipMigration,                     // 16
-	skipMigration,                     // 17
-	skipMigration,                     // 18
-	skipMigration,                     // 19
-	skipMigration,                     // 20
-	skipMigration,                     // 21
-	skipMigration,                     // 22
-	skipMigration,                     // 23
-	skipMigration,                     // 24
-	skipMigration, 					   // 25
+	skipMigration,        // 1
+	alterThreadsDbSchema, // 2
+	skipMigration,        // 3
+	skipMigration,        // 4
+	snapshotToChanges,    // 5
+	skipMigration,        // 6
+	addFilesMetaHash,     // 7
+	skipMigration,        // 8
+	skipMigration,        // 9
+	skipMigration,        // 10
+	skipMigration,        // 11
+	skipMigration,        // 12
+	skipMigration,        // 13
+	skipMigration,        // 14
+	skipMigration,        // 15
+	skipMigration,        // 16
+	skipMigration,        // 17
+	skipMigration,        // 18
+	skipMigration,        // 19
+	skipMigration,        // 20
+	skipMigration,        // 21
+	skipMigration,        // 22
+	skipMigration,        // 23
+	skipMigration,        // 24
+	skipMigration,        // 25
 }
 
 func (a *Anytype) getRepoVersion() (int, error) {
@@ -343,7 +344,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.objectStore.UpdateObjectDetails(img.Hash(), details, &pbrelation.Relations{Relations: imgObjType.Relations})
+					err = a.objectStore.UpdateObjectDetails(img.Hash(), details, &model.Relations{Relations: imgObjType.Relations})
 					if err != nil {
 						// this shouldn't fail
 						cancel()
@@ -378,7 +379,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.objectStore.UpdateObjectDetails(file.Hash(), details, &pbrelation.Relations{Relations: fileObjType.Relations})
+					err = a.objectStore.UpdateObjectDetails(file.Hash(), details, &model.Relations{Relations: fileObjType.Relations})
 					if err != nil {
 						cancel()
 						return err
@@ -506,7 +507,7 @@ func ReindexAll(a *Anytype) (int, error) {
 		}
 	}
 	var indexedRelations int
-	var divided [][]*pbrelation.Relation
+	var divided [][]*model.Relation
 	chunkSize := 30
 	for i := 0; i < len(relations); i += chunkSize {
 		end := i + chunkSize
@@ -633,13 +634,13 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 				ot = []string{bundle.TypeKeyPage.URL()}
 			}
 
-			var layout pbrelation.ObjectTypeLayout
+			var layout model.ObjectTypeLayout
 			otUrl := ot[len(ot)-1]
 			if strings.HasPrefix(otUrl, bundle.TypePrefix) {
 				t, err := bundle.GetTypeByUrl(otUrl)
 				if err != nil {
 					log.Errorf("migration addMissingLayout: failed to get bundled type '%s': %s", otUrl, err.Error())
-					layout = pbrelation.ObjectType_basic
+					layout = model.ObjectType_basic
 				} else {
 					layout = t.Layout
 				}
@@ -650,12 +651,12 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 					continue
 				} else if len(oi) == 0 {
 					log.Errorf("migration addMissingLayout: failed to get custom type '%s'", otUrl)
-					layout = pbrelation.ObjectType_basic
+					layout = model.ObjectType_basic
 				} else {
 					if exists := pbtypes.Exists(oi[0].Details, bundle.RelationKeyLayout.String()); exists {
-						layout = pbrelation.ObjectTypeLayout(int32(pbtypes.GetFloat64(oi[0].Details, bundle.RelationKeyLayout.String())))
+						layout = model.ObjectTypeLayout(int32(pbtypes.GetFloat64(oi[0].Details, bundle.RelationKeyLayout.String())))
 					} else {
-						layout = pbrelation.ObjectType_basic
+						layout = model.ObjectType_basic
 					}
 				}
 			}
