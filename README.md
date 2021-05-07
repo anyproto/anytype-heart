@@ -60,7 +60,23 @@ If you want to change the default port(9999):
 `ANYTYPE_GRPC_ADDR=127.0.0.1:8888 make run-debug`
 
 ----
-Useful tools for debug:
+### Useful tools for debug
+
+#### gRPC logging
+In order to log mw gRPC requests/responses use `ANYTYPE_GRPC_LOG` env var:
+- `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=1` - log only method names   
+- `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=2` - log method names  + payloads for commands
+- `ANYTYPE_LOG_LEVEL="grpc=DEBUG" ANYTYPE_GRPC_LOG=2` - log method names  + payloads for commands&events
+
+#### gRPC tracing
+1. Run jaeger UI on the local machine: 
+```docker run --rm -d -p6832:6832/udp -p6831:6831/udp -p16686:16686 -p5778:5778 -p5775:5775/udp jaegertracing/all-in-one:latest```
+2. Run mw with `ANYTYPE_GRPC_TRACE` env var:
+- `ANYTYPE_GRPC_TRACE=1` - log only method names/times
+- `ANYTYPE_GRPC_TRACE=2` - log method names  + payloads for commands
+- `ANYTYPE_GRPC_TRACE=2` - log method names  + payloads for commands&events
+3. Open Jaeger UI at http://localhost:16686
+
 
 **GUI**
 
