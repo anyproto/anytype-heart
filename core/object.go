@@ -53,11 +53,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	at := mw.app.MustComponent(core.CName).(core.Service)
 
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
-		Offset:   int(req.Offset),
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
+		Filters:          req.Filters,
+		Sorts:            req.Sorts,
+		Offset:           int(req.Offset),
+		Limit:            int(req.Limit),
+		FullText:         req.FullText,
+		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)

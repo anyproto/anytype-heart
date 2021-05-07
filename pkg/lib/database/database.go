@@ -69,6 +69,7 @@ type Query struct {
 	Limit             int                                   // maximum number of results
 	Offset            int                                   // skip given number of results
 	WithSystemObjects bool
+	ObjectTypeFilter  []string
 }
 
 func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {

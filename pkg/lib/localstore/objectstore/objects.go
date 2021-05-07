@@ -562,6 +562,8 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if !q.WithSystemObjects {
 		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	} else if len(q.ObjectTypeFilter) > 0 {
+		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
@@ -619,6 +621,20 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	}
 
 	return results, total, nil
+}
+
+func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
+	var filter filterObjectTypes
+	for _, otUrl := range ots {
+		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
+			filter.objectTypes = append(filter.objectTypes, smartblock.SmartBlockType(ot.Type))
+			continue
+		}
+		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
+			filter.objectTypes = append(filter.objectTypes, sbt)
+		}
+	}
+	return &filter
 }
 
 func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {

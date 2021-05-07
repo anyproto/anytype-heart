@@ -843,8 +843,14 @@
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
+    - [Layout](#anytype.model.Layout)
     - [LinkPreview](#anytype.model.LinkPreview)
+    - [ObjectType](#anytype.model.ObjectType)
     - [Range](#anytype.model.Range)
+    - [Relation](#anytype.model.Relation)
+    - [Relation.Option](#anytype.model.Relation.Option)
+    - [RelationWithValue](#anytype.model.RelationWithValue)
+    - [Relations](#anytype.model.Relations)
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
@@ -865,26 +871,14 @@
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
-    - [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction)
-    - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
-    - [SmartBlockType](#anytype.model.SmartBlockType)
-  
-  
-  
-
-- [pkg/lib/pb/model/protos/relation.proto](#pkg/lib/pb/model/protos/relation.proto)
-    - [Layout](#anytype.model.Layout)
-    - [ObjectType](#anytype.model.ObjectType)
-    - [Relation](#anytype.model.Relation)
-    - [Relation.Option](#anytype.model.Relation.Option)
-    - [RelationWithValue](#anytype.model.RelationWithValue)
-    - [Relations](#anytype.model.Relations)
-  
     - [ObjectType.Layout](#anytype.model.ObjectType.Layout)
     - [Relation.DataSource](#anytype.model.Relation.DataSource)
     - [Relation.Option.Scope](#anytype.model.Relation.Option.Scope)
     - [Relation.Scope](#anytype.model.Relation.Scope)
     - [RelationFormat](#anytype.model.RelationFormat)
+    - [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction)
+    - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
+    - [SmartBlockType](#anytype.model.SmartBlockType)
   
   
   
@@ -7725,6 +7719,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
+| objectTypeFilter | [string](#string) | repeated |  |
 
 
 
@@ -12994,6 +12989,23 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype.model.Layout"></a>
+
+### Layout
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
+| name | [string](#string) |  |  |
+| requiredRelations | [Relation](#anytype.model.Relation) | repeated | relations required for this object type |
+
+
+
+
+
+
 <a name="anytype.model.LinkPreview"></a>
 
 ### LinkPreview
@@ -13014,6 +13026,28 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype.model.ObjectType"></a>
+
+### ObjectType
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  | leave empty in case you want to create the new one |
+| name | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| relations | [Relation](#anytype.model.Relation) | repeated | cannot contain more than one Relation with the same RelationType |
+| layout | [ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
+| iconEmoji | [string](#string) |  | emoji symbol |
+| description | [string](#string) |  |  |
+| hidden | [bool](#bool) |  |  |
+| type | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |
+
+
+
+
+
+
 <a name="anytype.model.Range"></a>
 
 ### Range
@@ -13024,6 +13058,87 @@ General purpose structure, uses in Mark.
 | ----- | ---- | ----- | ----------- |
 | from | [int32](#int32) |  |  |
 | to | [int32](#int32) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Relation"></a>
+
+### Relation
+Relation describe the human-interpreted relation type. It may be something like &#34;Date of creation, format=date&#34; or &#34;Assignee, format=objectId, objectType=person&#34;
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  | Key under which the value is stored in the map. Must be unique for the object type. It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types. |
+| format | [RelationFormat](#anytype.model.RelationFormat) |  | format of the underlying data |
+| name | [string](#string) |  | name to show (can be localized for bundled types) |
+| defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+| dataSource | [Relation.DataSource](#anytype.model.Relation.DataSource) |  | where the data is stored |
+| hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
+| readOnly | [bool](#bool) |  | not editable by user |
+| multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
+| objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
+| selectDict | [Relation.Option](#anytype.model.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
+
+default dictionary with unique values to choose for select/multiSelect format |
+| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
+| description | [string](#string) |  |  |
+| scope | [Relation.Scope](#anytype.model.Relation.Scope) |  | on-store fields, injected only locally
+
+scope from which this relation have been aggregated |
+| creator | [string](#string) |  | creator profile id |
+
+
+
+
+
+
+<a name="anytype.model.Relation.Option"></a>
+
+### Relation.Option
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | id generated automatically if omitted |
+| text | [string](#string) |  |  |
+| color | [string](#string) |  | stored |
+| scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+
+
+
+
+
+
+<a name="anytype.model.RelationWithValue"></a>
+
+### RelationWithValue
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relation | [Relation](#anytype.model.Relation) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Relations"></a>
+
+### Relations
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relations | [Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -13327,197 +13442,6 @@ General purpose structure, uses in Mark.
 
 
 
-<a name="anytype.model.Restrictions.DataviewRestriction"></a>
-
-### Restrictions.DataviewRestriction
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| CreateView | 0 |  |
-| Filters | 1 |  |
-| CreateRelation | 2 |  |
-| CreateObject | 3 |  |
-| EditObject | 4 |  |
-
-
-
-<a name="anytype.model.Restrictions.ObjectRestriction"></a>
-
-### Restrictions.ObjectRestriction
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Delete | 0 | restricts delete |
-| Relation | 1 | restricts work with relations |
-| Header | 2 | restricts edit a header (title, description, etc.) |
-| CreateBlock | 3 | restricts create a new block |
-
-
-
-<a name="anytype.model.SmartBlockType"></a>
-
-### SmartBlockType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Breadcrumbs | 0 |  |
-| Page | 16 |  |
-| ProfilePage | 17 |  |
-| Home | 32 |  |
-| Archive | 48 |  |
-| Database | 64 |  |
-| Set | 65 | only have dataview simpleblock |
-| STObjectType | 96 | have relations list |
-| File | 256 |  |
-| Template | 288 |  |
-| MarketplaceType | 272 |  |
-| MarketplaceRelation | 273 |  |
-| MarketplaceTemplate | 274 |  |
-| BundledRelation | 512 |  |
-| IndexedRelation | 513 |  |
-| BundledObjectType | 514 |  |
-| AnytypeProfile | 515 |  |
-
-
- 
-
- 
-
- 
-
-
-
-<a name="pkg/lib/pb/model/protos/relation.proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## pkg/lib/pb/model/protos/relation.proto
-
-
-
-<a name="anytype.model.Layout"></a>
-
-### Layout
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
-| name | [string](#string) |  |  |
-| requiredRelations | [Relation](#anytype.model.Relation) | repeated | relations required for this object type |
-
-
-
-
-
-
-<a name="anytype.model.ObjectType"></a>
-
-### ObjectType
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| url | [string](#string) |  | leave empty in case you want to create the new one |
-| name | [string](#string) |  | name of objectType (can be localized for bundled types) |
-| relations | [Relation](#anytype.model.Relation) | repeated | cannot contain more than one Relation with the same RelationType |
-| layout | [ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
-| iconEmoji | [string](#string) |  | emoji symbol |
-| description | [string](#string) |  |  |
-| hidden | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Relation"></a>
-
-### Relation
-Relation describe the human-interpreted relation type. It may be something like &#34;Date of creation, format=date&#34; or &#34;Assignee, format=objectId, objectType=person&#34;
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  | Key under which the value is stored in the map. Must be unique for the object type. It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types. |
-| format | [RelationFormat](#anytype.model.RelationFormat) |  | format of the underlying data |
-| name | [string](#string) |  | name to show (can be localized for bundled types) |
-| defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-| dataSource | [Relation.DataSource](#anytype.model.Relation.DataSource) |  | where the data is stored |
-| hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
-| readOnly | [bool](#bool) |  | not editable by user |
-| multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
-| objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
-| selectDict | [Relation.Option](#anytype.model.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
-
-default dictionary with unique values to choose for select/multiSelect format |
-| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
-| description | [string](#string) |  |  |
-| scope | [Relation.Scope](#anytype.model.Relation.Scope) |  | on-store fields, injected only locally
-
-scope from which this relation have been aggregated |
-| creator | [string](#string) |  | creator profile id |
-
-
-
-
-
-
-<a name="anytype.model.Relation.Option"></a>
-
-### Relation.Option
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | id generated automatically if omitted |
-| text | [string](#string) |  |  |
-| color | [string](#string) |  | stored |
-| scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
-
-
-
-
-
-
-<a name="anytype.model.RelationWithValue"></a>
-
-### RelationWithValue
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relation | [Relation](#anytype.model.Relation) |  |  |
-| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.model.Relations"></a>
-
-### Relations
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relations | [Relation](#anytype.model.Relation) | repeated |  |
-
-
-
-
-
- 
-
-
 <a name="anytype.model.ObjectType.Layout"></a>
 
 ### ObjectType.Layout
@@ -13600,6 +13524,62 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | emoji | 10 | one emoji, can contains multiple utf-8 symbols |
 | object | 100 | relation can has objectType to specify objectType |
 | relations | 101 | base64-encoded |
+
+
+
+<a name="anytype.model.Restrictions.DataviewRestriction"></a>
+
+### Restrictions.DataviewRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CreateView | 0 |  |
+| Filters | 1 |  |
+| CreateRelation | 2 |  |
+| CreateObject | 3 |  |
+| EditObject | 4 |  |
+
+
+
+<a name="anytype.model.Restrictions.ObjectRestriction"></a>
+
+### Restrictions.ObjectRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Delete | 0 | restricts delete |
+| Relation | 1 | restricts work with relations |
+| Header | 2 | restricts edit a header (title, description, etc.) |
+| CreateBlock | 3 | restricts create a new block |
+
+
+
+<a name="anytype.model.SmartBlockType"></a>
+
+### SmartBlockType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Breadcrumbs | 0 |  |
+| Page | 16 |  |
+| ProfilePage | 17 |  |
+| Home | 32 |  |
+| Archive | 48 |  |
+| Database | 64 |  |
+| Set | 65 | only have dataview simpleblock |
+| STObjectType | 96 | have relations list |
+| File | 256 |  |
+| Template | 288 |  |
+| MarketplaceType | 272 |  |
+| MarketplaceRelation | 273 |  |
+| MarketplaceTemplate | 274 |  |
+| BundledRelation | 512 |  |
+| IndexedRelation | 513 |  |
+| BundledObjectType | 514 |  |
+| AnytypeProfile | 515 |  |
 
 
  

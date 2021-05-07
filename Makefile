@@ -131,7 +131,6 @@ protos-go:
 	$(eval P_STRUCT := Mgoogle/protobuf/struct.proto=github.com/gogo/protobuf/types)
 	@$(eval P_PROTOS := Mpkg/lib/pb/model/protos/models.proto=github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model)
 	@$(eval P_PROTOS2 := Mpkg/lib/pb/model/protos/localstore.proto=github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model)
-	@$(eval P_PROTOS3 := Mpkg/lib/pb/model/protos/relation.proto=github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model)
 
 	$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3))
 	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 protoc --gogofaster_out=$(PKGMAP):./pkg/lib/pb/ pkg/lib/pb/model/protos/*.proto; mv pkg/lib/pb/pkg/lib/pb/model/*.go pkg/lib/pb/model/; rm -rf pkg/lib/pb/pkg

@@ -4,7 +4,6 @@ option go_package = "pb";
 
 import "pkg/lib/pb/model/protos/models.proto";
 import "pkg/lib/pb/model/protos/localstore.proto";
-import "pkg/lib/pb/model/protos/relation.proto";
 
 import "pb/protos/events.proto";
 import "google/protobuf/struct.proto";
@@ -3036,6 +3035,7 @@ message Rpc {
                 string fullText = 3;
                 int32 offset = 4;
                 int32 limit = 5;
+                repeated string objectTypeFilter = 6;
             }
 
             message Response {

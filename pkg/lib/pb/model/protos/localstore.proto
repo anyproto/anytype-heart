@@ -3,7 +3,6 @@ package anytype.model;
 option go_package = "pkg/lib/pb/model";
 
 import "google/protobuf/struct.proto";
-import "pkg/lib/pb/model/protos/relation.proto";
 import "pkg/lib/pb/model/protos/models.proto";
 
 message ObjectInfo {
