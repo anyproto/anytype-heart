@@ -170,7 +170,7 @@
     "layout": "basic",
     "name": "Video",
     "types": [
-      "Page"
+      "File"
     ],
     "relations": [
       "id",
@@ -472,7 +472,7 @@
     "layout": "basic",
     "name": "Audio",
     "types": [
-      "Page"
+      "File"
     ],
     "relations": [
       "id",
