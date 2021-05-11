@@ -4,9 +4,6 @@
     "id": "note",
     "layout": "basic",
     "name": "Note",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -29,7 +26,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -37,9 +38,6 @@
     "id": "contact",
     "layout": "profile",
     "name": "Contact",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -62,7 +60,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -70,9 +72,6 @@
     "id": "idea",
     "layout": "basic",
     "name": "Idea",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -97,6 +96,9 @@
       "isHidden",
       "isArchived",
       "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -104,9 +106,6 @@
     "id": "task",
     "layout": "todo",
     "name": "Task",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -130,6 +129,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "tag",
       "assignee",
       "dueDate",
       "attachments",
@@ -137,8 +137,10 @@
       "done",
       "priority",
       "linkedTasks",
-      "linkedProjects",
-      "tag"
+      "linkedProjects"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -147,10 +149,6 @@
     "id": "relation",
     "layout": "relation",
     "name": "Relation",
-    "types": [
-      "IndexedRelation",
-      "BundledRelation"
-    ],
     "relations": [
       "id",
       "name",
@@ -162,6 +160,10 @@
       "mpAddedToLibrary",
       "relationFormat",
       "isHidden"
+    ],
+    "types": [
+      "IndexedRelation",
+      "BundledRelation"
     ]
   },
   {
@@ -169,9 +171,6 @@
     "id": "video",
     "layout": "basic",
     "name": "Video",
-    "types": [
-      "File"
-    ],
     "relations": [
       "id",
       "name",
@@ -207,6 +206,9 @@
       "exposure",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -215,9 +217,6 @@
     "id": "dashboard",
     "layout": "dashboard",
     "name": "Dashboard",
-    "types": [
-      "Home"
-    ],
     "relations": [
       "id",
       "name",
@@ -240,6 +239,9 @@
       "coverType",
       "layoutAlign",
       "isHidden"
+    ],
+    "types": [
+      "Home"
     ]
   },
   {
@@ -249,10 +251,6 @@
     "id": "objectType",
     "layout": "objectType",
     "name": "Type",
-    "types": [
-      "STObjectType",
-      "BundledObjectType"
-    ],
     "relations": [
       "id",
       "name",
@@ -280,6 +278,10 @@
       "recommendedLayout",
       "mpAddedToLibrary",
       "isHidden"
+    ],
+    "types": [
+      "STObjectType",
+      "BundledObjectType"
     ]
   },
   {
@@ -289,9 +291,6 @@
     "id": "template",
     "layout": "basic",
     "name": "Template",
-    "types": [
-      "Template"
-    ],
     "relations": [
       "id",
       "name",
@@ -317,17 +316,16 @@
       "isArchived",
       "targetObjectType",
       "builtinTemplateId"
+    ],
+    "types": [
+      "Template"
     ]
   },
   {
     "emoji": "🗂️",
-    "hidden": true,
     "id": "set",
     "layout": "set",
     "name": "Set",
-    "types": [
-      "Set"
-    ],
     "relations": [
       "id",
       "name",
@@ -351,7 +349,11 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "tag",
       "setOf"
+    ],
+    "types": [
+      "Set"
     ]
   },
   {
@@ -360,9 +362,6 @@
     "id": "page",
     "layout": "basic",
     "name": "Page",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -385,7 +384,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -393,9 +396,6 @@
     "id": "image",
     "layout": "image",
     "name": "Image",
-    "types": [
-      "File"
-    ],
     "relations": [
       "id",
       "name",
@@ -430,6 +430,9 @@
       "addedDate",
       "focalRatio",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -437,9 +440,6 @@
     "id": "profile",
     "layout": "profile",
     "name": "Human",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -463,6 +463,10 @@
       "layoutAlign",
       "isHidden",
       "isArchived"
+    ],
+    "types": [
+      "Page",
+      "ProfilePage"
     ]
   },
   {
@@ -471,9 +475,6 @@
     "id": "audio",
     "layout": "basic",
     "name": "Audio",
-    "types": [
-      "File"
-    ],
     "relations": [
       "id",
       "name",
@@ -509,6 +510,9 @@
       "fileMimeType",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -516,9 +520,6 @@
     "id": "document",
     "layout": "basic",
     "name": "Document",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -541,7 +542,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -549,9 +554,6 @@
     "id": "file",
     "layout": "basic",
     "name": "File",
-    "types": [
-      "File"
-    ],
     "relations": [
       "id",
       "name",
@@ -579,6 +581,9 @@
       "sizeInBytes",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -586,9 +591,6 @@
     "id": "project",
     "layout": "basic",
     "name": "Project",
-    "types": [
-      "Page"
-    ],
     "relations": [
       "id",
       "name",
@@ -611,7 +613,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   }
 ]

@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "78a8e78722b7036f67676d75744ae299d015defdc0cab35c33cae8bf99a9d67f"
+const RelationChecksum = "0f9e85e14eb4fdd96107d0335339f468ab5765fa25ad29598646b16da7f66aa2"
 
 type RelationKey string
 
@@ -300,6 +300,7 @@ var (
 			DataSource:  model.Relation_derived,
 			Description: "Human which created this object",
 			Format:      model.RelationFormat_object,
+			Hidden:      true,
 			Key:         "creator",
 			MaxCount:    1,
 			Name:        "Created by",
@@ -759,6 +760,7 @@ var (
 			DataSource:  model.Relation_derived,
 			Description: "",
 			Format:      model.RelationFormat_object,
+			Hidden:      true,
 			Key:         "type",
 			MaxCount:    1,
 			Name:        "Object type",
