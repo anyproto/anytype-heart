@@ -13041,7 +13041,7 @@ Used to decode block meta only, without the content itself
 | iconEmoji | [string](#string) |  | emoji symbol |
 | description | [string](#string) |  |  |
 | hidden | [bool](#bool) |  |  |
-| type | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |
+| types | [SmartBlockType](#anytype.model.SmartBlockType) | repeated |  |
 
 
 

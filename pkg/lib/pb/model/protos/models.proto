@@ -408,7 +408,7 @@ message ObjectType {
     string iconEmoji = 5; // emoji symbol
     string description = 6;
     bool hidden = 7;
-    SmartBlockType type = 8;
+    repeated SmartBlockType types = 8;
 
     enum Layout {
         basic = 0;

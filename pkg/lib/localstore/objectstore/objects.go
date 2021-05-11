@@ -627,7 +627,9 @@ func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
 	var filter filterObjectTypes
 	for _, otUrl := range ots {
 		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
-			filter.objectTypes = append(filter.objectTypes, smartblock.SmartBlockType(ot.Type))
+			for _, sbt := range ot.Types {
+				filter.objectTypes = append(filter.objectTypes, smartblock.SmartBlockType(sbt))
+			}
 			continue
 		}
 		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
@@ -1995,5 +1997,8 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 		}
 	}
 
+	if sbt, e := smartblock.SmartBlockTypeFromID(url); e == nil {
+		objectType.Types = []model.SmartBlockType{sbt.ToProto()}
+	}
 	return objectType, err
 }

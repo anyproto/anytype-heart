@@ -31,6 +31,7 @@ type Relation struct {
 type ObjectType struct {
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`
+	Types       []string `json:"types"`
 	Emoji       string   `json:"emoji"`
 	Hidden      bool     `json:"hidden"`
 	Layout      string   `json:"layout"`
@@ -70,6 +71,10 @@ func relConst(key string) string {
 
 func typeConst(key string) string {
 	return "TypeKey" + strings.ToUpper(key[0:1]) + key[1:]
+}
+
+func sbTypeConst(key string) string {
+	return "SmartBlockType_" + strings.ToUpper(key[0:1]) + key[1:]
 }
 
 func generateRelations() error {
@@ -211,6 +216,13 @@ func generateTypes() error {
 					t = append(t, Id("relations").Index(Id(relConst(rel))))
 				}
 				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
+			}
+			if len(ot.Types) > 0 {
+				var t []Code
+				for _, sbt := range ot.Types {
+					t = append(t, Qual(relPbPkg, sbTypeConst(sbt)))
+				}
+				dictS[Id("Types")] = Index().Qual(relPbPkg, "SmartBlockType").Values(t...)
 			}
 
 			dict[Id(typeConst(ot.ID))] = Block(dictS)
