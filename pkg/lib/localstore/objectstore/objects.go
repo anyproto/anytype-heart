@@ -1997,8 +1997,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 		}
 	}
 
-	if sbt, e := smartblock.SmartBlockTypeFromID(url); e == nil {
-		objectType.Types = []model.SmartBlockType{sbt.ToProto()}
-	}
+	// we use Page for all custom object types
+	objectType.Types = []model.SmartBlockType{model.SmartBlockType_Page}
 	return objectType, err
 }
