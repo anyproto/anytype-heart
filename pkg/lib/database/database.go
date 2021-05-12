@@ -219,9 +219,13 @@ func (f *filters) String() string {
 }
 
 func dateOnly(v *types.Value) *types.Value {
-	tm := time.Unix(int64(v.GetNumberValue()), 0)
-	tm = time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, tm.Location())
-	return pbtypes.Float64(float64(tm.Unix()))
+	if n, isNumber := v.GetKind().(*types.Value_NumberValue); isNumber {
+		tm := time.Unix(int64(n.NumberValue), 0).In(time.UTC) // we have all values stored in UTC, including filters
+		tm = time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC) // reset time, preserving UTC tz
+		return pbtypes.Float64(float64(tm.Unix()))
+	}
+	// reset to NULL otherwise
+	return &types.Value{Kind: &types.Value_NullValue{}}
 }
 
 func getRelationByKey(relations []*model.BlockContentDataviewRelation, key string) *model.BlockContentDataviewRelation {
