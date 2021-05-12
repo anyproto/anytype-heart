@@ -1,6 +1,3 @@
-
-
-
 package badger
 
 import (
@@ -133,7 +130,7 @@ func benchmarkWithOpts(b *testing.B, opts *badger.Options, valueSize, numKeys, u
 	require.NoError(b, err)
 }
 
-func printDbSize(b *testing.B, path string, opts *badger.Options){
+func printDbSize(b *testing.B, path string, opts *badger.Options) {
 	ds, err := badger.NewDatastore(path, opts)
 	require.NoError(b, err)
 	lsmSize, valSize := ds.DB.Size()
