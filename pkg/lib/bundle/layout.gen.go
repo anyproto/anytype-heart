@@ -4,67 +4,67 @@ source: pkg/lib/bundle/layouts.json
 */
 package bundle
 
-import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 const LayoutChecksum = "6679553f52d382545e0c8922879c1126ab1a49b16c6ecdb7516033eda0fb52c2"
 
 var (
-	Layouts = map[relation.ObjectTypeLayout]relation.Layout{
-		relation.ObjectType_basic: {
+	Layouts = map[model.ObjectTypeLayout]model.Layout{
+		model.ObjectType_basic: {
 
-			Id:                relation.ObjectType_basic,
+			Id:                model.ObjectType_basic,
 			Name:              "Basic",
-			RequiredRelations: []*relation.Relation{relations[RelationKeyName]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyName]},
 		},
-		relation.ObjectType_dashboard: {
+		model.ObjectType_dashboard: {
 
-			Id:   relation.ObjectType_dashboard,
+			Id:   model.ObjectType_dashboard,
 			Name: "Dashboard",
 		},
-		relation.ObjectType_database: {
+		model.ObjectType_database: {
 
-			Id:   relation.ObjectType_database,
+			Id:   model.ObjectType_database,
 			Name: "Database",
 		},
-		relation.ObjectType_file: {
+		model.ObjectType_file: {
 
-			Id:   relation.ObjectType_file,
+			Id:   model.ObjectType_file,
 			Name: "File",
 		},
-		relation.ObjectType_image: {
+		model.ObjectType_image: {
 
-			Id:                relation.ObjectType_image,
+			Id:                model.ObjectType_image,
 			Name:              "Image",
-			RequiredRelations: []*relation.Relation{relations[RelationKeyIconImage]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyIconImage]},
 		},
-		relation.ObjectType_objectType: {
+		model.ObjectType_objectType: {
 
-			Id:                relation.ObjectType_objectType,
+			Id:                model.ObjectType_objectType,
 			Name:              "Object Type",
-			RequiredRelations: []*relation.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyName], relations[RelationKeyRecommendedRelations]},
 		},
-		relation.ObjectType_profile: {
+		model.ObjectType_profile: {
 
-			Id:                relation.ObjectType_profile,
+			Id:                model.ObjectType_profile,
 			Name:              "Profile",
-			RequiredRelations: []*relation.Relation{relations[RelationKeyName]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyName]},
 		},
-		relation.ObjectType_relation: {
+		model.ObjectType_relation: {
 
-			Id:   relation.ObjectType_relation,
+			Id:   model.ObjectType_relation,
 			Name: "Relation",
 		},
-		relation.ObjectType_set: {
+		model.ObjectType_set: {
 
-			Id:                relation.ObjectType_set,
+			Id:                model.ObjectType_set,
 			Name:              "Set",
-			RequiredRelations: []*relation.Relation{relations[RelationKeySetOf], relations[RelationKeyName]},
+			RequiredRelations: []*model.Relation{relations[RelationKeySetOf], relations[RelationKeyName]},
 		},
-		relation.ObjectType_todo: {
+		model.ObjectType_todo: {
 
-			Id:                relation.ObjectType_todo,
+			Id:                model.ObjectType_todo,
 			Name:              "to-do",
-			RequiredRelations: []*relation.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
+			RequiredRelations: []*model.Relation{relations[RelationKeyDone], relations[RelationKeyName]},
 		},
 	}
 )

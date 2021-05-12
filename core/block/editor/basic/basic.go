@@ -92,7 +92,7 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 	if err = bs.Restrictions().Object.Check(model.Restrictions_CreateBlock); err != nil {
 		return
 	}
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
 	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
@@ -114,7 +114,7 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 }
 
 func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return nil, ErrNotSupported
 	}
 
@@ -157,7 +157,7 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 }
 
 func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
 
@@ -171,7 +171,7 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 }
 
 func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
 
@@ -194,7 +194,7 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 }
 
 func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
 

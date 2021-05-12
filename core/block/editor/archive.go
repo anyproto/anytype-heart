@@ -3,8 +3,6 @@ package editor
 import (
 	"fmt"
 
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -37,7 +35,7 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 	return template.ApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoObjectTypes(), template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
 }
 
-func (p *Archive) Relations() []*pbrelation.Relation {
+func (p *Archive) Relations() []*model.Relation {
 	return nil
 }
 

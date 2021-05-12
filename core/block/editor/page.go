@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
@@ -56,7 +56,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	var layout relation.ObjectTypeLayout
+	var layout model.ObjectTypeLayout
 	otypes := p.MetaService().FetchObjectTypes(ctx.ObjectTypeUrls)
 	for _, ot := range otypes {
 		layout = ot.Layout

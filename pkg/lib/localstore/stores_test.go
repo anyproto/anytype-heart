@@ -122,7 +122,6 @@ func TestCarveKeyParts(t *testing.T) {
 	}
 }
 
-
 func Test_RunLargeOperationWithRetries(t *testing.T) {
 	tempDir, err := ioutil.TempDir(os.TempDir(), "anytypetestds*")
 	require.NoError(t, err)
@@ -131,9 +130,9 @@ func Test_RunLargeOperationWithRetries(t *testing.T) {
 	require.NoError(t, err)
 
 	index := Index{
-		Prefix:             "test1",
-		Name:               "test1",
-		Keys:               func(val interface{}) []IndexKeyParts {
+		Prefix: "test1",
+		Name:   "test1",
+		Keys: func(val interface{}) []IndexKeyParts {
 			if v, ok := val.(int); ok {
 				return []IndexKeyParts{[]string{fmt.Sprintf("%d", v)}}
 			}
@@ -144,7 +143,7 @@ func Test_RunLargeOperationWithRetries(t *testing.T) {
 		SplitIndexKeyParts: false,
 	}
 
-	for i:=0; i<30000; i++ {
+	for i := 0; i < 30000; i++ {
 		err = AddIndex(index, ds, i, "2")
 		require.NoError(t, err)
 	}

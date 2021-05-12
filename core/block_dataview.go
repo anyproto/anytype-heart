@@ -4,12 +4,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 )
 
 func (mw *Middleware) BlockDataviewRelationListAvailable(req *pb.RpcBlockDataviewRelationListAvailableRequest) *pb.RpcBlockDataviewRelationListAvailableResponse {
-	response := func(code pb.RpcBlockDataviewRelationListAvailableResponseErrorCode, relations []*pbrelation.Relation, err error) *pb.RpcBlockDataviewRelationListAvailableResponse {
+	response := func(code pb.RpcBlockDataviewRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcBlockDataviewRelationListAvailableResponse {
 		m := &pb.RpcBlockDataviewRelationListAvailableResponse{Relations: relations, Error: &pb.RpcBlockDataviewRelationListAvailableResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -18,7 +18,7 @@ func (mw *Middleware) BlockDataviewRelationListAvailable(req *pb.RpcBlockDatavie
 	}
 	var (
 		err       error
-		relations []*pbrelation.Relation
+		relations []*model.Relation
 	)
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
@@ -179,7 +179,7 @@ func (mw *Middleware) BlockDataviewRecordDelete(req *pb.RpcBlockDataviewRecordDe
 
 func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(relation *pbrelation.Relation, code pb.RpcBlockDataviewRelationAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationAddResponse {
+	response := func(relation *model.Relation, code pb.RpcBlockDataviewRelationAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationAddResponse {
 		var relKey string
 		if relation != nil {
 			relKey = relation.Key
@@ -192,7 +192,7 @@ func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationA
 		}
 		return m
 	}
-	var relation *pbrelation.Relation
+	var relation *model.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		relation, err = bs.AddDataviewRelation(ctx, *req)
 		return err
@@ -248,7 +248,7 @@ func (mw *Middleware) BlockDataviewRelationDelete(req *pb.RpcBlockDataviewRelati
 
 func (mw *Middleware) BlockDataviewRecordRelationOptionAdd(req *pb.RpcBlockDataviewRecordRelationOptionAddRequest) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(opt *pbrelation.RelationOption, code pb.RpcBlockDataviewRecordRelationOptionAddResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
+	response := func(opt *model.RelationOption, code pb.RpcBlockDataviewRecordRelationOptionAddResponseErrorCode, err error) *pb.RpcBlockDataviewRecordRelationOptionAddResponse {
 		m := &pb.RpcBlockDataviewRecordRelationOptionAddResponse{Option: opt, Error: &pb.RpcBlockDataviewRecordRelationOptionAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -257,7 +257,7 @@ func (mw *Middleware) BlockDataviewRecordRelationOptionAdd(req *pb.RpcBlockDatav
 		}
 		return m
 	}
-	var opt *pbrelation.RelationOption
+	var opt *model.RelationOption
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		opt, err = bs.AddDataviewRecordRelationOption(ctx, *req)
 		return err

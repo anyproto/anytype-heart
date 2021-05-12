@@ -26,7 +26,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -56,7 +60,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -88,6 +96,9 @@
       "isHidden",
       "isArchived",
       "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -118,6 +129,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "tag",
       "assignee",
       "dueDate",
       "attachments",
@@ -125,8 +137,10 @@
       "done",
       "priority",
       "linkedTasks",
-      "linkedProjects",
-      "tag"
+      "linkedProjects"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -146,6 +160,10 @@
       "mpAddedToLibrary",
       "relationFormat",
       "isHidden"
+    ],
+    "types": [
+      "IndexedRelation",
+      "BundledRelation"
     ]
   },
   {
@@ -188,6 +206,9 @@
       "exposure",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -218,6 +239,9 @@
       "coverType",
       "layoutAlign",
       "isHidden"
+    ],
+    "types": [
+      "Home"
     ]
   },
   {
@@ -254,6 +278,10 @@
       "recommendedLayout",
       "mpAddedToLibrary",
       "isHidden"
+    ],
+    "types": [
+      "STObjectType",
+      "BundledObjectType"
     ]
   },
   {
@@ -288,11 +316,13 @@
       "isArchived",
       "targetObjectType",
       "builtinTemplateId"
+    ],
+    "types": [
+      "Template"
     ]
   },
   {
     "emoji": "🗂️",
-    "hidden": true,
     "id": "set",
     "layout": "set",
     "name": "Set",
@@ -319,7 +349,11 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "tag",
       "setOf"
+    ],
+    "types": [
+      "Set"
     ]
   },
   {
@@ -350,7 +384,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -392,6 +430,9 @@
       "addedDate",
       "focalRatio",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -422,6 +463,10 @@
       "layoutAlign",
       "isHidden",
       "isArchived"
+    ],
+    "types": [
+      "Page",
+      "ProfilePage"
     ]
   },
   {
@@ -465,6 +510,9 @@
       "fileMimeType",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -494,7 +542,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -529,6 +581,9 @@
       "sizeInBytes",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
@@ -558,7 +613,11 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   }
 ]

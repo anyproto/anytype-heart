@@ -115,7 +115,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	source := mockSource.NewMockSource(ctrl)
-	source.EXPECT().Type().AnyTimes().Return(pb.SmartBlockType_Page)
+	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
 	source.EXPECT().Anytype().AnyTimes().Return(nil)
 	source.EXPECT().Virtual().AnyTimes().Return(false)
 

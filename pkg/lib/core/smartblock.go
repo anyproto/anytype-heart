@@ -3,12 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/gogo/protobuf/proto"
@@ -56,7 +56,7 @@ type SmartBlockContentChange struct {
 
 type SmartBlockMeta struct {
 	ObjectTypes []string
-	Relations   []*pbrelation.Relation
+	Relations   []*model.Relation
 	Details     *types.Struct
 }
 
@@ -420,7 +420,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	return block.decodeRecord(ctx, rec, true)
 }
 
-func (block *smartBlock) indexSnapshot(details *types.Struct, relations *pbrelation.Relations, blocks []*model.Block) error {
+func (block *smartBlock) indexSnapshot(details *types.Struct, relations *model.Relations, blocks []*model.Block) error {
 	if block.Type() == smartblock.SmartBlockTypeArchive {
 		return nil
 	}

@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -389,11 +388,11 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails == nil {
-			if err := i.store.CreateObject(id, details, &pbrelation.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
+			if err := i.store.CreateObject(id, details, &model.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
 		} else {
-			if err := i.store.UpdateObjectDetails(id, details, &pbrelation.Relations{d.ExtraRelations()}); err != nil {
+			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.ExtraRelations()}); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
 		}
@@ -491,7 +490,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		return
 	}
 	var (
-		dataviewRelationsBefore []*pbrelation.Relation
+		dataviewRelationsBefore []*model.Relation
 		dataviewSourceBefore    string
 	)
 	d.mu.Lock()
@@ -545,13 +544,13 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 			dv = b.Model().GetDataview()
 		}
 		if b != nil && dv != nil {
-			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, dv.Source, &pbrelation.Relations{dataviewRelationsBefore}, &pbrelation.Relations{dv.Relations}); err != nil {
+			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, dv.Source, &model.Relations{dataviewRelationsBefore}, &model.Relations{dv.Relations}); err != nil {
 				log.With("thread", id).Errorf("failed to index dataview relations")
 			}
 		}
 	}
 
-	if err := i.store.UpdateObjectDetails(id, meta.Details, &pbrelation.Relations{Relations: meta.Relations}); err != nil {
+	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {
 		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))

@@ -3,12 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"io"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
@@ -80,7 +80,7 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 		return nil, err
 	}
 
-	err = a.objectStore.UpdateObjectDetails(f.hash, details, &pbrelation.Relations{Relations: bundle.MustGetType(bundle.TypeKeyFile).Relations})
+	err = a.objectStore.UpdateObjectDetails(f.hash, details, &model.Relations{Relations: bundle.MustGetType(bundle.TypeKeyFile).Relations})
 	if err != nil {
 		return nil, err
 	}

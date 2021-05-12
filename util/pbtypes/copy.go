@@ -1,11 +1,11 @@
 package pbtypes
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -64,7 +64,7 @@ func CopyVal(in *types.Value) (out *types.Value) {
 	return
 }
 
-func CopyRelation(in *pbrelation.Relation) (out *pbrelation.Relation) {
+func CopyRelation(in *model.Relation) (out *model.Relation) {
 	if in == nil {
 		return nil
 	}
@@ -74,18 +74,18 @@ func CopyRelation(in *pbrelation.Relation) (out *pbrelation.Relation) {
 		buf = make([]byte, 0, size*2)
 	}
 	size, _ = in.MarshalToSizedBuffer(buf[:size])
-	out = &pbrelation.Relation{}
+	out = &model.Relation{}
 	_ = out.Unmarshal(buf[:size])
 
 	bytesPool.Put(buf)
 	return out
 }
 
-func CopyLayout(in *pbrelation.Layout) (out *pbrelation.Layout) {
-	return &pbrelation.Layout{Id: in.Id, Name: in.Name, RequiredRelations: CopyRelations(in.RequiredRelations)}
+func CopyLayout(in *model.Layout) (out *model.Layout) {
+	return &model.Layout{Id: in.Id, Name: in.Name, RequiredRelations: CopyRelations(in.RequiredRelations)}
 }
 
-func CopyObjectType(in *pbrelation.ObjectType) (out *pbrelation.ObjectType) {
+func CopyObjectType(in *model.ObjectType) (out *model.ObjectType) {
 	if in == nil {
 		return nil
 	}
@@ -96,32 +96,32 @@ func CopyObjectType(in *pbrelation.ObjectType) (out *pbrelation.ObjectType) {
 		buf = make([]byte, 0, size*2)
 	}
 	size, _ = in.MarshalToSizedBuffer(buf[:size])
-	out = &pbrelation.ObjectType{}
+	out = &model.ObjectType{}
 	_ = out.Unmarshal(buf[:size])
 
 	bytesPool.Put(buf)
 	return out
 }
 
-func CopyRelations(in []*pbrelation.Relation) (out []*pbrelation.Relation) {
+func CopyRelations(in []*model.Relation) (out []*model.Relation) {
 	if in == nil {
 		return nil
 	}
 	buf := bytesPool.Get().([]byte)
-	inWrapped := pbrelation.Relations{Relations: in}
+	inWrapped := model.Relations{Relations: in}
 	size := inWrapped.Size()
 	if cap(buf) < size {
 		buf = make([]byte, 0, size*2)
 	}
 	size, _ = inWrapped.MarshalToSizedBuffer(buf[:size])
-	outWrapped := &pbrelation.Relations{}
+	outWrapped := &model.Relations{}
 	_ = outWrapped.Unmarshal(buf[:size])
 
 	bytesPool.Put(buf)
 	return outWrapped.Relations
 }
 
-func CopyOptions(in []*pbrelation.RelationOption) (out []*pbrelation.RelationOption) {
+func CopyOptions(in []*model.RelationOption) (out []*model.RelationOption) {
 	if in == nil {
 		return nil
 	}
@@ -133,8 +133,8 @@ func CopyOptions(in []*pbrelation.RelationOption) (out []*pbrelation.RelationOpt
 	return
 }
 
-func CopyRelationsToMap(in []*pbrelation.Relation) (out map[string]*pbrelation.Relation) {
-	out = make(map[string]*pbrelation.Relation, len(in))
+func CopyRelationsToMap(in []*model.Relation) (out map[string]*model.Relation) {
+	out = make(map[string]*model.Relation, len(in))
 	rels := CopyRelations(in)
 	for _, rel := range rels {
 		out[rel.Key] = rel
@@ -143,7 +143,7 @@ func CopyRelationsToMap(in []*pbrelation.Relation) (out map[string]*pbrelation.R
 	return
 }
 
-func RelationsFilterKeys(in []*pbrelation.Relation, keys []string) (out []*pbrelation.Relation) {
+func RelationsFilterKeys(in []*model.Relation, keys []string) (out []*model.Relation) {
 	for i, inRel := range in {
 		if slice.FindPos(keys, inRel.Key) >= 0 {
 			out = append(out, in[i])

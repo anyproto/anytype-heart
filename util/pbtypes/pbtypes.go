@@ -2,10 +2,11 @@ package pbtypes
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/gogo/protobuf/types"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/types"
 )
 
 func Int64(v int64) *types.Value {
@@ -133,7 +134,7 @@ func HasField(st *types.Struct, key string) bool {
 	return exists
 }
 
-func HasRelation(rels []*pbrelation.Relation, key string) bool {
+func HasRelation(rels []*model.Relation, key string) bool {
 	for _, rel := range rels {
 		if rel.Key == key {
 			return true
@@ -143,7 +144,7 @@ func HasRelation(rels []*pbrelation.Relation, key string) bool {
 	return false
 }
 
-func GetObjectType(ots []*pbrelation.ObjectType, url string) *pbrelation.ObjectType {
+func GetObjectType(ots []*model.ObjectType, url string) *model.ObjectType {
 	for i, ot := range ots {
 		if ot.Url == url {
 			return ots[i]
@@ -153,7 +154,7 @@ func GetObjectType(ots []*pbrelation.ObjectType, url string) *pbrelation.ObjectT
 	return nil
 }
 
-func GetRelation(rels []*pbrelation.Relation, key string) *pbrelation.Relation {
+func GetRelation(rels []*model.Relation, key string) *model.Relation {
 	for i, rel := range rels {
 		if rel.Key == key {
 			return rels[i]
@@ -163,7 +164,7 @@ func GetRelation(rels []*pbrelation.Relation, key string) *pbrelation.Relation {
 	return nil
 }
 
-func GetOption(opts []*pbrelation.RelationOption, id string) *pbrelation.RelationOption {
+func GetOption(opts []*model.RelationOption, id string) *model.RelationOption {
 	for i, opt := range opts {
 		if opt.Id == id {
 			return opts[i]
@@ -173,7 +174,7 @@ func GetOption(opts []*pbrelation.RelationOption, id string) *pbrelation.Relatio
 	return nil
 }
 
-func HasOption(opts []*pbrelation.RelationOption, id string) bool {
+func HasOption(opts []*model.RelationOption, id string) bool {
 	for _, opt := range opts {
 		if opt.Id == id {
 			return true
@@ -190,7 +191,7 @@ func Get(st *types.Struct, key string) *types.Value {
 	return st.Fields[key]
 }
 
-func GetRelationKeys(rels []*pbrelation.Relation) []string {
+func GetRelationKeys(rels []*model.Relation) []string {
 	var keys []string
 	for _, rel := range rels {
 		keys = append(keys, rel.Key)
@@ -199,7 +200,7 @@ func GetRelationKeys(rels []*pbrelation.Relation) []string {
 	return keys
 }
 
-func GetOptionIds(opts []*pbrelation.RelationOption) []string {
+func GetOptionIds(opts []*model.RelationOption) []string {
 	var keys []string
 	for _, opt := range opts {
 		keys = append(keys, opt.Id)
@@ -208,7 +209,7 @@ func GetOptionIds(opts []*pbrelation.RelationOption) []string {
 	return keys
 }
 
-func MergeRelationsDicts(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) []*pbrelation.Relation {
+func MergeRelationsDicts(rels1 []*model.Relation, rels2 []*model.Relation) []*model.Relation {
 	rels := CopyRelations(rels1)
 	for _, rel2 := range rels2 {
 		var found bool
@@ -233,7 +234,7 @@ func MergeRelationsDicts(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relat
 // MergeOptionsPreserveScope adds and updates options from opts2 into opts1 based on the ID
 // in case opts2 doesn't have id that opts1 have it doesn't remove the existing one
 // in case opts2 has the key that opts1 already have it updates everything except scope
-func MergeOptionsPreserveScope(opts1 []*pbrelation.RelationOption, opts2 []*pbrelation.RelationOption) []*pbrelation.RelationOption {
+func MergeOptionsPreserveScope(opts1 []*model.RelationOption, opts2 []*model.RelationOption) []*model.RelationOption {
 	opts := CopyOptions(opts1)
 	for _, opt2 := range opts2 {
 		var found bool
@@ -289,11 +290,11 @@ func ValueToInterface(v *types.Value) interface{} {
 	}
 }
 
-func RelationFormatCanHaveListValue(format pbrelation.RelationFormat) bool {
+func RelationFormatCanHaveListValue(format model.RelationFormat) bool {
 	switch format {
-	case pbrelation.RelationFormat_tag,
-		pbrelation.RelationFormat_file,
-		pbrelation.RelationFormat_object:
+	case model.RelationFormat_tag,
+		model.RelationFormat_file,
+		model.RelationFormat_object:
 		return true
 	default:
 		return false

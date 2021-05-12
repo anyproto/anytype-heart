@@ -1,10 +1,11 @@
 package pbtypes
 
 import (
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
-	"github.com/gogo/protobuf/types"
 	"reflect"
 	"testing"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/types"
 )
 
 func TestStructDiff(t *testing.T) {
@@ -148,29 +149,29 @@ func TestStructDiff(t *testing.T) {
 
 func TestRelationsDiff(t *testing.T) {
 	type args struct {
-		rels1 []*pbrelation.Relation
-		rels2 []*pbrelation.Relation
+		rels1 []*model.Relation
+		rels2 []*model.Relation
 	}
 	tests := []struct {
 		name        string
 		args        args
-		wantAdded   []*pbrelation.Relation
-		wantUpdated []*pbrelation.Relation
+		wantAdded   []*model.Relation
+		wantUpdated []*model.Relation
 		wantRemoved []string
 	}{
 		{"complex",
 			args{
-				[]*pbrelation.Relation{{Key: "k0", Format: pbrelation.RelationFormat_longtext}, {Key: "k1", Format: pbrelation.RelationFormat_longtext}, {Key: "k2", Format: pbrelation.RelationFormat_longtext}},
-				[]*pbrelation.Relation{{Key: "k1", Format: pbrelation.RelationFormat_longtext}, {Key: "k2", Format: pbrelation.RelationFormat_tag}, {Key: "k3", Format: pbrelation.RelationFormat_object}},
+				[]*model.Relation{{Key: "k0", Format: model.RelationFormat_longtext}, {Key: "k1", Format: model.RelationFormat_longtext}, {Key: "k2", Format: model.RelationFormat_longtext}},
+				[]*model.Relation{{Key: "k1", Format: model.RelationFormat_longtext}, {Key: "k2", Format: model.RelationFormat_tag}, {Key: "k3", Format: model.RelationFormat_object}},
 			},
-			[]*pbrelation.Relation{{Key: "k3", Format: pbrelation.RelationFormat_object}},
-			[]*pbrelation.Relation{{Key: "k2", Format: pbrelation.RelationFormat_tag}},
+			[]*model.Relation{{Key: "k3", Format: model.RelationFormat_object}},
+			[]*model.Relation{{Key: "k2", Format: model.RelationFormat_tag}},
 			[]string{"k0"},
 		},
 		{"both empty",
 			args{
-				[]*pbrelation.Relation{},
-				[]*pbrelation.Relation{},
+				[]*model.Relation{},
+				[]*model.Relation{},
 			},
 			nil,
 			nil,

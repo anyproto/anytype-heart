@@ -7,11 +7,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -39,15 +38,15 @@ func (v *bundledRelation) Anytype() core.Service {
 	return v.a
 }
 
-func (v *bundledRelation) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_BundledRelation
+func (v *bundledRelation) Type() model.SmartBlockType {
+	return model.SmartBlockType_BundledRelation
 }
 
 func (v *bundledRelation) Virtual() bool {
 	return false
 }
 
-func (v *bundledRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
+func (v *bundledRelation) getDetails(id string) (rels []*model.Relation, p *types.Struct, err error) {
 	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
 		return nil, nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}

@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/google/uuid"
@@ -59,19 +58,19 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	recommendedLayout := pbtypes.GetString(p.Details(), bundle.RelationKeyRecommendedLayout.String())
 	if recommendedLayout == "" {
-		recommendedLayout = relation.ObjectType_basic.String()
-	} else if _, ok := relation.ObjectTypeLayout_value[recommendedLayout]; !ok {
-		recommendedLayout = relation.ObjectType_basic.String()
+		recommendedLayout = model.ObjectType_basic.String()
+	} else if _, ok := model.ObjectTypeLayout_value[recommendedLayout]; !ok {
+		recommendedLayout = model.ObjectType_basic.String()
 	}
 
-	recommendedLayoutObj := bundle.MustGetLayout(relation.ObjectTypeLayout(relation.ObjectTypeLayout_value[recommendedLayout]))
+	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(model.ObjectTypeLayout_value[recommendedLayout]))
 	for _, rel := range recommendedLayoutObj.RequiredRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.Key) == -1 {
 			recommendedRelationsKeys = append(recommendedRelationsKeys, rel.Key)
 		}
 	}
 
-	var recommendedRelations []*relation.Relation
+	var recommendedRelations []*model.Relation
 	for _, rk := range recommendedRelationsKeys {
 		rel := pbtypes.GetRelation(rels, rk)
 		if rel == nil {
@@ -82,7 +81,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 
 		relCopy := pbtypes.CopyRelation(rel)
-		relCopy.Scope = relation.Relation_type
+		relCopy.Scope = model.Relation_type
 		recommendedRelations = append(recommendedRelations, relCopy)
 		dataview.Dataview.Relations = append(dataview.Dataview.Relations, relCopy)
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{

@@ -4,7 +4,6 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
@@ -21,7 +20,7 @@ var log = logging.Logger("anytype-mw-restrictions")
 
 type Object interface {
 	Id() string
-	Type() pb.SmartBlockType
+	Type() model.SmartBlockType
 }
 
 type Service interface {
@@ -46,8 +45,6 @@ func (s *service) RestrictionsByObj(obj Object) (r Restrictions) {
 		Dataview: s.DataviewRestrictionsByObj(obj),
 	}
 }
-
-
 
 type Restrictions struct {
 	Object   ObjectRestrictions

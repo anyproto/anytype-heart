@@ -7,9 +7,9 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -40,8 +40,8 @@ func (v *files) Anytype() core.Service {
 	return v.a
 }
 
-func (v *files) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_File
+func (v *files) Type() model.SmartBlockType {
+	return model.SmartBlockType_File
 }
 
 func (v *files) Virtual() bool {

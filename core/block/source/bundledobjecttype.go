@@ -5,11 +5,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -38,20 +37,20 @@ func (v *bundledObjectType) Anytype() core.Service {
 	return v.a
 }
 
-func (v *bundledObjectType) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_BundledObjectType
+func (v *bundledObjectType) Type() model.SmartBlockType {
+	return model.SmartBlockType_BundledObjectType
 }
 
 func (v *bundledObjectType) Virtual() bool {
 	return false
 }
 
-func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation, p *types.Struct, err error) {
+func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *types.Struct, err error) {
 	ot, err := bundle.GetTypeByUrl(id)
 	if err != nil {
 		return nil, nil, err
 	}
-	extraRels = []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelation(bundle.RelationKeyRecommendedLayout)}
+	extraRels = []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelation(bundle.RelationKeyRecommendedLayout)}
 
 	var relationKeys []string
 	for i := range ot.Relations {
@@ -61,7 +60,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 
 	det := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
-		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
+		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
 		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
 		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
 		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),

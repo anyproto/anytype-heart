@@ -235,7 +235,7 @@
   {
     "description": "Human which created this object",
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "creator",
     "maxCount": 1,
     "name": "Created by",
@@ -442,7 +442,7 @@
   },
   {
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "type",
     "maxCount": 1,
     "name": "Object type",

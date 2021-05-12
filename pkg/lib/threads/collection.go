@@ -114,7 +114,7 @@ func (s *service) threadsDbListen() error {
 							return
 						}
 						ch := s.getNewThreadChan()
-						if ch != nil && !s.stopped{
+						if ch != nil && !s.stopped {
 							select {
 							case <-s.ctx.Done():
 							case ch <- tid.String():

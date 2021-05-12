@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -61,16 +60,16 @@ var WithObjectTypeLayoutMigration = func() StateTransformer {
 	return func(s *state.State) {
 		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())
 
-		if layout == float64(relation.ObjectType_objectType) {
+		if layout == float64(model.ObjectType_objectType) {
 			return
 		}
 
 		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, pbtypes.Float64(layout))
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(relation.ObjectType_objectType)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType)))
 	}
 }
 
-var WithObjectTypeRecommendedRelationsMigration = func(relations []*relation.Relation) StateTransformer {
+var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relation) StateTransformer {
 	return func(s *state.State) {
 		var keys []string
 		if len(pbtypes.GetStringList(s.Details(), bundle.RelationKeyRecommendedRelations.String())) > 0 {
@@ -149,7 +148,7 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	}
 }
 
-var WithLayout = func(layout relation.ObjectTypeLayout) StateTransformer {
+var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 	return WithDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(layout)))
 }
 

@@ -2,22 +2,22 @@ package objectstore
 
 import (
 	"fmt"
+	"io/ioutil"
+	"os"
+	"testing"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"io/ioutil"
-	"os"
-	"testing"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -219,61 +219,61 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	id1 := getId()
 	id2 := getId()
 	id3 := getId()
-	require.NoError(t, ds.CreateObject(id1, newDet("one", "_ota1"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+	require.NoError(t, ds.CreateObject(id1, newDet("one", "_ota1"), &model.Relations{Relations: []*model.Relation{
 		{
 			Key:          "rel1",
-			Format:       pbrelation.RelationFormat_status,
+			Format:       model.RelationFormat_status,
 			Name:         "rel 1",
 			DefaultValue: nil,
-			SelectDict: []*pbrelation.RelationOption{
-				{"id1", "option1", "red", pbrelation.RelationOption_local},
-				{"id2", "option2", "red", pbrelation.RelationOption_local},
-				{"id3", "option3", "red", pbrelation.RelationOption_local},
+			SelectDict: []*model.RelationOption{
+				{"id1", "option1", "red", model.RelationOption_local},
+				{"id2", "option2", "red", model.RelationOption_local},
+				{"id3", "option3", "red", model.RelationOption_local},
 			},
 		},
 		{
 			Key:          "rel2",
-			Format:       pbrelation.RelationFormat_shorttext,
+			Format:       model.RelationFormat_shorttext,
 			Name:         "rel 2",
 			DefaultValue: nil,
 		},
 	}}, nil, "s1"))
 
-	require.NoError(t, ds.CreateObject(id2, newDet("two", "_ota2"), &pbrelation.Relations{Relations: []*pbrelation.Relation{
+	require.NoError(t, ds.CreateObject(id2, newDet("two", "_ota2"), &model.Relations{Relations: []*model.Relation{
 		{
 			Key:          "rel1",
-			Format:       pbrelation.RelationFormat_status,
+			Format:       model.RelationFormat_status,
 			Name:         "rel 1",
 			DefaultValue: nil,
-			SelectDict: []*pbrelation.RelationOption{
-				{"id3", "option3", "yellow", pbrelation.RelationOption_local},
-				{"id4", "option4", "red", pbrelation.RelationOption_local},
-				{"id5", "option5", "red", pbrelation.RelationOption_local},
+			SelectDict: []*model.RelationOption{
+				{"id3", "option3", "yellow", model.RelationOption_local},
+				{"id4", "option4", "red", model.RelationOption_local},
+				{"id5", "option5", "red", model.RelationOption_local},
 			},
 		},
 		{
 			Key:          "rel3",
-			Format:       pbrelation.RelationFormat_status,
+			Format:       model.RelationFormat_status,
 			Name:         "rel 3",
 			DefaultValue: nil,
-			SelectDict: []*pbrelation.RelationOption{
-				{"id5", "option5", "red", pbrelation.RelationOption_local},
-				{"id6", "option6", "red", pbrelation.RelationOption_local},
+			SelectDict: []*model.RelationOption{
+				{"id5", "option5", "red", model.RelationOption_local},
+				{"id6", "option6", "red", model.RelationOption_local},
 			},
 		},
 		{
 			Key:          "rel4",
-			Format:       pbrelation.RelationFormat_tag,
+			Format:       model.RelationFormat_tag,
 			Name:         "rel 4",
 			DefaultValue: nil,
-			SelectDict: []*pbrelation.RelationOption{
-				{"id7", "option7", "red", pbrelation.RelationOption_local},
+			SelectDict: []*model.RelationOption{
+				{"id7", "option7", "red", model.RelationOption_local},
 			},
 		},
 	}}, nil, "s2"))
 	require.NoError(t, ds.CreateObject(id3, newDet("three", "_ota2"), nil, nil, "s3"))
 
-	restOpts, err := ds.GetAggregatedOptions("rel1", pbrelation.RelationFormat_status, "_otffff")
+	restOpts, err := ds.GetAggregatedOptions("rel1", model.RelationFormat_status, "_otffff")
 	require.NoError(t, err)
 	require.Len(t, restOpts, 6)
 

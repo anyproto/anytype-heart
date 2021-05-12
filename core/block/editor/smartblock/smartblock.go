@@ -21,7 +21,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -70,7 +70,7 @@ type SmartblockOpenListner interface {
 type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
-	Type() pb.SmartBlockType
+	Type() model.SmartBlockType
 	Meta() *core.SmartBlockMeta
 	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
@@ -78,14 +78,14 @@ type SmartBlock interface {
 	History() undo.History
 	Anytype() core.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
-	Relations() []*pbrelation.Relation
-	RelationsState(s *state.State, aggregateFromDS bool) []*pbrelation.Relation
+	Relations() []*model.Relation
+	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
 	HasRelation(relationKey string) bool
-	AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error)
-	UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error)
+	AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
+	UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
-	AddExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error)
-	UpdateExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) error
+	AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
+	UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error
 	DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
 
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
@@ -111,7 +111,7 @@ type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
 	State          *state.State
-	Relations      []*pbrelation.Relation
+	Relations      []*model.Relation
 	App            *app.App
 }
 
@@ -159,7 +159,7 @@ func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	}
 }
 
-func (sb *smartBlock) Type() pb.SmartBlockType {
+func (sb *smartBlock) Type() model.SmartBlockType {
 	return sb.source.Type()
 }
 
@@ -203,7 +203,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
-	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
+	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
 		return nil
 	}
 
@@ -225,7 +225,7 @@ func (sb *smartBlock) normalizeRelations(s *state.State) error {
 			continue
 		}
 
-		if rel.Scope != pbrelation.Relation_object {
+		if rel.Scope != model.Relation_object {
 			log.Warnf("NormalizeRelations change scope for relation %s", rel.Key)
 			s.SetExtraRelation(rel)
 		}
@@ -278,7 +278,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 	return nil
 }
 
-func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*pbrelation.ObjectType, err error) {
+func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*model.ObjectType, err error) {
 	if sb.metaSub != nil {
 		sb.metaSub.Close()
 	}
@@ -295,7 +295,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 
 	var uniqueObjTypes []string
 
-	if sb.Type() == pb.SmartBlockType_Set {
+	if sb.Type() == model.SmartBlockType_Set {
 		// add the object type from the dataview source
 		if b := sb.Doc.Pick("dataview"); b != nil {
 			if dv := b.Model().GetDataview(); dv != nil {
@@ -304,7 +304,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 				}
 				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
 				for _, rel := range dv.Relations {
-					if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+					if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
 						if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
 							continue
 						}
@@ -435,7 +435,7 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 
 func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
-	if sb.Type() != pb.SmartBlockType_Breadcrumbs && sb.Type() != pb.SmartBlockType_Home {
+	if sb.Type() != model.SmartBlockType_Breadcrumbs && sb.Type() != model.SmartBlockType_Home {
 		ids = append(ids, sb.Id())
 
 		if includeObjTypes {
@@ -447,7 +447,7 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator boo
 		details := sb.Details()
 
 		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
-			if rel.Format != pbrelation.RelationFormat_object && rel.Format != pbrelation.RelationFormat_file {
+			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
 				continue
 			}
 
@@ -589,12 +589,12 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 
 func (sb *smartBlock) NewState() *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewState().SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
+	return sb.Doc.NewState().SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
 	sb.execHooks(HookOnNewState)
-	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == pb.SmartBlockType_Archive || sb.Type() == pb.SmartBlockType_Breadcrumbs)
+	return sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
 }
 
 func (sb *smartBlock) History() undo.History {
@@ -623,10 +623,10 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 				return fmt.Errorf("relation not found: you should add the missing relation first")
 			}
 
-			if rel.Scope != pbrelation.Relation_object {
+			if rel.Scope != model.Relation_object {
 				s.SetExtraRelation(rel)
 			}
-			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
+			if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
 				newOptsIds := slice.Difference(pbtypes.GetStringListValue(detail.Value), pbtypes.GetStringListValue(detCopy.Fields[detail.Key]))
 				var missingOptsIds []string
 				for _, newOptId := range newOptsIds {
@@ -649,7 +649,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 						}
 						optCopy := *opt
 						// reset scope
-						optCopy.Scope = pbrelation.RelationOption_local
+						optCopy.Scope = model.RelationOption_local
 						_, err := s.AddExtraRelationOption(*rel, optCopy)
 						if err != nil {
 							return err
@@ -704,7 +704,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	return nil
 }
 
-func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	s := sb.NewStateCtx(ctx)
 
 	if relationsWithKeys, err = sb.addExtraRelations(s, relations); err != nil {
@@ -729,10 +729,10 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*pbrelat
 	return
 }
 
-func (sb *smartBlock) addExtraRelations(s *state.State, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	copy := pbtypes.CopyRelations(sb.RelationsState(s, false))
 
-	var existsMap = map[string]*pbrelation.Relation{}
+	var existsMap = map[string]*model.Relation{}
 	for _, rel := range copy {
 		existsMap[rel.Key] = rel
 	}
@@ -802,13 +802,13 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 }
 
 // UpdateExtraRelations sets the extra relations, it skips the
-func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
 	objectTypeRelations := pbtypes.CopyRelations(sb.ObjectTypeRelations())
 	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
 	relationsToSet := pbtypes.CopyRelations(relations)
 
 	var somethingChanged bool
-	var newRelations []*pbrelation.Relation
+	var newRelations []*model.Relation
 mainLoop:
 	for i := range relationsToSet {
 		for j := range objectTypeRelations {
@@ -865,7 +865,7 @@ mainLoop:
 
 func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error) {
 	copy := pbtypes.CopyRelations(sb.ExtraRelations())
-	filtered := []*pbrelation.Relation{}
+	filtered := []*model.Relation{}
 	st := sb.NewStateCtx(ctx)
 
 	for _, rel := range copy {
@@ -906,7 +906,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 }
 
 // AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error) {
+func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
 	s := sb.NewStateCtx(ctx)
 	rel := pbtypes.GetRelation(sb.Relations(), relationKey)
 	if rel == nil {
@@ -917,7 +917,7 @@ func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey str
 		}
 	}
 
-	if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+	if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 		return nil, fmt.Errorf("incorrect relation format")
 	}
 
@@ -932,13 +932,13 @@ func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey str
 	return newOption, sb.Apply(s, NoEvent)
 }
 
-func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) error {
+func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error {
 	s := sb.NewStateCtx(ctx)
 	for _, rel := range sb.ExtraRelations() {
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
@@ -966,7 +966,7 @@ func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey 
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
@@ -1135,9 +1135,9 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 	}
 }
 
-func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelations []*pbrelation.Relation, aggregatedRelations []*pbrelation.Relation, details *types.Struct) []*pbrelation.Relation {
+func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []*model.Relation, aggregatedRelations []*model.Relation, details *types.Struct) []*model.Relation {
 	var m = make(map[string]struct{}, len(extraRelations))
-	var rels = make([]*pbrelation.Relation, 0, len(objTypeRelations)+len(extraRelations))
+	var rels = make([]*model.Relation, 0, len(objTypeRelations)+len(extraRelations))
 
 	for _, rel := range extraRelations {
 		m[rel.Key] = struct{}{}
@@ -1178,27 +1178,27 @@ func mergeAndSortRelations(objTypeRelations []*pbrelation.Relation, extraRelatio
 	return rels
 }
 
-func (sb *smartBlock) baseRelations() []*pbrelation.Relation {
-	rels := []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
+func (sb *smartBlock) baseRelations() []*model.Relation {
+	rels := []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyId), bundle.MustGetRelation(bundle.RelationKeyLayout), bundle.MustGetRelation(bundle.RelationKeyIconEmoji), bundle.MustGetRelation(bundle.RelationKeyName)}
 	for _, rel := range rels {
-		rel.Scope = pbrelation.Relation_object
+		rel.Scope = model.Relation_object
 	}
 	return rels
 }
 
-func (sb *smartBlock) Relations() []*pbrelation.Relation {
+func (sb *smartBlock) Relations() []*model.Relation {
 	return sb.RelationsState(sb.Doc.(*state.State), true)
 }
 
-func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*pbrelation.Relation {
-	if sb.Type() == pb.SmartBlockType_Archive || sb.source.Virtual() {
+func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
+	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
 		return sb.baseRelations()
 	}
 
 	objType := s.ObjectType()
 
 	var err error
-	var aggregatedRelation []*pbrelation.Relation
+	var aggregatedRelation []*model.Relation
 	if objType != "" && aggregateFromDS {
 		aggregatedRelation, err = sb.Anytype().ObjectStore().AggregateRelationsFromSetsOfType(objType)
 		if err != nil {
@@ -1211,9 +1211,9 @@ func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*pb
 	return rels
 }
 
-func (sb *smartBlock) fillAggregatedRelations(rels []*pbrelation.Relation) {
+func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation) {
 	for i, rel := range rels {
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			continue
 		}
 
@@ -1227,12 +1227,12 @@ func (sb *smartBlock) fillAggregatedRelations(rels []*pbrelation.Relation) {
 	}
 }
 
-func (sb *smartBlock) ObjectTypeRelations() []*pbrelation.Relation {
+func (sb *smartBlock) ObjectTypeRelations() []*model.Relation {
 	return sb.objectTypeRelations(sb.Doc.(*state.State))
 }
 
-func (sb *smartBlock) objectTypeRelations(s *state.State) []*pbrelation.Relation {
-	var relations []*pbrelation.Relation
+func (sb *smartBlock) objectTypeRelations(s *state.State) []*model.Relation {
+	var relations []*model.Relation
 	if sb.meta != nil {
 		objectTypes := sb.meta.FetchObjectTypes(s.ObjectTypes())
 		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
@@ -1264,7 +1264,7 @@ func (sb *smartBlock) execHooks(event Hook) {
 
 func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
 	for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
-		if rel.Format == pbrelation.RelationFormat_file {
+		if rel.Format == model.RelationFormat_file {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {
 				fileKeys = append(fileKeys, rel.Key)
 			}

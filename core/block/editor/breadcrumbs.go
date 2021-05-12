@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 )
 
 var log = logging.Logger("anytype-mw-editor")
@@ -30,7 +29,7 @@ func (p *Breadcrumbs) Init(ctx *smartblock.InitContext) (err error) {
 	return template.ApplyTemplate(p, ctx.State, template.WithEmpty)
 }
 
-func (p *Breadcrumbs) Relations() []*pbrelation.Relation {
+func (p *Breadcrumbs) Relations() []*model.Relation {
 	return nil
 }
 

@@ -2,30 +2,31 @@ package state
 
 import (
 	"fmt"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"net/url"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"net/url"
 )
 
-func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
+func validateRelationFormat(rel *model.Relation, v *types.Value) error {
 	if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
 		// allow null value for any field
 		return nil
 	}
 
 	switch rel.Format {
-	case pbrelation.RelationFormat_longtext, pbrelation.RelationFormat_shorttext:
+	case model.RelationFormat_longtext, model.RelationFormat_shorttext:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
 		return nil
-	case pbrelation.RelationFormat_number:
+	case model.RelationFormat_number:
 		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
 		}
 		return nil
-	case pbrelation.RelationFormat_status, pbrelation.RelationFormat_tag:
+	case model.RelationFormat_status, model.RelationFormat_tag:
 		if _, ok := v.Kind.(*types.Value_ListValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
 		}
@@ -35,13 +36,13 @@ func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
 		}
 
 		return validateOptions(rel.SelectDict, v.GetListValue().Values)
-	case pbrelation.RelationFormat_date:
+	case model.RelationFormat_date:
 		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
 		}
 
 		return nil
-	case pbrelation.RelationFormat_file, pbrelation.RelationFormat_object:
+	case model.RelationFormat_file, model.RelationFormat_object:
 		switch s := v.Kind.(type) {
 		case *types.Value_StringValue:
 			if rel.MaxCount != 1 {
@@ -64,13 +65,13 @@ func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
 		default:
 			return fmt.Errorf("incorrect type: %T instead of list/string", v.Kind)
 		}
-	case pbrelation.RelationFormat_checkbox:
+	case model.RelationFormat_checkbox:
 		if _, ok := v.Kind.(*types.Value_BoolValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of bool", v.Kind)
 		}
 
 		return nil
-	case pbrelation.RelationFormat_url:
+	case model.RelationFormat_url:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
@@ -84,7 +85,7 @@ func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
 		//	return fmt.Errorf("url scheme %s not supported", u.Scheme)
 		//}
 		return nil
-	case pbrelation.RelationFormat_email:
+	case model.RelationFormat_email:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
@@ -94,7 +95,7 @@ func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
 			return fmt.Errorf("failed to validate email")
 		}*/
 		return nil
-	case pbrelation.RelationFormat_phone:
+	case model.RelationFormat_phone:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
@@ -105,7 +106,7 @@ func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
 			return fmt.Errorf("failed to validate phone")
 		}*/
 		return nil
-	case pbrelation.RelationFormat_emoji:
+	case model.RelationFormat_emoji:
 		if _, ok := v.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of string", v.Kind)
 		}
@@ -117,7 +118,7 @@ func validateRelationFormat(rel *pbrelation.Relation, v *types.Value) error {
 	}
 }
 
-func validateOptions(opts []*pbrelation.RelationOption, vals []*types.Value) error {
+func validateOptions(opts []*model.RelationOption, vals []*types.Value) error {
 	for i, lv := range vals {
 		if optId, ok := lv.Kind.(*types.Value_StringValue); !ok {
 			return fmt.Errorf("incorrect list item value at index %d: %T", i, lv.Kind)

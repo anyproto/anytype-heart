@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -191,7 +190,7 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	}
 
 	rel := add.Relation
-	if rel.Format == pbrelation.RelationFormat_file && rel.ObjectTypes == nil {
+	if rel.Format == model.RelationFormat_file && rel.ObjectTypes == nil {
 		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
@@ -485,7 +484,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	return
 }
 
-func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation) ([]*pb.ChangeRelationUpdate, error) {
+func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.ChangeRelationUpdate, error) {
 	var updates []*pb.ChangeRelationUpdate
 
 	if prev.Key != new.Key {
@@ -542,7 +541,7 @@ func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
 	if s.extraRelations == nil {
 		return nil
 	}
-	var prev []*pbrelation.Relation
+	var prev []*model.Relation
 	if s.parent != nil {
 		prev = s.parent.ExtraRelations()
 	}

@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -125,7 +125,7 @@ func (i *image) Details() (*types.Struct, error) {
 			bundle.RelationKeyId.String():        pbtypes.String(i.hash),
 			bundle.RelationKeyIconImage.String(): pbtypes.String(i.hash),
 			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeyImage.URL()),
-			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(relation.ObjectType_image)),
+			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_image)),
 		},
 	}
 

@@ -15,10 +15,9 @@ import (
 )
 
 var (
-
 	ErrDuplicateKey = fmt.Errorf("duplicate key")
-	ErrNotFound = fmt.Errorf("not found")
-	errTxnTooBig = fmt.Errorf("Txn is too big to fit into one request")
+	ErrNotFound     = fmt.Errorf("not found")
+	errTxnTooBig    = fmt.Errorf("Txn is too big to fit into one request")
 )
 
 var (

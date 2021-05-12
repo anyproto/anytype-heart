@@ -4,13 +4,12 @@ import (
 	"context"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -43,8 +42,8 @@ func (v *anytypeProfile) Anytype() core.Service {
 	return v.a
 }
 
-func (v *anytypeProfile) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_AnytypeProfile
+func (v *anytypeProfile) Type() model.SmartBlockType {
+	return model.SmartBlockType_AnytypeProfile
 }
 
 func (v *anytypeProfile) Virtual() bool {
@@ -57,7 +56,7 @@ func (v *anytypeProfile) getDetails() (p *types.Struct) {
 		bundle.RelationKeyDescription.String(): pbtypes.String("Authored by Anytype team"),
 		bundle.RelationKeyIconImage.String():   pbtypes.String("bafybeigpvcr42wobigjm63hmx3223gktsz4hpwp3jmiwkpcawo7wtpimv4"),
 		bundle.RelationKeyId.String():          pbtypes.String(v.id),
-		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(relation.ObjectType_profile)),
+		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_profile)),
 	}}
 }
 
