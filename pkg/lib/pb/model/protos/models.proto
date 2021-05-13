@@ -26,6 +26,7 @@ enum SmartBlockType {
     File = 0x100;
 
     Template = 0x120;
+    BundledTemplate = 0x121;
 
     MarketplaceType = 0x110;
     MarketplaceRelation = 0x111;

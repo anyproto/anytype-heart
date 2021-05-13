@@ -214,6 +214,7 @@ type service struct {
 	process      process.Service
 	m            sync.Mutex
 	app          *app.App
+	source       source.Service
 }
 
 func (s *service) Name() string {
@@ -228,6 +229,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.openedBlocks = make(map[string]*openedBlock)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.source = a.MustComponent(source.CName).(source.Service)
 	s.app = a
 	return
 }
@@ -618,7 +620,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, s.status, id)
+	sc, err := s.source.NewSource(id)
 	if err != nil {
 		return
 	}

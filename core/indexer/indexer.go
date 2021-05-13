@@ -79,6 +79,7 @@ type indexer struct {
 	// todo: move logstore to separate component?
 	threadService     threads.Service
 	anytype           core.Service
+	source            source.Service
 	searchInfo        GetSearchInfo
 	cache             map[string]*doc
 	quitWG            *sync.WaitGroup
@@ -102,6 +103,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.cache = make(map[string]*doc)
 	i.newRecordsBatcher = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
+	i.source = a.MustComponent(source.CName).(source.Service)
 	i.quitWG = new(sync.WaitGroup)
 	i.quit = make(chan struct{})
 	return
@@ -326,7 +328,7 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) openDoc(id string) (state.Doc, error) {
-	s, err := source.NewSource(i.anytype, nil, id)
+	s, err := i.source.NewSource(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return nil, err

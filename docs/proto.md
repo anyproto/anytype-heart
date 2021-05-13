@@ -13573,6 +13573,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STObjectType | 96 | have relations list |
 | File | 256 |  |
 | Template | 288 |  |
+| BundledTemplate | 289 |  |
 | MarketplaceType | 272 |  |
 | MarketplaceRelation | 273 |  |
 | MarketplaceTemplate | 274 |  |

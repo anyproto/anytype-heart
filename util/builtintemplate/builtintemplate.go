@@ -44,14 +44,14 @@ func (b *builtinTemplate) Name() (name string) {
 
 func (b *builtinTemplate) Run() (err error) {
 	for _, tb := range templatesBinary {
-		if e := b.saveBuiltinTemplate(tb); e != nil {
+		if e := b.registerBuiltin(tb); e != nil {
 			log.Errorf("can't save builtin template: %v", e)
 		}
 	}
 	return
 }
 
-func (b *builtinTemplate) saveBuiltinTemplate(tb []byte) (err error) {
+func (b *builtinTemplate) registerBuiltin(tb []byte) (err error) {
 	store := b.core.ObjectStore()
 	st, err := BytesToState(tb)
 	if err != nil {

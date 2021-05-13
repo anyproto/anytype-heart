@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
@@ -60,9 +59,7 @@ func SourceTypeBySbType(a core.Service, blockType smartblock.SmartBlockType) (s 
 		return &files{a: a}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
 		return &bundledObjectType{a: a}, nil
-	case smartblock.SmartBlockTypeBundledRelation:
-		return &bundledRelation{a: a}, nil
-	case smartblock.SmartBlockTypeIndexedRelation:
+	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
 		return &bundledRelation{a: a}, nil
 	default:
 		if err := blockType.Valid(); err != nil {
@@ -71,37 +68,6 @@ func SourceTypeBySbType(a core.Service, blockType smartblock.SmartBlockType) (s 
 			return &source{a: a, smartblockType: blockType}, nil
 		}
 	}
-}
-
-func NewSource(a core.Service, ss status.Service, id string) (s Source, err error) {
-	st, err := smartblock.SmartBlockTypeFromID(id)
-
-	if id == addr.AnytypeProfileId {
-		return NewAnytypeProfile(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeFile {
-		return NewFiles(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledObjectType {
-		return NewBundledObjectType(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledRelation {
-		return NewBundledRelation(a, id), nil
-	}
-	if st == smartblock.SmartBlockTypeIndexedRelation {
-		return NewIndexedRelation(a, id), nil
-	}
-
-	tid, err := thread.Decode(id)
-	if err != nil {
-		err = fmt.Errorf("can't restore thread ID: %w", err)
-		return
-	}
-
-	return newSource(a, ss, tid)
 }
 
 func newSource(a core.Service, ss status.Service, tid thread.ID) (s Source, err error) {
