@@ -314,8 +314,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "targetObjectType",
-      "builtinTemplateId"
+      "targetObjectType"
     ],
     "types": [
       "Template"

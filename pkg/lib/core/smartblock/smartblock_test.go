@@ -1,6 +1,8 @@
 package smartblock
 
-import "testing"
+import (
+	"testing"
+)
 
 func TestSmartBlockTypeFromID(t *testing.T) {
 	type args struct {

@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "0f9e85e14eb4fdd96107d0335339f468ab5765fa25ad29598646b16da7f66aa2"
+const RelationChecksum = "0eb57272e7a434bb10619e3228cc4a49745f5654a8ea31843969992678405751"
 
 type RelationKey string
 
@@ -47,7 +47,6 @@ const (
 	RelationKeyCoverY                RelationKey = "coverY"
 	RelationKeySizeInBytes           RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf          RelationKey = "collectionOf"
-	RelationKeyBuiltinTemplateId     RelationKey = "builtinTemplateId"
 	RelationKeyAddedDate             RelationKey = "addedDate"
 	RelationKeyAssignee              RelationKey = "assignee"
 	RelationKeyExposure              RelationKey = "exposure"
@@ -165,18 +164,6 @@ var (
 			Key:         "audioGenre",
 			MaxCount:    1,
 			Name:        "Genre",
-			ReadOnly:    false,
-			Scope:       model.Relation_type,
-		},
-		RelationKeyBuiltinTemplateId: {
-
-			DataSource:  model.Relation_details,
-			Description: "",
-			Format:      model.RelationFormat_shorttext,
-			Hidden:      true,
-			Key:         "builtinTemplateId",
-			MaxCount:    1,
-			Name:        "Builtin template",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},

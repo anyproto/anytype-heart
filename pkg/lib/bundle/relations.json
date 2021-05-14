@@ -338,15 +338,6 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
-    "hidden": true,
-    "key": "builtinTemplateId",
-    "maxCount": 1,
-    "name": "Builtin template",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Date when the file were added into the anytype",
     "format": "date",
     "hidden": false,

@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -44,6 +45,11 @@ func (b *builtinTemplate) GenerateTemplates() (n int, err error) {
 			name := pbtypes.GetString(st.Details(), "name")
 			name = strings.TrimSpace(strings.ReplaceAll(name, prefix, ""))
 			st.SetDetail("name", pbtypes.String(name))
+			newId, err := threads.PatchSmartBlockType(st.RootId(), smartblock.SmartBlockTypeBundledTemplate)
+			if err != nil {
+				return err
+			}
+			st.SetRootId(newId)
 			states = append(states, st)
 			return nil
 		}); err != nil {
@@ -85,7 +91,7 @@ func init() {
 		for _, b := range fmt.Sprint(stBytes) {
 			switch b {
 			case ' ':
-				wr.WriteString(",")
+				wr.WriteString(", ")
 			case '[':
 				wr.WriteString("{")
 			case ']':

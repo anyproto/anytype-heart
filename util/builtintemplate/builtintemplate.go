@@ -3,10 +3,9 @@ package builtintemplate
 import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -30,11 +29,13 @@ type BuiltinTemplate interface {
 type builtinTemplate struct {
 	core         core.Service
 	blockService block.Service
+	source       source.Service
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.blockService = a.MustComponent(block.CName).(block.Service)
 	b.core = a.MustComponent(core.CName).(core.Service)
+	b.source = a.MustComponent(source.CName).(source.Service)
 	return
 }
 
@@ -52,37 +53,20 @@ func (b *builtinTemplate) Run() (err error) {
 }
 
 func (b *builtinTemplate) registerBuiltin(tb []byte) (err error) {
-	store := b.core.ObjectStore()
 	st, err := BytesToState(tb)
 	if err != nil {
 		return
 	}
-	_, total, err := store.Query(nil, database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyBuiltinTemplateId.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.String(st.RootId()),
-			},
-		},
+
+	id := st.RootId()
+	st = st.Copy()
+	if ot := st.ObjectType(); ot != bundle.TypeKeyTemplate.URL() {
+		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(ot))
+	}
+	st.SetObjectType(bundle.TypeKeyTemplate.URL())
+	b.source.RegisterStaticSource(id, func() source.Source {
+		return source.NewStaticSource(b.core, id, model.SmartBlockType_BundledTemplate, st.Copy())
 	})
-	if err != nil {
-		return
-	}
-	if total == 0 {
-		origId := st.RootId()
-		st = st.Copy()
-		if ot := st.ObjectType(); ot != bundle.TypeKeyTemplate.URL() {
-			st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(ot))
-		}
-		st.SetDetail(bundle.RelationKeyBuiltinTemplateId.String(), pbtypes.String(origId))
-		st.SetObjectType(bundle.TypeKeyTemplate.URL())
-		id, _, err := b.blockService.CreateSmartBlockFromState(smartblock.SmartBlockTypeTemplate, nil, nil, st)
-		if err != nil {
-			return err
-		}
-		log.Infof("created template '%v from orig '%v'", id, origId)
-	}
 	return
 }
 
