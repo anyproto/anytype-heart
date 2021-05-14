@@ -4,7 +4,7 @@ on:
       - 'v*.*.*'
 name: Build
 jobs:
-  build-mac-win:
+  build-mac-win-android-ios:
     runs-on: macos-latest
     steps:
       - name: Install Go
@@ -31,6 +31,14 @@ jobs:
           npm i -g node-gyp
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Set env vars
+        run: |
+          COMMIT=${GITHUB_SHA::7}
+          GIT_SUMMARY=$(git describe --tags --dirty --always)
+          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
+          FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
+          VERSION=${GITHUB_REF##*/}
       - name: install protoc
         run: |
           make setup-protoc
@@ -46,11 +54,6 @@ jobs:
       - name: Cross-compile library
         run: |
           mkdir -p .release
-          COMMIT=${GITHUB_SHA::7}
-          GIT_SUMMARY=$(git describe --tags --dirty --always)
-          DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
-          SDKROOT=$(xcrun --sdk macosx --show-sdk-path)
-          FLAGS="-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${CIRCLE_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean"
           gox -buildmode=c-archive -tags nogrpcserver -cgo=true -ldflags="$FLAGS" -osarch="darwin/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/clientlibrary/clib
           CC=x86_64-linux-musl-gcc CXX=x86_64-linux-musl-g++ gox -buildmode=c-archive -tags nogrpcserver -cgo=true -ldflags="$FLAGS" -osarch="linux/amd64" -output="{{.OS}}-{{.Arch}}.a" github.com/anytypeio/go-anytype-middleware/clientlibrary/clib
           make protos-server
@@ -60,11 +63,10 @@ jobs:
           make protos-js
           mv dist/js/pb protobuf
           mkdir -p protobuf/protos
-          mv pb/protos/*.proto ./protobuf/protos
+          cp pb/protos/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile addon mac amd64
         run: |
-          VERSION=${GITHUB_REF##*/}
           cp ./darwin-amd64.a ./dist/lib.a
           cp ./darwin-amd64.h ./dist/lib.h
 
@@ -73,17 +75,17 @@ jobs:
           tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
           mv js_${VERSION}_darwin-amd64.tar.gz .release/
           rm ./darwin-amd64*
-#      - name: Compile addon mac arm64
-#        run: |
-#          VERSION=${GITHUB_REF##*/}
-#          cp ./darwin-arm64.a ./dist/lib.a
-#          cp ./darwin-arm64.h ./dist/lib.h
-#
-#          GOOS=darwin GOARCH=arm64 npm_config_arch=arm64 npm_target_arch=arm64 make build-js-addon
-#          mv clientlibrary/jsaddon/build addon
-#          tar -czvf js_${VERSION}_darwin-arm64.tar.gz protobuf addon
-#          mv js_${VERSION}_darwin-arm64.tar.gz .release/
-#          rm ./darwin-arm64**/
+      #      - name: Compile addon mac arm64
+      #        run: |
+      #          VERSION=${GITHUB_REF##*/}
+      #          cp ./darwin-arm64.a ./dist/lib.a
+      #          cp ./darwin-arm64.h ./dist/lib.h
+      #
+      #          GOOS=darwin GOARCH=arm64 npm_config_arch=arm64 npm_target_arch=arm64 make build-js-addon
+      #          mv clientlibrary/jsaddon/build addon
+      #          tar -czvf js_${VERSION}_darwin-arm64.tar.gz protobuf addon
+      #          mv js_${VERSION}_darwin-arm64.tar.gz .release/
+      #          rm ./darwin-arm64**/
       - name: Pack server win
         run: |
           declare -a arr=("windows-amd64")
@@ -94,7 +96,35 @@ jobs:
           zip -r js_${VERSION}_${OSARCH}.zip grpc-server.exe protobuf
           mv js_${VERSION}_${OSARCH}.zip .release/
           done
-          ls -lha .
+      - name: Make swift protos
+        run: |
+          mkdir -p .release
+          make protos-swift
+          rm -rf protobuf
+          mv dist/ios/pb protobuf
+          mkdir -p protobuf/protos
+          cp pb/protos/*.proto ./protobuf/protos
+          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+      - name: Compile ios lib
+        run: |
+          go get golang.org/x/mobile/cmd/...
+          gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=ios -o Lib.framework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+          tar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf
+          mv ios_framework_${VERSION}.tar.gz .release/
+      - name: Make java protos
+        run: |
+          make protos-java
+          rm -rf protobuf
+          mv dist/android/pb protobuf
+          mkdir -p protobuf/protos
+          cp pb/protos/*.proto ./protobuf/protos
+          cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
+      - name: Compile android lib
+        run: |
+          go get golang.org/x/mobile/cmd/...
+          gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+          tar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
+          mv android_lib_${VERSION}.tar.gz .release/
       - name: Upload linux libs artifact
         uses: actions/upload-artifact@v2
         with:
