@@ -23,6 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockBuiltinTemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockIndexer"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockStatus"
 	"github.com/gogo/protobuf/types"
@@ -153,6 +154,7 @@ func newFixture(t *testing.T) *fixture {
 		With(fx.getSerach).
 		With(source.New())
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
+	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
 	require.NoError(t, ta.Start())
 	return fx
 }
