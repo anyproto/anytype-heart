@@ -33,7 +33,6 @@ func (b *builtinTemplate) GenerateTemplates() (n int, err error) {
 		},
 	}, []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeTemplate,
-		smartblock.SmartBlockTypePage,
 	})
 	if err != nil {
 		return

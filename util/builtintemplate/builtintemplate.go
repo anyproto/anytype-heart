@@ -1,6 +1,10 @@
 package builtintemplate
 
 import (
+	"crypto/md5"
+	"encoding/binary"
+	"encoding/hex"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -23,20 +27,32 @@ func New() BuiltinTemplate {
 
 type BuiltinTemplate interface {
 	GenerateTemplates() (n int, err error)
+	Hash() string
 	app.ComponentRunnable
 }
 
 type builtinTemplate struct {
-	core         core.Service
-	blockService block.Service
-	source       source.Service
+	core          core.Service
+	blockService  block.Service
+	source        source.Service
+	generatedHash string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.blockService = a.MustComponent(block.CName).(block.Service)
 	b.core = a.MustComponent(core.CName).(core.Service)
 	b.source = a.MustComponent(source.CName).(source.Service)
+	b.makeGenHash(0)
 	return
+}
+
+func (b *builtinTemplate) makeGenHash(version uint32) {
+	h := md5.New()
+	for _, tb := range templatesBinary {
+		h.Write(tb)
+	}
+	binary.Write(h, binary.LittleEndian, version)
+	b.generatedHash = hex.EncodeToString(h.Sum(nil))
 }
 
 func (b *builtinTemplate) Name() (name string) {
@@ -52,6 +68,10 @@ func (b *builtinTemplate) Run() (err error) {
 	return
 }
 
+func (b *builtinTemplate) Hash() string {
+	return b.generatedHash
+}
+
 func (b *builtinTemplate) registerBuiltin(tb []byte) (err error) {
 	st, err := BytesToState(tb)
 	if err != nil {
@@ -65,7 +85,7 @@ func (b *builtinTemplate) registerBuiltin(tb []byte) (err error) {
 	}
 	st.SetObjectType(bundle.TypeKeyTemplate.URL())
 	b.source.RegisterStaticSource(id, func() source.Source {
-		return source.NewStaticSource(b.core, id, model.SmartBlockType_BundledTemplate, st.Copy())
+		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy())
 	})
 	return
 }

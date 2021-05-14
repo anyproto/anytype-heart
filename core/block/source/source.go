@@ -49,23 +49,30 @@ type SourceType interface {
 	ListIds() ([]string, error)
 }
 
+type SourceWithType interface {
+	Source
+	SourceType
+}
+
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-func SourceTypeBySbType(a core.Service, blockType smartblock.SmartBlockType) (s SourceType, err error) {
+func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
-		return &anytypeProfile{a: a}, nil
+		return &anytypeProfile{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeFile:
-		return &files{a: a}, nil
+		return &files{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
-		return &bundledObjectType{a: a}, nil
+		return &bundledObjectType{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
-		return &bundledRelation{a: a}, nil
+		return &bundledRelation{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeBundledTemplate:
+		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
 		} else {
-			return &source{a: a, smartblockType: blockType}, nil
+			return &source{a: s.anytype, smartblockType: blockType}, nil
 		}
 	}
 }

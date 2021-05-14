@@ -36,6 +36,7 @@ var (
 		model.SmartBlockType_IndexedRelation:     objRestrictAll,
 		model.SmartBlockType_BundledObjectType:   objRestrictAll,
 		model.SmartBlockType_STObjectType:        objRestrictEdit,
+		model.SmartBlockType_BundledTemplate:     objRestrictAll,
 	}
 )
 

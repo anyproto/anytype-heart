@@ -74,6 +74,10 @@ type ThreadLister interface {
 	Threads() (thread.IDSlice, error)
 }
 
+type Hasher interface {
+	Hash() string
+}
+
 type indexer struct {
 	store objectstore.ObjectStore
 	// todo: move logstore to separate component?
@@ -88,6 +92,7 @@ type indexer struct {
 	recBuf            []core.SmartblockRecordEnvelope
 	threadIdsBuf      []string
 	mu                sync.Mutex
+	btHash            Hasher
 
 	newAccount bool
 }
@@ -104,6 +109,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.cache = make(map[string]*doc)
 	i.newRecordsBatcher = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
 	i.source = a.MustComponent(source.CName).(source.Service)
+	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.quitWG = new(sync.WaitGroup)
 	i.quit = make(chan struct{})
 	return
@@ -118,6 +124,7 @@ func (i *indexer) saveLatestChecksums() error {
 	checksums := model.ObjectStoreChecksums{
 		BundledObjectTypes:         bundle.TypeChecksum,
 		BundledRelations:           bundle.RelationChecksum,
+		BundledTemplates:           i.btHash.Hash(),
 		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 		IdxRebuildCounter:          ForceIdxRebuildCounter,
@@ -131,6 +138,7 @@ func (i *indexer) saveLatestCounters() error {
 	checksums := model.ObjectStoreChecksums{
 		BundledObjectTypes:         bundle.TypeChecksum,
 		BundledRelations:           bundle.RelationChecksum,
+		BundledTemplates:           i.btHash.Hash(),
 		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 		IdxRebuildCounter:          ForceIdxRebuildCounter,
@@ -187,6 +195,7 @@ func (i *indexer) reindexIfNeeded() error {
 		reindexThreadObjects    bool
 		reindexFileObjects      bool
 		reindexFulltext         bool
+		reindexBundledTemplates bool
 	)
 
 	if checksums.BundledRelations != bundle.RelationChecksum {
@@ -204,22 +213,26 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums.FulltextRebuild != ForceFulltextIndexCounter {
 		reindexFulltext = true
 	}
+	if checksums.BundledTemplates != i.btHash.Hash() {
+		reindexBundledTemplates = true
+	}
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		eraseIndexes = true
 		reindexFileObjects = true
 		reindexThreadObjects = true
 		reindexBundledRelations = true
 		reindexBundledTypes = true
+		reindexBundledTemplates = true
 	}
 
-	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes || reindexFulltext {
-		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes, reindexFulltext)
+	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes || reindexFulltext || reindexBundledTemplates {
+		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes, reindexFulltext, reindexBundledTemplates)
 	}
 
 	getIdsForTypes := func(sbt ...smartblock.SmartBlockType) ([]string, error) {
 		var ids []string
 		for _, t := range sbt {
-			st, err := source.SourceTypeBySbType(i.anytype, t)
+			st, err := i.source.SourceTypeBySbType(t)
 			if err != nil {
 				return nil, err
 			}
@@ -295,6 +308,19 @@ func (i *indexer) reindexIfNeeded() error {
 		}
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
 		msg := fmt.Sprintf("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
+		if len(ids)-successfullyReindexed != 0 {
+			log.Error(msg)
+		} else {
+			log.Info(msg)
+		}
+	}
+	if reindexBundledTemplates {
+		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledTemplate)
+		if err != nil {
+			return err
+		}
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
 		} else {

@@ -87,6 +87,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(threads.New()).
 		Register(source.New()).
 		Register(core.New()).
+		Register(builtintemplate.New()).
 		Register(indexer.New()).
 		Register(pin.New()).
 		Register(status.New()).
@@ -96,7 +97,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).
-		Register(builtintemplate.New()).
 		Register(linkpreview.New()).
 		Register(restriction.New())
 	return

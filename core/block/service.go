@@ -651,6 +651,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewMarketplaceTemplate(s.meta, s)
 	case model.SmartBlockType_Template:
 		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
+	case model.SmartBlockType_BundledTemplate:
+		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

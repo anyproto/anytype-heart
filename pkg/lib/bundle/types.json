@@ -317,7 +317,8 @@
       "targetObjectType"
     ],
     "types": [
-      "Template"
+      "Template",
+      "BundledTemplate"
     ]
   },
   {

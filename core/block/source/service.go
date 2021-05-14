@@ -5,10 +5,12 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -21,6 +23,8 @@ func New() Service {
 type Service interface {
 	NewSource(id string) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
+	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State) SourceWithType
+	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
 }
 

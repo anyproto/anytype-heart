@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "a6ebf01596b82f65918a0980a6ee15866220f25d4c610485bb2f1bf39e2be70d"
+const TypeChecksum = "51a7ce5bba2b27841a2ffb2f71c315a101dec4c9c29260b1bc9b9480779e421f"
 
 type TypeKey string
 
@@ -203,7 +203,7 @@ var (
 			Layout:      model.ObjectType_basic,
 			Name:        "Template",
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTargetObjectType]},
-			Types:       []model.SmartBlockType{model.SmartBlockType_Template},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Template, model.SmartBlockType_BundledTemplate},
 			Url:         TypePrefix + "template",
 		},
 		TypeKeyVideo: {

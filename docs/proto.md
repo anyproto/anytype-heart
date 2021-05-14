@@ -12575,6 +12575,7 @@ Precondition: user A and user B opened the same block
 | filesForceReindexCounter | [int32](#int32) |  | increased in order to fully reindex all objects |
 | idxRebuildCounter | [int32](#int32) |  | increased in order to remove indexes and reindex everything. Automatically triggers objects and files reindex(one time only) |
 | fulltextRebuild | [int32](#int32) |  | increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
+| bundledTemplates | [string](#string) |  |  |
 
 
 
