@@ -37,6 +37,7 @@ var (
 		model.SmartBlockType_BundledObjectType:   objRestrictAll,
 		model.SmartBlockType_STObjectType:        objRestrictEdit,
 		model.SmartBlockType_BundledTemplate:     objRestrictAll,
+		model.SmartBlockType_Template:            {},
 	}
 )
 
