@@ -5,4 +5,5 @@ type Converter interface {
 	SetKnownLinks(ids []string) Converter
 	FileHashes() []string
 	ImageHashes() []string
+	Ext() string
 }

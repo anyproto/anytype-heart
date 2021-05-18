@@ -127,9 +127,9 @@ func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string,
 		}
 		conv.SetKnownLinks(docIds)
 		result := conv.Convert()
-		filename := docId + ".md"
+		filename := docId + conv.Ext()
 		if docId == e.a.PredefinedBlocks().Home {
-			filename = "index.md"
+			filename = "index" + conv.Ext()
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
 			return err

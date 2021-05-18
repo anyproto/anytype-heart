@@ -52,6 +52,10 @@ func (h *MD) Export() (result string) {
 	return h.buf.String()
 }
 
+func (h *MD) Ext() string {
+	return ".md"
+}
+
 type renderState struct {
 	indent     string
 	listOpened bool

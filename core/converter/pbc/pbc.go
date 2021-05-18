@@ -31,6 +31,10 @@ func (p *pbc) Convert() (result []byte) {
 	return
 }
 
+func (p *pbc) Ext() string {
+	return ".pb"
+}
+
 func (p *pbc) SetKnownLinks(ids []string) converter.Converter {
 	return p
 }
