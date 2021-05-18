@@ -120,9 +120,9 @@ func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string,
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
 		var conv converter.Converter
 		switch format {
-		case pb.RpcExport_MD:
+		case pb.RpcExport_Markdown:
 			conv = md.NewMDConverter(e.a, b.NewState())
-		case pb.RpcExport_PB:
+		case pb.RpcExport_Protobuf:
 			conv = pbc.NewConverter(b.NewState())
 		}
 		conv.SetKnownLinks(docIds)

@@ -3088,8 +3088,8 @@ message Rpc {
         }
 
         enum Format {
-            MD = 0;
-            PB = 1;
+            Markdown = 0;
+            Protobuf = 1;
         }
     }
 

@@ -9792,8 +9792,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MD | 0 |  |
-| PB | 1 |  |
+| Markdown | 0 |  |
+| Protobuf | 1 |  |
 
 
 
