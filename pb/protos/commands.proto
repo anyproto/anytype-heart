@@ -3089,6 +3089,7 @@ message Rpc {
 
         enum Format {
             MD = 0;
+            PB = 1;
         }
     }
 
