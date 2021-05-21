@@ -380,6 +380,10 @@
     - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
     - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
     - [Rpc.Export.Response.Error](#anytype.Rpc.Export.Response.Error)
+    - [Rpc.ExportTemplates](#anytype.Rpc.ExportTemplates)
+    - [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request)
+    - [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response)
+    - [Rpc.ExportTemplates.Response.Error](#anytype.Rpc.ExportTemplates.Response.Error)
     - [Rpc.ExternalDrop](#anytype.Rpc.ExternalDrop)
     - [Rpc.ExternalDrop.Content](#anytype.Rpc.ExternalDrop.Content)
     - [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request)
@@ -626,6 +630,7 @@
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
+    - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code)
@@ -1017,6 +1022,7 @@
 | HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
+| ExportTemplates | [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request) | [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response) |  |
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
@@ -6415,6 +6421,64 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.ExportTemplates"></a>
+
+### Rpc.ExportTemplates
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Request"></a>
+
+### Rpc.ExportTemplates.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  | the path where export files will place |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response"></a>
+
+### Rpc.ExportTemplates.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ExportTemplates.Response.Error](#anytype.Rpc.ExportTemplates.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response.Error"></a>
+
+### Rpc.ExportTemplates.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ExternalDrop"></a>
 
 ### Rpc.ExternalDrop
@@ -9792,13 +9856,27 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MD | 0 |  |
+| Markdown | 0 |  |
+| Protobuf | 1 |  |
 
 
 
 <a name="anytype.Rpc.Export.Response.Error.Code"></a>
 
 ### Rpc.Export.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response.Error.Code"></a>
+
+### Rpc.ExportTemplates.Response.Error.Code
 
 
 | Name | Number | Description |
