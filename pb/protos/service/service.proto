@@ -160,6 +160,7 @@ service ClientCommands {
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
 
     rpc Export (anytype.Rpc.Export.Request) returns (anytype.Rpc.Export.Response);
+    rpc ExportTemplates (anytype.Rpc.ExportTemplates.Request) returns (anytype.Rpc.ExportTemplates.Response);
 
     rpc MakeTemplate (anytype.Rpc.MakeTemplate.Request) returns (anytype.Rpc.MakeTemplate.Response);
 

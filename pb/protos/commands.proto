@@ -3093,6 +3093,32 @@ message Rpc {
         }
     }
 
+    message ExportTemplates {
+        message Request {
+            // the path where export files will place
+            string path = 1;
+        }
+
+        message Response {
+            Error error = 1;
+            string path = 2;
+            ResponseEvent event = 3;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+                    // ...
+                }
+            }
+        }
+    }
+
+
     message MakeTemplate {
         message Request {
             // id of block for making them template
