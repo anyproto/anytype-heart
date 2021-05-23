@@ -171,6 +171,7 @@ type Service interface {
 	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
 
 	MakeTemplate(id string) (templateId string, err error)
+	CloneTemplate(id string) (string, error)
 
 	app.ComponentRunnable
 }
@@ -843,6 +844,24 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
 	st.SetObjectType(bundle.TypeKeyTemplate.URL())
+	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (s *service) CloneTemplate(id string) (templateId string, err error) {
+	var st *state.State
+	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		if b.Type() != model.SmartBlockType_BundledTemplate {
+			return fmt.Errorf("can clone bundled templates only")
+		}
+		st = b.NewState().Copy()
+		return nil
+	}); err != nil {
+		return
+	}
 	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return

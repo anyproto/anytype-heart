@@ -360,6 +360,10 @@
     - [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request)
     - [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response)
     - [Rpc.BlockList.TurnInto.Response.Error](#anytype.Rpc.BlockList.TurnInto.Response.Error)
+    - [Rpc.CloneTemplate](#anytype.Rpc.CloneTemplate)
+    - [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request)
+    - [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response)
+    - [Rpc.CloneTemplate.Response.Error](#anytype.Rpc.CloneTemplate.Response.Error)
     - [Rpc.Config](#anytype.Rpc.Config)
     - [Rpc.Config.Get](#anytype.Rpc.Config.Get)
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
@@ -625,6 +629,7 @@
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.BlockList.TurnInto.Response.Error.Code](#anytype.Rpc.BlockList.TurnInto.Response.Error.Code)
+    - [Rpc.CloneTemplate.Response.Error.Code](#anytype.Rpc.CloneTemplate.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
@@ -1024,6 +1029,7 @@
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
 | ExportTemplates | [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request) | [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response) |  |
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
+| CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
@@ -6106,6 +6112,63 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.CloneTemplate"></a>
+
+### Rpc.CloneTemplate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Request"></a>
+
+### Rpc.CloneTemplate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of template block for cloning |
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Response"></a>
+
+### Rpc.CloneTemplate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.CloneTemplate.Response.Error](#anytype.Rpc.CloneTemplate.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Response.Error"></a>
+
+### Rpc.CloneTemplate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.CloneTemplate.Response.Error.Code](#anytype.Rpc.CloneTemplate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Config"></a>
 
 ### Rpc.Config
@@ -9799,6 +9862,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.BlockList.TurnInto.Response.Error.Code"></a>
 
 ### Rpc.BlockList.TurnInto.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Response.Error.Code"></a>
+
+### Rpc.CloneTemplate.Response.Error.Code
 
 
 | Name | Number | Description |
