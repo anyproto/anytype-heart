@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
@@ -315,12 +316,27 @@ func (i *indexer) reindexIfNeeded() error {
 		}
 	}
 	if reindexBundledTemplates {
+		existsRec, _, err := i.store.QueryObjectInfo(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
+		if err != nil {
+			return err
+		}
+		existsIds := make([]string, 0, len(existsRec))
+		for _, rec := range existsRec {
+			existsIds = append(existsIds, rec.Id)
+		}
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledTemplate)
 		if err != nil {
 			return err
 		}
+		var removed int
+		for _, eId := range existsIds {
+			if slice.FindPos(ids, eId) == -1 {
+				removed++
+				i.store.DeleteObject(eId)
+			}
+		}
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
-		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed", successfullyReindexed, len(ids))
+		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed; removed: %d", successfullyReindexed, len(ids), removed)
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
 		} else {
