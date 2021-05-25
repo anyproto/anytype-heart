@@ -1,12 +1,17 @@
 package core
 
 import (
+	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func (mw *Middleware) MakeTemplate(req *pb.RpcMakeTemplateRequest) *pb.RpcMakeTemplateResponse {
@@ -72,13 +77,24 @@ func (mw *Middleware) ExportTemplates(req *pb.RpcExportTemplatesRequest) *pb.Rpc
 	err = mw.doBlockService(func(_ block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
 		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-		res, _, err := ds.QueryObjectInfo(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeTemplate})
+		res, _, err := ds.QueryObjectInfo(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+			},
+		}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeTemplate})
 		if err != nil {
 			return err
 		}
 		var docIds []string
 		for _, r := range res {
 			docIds = append(docIds, r.Id)
+		}
+		if len(docIds) == 0 {
+			return fmt.Errorf("no templates")
 		}
 		path, err = es.Export(pb.RpcExportRequest{
 			Path:   req.Path,
