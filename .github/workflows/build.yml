@@ -186,7 +186,6 @@ jobs:
           ls -lha dist
           GOOS=linux GOARCH=amd64 npm_config_arch=amd64 npm_target_arch=amd64 make build-js-addon
           mv clientlibrary/jsaddon/build addon
-          mv dist/js/pb protobuf
           tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon
           mv js_${VERSION}_linux-amd64.tar.gz .release/
       - name: Release
