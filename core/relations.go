@@ -247,6 +247,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	otype := req.ObjectType
 	otype.Relations = relations
 	otype.Url = sbId
+	otype.Types = []model.SmartBlockType{model.SmartBlockType_Page}
 	return response(pb.RpcObjectTypeCreateResponseError_NULL, otype, nil)
 }
 
