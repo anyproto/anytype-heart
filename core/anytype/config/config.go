@@ -42,6 +42,7 @@ type Config struct {
 	SwarmLowWater  int
 	SwarmHighWater int
 	BootstrapNodes []string
+	RelayNodes     []string
 
 	Threads threads.Config
 	DS      clientds.Config
@@ -62,6 +63,9 @@ var DefaultConfig = Config{
 		"/ip4/54.93.109.23/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi",           // fra1
 		"/dns4/bootstrap2.anytype.io/tcp/4001/p2p/QmSxuiczQTjgj5agSoNtp4esSsj64RisDyKt2MCZQsKZUx", // sfo1
 		"/dns4/bootstrap3.anytype.io/tcp/4001/p2p/QmUdDTWzgdcf4cM4aHeihoYSUfQJJbLVLTZFZvm1b46NNT", // sgp1
+	},
+	RelayNodes: []string{
+		"/ip4/54.93.109.23/tcp/4001/p2p/QmZ4P1Q8HhtKpMshHorM2HDg4iVGZdhZ7YN7WeWDWFH3Hi", // fra1
 	},
 	CafeAPIHost:     defaultCafeNodeGRPC,
 	CafeAPIInsecure: false,
