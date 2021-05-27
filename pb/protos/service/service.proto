@@ -163,6 +163,7 @@ service ClientCommands {
     rpc ExportTemplates (anytype.Rpc.ExportTemplates.Request) returns (anytype.Rpc.ExportTemplates.Response);
 
     rpc MakeTemplate (anytype.Rpc.MakeTemplate.Request) returns (anytype.Rpc.MakeTemplate.Response);
+    rpc MakeTemplateByObjectType (anytype.Rpc.MakeTemplateByObjectType.Request) returns (anytype.Rpc.MakeTemplateByObjectType.Response);
     rpc CloneTemplate (anytype.Rpc.CloneTemplate.Request) returns (anytype.Rpc.CloneTemplate.Response);
 
     rpc DebugSync (anytype.Rpc.Debug.Sync.Request) returns (anytype.Rpc.Debug.Sync.Response);

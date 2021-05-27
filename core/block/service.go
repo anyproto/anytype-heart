@@ -171,7 +171,8 @@ type Service interface {
 	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
 
 	MakeTemplate(id string) (templateId string, err error)
-	CloneTemplate(id string) (string, error)
+	MakeTemplateByObjectType(otId string) (templateId string, err error)
+	CloneTemplate(id string) (templateId string, err error)
 
 	app.ComponentRunnable
 }
@@ -843,6 +844,20 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 		return
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
+	st.SetObjectType(bundle.TypeKeyTemplate.URL())
+	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (s *service) MakeTemplateByObjectType(otId string) (templateId string, err error) {
+	if err = s.Do(otId, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
+		return "", fmt.Errorf("can't open objectType: %v", err)
+	}
+	var st = state.NewDoc("", nil).(*state.State)
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
 	st.SetObjectType(bundle.TypeKeyTemplate.URL())
 	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
