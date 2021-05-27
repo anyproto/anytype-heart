@@ -797,6 +797,16 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 	ot := otypes[len(otypes)-1]
 	s.SetObjectTypes(objectTypes)
+
+	// TODO: hardcode for templates, we need to refactor smartblock
+	if tp := sb.Type(); tp == model.SmartBlockType_BundledTemplate || tp == model.SmartBlockType_Template {
+		otypes = sb.meta.FetchObjectTypes([]string{pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())})
+		if len(otypes) > 0 {
+			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(otypes[0].Layout)))
+		}
+		return
+	}
+
 	s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 	return
 }
