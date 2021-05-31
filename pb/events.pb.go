@@ -1001,7 +1001,7 @@ func (m *EventObjectDetails) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_EventObjectDetails proto.InternalMessageInfo
 
-// Amend existing state
+// Amend (i.e. add a new key-value pair or update an existing key-value pair) existing state
 type EventObjectDetailsAmend struct {
 	Id      string                             `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	Details []*EventObjectDetailsAmendKeyValue `protobuf:"bytes,2,rep,name=details,proto3" json:"details,omitempty"`
