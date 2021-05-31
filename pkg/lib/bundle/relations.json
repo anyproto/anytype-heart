@@ -370,6 +370,19 @@
     "source": "details"
   },
   {
+    "description": "Type indicated the name of template",
+    "format": "object",
+    "hidden": true,
+    "key": "templateTitle",
+    "maxCount": 1,
+    "name": "Template title",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Type that is used for templating",
     "format": "object",
     "hidden": true,
