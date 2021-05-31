@@ -77,11 +77,10 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 		})
 
 		if len(m.ObjectTypes) > 0 {
-			if len(m.ObjectTypes) > 1 {
-				log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
-			}
-			if slice.FindPos(uniqueObjTypes, m.ObjectTypes[0]) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, m.ObjectTypes[0])
+			for _, ot := range m.ObjectTypes {
+				if slice.FindPos(uniqueObjTypes, ot) == -1 {
+					uniqueObjTypes = append(uniqueObjTypes, ot)
+				}
 			}
 		}
 

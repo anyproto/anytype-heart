@@ -844,7 +844,7 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 		return
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
-	st.SetObjectType(bundle.TypeKeyTemplate.URL())
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
 	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
@@ -858,7 +858,7 @@ func (s *service) MakeTemplateByObjectType(otId string) (templateId string, err 
 	}
 	var st = state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
-	st.SetObjectType(bundle.TypeKeyTemplate.URL())
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otId})
 	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return

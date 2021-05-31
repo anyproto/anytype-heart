@@ -351,15 +351,13 @@ loop:
 			}
 			if d.ObjectTypes != nil {
 				if len(d.SmartBlockMeta.ObjectTypes) > 0 {
-					if len(d.SmartBlockMeta.ObjectTypes) > 1 {
-						log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
-					}
-					ot := d.SmartBlockMeta.ObjectTypes[0]
-					if len(ot) == 0 {
-						log.Errorf("sb %s has empty objectType", sb.Id())
-					} else {
-						if slice.FindPos(uniqueObjTypes, ot) == -1 {
-							uniqueObjTypes = append(uniqueObjTypes, ot)
+					for _, ot := range d.SmartBlockMeta.ObjectTypes {
+						if len(ot) == 0 {
+							log.Errorf("sb %s has empty objectType", sb.Id())
+						} else {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								uniqueObjTypes = append(uniqueObjTypes, ot)
+							}
 						}
 					}
 				}
@@ -797,16 +795,6 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 	ot := otypes[len(otypes)-1]
 	s.SetObjectTypes(objectTypes)
-
-	// TODO: hardcode for templates, we need to refactor smartblock
-	if tp := sb.Type(); tp == model.SmartBlockType_BundledTemplate || tp == model.SmartBlockType_Template {
-		otypes = sb.meta.FetchObjectTypes([]string{pbtypes.GetString(s.Details(), bundle.RelationKeyTargetObjectType.String())})
-		if len(otypes) > 0 {
-			s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(otypes[0].Layout)))
-		}
-		return
-	}
-
 	s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 	return
 }
