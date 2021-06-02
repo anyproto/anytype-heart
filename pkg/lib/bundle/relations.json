@@ -373,9 +373,9 @@
     "description": "Type indicated the name of template",
     "format": "object",
     "hidden": true,
-    "key": "templateTitle",
+    "key": "templateName",
     "maxCount": 1,
-    "name": "Template title",
+    "name": "Template name",
     "objectTypes": [
       "objectType"
     ],

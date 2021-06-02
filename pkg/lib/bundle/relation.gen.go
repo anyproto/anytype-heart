@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "ddb952280754dfe2c712cada5c8f0a6c874a4c538732bad725d892d4433610d1"
+const RelationChecksum = "43ff13d2e00a3c65dd58a705924ec7734574024f6a15a19ca70e68d21faad45d"
 
 type RelationKey string
 
@@ -50,7 +50,7 @@ const (
 	RelationKeyAddedDate             RelationKey = "addedDate"
 	RelationKeyAssignee              RelationKey = "assignee"
 	RelationKeyExposure              RelationKey = "exposure"
-	RelationKeyTemplateTitle         RelationKey = "templateTitle"
+	RelationKeyTemplateName          RelationKey = "templateName"
 	RelationKeyTargetObjectType      RelationKey = "targetObjectType"
 	RelationKeyAudioGenre            RelationKey = "audioGenre"
 	RelationKeyName                  RelationKey = "name"
@@ -720,15 +720,15 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
-		RelationKeyTemplateTitle: {
+		RelationKeyTemplateName: {
 
 			DataSource:  model.Relation_details,
 			Description: "Type indicated the name of template",
 			Format:      model.RelationFormat_object,
 			Hidden:      true,
-			Key:         "templateTitle",
+			Key:         "templateName",
 			MaxCount:    1,
-			Name:        "Template title",
+			Name:        "Template name",
 			ObjectTypes: []string{TypePrefix + "objectType"},
 			ReadOnly:    false,
 			Scope:       model.Relation_type,

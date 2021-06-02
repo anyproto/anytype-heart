@@ -315,7 +315,7 @@
       "isHidden",
       "isArchived",
       "targetObjectType",
-      "templateTitle"
+      "templateName"
     ],
     "types": [
       "Template",
