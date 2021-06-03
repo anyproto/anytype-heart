@@ -520,6 +520,28 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
 	st := sb.Doc.(*state.State)
+	if act.Details != nil && act.Details.After != nil {
+		var hasDetailsChange bool
+		for _, ch := range s.GetChanges() {
+			if ch.GetDetailsSet() != nil {
+				hasDetailsChange = true
+			}
+		}
+		// we don't need to do this in case we have other details changes inside...
+		if !hasDetailsChange {
+			// todo: REFACTOR ME: we need to rework indexer to include virtual changes so the localstore update will be triggered from the same place
+			// here is we handling a case for indexing local-only details
+			before := pbtypes.StructFilterKeys(act.Details.Before, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+			after := pbtypes.StructFilterKeys(act.Details.After, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+			if !pbtypes.StructEqualIgnore(before, after, nil) {
+				err = sb.Anytype().ObjectStore().UpdateObjectDetails(sb.Id(), s.Details(), &model.Relations{Relations: s.ExtraRelations()}, false)
+				if err != nil {
+					log.Errorf("failed to update object details: %s", err.Error())
+				}
+			}
+		}
+	}
+
 	fileDetailsKeys := sb.FileRelationKeys()
 	pushChangeParams := source.PushChangeParams{
 		State:             st,

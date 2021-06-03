@@ -2,6 +2,7 @@ package objectstore
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -28,6 +29,51 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/textileio/go-threads/core/thread"
 )
+
+func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
+	tmpDir, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(tmpDir)
+	app := testapp.New()
+	ds := New()
+
+	id, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
+	require.NoError(t, err)
+
+	err = app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start()
+	require.NoError(t, err)
+	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
+	err = ds.CreateObject(id.String(), &types.Struct{
+		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("p1")},
+	}, nil, nil, "")
+	require.NoError(t, err)
+
+	recs, _, err := ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "p1"}}, database.Query{})
+	require.NoError(t, err)
+	require.Len(t, recs, 1)
+	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
+
+	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
+		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("p1")},
+	}, nil, true)
+	require.NoError(t, err)
+
+	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "p1"}}, database.Query{})
+	require.NoError(t, err)
+	require.Len(t, recs, 1)
+	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
+	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
+
+	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
+		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("p1")},
+	}, nil, false)
+	require.NoError(t, err)
+
+	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "p1"}}, database.Query{})
+	require.NoError(t, err)
+	require.Len(t, recs, 1)
+	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
+	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
+}
 
 func TestDsObjectStore_IndexQueue(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
