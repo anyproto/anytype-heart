@@ -1,5 +1,46 @@
 [
   {
+    "description": "Derious thought or consideration",
+    "emoji": "🪞",
+    "id": "dailyReflection",
+    "layout": "basic",
+    "name": "Daily Reflection",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "intentions",
+      "happenings",
+      "gratefulFor",
+      "actionItems",
+      "createdDate"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A brief record of points or ideas written down as an aid to memory.",
     "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
@@ -34,6 +75,7 @@
     ]
   },
   {
+    "description": "Information to make action of communicating or meeting with Human or Company",
     "emoji": "📇",
     "id": "contact",
     "layout": "profile",
@@ -61,13 +103,23 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "phone",
+      "email",
+      "dateOfBirth",
+      "placeOfBirth",
+      "company",
+      "socialProfile",
+      "job",
+      "linkedContacts",
+      "occupation"
     ],
     "types": [
       "Page"
     ]
   },
   {
+    "description": "A thought or suggestion as to a possible course of action",
     "emoji": "💡",
     "id": "idea",
     "layout": "basic",
@@ -102,6 +154,7 @@
     ]
   },
   {
+    "description": "A piece of work to be done or undertaken",
     "emoji": "✔️",
     "id": "task",
     "layout": "todo",
@@ -136,7 +189,7 @@
       "status",
       "done",
       "priority",
-      "linkedTasks",
+      "tasks",
       "linkedProjects"
     ],
     "types": [
@@ -144,6 +197,7 @@
     ]
   },
   {
+    "description": "Meaningful connection between objects",
     "emoji": "🔗",
     "hidden": true,
     "id": "relation",
@@ -158,8 +212,12 @@
       "layoutAlign",
       "isHidden",
       "mpAddedToLibrary",
+      "isHidden",
       "relationFormat",
-      "isHidden"
+      "relationMaxCount",
+      "relationDict",
+      "relationDefaultValue",
+      "relationFormatObjectTypes"
     ],
     "types": [
       "IndexedRelation",
@@ -167,6 +225,7 @@
     ]
   },
   {
+    "description": "The recording, reproducing, or broadcasting of moving visual images.",
     "emoji": "📹",
     "id": "video",
     "layout": "basic",
@@ -212,7 +271,7 @@
     ]
   },
   {
-    "description": "Internal home dashboard",
+    "description": "Internal home dashboard with favourite objects",
     "hidden": true,
     "id": "dashboard",
     "layout": "dashboard",
@@ -242,6 +301,79 @@
     ],
     "types": [
       "Home"
+    ]
+  },
+  {
+    "description": "A detailed proposal for doing or achieving something",
+    "emoji": "🎛️",
+    "id": "dailyPlan",
+    "layout": "basic",
+    "name": "Daily Plan",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "events",
+      "notes",
+      "tasks"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A piece of writing included with others in a newspaper, magazine, or other publication.",
+    "emoji": "🗒️",
+    "id": "article",
+    "layout": "basic",
+    "name": "Article",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -285,7 +417,7 @@
     ]
   },
   {
-    "description": "Special type to create objects from",
+    "description": "Sample object that has already some details in place and used to create objects from",
     "emoji": "✨",
     "hidden": true,
     "id": "template",
@@ -315,14 +447,15 @@
       "isHidden",
       "isArchived",
       "targetObjectType",
-      "templateName"
+      "templateName",
+      "templateIsBundled"
     ],
     "types": [
-      "Template",
-      "BundledTemplate"
+      "Template"
     ]
   },
   {
+    "description": "Collection of objects sharing one characteristic",
     "emoji": "🗂️",
     "id": "set",
     "layout": "set",
@@ -355,6 +488,43 @@
     ],
     "types": [
       "Set"
+    ]
+  },
+  {
+    "description": "Record of events and experiences",
+    "emoji": "💎",
+    "id": "diaryEntry",
+    "layout": "basic",
+    "name": "Diary Entry",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "mood",
+      "createdDate"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -393,6 +563,7 @@
     ]
   },
   {
+    "description": "A representation of the external form of a person or thing in art.",
     "emoji": "🌅",
     "id": "image",
     "layout": "image",
@@ -437,6 +608,7 @@
     ]
   },
   {
+    "description": "Description of individuals' characteristics that identify you",
     "emoji": "🧍",
     "id": "profile",
     "layout": "profile",
@@ -471,6 +643,7 @@
     ]
   },
   {
+    "description": "Sound, especially when recorded, transmitted, or reproduced.",
     "emoji": "🎵",
     "hidden": true,
     "id": "audio",
@@ -517,6 +690,7 @@
     ]
   },
   {
+    "description": "A piece of matter that provides information or evidence or that serves as an official record.",
     "emoji": "📋",
     "id": "document",
     "layout": "basic",
@@ -551,6 +725,7 @@
     ]
   },
   {
+    "description": "Computer resource for recording data in a computer storage device",
     "emoji": "🗂️",
     "id": "file",
     "layout": "basic",
@@ -588,6 +763,7 @@
     ]
   },
   {
+    "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
     "emoji": "🔨",
     "id": "project",
     "layout": "basic",

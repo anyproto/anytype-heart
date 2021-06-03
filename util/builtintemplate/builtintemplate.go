@@ -105,6 +105,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(ot))
 	}
 	st.SetObjectType(bundle.TypeKeyTemplate.URL())
+	st.SetDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
 	b.source.RegisterStaticSource(id, func() source.Source {
 		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy())
 	})

@@ -47,6 +47,7 @@ func (t *Template) GetNewPageState() (st *state.State, err error) {
 	det := st.Details()
 	st.SetObjectType(pbtypes.GetString(det, bundle.RelationKeyTargetObjectType.String()))
 	pbtypes.Delete(det, bundle.RelationKeyTargetObjectType.String())
+	pbtypes.Delete(det, bundle.RelationKeyTemplateIsBundled.String())
 	st.SetDetails(det)
 	return
 }
