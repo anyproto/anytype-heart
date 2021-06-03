@@ -1,7 +1,4 @@
-on:
-  push:
-    tags-ignore:
-      - 'v*'
+on: [push]
 name: Test
 jobs:
   unit-test:

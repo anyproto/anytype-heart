@@ -1,4 +1,7 @@
-on: [push]
+on:
+  push:
+    tags:
+      - 'v*.*.*'
 name: Build
 jobs:
   build-mac-win-android-ios:
