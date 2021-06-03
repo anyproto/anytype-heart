@@ -273,7 +273,7 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 
 func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (rec *types.Struct, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		cr, err := b.CreateRecord(ctx, req.BlockId, model.ObjectDetails{Details: req.Record})
+		cr, err := b.CreateRecord(ctx, req.BlockId, model.ObjectDetails{Details: req.Record}, req.TemplateId)
 		if err != nil {
 			return err
 		}

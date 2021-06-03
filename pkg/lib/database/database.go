@@ -46,7 +46,7 @@ type Writer interface {
 	// Creating record involves some additional operations that may change
 	// the record. So we return potentially modified record as a result.
 	// in case subscription is not nil it will be subscribed to the record updates
-	Create(relations []*model.Relation, rec Record, sub Subscription) (Record, error)
+	Create(relations []*model.Relation, rec Record, sub Subscription, templateId string) (Record, error)
 
 	Update(id string, relations []*model.Relation, rec Record) error
 	UpdateRelationOption(id string, relKey string, option model.RelationOption) (optionId string, err error)

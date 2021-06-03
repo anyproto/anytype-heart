@@ -45,7 +45,7 @@ type Dataview interface {
 	DeleteRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
 
-	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
+	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
 	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
@@ -517,7 +517,7 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 	}
 }
 
-func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error) {
+func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error) {
 	var (
 		source  string
 		ok      bool
@@ -540,7 +540,7 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 
 	dv := d.getDataviewImpl(dvBlock)
 
-	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription)
+	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
 	if err != nil {
 		return nil, err
 	}

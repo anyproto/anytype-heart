@@ -1406,6 +1406,7 @@ message Rpc {
                     string contextId = 1;
                     string blockId = 2;
                     google.protobuf.Struct record = 3;
+                    string templateId = 4;
                 }
 
                 message Response {

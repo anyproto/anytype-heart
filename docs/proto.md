@@ -2276,6 +2276,7 @@ common simple block command
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
