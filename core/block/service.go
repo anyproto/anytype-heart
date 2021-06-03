@@ -173,6 +173,7 @@ type Service interface {
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
 	CloneTemplate(id string) (templateId string, err error)
+	ApplyTemplate(contextId, templateId string) error
 
 	app.ComponentRunnable
 }
@@ -882,6 +883,17 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 		return
 	}
 	return
+}
+
+func (s *service) ApplyTemplate(contextId, templateId string) (err error) {
+	ts, err := s.stateFromTemplate(templateId)
+	if err != nil {
+		return
+	}
+	return s.Do(contextId, func(b smartblock.SmartBlock) error {
+		ts.SetParent(b.NewState())
+		return b.Apply(ts)
+	})
 }
 
 func (s *service) cleanupBlocks() (closed bool) {

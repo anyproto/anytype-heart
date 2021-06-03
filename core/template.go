@@ -54,6 +54,23 @@ func (mw *Middleware) CloneTemplate(req *pb.RpcCloneTemplateRequest) *pb.RpcClon
 	return response(templateId, err)
 }
 
+func (mw *Middleware) ApplyTemplate(req *pb.RpcApplyTemplateRequest) *pb.RpcApplyTemplateResponse {
+	response := func(err error) *pb.RpcApplyTemplateResponse {
+		m := &pb.RpcApplyTemplateResponse{
+			Error: &pb.RpcApplyTemplateResponseError{Code: pb.RpcApplyTemplateResponseError_NULL},
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcApplyTemplateResponseError_UNKNOWN_ERROR
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.ApplyTemplate(req.ContextId, req.TemplateId)
+	})
+	return response(err)
+}
+
 func (mw *Middleware) MakeTemplateByObjectType(req *pb.RpcMakeTemplateByObjectTypeRequest) *pb.RpcMakeTemplateByObjectTypeResponse {
 	response := func(templateId string, err error) *pb.RpcMakeTemplateByObjectTypeResponse {
 		m := &pb.RpcMakeTemplateByObjectTypeResponse{
