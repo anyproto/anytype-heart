@@ -907,9 +907,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 		}
 	}
 
-	s := sb.NewState().SetExtraRelations(filtered)
-
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(st, NoEvent); err != nil {
 		return
 	}
 	if ctx != nil {
@@ -917,7 +915,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfObjectRelationsSet{
 				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
+					Id:        st.RootId(),
 					Relations: sb.Relations(),
 				},
 			},
