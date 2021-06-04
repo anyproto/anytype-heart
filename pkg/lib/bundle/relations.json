@@ -68,6 +68,15 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "instructions",
+    "maxCount": 1,
+    "name": "Instructions",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Done checkbox used to render action layout. ",
     "format": "checkbox",
     "hidden": true,
@@ -78,6 +87,7 @@
     "source": "details"
   },
   {
+    "description": "Specifies whether template is provided by anytype",
     "format": "checkbox",
     "hidden": true,
     "key": "templateIsBundled",
@@ -167,6 +177,27 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "ingredients",
+    "maxCount": 1,
+    "name": "Ingredients",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "responsible",
+    "maxCount": 0,
+    "name": "Responsible",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Year when this object were released",
     "format": "number",
     "hidden": false,
@@ -177,6 +208,7 @@
     "source": "details"
   },
   {
+    "description": "Option that contains scale of Cover the image",
     "format": "number",
     "hidden": true,
     "key": "coverScale",
@@ -191,6 +223,15 @@
     "key": "twitter",
     "maxCount": 1,
     "name": "Twitter",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "resources",
+    "maxCount": 1,
+    "name": "Resources",
     "readonly": false,
     "source": "details"
   },
@@ -223,6 +264,18 @@
     "source": "details"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "participants",
+    "maxCount": 0,
+    "name": "Participants",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Specify visual align of the layout",
     "format": "number",
     "hidden": true,
@@ -233,7 +286,16 @@
     "source": "details"
   },
   {
-    "description": "Task status?",
+    "format": "number",
+    "hidden": false,
+    "key": "difficulty",
+    "maxCount": 1,
+    "name": "Difficulty",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Task status",
     "format": "status",
     "hidden": false,
     "key": "status",
@@ -290,7 +352,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "object",
     "hidden": false,
     "key": "company",
     "maxCount": 1,
@@ -363,6 +425,15 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "result",
+    "maxCount": 1,
+    "name": "Result",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Date when the object was modified last opened",
     "format": "date",
     "hidden": false,
@@ -422,6 +493,15 @@
     "source": "details"
   },
   {
+    "format": "number",
+    "hidden": false,
+    "key": "time",
+    "maxCount": 1,
+    "name": "Time",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Size of file/image in bytes",
     "format": "number",
     "hidden": false,
@@ -445,7 +525,7 @@
     "source": "details"
   },
   {
-    "format": "longtext",
+    "format": "object",
     "hidden": false,
     "key": "events",
     "maxCount": 1,
@@ -553,6 +633,15 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "agenda",
+    "maxCount": 1,
+    "name": "Agenda",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "url",
     "hidden": false,
     "key": "instagram",
@@ -591,6 +680,7 @@
     "source": "details"
   },
   {
+    "description": "Relation that stores the object's type",
     "format": "object",
     "hidden": true,
     "key": "type",
@@ -715,6 +805,15 @@
     "source": "details"
   },
   {
+    "format": "number",
+    "hidden": false,
+    "key": "servings",
+    "maxCount": 1,
+    "name": "Servings",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Can contains image hash, color or prebuild bg id, depends on coverType relation",
     "format": "shorttext",
     "hidden": true,
@@ -740,7 +839,7 @@
   {
     "description": "Relation allows multi values",
     "format": "number",
-    "hidden": true,
+    "hidden": false,
     "key": "relationMaxCount",
     "maxCount": 1,
     "name": "Max values",

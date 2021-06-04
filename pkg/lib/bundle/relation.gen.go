@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "d635297fc3e5bcbcbe55e606b2e46ecd9a8a9bcc5ab099946620b4cb1a5e805d"
+const RelationChecksum = "1b6c60ad89cb2737163c87d44f0cc1b25e228b1c961064bd6d417c8f9b38493e"
 
 type RelationKey string
 
@@ -22,6 +22,7 @@ const (
 	RelationKeyCreatedDate               RelationKey = "createdDate"
 	RelationKeyToBeDeletedDate           RelationKey = "toBeDeletedDate"
 	RelationKeyRelationFormatObjectTypes RelationKey = "relationFormatObjectTypes"
+	RelationKeyInstructions              RelationKey = "instructions"
 	RelationKeyDone                      RelationKey = "done"
 	RelationKeyTemplateIsBundled         RelationKey = "templateIsBundled"
 	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
@@ -31,13 +32,18 @@ const (
 	RelationKeyGratefulFor               RelationKey = "gratefulFor"
 	RelationKeyRelationFormat            RelationKey = "relationFormat"
 	RelationKeyIconImage                 RelationKey = "iconImage"
+	RelationKeyIngredients               RelationKey = "ingredients"
+	RelationKeyResponsible               RelationKey = "responsible"
 	RelationKeyReleasedYear              RelationKey = "releasedYear"
 	RelationKeyCoverScale                RelationKey = "coverScale"
 	RelationKeyTwitter                   RelationKey = "twitter"
+	RelationKeyResources                 RelationKey = "resources"
 	RelationKeyRelationDefaultValue      RelationKey = "relationDefaultValue"
 	RelationKeyLinkedProjects            RelationKey = "linkedProjects"
 	RelationKeyAudioAlbum                RelationKey = "audioAlbum"
+	RelationKeyParticipants              RelationKey = "participants"
 	RelationKeyLayoutAlign               RelationKey = "layoutAlign"
+	RelationKeyDifficulty                RelationKey = "difficulty"
 	RelationKeyStatus                    RelationKey = "status"
 	RelationKeyHappenings                RelationKey = "happenings"
 	RelationKeyDurationInSeconds         RelationKey = "durationInSeconds"
@@ -51,12 +57,14 @@ const (
 	RelationKeyRecommendedRelations      RelationKey = "recommendedRelations"
 	RelationKeyCreator                   RelationKey = "creator"
 	RelationKeyRecommendedLayout         RelationKey = "recommendedLayout"
+	RelationKeyResult                    RelationKey = "result"
 	RelationKeyLastOpenedDate            RelationKey = "lastOpenedDate"
 	RelationKeyArtist                    RelationKey = "artist"
 	RelationKeyDueDate                   RelationKey = "dueDate"
 	RelationKeyIconEmoji                 RelationKey = "iconEmoji"
 	RelationKeyCoverType                 RelationKey = "coverType"
 	RelationKeyCoverY                    RelationKey = "coverY"
+	RelationKeyTime                      RelationKey = "time"
 	RelationKeySizeInBytes               RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf              RelationKey = "collectionOf"
 	RelationKeyEvents                    RelationKey = "events"
@@ -70,6 +78,7 @@ const (
 	RelationKeyTelegram                  RelationKey = "telegram"
 	RelationKeyName                      RelationKey = "name"
 	RelationKeyMood                      RelationKey = "mood"
+	RelationKeyAgenda                    RelationKey = "agenda"
 	RelationKeyInstagram                 RelationKey = "instagram"
 	RelationKeyFocalRatio                RelationKey = "focalRatio"
 	RelationKeyPriority                  RelationKey = "priority"
@@ -87,6 +96,7 @@ const (
 	RelationKeyId                        RelationKey = "id"
 	RelationKeyActionItems               RelationKey = "actionItems"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
+	RelationKeyServings                  RelationKey = "servings"
 	RelationKeyCoverId                   RelationKey = "coverId"
 	RelationKeyLastModifiedBy            RelationKey = "lastModifiedBy"
 	RelationKeyRelationMaxCount          RelationKey = "relationMaxCount"
@@ -122,6 +132,17 @@ var (
 			Key:         "addedDate",
 			MaxCount:    1,
 			Name:        "Added date",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyAgenda: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "agenda",
+			MaxCount:    1,
+			Name:        "Agenda",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -238,7 +259,7 @@ var (
 
 			DataSource:  model.Relation_details,
 			Description: "",
-			Format:      model.RelationFormat_shorttext,
+			Format:      model.RelationFormat_object,
 			Key:         "company",
 			MaxCount:    1,
 			Name:        "Company",
@@ -271,7 +292,7 @@ var (
 		RelationKeyCoverScale: {
 
 			DataSource:  model.Relation_details,
-			Description: "",
+			Description: "Option that contains scale of Cover the image",
 			Format:      model.RelationFormat_number,
 			Hidden:      true,
 			Key:         "coverScale",
@@ -362,6 +383,17 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyDifficulty: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_number,
+			Key:         "difficulty",
+			MaxCount:    1,
+			Name:        "Difficulty",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyDone: {
 
 			DataSource:  model.Relation_details,
@@ -411,7 +443,7 @@ var (
 
 			DataSource:  model.Relation_details,
 			Description: "",
-			Format:      model.RelationFormat_longtext,
+			Format:      model.RelationFormat_object,
 			Key:         "events",
 			MaxCount:    1,
 			Name:        "Events",
@@ -567,6 +599,17 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyIngredients: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "ingredients",
+			MaxCount:    1,
+			Name:        "Ingredients",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyInstagram: {
 
 			DataSource:  model.Relation_details,
@@ -575,6 +618,17 @@ var (
 			Key:         "instagram",
 			MaxCount:    1,
 			Name:        "Instagram",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyInstructions: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "instructions",
+			MaxCount:    1,
+			Name:        "Instructions",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -758,6 +812,17 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyParticipants: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "participants",
+			Name:        "Participants",
+			ObjectTypes: []string{TypePrefix + "objectType"},
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyPhone: {
 
 			DataSource:  model.Relation_details,
@@ -863,7 +928,6 @@ var (
 			DataSource:  model.Relation_details,
 			Description: "Relation allows multi values",
 			Format:      model.RelationFormat_number,
-			Hidden:      true,
 			Key:         "relationMaxCount",
 			MaxCount:    1,
 			Name:        "Max values",
@@ -878,6 +942,50 @@ var (
 			Key:         "releasedYear",
 			MaxCount:    1,
 			Name:        "Released year",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyResources: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_shorttext,
+			Key:         "resources",
+			MaxCount:    1,
+			Name:        "Resources",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyResponsible: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "responsible",
+			Name:        "Responsible",
+			ObjectTypes: []string{TypePrefix + "objectType"},
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyResult: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "result",
+			MaxCount:    1,
+			Name:        "Result",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyServings: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_number,
+			Key:         "servings",
+			MaxCount:    1,
+			Name:        "Servings",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -917,7 +1025,7 @@ var (
 		RelationKeyStatus: {
 
 			DataSource:  model.Relation_details,
-			Description: "Task status?",
+			Description: "Task status",
 			Format:      model.RelationFormat_status,
 			Key:         "status",
 			MaxCount:    1,
@@ -973,7 +1081,7 @@ var (
 		RelationKeyTemplateIsBundled: {
 
 			DataSource:  model.Relation_derived,
-			Description: "",
+			Description: "Specifies whether template is provided by anytype",
 			Format:      model.RelationFormat_checkbox,
 			Hidden:      true,
 			Key:         "templateIsBundled",
@@ -1005,6 +1113,17 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyTime: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_number,
+			Key:         "time",
+			MaxCount:    1,
+			Name:        "Time",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyToBeDeletedDate: {
 
 			DataSource:  model.Relation_account,
@@ -1031,7 +1150,7 @@ var (
 		RelationKeyType: {
 
 			DataSource:  model.Relation_derived,
-			Description: "",
+			Description: "Relation that stores the object's type",
 			Format:      model.RelationFormat_object,
 			Hidden:      true,
 			Key:         "type",
