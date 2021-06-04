@@ -5,6 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/textileio/go-threads/metrics"
 	"net/http"
 	"os"
 	"sync"
@@ -12,6 +13,24 @@ import (
 )
 
 var log = logging.Logger("anytype-logger")
+
+type ThreadsMetrics struct {}
+
+func (t *ThreadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
+	if tp == metrics.RecordTypePush {
+		if isNAT {
+			PushRecordAcceptedNAT.Inc()
+		} else {
+			PushRecordAccepted.Inc()
+		}
+	} else {
+		if isNAT {
+			GetRecordAcceptedNAT.Inc()
+		} else {
+			GetRecordAccepted.Inc()
+		}
+	}
+}
 
 var (
 	Enabled       bool
@@ -21,6 +40,34 @@ var (
 		Subsystem: "mw",
 		Name:      "threads_total",
 		Help:      "Number of served threads",
+	})
+
+	PushRecordAcceptedNAT = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "go_threads",
+		Name:      "push_record_accepted_nat",
+		Help:      "Number of push records accepted when under NAT",
+	})
+
+	GetRecordAcceptedNAT = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "go_threads",
+		Name:      "get_record_accepted_nat",
+		Help:      "Number of get records accepted when under NAT (updateRecordsFromPeer)",
+	})
+
+	PushRecordAccepted = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "go_threads",
+		Name:      "push_record_accepted",
+		Help:      "Number of push records accepted",
+	})
+
+	GetRecordAccepted = promauto.NewCounter(prometheus.CounterOpts{
+		Namespace: "anytype",
+		Subsystem: "go_threads",
+		Name:      "get_record_accepted",
+		Help:      "Number of get records accepted (updateRecordsFromPeer)",
 	})
 
 	ChangeCreatedCounter = promauto.NewCounter(prometheus.CounterOpts{
