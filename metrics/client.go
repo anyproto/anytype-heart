@@ -30,7 +30,7 @@ type client struct {
 	amplitude  *amplitude.Client
 }
 
-func NewClient(apiKey string) *client {
+func NewClient(apiKey string) Client {
 	return &client{
 		amplitude: amplitude.New(apiKey),
 	}
