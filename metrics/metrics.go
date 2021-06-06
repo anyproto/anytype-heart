@@ -14,22 +14,23 @@ import (
 
 var log = logging.Logger("anytype-logger")
 
-type ThreadsMetrics struct {}
+type threadsMetrics struct {
+	client Client
+}
 
-func (t *ThreadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
-	if tp == metrics.RecordTypePush {
-		if isNAT {
-			PushRecordAcceptedNAT.Inc()
-		} else {
-			PushRecordAccepted.Inc()
-		}
-	} else {
-		if isNAT {
-			GetRecordAcceptedNAT.Inc()
-		} else {
-			GetRecordAccepted.Inc()
-		}
+func NewThreadsMetrics() *threadsMetrics {
+	return &threadsMetrics{client: NewClient("406eb9bda5a4f8b94d1ca05936acab59")}
+}
+
+func (t *threadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
+	recordType := "push"
+	if tp == metrics.RecordTypeGet {
+		recordType = "get"
 	}
+	t.client.RecordEvent(RecordAcceptEvent{
+		IsNAT:      isNAT,
+		recordType: recordType,
+	})
 }
 
 var (
@@ -40,34 +41,6 @@ var (
 		Subsystem: "mw",
 		Name:      "threads_total",
 		Help:      "Number of served threads",
-	})
-
-	PushRecordAcceptedNAT = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "anytype",
-		Subsystem: "go_threads",
-		Name:      "push_record_accepted_nat",
-		Help:      "Number of push records accepted when under NAT",
-	})
-
-	GetRecordAcceptedNAT = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "anytype",
-		Subsystem: "go_threads",
-		Name:      "get_record_accepted_nat",
-		Help:      "Number of get records accepted when under NAT (updateRecordsFromPeer)",
-	})
-
-	PushRecordAccepted = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "anytype",
-		Subsystem: "go_threads",
-		Name:      "push_record_accepted",
-		Help:      "Number of push records accepted",
-	})
-
-	GetRecordAccepted = promauto.NewCounter(prometheus.CounterOpts{
-		Namespace: "anytype",
-		Subsystem: "go_threads",
-		Name:      "get_record_accepted",
-		Help:      "Number of get records accepted (updateRecordsFromPeer)",
 	})
 
 	ChangeCreatedCounter = promauto.NewCounter(prometheus.CounterOpts{

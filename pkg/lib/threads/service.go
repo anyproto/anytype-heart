@@ -176,7 +176,7 @@ func (s *service) Run() (err error) {
 
 	ctx := s.ctx
 	if metrics.Enabled {
-		ctx = context.WithValue(ctx, threadsMetrics.ContextKey{}, &metrics.ThreadsMetrics{})
+		ctx = context.WithValue(ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
 	}
 
 	s.t, err = threadsNet.NewNetwork(ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
