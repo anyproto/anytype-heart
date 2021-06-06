@@ -326,7 +326,7 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) openDoc(id string) (state.Doc, error) {
-	s, err := source.NewSource(i.anytype, nil, id)
+	s, err := source.NewSource(i.anytype, nil, id, true)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return nil, err
