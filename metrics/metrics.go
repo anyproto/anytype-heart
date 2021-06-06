@@ -18,8 +18,8 @@ type threadsMetrics struct {
 	client Client
 }
 
-func NewThreadsMetrics() *threadsMetrics {
-	return &threadsMetrics{client: NewClient("406eb9bda5a4f8b94d1ca05936acab59")}
+func NewThreadsMetrics() metrics.Metrics {
+	return &threadsMetrics{client: SharedClient}
 }
 
 func (t *threadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {

@@ -1,11 +1,16 @@
 package metrics
 
 import (
+	"sync"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/msingleton/amplitude-go"
 )
 
-var clientMetricsLog = logging.Logger("client-metrics")
+var (
+	SharedClient     = NewClient()
+	clientMetricsLog = logging.Logger("client-metrics")
+)
 
 type EventRepresentable interface {
 	ToEvent() Event
@@ -17,6 +22,7 @@ type Event struct {
 }
 
 type Client interface {
+	InitWithKey(k string)
 	SetOSVersion(v string)
 	SetDeviceType(t string)
 	SetUserId(id string)
@@ -24,31 +30,45 @@ type Client interface {
 }
 
 type client struct {
+	lock       sync.Mutex
 	osVersion  string
 	userId     string
 	deviceType string
 	amplitude  *amplitude.Client
 }
 
-func NewClient(apiKey string) Client {
-	return &client{
-		amplitude: amplitude.New(apiKey),
-	}
+func NewClient() Client {
+	return &client{}
+}
+
+func (c *client) InitWithKey(k string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.amplitude = amplitude.New(k)
 }
 
 func (c *client) SetOSVersion(v string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.osVersion = v
 }
 
 func (c *client) SetDeviceType(t string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.deviceType = t
 }
 
 func (c *client) SetUserId(id string) {
+	c.lock.Lock()
+	defer c.lock.Unlock()
 	c.userId = id
 }
 
-func (c client) RecordEvent(ev EventRepresentable) {
+func (c *client) RecordEvent(ev EventRepresentable) {
+	if c.amplitude == nil {
+		return
+	}
 	go func() {
 		e := ev.ToEvent()
 		err := c.amplitude.Event(amplitude.Event{
