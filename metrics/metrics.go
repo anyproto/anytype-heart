@@ -23,9 +23,14 @@ func NewThreadsMetrics() metrics.Metrics {
 }
 
 func (t *threadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
-	recordType := "push"
-	if tp == metrics.RecordTypeGet {
+	var recordType string
+	switch tp {
+	case metrics.RecordTypeGet:
 		recordType = "get"
+	case metrics.RecordTypePubsub:
+		recordType = "pubsub"
+	default:
+		recordType = "push"
 	}
 	t.client.RecordEvent(RecordAcceptEvent{
 		IsNAT:      isNAT,

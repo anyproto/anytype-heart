@@ -174,10 +174,7 @@ func (s *service) Run() (err error) {
 		syncBook = s.logstore
 	}
 
-	ctx := s.ctx
-	if metrics.Enabled {
-		ctx = context.WithValue(ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
-	}
+	ctx := context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
 
 	s.t, err = threadsNet.NewNetwork(ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
 		Debug:        s.Debug,

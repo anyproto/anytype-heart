@@ -74,9 +74,7 @@ func main() {
 		}()
 	}
 
-	if apiKey := os.Getenv("ANYTYPE_AMPLITUDE_KEY"); apiKey != "" {
-		metrics.SharedClient.InitWithKey(apiKey)
-	}
+	metrics.SharedClient.InitWithKey("406eb9bda5a4f8b94d1ca05936acab59")
 
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
