@@ -69,11 +69,15 @@ jobs:
           cp pb/protos/service/*.proto ./protobuf/protos
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile addon mac amd64
+        # we have a strange floating bug that sometimes results in addon has zero-bytes written at the start. Lets check for the result explicitly
         run: |
           cp ./darwin-amd64.a ./dist/lib.a
           cp ./darwin-amd64.h ./dist/lib.h
 
           GOOS=darwin GOARCH=amd64 npm_config_arch=amd64 npm_target_arch=amd64 make build-js-addon
+          ADDON_FILE_SIGNATURE=`head -c 4 clientlibrary/jsaddon/build/Release/addon.node | xxd -ps -g 4`
+          echo "addon signature: $ADDON_FILE_SIGNATURE\n"
+          [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
           mv clientlibrary/jsaddon/build addon
           tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
           mv js_${VERSION}_darwin-amd64.tar.gz .release/
