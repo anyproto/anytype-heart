@@ -525,6 +525,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		for _, ch := range s.GetChanges() {
 			if ch.GetDetailsSet() != nil {
 				hasDetailsChange = true
+				break
 			}
 		}
 		// we don't need to do this in case we have other details changes inside...

@@ -1166,22 +1166,6 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 		return err
 	}
 
-	if pbtypes.Exists(details, "isArchived") {
-		log.Errorf("UpdateObjectDetails txn commited")
-		d, err := m.GetDetails(id)
-		if err != nil {
-			log.Errorf("UpdateObjectDetails txn commited err: %v", err.Error())
-		} else {
-			log.Errorf("UpdateObjectDetails txn commited: %v", d.Details)
-		}
-		results, _, _ := m.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otpage"}}, database.Query{})
-		if len(results) == 0 {
-			log.Errorf("UpdateObjectDetails txn commited query got no results")
-		} else {
-			log.Errorf("UpdateObjectDetails txn commited query got results: %v", results)
-		}
-	}
-
 	return nil
 }
 
@@ -1432,10 +1416,6 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 	if err != nil {
 		return err
 	}
-	//if pbtypes.Exists(newDetails.Details, "isArchived") {
-	//log.Errorf("updateDetails %s counter %s: before %s after %s", detailsKey, counter, oldDetails.Details.String(), newDetails.Details.String())
-	//debug.PrintStack()
-	//}
 	err = txn.Put(detailsKey, b)
 	if err != nil {
 		return err

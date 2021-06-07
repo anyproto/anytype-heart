@@ -326,7 +326,9 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) openDoc(id string) (state.Doc, error) {
-	s, err := source.NewSource(i.anytype, nil, id, true)
+	// set listenToOwnChanges to false because it doesn't means. We do not use source's applyRecords
+	s, err := source.NewSource(i.anytype, nil, id, false)
+
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return nil, err
