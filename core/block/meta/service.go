@@ -1,19 +1,14 @@
 package meta
 
 import (
-	"strings"
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 const CName = "meta"
@@ -104,67 +99,13 @@ func (s *service) FetchObjectTypes(objectTypeUrls []string) []*model.ObjectType 
 		return nil
 	}
 	var objectTypes = []*model.ObjectType{}
-	var customOtypeIds = []string{}
 	for _, otypeUrl := range objectTypeUrls {
-		if strings.HasPrefix(otypeUrl, objects.BundledObjectTypeURLPrefix) {
-			var err error
-			objectType, err := bundle.GetTypeByUrl(otypeUrl)
-			if err != nil {
-				log.Errorf("failed to get objectType '%s': %s", otypeUrl, err.Error())
-				continue
-			}
-			objectTypes = append(objectTypes, objectType)
-		} else if !strings.HasPrefix(otypeUrl, "b") {
-			log.Errorf("failed to get objectType %s: incorrect url", otypeUrl)
-		} else {
-			customOtypeIds = append(customOtypeIds, otypeUrl)
+		ot, err := objectstore.GetObjectType(s.anytype.ObjectStore(), otypeUrl)
+		if err != nil {
+			log.Errorf("FetchObjectTypes failed to get objectType %s", otypeUrl)
+			continue
 		}
-	}
-
-	if len(customOtypeIds) == 0 {
-		return objectTypes
-	}
-
-	metas := s.FetchMeta(customOtypeIds)
-	for _, meta := range metas {
-		objectType := &model.ObjectType{}
-		if name := pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()); name != "" {
-			objectType.Name = name
-		}
-		if layout := pbtypes.GetFloat64(meta.Details, bundle.RelationKeyRecommendedLayout.String()); layout != 0.0 {
-			objectType.Layout = model.ObjectTypeLayout(int(layout))
-		}
-
-		if iconEmoji := pbtypes.GetString(meta.Details, bundle.RelationKeyIconEmoji.String()); iconEmoji != "" {
-			objectType.IconEmoji = iconEmoji
-		}
-
-		recommendedRelationsKeys := pbtypes.GetStringList(meta.Details, bundle.RelationKeyRecommendedRelations.String())
-		for _, rel := range bundle.RequiredInternalRelations {
-			if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
-				recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
-			}
-		}
-
-		var recommendedRelations []*model.Relation
-		for _, rk := range recommendedRelationsKeys {
-			rel := pbtypes.GetRelation(meta.Relations, rk)
-			if rel == nil {
-				rel, _ = bundle.GetRelation(bundle.RelationKey(rk))
-				if rel == nil {
-					continue
-				}
-			}
-
-			relCopy := pbtypes.CopyRelation(rel)
-			relCopy.Scope = model.Relation_type
-			recommendedRelations = append(recommendedRelations, relCopy)
-		}
-
-		objectType.Url = meta.BlockId
-		objectType.Relations = recommendedRelations
-
-		objectTypes = append(objectTypes, objectType)
+		objectTypes = append(objectTypes, ot)
 	}
 
 	return objectTypes

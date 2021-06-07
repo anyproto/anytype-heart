@@ -152,8 +152,8 @@ func (ln *liteNet) Run() error {
 		libp2p.ConnectionManager(connmgr.NewConnManager(ln.cfg.SwarmLowWater, ln.cfg.SwarmHighWater, time.Minute)),
 		libp2p.Peerstore(pstore),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
-		libp2p.Transport(tcp.NewTCPTransport), // connection timeout overridden in core.go init
-		libp2p.EnableAutoRelay(), // if our network state changes we will try to connect to one of the relay specified below
+		libp2p.Transport(tcp.NewTCPTransport),  // connection timeout overridden in core.go init
+		libp2p.EnableAutoRelay(),               // if our network state changes we will try to connect to one of the relay specified below
 		libp2p.StaticRelays(ln.cfg.RelayNodes), // in case we are under NAT we will announce our addresses through these nodes
 	)
 	if err != nil {
