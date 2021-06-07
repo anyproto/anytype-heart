@@ -1116,8 +1116,10 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 		det := act.Details.After
 		if det != nil && det.Fields != nil {
 			for _, field := range fileDetailKeys {
-				if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
-					hashes = append(hashes, v.GetStringValue())
+				if list := pbtypes.GetStringList(det, field); list != nil {
+					hashes = append(hashes, list...)
+				} else if s := pbtypes.GetString(det, field); s != "" {
+					hashes = append(hashes, s)
 				}
 			}
 		}
