@@ -193,8 +193,14 @@ func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree 
 		err = fmt.Errorf("history: anytype.GetBlock error: %v", err)
 		return
 	}
-	if tree, err = change.BuildTreeBefore(sb, versionId, includeLastId); err != nil {
-		return
+	if versionId != "" {
+		if tree, err = change.BuildTreeBefore(sb, versionId, includeLastId); err != nil {
+			return
+		}
+	} else {
+		if tree, _, err = change.BuildTree(sb); err != nil {
+			return
+		}
 	}
 	return tree, sb.Type(), nil
 }
