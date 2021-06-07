@@ -1,7 +1,7 @@
 [
   {
     "description": "Derious thought or consideration",
-    "emoji": "🪞",
+    "emoji": "💭",
     "id": "dailyReflection",
     "layout": "basic",
     "name": "Daily Reflection",
@@ -34,6 +34,46 @@
       "gratefulFor",
       "actionItems",
       "createdDate"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
+    "emoji": "🍲",
+    "id": "recipe",
+    "layout": "basic",
+    "name": "Recipe",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "time",
+      "servings",
+      "ingredients",
+      "instructions",
+      "difficulty"
     ],
     "types": [
       "Page"
@@ -112,7 +152,10 @@
       "socialProfile",
       "job",
       "linkedContacts",
-      "occupation"
+      "occupation",
+      "instagram",
+      "gender",
+      "facebook"
     ],
     "types": [
       "Page"
@@ -305,7 +348,6 @@
   },
   {
     "description": "A detailed proposal for doing or achieving something",
-    "emoji": "🎛️",
     "id": "dailyPlan",
     "layout": "basic",
     "name": "Daily Plan",
@@ -333,9 +375,47 @@
       "isHidden",
       "isArchived",
       "tag",
-      "events",
       "notes",
-      "tasks"
+      "tasks",
+      "events"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "Quick references to ideas, goals, deadlines, data, and anything else important that's covered in your meeting.",
+    "emoji": "✏️",
+    "id": "meetingNote",
+    "layout": "basic",
+    "name": "Meeting Note",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "participants",
+      "actionItems",
+      "agenda"
     ],
     "types": [
       "Page"
@@ -418,7 +498,6 @@
   },
   {
     "description": "Sample object that has already some details in place and used to create objects from",
-    "emoji": "✨",
     "hidden": true,
     "id": "template",
     "layout": "basic",
@@ -492,7 +571,7 @@
   },
   {
     "description": "Record of events and experiences",
-    "emoji": "💎",
+    "emoji": "✨",
     "id": "diaryEntry",
     "layout": "basic",
     "name": "Diary Entry",
@@ -687,6 +766,46 @@
     ],
     "types": [
       "File"
+    ]
+  },
+  {
+    "description": "Is a detailed plan outlining actions needed to reach one or more goals",
+    "emoji": "🤝",
+    "id": "actionPlan",
+    "layout": "basic",
+    "name": "Action Plan",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "tasks",
+      "resources",
+      "result",
+      "dueDate",
+      "responsible"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
