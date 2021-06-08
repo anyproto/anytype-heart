@@ -56,6 +56,7 @@ require (
 	github.com/microcosm-cc/bluemonday v1.0.9
 	github.com/miolini/datacounter v1.0.2
 	github.com/mr-tron/base58 v1.2.0
+	github.com/msingleton/amplitude-go v0.0.0-20200312121213-b7c11448c30e
 	github.com/multiformats/go-base32 v0.0.3
 	github.com/multiformats/go-multiaddr v0.3.1
 	github.com/multiformats/go-multibase v0.0.3
@@ -82,7 +83,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.3-0.20210605142950-b0ef12f70e62
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.3-0.20210608073923-95804bedabf5
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 

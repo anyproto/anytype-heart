@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -181,6 +182,9 @@ func (a *Anytype) Run() (err error) {
 	if err = a.Start(); err != nil {
 		return
 	}
+
+	metrics.SharedClient.SetUserId(a.Account())
+
 	return a.InitPredefinedBlocks(context.TODO(), a.config.NewAccount)
 }
 

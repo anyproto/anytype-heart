@@ -25,6 +25,7 @@ import (
 	"github.com/textileio/go-threads/crypto/symmetric"
 	threadsDb "github.com/textileio/go-threads/db"
 	"github.com/textileio/go-threads/db/keytransform"
+	threadsMetrics "github.com/textileio/go-threads/metrics"
 	threadsUtil "github.com/textileio/go-threads/util"
 	"google.golang.org/grpc"
 
@@ -173,7 +174,9 @@ func (s *service) Run() (err error) {
 		syncBook = s.logstore
 	}
 
-	s.t, err = threadsNet.NewNetwork(s.ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
+	ctx := context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
+
+	s.t, err = threadsNet.NewNetwork(ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
 		Debug:        s.Debug,
 		PubSub:       s.PubSub,
 		SyncTracking: s.SyncTracking,
