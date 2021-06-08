@@ -50,7 +50,7 @@ type Doc interface {
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
 	GetFileKeys() []pb.ChangeFileKeys
-	BlocksInit()
+	BlocksInit(ds simple.DetailsService)
 	SearchText() string
 }
 
@@ -129,9 +129,6 @@ func (s *State) Add(b simple.Block) (ok bool) {
 	id := b.Model().Id
 	if s.Pick(id) == nil {
 		s.blocks[id] = b
-		if s.parent != nil {
-			s.newIds = append(s.newIds, id)
-		}
 		s.blockInit(b)
 		return true
 	}
@@ -645,6 +642,24 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 	}
 }
 
+func (s *State) StringDebug() string {
+	buf := bytes.NewBuffer(nil)
+	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
+	fmt.Fprintf(buf, "ObjectTypes: %v\n", s.ObjectTypes())
+	fmt.Fprintf(buf, "Relations:\n")
+	for _, rel := range s.ExtraRelations() {
+		fmt.Fprintf(buf, "\t%v\n", rel.String())
+	}
+	fmt.Fprintf(buf, "Details:\n")
+	if det := s.Details(); det != nil && det.Fields != nil {
+		for k, v := range det.Fields {
+			fmt.Fprintf(buf, "\t%s:\t%v\n", k, v.String())
+		}
+	}
+	s.writeString(buf, 0, s.RootId())
+	return buf.String()
+}
+
 func (s *State) SetDetails(d *types.Struct) *State {
 	s.details = d
 	return s
@@ -869,10 +884,10 @@ func (s *State) blockInit(b simple.Block) {
 	}
 }
 
-func (s *State) BlocksInit() {
+func (s *State) BlocksInit(st simple.DetailsService) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if db, ok := b.(simple.DetailsHandler); ok {
-			db.DetailsInit(s)
+			db.DetailsInit(st)
 		}
 		return true
 	})
@@ -1042,6 +1057,9 @@ func (s *State) SetNoObjectType(noObjectType bool) *State {
 }
 
 func (s *State) SetRootId(newRootId string) {
+	if s.rootId == "" {
+		s.RootId()
+	}
 	if s.rootId != newRootId {
 		if b := s.Get(s.rootId); b != nil {
 			b.Model().Id = newRootId
@@ -1049,6 +1067,10 @@ func (s *State) SetRootId(newRootId string) {
 		}
 		s.rootId = newRootId
 	}
+}
+
+func (s *State) ParentState() *State {
+	return s.parent
 }
 
 type linkSource interface {

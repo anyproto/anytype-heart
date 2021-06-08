@@ -101,6 +101,9 @@ func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 }
 
 func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
+	if s.rootId == "bafyba6zfozewullud4sk6bqohkzvm7qxj4ijvifzetewlffha5tyhj36" {
+		log.Warnf("dbgch: %v", ch)
+	}
 	switch {
 	case ch.GetBlockCreate() != nil:
 		if err = s.changeBlockCreate(ch.GetBlockCreate()); err != nil {
@@ -242,8 +245,7 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 			return nil
 		}
 	}
-
-	s.objectTypes = append(s.objectTypes, add.Url)
+	s.SetObjectTypes(append(s.objectTypes, add.Url))
 	return nil
 }
 
@@ -257,7 +259,9 @@ func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error 
 		return true
 	})
 	if !found {
-		log.Warnf("changeObjectTypeRemove: type to remove not found")
+		log.Warnf("changeObjectTypeRemove: type to remove not found: '%s'", remove.Url)
+	} else {
+		s.SetObjectTypes(s.objectTypes)
 	}
 	return nil
 }
@@ -338,6 +342,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
 		case *pb.EventMessageValueOfBlockAdd:
 			for _, b := range o.BlockAdd.Blocks {
+				s.newIds = append(s.newIds, b.Id)
 				if len(b.ChildrenIds) > 0 {
 					structMsgs = append(structMsgs, &pb.EventBlockSetChildrenIds{
 						Id:          b.Id,
@@ -357,7 +362,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
-			log.Errorf("unexpected event - can't convert to changes: %T", msg)
+			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)
 		}
 	}
 	var cb = &changeBuilder{changes: s.changes}

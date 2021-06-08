@@ -228,7 +228,7 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 		// todo: set case not handled
 		template.InitTemplate(s, template.WithTitle)
 	}
-	s.BlocksInit()
+	s.BlocksInit(s)
 	if ch := tree.Get(versionId); ch != nil {
 		profileId, profileName, e := h.getProfileInfo()
 		if e != nil {

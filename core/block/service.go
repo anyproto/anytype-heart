@@ -892,7 +892,10 @@ func (s *service) ApplyTemplate(contextId, templateId string) (err error) {
 		return
 	}
 	return s.Do(contextId, func(b smartblock.SmartBlock) error {
-		ts.SetParent(b.NewState())
+		orig := b.NewState().ParentState()
+		ts.SetRootId(contextId)
+		ts.SetParent(orig)
+		ts.BlocksInit(orig)
 		return b.Apply(ts)
 	})
 }

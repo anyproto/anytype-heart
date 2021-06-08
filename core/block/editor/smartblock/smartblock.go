@@ -171,7 +171,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.source = ctx.Source
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
-	sb.Doc.BlocksInit()
+	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
 
 	if ctx.State == nil {
 		ctx.State = sb.NewState()
