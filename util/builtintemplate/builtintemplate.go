@@ -11,12 +11,10 @@ import (
 	"io/ioutil"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -41,15 +39,11 @@ type BuiltinTemplate interface {
 }
 
 type builtinTemplate struct {
-	core          core.Service
-	blockService  block.Service
 	source        source.Service
 	generatedHash string
 }
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
-	b.blockService = a.MustComponent(block.CName).(block.Service)
-	b.core = a.MustComponent(core.CName).(core.Service)
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.makeGenHash(1)
 	return
@@ -101,11 +95,10 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	}
 	st.SetRootId(id)
 	st = st.Copy()
-	if ot := st.ObjectType(); ot != bundle.TypeKeyTemplate.URL() {
-		st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(ot))
-	}
-	st.SetObjectType(bundle.TypeKeyTemplate.URL())
 	st.SetDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
+	if ots := st.ObjectTypes(); len(ots) != 2 {
+		st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
+	}
 	b.source.RegisterStaticSource(id, func() source.Source {
 		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy())
 	})
