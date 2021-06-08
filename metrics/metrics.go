@@ -13,6 +13,7 @@ import (
 )
 
 var log = logging.Logger("anytype-logger")
+const DefaultAmplitudeKey = "406eb9bda5a4f8b94d1ca05936acab59"
 
 type threadsMetrics struct {
 	client Client

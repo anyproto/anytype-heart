@@ -73,8 +73,7 @@ func main() {
 			http.ListenAndServe(debug, nil)
 		}()
 	}
-
-	metrics.SharedClient.InitWithKey("406eb9bda5a4f8b94d1ca05936acab59")
+	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 
 	var stopChan = make(chan os.Signal, 2)
 	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)

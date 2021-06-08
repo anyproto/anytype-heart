@@ -6,12 +6,13 @@ import (
 	_ "net/http/pprof"
 	"os"
 
+	"github.com/gogo/protobuf/proto"
+
 	"github.com/anytypeio/go-anytype-middleware/core"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/gogo/protobuf/proto"
 )
 
 var log = logging.Logger("anytype-mw")
@@ -21,6 +22,7 @@ var mw = core.New()
 func init() {
 	fmt.Printf("mw jsaddon: %s\n", core.GetVersionDescription())
 	registerClientCommandsHandler(mw)
+	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {
 			http.ListenAndServe(debug, nil)
