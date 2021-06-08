@@ -51,7 +51,7 @@ func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.blockService = a.MustComponent(block.CName).(block.Service)
 	b.core = a.MustComponent(core.CName).(core.Service)
 	b.source = a.MustComponent(source.CName).(source.Service)
-	b.makeGenHash(0)
+	b.makeGenHash(1)
 	return
 }
 
