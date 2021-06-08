@@ -77,7 +77,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	}
 }
 
-func newSource(a core.Service, ss status.Service, tid thread.ID) (s Source, err error) {
+func newSource(a core.Service, ss status.Service, tid thread.ID, listenToOwnChanges bool) (s Source, err error) {
 	id := tid.String()
 	sb, err := a.GetBlock(id)
 	if err != nil {
@@ -91,33 +91,35 @@ func newSource(a core.Service, ss status.Service, tid thread.ID) (s Source, err 
 	}
 
 	s = &source{
-		id:             id,
-		smartblockType: sbt,
-		tid:            tid,
-		a:              a,
-		ss:             ss,
-		sb:             sb,
-		logId:          a.Device(),
-		openedAt:       time.Now(),
+		id:                       id,
+		smartblockType:           sbt,
+		tid:                      tid,
+		a:                        a,
+		ss:                       ss,
+		sb:                       sb,
+		listenToOwnDeviceChanges: listenToOwnChanges,
+		logId:                    a.Device(),
+		openedAt:                 time.Now(),
 	}
 	return
 }
 
 type source struct {
-	id, logId      string
-	tid            thread.ID
-	smartblockType smartblock.SmartBlockType
-	a              core.Service
-	ss             status.Service
-	sb             core.SmartBlock
-	tree           *change.Tree
-	lastSnapshotId string
-	logHeads       map[string]*change.Change
-	receiver       ChangeReceiver
-	unsubscribe    func()
-	metaOnly       bool
-	closed         chan struct{}
-	openedAt       time.Time
+	id, logId                string
+	tid                      thread.ID
+	smartblockType           smartblock.SmartBlockType
+	a                        core.Service
+	ss                       status.Service
+	sb                       core.SmartBlock
+	tree                     *change.Tree
+	lastSnapshotId           string
+	logHeads                 map[string]*change.Change
+	receiver                 ChangeReceiver
+	unsubscribe              func()
+	metaOnly                 bool
+	listenToOwnDeviceChanges bool // false means we will ignore own(same-logID) changes in applyRecords
+	closed                   chan struct{}
+	openedAt                 time.Time
 }
 
 func (s *source) ReadOnly() bool {
@@ -405,7 +407,7 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
 func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	var changes = make([]*change.Change, 0, len(records))
 	for _, record := range records {
-		if record.LogID == s.a.Device() {
+		if record.LogID == s.a.Device() && !s.listenToOwnDeviceChanges {
 			// ignore self logs
 			continue
 		}

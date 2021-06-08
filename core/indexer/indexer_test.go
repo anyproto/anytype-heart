@@ -72,7 +72,7 @@ func TestNewIndexer(t *testing.T) {
 		fx.objectStore.EXPECT().AddToIndexQueue(sbId)
 		fx.objectStore.EXPECT().GetDetails(sbId)
 
-		fx.objectStore.EXPECT().UpdateObjectDetails(sbId, gomock.Any(), gomock.Any()).DoAndReturn(func(id string, details *types.Struct, relations *model.Relations) (err error) {
+		fx.objectStore.EXPECT().UpdateObjectDetails(sbId, gomock.Any(), gomock.Any(), true).DoAndReturn(func(id string, details *types.Struct, relations *model.Relations, _ bool) (err error) {
 			assert.Equal(t, "value", pbtypes.GetString(det, "key"))
 			close(updatedCh)
 			return

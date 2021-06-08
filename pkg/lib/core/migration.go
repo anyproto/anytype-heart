@@ -344,7 +344,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.objectStore.UpdateObjectDetails(img.Hash(), details, &model.Relations{Relations: imgObjType.Relations})
+					err = a.objectStore.UpdateObjectDetails(img.Hash(), details, &model.Relations{Relations: imgObjType.Relations}, false)
 					if err != nil {
 						// this shouldn't fail
 						cancel()
@@ -379,7 +379,7 @@ func addFilesToObjects(a *Anytype, lastMigration bool) error {
 						continue
 					}
 
-					err = a.objectStore.UpdateObjectDetails(file.Hash(), details, &model.Relations{Relations: fileObjType.Relations})
+					err = a.objectStore.UpdateObjectDetails(file.Hash(), details, &model.Relations{Relations: fileObjType.Relations}, false)
 					if err != nil {
 						cancel()
 						return err
@@ -662,7 +662,7 @@ func addMissingLayout(a *Anytype, lastMigration bool) error {
 			}
 
 			o.Details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(layout))
-			err = a.objectStore.UpdateObjectDetails(id, o.Details, o.Relations)
+			err = a.objectStore.UpdateObjectDetails(id, o.Details, o.Relations, false)
 			if err != nil {
 				log.Errorf("migration addMissingLayout: failed to UpdateObject: %s", err.Error())
 				continue

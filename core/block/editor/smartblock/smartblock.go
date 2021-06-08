@@ -518,6 +518,29 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
 	st := sb.Doc.(*state.State)
+	if act.Details != nil && act.Details.After != nil {
+		var hasDetailsChange bool
+		for _, ch := range s.GetChanges() {
+			if ch.GetDetailsSet() != nil {
+				hasDetailsChange = true
+				break
+			}
+		}
+		// we don't need to do this in case we have other details changes inside...
+		if !hasDetailsChange {
+			// todo: REFACTOR ME: we need to rework indexer to include virtual changes so the localstore update will be triggered from the same place
+			// here is we handling a case for indexing local-only details
+			before := pbtypes.StructFilterKeys(act.Details.Before, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+			after := pbtypes.StructFilterKeys(act.Details.After, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+			if !pbtypes.StructEqualIgnore(before, after, nil) {
+				err = sb.Anytype().ObjectStore().UpdateObjectDetails(sb.Id(), s.Details(), &model.Relations{Relations: s.ExtraRelations()}, false)
+				if err != nil {
+					log.Errorf("failed to update object details: %s", err.Error())
+				}
+			}
+		}
+	}
+
 	fileDetailsKeys := sb.FileRelationKeys()
 	pushChangeParams := source.PushChangeParams{
 		State:             st,
@@ -883,9 +906,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 		}
 	}
 
-	s := sb.NewState().SetExtraRelations(filtered)
-
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(st, NoEvent); err != nil {
 		return
 	}
 	if ctx != nil {
@@ -893,7 +914,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
 			Value: &pb.EventMessageValueOfObjectRelationsSet{
 				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
+					Id:        st.RootId(),
 					Relations: sb.Relations(),
 				},
 			},
@@ -1094,8 +1115,10 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 		det := act.Details.After
 		if det != nil && det.Fields != nil {
 			for _, field := range fileDetailKeys {
-				if v := det.Fields[field]; v != nil && v.GetStringValue() != "" {
-					hashes = append(hashes, v.GetStringValue())
+				if list := pbtypes.GetStringList(det, field); list != nil {
+					hashes = append(hashes, list...)
+				} else if s := pbtypes.GetString(det, field); s != "" {
+					hashes = append(hashes, s)
 				}
 			}
 		}

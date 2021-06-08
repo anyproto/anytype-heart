@@ -21,7 +21,7 @@ func New() Service {
 }
 
 type Service interface {
-	NewSource(id string) (s Source, err error)
+	NewSource(id string, listenToOwnChanges bool) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State) SourceWithType
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
@@ -47,7 +47,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) NewSource(id string) (source Source, err error) {
+func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, err error) {
 	st, err := smartblock.SmartBlockTypeFromID(id)
 
 	if id == addr.AnytypeProfileId {
@@ -79,7 +79,7 @@ func (s *service) NewSource(id string) (source Source, err error) {
 	if newStatic := s.staticIds[id]; newStatic != nil {
 		return newStatic(), nil
 	}
-	return newSource(s.anytype, s.statusService, tid)
+	return newSource(s.anytype, s.statusService, tid, listenToOwnChanges)
 }
 
 func (s *service) RegisterStaticSource(id string, new func() Source) {

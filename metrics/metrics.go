@@ -5,6 +5,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
+	"github.com/textileio/go-threads/metrics"
 	"net/http"
 	"os"
 	"sync"
@@ -12,6 +13,31 @@ import (
 )
 
 var log = logging.Logger("anytype-logger")
+const DefaultAmplitudeKey = "406eb9bda5a4f8b94d1ca05936acab59"
+
+type threadsMetrics struct {
+	client Client
+}
+
+func NewThreadsMetrics() metrics.Metrics {
+	return &threadsMetrics{client: SharedClient}
+}
+
+func (t *threadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
+	var recordType string
+	switch tp {
+	case metrics.RecordTypeGet:
+		recordType = "get"
+	case metrics.RecordTypePubsub:
+		recordType = "pubsub"
+	default:
+		recordType = "push"
+	}
+	t.client.RecordEvent(RecordAcceptEvent{
+		IsNAT:      isNAT,
+		recordType: recordType,
+	})
+}
 
 var (
 	Enabled       bool

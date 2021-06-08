@@ -136,6 +136,13 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 	if preFilter != nil {
 		mainFilter = append(mainFilter, preFilter)
 	}
+
+	mainFilter = append(mainFilter, filter.Not{Filter: filter.Eq{
+		Key:   bundle.RelationKeyIsArchived.String(),
+		Cond:  model.BlockContentDataviewFilter_Equal,
+		Value: pbtypes.Bool(true),
+	}})
+
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
 	}
@@ -220,7 +227,7 @@ func (f *filters) String() string {
 
 func dateOnly(v *types.Value) *types.Value {
 	if n, isNumber := v.GetKind().(*types.Value_NumberValue); isNumber {
-		tm := time.Unix(int64(n.NumberValue), 0).In(time.UTC) // we have all values stored in UTC, including filters
+		tm := time.Unix(int64(n.NumberValue), 0).In(time.UTC)                 // we have all values stored in UTC, including filters
 		tm = time.Date(tm.Year(), tm.Month(), tm.Day(), 0, 0, 0, 0, time.UTC) // reset time, preserving UTC tz
 		return pbtypes.Float64(float64(tm.Unix()))
 	}

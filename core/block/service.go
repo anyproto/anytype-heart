@@ -623,7 +623,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := s.source.NewSource(id)
+	sc, err := s.source.NewSource(id, false)
 	if err != nil {
 		return
 	}

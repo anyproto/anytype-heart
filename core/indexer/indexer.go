@@ -370,7 +370,8 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) openDoc(id string) (state.Doc, error) {
-	s, err := i.source.NewSource(id)
+	// set listenToOwnChanges to false because it doesn't means. We do not use source's applyRecords
+	s, err := i.source.NewSource(id, false)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
 		return nil, err
@@ -436,7 +437,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
 		} else {
-			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.ExtraRelations()}); err != nil {
+			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.ExtraRelations()}, false); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
 		}
@@ -573,7 +574,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	if onlyDetails {
-		if err := i.store.UpdateObjectDetails(id, meta.Details, nil); err != nil {
+		if err := i.store.UpdateObjectDetails(id, meta.Details, nil, true); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
 		} else {
 			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
@@ -594,7 +595,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		}
 	}
 
-	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}); err != nil {
+	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}, true); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {
 		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))

@@ -58,7 +58,7 @@ type pubSub struct {
 	subscribers map[string]map[Subscriber]struct{}
 	collectors  map[string]*collector
 	lastUsage   map[string]time.Time
-	newSource   func(id string) (source.Source, error)
+	newSource   func(id string, listenToOwnChanges bool) (source.Source, error)
 	m           sync.Mutex
 	closed      bool
 }
