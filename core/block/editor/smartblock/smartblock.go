@@ -203,7 +203,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
-	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
+	if sb.Type() == model.SmartBlockType_Archive {
 		return nil
 	}
 
@@ -1214,7 +1214,7 @@ func (sb *smartBlock) Relations() []*model.Relation {
 }
 
 func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
-	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
+	if sb.Type() == model.SmartBlockType_Archive {
 		return sb.baseRelations()
 	}
 
