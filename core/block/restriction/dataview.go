@@ -11,9 +11,8 @@ var (
 		model.RestrictionsDataviewRestrictions{
 			BlockId: DataviewBlockId,
 			Restrictions: []model.RestrictionsDataviewRestriction{
-				model.Restrictions_CreateView,
-				model.Restrictions_CreateRelation,
-				model.Restrictions_EditObject,
+				model.Restrictions_DVRelation,
+				model.Restrictions_DVCreateObject,
 			},
 		},
 	}

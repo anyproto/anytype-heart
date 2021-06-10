@@ -13920,11 +13920,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| CreateView | 0 |  |
-| Filters | 1 |  |
-| CreateRelation | 2 |  |
-| CreateObject | 3 |  |
-| EditObject | 4 |  |
+| DVRelation | 0 |  |
+| DVCreateObject | 1 |  |
 
 
 
@@ -13936,9 +13933,11 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | Delete | 0 | restricts delete |
-| Relation | 1 | restricts work with relations |
-| Header | 2 | restricts edit a header (title, description, etc.) |
-| CreateBlock | 3 | restricts create a new block |
+| Relations | 1 | restricts work with relations |
+| Blocks | 2 | restricts work with blocks |
+| Details | 3 | restricts work with details |
+| TypeChange | 4 |  |
+| LayoutChange | 5 |  |
 
 
 

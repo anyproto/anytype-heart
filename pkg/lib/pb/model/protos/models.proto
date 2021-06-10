@@ -378,11 +378,13 @@ message Restrictions {
         // restricts delete
         Delete = 0;
         // restricts work with relations
-        Relation = 1;
-        // restricts edit a header (title, description, etc.)
-        Header = 2;
-        // restricts create a new block
-        CreateBlock = 3;
+        Relations = 1;
+        // restricts work with blocks
+        Blocks = 2;
+        // restricts work with details
+        Details = 3;
+        TypeChange = 4;
+        LayoutChange = 5;
     }
 
 
@@ -392,11 +394,8 @@ message Restrictions {
     }
 
     enum DataviewRestriction {
-        CreateView = 0;
-        Filters = 1;
-        CreateRelation = 2;
-        CreateObject = 3;
-        EditObject = 4;
+        DVRelation = 0;
+        DVCreateObject = 1;
     }
 }
 

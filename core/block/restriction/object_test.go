@@ -25,9 +25,9 @@ func TestService_ObjectRestrictionsById(t *testing.T) {
 	assert.Equal(t, ErrRestricted, rest.ObjectRestrictionsByObj(testObj{
 		id: "",
 		tp: model.SmartBlockType_Breadcrumbs,
-	}).Check(model.Restrictions_CreateBlock))
+	}).Check(model.Restrictions_Blocks))
 	assert.NoError(t, rest.ObjectRestrictionsByObj(testObj{
 		id: "",
 		tp: model.SmartBlockType_Page,
-	}).Check(model.Restrictions_CreateBlock))
+	}).Check(model.Restrictions_Blocks))
 }
