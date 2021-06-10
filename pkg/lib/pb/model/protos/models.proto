@@ -374,16 +374,17 @@ message Restrictions {
     repeated DataviewRestrictions dataview = 2;
 
     enum ObjectRestriction {
+        None = 0;
         // restricts delete
-        Delete = 0;
+        Delete = 1;
         // restricts work with relations
-        Relations = 1;
+        Relations = 2;
         // restricts work with blocks
-        Blocks = 2;
+        Blocks = 3;
         // restricts work with details
-        Details = 3;
-        TypeChange = 4;
-        LayoutChange = 5;
+        Details = 4;
+        TypeChange = 5;
+        LayoutChange = 6;
     }
 
 
@@ -393,8 +394,9 @@ message Restrictions {
     }
 
     enum DataviewRestriction {
-        DVRelation = 0;
-        DVCreateObject = 1;
+        DVNone = 0;
+        DVRelation = 1;
+        DVCreateObject = 2;
     }
 }
 
