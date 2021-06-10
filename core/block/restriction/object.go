@@ -6,32 +6,37 @@ import (
 
 var (
 	objRestrictAll = ObjectRestrictions{
-		model.Restrictions_CreateBlock,
-		model.Restrictions_Relation,
-		model.Restrictions_Header,
+		model.Restrictions_Blocks,
+		model.Restrictions_Relations,
+		model.Restrictions_Details,
 		model.Restrictions_Delete,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
 	}
 	objRestrictEdit = ObjectRestrictions{
-		model.Restrictions_CreateBlock,
-		model.Restrictions_Relation,
-		model.Restrictions_Header,
+		model.Restrictions_Blocks,
+		model.Restrictions_LayoutChange,
+		model.Restrictions_TypeChange,
 	}
 
 	objectRestrictionsByPbType = map[model.SmartBlockType]ObjectRestrictions{
-		model.SmartBlockType_Breadcrumbs:    objRestrictEdit,
-		model.SmartBlockType_ProfilePage:    {},
+		model.SmartBlockType_Breadcrumbs:    objRestrictAll,
+		model.SmartBlockType_ProfilePage:    {model.Restrictions_LayoutChange, model.Restrictions_TypeChange},
 		model.SmartBlockType_AnytypeProfile: objRestrictAll,
-		model.SmartBlockType_Page:           {},
+		model.SmartBlockType_Page:           {model.Restrictions_LayoutChange},
 		model.SmartBlockType_Home: {
-			model.Restrictions_Header,
-			model.Restrictions_Relation,
+			model.Restrictions_Details,
+			model.Restrictions_Relations,
+			model.Restrictions_Delete,
+			model.Restrictions_LayoutChange,
+			model.Restrictions_TypeChange,
 		},
-		model.SmartBlockType_File:                objRestrictEdit,
+		model.SmartBlockType_File:                objRestrictAll,
 		model.SmartBlockType_MarketplaceRelation: objRestrictAll,
 		model.SmartBlockType_MarketplaceTemplate: objRestrictAll,
 		model.SmartBlockType_MarketplaceType:     objRestrictAll,
 		model.SmartBlockType_Archive:             objRestrictAll,
-		model.SmartBlockType_Set:                 {model.Restrictions_CreateBlock},
+		model.SmartBlockType_Set:                 objRestrictEdit,
 		model.SmartBlockType_BundledRelation:     objRestrictAll,
 		model.SmartBlockType_IndexedRelation:     objRestrictAll,
 		model.SmartBlockType_BundledObjectType:   objRestrictAll,
