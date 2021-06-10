@@ -71,6 +71,7 @@ type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
 
 	OpenBlock(ctx *state.Context, id string) error
+	ShowBlock(ctx *state.Context, id string) error
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
@@ -313,6 +314,12 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		}
 	}
 	return nil
+}
+
+func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
+	return s.Do(id, func(b smartblock.SmartBlock) error {
+		return b.Show(ctx)
+	})
 }
 
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {

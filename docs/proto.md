@@ -284,6 +284,10 @@
     - [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request)
     - [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response)
     - [Rpc.Block.SetBreadcrumbs.Response.Error](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error)
+    - [Rpc.Block.Show](#anytype.Rpc.Block.Show)
+    - [Rpc.Block.Show.Request](#anytype.Rpc.Block.Show.Request)
+    - [Rpc.Block.Show.Response](#anytype.Rpc.Block.Show.Response)
+    - [Rpc.Block.Show.Response.Error](#anytype.Rpc.Block.Show.Response.Error)
     - [Rpc.Block.Split](#anytype.Rpc.Block.Split)
     - [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request)
     - [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response)
@@ -619,6 +623,7 @@
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
     - [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code)
+    - [Rpc.Block.Show.Response.Error.Code](#anytype.Rpc.Block.Show.Response.Error.Code)
     - [Rpc.Block.Split.Request.Mode](#anytype.Rpc.Block.Split.Request.Mode)
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
@@ -946,6 +951,7 @@
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
+| BlockShow | [Rpc.Block.Show.Request](#anytype.Rpc.Block.Show.Request) | [Rpc.Block.Show.Response](#anytype.Rpc.Block.Show.Response) |  |
 | BlockGetPublicWebURL | [Rpc.Block.GetPublicWebURL.Request](#anytype.Rpc.Block.GetPublicWebURL.Request) | [Rpc.Block.GetPublicWebURL.Response](#anytype.Rpc.Block.GetPublicWebURL.Response) |  |
 | BlockOpenBreadcrumbs | [Rpc.Block.OpenBreadcrumbs.Request](#anytype.Rpc.Block.OpenBreadcrumbs.Request) | [Rpc.Block.OpenBreadcrumbs.Response](#anytype.Rpc.Block.OpenBreadcrumbs.Response) |  |
 | BlockSetBreadcrumbs | [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request) | [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response) |  |
@@ -5016,6 +5022,64 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show"></a>
+
+### Rpc.Block.Show
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Request"></a>
+
+### Rpc.Block.Show.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context blo1k |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Response"></a>
+
+### Rpc.Block.Show.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Show.Response.Error](#anytype.Rpc.Block.Show.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Response.Error"></a>
+
+### Rpc.Block.Show.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Show.Response.Error.Code](#anytype.Rpc.Block.Show.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9763,6 +9827,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Show.Response.Error.Code"></a>
+
+### Rpc.Block.Show.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
+
+
+
 <a name="anytype.Rpc.Block.Split.Request.Mode"></a>
 
 ### Rpc.Block.Split.Request.Mode
@@ -12146,7 +12224,7 @@ Precondition: user A opened a block
 <a name="anytype.Event.Object.Details.Amend"></a>
 
 ### Event.Object.Details.Amend
-Amend existing state
+Amend (i.e. add a new key-value pair or update an existing key-value pair) existing state
 
 
 | Field | Type | Label | Description |
