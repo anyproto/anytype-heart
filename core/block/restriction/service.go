@@ -52,7 +52,14 @@ type Restrictions struct {
 }
 
 func (r Restrictions) Proto() *model.Restrictions {
-	return &model.Restrictions{
+	res := &model.Restrictions{
 		Object: r.Object,
 	}
+	if len(r.Dataview) > 0 {
+		res.Dataview = make([]*model.RestrictionsDataviewRestrictions, 0, len(r.Dataview))
+		for _, dvr := range r.Dataview {
+			res.Dataview = append(res.Dataview, &dvr)
+		}
+	}
+	return res
 }
