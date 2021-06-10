@@ -818,7 +818,9 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 	ot := otypes[len(otypes)-1]
 	s.SetObjectTypes(objectTypes)
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
+	if pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()) == nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
+	}
 	return
 }
 
