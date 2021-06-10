@@ -43,6 +43,22 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 	return true
 }
 
+// StructFilterKeys returns provided keys reusing underlying pb values pointers
+func StructFilterKeys(st *types.Struct, filteredKeys []string) *types.Struct {
+	if st == nil || st.Fields == nil {
+		return st
+	}
+
+	m := make(map[string]*types.Value, len(st.Fields))
+	for k, v := range st.Fields {
+		if slice.FindPos(filteredKeys, k) > -1 {
+			m[k] = v
+		}
+	}
+
+	return &types.Struct{Fields: m}
+}
+
 // StructCutKeys excludes provided keys reusing underlying pb values pointers
 func StructCutKeys(st *types.Struct, excludeKeys []string) *types.Struct {
 	if st == nil || st.Fields == nil {

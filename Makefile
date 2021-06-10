@@ -69,7 +69,7 @@ build-js-addon:
 	@cp dist/lib.h clientlibrary/jsaddon/lib.h
 	@cp clientlibrary/clib/bridge.h clientlibrary/jsaddon/bridge.h
     # Electron's version.
-	@export npm_config_target=6.0.4
+	@export npm_config_target=12.0.4
 	@export npm_config_arch=x64
 	@export npm_config_target_arch=x64
 	# The architecture of Electron, see https://electronjs.org/docs/tutorial/support#supported-platforms

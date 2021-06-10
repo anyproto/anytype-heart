@@ -12,6 +12,7 @@ type Config struct {
 	PrivKey          crypto.PrivKey // takes precedence over PrivKeyFromPath
 	PrivateNetSecret string
 	BootstrapNodes   []peer.AddrInfo
+	RelayNodes       []peer.AddrInfo
 	SwarmLowWater    int
 	SwarmHighWater   int
 }

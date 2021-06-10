@@ -223,7 +223,8 @@ type ObjectStore interface {
 	// CreateObject create or overwrite an existing object. Should be used if
 	CreateObject(id string, details *types.Struct, relations *model.Relations, links []string, snippet string) error
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
-	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations) error
+	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
+	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
 	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
 
 	StoreRelations(relations []*model.Relation) error
@@ -268,17 +269,17 @@ type relationObjectType struct {
 
 var ErrNotAnObject = fmt.Errorf("not an object")
 
-var filterNotSystemObjects = &filterObjectTypes{
-	objectTypes: []smartblock.SmartBlockType{
+var filterNotSystemObjects = &filterSmartblockTypes{
+	smartBlockTypes: []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeArchive,
 		smartblock.SmartBlockTypeHome,
 	},
 	not: true,
 }
 
-type filterObjectTypes struct {
-	objectTypes []smartblock.SmartBlockType
-	not         bool
+type filterSmartblockTypes struct {
+	smartBlockTypes []smartblock.SmartBlockType
+	not             bool
 }
 
 type RelationWithObjectType struct {
@@ -286,7 +287,7 @@ type RelationWithObjectType struct {
 	relation   *model.Relation
 }
 
-func (m *filterObjectTypes) Filter(e query.Entry) bool {
+func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 	keyParts := strings.Split(e.Key, "/")
 	id := keyParts[len(keyParts)-1]
 
@@ -296,7 +297,7 @@ func (m *filterObjectTypes) Filter(e query.Entry) bool {
 		return false
 	}
 
-	for _, ot := range m.objectTypes {
+	for _, ot := range m.smartBlockTypes {
 		if t == ot {
 			return !m.not
 		}
@@ -573,7 +574,6 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	for _, f := range dsq.Filters {
 		log.Warnf("query filter: %+v", f)
 	}
-
 	res, err := txn.Query(dsq)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
@@ -609,6 +609,7 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 		key := ds.NewKey(rec.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
+		log.Errorf("Query got %s: %s", id, details.Details.String())
 
 		if details.Details == nil || details.Details.Fields == nil {
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
@@ -624,16 +625,16 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 }
 
 func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
-	var filter filterObjectTypes
+	var filter filterSmartblockTypes
 	for _, otUrl := range ots {
 		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
 			for _, sbt := range ot.Types {
-				filter.objectTypes = append(filter.objectTypes, smartblock.SmartBlockType(sbt))
+				filter.smartBlockTypes = append(filter.smartBlockTypes, smartblock.SmartBlockType(sbt))
 			}
 			continue
 		}
 		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
-			filter.objectTypes = append(filter.objectTypes, sbt)
+			filter.smartBlockTypes = append(filter.smartBlockTypes, sbt)
 		}
 	}
 	return &filter
@@ -654,7 +655,7 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 	dsq.Limit = 0
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if len(objectTypes) > 0 {
-		dsq.Filters = append([]query.Filter{&filterObjectTypes{objectTypes: objectTypes}}, dsq.Filters...)
+		dsq.Filters = append([]query.Filter{&filterSmartblockTypes{smartBlockTypes: objectTypes}}, dsq.Filters...)
 	}
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
@@ -1120,7 +1121,7 @@ func (m *dsObjectStore) UpdateObjectLinksAndSnippet(id string, links []string, s
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations) error {
+func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -1147,13 +1148,25 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 				Details:   &types.Struct{Fields: map[string]*types.Value{}},
 			}
 		}
+
+		if discardLocalDetailsChanges && details != nil {
+			injectedDetails := pbtypes.StructFilterKeys(before.Details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+			for k, v := range injectedDetails.Fields {
+				details.Fields[k] = pbtypes.CopyVal(v)
+			}
+		}
 	}
 
 	err = m.updateObjectDetails(txn, id, before, details, relations)
 	if err != nil {
 		return err
 	}
-	return txn.Commit()
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
@@ -1398,11 +1411,11 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
+
 	b, err := proto.Marshal(newDetails)
 	if err != nil {
 		return err
 	}
-
 	err = txn.Put(detailsKey, b)
 	if err != nil {
 		return err

@@ -49,7 +49,7 @@ func newPubSub(a core.Service, ss status.Service) *pubSub {
 		lastUsage:   make(map[string]time.Time),
 		anytype:     a,
 		newSource: func(id string) (source.Source, error) {
-			return source.NewSource(a, ss, id)
+			return source.NewSource(a, ss, id, true)
 		},
 	}
 	go ps.ticker()
