@@ -36,7 +36,7 @@ var (
 		model.SmartBlockType_MarketplaceTemplate: objRestrictAll,
 		model.SmartBlockType_MarketplaceType:     objRestrictAll,
 		model.SmartBlockType_Archive:             objRestrictAll,
-		model.SmartBlockType_Set:                 {model.Restrictions_Blocks},
+		model.SmartBlockType_Set:                 objRestrictEdit,
 		model.SmartBlockType_BundledRelation:     objRestrictAll,
 		model.SmartBlockType_IndexedRelation:     objRestrictAll,
 		model.SmartBlockType_BundledObjectType:   objRestrictAll,
