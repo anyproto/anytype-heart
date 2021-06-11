@@ -386,6 +386,7 @@ message Restrictions {
         Details = 4;
         TypeChange = 5;
         LayoutChange = 6;
+        Template = 7;
     }
 
 

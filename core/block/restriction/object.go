@@ -12,11 +12,13 @@ var (
 		model.Restrictions_Delete,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
+		model.Restrictions_Template,
 	}
 	objRestrictEdit = ObjectRestrictions{
 		model.Restrictions_Blocks,
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
+		model.Restrictions_Template,
 	}
 
 	objectRestrictionsByPbType = map[model.SmartBlockType]ObjectRestrictions{
@@ -30,6 +32,7 @@ var (
 			model.Restrictions_Delete,
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
+			model.Restrictions_Template,
 		},
 		model.SmartBlockType_File:                objRestrictAll,
 		model.SmartBlockType_MarketplaceRelation: objRestrictAll,

@@ -13941,6 +13941,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Details | 4 | restricts work with details |
 | TypeChange | 5 |  |
 | LayoutChange | 6 |  |
+| Template | 7 |  |
 
 
 
