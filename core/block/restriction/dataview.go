@@ -13,6 +13,7 @@ var (
 			Restrictions: []model.RestrictionsDataviewRestriction{
 				model.Restrictions_DVRelation,
 				model.Restrictions_DVCreateObject,
+				model.Restrictions_DVViews,
 			},
 		},
 	}

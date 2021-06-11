@@ -398,6 +398,7 @@ message Restrictions {
         DVNone = 0;
         DVRelation = 1;
         DVCreateObject = 2;
+        DVViews = 3;
     }
 }
 
