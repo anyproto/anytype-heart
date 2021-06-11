@@ -384,7 +384,7 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 	}
 }
 
-var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		// remove old dataview
 		var blockNeedToUpdate bool
@@ -411,10 +411,10 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 			return true
 		})
 
-		if blockNeedToUpdate || !s.Exists(DataviewBlockId) {
-			s.Set(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
-			if !s.IsParentOf(s.RootId(), DataviewBlockId) {
-				err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
+		if blockNeedToUpdate || !s.Exists(id) {
+			s.Set(simple.New(&model.Block{Content: &dataview, Id: id}))
+			if !s.IsParentOf(s.RootId(), id) {
+				err := s.InsertTo(s.RootId(), model.Block_Inner, id)
 				if err != nil {
 					log.Errorf("template WithDataview failed to insert: %w", err)
 				}
@@ -422,6 +422,10 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 		}
 
 	}
+}
+
+var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+	return WithDataviewID(DataviewBlockId, dataview, forceViews)
 }
 
 var WithRootLink = func(targetBlockId string, style model.BlockContentLinkStyle) StateTransformer {

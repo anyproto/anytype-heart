@@ -48,6 +48,34 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
+	templatesDataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source: bundle.TypeKeyTemplate.URL(),
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   uuid.New().String(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{},
+					Filters:   []*model.BlockContentDataviewFilter{
+						{
+						Operator:         model.BlockContentDataviewFilter_And,
+						RelationKey:      bundle.RelationKeyTargetObjectType.String(),
+						Condition:        model.BlockContentDataviewFilter_Equal,
+						Value:            pbtypes.String(p.RootId()),
+					}},
+				},
+			},
+		},
+	}
+
+
 	rels := p.RelationsState(ctx.State, false)
 	recommendedRelationsKeys := pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String())
 	for _, rel := range bundle.RequiredInternalRelations {
@@ -96,6 +124,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDefaultFeaturedRelations,
 		template.WithDescription,
 		template.WithFeaturedRelations,
+		template.WithDataviewID("templates", templatesDataview, true),
 		template.WithDataview(dataview, true),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
