@@ -13,6 +13,7 @@ import (
 )
 
 var log = logging.Logger("anytype-logger")
+
 const DefaultAmplitudeKey = "406eb9bda5a4f8b94d1ca05936acab59"
 
 type threadsMetrics struct {
@@ -33,9 +34,10 @@ func (t *threadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
 	default:
 		recordType = "push"
 	}
-	t.client.RecordEvent(RecordAcceptEvent{
+	t.client.AggregateEvent(RecordAcceptEventAggregated{
 		IsNAT:      isNAT,
-		recordType: recordType,
+		RecordType: recordType,
+		Count:      1,
 	})
 }
 
