@@ -1,6 +1,8 @@
 package metrics
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type RecordAcceptEventAggregated struct {
 	IsNAT      bool
@@ -31,4 +33,21 @@ func (r RecordAcceptEventAggregated) Aggregate(other EventAggregatable) EventAgg
 	}
 	r.Count += ev.Count
 	return r
+}
+
+type ChangesetEvent struct {
+	FirstTimestamp int64
+	LastTimestamp  int64
+	ApplyTimestamp int64
+}
+
+func (c ChangesetEvent) ToEvent() Event {
+	return Event{
+		EventType: "changeset_applied",
+		EventData: map[string]interface{}{
+			"first_timestamp": c.FirstTimestamp,
+			"last_timestamp":  c.LastTimestamp,
+			"apply_timestamp": c.ApplyTimestamp,
+		},
+	}
 }

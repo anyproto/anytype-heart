@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
@@ -452,6 +453,12 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	if len(changes) == 0 {
 		return nil
 	}
+
+	metrics.SharedClient.RecordEvent(metrics.ChangesetEvent{
+		FirstTimestamp: changes[0].Timestamp,
+		LastTimestamp:  changes[len(changes)-1].Timestamp,
+		ApplyTimestamp: time.Now().Unix(),
+	})
 
 	switch s.tree.Add(changes...) {
 	case change.Nothing:
