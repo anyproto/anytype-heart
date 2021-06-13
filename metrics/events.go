@@ -36,18 +36,16 @@ func (r RecordAcceptEventAggregated) Aggregate(other EventAggregatable) EventAgg
 }
 
 type ChangesetEvent struct {
-	FirstTimestamp int64
-	LastTimestamp  int64
-	ApplyTimestamp int64
+	Diff int64
 }
 
 func (c ChangesetEvent) ToEvent() Event {
 	return Event{
 		EventType: "changeset_applied",
 		EventData: map[string]interface{}{
-			"first_timestamp": c.FirstTimestamp,
-			"last_timestamp":  c.LastTimestamp,
-			"apply_timestamp": c.ApplyTimestamp,
+			// we send diff, and not timestamps of records, because we cannot filter
+			// them in Amplitude (unless we will have access to SQL there)
+			"diff_current_time_vs_first": c.Diff,
 		},
 	}
 }

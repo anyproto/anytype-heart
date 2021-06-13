@@ -455,9 +455,7 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	}
 
 	metrics.SharedClient.RecordEvent(metrics.ChangesetEvent{
-		FirstTimestamp: changes[0].Timestamp,
-		LastTimestamp:  changes[len(changes)-1].Timestamp,
-		ApplyTimestamp: time.Now().Unix(),
+		Diff: time.Now().Unix() - changes[0].Timestamp,
 	})
 
 	switch s.tree.Add(changes...) {
