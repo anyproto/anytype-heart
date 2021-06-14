@@ -428,6 +428,16 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 	return WithDataviewID(DataviewBlockId, dataview, forceViews)
 }
 
+var WithChildrenSorter = func(blockId string, sort func(blockIds []string)) StateTransformer {
+	return func(s *state.State) {
+		b := s.Get(blockId)
+		sort(b.Model().ChildrenIds)
+
+		s.Set(b)
+		return
+	}
+}
+
 var WithRootLink = func(targetBlockId string, style model.BlockContentLinkStyle) StateTransformer {
 	return func(s *state.State) {
 		var exists bool

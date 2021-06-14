@@ -63,18 +63,17 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 						},
 					},
 					Relations: []*model.BlockContentDataviewRelation{},
-					Filters:   []*model.BlockContentDataviewFilter{
+					Filters: []*model.BlockContentDataviewFilter{
 						{
-						Operator:         model.BlockContentDataviewFilter_And,
-						RelationKey:      bundle.RelationKeyTargetObjectType.String(),
-						Condition:        model.BlockContentDataviewFilter_Equal,
-						Value:            pbtypes.String(p.RootId()),
-					}},
+							Operator:    model.BlockContentDataviewFilter_And,
+							RelationKey: bundle.RelationKeyTargetObjectType.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String(p.RootId()),
+						}},
 				},
 			},
 		},
 	}
-
 
 	rels := p.RelationsState(ctx.State, false)
 	recommendedRelationsKeys := pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String())
@@ -126,6 +125,14 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithDataviewID("templates", templatesDataview, true),
 		template.WithDataview(dataview, true),
+		template.WithChildrenSorter(p.RootId(), func(blockIds []string) {
+			i := slice.FindPos(blockIds, "templates")
+			j := slice.FindPos(blockIds, template.DataviewBlockId)
+			// templates dataview must come before the type dataview
+			if i > j {
+				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
+			}
+		}),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
 		template.WithObjectTypeLayoutMigration(),
