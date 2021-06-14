@@ -408,7 +408,10 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 		return err
 	}
 
-	oldView := dvBlock.GetView(viewId)
+	oldView, err := dvBlock.GetView(viewId)
+	if err != nil {
+		return err
+	}
 	var needRecordRefresh bool
 	if !pbtypes.DataviewFiltersEqualSorted(oldView.Filters, view.Filters) {
 		needRecordRefresh = true
@@ -444,11 +447,10 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 	}
 
 	dv := d.getDataviewImpl(dvBlock)
-	activeView := dvBlock.GetView(activeViewId)
-	if activeView == nil {
-		return fmt.Errorf("view not found")
+	_, err := dvBlock.GetView(activeViewId)
+	if err != nil {
+		return err
 	}
-
 	dvBlock.SetActiveView(activeViewId)
 	if dv.activeViewId != activeViewId {
 		dv.activeViewId = activeViewId
@@ -695,7 +697,10 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 
 func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvBlock dataview.Block) ([]*pb.EventMessage, error) {
 	source := dvBlock.Model().GetDataview().Source
-	activeView := dvBlock.GetView(dv.activeViewId)
+	activeView, err := dvBlock.GetView(dv.activeViewId)
+	if err != nil {
+		return nil, err
+	}
 
 	var db database.Reader
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
