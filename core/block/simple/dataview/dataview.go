@@ -34,7 +34,7 @@ func NewDataview(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	GetView(viewID string) *model.BlockContentDataviewView
+	GetView(viewID string) (*model.BlockContentDataviewView, error)
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
@@ -182,14 +182,14 @@ func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	s.content.Views = append(s.content.Views, &view)
 }
 
-func (s *Dataview) GetView(viewId string) *model.BlockContentDataviewView {
+func (s *Dataview) GetView(viewId string) (*model.BlockContentDataviewView, error) {
 	for _, view := range s.GetDataview().Views {
 		if view.Id == viewId {
-			return view
+			return view, nil
 		}
 	}
 
-	return nil
+	return nil, fmt.Errorf("view '%s' not found", viewId)
 }
 
 func (s *Dataview) DeleteView(viewID string) error {
