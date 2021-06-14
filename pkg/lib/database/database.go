@@ -70,6 +70,7 @@ type Query struct {
 	Offset            int                                   // skip given number of results
 	WithSystemObjects bool
 	ObjectTypeFilter  []string
+	KeyMapping        []string
 }
 
 func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {

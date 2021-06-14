@@ -343,3 +343,23 @@ func (sg *structGetter) Get(key string) *types.Value {
 	}
 	return sg.st.Fields[key]
 }
+
+func Map(s *types.Struct, keys ...string) *types.Struct {
+	if len(keys) == 0 {
+		return s
+	}
+	if s == nil {
+		return nil
+	}
+	ns := new(types.Struct)
+	if s.Fields == nil {
+		return ns
+	}
+	ns.Fields = make(map[string]*types.Value)
+	for _, key := range keys {
+		if value, ok := s.Fields[key]; ok {
+			ns.Fields[key] = value
+		}
+	}
+	return ns
+}
