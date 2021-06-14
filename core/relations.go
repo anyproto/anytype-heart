@@ -270,7 +270,7 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 		otypes []*model.ObjectType
 	)
 	for _, t := range []smartblock.SmartBlockType{smartblock.SmartBlockTypeObjectType, smartblock.SmartBlockTypeBundledObjectType} {
-		st, err := source.SourceTypeBySbType(at, t)
+		st, err := mw.GetApp().MustComponent(source.CName).(source.Service).SourceTypeBySbType(t)
 		if err != nil {
 			return response(pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, nil, err)
 		}

@@ -71,6 +71,7 @@ type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
 
 	OpenBlock(ctx *state.Context, id string) error
+	ShowBlock(ctx *state.Context, id string) error
 	OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error)
 	SetBreadcrumbs(ctx *state.Context, req pb.RpcBlockSetBreadcrumbsRequest) (err error)
 	CloseBlock(id string) error
@@ -171,6 +172,9 @@ type Service interface {
 	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
 
 	MakeTemplate(id string) (templateId string, err error)
+	MakeTemplateByObjectType(otId string) (templateId string, err error)
+	CloneTemplate(id string) (templateId string, err error)
+	ApplyTemplate(contextId, templateId string) error
 
 	app.ComponentRunnable
 }
@@ -214,6 +218,7 @@ type service struct {
 	process      process.Service
 	m            sync.Mutex
 	app          *app.App
+	source       source.Service
 }
 
 func (s *service) Name() string {
@@ -228,6 +233,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.openedBlocks = make(map[string]*openedBlock)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.source = a.MustComponent(source.CName).(source.Service)
 	s.app = a
 	return
 }
@@ -308,6 +314,12 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		}
 	}
 	return nil
+}
+
+func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
+	return s.Do(id, func(b smartblock.SmartBlock) error {
+		return b.Show(ctx)
+	})
 }
 
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
@@ -618,7 +630,7 @@ func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func()
 }
 
 func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb smartblock.SmartBlock, err error) {
-	sc, err := source.NewSource(s.anytype, s.status, id, false)
+	sc, err := s.source.NewSource(id, false)
 	if err != nil {
 		return
 	}
@@ -648,6 +660,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate(s.meta, s)
 	case model.SmartBlockType_Template:
+		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
+	case model.SmartBlockType_BundledTemplate:
 		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
@@ -838,12 +852,59 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 		return
 	}
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
-	st.SetObjectType(bundle.TypeKeyTemplate.URL())
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
 	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
 	return
+}
+
+func (s *service) MakeTemplateByObjectType(otId string) (templateId string, err error) {
+	if err = s.Do(otId, func(_ smartblock.SmartBlock) error { return nil }); err != nil {
+		return "", fmt.Errorf("can't open objectType: %v", err)
+	}
+	var st = state.NewDoc("", nil).(*state.State)
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otId})
+	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (s *service) CloneTemplate(id string) (templateId string, err error) {
+	var st *state.State
+	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		if b.Type() != model.SmartBlockType_BundledTemplate {
+			return fmt.Errorf("can clone bundled templates only")
+		}
+		st = b.NewState().Copy()
+		pbtypes.Delete(st.Details(), bundle.RelationKeyTemplateIsBundled.String())
+		return nil
+	}); err != nil {
+		return
+	}
+	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (s *service) ApplyTemplate(contextId, templateId string) (err error) {
+	ts, err := s.stateFromTemplate(templateId)
+	if err != nil {
+		return
+	}
+	return s.Do(contextId, func(b smartblock.SmartBlock) error {
+		orig := b.NewState().ParentState()
+		ts.SetRootId(contextId)
+		ts.SetParent(orig)
+		ts.BlocksInit(orig)
+		return b.Apply(ts)
+	})
 }
 
 func (s *service) cleanupBlocks() (closed bool) {

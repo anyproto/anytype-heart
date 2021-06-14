@@ -1,5 +1,15 @@
 [
   {
+    "description": "Strict dictionary to select relation values from",
+    "format": "status",
+    "hidden": false,
+    "key": "relationDict",
+    "maxCount": 0,
+    "name": "Dictionary",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "tag",
     "hidden": false,
     "key": "tag",
@@ -25,7 +35,7 @@
     "key": "heightInPixels",
     "maxCount": 1,
     "name": "Height",
-    "readonly": true,
+    "readonly": false,
     "source": "details"
   },
   {
@@ -49,6 +59,24 @@
     "source": "account"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "relationFormatObjectTypes",
+    "maxCount": 0,
+    "name": "Object type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "instructions",
+    "maxCount": 1,
+    "name": "Instructions",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Done checkbox used to render action layout. ",
     "format": "checkbox",
     "hidden": true,
@@ -59,11 +87,21 @@
     "source": "details"
   },
   {
+    "description": "Specifies whether template is provided by anytype",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "templateIsBundled",
+    "maxCount": 1,
+    "name": "Bundled template",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "format": "date",
     "hidden": false,
     "key": "dateOfBirth",
     "maxCount": 1,
-    "name": "Date of birth",
+    "name": "Birthday",
     "readonly": false,
     "source": "details"
   },
@@ -97,13 +135,32 @@
   {
     "format": "object",
     "hidden": false,
-    "key": "linkedTasks",
+    "key": "tasks",
     "maxCount": 0,
-    "name": "Linked tasks",
+    "name": "Tasks",
     "objectTypes": [
       "task"
     ],
     "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "gratefulFor",
+    "maxCount": 1,
+    "name": "Grateful for",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Type of the underlying value",
+    "format": "number",
+    "hidden": true,
+    "key": "relationFormat",
+    "maxCount": 1,
+    "name": "Format",
+    "readonly": true,
     "source": "details"
   },
   {
@@ -120,6 +177,27 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "ingredients",
+    "maxCount": 1,
+    "name": "Ingredients",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "responsible",
+    "maxCount": 0,
+    "name": "Responsible",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Year when this object were released",
     "format": "number",
     "hidden": false,
@@ -130,6 +208,7 @@
     "source": "details"
   },
   {
+    "description": "Option that contains scale of Cover the image",
     "format": "number",
     "hidden": true,
     "key": "coverScale",
@@ -139,14 +218,38 @@
     "source": "details"
   },
   {
+    "format": "url",
+    "hidden": false,
+    "key": "twitter",
+    "maxCount": 1,
+    "name": "Twitter",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "resources",
+    "maxCount": 1,
+    "name": "Resources",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "relationDefaultValue",
+    "maxCount": 1,
+    "name": "Default Value",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "object",
     "hidden": false,
     "key": "linkedProjects",
     "maxCount": 0,
     "name": "Linked Projects",
-    "objectTypes": [
-      "project"
-    ],
     "readonly": false,
     "source": "details"
   },
@@ -161,6 +264,18 @@
     "source": "details"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "participants",
+    "maxCount": 0,
+    "name": "Participants",
+    "objectTypes": [
+      "objectType"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Specify visual align of the layout",
     "format": "number",
     "hidden": true,
@@ -171,12 +286,30 @@
     "source": "details"
   },
   {
-    "description": "Task status?",
+    "format": "number",
+    "hidden": false,
+    "key": "difficulty",
+    "maxCount": 1,
+    "name": "Difficulty",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Task status",
     "format": "status",
     "hidden": false,
     "key": "status",
     "maxCount": 1,
     "name": "Status",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "happenings",
+    "maxCount": 1,
+    "name": "Happenings",
     "readonly": false,
     "source": "details"
   },
@@ -191,12 +324,39 @@
     "source": "details"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "linkedContacts",
+    "maxCount": 1,
+    "name": "Linked Contacts",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Specify if object is hidden",
     "format": "checkbox",
     "hidden": true,
     "key": "isHidden",
     "maxCount": 1,
     "name": "Hidden",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "email",
+    "hidden": false,
+    "key": "email",
+    "maxCount": 1,
+    "name": "Email",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "company",
+    "maxCount": 1,
+    "name": "Company",
     "readonly": false,
     "source": "details"
   },
@@ -218,6 +378,15 @@
     "name": "Last modified date",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "notes",
+    "maxCount": 1,
+    "name": "Notes",
+    "readonly": false,
+    "source": "details"
   },
   {
     "description": "List of recommended relations",
@@ -252,6 +421,15 @@
     "key": "recommendedLayout",
     "maxCount": 1,
     "name": "Recommended layout",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "result",
+    "maxCount": 1,
+    "name": "Result",
     "readonly": false,
     "source": "details"
   },
@@ -315,6 +493,15 @@
     "source": "details"
   },
   {
+    "format": "number",
+    "hidden": false,
+    "key": "time",
+    "maxCount": 1,
+    "name": "Time",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Size of file/image in bytes",
     "format": "number",
     "hidden": false,
@@ -338,11 +525,21 @@
     "source": "details"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "events",
+    "maxCount": 1,
+    "name": "Events",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Owner-given name for the template",
     "format": "shorttext",
     "hidden": true,
-    "key": "builtinTemplateId",
+    "key": "templateName",
     "maxCount": 1,
-    "name": "Builtin template",
+    "name": "Template name",
     "readonly": false,
     "source": "details"
   },
@@ -363,9 +560,6 @@
     "key": "assignee",
     "maxCount": 0,
     "name": "Assignee",
-    "objectTypes": [
-      "profile"
-    ],
     "readonly": false,
     "source": "details"
   },
@@ -402,12 +596,57 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "intentions",
+    "maxCount": 1,
+    "name": "Intention",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "url",
+    "hidden": false,
+    "key": "telegram",
+    "maxCount": 1,
+    "name": "Telegram",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Name of the object",
     "format": "shorttext",
     "hidden": false,
     "key": "name",
     "maxCount": 1,
     "name": "Name",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "tag",
+    "hidden": false,
+    "key": "mood",
+    "maxCount": 0,
+    "name": "Mood",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "agenda",
+    "maxCount": 1,
+    "name": "Agenda",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "url",
+    "hidden": false,
+    "key": "instagram",
+    "maxCount": 1,
+    "name": "Instagram",
     "readonly": false,
     "source": "details"
   },
@@ -441,6 +680,7 @@
     "source": "details"
   },
   {
+    "description": "Relation that stores the object's type",
     "format": "object",
     "hidden": true,
     "key": "type",
@@ -451,16 +691,6 @@
     ],
     "readonly": false,
     "source": "derived"
-  },
-  {
-    "description": "Type of the underlying value",
-    "format": "number",
-    "hidden": true,
-    "key": "relationFormat",
-    "maxCount": 1,
-    "name": "Relation Format",
-    "readonly": false,
-    "source": "details"
   },
   {
     "description": "Anytype layout ID(from pb enum)",
@@ -501,6 +731,24 @@
     "source": "details"
   },
   {
+    "format": "url",
+    "hidden": false,
+    "key": "socialProfile",
+    "maxCount": 1,
+    "name": "Social Profile",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "occupation",
+    "maxCount": 1,
+    "name": "Occupation",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Image x offset of the provided image",
     "format": "number",
     "hidden": true,
@@ -520,6 +768,15 @@
     "source": "details"
   },
   {
+    "format": "url",
+    "hidden": false,
+    "key": "facebook",
+    "maxCount": 1,
+    "name": "Facebook",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Link to itself. Used in databases",
     "format": "object",
     "hidden": true,
@@ -530,11 +787,29 @@
     "source": "derived"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "actionItems",
+    "maxCount": 1,
+    "name": "Action Items",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "cameraIso",
     "maxCount": 1,
     "name": "ISO",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "servings",
+    "maxCount": 1,
+    "name": "Servings",
     "readonly": false,
     "source": "details"
   },
@@ -562,13 +837,23 @@
     "source": "derived"
   },
   {
+    "description": "Relation allows multi values",
+    "format": "number",
+    "hidden": false,
+    "key": "relationMaxCount",
+    "maxCount": 1,
+    "name": "Max values",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Width of image/video in pixels",
     "format": "number",
     "hidden": false,
     "key": "widthInPixels",
     "maxCount": 1,
     "name": "Width",
-    "readonly": true,
+    "readonly": false,
     "source": "details"
   },
   {
@@ -613,6 +898,15 @@
     "source": "derived"
   },
   {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "job",
+    "maxCount": 1,
+    "name": "Job",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Have been added to library from marketplace",
     "format": "checkbox",
     "hidden": true,
@@ -632,6 +926,15 @@
     "objectTypes": [
       "relation"
     ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "phone",
+    "hidden": false,
+    "key": "phone",
+    "maxCount": 1,
+    "name": "Phone",
     "readonly": false,
     "source": "details"
   }

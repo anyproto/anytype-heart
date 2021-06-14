@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -22,7 +23,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockBuiltinTemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockIndexer"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockStatus"
 	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/magiconair/properties/assert"
@@ -143,7 +146,15 @@ func newFixture(t *testing.T) *fixture {
 	require.NoError(t, err)
 	cfg := config.DefaultConfig
 	cfg.NewAccount = true
-	ta.With(&cfg).With(wallet.NewWithRepoPathAndKeys(rootPath, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(fx.rb).With(fx.Indexer).With(fx.getSerach)
+	ta.With(&cfg).With(wallet.NewWithRepoPathAndKeys(rootPath, nil, nil)).
+		With(clientds.New()).
+		With(ftsearch.New()).
+		With(fx.rb).
+		With(fx.Indexer).
+		With(fx.getSerach).
+		With(source.New())
+	mockStatus.RegisterMockStatus(fx.ctrl, ta)
+	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
 	require.NoError(t, ta.Start())
 	return fx
 }

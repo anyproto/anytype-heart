@@ -118,6 +118,31 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockShow(req *pb.RpcBlockShowRequest) *pb.RpcBlockShowResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockShowResponseErrorCode, err error) *pb.RpcBlockShowResponse {
+		m := &pb.RpcBlockShowResponse{Error: &pb.RpcBlockShowResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.ShowBlock(ctx, req.BlockId)
+	})
+	if err != nil {
+		if err == source.ErrUnknownDataFormat {
+			return response(pb.RpcBlockShowResponseError_ANYTYPE_NEEDS_UPGRADE, err)
+		}
+		return response(pb.RpcBlockShowResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockShowResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockGetPublicWebURL(req *pb.RpcBlockGetPublicWebURLRequest) *pb.RpcBlockGetPublicWebURLResponse {
 	response := func(url string, code pb.RpcBlockGetPublicWebURLResponseErrorCode, err error) *pb.RpcBlockGetPublicWebURLResponse {
 		m := &pb.RpcBlockGetPublicWebURLResponse{Url: url, Error: &pb.RpcBlockGetPublicWebURLResponseError{Code: code}}

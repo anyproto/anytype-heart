@@ -105,6 +105,35 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 	assert.Equal(t, d.(*State).String(), dc.(*State).String())
 }
 
+func TestState_SetParent(t *testing.T) {
+	orig := NewDoc("origRoot", nil).(*State)
+	orig.Add(simple.New(&model.Block{Id: "origRoot", ChildrenIds: []string{"header"}}))
+	orig.Add(simple.New(&model.Block{Id: "header"}))
+	orig.SetObjectType("orig")
+	orig.AddRelation(&model.Relation{Key: "one"})
+	st := orig.Copy()
+
+	newState := NewDoc("root", nil).(*State)
+	newState.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"child"}}))
+	newState.Add(simple.New(&model.Block{Id: "child"}))
+	newState.SetObjectTypes([]string{"newOT1", "newOT2"})
+	newState.AddRelation(&model.Relation{Key: "newOne"})
+	newState.AddRelation(&model.Relation{Key: "newTwo"})
+
+	ns := newState.Copy()
+
+	ns.SetRootId(st.RootId())
+	ns.SetParent(st)
+	_, _, err := ApplyState(ns, false)
+	require.NoError(t, err)
+
+	st2 := orig.Copy()
+	require.NoError(t, st2.ApplyChange(st.GetChanges()...))
+
+	assert.Equal(t, st.StringDebug(), st2.StringDebug())
+	t.Log(st2.StringDebug())
+}
+
 func TestStateNormalizeMerge(t *testing.T) {
 	d := NewDoc("root", nil).(*State)
 	s := d.NewState()

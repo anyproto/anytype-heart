@@ -18,7 +18,7 @@ type Ctrl interface {
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
 	GetRelations(objectId string) (relations []*model.Relation, err error)
 
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	UpdateExtraRelations(ctx *state.Context, id string, relations []*model.Relation, createIfMissing bool) (err error)
 	AddExtraRelations(ctx *state.Context, id string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
 	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)
@@ -77,6 +77,6 @@ func (r router) Get(id string) (database.Database, error) {
 		setOrAddRelations,
 		modifyExtraRelationsNoContext,
 		updateOptionNoContext,
-		r.s.CreateSmartBlock,
+		r.s.CreateSmartBlockFromTemplate,
 	), nil
 }

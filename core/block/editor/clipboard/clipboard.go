@@ -341,7 +341,7 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 		cbs.Add(simple.New(b))
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
-	cbs.BlocksInit()
+	cbs.BlocksInit(cbs)
 	state.CleanupLayouts(cbs)
 	cbs.Normalize(false)
 	return

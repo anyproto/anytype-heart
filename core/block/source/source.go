@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
@@ -50,58 +49,32 @@ type SourceType interface {
 	ListIds() ([]string, error)
 }
 
+type SourceWithType interface {
+	Source
+	SourceType
+}
+
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
-func SourceTypeBySbType(a core.Service, blockType smartblock.SmartBlockType) (s SourceType, err error) {
+func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error) {
 	switch blockType {
 	case smartblock.SmartBlockTypeAnytypeProfile:
-		return &anytypeProfile{a: a}, nil
+		return &anytypeProfile{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeFile:
-		return &files{a: a}, nil
+		return &files{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledObjectType:
-		return &bundledObjectType{a: a}, nil
-	case smartblock.SmartBlockTypeBundledRelation:
-		return &bundledRelation{a: a}, nil
-	case smartblock.SmartBlockTypeIndexedRelation:
-		return &bundledRelation{a: a}, nil
+		return &bundledObjectType{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
+		return &bundledRelation{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeBundledTemplate:
+		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err
 		} else {
-			return &source{a: a, smartblockType: blockType}, nil
+			return &source{a: s.anytype, smartblockType: blockType}, nil
 		}
 	}
-}
-
-func NewSource(a core.Service, ss status.Service, id string, listenToOwnChanges bool) (s Source, err error) {
-	st, err := smartblock.SmartBlockTypeFromID(id)
-
-	if id == addr.AnytypeProfileId {
-		return NewAnytypeProfile(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeFile {
-		return NewFiles(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledObjectType {
-		return NewBundledObjectType(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledRelation {
-		return NewBundledRelation(a, id), nil
-	}
-	if st == smartblock.SmartBlockTypeIndexedRelation {
-		return NewIndexedRelation(a, id), nil
-	}
-
-	tid, err := thread.Decode(id)
-	if err != nil {
-		err = fmt.Errorf("can't restore thread ID: %w", err)
-		return
-	}
-
-	return newSource(a, ss, tid, listenToOwnChanges)
 }
 
 func newSource(a core.Service, ss status.Service, tid thread.ID, listenToOwnChanges bool) (s Source, err error) {

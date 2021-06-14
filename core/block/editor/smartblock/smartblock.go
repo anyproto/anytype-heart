@@ -171,7 +171,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.source = ctx.Source
 	sb.undo = undo.NewHistory(0)
 	sb.storeFileKeys()
-	sb.Doc.BlocksInit()
+	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
 
 	if ctx.State == nil {
 		ctx.State = sb.NewState()
@@ -203,7 +203,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
-	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
+	if sb.Type() == model.SmartBlockType_Archive {
 		return nil
 	}
 
@@ -351,15 +351,13 @@ loop:
 			}
 			if d.ObjectTypes != nil {
 				if len(d.SmartBlockMeta.ObjectTypes) > 0 {
-					if len(d.SmartBlockMeta.ObjectTypes) > 1 {
-						log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
-					}
-					ot := d.SmartBlockMeta.ObjectTypes[0]
-					if len(ot) == 0 {
-						log.Errorf("sb %s has empty objectType", sb.Id())
-					} else {
-						if slice.FindPos(uniqueObjTypes, ot) == -1 {
-							uniqueObjTypes = append(uniqueObjTypes, ot)
+					for _, ot := range d.SmartBlockMeta.ObjectTypes {
+						if len(ot) == 0 {
+							log.Errorf("sb %s has empty objectType", sb.Id())
+						} else {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								uniqueObjTypes = append(uniqueObjTypes, ot)
+							}
 						}
 					}
 				}
@@ -820,7 +818,9 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 	ot := otypes[len(otypes)-1]
 	s.SetObjectTypes(objectTypes)
-	s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
+	if pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()) == nil {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
+	}
 	return
 }
 
@@ -1214,7 +1214,7 @@ func (sb *smartBlock) Relations() []*model.Relation {
 }
 
 func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
-	if sb.Type() == model.SmartBlockType_Archive || sb.source.Virtual() {
+	if sb.Type() == model.SmartBlockType_Archive {
 		return sb.baseRelations()
 	}
 

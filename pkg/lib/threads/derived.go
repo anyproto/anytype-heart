@@ -465,26 +465,38 @@ func threadIDFromBytes(variant thread.Variant, blockType smartblock.SmartBlockTy
 }
 
 func ThreadCreateID(variant thread.Variant, blockType smartblock.SmartBlockType) (thread.ID, error) {
-	rnd := make([]byte, 32)
-	_, err := rand.Read(rnd)
-	if err != nil {
-		panic("random read failed")
-	}
-
-	rndlen := len(rnd)
-
-	// two 8 bytes (max) numbers plus rnd
-	buf := make([]byte, 2*binary.MaxVarintLen64+rndlen)
+	rndlen := 32
+	buf := make([]byte, 3*binary.MaxVarintLen64+rndlen)
 	n := binary.PutUvarint(buf, thread.V1)
 	n += binary.PutUvarint(buf[n:], uint64(variant))
 	n += binary.PutUvarint(buf[n:], uint64(blockType))
 
-	cn := copy(buf[n:], rnd)
-	if cn != rndlen {
-		return thread.Undef, fmt.Errorf("copy length is inconsistent")
+	_, err := rand.Read(buf[n : n+rndlen])
+	if err != nil {
+		panic("random read failed")
 	}
-
 	return thread.Cast(buf[:n+rndlen])
+}
+
+func PatchSmartBlockType(id string, sbt smartblock.SmartBlockType) (string, error) {
+	tid, err := thread.Decode(id)
+	if err != nil {
+		return id, err
+	}
+	rawid := []byte(tid.KeyString())
+	ver, n := binary.Uvarint(rawid)
+	variant, n2 := binary.Uvarint(rawid[n:])
+	_, n3 := binary.Uvarint(rawid[n+n2:])
+	finalN := n + n2 + n3
+	buf := make([]byte, 3*binary.MaxVarintLen64+len(rawid)-finalN)
+	n = binary.PutUvarint(buf, ver)
+	n += binary.PutUvarint(buf[n:], variant)
+	n += binary.PutUvarint(buf[n:], uint64(sbt))
+	copy(buf[n:], rawid[finalN:])
+	if tid, err = thread.Cast(buf[:n+len(rawid)-finalN]); err != nil {
+		return id, err
+	}
+	return tid.String(), nil
 }
 
 // threadDeriveKeys derive service and read encryption keys derived from key
