@@ -12,6 +12,7 @@ import (
 
 type writer interface {
 	Path() string
+	Namer() *fileNamer
 	WriteFile(filename string, r io.Reader) (err error)
 	Close() (err error)
 }
@@ -32,6 +33,17 @@ func newDirWriter(path string) (writer, error) {
 
 type dirWriter struct {
 	path string
+	fn   *fileNamer
+	m    sync.Mutex
+}
+
+func (d *dirWriter) Namer() *fileNamer {
+	d.m.Lock()
+	defer d.m.Unlock()
+	if d.fn == nil {
+		d.fn = newNamer()
+	}
+	return d.fn
 }
 
 func (d *dirWriter) Path() string {
@@ -73,6 +85,16 @@ type zipWriter struct {
 	zw   *zip.Writer
 	f    io.Closer
 	m    sync.Mutex
+	fn   *fileNamer
+}
+
+func (d *zipWriter) Namer() *fileNamer {
+	d.m.Lock()
+	defer d.m.Unlock()
+	if d.fn == nil {
+		d.fn = newNamer()
+	}
+	return d.fn
 }
 
 func (d *zipWriter) Path() string {
