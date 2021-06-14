@@ -8037,7 +8037,8 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated |  |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 
 
 
