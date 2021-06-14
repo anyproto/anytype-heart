@@ -101,9 +101,6 @@ func (s *State) ApplyChangeIgnoreErr(changes ...*pb.ChangeContent) {
 }
 
 func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
-	if s.rootId == "bafyba6zfozewullud4sk6bqohkzvm7qxj4ijvifzetewlffha5tyhj36" {
-		log.Warnf("dbgch: %v", ch)
-	}
 	switch {
 	case ch.GetBlockCreate() != nil:
 		if err = s.changeBlockCreate(ch.GetBlockCreate()); err != nil {
