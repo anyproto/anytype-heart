@@ -635,10 +635,11 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 		}
 	}
 
-	relations := sb.Relations()
+	aggregatedRelations := sb.Relations()
+
 	for _, detail := range details {
 		if detail.Value != nil {
-			rel := pbtypes.GetRelation(relations, detail.Key)
+			rel := pbtypes.GetRelation(aggregatedRelations, detail.Key)
 			if rel == nil {
 				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
 				return fmt.Errorf("relation not found: you should add the missing relation first")
@@ -648,10 +649,11 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 				s.SetExtraRelation(rel)
 			}
 			if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
+				rel = pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
 				newOptsIds := slice.Difference(pbtypes.GetStringListValue(detail.Value), pbtypes.GetStringListValue(detCopy.Fields[detail.Key]))
 				var missingOptsIds []string
 				for _, newOptId := range newOptsIds {
-					if !pbtypes.HasOption(rel.SelectDict, newOptId) {
+					if opt := pbtypes.GetOption(rel.SelectDict, newOptId); opt == nil || opt.Scope != model.RelationOption_local  {
 						missingOptsIds = append(missingOptsIds, newOptId)
 					}
 				}
