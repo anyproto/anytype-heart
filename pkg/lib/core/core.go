@@ -184,6 +184,7 @@ func (a *Anytype) Run() (err error) {
 	}
 
 	metrics.SharedClient.SetUserId(a.Account())
+	metrics.SharedClient.StartAggregating()
 
 	return a.InitPredefinedBlocks(context.TODO(), a.config.NewAccount)
 }
@@ -276,6 +277,7 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) err
 }
 
 func (a *Anytype) Close() (err error) {
+	metrics.SharedClient.StopAggregating()
 	return a.Stop()
 }
 
