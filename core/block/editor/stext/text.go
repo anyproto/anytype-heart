@@ -102,6 +102,9 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 			targetPos = model.Block_Top
 		}
 	case pb.RpcBlockSplitRequest_TITLE:
+		targetId = template.HeaderLayoutId
+		targetPos = model.Block_Bottom
+	case -1: // text in header will move in next block in header (not usable for now)
 		header := s.Pick(template.HeaderLayoutId).Model()
 		pos := slice.FindPos(header.ChildrenIds, req.BlockId)
 		if pos != -1 {
