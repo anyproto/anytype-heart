@@ -711,9 +711,9 @@ func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(dvBlock data
 	d.SendEvent([]*pb.EventMessage{
 		{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
 			&pb.EventBlockDataviewRelationSet{
-				Id:      dvBlock.Model().Id,
-				RelationKey:  rel.Key,
-				Relation: rel,
+				Id:          dvBlock.Model().Id,
+				RelationKey: rel.Key,
+				Relation:    rel,
 			}}}})
 	st.Set(dvBlock)
 	return d.Apply(st)
@@ -754,14 +754,15 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	recordsSub := database.NewSubscription(nil, recordsCh)
 	depRecordsSub := database.NewSubscription(nil, depRecordsCh)
 
-	entries, cancelRecordSubscription, total, err := db.QueryAndSubscribeForChanges(&sch, database.Query{
+	q := database.Query{
 		Relations:         activeView.Relations,
 		Filters:           activeView.Filters,
 		Sorts:             activeView.Sorts,
 		Limit:             dv.limit,
 		Offset:            dv.offset,
 		WithSystemObjects: d.withSystemObjects,
-	}, recordsSub)
+	}
+	entries, cancelRecordSubscription, total, err := db.QueryAndSubscribeForChanges(&sch, q, recordsSub)
 	if err != nil {
 		return nil, err
 	}
@@ -826,6 +827,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		return nil, err
 	}
 
+	filters := filter.AndFilters{qFilter, database.PreFilters(q.IncludeArchivedObjects, &sch)}
 	go func() {
 		for {
 			select {
@@ -833,8 +835,8 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				if !ok {
 					return
 				}
-				ots := pbtypes.GetStringList(rec, bundle.RelationKeyType.String())
-				if (len(ots) > 0 && ots[0] != source) || !qFilter.FilterObject(pbtypes.ValueGetter(rec)) {
+				vg := pbtypes.ValueGetter(rec)
+				if !filters.FilterObject(vg) {
 					d.SendEvent([]*pb.EventMessage{
 						{Value: &pb.EventMessageValueOfBlockDataviewRecordsDelete{
 							&pb.EventBlockDataviewRecordsDelete{
@@ -848,6 +850,11 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 					if rec != nil && rels != nil {
 						for k, v := range rec.Fields {
 							rel := pbtypes.GetRelation(rels, k)
+							if rel == nil {
+								// we don't have the dataview relation for this struct key, this means we can ignore it
+								// todo: should we omit value when we don't have explicit relation in a dataview for it?
+								continue
+							}
 							if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
 								for _, opt := range pbtypes.GetStringListValue(v) {
 									var found bool

@@ -62,14 +62,15 @@ type Database interface {
 }
 
 type Query struct {
-	FullText          string
-	Relations         []*model.BlockContentDataviewRelation // relations used to provide relations options
-	Filters           []*model.BlockContentDataviewFilter   // filters results. apply sequentially
-	Sorts             []*model.BlockContentDataviewSort     // order results. apply hierarchically
-	Limit             int                                   // maximum number of results
-	Offset            int                                   // skip given number of results
-	WithSystemObjects bool
-	ObjectTypeFilter  []string
+	FullText               string
+	Relations              []*model.BlockContentDataviewRelation // relations used to provide relations options
+	Filters                []*model.BlockContentDataviewFilter   // filters results. apply sequentially
+	Sorts                  []*model.BlockContentDataviewSort     // order results. apply hierarchically
+	Limit                  int                                   // maximum number of results
+	Offset                 int                                   // skip given number of results
+	WithSystemObjects      bool
+	IncludeArchivedObjects bool
+	ObjectTypeFilter       []string
 }
 
 func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
@@ -87,9 +88,38 @@ func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
 	return
 }
 
+func PreFilters(includeArchived bool, sch *schema.Schema) filter.Filter {
+	var preFilter filter.AndFilters
+	if sch.ObjType != nil {
+		relTypeFilter := filter.OrFilters{
+			filter.Eq{
+				Key:   bundle.RelationKeyType.String(),
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: pbtypes.String(sch.ObjType.Url),
+			},
+		}
+		if sch.ObjType.Url == bundle.TypeKeyPage.URL() {
+			relTypeFilter = append(relTypeFilter, filter.Empty{
+				Key: bundle.RelationKeyType.String(),
+			})
+		}
+		preFilter = append(preFilter, relTypeFilter)
+	}
+
+	if !includeArchived {
+		preFilter = append(preFilter, filter.Not{Filter: filter.Eq{
+			Key:   bundle.RelationKeyIsArchived.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.Bool(true),
+		}})
+	}
+
+	return preFilter
+}
+
 func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 	f = new(filters)
-	var preFilter filter.Filter
+	mainFilter := filter.AndFilters{}
 	if sch != nil {
 		for _, rel := range sch.Relations {
 			if rel.Format == model.RelationFormat_date {
@@ -112,36 +142,16 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 				qf.Value = dateOnly(qf.Value)
 			}
 		}
-		if sch.ObjType != nil {
-			relTypeFilter := filter.OrFilters{
-				filter.Eq{
-					Key:   bundle.RelationKeyType.String(),
-					Cond:  model.BlockContentDataviewFilter_Equal,
-					Value: pbtypes.String(sch.ObjType.Url),
-				},
-			}
-			if sch.ObjType.Url == bundle.TypeKeyPage.URL() {
-				relTypeFilter = append(relTypeFilter, filter.Empty{
-					Key: bundle.RelationKeyType.String(),
-				})
-			}
-			preFilter = relTypeFilter
+		
+		preFilter := PreFilters(q.IncludeArchivedObjects, sch)
+		if preFilter != nil {
+			mainFilter = append(mainFilter, preFilter)
 		}
 	}
 	qFilter, err := filter.MakeAndFilter(q.Filters)
 	if err != nil {
 		return
 	}
-	mainFilter := filter.AndFilters{}
-	if preFilter != nil {
-		mainFilter = append(mainFilter, preFilter)
-	}
-
-	mainFilter = append(mainFilter, filter.Not{Filter: filter.Eq{
-		Key:   bundle.RelationKeyIsArchived.String(),
-		Cond:  model.BlockContentDataviewFilter_Equal,
-		Value: pbtypes.Bool(true),
-	}})
 
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
