@@ -56,6 +56,10 @@
     - [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request)
     - [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response)
     - [Rpc.Account.Stop.Response.Error](#anytype.Rpc.Account.Stop.Response.Error)
+    - [Rpc.ApplyTemplate](#anytype.Rpc.ApplyTemplate)
+    - [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request)
+    - [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response)
+    - [Rpc.ApplyTemplate.Response.Error](#anytype.Rpc.ApplyTemplate.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
     - [Rpc.Block.Bookmark](#anytype.Rpc.Block.Bookmark)
     - [Rpc.Block.Bookmark.CreateAndFetch](#anytype.Rpc.Block.Bookmark.CreateAndFetch)
@@ -280,6 +284,10 @@
     - [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request)
     - [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response)
     - [Rpc.Block.SetBreadcrumbs.Response.Error](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error)
+    - [Rpc.Block.Show](#anytype.Rpc.Block.Show)
+    - [Rpc.Block.Show.Request](#anytype.Rpc.Block.Show.Request)
+    - [Rpc.Block.Show.Response](#anytype.Rpc.Block.Show.Response)
+    - [Rpc.Block.Show.Response.Error](#anytype.Rpc.Block.Show.Response.Error)
     - [Rpc.Block.Split](#anytype.Rpc.Block.Split)
     - [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request)
     - [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response)
@@ -360,6 +368,10 @@
     - [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request)
     - [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response)
     - [Rpc.BlockList.TurnInto.Response.Error](#anytype.Rpc.BlockList.TurnInto.Response.Error)
+    - [Rpc.CloneTemplate](#anytype.Rpc.CloneTemplate)
+    - [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request)
+    - [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response)
+    - [Rpc.CloneTemplate.Response.Error](#anytype.Rpc.CloneTemplate.Response.Error)
     - [Rpc.Config](#anytype.Rpc.Config)
     - [Rpc.Config.Get](#anytype.Rpc.Config.Get)
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
@@ -380,6 +392,10 @@
     - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
     - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
     - [Rpc.Export.Response.Error](#anytype.Rpc.Export.Response.Error)
+    - [Rpc.ExportTemplates](#anytype.Rpc.ExportTemplates)
+    - [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request)
+    - [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response)
+    - [Rpc.ExportTemplates.Response.Error](#anytype.Rpc.ExportTemplates.Response.Error)
     - [Rpc.ExternalDrop](#anytype.Rpc.ExternalDrop)
     - [Rpc.ExternalDrop.Content](#anytype.Rpc.ExternalDrop.Content)
     - [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request)
@@ -432,6 +448,10 @@
     - [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request)
     - [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response)
     - [Rpc.MakeTemplate.Response.Error](#anytype.Rpc.MakeTemplate.Response.Error)
+    - [Rpc.MakeTemplateByObjectType](#anytype.Rpc.MakeTemplateByObjectType)
+    - [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request)
+    - [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response)
+    - [Rpc.MakeTemplateByObjectType.Response.Error](#anytype.Rpc.MakeTemplateByObjectType.Response.Error)
     - [Rpc.Navigation](#anytype.Rpc.Navigation)
     - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype.Rpc.Navigation.GetObjectInfoWithLinks)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request)
@@ -550,6 +570,7 @@
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
+    - [Rpc.ApplyTemplate.Response.Error.Code](#anytype.Rpc.ApplyTemplate.Response.Error.Code)
     - [Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code)
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
@@ -602,6 +623,7 @@
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
     - [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code)
+    - [Rpc.Block.Show.Response.Error.Code](#anytype.Rpc.Block.Show.Response.Error.Code)
     - [Rpc.Block.Split.Request.Mode](#anytype.Rpc.Block.Split.Request.Mode)
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
@@ -621,11 +643,13 @@
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.BlockList.TurnInto.Response.Error.Code](#anytype.Rpc.BlockList.TurnInto.Response.Error.Code)
+    - [Rpc.CloneTemplate.Response.Error.Code](#anytype.Rpc.CloneTemplate.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
+    - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code)
@@ -638,6 +662,7 @@
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.MakeTemplate.Response.Error.Code](#anytype.Rpc.MakeTemplate.Response.Error.Code)
+    - [Rpc.MakeTemplateByObjectType.Response.Error.Code](#anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code)
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
@@ -926,6 +951,7 @@
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
+| BlockShow | [Rpc.Block.Show.Request](#anytype.Rpc.Block.Show.Request) | [Rpc.Block.Show.Response](#anytype.Rpc.Block.Show.Response) |  |
 | BlockGetPublicWebURL | [Rpc.Block.GetPublicWebURL.Request](#anytype.Rpc.Block.GetPublicWebURL.Request) | [Rpc.Block.GetPublicWebURL.Response](#anytype.Rpc.Block.GetPublicWebURL.Response) |  |
 | BlockOpenBreadcrumbs | [Rpc.Block.OpenBreadcrumbs.Request](#anytype.Rpc.Block.OpenBreadcrumbs.Request) | [Rpc.Block.OpenBreadcrumbs.Response](#anytype.Rpc.Block.OpenBreadcrumbs.Response) |  |
 | BlockSetBreadcrumbs | [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request) | [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response) |  |
@@ -1017,7 +1043,11 @@
 | HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
+| ExportTemplates | [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request) | [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response) |  |
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
+| MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
+| CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
+| ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
@@ -1644,6 +1674,63 @@ Middleware-to-front-end response for an account stop request
 
 
 
+<a name="anytype.Rpc.ApplyTemplate"></a>
+
+### Rpc.ApplyTemplate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ApplyTemplate.Request"></a>
+
+### Rpc.ApplyTemplate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| templateId | [string](#string) |  | id of template |
+
+
+
+
+
+
+<a name="anytype.Rpc.ApplyTemplate.Response"></a>
+
+### Rpc.ApplyTemplate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ApplyTemplate.Response.Error](#anytype.Rpc.ApplyTemplate.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ApplyTemplate.Response.Error"></a>
+
+### Rpc.ApplyTemplate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ApplyTemplate.Response.Error.Code](#anytype.Rpc.ApplyTemplate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block"></a>
 
 ### Rpc.Block
@@ -2195,6 +2282,7 @@ common simple block command
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -4941,6 +5029,64 @@ Image/Video/File blocks then:
 
 
 
+<a name="anytype.Rpc.Block.Show"></a>
+
+### Rpc.Block.Show
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Request"></a>
+
+### Rpc.Block.Show.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context blo1k |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Response"></a>
+
+### Rpc.Block.Show.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Show.Response.Error](#anytype.Rpc.Block.Show.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Response.Error"></a>
+
+### Rpc.Block.Show.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Show.Response.Error.Code](#anytype.Rpc.Block.Show.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Split"></a>
 
 ### Rpc.Block.Split
@@ -6100,6 +6246,63 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.CloneTemplate"></a>
+
+### Rpc.CloneTemplate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Request"></a>
+
+### Rpc.CloneTemplate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of template block for cloning |
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Response"></a>
+
+### Rpc.CloneTemplate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.CloneTemplate.Response.Error](#anytype.Rpc.CloneTemplate.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Response.Error"></a>
+
+### Rpc.CloneTemplate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.CloneTemplate.Response.Error.Code](#anytype.Rpc.CloneTemplate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Config"></a>
 
 ### Rpc.Config
@@ -6408,6 +6611,64 @@ commands acceptable only for text blocks, others will be ignored
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates"></a>
+
+### Rpc.ExportTemplates
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Request"></a>
+
+### Rpc.ExportTemplates.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  | the path where export files will place |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response"></a>
+
+### Rpc.ExportTemplates.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ExportTemplates.Response.Error](#anytype.Rpc.ExportTemplates.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response.Error"></a>
+
+### Rpc.ExportTemplates.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7145,6 +7406,63 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.MakeTemplateByObjectType"></a>
+
+### Rpc.MakeTemplateByObjectType
+
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Request"></a>
+
+### Rpc.MakeTemplateByObjectType.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectType | [string](#string) |  | id of desired object type |
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Response"></a>
+
+### Rpc.MakeTemplateByObjectType.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MakeTemplateByObjectType.Response.Error](#anytype.Rpc.MakeTemplateByObjectType.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Response.Error"></a>
+
+### Rpc.MakeTemplateByObjectType.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MakeTemplateByObjectType.Response.Error.Code](#anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Navigation"></a>
 
 ### Rpc.Navigation
@@ -7719,7 +8037,8 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated |  |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 
 
 
@@ -8815,6 +9134,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.ApplyTemplate.Response.Error.Code"></a>
+
+### Rpc.ApplyTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code"></a>
 
 ### Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code
@@ -9496,6 +9828,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Show.Response.Error.Code"></a>
+
+### Rpc.Block.Show.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
+
+
+
 <a name="anytype.Rpc.Block.Split.Request.Mode"></a>
 
 ### Rpc.Block.Split.Request.Mode
@@ -9745,6 +10091,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.CloneTemplate.Response.Error.Code"></a>
+
+### Rpc.CloneTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Config.Get.Response.Error.Code"></a>
 
 ### Rpc.Config.Get.Response.Error.Code
@@ -9792,13 +10151,27 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MD | 0 |  |
+| Markdown | 0 |  |
+| Protobuf | 1 |  |
 
 
 
 <a name="anytype.Rpc.Export.Response.Error.Code"></a>
 
 ### Rpc.Export.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response.Error.Code"></a>
+
+### Rpc.ExportTemplates.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -9968,6 +10341,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.MakeTemplate.Response.Error.Code"></a>
 
 ### Rpc.MakeTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code"></a>
+
+### Rpc.MakeTemplateByObjectType.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -12575,6 +12961,7 @@ Precondition: user A and user B opened the same block
 | filesForceReindexCounter | [int32](#int32) |  | increased in order to fully reindex all objects |
 | idxRebuildCounter | [int32](#int32) |  | increased in order to remove indexes and reindex everything. Automatically triggers objects and files reindex(one time only) |
 | fulltextRebuild | [int32](#int32) |  | increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
+| bundledTemplates | [string](#string) |  |  |
 
 
 
@@ -13534,8 +13921,10 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| DVRelation | 0 |  |
-| DVCreateObject | 1 |  |
+| DVNone | 0 |  |
+| DVRelation | 1 |  |
+| DVCreateObject | 2 |  |
+| DVViews | 3 |  |
 
 
 
@@ -13546,12 +13935,14 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Delete | 0 | restricts delete |
-| Relations | 1 | restricts work with relations |
-| Blocks | 2 | restricts work with blocks |
-| Details | 3 | restricts work with details |
-| TypeChange | 4 |  |
-| LayoutChange | 5 |  |
+| None | 0 |  |
+| Delete | 1 | restricts delete |
+| Relations | 2 | restricts work with relations |
+| Blocks | 3 | restricts work with blocks |
+| Details | 4 | restricts work with details |
+| TypeChange | 5 |  |
+| LayoutChange | 6 |  |
+| Template | 7 |  |
 
 
 
@@ -13572,6 +13963,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | STObjectType | 96 | have relations list |
 | File | 256 |  |
 | Template | 288 |  |
+| BundledTemplate | 289 |  |
 | MarketplaceType | 272 |  |
 | MarketplaceRelation | 273 |  |
 | MarketplaceTemplate | 274 |  |

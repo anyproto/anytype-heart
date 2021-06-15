@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "0f9e85e14eb4fdd96107d0335339f468ab5765fa25ad29598646b16da7f66aa2"
+const RelationChecksum = "1b6c60ad89cb2737163c87d44f0cc1b25e228b1c961064bd6d417c8f9b38493e"
 
 type RelationKey string
 
@@ -15,71 +15,115 @@ func (rk RelationKey) String() string {
 }
 
 const (
-	RelationKeyTag                   RelationKey = "tag"
-	RelationKeyCamera                RelationKey = "camera"
-	RelationKeyHeightInPixels        RelationKey = "heightInPixels"
-	RelationKeyCreatedDate           RelationKey = "createdDate"
-	RelationKeyToBeDeletedDate       RelationKey = "toBeDeletedDate"
-	RelationKeyDone                  RelationKey = "done"
-	RelationKeyDateOfBirth           RelationKey = "dateOfBirth"
-	RelationKeyThumbnailImage        RelationKey = "thumbnailImage"
-	RelationKeyAttachments           RelationKey = "attachments"
-	RelationKeyLinkedTasks           RelationKey = "linkedTasks"
-	RelationKeyIconImage             RelationKey = "iconImage"
-	RelationKeyReleasedYear          RelationKey = "releasedYear"
-	RelationKeyCoverScale            RelationKey = "coverScale"
-	RelationKeyLinkedProjects        RelationKey = "linkedProjects"
-	RelationKeyAudioAlbum            RelationKey = "audioAlbum"
-	RelationKeyLayoutAlign           RelationKey = "layoutAlign"
-	RelationKeyStatus                RelationKey = "status"
-	RelationKeyDurationInSeconds     RelationKey = "durationInSeconds"
-	RelationKeyIsHidden              RelationKey = "isHidden"
-	RelationKeyAperture              RelationKey = "aperture"
-	RelationKeyLastModifiedDate      RelationKey = "lastModifiedDate"
-	RelationKeyRecommendedRelations  RelationKey = "recommendedRelations"
-	RelationKeyCreator               RelationKey = "creator"
-	RelationKeyRecommendedLayout     RelationKey = "recommendedLayout"
-	RelationKeyLastOpenedDate        RelationKey = "lastOpenedDate"
-	RelationKeyArtist                RelationKey = "artist"
-	RelationKeyDueDate               RelationKey = "dueDate"
-	RelationKeyIconEmoji             RelationKey = "iconEmoji"
-	RelationKeyCoverType             RelationKey = "coverType"
-	RelationKeyCoverY                RelationKey = "coverY"
-	RelationKeySizeInBytes           RelationKey = "sizeInBytes"
-	RelationKeyCollectionOf          RelationKey = "collectionOf"
-	RelationKeyBuiltinTemplateId     RelationKey = "builtinTemplateId"
-	RelationKeyAddedDate             RelationKey = "addedDate"
-	RelationKeyAssignee              RelationKey = "assignee"
-	RelationKeyExposure              RelationKey = "exposure"
-	RelationKeyTargetObjectType      RelationKey = "targetObjectType"
-	RelationKeyAudioGenre            RelationKey = "audioGenre"
-	RelationKeyName                  RelationKey = "name"
-	RelationKeyFocalRatio            RelationKey = "focalRatio"
-	RelationKeyPriority              RelationKey = "priority"
-	RelationKeyFileMimeType          RelationKey = "fileMimeType"
-	RelationKeyType                  RelationKey = "type"
-	RelationKeyRelationFormat        RelationKey = "relationFormat"
-	RelationKeyLayout                RelationKey = "layout"
-	RelationKeyAudioAlbumTrackNumber RelationKey = "audioAlbumTrackNumber"
-	RelationKeyPlaceOfBirth          RelationKey = "placeOfBirth"
-	RelationKeyComposer              RelationKey = "composer"
-	RelationKeyCoverX                RelationKey = "coverX"
-	RelationKeyDescription           RelationKey = "description"
-	RelationKeyId                    RelationKey = "id"
-	RelationKeyCameraIso             RelationKey = "cameraIso"
-	RelationKeyCoverId               RelationKey = "coverId"
-	RelationKeyLastModifiedBy        RelationKey = "lastModifiedBy"
-	RelationKeyWidthInPixels         RelationKey = "widthInPixels"
-	RelationKeySetOf                 RelationKey = "setOf"
-	RelationKeyGender                RelationKey = "gender"
-	RelationKeyIsArchived            RelationKey = "isArchived"
-	RelationKeyFileExt               RelationKey = "fileExt"
-	RelationKeyMpAddedToLibrary      RelationKey = "mpAddedToLibrary"
-	RelationKeyFeaturedRelations     RelationKey = "featuredRelations"
+	RelationKeyRelationDict              RelationKey = "relationDict"
+	RelationKeyTag                       RelationKey = "tag"
+	RelationKeyCamera                    RelationKey = "camera"
+	RelationKeyHeightInPixels            RelationKey = "heightInPixels"
+	RelationKeyCreatedDate               RelationKey = "createdDate"
+	RelationKeyToBeDeletedDate           RelationKey = "toBeDeletedDate"
+	RelationKeyRelationFormatObjectTypes RelationKey = "relationFormatObjectTypes"
+	RelationKeyInstructions              RelationKey = "instructions"
+	RelationKeyDone                      RelationKey = "done"
+	RelationKeyTemplateIsBundled         RelationKey = "templateIsBundled"
+	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
+	RelationKeyThumbnailImage            RelationKey = "thumbnailImage"
+	RelationKeyAttachments               RelationKey = "attachments"
+	RelationKeyTasks                     RelationKey = "tasks"
+	RelationKeyGratefulFor               RelationKey = "gratefulFor"
+	RelationKeyRelationFormat            RelationKey = "relationFormat"
+	RelationKeyIconImage                 RelationKey = "iconImage"
+	RelationKeyIngredients               RelationKey = "ingredients"
+	RelationKeyResponsible               RelationKey = "responsible"
+	RelationKeyReleasedYear              RelationKey = "releasedYear"
+	RelationKeyCoverScale                RelationKey = "coverScale"
+	RelationKeyTwitter                   RelationKey = "twitter"
+	RelationKeyResources                 RelationKey = "resources"
+	RelationKeyRelationDefaultValue      RelationKey = "relationDefaultValue"
+	RelationKeyLinkedProjects            RelationKey = "linkedProjects"
+	RelationKeyAudioAlbum                RelationKey = "audioAlbum"
+	RelationKeyParticipants              RelationKey = "participants"
+	RelationKeyLayoutAlign               RelationKey = "layoutAlign"
+	RelationKeyDifficulty                RelationKey = "difficulty"
+	RelationKeyStatus                    RelationKey = "status"
+	RelationKeyHappenings                RelationKey = "happenings"
+	RelationKeyDurationInSeconds         RelationKey = "durationInSeconds"
+	RelationKeyLinkedContacts            RelationKey = "linkedContacts"
+	RelationKeyIsHidden                  RelationKey = "isHidden"
+	RelationKeyEmail                     RelationKey = "email"
+	RelationKeyCompany                   RelationKey = "company"
+	RelationKeyAperture                  RelationKey = "aperture"
+	RelationKeyLastModifiedDate          RelationKey = "lastModifiedDate"
+	RelationKeyNotes                     RelationKey = "notes"
+	RelationKeyRecommendedRelations      RelationKey = "recommendedRelations"
+	RelationKeyCreator                   RelationKey = "creator"
+	RelationKeyRecommendedLayout         RelationKey = "recommendedLayout"
+	RelationKeyResult                    RelationKey = "result"
+	RelationKeyLastOpenedDate            RelationKey = "lastOpenedDate"
+	RelationKeyArtist                    RelationKey = "artist"
+	RelationKeyDueDate                   RelationKey = "dueDate"
+	RelationKeyIconEmoji                 RelationKey = "iconEmoji"
+	RelationKeyCoverType                 RelationKey = "coverType"
+	RelationKeyCoverY                    RelationKey = "coverY"
+	RelationKeyTime                      RelationKey = "time"
+	RelationKeySizeInBytes               RelationKey = "sizeInBytes"
+	RelationKeyCollectionOf              RelationKey = "collectionOf"
+	RelationKeyEvents                    RelationKey = "events"
+	RelationKeyTemplateName              RelationKey = "templateName"
+	RelationKeyAddedDate                 RelationKey = "addedDate"
+	RelationKeyAssignee                  RelationKey = "assignee"
+	RelationKeyExposure                  RelationKey = "exposure"
+	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
+	RelationKeyAudioGenre                RelationKey = "audioGenre"
+	RelationKeyIntentions                RelationKey = "intentions"
+	RelationKeyTelegram                  RelationKey = "telegram"
+	RelationKeyName                      RelationKey = "name"
+	RelationKeyMood                      RelationKey = "mood"
+	RelationKeyAgenda                    RelationKey = "agenda"
+	RelationKeyInstagram                 RelationKey = "instagram"
+	RelationKeyFocalRatio                RelationKey = "focalRatio"
+	RelationKeyPriority                  RelationKey = "priority"
+	RelationKeyFileMimeType              RelationKey = "fileMimeType"
+	RelationKeyType                      RelationKey = "type"
+	RelationKeyLayout                    RelationKey = "layout"
+	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
+	RelationKeyPlaceOfBirth              RelationKey = "placeOfBirth"
+	RelationKeyComposer                  RelationKey = "composer"
+	RelationKeySocialProfile             RelationKey = "socialProfile"
+	RelationKeyOccupation                RelationKey = "occupation"
+	RelationKeyCoverX                    RelationKey = "coverX"
+	RelationKeyDescription               RelationKey = "description"
+	RelationKeyFacebook                  RelationKey = "facebook"
+	RelationKeyId                        RelationKey = "id"
+	RelationKeyActionItems               RelationKey = "actionItems"
+	RelationKeyCameraIso                 RelationKey = "cameraIso"
+	RelationKeyServings                  RelationKey = "servings"
+	RelationKeyCoverId                   RelationKey = "coverId"
+	RelationKeyLastModifiedBy            RelationKey = "lastModifiedBy"
+	RelationKeyRelationMaxCount          RelationKey = "relationMaxCount"
+	RelationKeyWidthInPixels             RelationKey = "widthInPixels"
+	RelationKeySetOf                     RelationKey = "setOf"
+	RelationKeyGender                    RelationKey = "gender"
+	RelationKeyIsArchived                RelationKey = "isArchived"
+	RelationKeyFileExt                   RelationKey = "fileExt"
+	RelationKeyJob                       RelationKey = "job"
+	RelationKeyMpAddedToLibrary          RelationKey = "mpAddedToLibrary"
+	RelationKeyFeaturedRelations         RelationKey = "featuredRelations"
+	RelationKeyPhone                     RelationKey = "phone"
 )
 
 var (
 	relations = map[RelationKey]*model.Relation{
+		RelationKeyActionItems: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "actionItems",
+			MaxCount:    1,
+			Name:        "Action Items",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyAddedDate: {
 
 			DataSource:  model.Relation_details,
@@ -88,6 +132,17 @@ var (
 			Key:         "addedDate",
 			MaxCount:    1,
 			Name:        "Added date",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyAgenda: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "agenda",
+			MaxCount:    1,
+			Name:        "Agenda",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -120,7 +175,6 @@ var (
 			Format:      model.RelationFormat_object,
 			Key:         "assignee",
 			Name:        "Assignee",
-			ObjectTypes: []string{TypePrefix + "profile"},
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -168,18 +222,6 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
-		RelationKeyBuiltinTemplateId: {
-
-			DataSource:  model.Relation_details,
-			Description: "",
-			Format:      model.RelationFormat_shorttext,
-			Hidden:      true,
-			Key:         "builtinTemplateId",
-			MaxCount:    1,
-			Name:        "Builtin template",
-			ReadOnly:    false,
-			Scope:       model.Relation_type,
-		},
 		RelationKeyCamera: {
 
 			DataSource:  model.Relation_details,
@@ -213,6 +255,17 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyCompany: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "company",
+			MaxCount:    1,
+			Name:        "Company",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyComposer: {
 
 			DataSource:  model.Relation_details,
@@ -239,7 +292,7 @@ var (
 		RelationKeyCoverScale: {
 
 			DataSource:  model.Relation_details,
-			Description: "",
+			Description: "Option that contains scale of Cover the image",
 			Format:      model.RelationFormat_number,
 			Hidden:      true,
 			Key:         "coverScale",
@@ -315,7 +368,7 @@ var (
 			Format:      model.RelationFormat_date,
 			Key:         "dateOfBirth",
 			MaxCount:    1,
-			Name:        "Date of birth",
+			Name:        "Birthday",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -327,6 +380,17 @@ var (
 			Key:         "description",
 			MaxCount:    1,
 			Name:        "Description",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyDifficulty: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_number,
+			Key:         "difficulty",
+			MaxCount:    1,
+			Name:        "Difficulty",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -364,6 +428,28 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyEmail: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_email,
+			Key:         "email",
+			MaxCount:    1,
+			Name:        "Email",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyEvents: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "events",
+			MaxCount:    1,
+			Name:        "Events",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyExposure: {
 
 			DataSource:  model.Relation_details,
@@ -372,6 +458,17 @@ var (
 			Key:         "exposure",
 			MaxCount:    1,
 			Name:        "Camera Exposure",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyFacebook: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_url,
+			Key:         "facebook",
+			MaxCount:    1,
+			Name:        "Facebook",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -432,6 +529,28 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyGratefulFor: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "gratefulFor",
+			MaxCount:    1,
+			Name:        "Grateful for",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyHappenings: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "happenings",
+			MaxCount:    1,
+			Name:        "Happenings",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyHeightInPixels: {
 
 			DataSource:  model.Relation_details,
@@ -440,7 +559,7 @@ var (
 			Key:         "heightInPixels",
 			MaxCount:    1,
 			Name:        "Height",
-			ReadOnly:    true,
+			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
 		RelationKeyIconEmoji: {
@@ -480,6 +599,50 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyIngredients: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "ingredients",
+			MaxCount:    1,
+			Name:        "Ingredients",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyInstagram: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_url,
+			Key:         "instagram",
+			MaxCount:    1,
+			Name:        "Instagram",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyInstructions: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "instructions",
+			MaxCount:    1,
+			Name:        "Instructions",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyIntentions: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "intentions",
+			MaxCount:    1,
+			Name:        "Intention",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyIsArchived: {
 
 			DataSource:  model.Relation_account,
@@ -501,6 +664,17 @@ var (
 			Key:         "isHidden",
 			MaxCount:    1,
 			Name:        "Hidden",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyJob: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_shorttext,
+			Key:         "job",
+			MaxCount:    1,
+			Name:        "Job",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -562,6 +736,17 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyLinkedContacts: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "linkedContacts",
+			MaxCount:    1,
+			Name:        "Linked Contacts",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyLinkedProjects: {
 
 			DataSource:  model.Relation_details,
@@ -569,18 +754,16 @@ var (
 			Format:      model.RelationFormat_object,
 			Key:         "linkedProjects",
 			Name:        "Linked Projects",
-			ObjectTypes: []string{TypePrefix + "project"},
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
-		RelationKeyLinkedTasks: {
+		RelationKeyMood: {
 
 			DataSource:  model.Relation_details,
 			Description: "",
-			Format:      model.RelationFormat_object,
-			Key:         "linkedTasks",
-			Name:        "Linked tasks",
-			ObjectTypes: []string{TypePrefix + "task"},
+			Format:      model.RelationFormat_tag,
+			Key:         "mood",
+			Name:        "Mood",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -604,6 +787,50 @@ var (
 			Key:         "name",
 			MaxCount:    1,
 			Name:        "Name",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyNotes: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "notes",
+			MaxCount:    1,
+			Name:        "Notes",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyOccupation: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_shorttext,
+			Key:         "occupation",
+			MaxCount:    1,
+			Name:        "Occupation",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyParticipants: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "participants",
+			Name:        "Participants",
+			ObjectTypes: []string{TypePrefix + "objectType"},
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyPhone: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_phone,
+			Key:         "phone",
+			MaxCount:    1,
+			Name:        "Phone",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -653,6 +880,27 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyRelationDefaultValue: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_shorttext,
+			Key:         "relationDefaultValue",
+			MaxCount:    1,
+			Name:        "Default Value",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyRelationDict: {
+
+			DataSource:  model.Relation_details,
+			Description: "Strict dictionary to select relation values from",
+			Format:      model.RelationFormat_status,
+			Key:         "relationDict",
+			Name:        "Dictionary",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyRelationFormat: {
 
 			DataSource:  model.Relation_details,
@@ -661,7 +909,28 @@ var (
 			Hidden:      true,
 			Key:         "relationFormat",
 			MaxCount:    1,
-			Name:        "Relation Format",
+			Name:        "Format",
+			ReadOnly:    true,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyRelationFormatObjectTypes: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "relationFormatObjectTypes",
+			Name:        "Object type",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyRelationMaxCount: {
+
+			DataSource:  model.Relation_details,
+			Description: "Relation allows multi values",
+			Format:      model.RelationFormat_number,
+			Key:         "relationMaxCount",
+			MaxCount:    1,
+			Name:        "Max values",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -673,6 +942,50 @@ var (
 			Key:         "releasedYear",
 			MaxCount:    1,
 			Name:        "Released year",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyResources: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_shorttext,
+			Key:         "resources",
+			MaxCount:    1,
+			Name:        "Resources",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyResponsible: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "responsible",
+			Name:        "Responsible",
+			ObjectTypes: []string{TypePrefix + "objectType"},
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyResult: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "result",
+			MaxCount:    1,
+			Name:        "Result",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyServings: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_number,
+			Key:         "servings",
+			MaxCount:    1,
+			Name:        "Servings",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -698,10 +1011,21 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeySocialProfile: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_url,
+			Key:         "socialProfile",
+			MaxCount:    1,
+			Name:        "Social Profile",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyStatus: {
 
 			DataSource:  model.Relation_details,
-			Description: "Task status?",
+			Description: "Task status",
 			Format:      model.RelationFormat_status,
 			Key:         "status",
 			MaxCount:    1,
@@ -732,6 +1056,52 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyTasks: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_object,
+			Key:         "tasks",
+			Name:        "Tasks",
+			ObjectTypes: []string{TypePrefix + "task"},
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyTelegram: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_url,
+			Key:         "telegram",
+			MaxCount:    1,
+			Name:        "Telegram",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyTemplateIsBundled: {
+
+			DataSource:  model.Relation_derived,
+			Description: "Specifies whether template is provided by anytype",
+			Format:      model.RelationFormat_checkbox,
+			Hidden:      true,
+			Key:         "templateIsBundled",
+			MaxCount:    1,
+			Name:        "Bundled template",
+			ReadOnly:    true,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyTemplateName: {
+
+			DataSource:  model.Relation_details,
+			Description: "Owner-given name for the template",
+			Format:      model.RelationFormat_shorttext,
+			Hidden:      true,
+			Key:         "templateName",
+			MaxCount:    1,
+			Name:        "Template name",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyThumbnailImage: {
 
 			DataSource:  model.Relation_details,
@@ -740,6 +1110,17 @@ var (
 			Key:         "thumbnailImage",
 			Name:        "Thumbnail image",
 			ObjectTypes: []string{TypePrefix + "image"},
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyTime: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_number,
+			Key:         "time",
+			MaxCount:    1,
+			Name:        "Time",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -755,10 +1136,21 @@ var (
 			ReadOnly:    true,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyTwitter: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_url,
+			Key:         "twitter",
+			MaxCount:    1,
+			Name:        "Twitter",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyType: {
 
 			DataSource:  model.Relation_derived,
-			Description: "",
+			Description: "Relation that stores the object's type",
 			Format:      model.RelationFormat_object,
 			Hidden:      true,
 			Key:         "type",
@@ -776,7 +1168,7 @@ var (
 			Key:         "widthInPixels",
 			MaxCount:    1,
 			Name:        "Width",
-			ReadOnly:    true,
+			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
 	}

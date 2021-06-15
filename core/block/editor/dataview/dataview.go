@@ -45,7 +45,7 @@ type Dataview interface {
 	DeleteRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
 
-	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error)
+	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
 	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
@@ -408,7 +408,10 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 		return err
 	}
 
-	oldView := dvBlock.GetView(viewId)
+	oldView, err := dvBlock.GetView(viewId)
+	if err != nil {
+		return err
+	}
 	var needRecordRefresh bool
 	if !pbtypes.DataviewFiltersEqualSorted(oldView.Filters, view.Filters) {
 		needRecordRefresh = true
@@ -444,11 +447,10 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 	}
 
 	dv := d.getDataviewImpl(dvBlock)
-	activeView := dvBlock.GetView(activeViewId)
-	if activeView == nil {
-		return fmt.Errorf("view not found")
+	_, err := dvBlock.GetView(activeViewId)
+	if err != nil {
+		return err
 	}
-
 	dvBlock.SetActiveView(activeViewId)
 	if dv.activeViewId != activeViewId {
 		dv.activeViewId = activeViewId
@@ -517,7 +519,7 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 	}
 }
 
-func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, rec model.ObjectDetails) (*model.ObjectDetails, error) {
+func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error) {
 	var (
 		source  string
 		ok      bool
@@ -540,7 +542,7 @@ func (d *dataviewCollectionImpl) CreateRecord(_ *state.Context, blockId string, 
 
 	dv := d.getDataviewImpl(dvBlock)
 
-	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription)
+	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
 	if err != nil {
 		return nil, err
 	}
@@ -693,9 +695,36 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 
+func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(dvBlock dataview.Block, rel *model.Relation) error {
+	d.Lock()
+	defer d.Unlock()
+	st := d.NewState()
+
+	options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvBlock.GetSource())
+	if err != nil {
+		return fmt.Errorf("failed to aggregate: %s", err.Error())
+	}
+
+	rel.SelectDict = options
+	dvBlock.UpdateRelation(rel.Key, *rel)
+	// we need to send event manually because selectDict is trimmed from the pb changes
+	d.SendEvent([]*pb.EventMessage{
+		{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
+			&pb.EventBlockDataviewRelationSet{
+				Id:      dvBlock.Model().Id,
+				RelationKey:  rel.Key,
+				Relation: rel,
+			}}}})
+	st.Set(dvBlock)
+	return d.Apply(st)
+}
+
 func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvBlock dataview.Block) ([]*pb.EventMessage, error) {
 	source := dvBlock.Model().GetDataview().Source
-	activeView := dvBlock.GetView(dv.activeViewId)
+	activeView, err := dvBlock.GetView(dv.activeViewId)
+	if err != nil {
+		return nil, err
+	}
 
 	var db database.Reader
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
@@ -815,6 +844,31 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 							}}}})
 
 				} else {
+					rels, _ := d.GetDataviewRelations(dvBlock.Model().Id)
+					if rec != nil && rels != nil {
+						for k, v := range rec.Fields {
+							rel := pbtypes.GetRelation(rels, k)
+							if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
+								for _, opt := range pbtypes.GetStringListValue(v) {
+									var found bool
+									for _, existingOpt := range rel.SelectDict {
+										if existingOpt.Id == opt {
+											found = true
+											break
+										}
+									}
+									if !found {
+										err = d.updateAggregatedOptionsForRelation(dvBlock, rel)
+										if err != nil {
+											log.Errorf("failed to update dv relation: %s", err.Error())
+										}
+										break
+									}
+								}
+							}
+						}
+					}
+
 					d.SendEvent([]*pb.EventMessage{
 						{Value: &pb.EventMessageValueOfBlockDataviewRecordsUpdate{
 							&pb.EventBlockDataviewRecordsUpdate{

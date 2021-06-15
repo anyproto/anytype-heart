@@ -572,7 +572,7 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 		}
 	}
 	for _, f := range dsq.Filters {
-		log.Warnf("query filter: %+v", f)
+		log.Debugf("query filter: %+v", f)
 	}
 	res, err := txn.Query(dsq)
 	if err != nil {
@@ -609,7 +609,6 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 		key := ds.NewKey(rec.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
-		log.Errorf("Query got %s: %s", id, details.Details.String())
 
 		if details.Details == nil || details.Details.Fields == nil {
 			details.Details = &types.Struct{Fields: map[string]*types.Value{}}

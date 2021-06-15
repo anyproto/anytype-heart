@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -66,7 +67,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 
 	var records2 = make([]*types.Struct, 0, len(records))
 	for _, rec := range records {
-		records2 = append(records2, rec.Details)
+		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)

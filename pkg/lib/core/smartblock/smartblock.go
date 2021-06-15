@@ -26,6 +26,7 @@ const (
 	SmartblockTypeMarketplaceRelation = SmartBlockType(model.SmartBlockType_MarketplaceRelation)
 	SmartblockTypeMarketplaceTemplate = SmartBlockType(model.SmartBlockType_MarketplaceTemplate)
 	SmartBlockTypeTemplate            = SmartBlockType(model.SmartBlockType_Template)
+	SmartBlockTypeBundledTemplate     = SmartBlockType(model.SmartBlockType_BundledTemplate)
 	SmartBlockTypeBundledRelation     = SmartBlockType(model.SmartBlockType_BundledRelation)
 	SmartBlockTypeIndexedRelation     = SmartBlockType(model.SmartBlockType_IndexedRelation)
 	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)

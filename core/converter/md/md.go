@@ -10,13 +10,14 @@ import (
 
 	"github.com/JohannesKaufmann/html-to-markdown/escape"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func NewMDConverter(a core.Service, s *state.State) *MD {
+func NewMDConverter(a core.Service, s *state.State) converter.Converter {
 	return &MD{a: a, s: s}
 }
 
@@ -32,14 +33,14 @@ type MD struct {
 	knownLinks []string
 }
 
-func (h *MD) Convert() (result string) {
+func (h *MD) Convert() (result []byte) {
 	if len(h.s.Pick(h.s.RootId()).Model().ChildrenIds) == 0 {
-		return ""
+		return
 	}
 	h.buf = bytes.NewBuffer(nil)
 	var in = new(renderState)
 	h.renderChilds(h.s.Pick(h.s.RootId()).Model(), in)
-	result = h.buf.String()
+	result = h.buf.Bytes()
 	h.buf.Reset()
 	return
 }
@@ -49,6 +50,10 @@ func (h *MD) Export() (result string) {
 	var in = new(renderState)
 	h.renderChilds(h.s.Pick(h.s.RootId()).Model(), in)
 	return h.buf.String()
+}
+
+func (h *MD) Ext() string {
+	return ".md"
 }
 
 type renderState struct {
@@ -250,7 +255,7 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
-func (h *MD) SetKnownKinks(ids []string) *MD {
+func (h *MD) SetKnownLinks(ids []string) converter.Converter {
 	h.knownLinks = ids
 	return h
 }

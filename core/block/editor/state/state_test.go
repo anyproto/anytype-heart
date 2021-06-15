@@ -110,7 +110,7 @@ func TestApplyState(t *testing.T) {
 				},
 			}, "name"),
 		})
-		d.BlocksInit()
+		d.BlocksInit(d.(simple.DetailsService))
 		s := d.NewState()
 		s.SetDetails(&types.Struct{
 			Fields: map[string]*types.Value{
