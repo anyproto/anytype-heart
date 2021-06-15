@@ -119,6 +119,7 @@ func PreFilters(includeArchived bool, sch *schema.Schema) filter.Filter {
 
 func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 	f = new(filters)
+	mainFilter := filter.AndFilters{}
 	if sch != nil {
 		for _, rel := range sch.Relations {
 			if rel.Format == model.RelationFormat_date {
@@ -141,15 +142,15 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 				qf.Value = dateOnly(qf.Value)
 			}
 		}
+		
+		preFilter := PreFilters(q.IncludeArchivedObjects, sch)
+		if preFilter != nil {
+			mainFilter = append(mainFilter, preFilter)
+		}
 	}
 	qFilter, err := filter.MakeAndFilter(q.Filters)
 	if err != nil {
 		return
-	}
-	mainFilter := filter.AndFilters{}
-	preFilter := PreFilters(q.IncludeArchivedObjects, sch)
-	if preFilter != nil {
-		mainFilter = append(mainFilter, preFilter)
 	}
 
 	if len(qFilter.(filter.AndFilters)) > 0 {
