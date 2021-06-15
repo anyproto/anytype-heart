@@ -848,6 +848,11 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 					if rec != nil && rels != nil {
 						for k, v := range rec.Fields {
 							rel := pbtypes.GetRelation(rels, k)
+							if rel == nil {
+								// we don't have the dataview relation for this struct key, this means we can ignore it
+								// todo: should we omit value when we don't have explicit relation in a dataview for it?
+								continue
+							}
 							if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
 								for _, opt := range pbtypes.GetStringListValue(v) {
 									var found bool
