@@ -114,7 +114,7 @@ func (c *client) StartAggregating() {
 				other, ok := c.aggregatableMap[ev.Key()]
 				var newEv EventAggregatable
 				if !ok {
-					newEv = other
+					newEv = ev
 				} else {
 					newEv = ev.Aggregate(other)
 				}
