@@ -15,7 +15,7 @@ var testBlock = &model.Block{
 	Id: "db",
 	Fields: &types.Struct{
 		Fields: map[string]*types.Value{
-			DetailsKeyFieldName: pbtypes.StringList([]string{"title", "checked", "align"}),
+			DetailsKeyFieldName: pbtypes.StringList([]string{"title", "checked"}),
 		},
 	},
 	Content: &model.BlockContentOfText{
@@ -49,12 +49,11 @@ func TestTextDetails_OnDetailsChange(t *testing.T) {
 	db.DetailsInit(ds)
 	assert.Equal(t, "titleFromDetails", db.GetText())
 	ds.Details().Fields["checked"] = pbtypes.Bool(true)
-	ds.Details().Fields["align"] = pbtypes.Int64(int64(model.Block_AlignRight))
 	ds.Details().Fields["title"] = pbtypes.String("changed")
 
 	msgs, err := db.OnDetailsChange(orig, ds)
 	require.NoError(t, err)
-	require.Len(t, msgs, 2)
+	require.Len(t, msgs, 1)
 }
 
 func TestTextDetails_DetailsApply(t *testing.T) {
@@ -68,10 +67,9 @@ func TestTextDetails_DetailsApply(t *testing.T) {
 	db.DetailsInit(ds)
 	require.NoError(t, db.SetText("changed", nil))
 	db.SetChecked(true)
-	db.Model().Align = model.Block_AlignRight
 	msgs, err := db.ApplyToDetails(orig, ds)
 	require.NoError(t, err)
-	require.Len(t, msgs, 2)
+	require.Len(t, msgs, 1)
 	st := msgs[0].Msg.GetBlockSetText()
 	require.NotNil(t, st)
 	require.NotNil(t, st.Text)
@@ -85,8 +83,6 @@ func TestTextDetails_DetailsApply(t *testing.T) {
 	assert.Nil(t, msgs[0].Msg.GetBlockSetText().GetChecked())
 	assert.Equal(t, "changed", pbtypes.GetString(ds.Details(), "title"))
 	assert.Equal(t, true, pbtypes.GetBool(ds.Details(), "checked"))
-	assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(ds.Details(), "align"))
-
 }
 
 type testDetailsService struct {

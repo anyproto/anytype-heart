@@ -31,9 +31,6 @@ func init() {
 			if len(keysList) > 1 {
 				keys.Checked = keysList[1]
 			}
-			if len(keysList) > 2 {
-				keys.Align = keysList[2]
-			}
 			return NewDetails(m, keys)
 		}
 		return NewText(m)
