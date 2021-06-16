@@ -653,7 +653,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 				newOptsIds := slice.Difference(pbtypes.GetStringListValue(detail.Value), pbtypes.GetStringListValue(detCopy.Fields[detail.Key]))
 				var missingOptsIds []string
 				for _, newOptId := range newOptsIds {
-					if opt := pbtypes.GetOption(rel.SelectDict, newOptId); opt == nil || opt.Scope != model.RelationOption_local  {
+					if opt := pbtypes.GetOption(rel.SelectDict, newOptId); opt == nil || opt.Scope != model.RelationOption_local {
 						missingOptsIds = append(missingOptsIds, newOptId)
 					}
 				}
@@ -734,19 +734,8 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.R
 		return
 	}
 
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(s); err != nil {
 		return
-	}
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
 	}
 
 	return
@@ -873,18 +862,7 @@ mainLoop:
 	if err = sb.Apply(s); err != nil {
 		return
 	}
-
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
-	}
+	
 	return
 }
 
@@ -892,7 +870,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 	copy := pbtypes.CopyRelations(sb.ExtraRelations())
 	filtered := []*model.Relation{}
 	st := sb.NewStateCtx(ctx)
-
+	det := st.Details()
 	for _, rel := range copy {
 		var toBeRemoved bool
 		for _, relationKey := range relationKeys {
@@ -901,28 +879,28 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 				break
 			}
 		}
-		if !toBeRemoved {
-			det := st.Details()
+
+		if toBeRemoved {
 			if pbtypes.HasField(det, rel.Key) {
 				delete(det.Fields, rel.Key)
 			}
+		} else {
 			filtered = append(filtered, rel)
 		}
 	}
 
-	if err = sb.Apply(st, NoEvent); err != nil {
+	// remove from the list of featured relations
+	featuredList := pbtypes.GetStringList(det, bundle.RelationKeyFeaturedRelations.String())
+	featuredList = slice.Filter(featuredList, func(s string) bool {
+		return slice.FindPos(relationKeys, s) == -1
+	})
+	det.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList(featuredList)
+
+	st.SetDetails(det)
+	st.SetExtraRelations(filtered)
+
+	if err = sb.Apply(st); err != nil {
 		return
-	}
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        st.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
 	}
 
 	return
