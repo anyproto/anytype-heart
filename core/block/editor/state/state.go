@@ -341,11 +341,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		if _, ok := s.blocks[id]; ok {
 			affectedIds = append(affectedIds, id)
 		}
+
 		if db, ok := b.(simple.DetailsHandler); ok {
-			if dmsgs, err := db.DetailsApply(s); err == nil && len(dmsgs) > 0 {
+			if dmsgs, err := db.ApplyToDetails(s.parent.PickOrigin(id), s); err == nil && len(dmsgs) > 0 {
 				chmsgs = append(chmsgs, dmsgs...)
 			} else if detailsChanged {
-				if dmsgs, err := db.OnDetailsChange(s); err == nil {
+				if dmsgs, err := db.OnDetailsChange(s.parent.PickOrigin(id), s); err == nil {
 					chmsgs = append(chmsgs, dmsgs...)
 				}
 			}

@@ -108,7 +108,9 @@ func TestApplyState(t *testing.T) {
 				Content: &model.BlockContentOfText{
 					Text: &model.BlockContentText{},
 				},
-			}, "name"),
+			}, text.DetailsKeys{
+				Text: "name",
+			}),
 		})
 		d.BlocksInit(d.(simple.DetailsService))
 		s := d.NewState()

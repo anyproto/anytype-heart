@@ -43,9 +43,9 @@ type DetailsHandler interface {
 	// will call after block create
 	DetailsInit(s DetailsService)
 	// will call for every details change
-	OnDetailsChange(s DetailsService) (msgs []EventMessage, err error)
-	// will call for state apply
-	DetailsApply(s DetailsService) (msgs []EventMessage, err error)
+	OnDetailsChange(prev Block, s DetailsService) (msgs []EventMessage, err error)
+	// will call for applying block data to details
+	ApplyToDetails(prev Block, s DetailsService) (msgs []EventMessage, err error)
 }
 
 type EventMessage struct {
