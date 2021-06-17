@@ -33,7 +33,9 @@
       "happenings",
       "gratefulFor",
       "actionItems",
-      "createdDate"
+      "createdDate",
+      "mood",
+      "worriedAbout"
     ],
     "types": [
       "Page"
@@ -348,6 +350,7 @@
   },
   {
     "description": "A detailed proposal for doing or achieving something",
+    "emoji": "📋",
     "id": "dailyPlan",
     "layout": "basic",
     "name": "Daily Plan",
