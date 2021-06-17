@@ -102,6 +102,9 @@ var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relati
 			} else {
 				relId = addr.CustomRelationURLPrefix+rel.Key
 			}
+			if slice.FindPos(relIds, relId) > -1 {
+				continue
+			}
 
 			relIds = append(relIds, relId)
 			var found bool
