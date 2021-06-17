@@ -639,6 +639,15 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 
 	for _, detail := range details {
 		if detail.Value != nil {
+			if detail.Key == bundle.RelationKeyType.String() {
+				// special case when client sets the type's detail directly instead of using setObjectType command
+				err = sb.SetObjectTypes(ctx, pbtypes.GetStringListValue(detail.Value))
+				if err != nil {
+					log.Errorf("failed to set object's type via detail: %s", err.Error())
+				} else {
+					continue
+				}
+			}
 			rel := pbtypes.GetRelation(aggregatedRelations, detail.Key)
 			if rel == nil {
 				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
