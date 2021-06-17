@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "657994c2293adff693dbe3dd2f246be8c4bd795156ad66073c64546a543a3957"
+const TypeChecksum = "213242425b37d152d6e9db42e2c96af8ee28e7c39009d45529c6f014bdfef405"
 
 type TypeKey string
 
@@ -93,6 +93,7 @@ var (
 		TypeKeyDailyPlan: {
 
 			Description: "A detailed proposal for doing or achieving something",
+			IconEmoji:   "📋",
 			Layout:      model.ObjectType_basic,
 			Name:        "Daily Plan",
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyNotes], relations[RelationKeyTasks], relations[RelationKeyEvents]},
@@ -105,7 +106,7 @@ var (
 			IconEmoji:   "💭",
 			Layout:      model.ObjectType_basic,
 			Name:        "Daily Reflection",
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIntentions], relations[RelationKeyHappenings], relations[RelationKeyGratefulFor], relations[RelationKeyActionItems], relations[RelationKeyCreatedDate]},
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIntentions], relations[RelationKeyHappenings], relations[RelationKeyGratefulFor], relations[RelationKeyActionItems], relations[RelationKeyCreatedDate], relations[RelationKeyMood], relations[RelationKeyWorriedAbout]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "dailyReflection",
 		},
