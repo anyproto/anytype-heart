@@ -42,7 +42,8 @@ func (td *textDetails) DetailsInit(s simple.DetailsService) {
 		td.SetText(pbtypes.GetString(s.Details(), td.keys.Text), nil)
 	}
 	if td.keys.Checked != "" {
-		td.SetChecked(pbtypes.GetBool(s.Details(), td.keys.Checked))
+		checked := pbtypes.GetBool(s.Details(), td.keys.Checked)
+		td.SetChecked(checked)
 	}
 	return
 }

@@ -101,28 +101,75 @@ func TestApplyState(t *testing.T) {
 		require.Len(t, msgs, 2)
 	})
 	t.Run("details handle", func(t *testing.T) {
-		d := NewDoc("1", map[string]simple.Block{
-			"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
-			"2": text.NewDetails(&model.Block{
-				Id: "2",
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{},
+		t.Run("text", func(t *testing.T) {
+			d := NewDoc("1", map[string]simple.Block{
+				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+				"2": text.NewDetails(&model.Block{
+					Id: "2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{},
+					},
+				}, text.DetailsKeys{
+					Text: "name",
+				}),
+			})
+			d.BlocksInit(d.(simple.DetailsService))
+			s := d.NewState()
+			s.SetDetails(&types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String("new name"),
 				},
-			}, text.DetailsKeys{
-				Text: "name",
-			}),
+			})
+			msgs, _, err := ApplyState(s, true)
+			require.NoError(t, err)
+			assert.Len(t, msgs, 2)
 		})
-		d.BlocksInit(d.(simple.DetailsService))
-		s := d.NewState()
-		s.SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				"name": pbtypes.String("new name"),
-			},
+		t.Run("checked", func(t *testing.T) {
+			d := NewDoc("1", map[string]simple.Block{
+				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+				"2": text.NewDetails(&model.Block{
+					Id: "2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{},
+					},
+				}, text.DetailsKeys{
+					Checked: "done",
+				}),
+			})
+			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.BlocksInit(d.(simple.DetailsService))
+			s := d.NewState()
+			s.SetDetails(&types.Struct{
+				Fields: map[string]*types.Value{
+					"done": pbtypes.Bool(false),
+				},
+			})
+			msgs, _, err := ApplyState(s, true)
+			require.NoError(t, err)
+			assert.Len(t, msgs, 2)
 		})
-		msgs, _, err := ApplyState(s, true)
-		require.NoError(t, err)
-		assert.Len(t, msgs, 2)
+		t.Run("setChecked", func(t *testing.T) {
+			d := NewDoc("1", map[string]simple.Block{
+				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+				"2": text.NewDetails(&model.Block{
+					Id: "2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{},
+					},
+				}, text.DetailsKeys{
+					Checked: "done",
+				}),
+			})
+			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.BlocksInit(d.(simple.DetailsService))
+			s := d.NewState()
+			s.Get("2").(text.Block).SetChecked(false)
+			msgs, _, err := ApplyState(s, true)
+			require.NoError(t, err)
+			assert.Len(t, msgs, 2)
+		})
 	})
+
 }
 
 func TestState_Diff(t *testing.T) {
