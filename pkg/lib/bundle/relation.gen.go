@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "1b6c60ad89cb2737163c87d44f0cc1b25e228b1c961064bd6d417c8f9b38493e"
+const RelationChecksum = "02552d16ed37d42dff849b66008f942b576fb79a74cd6db7732218c772abb222"
 
 type RelationKey string
 
@@ -100,6 +100,7 @@ const (
 	RelationKeyCoverId                   RelationKey = "coverId"
 	RelationKeyLastModifiedBy            RelationKey = "lastModifiedBy"
 	RelationKeyRelationMaxCount          RelationKey = "relationMaxCount"
+	RelationKeyWorriedAbout              RelationKey = "worriedAbout"
 	RelationKeyWidthInPixels             RelationKey = "widthInPixels"
 	RelationKeySetOf                     RelationKey = "setOf"
 	RelationKeyGender                    RelationKey = "gender"
@@ -445,7 +446,6 @@ var (
 			Description: "",
 			Format:      model.RelationFormat_object,
 			Key:         "events",
-			MaxCount:    1,
 			Name:        "Events",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
@@ -742,7 +742,6 @@ var (
 			Description: "",
 			Format:      model.RelationFormat_object,
 			Key:         "linkedContacts",
-			MaxCount:    1,
 			Name:        "Linked Contacts",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
@@ -1149,7 +1148,7 @@ var (
 		},
 		RelationKeyType: {
 
-			DataSource:  model.Relation_derived,
+			DataSource:  model.Relation_details,
 			Description: "Relation that stores the object's type",
 			Format:      model.RelationFormat_object,
 			Hidden:      true,
@@ -1168,6 +1167,17 @@ var (
 			Key:         "widthInPixels",
 			MaxCount:    1,
 			Name:        "Width",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyWorriedAbout: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "worriedAbout",
+			MaxCount:    1,
+			Name:        "Worried about",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},

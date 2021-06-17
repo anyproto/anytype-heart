@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -77,6 +78,27 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
 		relations, err = bs.AddExtraRelations(nil, objType.Url, req.Relations)
+		if err != nil {
+			return err
+		}
+		err = bs.ModifyDetails(objType.Url, func(current *types.Struct) (*types.Struct, error) {
+			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
+			for _, rel := range relations {
+				var relId string
+				if bundle.HasRelation(rel.Key) {
+					relId = addr.BundledRelationURLPrefix+rel.Key
+				} else {
+					relId = addr.CustomRelationURLPrefix+rel.Key
+				}
+
+				if slice.FindPos(list, relId) == -1 {
+					list = append(list, relId)
+				}
+			}
+			detCopy := pbtypes.CopyStruct(current)
+			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
+			return detCopy, nil
+		})
 		if err != nil {
 			return err
 		}

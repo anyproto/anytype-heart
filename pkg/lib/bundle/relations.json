@@ -327,7 +327,7 @@
     "format": "object",
     "hidden": false,
     "key": "linkedContacts",
-    "maxCount": 1,
+    "maxCount": 0,
     "name": "Linked Contacts",
     "readonly": false,
     "source": "details"
@@ -528,7 +528,7 @@
     "format": "object",
     "hidden": false,
     "key": "events",
-    "maxCount": 1,
+    "maxCount": 0,
     "name": "Events",
     "readonly": false,
     "source": "details"
@@ -690,7 +690,7 @@
       "objectType"
     ],
     "readonly": false,
-    "source": "derived"
+    "source": "details"
   },
   {
     "description": "Anytype layout ID(from pb enum)",
@@ -843,6 +843,15 @@
     "key": "relationMaxCount",
     "maxCount": 1,
     "name": "Max values",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "worriedAbout",
+    "maxCount": 1,
+    "name": "Worried about",
     "readonly": false,
     "source": "details"
   },

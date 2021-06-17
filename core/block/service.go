@@ -92,7 +92,7 @@ type Service interface {
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
-	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error)
+	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) // you must copy original struct within the modifier in order to modify it
 
 	GetRelations(objectId string) (relations []*model.Relation, err error)
 	UpdateExtraRelations(ctx *state.Context, id string, relations []*model.Relation, createIfMissing bool) (err error)
@@ -302,7 +302,6 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 			bs    = ob.NewState()
 			fList = func() []string {
 				ob.Lock()
-				ob.Relations()
 				fs := bs.GetAllFileHashes(ob.FileRelationKeys())
 				ob.Unlock()
 				return fs

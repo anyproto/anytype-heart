@@ -76,7 +76,18 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	rels := p.RelationsState(ctx.State, false)
-	recommendedRelationsKeys := pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String())
+	var recommendedRelationsKeys []string
+	for _, relId := range pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String()) {
+		relKey, err := pbtypes.RelationIdToKey(relId)
+		if err != nil {
+			log.Errorf("recommendedRelations has incorrect id: %s", relId)
+			continue
+		}
+		if slice.FindPos(recommendedRelationsKeys, relKey) == -1 {
+			recommendedRelationsKeys = append(recommendedRelationsKeys, relKey)
+		}
+	}
+
 	for _, rel := range bundle.RequiredInternalRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
 			recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
