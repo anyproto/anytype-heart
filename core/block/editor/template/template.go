@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -71,13 +72,38 @@ var WithObjectTypeLayoutMigration = func() StateTransformer {
 
 var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relation) StateTransformer {
 	return func(s *state.State) {
-		var keys []string
-		if len(pbtypes.GetStringList(s.Details(), bundle.RelationKeyRecommendedRelations.String())) > 0 {
-			return
+		var relIds []string
+		ot := bundle.MustGetType(bundle.TypeKeyObjectType)
+		rels := ot.GetRelations()
+
+		var objectTypeOnlyRelations []*model.Relation
+		for _, rel := range rels {
+			var found bool
+			for _, requiredRel := range bundle.RequiredInternalRelations {
+				if rel.Key == requiredRel.String() {
+					found = true
+					break
+				}
+			}
+			if !found {
+				objectTypeOnlyRelations = append(objectTypeOnlyRelations, pbtypes.CopyRelation(rel))
+			}
 		}
 
-		for _, rel := range relations {
-			keys = append(keys, rel.Key)
+		for _, rel := range append(relations, s.ExtraRelations()...) {
+			// so the idea is that we need to add all relations EXCEPT that only exists in the objectType
+			// e.g. we don't need to recommendedRelation and recommendedLayout
+			if pbtypes.HasRelation(objectTypeOnlyRelations, rel.Key) {
+				continue
+			}
+			var relId string
+			if bundle.HasRelation(rel.Key) {
+				relId = addr.BundledRelationURLPrefix+rel.Key
+			} else {
+				relId = addr.CustomRelationURLPrefix+rel.Key
+			}
+
+			relIds = append(relIds, relId)
 			var found bool
 			for _, exRel := range s.ExtraRelations() {
 				if exRel.Key == rel.Key {
@@ -90,7 +116,7 @@ var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relati
 			}
 		}
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(keys))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds))
 	}
 }
 

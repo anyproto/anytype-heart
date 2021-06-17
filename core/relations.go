@@ -84,12 +84,20 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 		err = bs.ModifyDetails(objType.Url, func(current *types.Struct) (*types.Struct, error) {
 			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
 			for _, rel := range relations {
-				if slice.FindPos(list, rel.Key) == -1 {
-					list = append(list, rel.Key)
+				var relId string
+				if bundle.HasRelation(rel.Key) {
+					relId = addr.BundledRelationURLPrefix+rel.Key
+				} else {
+					relId = addr.CustomRelationURLPrefix+rel.Key
+				}
+
+				if slice.FindPos(list, relId) == -1 {
+					list = append(list, relId)
 				}
 			}
-			current.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
-			return current, nil
+			detCopy := pbtypes.CopyStruct(current)
+			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
+			return detCopy, nil
 		})
 		if err != nil {
 			return err

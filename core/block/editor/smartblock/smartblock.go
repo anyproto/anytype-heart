@@ -1167,6 +1167,8 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 		return rels
 	}
 
+	/*
+	comment-out relations sorting so the list order will be persistent after setting the details
 	sort.Slice(rels, func(i, j int) bool {
 		_, iExists := details.Fields[rels[i].Key]
 		_, jExists := details.Fields[rels[j].Key]
@@ -1176,7 +1178,7 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 		}
 
 		return false
-	})
+	})*/
 
 	return rels
 }
@@ -1207,11 +1209,12 @@ func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*mo
 		if err != nil {
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
 		}
+		rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
+		sb.fillAggregatedRelations(rels)
+		return rels
+	} else {
+		return s.ExtraRelations()
 	}
-
-	rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
-	sb.fillAggregatedRelations(rels)
-	return rels
 }
 
 func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation) {
