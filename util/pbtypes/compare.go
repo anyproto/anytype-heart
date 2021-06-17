@@ -176,9 +176,6 @@ func RelationEqualOmitDictionary(rel1 *model.Relation, rel2 *model.Relation) (eq
 	if rel1.DefaultValue.Compare(rel2.DefaultValue) != 0 {
 		return false
 	}
-	if rel1.DataSource != rel2.DataSource {
-		return false
-	}
 	if rel1.Hidden != rel2.Hidden {
 		return false
 	}
