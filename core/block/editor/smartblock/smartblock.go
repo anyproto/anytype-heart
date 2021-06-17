@@ -1219,20 +1219,20 @@ func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*mo
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
 		}
 		rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
-		sb.fillAggregatedRelations(rels)
+		sb.fillAggregatedRelations(rels, s.ObjectType())
 		return rels
 	} else {
 		return s.ExtraRelations()
 	}
 }
 
-func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation) {
+func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation, objType string) {
 	for i, rel := range rels {
 		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			continue
 		}
 
-		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, sb.ObjectType())
+		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
 			continue
