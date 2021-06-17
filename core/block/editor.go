@@ -496,10 +496,7 @@ func (s *service) SetBackgroundColor(ctx *state.Context, contextId string, color
 
 func (s *service) SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.Update(ctx, func(b simple.Block) error {
-			b.Model().Align = align
-			return nil
-		}, blockIds...)
+		return b.SetAlign(ctx, align, blockIds...)
 	})
 }
 

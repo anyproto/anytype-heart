@@ -10,7 +10,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -27,6 +29,7 @@ type Basic interface {
 	InternalPaste(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
+	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -295,4 +298,18 @@ func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []
 		blocks = bs.getAllDescendants(bs.Pick(cId).Copy(), blocks)
 	}
 	return blocks
+}
+
+func (bs *basic) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
+	s := bs.NewStateCtx(ctx)
+	if len(ids) == 0 {
+		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
+		ids = []string{template.TitleBlockId, template.DescriptionBlockId, template.FeaturedRelationsId}
+	}
+	for _, id := range ids {
+		if b := s.Get(id); b != nil {
+			b.Model().Align = align
+		}
+	}
+	return bs.Apply(s)
 }
