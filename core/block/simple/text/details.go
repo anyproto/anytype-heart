@@ -39,105 +39,29 @@ type textDetails struct {
 
 func (td *textDetails) DetailsInit(s simple.DetailsService) {
 	if td.keys.Text != "" {
-		td.Text.SetText(pbtypes.GetString(s.Details(), td.keys.Text), nil)
+		td.SetText(pbtypes.GetString(s.Details(), td.keys.Text), nil)
 	}
 	if td.keys.Checked != "" {
-		td.Text.SetChecked(pbtypes.GetBool(s.Details(), td.keys.Checked))
+		td.SetChecked(pbtypes.GetBool(s.Details(), td.keys.Checked))
 	}
 	return
 }
 
-func (td *textDetails) OnDetailsChange(prevBlock simple.Block, s simple.DetailsService) (msgs []simple.EventMessage, err error) {
+func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsService) (ok bool, err error) {
 	var prev Block
 	prev, _ = prevBlock.(Block)
-	setTextEvent := &pb.EventBlockSetText{
-		Id: td.Id,
-	}
+
 	if td.keys.Text != "" {
-		if err = td.onDetailsChangeText(prev, pbtypes.GetString(s.Details(), td.keys.Text), setTextEvent); err != nil {
-			return
+		if prev == nil || prev.GetText() != td.GetText() {
+			s.SetDetail(td.keys.Text, pbtypes.String(td.GetText()))
+			ok = true
 		}
 	}
 	if td.keys.Checked != "" {
-		if err = td.onDetailsChangeChecked(prev, pbtypes.GetBool(s.Details(), td.keys.Checked), setTextEvent); err != nil {
-			return
+		if prev == nil || prev.GetChecked() != td.GetChecked() {
+			s.SetDetail(td.keys.Checked, pbtypes.Bool(td.GetChecked()))
+			ok = true
 		}
-	}
-	if setTextEvent.Text != nil || setTextEvent.Checked != nil {
-		msgs = append(msgs, simple.EventMessage{
-			Msg: &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetText{
-					BlockSetText: setTextEvent,
-				},
-			},
-			Virtual: true,
-		})
-	}
-	return
-}
-
-func (td *textDetails) onDetailsChangeText(prev Block, newValue string, event *pb.EventBlockSetText) (err error) {
-	oldValue := ""
-	if prev != nil {
-		oldValue = prev.GetText()
-	}
-	if oldValue != newValue {
-		td.Text.SetText(newValue, nil)
-		event.Text = &pb.EventBlockSetTextText{
-			Value: newValue,
-		}
-	}
-	return
-}
-
-func (td *textDetails) onDetailsChangeChecked(prev Block, newValue bool, event *pb.EventBlockSetText) (err error) {
-	if td.keys.Checked == "" {
-		return
-	}
-	oldValue := false
-	if prev != nil {
-		oldValue = prev.GetChecked()
-	}
-	if oldValue != newValue {
-		td.Text.SetChecked(newValue)
-		event.Checked = &pb.EventBlockSetTextChecked{
-			Value: newValue,
-		}
-	}
-	return
-}
-
-func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsService) (msgs []simple.EventMessage, err error) {
-	var prev Block
-	prev, _ = prevBlock.(Block)
-	setTextEvent := &pb.EventBlockSetText{
-		Id: td.Id,
-	}
-	if td.keys.Text != "" {
-		if err = td.onDetailsChangeText(prev, td.GetText(), setTextEvent); err != nil {
-			return
-		}
-		if setTextEvent.Text != nil {
-			s.SetDetail(td.keys.Text, pbtypes.String(setTextEvent.Text.Value))
-		}
-	}
-	if td.keys.Checked != "" {
-		if err = td.onDetailsChangeChecked(prev, td.GetChecked(), setTextEvent); err != nil {
-			return
-		}
-		if setTextEvent.Checked != nil {
-			s.SetDetail(td.keys.Checked, pbtypes.Bool(setTextEvent.Checked.Value))
-		}
-	}
-	if setTextEvent.Text != nil || setTextEvent.Checked != nil {
-		msgs = append(msgs, simple.EventMessage{
-			Msg: &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetText{
-					BlockSetText: setTextEvent,
-				},
-			},
-			Virtual: true,
-		})
 	}
 	return
 }
@@ -157,21 +81,55 @@ func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err err
 	if msgs, err = td.Text.Diff(sd.Text); err != nil {
 		return
 	}
-	for _, msg := range msgs {
+	var virtEvent = simple.EventMessage{
+		Virtual: true,
+		Msg: &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockSetText{
+				BlockSetText: &pb.EventBlockSetText{},
+			},
+		},
+	}
+	var (
+		toRemove   = -1
+		virtActive bool
+	)
+	for i, msg := range msgs {
 		if td.keys.Text != "" {
 			if st := msg.Msg.GetBlockSetText(); st != nil {
 				if st.Text != nil {
+					virtEvent.Msg.GetBlockSetText().Text = st.Text
 					st.Text = nil
+					virtActive = true
 				}
 			}
 		}
 		if td.keys.Checked != "" {
 			if st := msg.Msg.GetBlockSetText(); st != nil {
 				if st.Checked != nil {
+					virtEvent.Msg.GetBlockSetText().Checked = st.Checked
 					st.Checked = nil
+					virtActive = true
 				}
 			}
 		}
+		if st := msg.Msg.GetBlockSetText(); st != nil {
+			if st.Text == nil && st.Checked == nil && st.Marks == nil && st.Style == nil && st.Color == nil {
+				toRemove = i
+			}
+		}
+	}
+	if toRemove != - 1 {
+		if virtActive {
+			msgs[toRemove] = virtEvent
+		} else {
+			copy(msgs[toRemove:], msgs[toRemove+1:])
+			msgs[len(msgs)-1].Msg = nil
+			msgs = msgs[:len(msgs)-1]
+		}
+		return
+	}
+	if virtActive {
+		msgs = append(msgs, virtEvent)
 	}
 	return
 }

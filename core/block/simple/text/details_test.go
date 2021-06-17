@@ -29,7 +29,7 @@ func TestNewDetails(t *testing.T) {
 }
 
 func TestTextDetails_DetailsInit(t *testing.T) {
-	db := simple.New(testBlock).(DetailsBlock)
+	db := simple.New(testBlock).Copy().(DetailsBlock)
 	db.DetailsInit(&testDetailsService{Struct: &types.Struct{
 		Fields: map[string]*types.Value{
 			"title": pbtypes.String("titleFromDetails"),
@@ -38,26 +38,35 @@ func TestTextDetails_DetailsInit(t *testing.T) {
 	assert.Equal(t, "titleFromDetails", db.GetText())
 }
 
-func TestTextDetails_OnDetailsChange(t *testing.T) {
+func TestTextDetails_ApplyToDetails(t *testing.T) {
+	orig := simple.New(testBlock).Copy().(DetailsBlock)
+	db := orig.Copy().(DetailsBlock)
 	ds := &testDetailsService{Struct: &types.Struct{
 		Fields: map[string]*types.Value{
 			"title": pbtypes.String("titleFromDetails"),
 		},
 	}}
-	orig := simple.New(testBlock).(DetailsBlock)
-	db := orig.Copy().(DetailsBlock)
 	db.DetailsInit(ds)
-	assert.Equal(t, "titleFromDetails", db.GetText())
-	ds.Details().Fields["checked"] = pbtypes.Bool(true)
-	ds.Details().Fields["title"] = pbtypes.String("changed")
-
-	msgs, err := db.OnDetailsChange(orig, ds)
+	require.NoError(t, db.SetText("changed", nil))
+	ok, err := db.ApplyToDetails(orig, ds)
 	require.NoError(t, err)
-	require.Len(t, msgs, 1)
+	assert.True(t, ok)
+	orig.SetText("changed", nil)
+	ok, err = db.ApplyToDetails(orig, ds)
+	require.NoError(t, err)
+	assert.False(t, ok)
+	db.SetChecked(true)
+	ok, err = db.ApplyToDetails(orig, ds)
+	require.NoError(t, err)
+	assert.True(t, ok)
+	orig.SetChecked(true)
+	ok, err = db.ApplyToDetails(orig, ds)
+	require.NoError(t, err)
+	assert.False(t, ok)
 }
 
-func TestTextDetails_DetailsApply(t *testing.T) {
-	orig := simple.New(testBlock).(DetailsBlock)
+func TestTextDetails_Diff(t *testing.T) {
+	orig := simple.New(testBlock).Copy().(DetailsBlock)
 	db := orig.Copy().(DetailsBlock)
 	ds := &testDetailsService{Struct: &types.Struct{
 		Fields: map[string]*types.Value{
@@ -67,22 +76,23 @@ func TestTextDetails_DetailsApply(t *testing.T) {
 	db.DetailsInit(ds)
 	require.NoError(t, db.SetText("changed", nil))
 	db.SetChecked(true)
-	msgs, err := db.ApplyToDetails(orig, ds)
+	ok, err := db.ApplyToDetails(orig, ds)
+	require.NoError(t, err)
+	require.True(t, ok)
+
+	assert.Equal(t, "changed", pbtypes.GetString(ds.Struct, "title"))
+	assert.Equal(t, true, pbtypes.GetBool(ds.Struct, "checked"))
+
+	msgs, err := orig.Diff(db)
 	require.NoError(t, err)
 	require.Len(t, msgs, 1)
-	st := msgs[0].Msg.GetBlockSetText()
-	require.NotNil(t, st)
-	require.NotNil(t, st.Text)
-	require.NotNil(t, st.Checked)
-	assert.Equal(t, "changed", st.Text.Value)
-	assert.Equal(t, true, st.Checked.Value)
-	msgs, err = db.Diff(orig)
-	require.NoError(t, err)
-	require.Len(t, msgs, 1)
-	assert.Nil(t, msgs[0].Msg.GetBlockSetText().GetText())
-	assert.Nil(t, msgs[0].Msg.GetBlockSetText().GetChecked())
-	assert.Equal(t, "changed", pbtypes.GetString(ds.Details(), "title"))
-	assert.Equal(t, true, pbtypes.GetBool(ds.Details(), "checked"))
+	assert.True(t, msgs[0].Virtual)
+	setText := msgs[0].Msg.GetBlockSetText()
+	require.NotNil(t, setText)
+	require.NotNil(t, setText.Text)
+	assert.Equal(t, "changed", setText.Text.Value)
+	require.NotNil(t, setText.Checked)
+	assert.Equal(t, true, setText.Checked.Value)
 }
 
 type testDetailsService struct {
