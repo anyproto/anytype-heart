@@ -66,8 +66,21 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 		}
 	}
 
-	rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
-	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, relsToSet, templateId)
+	var sbType = coresb.SmartBlockTypePage
+	for sbT, objType := range bundle.DefaultObjectTypePerSmartblockType {
+		if objType.URL() == sp.objectTypeUrl {
+			sbType = sbT
+			break
+		}
+	}
+
+	if targetType := pbtypes.GetString(rec.Details, bundle.RelationKeyTargetObjectType.String()); targetType != "" {
+		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl, targetType})
+	} else {
+		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
+	}
+
+	id, newDetails, err := sp.createSmartBlock(sbType, rec.Details, relsToSet, templateId)
 	if err != nil {
 		return rec, err
 	}

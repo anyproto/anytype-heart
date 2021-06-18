@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "213242425b37d152d6e9db42e2c96af8ee28e7c39009d45529c6f014bdfef405"
+const TypeChecksum = "d5e8330c30ee601dd75a5967b6d39b61f448087021645a7e6e3612d734baea61"
 
 type TypeKey string
 
@@ -62,7 +62,7 @@ var (
 		TypeKeyArticle: {
 
 			Description: "A piece of writing included with others in a newspaper, magazine, or other publication.",
-			IconEmoji:   "🗒️",
+			IconEmoji:   "📄",
 			Layout:      model.ObjectType_basic,
 			Name:        "Article",
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
@@ -133,7 +133,7 @@ var (
 		TypeKeyDocument: {
 
 			Description: "A piece of matter that provides information or evidence or that serves as an official record.",
-			IconEmoji:   "📋",
+			IconEmoji:   "📃",
 			Layout:      model.ObjectType_basic,
 			Name:        "Document",
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
@@ -203,10 +203,10 @@ var (
 		},
 		TypeKeyPage: {
 
-			Description: "Base type to start with",
-			IconEmoji:   "📄",
+			Description: "Meta type to start with",
+			IconEmoji:   "⚪",
 			Layout:      model.ObjectType_basic,
-			Name:        "Page",
+			Name:        "Draft",
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "page",

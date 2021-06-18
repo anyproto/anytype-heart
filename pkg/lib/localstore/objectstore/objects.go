@@ -1149,7 +1149,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 		}
 
 		if discardLocalDetailsChanges && details != nil {
-			injectedDetails := pbtypes.StructFilterKeys(before.Details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+			injectedDetails := pbtypes.StructFilterKeys(before.Details, bundle.LocalRelationsKeys)
 			for k, v := range injectedDetails.Fields {
 				details.Fields[k] = pbtypes.CopyVal(v)
 			}

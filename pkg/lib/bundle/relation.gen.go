@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "02552d16ed37d42dff849b66008f942b576fb79a74cd6db7732218c772abb222"
+const RelationChecksum = "d90419b540bf6a31a39ff61fc31d08fac466b4bb90e9f3103ca155ee6fb29f0c"
 
 type RelationKey string
 
@@ -681,7 +681,7 @@ var (
 		RelationKeyLastModifiedBy: {
 
 			DataSource:  model.Relation_derived,
-			Description: "Human which updates the object last time",
+			Description: "Human who updated the object last time",
 			Format:      model.RelationFormat_object,
 			Key:         "lastModifiedBy",
 			MaxCount:    1,
@@ -1148,7 +1148,7 @@ var (
 		},
 		RelationKeyType: {
 
-			DataSource:  model.Relation_details,
+			DataSource:  model.Relation_derived,
 			Description: "Relation that stores the object's type",
 			Format:      model.RelationFormat_object,
 			Hidden:      true,

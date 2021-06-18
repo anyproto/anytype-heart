@@ -50,6 +50,7 @@ type Dataview interface {
 	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
 	WithSystemObjects(yes bool)
+	SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error
 
 	smartblock.SmartblockOpenListner
 }
@@ -59,13 +60,13 @@ func NewDataview(sb smartblock.SmartBlock) Dataview {
 }
 
 type dataviewImpl struct {
-	blockId      string
-	activeViewId string
-	offset       int
-	limit        int
-	records      []database.Record
-	mu           sync.Mutex
-
+	blockId                    string
+	activeViewId               string
+	offset                     int
+	limit                      int
+	records                    []database.Record
+	mu                         sync.Mutex
+	defaultRecordFields        *types.Struct // will be always set to the new record
 	recordsUpdatesSubscription database.Subscription
 	depsUpdatesSubscription    database.Subscription
 
@@ -76,6 +77,24 @@ type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
 	dataviews         []*dataviewImpl
 	withSystemObjects bool
+}
+
+func (d *dataviewCollectionImpl) SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error {
+	var (
+		dvBlock dataview.Block
+		ok      bool
+	)
+	if dvBlock, ok = d.Pick(blockId).(dataview.Block); !ok {
+		return fmt.Errorf("not a dataview block")
+	}
+
+	dv := d.getDataviewImpl(dvBlock)
+	if dv == nil {
+		return fmt.Errorf("block not found")
+	}
+
+	dv.defaultRecordFields = defaultRecordFields
+	return nil
 }
 
 func (d *dataviewCollectionImpl) WithSystemObjects(yes bool) {
@@ -541,7 +560,18 @@ func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string
 	}
 
 	dv := d.getDataviewImpl(dvBlock)
-
+	dvBlock.Model().GetDataview().GetActiveView()
+	if dv.defaultRecordFields != nil && dv.defaultRecordFields.Fields != nil {
+		if rec.Details == nil || rec.Details.Fields == nil {
+			rec.Details = dv.defaultRecordFields
+		} else {
+			for k, v := range dv.defaultRecordFields.Fields {
+				if !pbtypes.HasField(rec.Details, k) {
+					rec.Details.Fields[k] = pbtypes.CopyVal(v)
+				}
+			}
+		}
+	}
 	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
 	if err != nil {
 		return nil, err
@@ -775,33 +805,61 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		currentEntriesIds = append(currentEntriesIds, getEntryID(entry))
 	}
 
-	var records []*types.Struct
-	for _, entry := range entries {
-		for key, item := range entry.Details.Fields {
+	updateDepIds := func(ids []string) (newDepEntries []database.Record, close func(), err error) {
+		for _, depId := range ids {
+			if _, exists := depIdsMap[depId]; !exists {
+				depIds = append(depIds, depId)
+				depIdsMap[depId] = struct{}{}
+			}
+		}
+
+		// todo: implement ref counter in order to unsubscribe from deps that are no longer used
+		depEntries, cancelDepsSubscripton, err := db.QueryByIdAndSubscribeForChanges(depIds, depRecordsSub)
+		if err != nil {
+			return nil, nil, err
+		}
+		return depEntries, cancelDepsSubscripton, nil
+	}
+
+	getDepsFromRecord := func(rec *types.Struct) []string {
+		if rec == nil || rec.Fields == nil {
+			return nil
+		}
+		depsMap := make(map[string]struct{}, len(rec.Fields))
+		var depIds []string
+		for key, item := range rec.Fields {
 			if key == "id" || key == "type" {
 				continue
 			}
 
 			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == model.RelationFormat_object || rel.GetFormat() == model.RelationFormat_file) && (len(rel.ObjectTypes) == 0 || rel.ObjectTypes[0] != bundle.TypeKeyRelation.URL()) {
-				depIdsToAdd := pbtypes.GetStringListValue(item)
-				for _, depId := range depIdsToAdd {
-					if _, exists := depIdsMap[depId]; !exists {
-						depIds = append(depIds, depId)
-						depIdsMap[depId] = struct{}{}
+				for _, depId := range pbtypes.GetStringListValue(item) {
+					if _, exists := depsMap[depId]; exists {
+						continue
 					}
+					depIds = append(depIds, depId)
+					depsMap[depId] = struct{}{}
 				}
 			}
 		}
-		records = append(records, entry.Details)
+
+		return depIds
 	}
 
-	depEntries, cancelDepsSubscripton, err := db.QueryByIdAndSubscribeForChanges(depIds, depRecordsSub)
-	if err != nil {
-		return nil, err
+	var records []*types.Struct
+	for _, entry := range entries {
+		records = append(records, entry.Details)
+		depIds = append(depIds, getDepsFromRecord(entry.Details)...)
 	}
+
+	depsEntries, cancelDepsSubscription, err := updateDepIds(depIds)
+	if err != nil {
+		return nil, fmt.Errorf("failed to subscribe dep entries: %s", err.Error())
+	}
+
 	dv.depsUpdatesSubscription = depRecordsSub
 	dv.recordsUpdatesCancel = func() {
-		cancelDepsSubscripton()
+		cancelDepsSubscription()
 		cancelRecordSubscription()
 	}
 
@@ -816,9 +874,15 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		}},
 	}
 
-	for _, depEntry := range depEntries {
-		msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfObjectDetailsSet{ObjectDetailsSet: &pb.EventObjectDetailsSet{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
+	depEntriesToEvents := func(depsEntries []database.Record) []*pb.EventMessage {
+		var msgs []*pb.EventMessage
+		for _, depEntry := range depsEntries {
+			msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfObjectDetailsSet{ObjectDetailsSet: &pb.EventObjectDetailsSet{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
+		}
+		return msgs
 	}
+
+	msgs = append(msgs, depEntriesToEvents(depsEntries)...)
 
 	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries
@@ -874,6 +938,12 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 								}
 							}
 						}
+					}
+					depsEntries, _, err := updateDepIds(getDepsFromRecord(rec))
+					if err != nil {
+						log.Errorf("failed to subscribe dep records of updated record: %s", err.Error())
+					} else {
+						d.SendEvent(depEntriesToEvents(depsEntries))
 					}
 
 					d.SendEvent([]*pb.EventMessage{

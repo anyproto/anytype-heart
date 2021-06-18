@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
 
@@ -128,7 +129,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		})
 	}
 
-	return template.ApplyTemplate(p, ctx.State,
+	err = template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
@@ -149,4 +150,10 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
 	)
+	if err != nil {
+		return err
+	}
+
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
+	return p.Set.SetNewRecordDefaultFields("templates", defaultValue)
 }
