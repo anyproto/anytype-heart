@@ -765,11 +765,11 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			// we return the pointers slice here just for clarity
 			relationsWithKeys = append(relationsWithKeys, rel)
 			copy = append(copy, pbtypes.CopyRelation(rel))
-		} else if pbtypes.RelationEqualOmitDictionary(relEx, rel) {
-			relationsWithKeys = append(relationsWithKeys, relEx)
 		} else {
-			log.Errorf("failed to AddExtraRelations: provided relation %s not equal to existing aggregated one", rel.Key)
-			return nil, fmt.Errorf("provided relation not equal to existing aggregated with the same key")
+			if !pbtypes.RelationEqualOmitDictionary(relEx, rel) {
+				log.Warnf("failed to AddExtraRelations: provided relation %s not equal to existing aggregated one", rel.Key)
+			}
+			relationsWithKeys = append(relationsWithKeys, relEx)
 		}
 		if !pbtypes.HasField(s.Details(), rel.Key) {
 			s.SetDetail(rel.Key, pbtypes.Null())

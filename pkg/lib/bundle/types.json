@@ -426,7 +426,7 @@
   },
   {
     "description": "A piece of writing included with others in a newspaper, magazine, or other publication.",
-    "emoji": "🗒️",
+    "emoji": "📄",
     "id": "article",
     "layout": "basic",
     "name": "Article",
@@ -610,11 +610,11 @@
     ]
   },
   {
-    "description": "Base type to start with",
-    "emoji": "📄",
+    "description": "Meta type to start with",
+    "emoji": "⚪",
     "id": "page",
     "layout": "basic",
-    "name": "Page",
+    "name": "Draft",
     "relations": [
       "id",
       "name",
@@ -813,7 +813,7 @@
   },
   {
     "description": "A piece of matter that provides information or evidence or that serves as an official record.",
-    "emoji": "📋",
+    "emoji": "📃",
     "id": "document",
     "layout": "basic",
     "name": "Document",

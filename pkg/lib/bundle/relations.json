@@ -690,7 +690,7 @@
       "objectType"
     ],
     "readonly": false,
-    "source": "details"
+    "source": "derived"
   },
   {
     "description": "Anytype layout ID(from pb enum)",
@@ -824,7 +824,7 @@
     "source": "details"
   },
   {
-    "description": "Human which updates the object last time",
+    "description": "Human who updated the object last time",
     "format": "object",
     "hidden": false,
     "key": "lastModifiedBy",
