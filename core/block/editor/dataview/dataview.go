@@ -50,6 +50,7 @@ type Dataview interface {
 	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
 	WithSystemObjects(yes bool)
+	SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error
 
 	smartblock.SmartblockOpenListner
 }
@@ -65,7 +66,7 @@ type dataviewImpl struct {
 	limit        int
 	records      []database.Record
 	mu           sync.Mutex
-
+	defaultRecordFields *types.Struct // will be always set to the new record
 	recordsUpdatesSubscription database.Subscription
 	depsUpdatesSubscription    database.Subscription
 
@@ -76,6 +77,24 @@ type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
 	dataviews         []*dataviewImpl
 	withSystemObjects bool
+}
+
+func (d *dataviewCollectionImpl) SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error {
+	var (
+		dvBlock dataview.Block
+		ok bool
+	)
+	if dvBlock, ok = d.Pick(blockId).(dataview.Block); !ok {
+		return fmt.Errorf("not a dataview block")
+	}
+
+	dv := d.getDataviewImpl(dvBlock)
+	if dv == nil {
+		return fmt.Errorf("block not found")
+	}
+
+	dv.defaultRecordFields = defaultRecordFields
+	return nil
 }
 
 func (d *dataviewCollectionImpl) WithSystemObjects(yes bool) {
@@ -541,7 +560,18 @@ func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string
 	}
 
 	dv := d.getDataviewImpl(dvBlock)
-
+	dvBlock.Model().GetDataview().GetActiveView()
+	if dv.defaultRecordFields != nil && dv.defaultRecordFields.Fields != nil {
+		if rec.Details == nil || rec.Details.Fields == nil {
+			rec.Details = dv.defaultRecordFields
+		} else {
+			for k, v := range dv.defaultRecordFields.Fields {
+				if !pbtypes.HasField(rec.Details, k) {
+					rec.Details.Fields[k] = pbtypes.CopyVal(v)
+				}
+			}
+		}
+	}
 	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
 	if err != nil {
 		return nil, err
