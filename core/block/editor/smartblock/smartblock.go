@@ -100,6 +100,7 @@ type SmartBlock interface {
 	GetSearchInfo() (indexer.SearchInfo, error)
 	MetaService() meta.Service
 	Restrictions() restriction.Restrictions
+	SetRestrictions(r restriction.Restrictions)
 	BlockClose()
 
 	Close() (err error)
@@ -200,6 +201,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
 	return
+}
+
+func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
+	sb.restrictions = r
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
@@ -871,7 +876,7 @@ mainLoop:
 	if err = sb.Apply(s); err != nil {
 		return
 	}
-	
+
 	return
 }
 
@@ -1177,17 +1182,17 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 	}
 
 	/*
-	comment-out relations sorting so the list order will be persistent after setting the details
-	sort.Slice(rels, func(i, j int) bool {
-		_, iExists := details.Fields[rels[i].Key]
-		_, jExists := details.Fields[rels[j].Key]
+		comment-out relations sorting so the list order will be persistent after setting the details
+		sort.Slice(rels, func(i, j int) bool {
+			_, iExists := details.Fields[rels[i].Key]
+			_, jExists := details.Fields[rels[j].Key]
 
-		if iExists && !jExists {
-			return true
-		}
+				if iExists && !jExists {
+					return true
+				}
 
-		return false
-	})*/
+				return false
+			})*/
 
 	return rels
 }
