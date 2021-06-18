@@ -875,6 +875,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	depEntriesToEvents := func(depsEntries []database.Record) []*pb.EventMessage {
+		var msgs []*pb.EventMessage
 		for _, depEntry := range depsEntries {
 			msgs = append(msgs, &pb.EventMessage{Value: &pb.EventMessageValueOfObjectDetailsSet{ObjectDetailsSet: &pb.EventObjectDetailsSet{Id: pbtypes.GetString(depEntry.Details, bundle.RelationKeyId.String()), Details: depEntry.Details}}})
 		}
