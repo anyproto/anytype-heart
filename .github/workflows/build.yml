@@ -79,8 +79,19 @@ jobs:
           echo "addon signature: $ADDON_FILE_SIGNATURE\n"
           [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
           mv clientlibrary/jsaddon/build addon
-          tar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
+          ADDON_FILE_SIGNATURE=`head -c 4 addon/Release/addon.node | xxd -ps -g 4`
+          echo "addon signature2: $ADDON_FILE_SIGNATURE\n"
+          [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
+          sudo /usr/sbin/purge
+          gtar -czvf js_${VERSION}_darwin-amd64.tar.gz protobuf addon
           mv js_${VERSION}_darwin-amd64.tar.gz .release/
+          cd .release
+          gtar -xzf js_${VERSION}_darwin-amd64.tar.gz
+          ADDON_FILE_SIGNATURE=`head -c 4 addon/Release/addon.node | xxd -ps -g 4`
+          echo "addon signature3: $ADDON_FILE_SIGNATURE\n"
+          [[ $ADDON_FILE_SIGNATURE == "00000000" ]] && echo "INVALID ADDDON FILE SIGNATURE!" && exit 1
+          rm -rf addon
+          cd ..
           rm ./darwin-amd64*
       - name: Upload protobuf artifact for linux build
         uses: actions/upload-artifact@v2
@@ -125,7 +136,8 @@ jobs:
         run: |
           go get golang.org/x/mobile/cmd/...
           gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=ios -o Lib.framework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
-          tar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf
+          sudo /usr/sbin/purge
+          gtar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf
           mv ios_framework_${VERSION}.tar.gz .release/
       - name: Make java protos
         run: |
@@ -140,7 +152,8 @@ jobs:
         run: |
           go get golang.org/x/mobile/cmd/...
           gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
-          tar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
+          sudo /usr/sbin/purge
+          gtar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Release
         uses: softprops/action-gh-release@v1
