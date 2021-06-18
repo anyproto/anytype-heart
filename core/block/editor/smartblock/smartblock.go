@@ -635,10 +635,20 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 		}
 	}
 
-	relations := sb.Relations()
+	aggregatedRelations := sb.Relations()
+
 	for _, detail := range details {
 		if detail.Value != nil {
-			rel := pbtypes.GetRelation(relations, detail.Key)
+			if detail.Key == bundle.RelationKeyType.String() {
+				// special case when client sets the type's detail directly instead of using setObjectType command
+				err = sb.SetObjectTypes(ctx, pbtypes.GetStringListValue(detail.Value))
+				if err != nil {
+					log.Errorf("failed to set object's type via detail: %s", err.Error())
+				} else {
+					continue
+				}
+			}
+			rel := pbtypes.GetRelation(aggregatedRelations, detail.Key)
 			if rel == nil {
 				log.Errorf("SetDetails: missing relation for detail %s", detail.Key)
 				return fmt.Errorf("relation not found: you should add the missing relation first")
@@ -648,10 +658,11 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 				s.SetExtraRelation(rel)
 			}
 			if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
+				rel = pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
 				newOptsIds := slice.Difference(pbtypes.GetStringListValue(detail.Value), pbtypes.GetStringListValue(detCopy.Fields[detail.Key]))
 				var missingOptsIds []string
 				for _, newOptId := range newOptsIds {
-					if !pbtypes.HasOption(rel.SelectDict, newOptId) {
+					if opt := pbtypes.GetOption(rel.SelectDict, newOptId); opt == nil || opt.Scope != model.RelationOption_local {
 						missingOptsIds = append(missingOptsIds, newOptId)
 					}
 				}
@@ -732,19 +743,8 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.R
 		return
 	}
 
-	if err = sb.Apply(s, NoEvent); err != nil {
+	if err = sb.Apply(s); err != nil {
 		return
-	}
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
 	}
 
 	return
@@ -871,18 +871,7 @@ mainLoop:
 	if err = sb.Apply(s); err != nil {
 		return
 	}
-
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
-	}
+	
 	return
 }
 
@@ -890,7 +879,7 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 	copy := pbtypes.CopyRelations(sb.ExtraRelations())
 	filtered := []*model.Relation{}
 	st := sb.NewStateCtx(ctx)
-
+	det := st.Details()
 	for _, rel := range copy {
 		var toBeRemoved bool
 		for _, relationKey := range relationKeys {
@@ -899,28 +888,28 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 				break
 			}
 		}
-		if !toBeRemoved {
-			det := st.Details()
+
+		if toBeRemoved {
 			if pbtypes.HasField(det, rel.Key) {
 				delete(det.Fields, rel.Key)
 			}
+		} else {
 			filtered = append(filtered, rel)
 		}
 	}
 
-	if err = sb.Apply(st, NoEvent); err != nil {
+	// remove from the list of featured relations
+	featuredList := pbtypes.GetStringList(det, bundle.RelationKeyFeaturedRelations.String())
+	featuredList = slice.Filter(featuredList, func(s string) bool {
+		return slice.FindPos(relationKeys, s) == -1
+	})
+	det.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList(featuredList)
+
+	st.SetDetails(det)
+	st.SetExtraRelations(filtered)
+
+	if err = sb.Apply(st); err != nil {
 		return
-	}
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        st.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
 	}
 
 	return
@@ -1187,6 +1176,8 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 		return rels
 	}
 
+	/*
+	comment-out relations sorting so the list order will be persistent after setting the details
 	sort.Slice(rels, func(i, j int) bool {
 		_, iExists := details.Fields[rels[i].Key]
 		_, jExists := details.Fields[rels[j].Key]
@@ -1196,7 +1187,7 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 		}
 
 		return false
-	})
+	})*/
 
 	return rels
 }
@@ -1227,20 +1218,21 @@ func (sb *smartBlock) RelationsState(s *state.State, aggregateFromDS bool) []*mo
 		if err != nil {
 			log.Errorf("failed to get aggregated relations for type: %s", err.Error())
 		}
+		rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
+		sb.fillAggregatedRelations(rels, s.ObjectType())
+		return rels
+	} else {
+		return s.ExtraRelations()
 	}
-
-	rels := mergeAndSortRelations(sb.objectTypeRelations(s), s.ExtraRelations(), aggregatedRelation, s.Details())
-	sb.fillAggregatedRelations(rels)
-	return rels
 }
 
-func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation) {
+func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation, objType string) {
 	for i, rel := range rels {
 		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			continue
 		}
 
-		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, sb.ObjectType())
+		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
 			continue

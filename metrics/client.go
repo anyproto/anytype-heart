@@ -114,7 +114,7 @@ func (c *client) StartAggregating() {
 				other, ok := c.aggregatableMap[ev.Key()]
 				var newEv EventAggregatable
 				if !ok {
-					newEv = other
+					newEv = ev
 				} else {
 					newEv = ev.Aggregate(other)
 				}
@@ -134,7 +134,7 @@ func (c *client) StopAggregating() {
 }
 
 func (c *client) RecordEvent(ev EventRepresentable) {
-	if c.amplitude == nil {
+	if c.amplitude == nil || ev == nil {
 		return
 	}
 	go func(ev EventRepresentable) {

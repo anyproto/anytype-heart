@@ -37,7 +37,7 @@ jobs:
           export GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
           export DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
           export GIT_BRANCH=$(git branch --show-current)
-          echo "FLAGS=\"-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean\"" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
       - name: install protoc
@@ -167,7 +167,7 @@ jobs:
           export GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
           export DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
           export GIT_BRANCH=$(git branch --show-current)
-          echo "FLAGS=\"-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean\"" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           mkdir protobuf
       - name: Cache dependencies

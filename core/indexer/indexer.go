@@ -595,6 +595,10 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		}
 	}
 
+	if len(meta.ObjectTypes) > 0 && meta.Details != nil {
+		meta.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList(meta.ObjectTypes)
+	}
+
 	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}, true); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {

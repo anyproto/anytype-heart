@@ -242,7 +242,10 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 			return nil
 		}
 	}
-	s.SetObjectTypes(append(s.objectTypes, add.Url))
+	objectTypes := append(s.objectTypes, add.Url)
+	s.SetObjectTypes(objectTypes)
+	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.StringList(objectTypes))
+
 	return nil
 }
 

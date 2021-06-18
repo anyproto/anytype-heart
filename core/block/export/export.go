@@ -3,7 +3,11 @@ package export
 import (
 	"bytes"
 	"context"
+	"math/rand"
 	"path/filepath"
+	"strconv"
+	"sync"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -163,7 +167,7 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	filename := filepath.Join("files", hash+"_"+file.Meta().Name)
+	filename := filepath.Join("files", wr.Namer().Get(hash, file.Meta().Name))
 	rd, err := file.Reader()
 	if err != nil {
 		return
@@ -180,10 +184,56 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	filename := filepath.Join("files", hash+"_"+orig.Meta().Name)
+	filename := filepath.Join("files", wr.Namer().Get(hash, orig.Meta().Name))
 	rd, err := orig.Reader()
 	if err != nil {
 		return
 	}
 	return wr.WriteFile(filename, rd)
+}
+
+func newNamer() *fileNamer {
+	return &fileNamer{
+		names: make(map[string]string),
+	}
+}
+
+type fileNamer struct {
+	// id -> name and name -> id
+	names map[string]string
+	mu    sync.Mutex
+}
+
+func (fn *fileNamer) Get(hash, title string) (name string) {
+	const fileLenLimit = 30
+	fn.mu.Lock()
+	defer fn.mu.Unlock()
+	var ok bool
+	if name, ok = fn.names[hash]; ok {
+		return name
+	}
+	if l := utf8.RuneCountInString(title); l > fileLenLimit {
+		buf := bytes.NewBuffer(nil)
+		for i := l - fileLenLimit; i < l; i++ {
+			buf.WriteRune([]rune(title)[i])
+		}
+		name = buf.String()
+	} else {
+		name = title
+	}
+	var (
+		i = 0
+		b = 36
+	)
+	gname := name
+	for {
+		if _, ok = fn.names[gname]; !ok {
+			fn.names[hash] = gname
+			fn.names[gname] = hash
+			return gname
+		}
+		i++
+		n := int64(i * b)
+		gname = strconv.FormatInt(rand.Int63n(n), b) + "_" + name
+	}
 }

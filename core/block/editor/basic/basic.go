@@ -36,11 +36,11 @@ var ErrNotSupported = fmt.Errorf("operation not supported for this type of smart
 
 func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
 	s := bs.NewStateCtx(ctx)
-
+	var uniqMap = make(map[string]struct{})
 	for _, bId := range req.BlockIds {
 		b := s.Pick(bId)
 		if b != nil {
-			descendants := bs.getAllDescendants(b.Copy(), []simple.Block{})
+			descendants := bs.getAllDescendants(uniqMap, b.Copy(), []simple.Block{})
 			blocks = append(blocks, descendants...)
 			s.Unlink(b.Model().Id)
 		}
@@ -292,10 +292,14 @@ func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAd
 	return bs.Apply(s)
 }
 
-func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []simple.Block {
+func (bs *basic) getAllDescendants(uniqMap map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
+	if _, ok := uniqMap[block.Model().Id]; ok {
+		return blocks
+	}
 	blocks = append(blocks, block)
+	uniqMap[block.Model().Id] = struct{}{}
 	for _, cId := range block.Model().ChildrenIds {
-		blocks = bs.getAllDescendants(bs.Pick(cId).Copy(), blocks)
+		blocks = bs.getAllDescendants(uniqMap, bs.Pick(cId).Copy(), blocks)
 	}
 	return blocks
 }

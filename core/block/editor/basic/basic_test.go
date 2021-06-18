@@ -198,6 +198,20 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
 
+func TestBasic_InternalCut(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}}))
+	sb.AddBlock(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}))
+	sb.AddBlock(simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}))
+	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
+	b := NewBasic(sb)
+	blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveRequest{
+		BlockIds: []string{"1", "1.1", "1.1.1"},
+	})
+	require.NoError(t, err)
+	assert.Len(t, blocks, 3)
+}
+
 func TestBasic_InternalPaste(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
