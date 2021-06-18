@@ -37,6 +37,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
 	}
+	s.InjectDerivedDetails()
 
 	return s
 }
