@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "d5e8330c30ee601dd75a5967b6d39b61f448087021645a7e6e3612d734baea61"
+const TypeChecksum = "7642086facd02c37170f6844b5da0d66f281c66a9ab08cb9e5c4ffa627f7a22a"
 
 type TypeKey string
 
@@ -106,7 +106,7 @@ var (
 			IconEmoji:   "💭",
 			Layout:      model.ObjectType_basic,
 			Name:        "Daily Reflection",
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIntentions], relations[RelationKeyHappenings], relations[RelationKeyGratefulFor], relations[RelationKeyActionItems], relations[RelationKeyCreatedDate], relations[RelationKeyMood], relations[RelationKeyWorriedAbout]},
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIntentions], relations[RelationKeyHappenings], relations[RelationKeyGratefulFor], relations[RelationKeyActionItems], relations[RelationKeyMood], relations[RelationKeyWorriedAbout]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "dailyReflection",
 		},
@@ -126,7 +126,7 @@ var (
 			IconEmoji:   "✨",
 			Layout:      model.ObjectType_basic,
 			Name:        "Diary Entry",
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyMood], relations[RelationKeyCreatedDate]},
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyMood]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "diaryEntry",
 		},
@@ -197,13 +197,13 @@ var (
 			IconEmoji:   "🔮",
 			Layout:      model.ObjectType_objectType,
 			Name:        "Type",
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyRecommendedRelations], relations[RelationKeyRecommendedLayout], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyIsHidden]},
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyRecommendedRelations], relations[RelationKeyRecommendedLayout], relations[RelationKeyMpAddedToLibrary]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_STObjectType, model.SmartBlockType_BundledObjectType},
 			Url:         TypePrefix + "objectType",
 		},
 		TypeKeyPage: {
 
-			Description: "Meta type to start with",
+			Description: "Proto type to start with",
 			IconEmoji:   "⚪",
 			Layout:      model.ObjectType_basic,
 			Name:        "Draft",
@@ -248,7 +248,7 @@ var (
 			IconEmoji:   "🔗",
 			Layout:      model.ObjectType_relation,
 			Name:        "Relation",
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyCreator], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyIsHidden], relations[RelationKeyRelationFormat], relations[RelationKeyRelationMaxCount], relations[RelationKeyRelationDict], relations[RelationKeyRelationDefaultValue], relations[RelationKeyRelationFormatObjectTypes]},
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyCreator], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyRelationFormat], relations[RelationKeyRelationMaxCount], relations[RelationKeyRelationDict], relations[RelationKeyRelationDefaultValue], relations[RelationKeyRelationFormatObjectTypes]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_IndexedRelation, model.SmartBlockType_BundledRelation},
 			Url:         TypePrefix + "relation",
 		},
