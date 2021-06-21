@@ -109,6 +109,11 @@ func TestApplyState(t *testing.T) {
 					Content: &model.BlockContentOfText{
 						Text: &model.BlockContentText{},
 					},
+					Fields: &types.Struct{
+						Fields: map[string]*types.Value{
+							text.DetailsKeyFieldName: pbtypes.String("name"),
+						},
+					},
 				}, text.DetailsKeys{
 					Text: "name",
 				}),
@@ -131,6 +136,11 @@ func TestApplyState(t *testing.T) {
 					Id: "2",
 					Content: &model.BlockContentOfText{
 						Text: &model.BlockContentText{},
+					},
+					Fields: &types.Struct{
+						Fields: map[string]*types.Value{
+							text.DetailsKeyFieldName: pbtypes.StringList([]string{"", "done"}),
+						},
 					},
 				}, text.DetailsKeys{
 					Checked: "done",
@@ -155,6 +165,11 @@ func TestApplyState(t *testing.T) {
 					Id: "2",
 					Content: &model.BlockContentOfText{
 						Text: &model.BlockContentText{},
+					},
+					Fields: &types.Struct{
+						Fields: map[string]*types.Value{
+							text.DetailsKeyFieldName: pbtypes.StringList([]string{"", "done"}),
+						},
 					},
 				}, text.DetailsKeys{
 					Checked: "done",

@@ -12,9 +12,12 @@ import (
 const DetailsKeyFieldName = "_detailsKey"
 
 func newDetailKeys(keysList []string) DetailsKeys {
-	keys := DetailsKeys{Text: keysList[0]}
-	if len(keysList) > 1 {
-		keys.Checked = keysList[1]
+	keys := DetailsKeys{}
+	if len(keysList) > 0 {
+		keys.Text = keysList[0]
+		if len(keysList) > 1 {
+			keys.Checked = keysList[1]
+		}
 	}
 	return keys
 }
