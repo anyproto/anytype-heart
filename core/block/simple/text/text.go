@@ -27,10 +27,7 @@ func init() {
 			return nil
 		}
 		if keysList := pbtypes.GetStringList(m.GetFields(), DetailsKeyFieldName); len(keysList) > 0 {
-			keys := DetailsKeys{Text: keysList[0]}
-			if len(keysList) > 1 {
-				keys.Checked = keysList[1]
-			}
+			keys := newDetailKeys(keysList)
 			return NewDetails(m, keys)
 		}
 		return NewText(m)

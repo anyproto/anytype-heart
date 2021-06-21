@@ -11,6 +11,14 @@ import (
 
 const DetailsKeyFieldName = "_detailsKey"
 
+func newDetailKeys(keysList []string) DetailsKeys {
+	keys := DetailsKeys{Text: keysList[0]}
+	if len(keysList) > 1 {
+		keys.Checked = keysList[1]
+	}
+	return keys
+}
+
 type DetailsKeys struct {
 	Text    string
 	Checked string
@@ -38,6 +46,7 @@ type textDetails struct {
 }
 
 func (td *textDetails) DetailsInit(s simple.DetailsService) {
+	td.keys = newDetailKeys(pbtypes.GetStringList(td.Fields, DetailsKeyFieldName))
 	if td.keys.Text != "" {
 		td.SetText(pbtypes.GetString(s.Details(), td.keys.Text), nil)
 	}
@@ -86,7 +95,9 @@ func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err err
 		Virtual: true,
 		Msg: &pb.EventMessage{
 			Value: &pb.EventMessageValueOfBlockSetText{
-				BlockSetText: &pb.EventBlockSetText{},
+				BlockSetText: &pb.EventBlockSetText{
+					Id: td.Id,
+				},
 			},
 		},
 	}

@@ -334,6 +334,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prev := s.parent.Details()
 		detailsChanged = !prev.Equal(s.details)
 	}
+
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		id := b.Model().Id
 		inUse[id] = struct{}{}
