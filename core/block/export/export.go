@@ -125,7 +125,7 @@ func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string,
 		var conv converter.Converter
 		switch format {
 		case pb.RpcExport_Markdown:
-			conv = md.NewMDConverter(e.a, b.NewState())
+			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
 		case pb.RpcExport_Protobuf:
 			conv = pbc.NewConverter(b.NewState())
 		}

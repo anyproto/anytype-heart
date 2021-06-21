@@ -17,8 +17,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
-func NewMDConverter(a core.Service, s *state.State) converter.Converter {
-	return &MD{a: a, s: s}
+type FileNamer interface {
+	Get(hash, title string) (name string)
+}
+
+func NewMDConverter(a core.Service, s *state.State, fn FileNamer) converter.Converter {
+	return &MD{a: a, s: s, fn: fn}
 }
 
 type MD struct {
@@ -31,6 +35,7 @@ type MD struct {
 
 	mw         *marksWriter
 	knownLinks []string
+	fn         FileNamer
 }
 
 func (h *MD) Convert() (result []byte) {
@@ -181,10 +186,10 @@ func (h *MD) renderFile(b *model.Block, in *renderState) {
 	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
 	h.buf.WriteString(in.indent)
 	if file.Type != model.BlockContentFile_Image {
-		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
+		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, url.PathEscape(h.fn.Get(file.Hash, file.Name)))
 		h.fileHashes = append(h.fileHashes, file.Hash)
 	} else {
-		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, url.PathEscape(file.Hash+"_"+file.Name))
+		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, url.PathEscape(h.fn.Get(file.Hash, file.Name)))
 		h.imageHashes = append(h.imageHashes, file.Hash)
 	}
 }

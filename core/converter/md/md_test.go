@@ -70,7 +70,7 @@ func TestMD_Convert(t *testing.T) {
 				},
 			},
 		})
-		res := NewMDConverter(nil, s).Convert()
+		res := NewMDConverter(nil, s, nil).Convert()
 		exp := "***[some](http://golang.org)*** [t](http://golang.org) [e](http://golang.org)xt **wi~~th m~~**~~ar~~ks   \n"
 		assert.Equal(t, exp, string(res))
 	})
