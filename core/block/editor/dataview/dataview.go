@@ -806,15 +806,16 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	updateDepIds := func(ids []string) (newDepEntries []database.Record, close func(), err error) {
+		var newDepIds []string
 		for _, depId := range ids {
 			if _, exists := depIdsMap[depId]; !exists {
-				depIds = append(depIds, depId)
+				newDepIds = append(newDepIds, depId)
 				depIdsMap[depId] = struct{}{}
 			}
 		}
 
 		// todo: implement ref counter in order to unsubscribe from deps that are no longer used
-		depEntries, cancelDepsSubscripton, err := db.QueryByIdAndSubscribeForChanges(depIds, depRecordsSub)
+		depEntries, cancelDepsSubscripton, err := db.QueryByIdAndSubscribeForChanges(newDepIds, depRecordsSub)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -954,6 +955,13 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 								Records: []*types.Struct{rec},
 							}}}})
 				}
+			}
+
+		}
+	}()
+	go func() {
+		for {
+			select {
 			case rec, ok := <-depRecordsCh:
 				if !ok {
 					return
