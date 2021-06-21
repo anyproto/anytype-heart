@@ -17,10 +17,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/converter/md"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/pbc"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -107,7 +110,15 @@ func (e *export) idsForExport(reqIds []string) (ids []string, err error) {
 	if len(reqIds) > 0 {
 		return reqIds, nil
 	}
-	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{}, []smartblock.SmartBlockType{
+	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	}, []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeHome,
 		smartblock.SmartBlockTypePage,
 	})
