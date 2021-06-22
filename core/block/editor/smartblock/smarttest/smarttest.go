@@ -46,6 +46,10 @@ type SmartTest struct {
 	state.Doc
 }
 
+func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
+	st.TestRestrictions = r
+}
+
 func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }

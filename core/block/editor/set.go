@@ -7,9 +7,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -87,7 +89,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}
-
+	p.applyRestrictions(ctx.State)
 	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
@@ -97,6 +99,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
 	s := p.NewState()
+	p.applyRestrictions(s)
 	return template.ApplyTemplate(p, s,
 		template.WithDetailName(name),
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
@@ -105,4 +108,33 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 		template.WithRequiredRelations(),
 		template.WithMaxCountMigration,
 	)
+}
+
+func (p *Set) applyRestrictions(s *state.State) {
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if dv := b.Model().GetDataview(); dv != nil {
+			if dv.Source == bundle.TypeKeyFile.URL() {
+				br := model.RestrictionsDataviewRestrictions{
+					BlockId: b.Model().Id,
+					Restrictions: []model.RestrictionsDataviewRestriction{
+						model.Restrictions_DVRelation, model.Restrictions_DVCreateObject,
+					},
+				}
+				r := p.Restrictions()
+				var found bool
+				for i, dr := range r.Dataview {
+					if dr.BlockId == br.BlockId {
+						r.Dataview[i].Restrictions = br.Restrictions
+						found = true
+						break
+					}
+				}
+				if !found {
+					r.Dataview = append(r.Dataview, br)
+				}
+				p.SetRestrictions(r)
+			}
+		}
+		return true
+	})
 }
