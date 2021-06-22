@@ -11,14 +11,30 @@ import (
 
 const DetailsKeyFieldName = "_detailsKey"
 
-func NewDetails(block *model.Block, key string) simple.Block {
+func newDetailKeys(keysList []string) DetailsKeys {
+	keys := DetailsKeys{}
+	if len(keysList) > 0 {
+		keys.Text = keysList[0]
+		if len(keysList) > 1 {
+			keys.Checked = keysList[1]
+		}
+	}
+	return keys
+}
+
+type DetailsKeys struct {
+	Text    string
+	Checked string
+}
+
+func NewDetails(block *model.Block, keys DetailsKeys) simple.Block {
 	t := NewText(block)
 	if t == nil {
 		return nil
 	}
 	return &textDetails{
 		Text: t.(*Text),
-		key:  key,
+		keys: keys,
 	}
 }
 
@@ -29,65 +45,44 @@ type DetailsBlock interface {
 
 type textDetails struct {
 	*Text
-	key     string
-	changed bool
-	text    string
+	keys DetailsKeys
 }
 
 func (td *textDetails) DetailsInit(s simple.DetailsService) {
-	td.Text.SetText(pbtypes.GetString(s.Details(), td.key), nil)
-	return
-}
-
-func (td *textDetails) OnDetailsChange(s simple.DetailsService) (msgs []simple.EventMessage, err error) {
-	newValue := pbtypes.GetString(s.Details(), td.key)
-	if old := td.GetText(); old != newValue {
-		td.Text.SetText(newValue, nil)
-		msgs = append(msgs, simple.EventMessage{
-			Msg: &pb.EventMessage{
-				Value: &pb.EventMessageValueOfBlockSetText{
-					BlockSetText: &pb.EventBlockSetText{
-						Id: td.Id,
-						Text: &pb.EventBlockSetTextText{
-							Value: newValue,
-						},
-					},
-				},
-			},
-			Virtual: true,
-		})
+	td.keys = newDetailKeys(pbtypes.GetStringList(td.Fields, DetailsKeyFieldName))
+	if td.keys.Text != "" {
+		td.SetText(pbtypes.GetString(s.Details(), td.keys.Text), nil)
+	}
+	if td.keys.Checked != "" {
+		checked := pbtypes.GetBool(s.Details(), td.keys.Checked)
+		td.SetChecked(checked)
 	}
 	return
 }
 
-func (td *textDetails) DetailsApply(s simple.DetailsService) (msgs []simple.EventMessage, err error) {
-	if !td.changed {
-		return
+func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsService) (ok bool, err error) {
+	var prev Block
+	prev, _ = prevBlock.(Block)
+
+	if td.keys.Text != "" {
+		if prev == nil || prev.GetText() != td.GetText() {
+			s.SetDetail(td.keys.Text, pbtypes.String(td.GetText()))
+			ok = true
+		}
 	}
-	value := pbtypes.String(td.GetText())
-	s.SetDetail(td.key, value)
-	msgs = append(msgs, simple.EventMessage{
-		Msg: &pb.EventMessage{
-			Value: &pb.EventMessageValueOfBlockSetText{
-				BlockSetText: &pb.EventBlockSetText{
-					Id: td.Id,
-					Text: &pb.EventBlockSetTextText{
-						Value: value.GetStringValue(),
-					},
-				},
-			},
-		},
-		Virtual: true,
-	})
-	td.changed = false
+	if td.keys.Checked != "" {
+		if prev == nil || prev.GetChecked() != td.GetChecked() {
+			s.SetDetail(td.keys.Checked, pbtypes.Bool(td.GetChecked()))
+			ok = true
+		}
+	}
 	return
 }
 
 func (td *textDetails) Copy() simple.Block {
 	return &textDetails{
-		Text:    td.Text.Copy().(*Text),
-		key:     td.key,
-		changed: td.changed,
+		Text: td.Text.Copy().(*Text),
+		keys: td.keys,
 	}
 }
 
@@ -99,49 +94,86 @@ func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err err
 	if msgs, err = td.Text.Diff(sd.Text); err != nil {
 		return
 	}
-	for _, msg := range msgs {
-		if st := msg.Msg.GetBlockSetText(); st != nil {
-			if st.Text != nil {
-				st.Text = nil
+	var virtEvent = simple.EventMessage{
+		Virtual: true,
+		Msg: &pb.EventMessage{
+			Value: &pb.EventMessageValueOfBlockSetText{
+				BlockSetText: &pb.EventBlockSetText{
+					Id: td.Id,
+				},
+			},
+		},
+	}
+	var (
+		toRemove   = -1
+		virtActive bool
+	)
+	for i, msg := range msgs {
+		if td.keys.Text != "" {
+			if st := msg.Msg.GetBlockSetText(); st != nil {
+				if st.Text != nil {
+					virtEvent.Msg.GetBlockSetText().Text = st.Text
+					st.Text = nil
+					virtActive = true
+				}
 			}
 		}
+		if td.keys.Checked != "" {
+			if st := msg.Msg.GetBlockSetText(); st != nil {
+				if st.Checked != nil {
+					virtEvent.Msg.GetBlockSetText().Checked = st.Checked
+					st.Checked = nil
+					virtActive = true
+				}
+			}
+		}
+		if st := msg.Msg.GetBlockSetText(); st != nil {
+			if st.Text == nil && st.Checked == nil && st.Marks == nil && st.Style == nil && st.Color == nil {
+				toRemove = i
+			}
+		}
+	}
+	if toRemove != - 1 {
+		if virtActive {
+			msgs[toRemove] = virtEvent
+		} else {
+			copy(msgs[toRemove:], msgs[toRemove+1:])
+			msgs[len(msgs)-1].Msg = nil
+			msgs = msgs[:len(msgs)-1]
+		}
+		return
+	}
+	if virtActive {
+		msgs = append(msgs, virtEvent)
 	}
 	return
 }
 
-func (td *textDetails) SetText(text string, _ *model.BlockContentTextMarks) (err error) {
-	td.changed = text != td.GetText()
+func (td *textDetails) SetText(text string, marks *model.BlockContentTextMarks) (err error) {
+	if td.keys.Text != "" {
+		marks = nil
+	}
 	return td.Text.SetText(text, nil)
 }
 
 func (td *textDetails) ModelToSave() *model.Block {
 	b := pbtypes.CopyBlock(td.Model())
-	b.Content.(*model.BlockContentOfText).Text.Text = ""
+	if td.keys.Text != "" {
+		b.Content.(*model.BlockContentOfText).Text.Text = ""
+	}
+	if td.keys.Checked != "" {
+		b.Content.(*model.BlockContentOfText).Text.Checked = false
+	}
 	return b
-}
-
-func (td *textDetails) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error) {
-	if newBlock, err = td.Text.RangeSplit(from, to, top); err != nil {
-		return
-	}
-	td.changed = true
-	return
-}
-
-func (td *textDetails) Split(pos int32) (newBlock simple.Block, err error) {
-	if newBlock, err = td.Text.Split(pos); err != nil {
-		return
-	}
-	td.changed = true
-	return
 }
 
 func (td *textDetails) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error) {
 	if caretPosition, err = td.Text.RangeTextPaste(rangeFrom, rangeTo, copiedBlock, isPartOfBlock); err != nil {
 		return
 	}
-	td.changed = true
-	td.Text.content.Marks = &model.BlockContentTextMarks{}
+	if td.keys.Text != "" {
+		td.Text.content.Marks = &model.BlockContentTextMarks{}
+	}
 	return
 }
 
@@ -149,14 +181,22 @@ func (td *textDetails) Merge(b simple.Block) (err error) {
 	if err = td.Text.Merge(b); err != nil {
 		return
 	}
-	td.changed = true
-	td.Text.content.Marks = &model.BlockContentTextMarks{}
+	if td.keys.Text != "" {
+		td.Text.content.Marks = &model.BlockContentTextMarks{}
+	}
 	return
 }
 
-func (td *textDetails) SetStyle(_ model.BlockContentTextStyle) {}
+func (td *textDetails) SetStyle(style model.BlockContentTextStyle) {
+	if td.keys.Text == "" {
+		td.Text.SetStyle(style)
+	}
+}
 
 func (td *textDetails) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error) {
+	if td.keys.Text == "" {
+		return td.Text.RangeCut(from, to)
+	}
 	if cutBlock, initialBlock, err = td.Text.RangeCut(from, to); err != nil {
 		return nil, nil, err
 	}

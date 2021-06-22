@@ -34,7 +34,7 @@ func String(v string) *types.Value {
 }
 
 func StringList(s []string) *types.Value {
-	var vals []*types.Value
+	var vals = make([]*types.Value, 0, len(s))
 	for _, str := range s {
 		vals = append(vals, String(str))
 	}
@@ -80,6 +80,16 @@ func GetString(s *types.Struct, name string) string {
 	return ""
 }
 
+func GetBool(s *types.Struct, name string) bool {
+	if s == nil || s.Fields == nil {
+		return false
+	}
+	if v, ok := s.Fields[name]; ok {
+		return v.GetBoolValue()
+	}
+	return false
+}
+
 func Exists(s *types.Struct, name string) bool {
 	if s == nil || s.Fields == nil {
 		return false
@@ -112,9 +122,8 @@ func GetStringListValue(v *types.Value) []string {
 			return nil
 		}
 		for _, v := range list.ListValue.Values {
-			item := v.GetStringValue()
-			if item != "" {
-				stringsSlice = append(stringsSlice, item)
+			if _, ok = v.GetKind().(*types.Value_StringValue); ok {
+				stringsSlice = append(stringsSlice, v.GetStringValue())
 			}
 		}
 	} else if val, ok := v.Kind.(*types.Value_StringValue); ok {

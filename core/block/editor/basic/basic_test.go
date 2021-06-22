@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -278,5 +279,27 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			BlockId: "2",
 			Key:     "not exists",
 		}))
+	})
+}
+
+func TestBasic_SetAlign(t *testing.T) {
+	t.Run("with ids", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"title", "2"}})).
+			AddBlock(simple.New(&model.Block{Id: "title"})).
+			AddBlock(simple.New(&model.Block{Id: "2"}))
+		b := NewBasic(sb)
+		require.NoError(t, b.SetAlign(nil, model.Block_AlignRight, "2", "3"))
+		assert.Equal(t, model.Block_AlignRight, sb.NewState().Get("2").Model().Align)
+	})
+	t.Run("without ids", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"title", "2"}})).
+			AddBlock(simple.New(&model.Block{Id: "title"})).
+			AddBlock(simple.New(&model.Block{Id: "2"}))
+		b := NewBasic(sb)
+		require.NoError(t, b.SetAlign(nil, model.Block_AlignRight))
+		assert.Equal(t, model.Block_AlignRight, sb.NewState().Get("title").Model().Align)
+		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(sb.NewState().Details(), bundle.RelationKeyLayoutAlign.String()))
 	})
 }

@@ -152,7 +152,6 @@ func (s *State) Get(id string) (b simple.Block) {
 		if b = s.Pick(id); b != nil {
 			b = b.Copy()
 			s.blocks[id] = b
-			s.blockInit(b)
 			return
 		}
 	}
@@ -335,18 +334,22 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prev := s.parent.Details()
 		detailsChanged = !prev.Equal(s.details)
 	}
+
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		id := b.Model().Id
 		inUse[id] = struct{}{}
 		if _, ok := s.blocks[id]; ok {
 			affectedIds = append(affectedIds, id)
 		}
+
 		if db, ok := b.(simple.DetailsHandler); ok {
-			if dmsgs, err := db.DetailsApply(s); err == nil && len(dmsgs) > 0 {
-				chmsgs = append(chmsgs, dmsgs...)
-			} else if detailsChanged {
-				if dmsgs, err := db.OnDetailsChange(s); err == nil {
-					chmsgs = append(chmsgs, dmsgs...)
+			db = s.Get(id).(simple.DetailsHandler)
+			if ok, err := db.ApplyToDetails(s.PickOrigin(id), s); err == nil && ok {
+				detailsChanged = true
+			}
+			if detailsChanged {
+				if slice.FindPos(affectedIds, id) == -1 {
+					affectedIds = append(affectedIds, id)
 				}
 			}
 		}
@@ -377,7 +380,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			action.Add = append(action.Add, bc)
 		} else {
 			flushNewBlocks()
-			b := s.blocks[id]
+			b := s.Get(id)
+			if detailsChanged {
+				if db, ok := b.(simple.DetailsHandler); ok {
+					db.DetailsInit(s)
+				}
+			}
 			diff, err := orig.Diff(b)
 			if err != nil {
 				return nil, undo.Action{}, err
