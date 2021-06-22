@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"os"
 	"strings"
 
@@ -212,7 +213,12 @@ func generateTypes() error {
 
 			if len(ot.Relations) > 0 {
 				var t []Code
+				var m = make(map[string]struct{}, len(ot.Relations))
 				for _, rel := range ot.Relations {
+					if _, exists := m[rel]; exists {
+						log.Fatalf("duplicate relation '%s' for object type '%s'", rel, ot.ID)
+					}
+					m[rel] = struct{}{}
 					t = append(t, Id("relations").Index(Id(relConst(rel))))
 				}
 				map[Code]Code(dictS)[Id("Relations")] = Index().Op("*").Qual(relPbPkg, "Relation").Values(t...)
