@@ -77,6 +77,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	progress.SetProgressMessage("read dir")
 	s := imp.NewStateCtx(ctx)
 	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
+	tempDir := imp.Anytype().TempDir()
 
 	files, close, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
 	defer func() {
@@ -384,7 +385,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				}
 
 				baseName := filepath.Base(f.Name)
-				tmpFile, err := os.Create(filepath.Join(os.TempDir(), baseName))
+				tmpFile, err := os.Create(filepath.Join(tempDir, baseName))
 
 				shortPath := f.Name
 

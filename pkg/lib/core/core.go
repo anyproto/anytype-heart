@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -82,6 +84,7 @@ type Service interface {
 	ProfileInfo
 
 	app.ComponentRunnable
+	TempDir() string
 }
 
 var _ app.Component = (*Anytype)(nil)
@@ -309,6 +312,15 @@ func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
 	}
 
 	return a.threadService.InitNewThreadsChan(ch)
+}
+
+func (a *Anytype) TempDir() string {
+	// it shouldn't be a case when it is called before wallet init, but just in case lets add the check here
+	if a.wallet == nil || a.wallet.RootPath() == "" {
+		return os.TempDir()
+	}
+
+	return filepath.Join(a.wallet.RootPath(), "tmp")
 }
 
 // subscribeForNewRecords should be called only once as early as possible.
