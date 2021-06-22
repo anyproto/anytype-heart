@@ -189,13 +189,13 @@ func (td *textDetails) Merge(b simple.Block) (err error) {
 
 func (td *textDetails) SetStyle(style model.BlockContentTextStyle) {
 	if td.keys.Text == "" {
-		td.SetStyle(style)
+		td.Text.SetStyle(style)
 	}
 }
 
 func (td *textDetails) RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error) {
 	if td.keys.Text == "" {
-		return td.RangeCut(from, to)
+		return td.Text.RangeCut(from, to)
 	}
 	if cutBlock, initialBlock, err = td.Text.RangeCut(from, to); err != nil {
 		return nil, nil, err
