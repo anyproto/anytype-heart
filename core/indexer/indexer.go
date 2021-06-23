@@ -558,7 +558,6 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	d.mu.Unlock()
-	d.st.ExtraRelations()
 	fileHashesBefore := d.st.GetAllFileHashes(d.st.FileRelationKeys())
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
 	fileHashesAfter := d.st.GetAllFileHashes(d.st.FileRelationKeys())
