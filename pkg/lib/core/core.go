@@ -327,7 +327,7 @@ func (a *Anytype) TempDir() string {
 	// simultaneous calls to TempDir will wait for the once func to finish, so it will be fine
 	a.tmpFolderAutocreate.Do(func() {
 		path := filepath.Join(a.wallet.RootPath(), tmpDir)
-		err = os.MkdirAll(path, 0655)
+		err = os.MkdirAll(path, 0700)
 		if err != nil {
 			log.Errorf("failed to make temp dir, use the default system one: %s", err.Error())
 			a.tempDir = os.TempDir()
