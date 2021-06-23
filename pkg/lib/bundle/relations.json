@@ -408,9 +408,6 @@
     "key": "creator",
     "maxCount": 1,
     "name": "Created by",
-    "objectTypes": [
-      "profile"
-    ],
     "readonly": true,
     "source": "derived"
   },

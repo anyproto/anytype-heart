@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "7642086facd02c37170f6844b5da0d66f281c66a9ab08cb9e5c4ffa627f7a22a"
+const TypeChecksum = "5c6b909cb6b88740e2cb9df157201708ef2e26411159c3e6b8b77d74772e930f"
 
 type TypeKey string
 
@@ -182,7 +182,7 @@ var (
 		},
 		TypeKeyNote: {
 
-			Description: "A brief record of points or ideas written down as an aid to memory.",
+			Description: "A brief record of points written down as an aid to memory.",
 			IconEmoji:   "🗒️",
 			Layout:      model.ObjectType_basic,
 			Name:        "Note",
