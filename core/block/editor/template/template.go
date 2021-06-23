@@ -98,9 +98,9 @@ var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relati
 			}
 			var relId string
 			if bundle.HasRelation(rel.Key) {
-				relId = addr.BundledRelationURLPrefix+rel.Key
+				relId = addr.BundledRelationURLPrefix + rel.Key
 			} else {
-				relId = addr.CustomRelationURLPrefix+rel.Key
+				relId = addr.CustomRelationURLPrefix + rel.Key
 			}
 			if slice.FindPos(relIds, relId) > -1 {
 				continue
@@ -262,8 +262,13 @@ var WithTitle = StateTransformer(func(s *state.State) {
 	}
 
 	blockExists := s.Exists(TitleBlockId)
-	if blockExists && (s.Get(TitleBlockId).Model().Align == align) {
-		return
+
+	if blockExists {
+		isAlignOk := s.Pick(TitleBlockId).Model().Align == align
+		isFieldOk := len(pbtypes.GetStringList(s.Pick(TitleBlockId).Model().Fields, text.DetailsKeyFieldName)) == 2
+		if isFieldOk && isAlignOk {
+			return
+		}
 	}
 
 	s.Set(simple.New(&model.Block{
@@ -276,7 +281,7 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Title}},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
-				text.DetailsKeyFieldName: pbtypes.String("name"),
+				text.DetailsKeyFieldName: pbtypes.StringList([]string{bundle.RelationKeyName.String(), bundle.RelationKeyDone.String()}),
 			},
 		},
 		Align: align,

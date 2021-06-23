@@ -246,7 +246,7 @@ func loadImage(stor core.Service, url string) (hash string, err error) {
 		return "", fmt.Errorf("can't download '%s': %s", url, resp.Status)
 	}
 
-	tmpFile, err := ioutil.TempFile("", "anytype_downloaded_file_*")
+	tmpFile, err := ioutil.TempFile(stor.TempDir(), "anytype_downloaded_file_*")
 	if err != nil {
 		return "", err
 	}

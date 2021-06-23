@@ -5690,7 +5690,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
+| blockIds | [string](#string) | repeated | when empty - align will be applied as layoutAlign |
 | align | [model.Block.Align](#anytype.model.Block.Align) |  |  |
 
 

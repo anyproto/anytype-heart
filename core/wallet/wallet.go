@@ -16,6 +16,7 @@ const (
 )
 
 type wallet struct {
+	rootPath       string
 	repoPath       string // other components will init their files/dirs inside
 	accountKeyPath string
 	deviceKeyPath  string
@@ -81,6 +82,10 @@ func (r *wallet) RepoPath() string {
 	return r.repoPath
 }
 
+func (r *wallet) RootPath() string {
+	return r.rootPath
+}
+
 func (r *wallet) Name() (name string) {
 	return CName
 }
@@ -92,6 +97,7 @@ func (r *wallet) Close() (err error) {
 func NewWithAccountRepo(rootpath, accountId string) Wallet {
 	repoPath := filepath.Join(rootpath, accountId)
 	return &wallet{
+		rootPath:       rootpath,
 		repoPath:       repoPath,
 		accountKeyPath: filepath.Join(repoPath, keyFileAccount),
 		deviceKeyPath:  filepath.Join(repoPath, keyFileDevice),
@@ -107,6 +113,7 @@ func NewWithRepoPathAndKeys(repoPath string, accountKeypair, deviceKeypair walle
 }
 
 type Wallet interface {
+	RootPath() string
 	RepoPath() string
 	GetAccountPrivkey() (walletUtil.Keypair, error)
 	GetDevicePrivkey() (walletUtil.Keypair, error)

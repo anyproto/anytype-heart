@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -45,7 +46,7 @@ type builtinTemplate struct {
 
 func (b *builtinTemplate) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
-	b.makeGenHash(1)
+	b.makeGenHash(2)
 	return
 }
 
@@ -96,7 +97,8 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	st.SetRootId(id)
 	st = st.Copy()
 	st.SetDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
-	st.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String("_anytype_profile"))
+	st.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
+	st.SetDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	if ots := st.ObjectTypes(); len(ots) != 2 {
 		st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
 	}
