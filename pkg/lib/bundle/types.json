@@ -35,9 +35,6 @@
       "actionItems",
       "mood",
       "worriedAbout"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -75,13 +72,10 @@
       "ingredients",
       "instructions",
       "difficulty"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
-    "description": "A brief record of points or ideas written down as an aid to memory.",
+    "description": "A brief record of points written down as an aid to memory.",
     "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
@@ -110,9 +104,6 @@
       "isHidden",
       "isArchived",
       "tag"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -157,9 +148,6 @@
       "instagram",
       "gender",
       "facebook"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -191,10 +179,10 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
-    ],
-    "types": [
-      "Page"
+      "tag",
+      "problem",
+      "solution",
+      "alternative"
     ]
   },
   {
@@ -235,9 +223,6 @@
       "priority",
       "tasks",
       "linkedProjects"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -261,10 +246,6 @@
       "relationDict",
       "relationDefaultValue",
       "relationFormatObjectTypes"
-    ],
-    "types": [
-      "IndexedRelation",
-      "BundledRelation"
     ]
   },
   {
@@ -308,9 +289,6 @@
       "exposure",
       "addedDate",
       "fileExt"
-    ],
-    "types": [
-      "File"
     ]
   },
   {
@@ -341,9 +319,6 @@
       "coverType",
       "layoutAlign",
       "isHidden"
-    ],
-    "types": [
-      "Home"
     ]
   },
   {
@@ -379,9 +354,6 @@
       "notes",
       "tasks",
       "events"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -417,9 +389,6 @@
       "participants",
       "actionItems",
       "agenda"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -452,9 +421,6 @@
       "isHidden",
       "isArchived",
       "tag"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -490,10 +456,6 @@
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary"
-    ],
-    "types": [
-      "STObjectType",
-      "BundledObjectType"
     ]
   },
   {
@@ -528,9 +490,6 @@
       "targetObjectType",
       "templateName",
       "templateIsBundled"
-    ],
-    "types": [
-      "Template"
     ]
   },
   {
@@ -564,9 +523,6 @@
       "isArchived",
       "tag",
       "setOf"
-    ],
-    "types": [
-      "Set"
     ]
   },
   {
@@ -600,9 +556,6 @@
       "isArchived",
       "tag",
       "mood"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -635,9 +588,6 @@
       "isHidden",
       "isArchived",
       "tag"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -680,9 +630,6 @@
       "addedDate",
       "focalRatio",
       "fileExt"
-    ],
-    "types": [
-      "File"
     ]
   },
   {
@@ -714,10 +661,6 @@
       "layoutAlign",
       "isHidden",
       "isArchived"
-    ],
-    "types": [
-      "Page",
-      "ProfilePage"
     ]
   },
   {
@@ -762,9 +705,6 @@
       "fileMimeType",
       "addedDate",
       "fileExt"
-    ],
-    "types": [
-      "File"
     ]
   },
   {
@@ -802,9 +742,6 @@
       "result",
       "dueDate",
       "responsible"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -837,9 +774,6 @@
       "isHidden",
       "isArchived",
       "tag"
-    ],
-    "types": [
-      "Page"
     ]
   },
   {
@@ -875,9 +809,6 @@
       "sizeInBytes",
       "addedDate",
       "fileExt"
-    ],
-    "types": [
-      "File"
     ]
   },
   {
@@ -910,9 +841,6 @@
       "isHidden",
       "isArchived",
       "tag"
-    ],
-    "types": [
-      "Page"
     ]
   }
 ]

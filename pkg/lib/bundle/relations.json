@@ -198,6 +198,15 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "solution",
+    "maxCount": 1,
+    "name": "Solution",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Year when this object were released",
     "format": "number",
     "hidden": false,
@@ -276,6 +285,15 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "problem",
+    "maxCount": 1,
+    "name": "Problem",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Specify visual align of the layout",
     "format": "number",
     "hidden": true,
@@ -320,6 +338,15 @@
     "key": "durationInSeconds",
     "maxCount": 1,
     "name": "Duration",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "alternative",
+    "maxCount": 1,
+    "name": "Alternative",
     "readonly": false,
     "source": "details"
   },
@@ -408,9 +435,6 @@
     "key": "creator",
     "maxCount": 1,
     "name": "Created by",
-    "objectTypes": [
-      "profile"
-    ],
     "readonly": true,
     "source": "derived"
   },
