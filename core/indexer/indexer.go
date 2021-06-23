@@ -451,8 +451,8 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 		curDetails = curDetailsO.Details
 	}
 	// compare only real object scoped details
-	detailsObjectScope := pbtypes.StructCutKeys(details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+	detailsObjectScope := pbtypes.StructCutKeys(details, bundle.LocalRelationsKeys)
+	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, bundle.LocalRelationsKeys)
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails == nil {
 			if err := i.store.CreateObject(id, details, &model.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
