@@ -1455,9 +1455,11 @@ func (m *dsObjectStore) UpdateRelationsInSet(setId, objTypeBefore, objTypeAfter 
 		return err
 	}
 
-	err = m.storeRelations(txn, relationsAfter.Relations)
-	if err != nil {
-		return err
+	if relationsBefore != nil && relationsAfter != nil && !pbtypes.RelationsEqual(relationsBefore.Relations, relationsAfter.Relations) {
+		err = m.storeRelations(txn, relationsAfter.Relations)
+		if err != nil {
+			return err
+		}
 	}
 
 	return txn.Commit()
@@ -1490,19 +1492,21 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*model.Relation) 
 		relCopy := pbtypes.CopyRelation(relation)
 		relCopy.SelectDict = nil
 		var bundled = true
-		if !bundle.HasRelation(relation.Key) {
-			bundled = false
-			// do not store bundled relations
-			relationKey := relationsBase.ChildString(relation.Key)
-			relBytes, err = proto.Marshal(relCopy)
-			if err != nil {
-				return err
-			}
+		if bundle.HasRelation(relation.Key) {
+			continue
+		}
 
-			err = txn.Put(relationKey, relBytes)
-			if err != nil {
-				return err
-			}
+		bundled = false
+		// do not store bundled relations
+		relationKey := relationsBase.ChildString(relation.Key)
+		relBytes, err = proto.Marshal(relCopy)
+		if err != nil {
+			return err
+		}
+
+		err = txn.Put(relationKey, relBytes)
+		if err != nil {
+			return err
 		}
 		_, details := bundle.GetDetailsForRelation(bundled, relCopy)
 		id := pbtypes.GetString(details, "id")
@@ -1576,7 +1580,6 @@ func (m *dsObjectStore) updateRelations(txn ds.Txn, objTypesBefore []string, obj
 	if err != nil {
 		return err
 	}
-	metrics.ObjectRelationsUpdatedCounter.Inc()
 
 	b, err := proto.Marshal(relationsAfter)
 	if err != nil {
