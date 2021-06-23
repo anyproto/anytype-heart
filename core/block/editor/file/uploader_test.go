@@ -78,6 +78,7 @@ func TestUploader_Upload(t *testing.T) {
 
 		fx := newFixture(t)
 		defer fx.tearDown()
+		fx.anytype.EXPECT().TempDir().AnyTimes()
 		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(fx.newImage("123"), nil)
 		res := fx.Uploader.AutoType(true).SetUrl(serv.URL + "/unnamed.jpg").Upload(ctx)
 		require.NoError(t, res.Err)

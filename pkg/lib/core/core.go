@@ -33,7 +33,8 @@ import (
 var log = logging.Logger("anytype-core")
 
 const (
-	CName = "anytype"
+	CName  = "anytype"
+	tmpDir = "tmp"
 )
 
 type PredefinedBlockIds struct {
@@ -117,10 +118,12 @@ type Anytype struct {
 	onlineCh chan struct {
 	} // closed when became online
 
-	recordsbatch  batchAdder
-	subscribeOnce sync.Once
-	config        *config.Config
-	wallet        wallet.Wallet
+	recordsbatch        batchAdder
+	subscribeOnce       sync.Once
+	config              *config.Config
+	wallet              wallet.Wallet
+	tmpFolderAutocreate sync.Once
+	tempDir             string
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {
@@ -320,7 +323,20 @@ func (a *Anytype) TempDir() string {
 		return os.TempDir()
 	}
 
-	return filepath.Join(a.wallet.RootPath(), "tmp")
+	var err error
+	// simultaneous calls to TempDir will wait for the once func to finish, so it will be fine
+	a.tmpFolderAutocreate.Do(func() {
+		path := filepath.Join(a.wallet.RootPath(), tmpDir)
+		err = os.MkdirAll(path, 0655)
+		if err != nil {
+			log.Errorf("failed to make temp dir, use the default system one: %s", err.Error())
+			a.tempDir = os.TempDir()
+		} else {
+			a.tempDir = path
+		}
+	})
+
+	return a.tempDir
 }
 
 // subscribeForNewRecords should be called only once as early as possible.
