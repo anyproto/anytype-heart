@@ -639,7 +639,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewArchive(s.meta, s)
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet(s.meta, s)
-	case model.SmartBlockType_ProfilePage:
+	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
