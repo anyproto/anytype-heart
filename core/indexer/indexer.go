@@ -558,10 +558,26 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	d.mu.Unlock()
+	fileHashesBefore := d.st.GetAllFileHashes(d.st.FileRelationKeys())
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
+	fileHashesAfter := d.st.GetAllFileHashes(d.st.FileRelationKeys())
+	newFileHashes := slice.Difference(fileHashesAfter, fileHashesBefore)
+	if len(newFileHashes) > 0 {
+		for _, hash := range newFileHashes {
+			// file's hash is id
+			err = i.reindexDoc(hash, false)
+			if err != nil {
+				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
+			}
+
+			err = i.store.AddToIndexQueue(hash)
+			if err != nil {
+				log.With("id", hash).Error(err.Error())
+			}
+		}
+	}
 
 	meta := d.meta()
-
 	if meta.Details != nil && meta.Details.Fields != nil {
 		prevModifiedDate := int64(pbtypes.GetFloat64(meta.Details, bundle.RelationKeyLastModifiedDate.String()))
 

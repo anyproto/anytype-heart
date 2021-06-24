@@ -301,10 +301,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		var (
 			bs    = ob.NewState()
 			fList = func() []string {
-				ob.Lock()
-				fs := bs.GetAllFileHashes(ob.FileRelationKeys())
-				ob.Unlock()
-				return fs
+				return bs.FileRelationKeys()
 			}
 		)
 

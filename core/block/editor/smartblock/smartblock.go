@@ -90,8 +90,6 @@ type SmartBlock interface {
 
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 
-	FileRelationKeys() []string
-
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
 	DisableLayouts()
@@ -291,7 +289,16 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 	sb.depIds = sb.dependentSmartIds(true, true)
 	var ch = make(chan meta.Meta)
 	subscriber := sb.metaSub.Callback(func(d meta.Meta) {
-		ch <- d
+		start := time.Now()
+	repeat:
+		select {
+		case ch <- d:
+		case <-time.After(time.Second * 10):
+			// let's debug the timeouts here because not reading from ch can deadlock the pubsub's subscriber
+			log.With("thread", sb.Id()).Errorf("fetchMeta metasubCallback can't proceed meta for %s after %.0fs", d.BlockId, time.Since(start).Seconds())
+			goto repeat
+		}
+
 	}).Subscribe(sb.depIds...)
 	sb.meta.ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
@@ -546,7 +553,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	fileDetailsKeys := sb.FileRelationKeys()
+	fileDetailsKeys := st.FileRelationKeys()
 	pushChangeParams := source.PushChangeParams{
 		State:             st,
 		Changes:           st.GetChanges(),
@@ -1280,17 +1287,6 @@ func (sb *smartBlock) execHooks(event Hook) {
 			h()
 		}
 	}
-}
-
-func (sb *smartBlock) FileRelationKeys() (fileKeys []string) {
-	for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
-		if rel.Format == model.RelationFormat_file {
-			if slice.FindPos(fileKeys, rel.Key) == -1 {
-				fileKeys = append(fileKeys, rel.Key)
-			}
-		}
-	}
-	return
 }
 
 func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
