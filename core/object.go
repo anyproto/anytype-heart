@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -53,6 +54,13 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 
+	var includeArchived bool
+	for _, filter := range req.Filters {
+		// include archived objects if we have explicit filter about it
+		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+			includeArchived = true
+		}
+	}
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:          req.Filters,
 		Sorts:            req.Sorts,
@@ -60,6 +68,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		Limit:            int(req.Limit),
 		FullText:         req.FullText,
 		ObjectTypeFilter: req.ObjectTypeFilter,
+		IncludeArchivedObjects: includeArchived,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
