@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "7642086facd02c37170f6844b5da0d66f281c66a9ab08cb9e5c4ffa627f7a22a"
+const TypeChecksum = "6c667e371dbb04f982570f0e4119a4969a9fafc3d0a1e97c887524e543b2f15c"
 
 type TypeKey string
 
@@ -102,7 +102,7 @@ var (
 		},
 		TypeKeyDailyReflection: {
 
-			Description: "Derious thought or consideration",
+			Description: "Serious thought or consideration",
 			IconEmoji:   "💭",
 			Layout:      model.ObjectType_basic,
 			Name:        "Daily Reflection",
@@ -156,7 +156,7 @@ var (
 			IconEmoji:   "💡",
 			Layout:      model.ObjectType_basic,
 			Name:        "Idea",
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyProblem], relations[RelationKeySolution], relations[RelationKeyAlternative]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "idea",
 		},
@@ -182,7 +182,7 @@ var (
 		},
 		TypeKeyNote: {
 
-			Description: "A brief record of points or ideas written down as an aid to memory.",
+			Description: "A brief record of points written down as an aid to memory.",
 			IconEmoji:   "🗒️",
 			Layout:      model.ObjectType_basic,
 			Name:        "Note",

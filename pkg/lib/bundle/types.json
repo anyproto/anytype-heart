@@ -1,6 +1,6 @@
 [
   {
-    "description": "Derious thought or consideration",
+    "description": "Serious thought or consideration",
     "emoji": "💭",
     "id": "dailyReflection",
     "layout": "basic",
@@ -81,7 +81,7 @@
     ]
   },
   {
-    "description": "A brief record of points or ideas written down as an aid to memory.",
+    "description": "A brief record of points written down as an aid to memory.",
     "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
@@ -191,7 +191,10 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "problem",
+      "solution",
+      "alternative"
     ],
     "types": [
       "Page"
