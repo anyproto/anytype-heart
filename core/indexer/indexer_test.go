@@ -114,6 +114,8 @@ func newFixture(t *testing.T) *fixture {
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
 
 	fx.getSerach.EXPECT().GetSearchInfo(gomock.Any()).AnyTimes()
+	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
+	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
 	for _, rk := range bundle.ListRelationsKeys() {
 		fx.objectStore.EXPECT().GetDetails(addr.BundledRelationURLPrefix + rk.String())
@@ -138,6 +140,8 @@ func newFixture(t *testing.T) *fixture {
 		FilesForceReindexCounter:   indexer.ForceFilesReindexCounter,
 		IdxRebuildCounter:          indexer.ForceIdxRebuildCounter,
 		FulltextRebuild:            indexer.ForceFulltextIndexCounter,
+		BundledObjects:            indexer.ForceBundledObjectsReindexCounter,
+
 	}).Times(1)
 
 	fx.Indexer = indexer.New()
