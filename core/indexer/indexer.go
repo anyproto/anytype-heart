@@ -762,3 +762,13 @@ func (i *indexer) SetDetail(id string, key string, val *types.Value) error {
 	i.index(id, nil, true)
 	return nil
 }
+
+// Preload must be called before any local changes are made to the document
+func (i *indexer) Preload(id string) error {
+	_, err := i.getDoc(id)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
