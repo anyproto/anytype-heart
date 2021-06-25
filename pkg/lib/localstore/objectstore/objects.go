@@ -205,7 +205,10 @@ type DetailInjector interface {
 
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
 	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
-	ls.meta = a.MustComponent("meta").(DetailInjector)
+	meta := a.Component("meta")
+	if meta != nil {
+		ls.meta = meta.(DetailInjector)
+	}
 
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
@@ -1238,9 +1241,13 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 		if err != nil {
 			return fmt.Errorf("updateObject failed: %s", err.Error())
 		}
-		go func() {
-			m.meta.SetDetail(id, bundle.RelationKeyIsArchived.String(), pbtypes.Bool(val))
-		}()
+		if m.meta != nil {
+			go func() {
+				m.meta.SetDetail(id, bundle.RelationKeyIsArchived.String(), pbtypes.Bool(val))
+			}()
+		} else {
+			log.Errorf("updateArchive failed: meta service is nil")
+		}
 		return nil
 	}
 
