@@ -199,8 +199,13 @@ func New() ObjectStore {
 	return &dsObjectStore{}
 }
 
+type DetailInjector interface {
+	SetDetail(id string, key string, value *types.Value)
+}
+
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
 	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
+	ls.meta = a.MustComponent("meta").(DetailInjector)
 
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
@@ -309,6 +314,7 @@ type dsObjectStore struct {
 	// underlying storage
 	ds      ds.TxnDatastore
 	dsIface datastore.Datastore
+	meta DetailInjector // TODO: remove after we will migrate to the objectStore subscriptions
 
 	fts ftsearch.FTSearch
 
@@ -1232,6 +1238,9 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 		if err != nil {
 			return fmt.Errorf("updateObject failed: %s", err.Error())
 		}
+		go func() {
+			m.meta.SetDetail(id, bundle.RelationKeyIsArchived.String(), pbtypes.Bool(val))
+		}()
 		return nil
 	}
 
