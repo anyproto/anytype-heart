@@ -229,6 +229,17 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	// 0 - equal
 	// 1 - c1 -> c2
 	// 2 - c2 -> c2 or parallel
+	var appendUniqueToBuf = func(next []*Change) {
+	RootFor:
+		for _, n := range next {
+			for _, ex := range t.iterCompBuf {
+				if ex.Id == n.Id {
+					continue RootFor
+				}
+			}
+			t.iterCompBuf = append(t.iterCompBuf, n)
+		}
+	}
 	var comp = func(c1, c2 *Change) uint8 {
 		if c1.Id == c2.Id {
 			return 0
@@ -242,7 +253,7 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 				if n.Id == c2.Id {
 					return 1
 				} else {
-					t.iterCompBuf = append(t.iterCompBuf, n.Next...)
+					appendUniqueToBuf(n.Next)
 				}
 			}
 			used += l
