@@ -862,6 +862,17 @@ func (s *State) Snippet() (snippet string) {
 	return text.Truncate(snippet, snippetMaxSize)
 }
 
+func (s *State) FileRelationKeys() (fileKeys []string) {
+	for _, rel := range s.ExtraRelations() {
+		if rel.Format == model.RelationFormat_file {
+			if slice.FindPos(fileKeys, rel.Key) == -1 {
+				fileKeys = append(fileKeys, rel.Key)
+			}
+		}
+	}
+	return
+}
+
 func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {

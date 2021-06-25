@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "c0283f48b94c0f4c0a32a75eaacc4ad955c33dfc4fd9dd74ce79a01ab3bd3f78"
+const RelationChecksum = "09fea3e9b7e9c8d1aed80a2291cfc34ff1c69fc94834cdd7c508a77800cd474e"
 
 type RelationKey string
 
@@ -34,6 +34,7 @@ const (
 	RelationKeyIconImage                 RelationKey = "iconImage"
 	RelationKeyIngredients               RelationKey = "ingredients"
 	RelationKeyResponsible               RelationKey = "responsible"
+	RelationKeySolution                  RelationKey = "solution"
 	RelationKeyReleasedYear              RelationKey = "releasedYear"
 	RelationKeyCoverScale                RelationKey = "coverScale"
 	RelationKeyTwitter                   RelationKey = "twitter"
@@ -42,11 +43,13 @@ const (
 	RelationKeyLinkedProjects            RelationKey = "linkedProjects"
 	RelationKeyAudioAlbum                RelationKey = "audioAlbum"
 	RelationKeyParticipants              RelationKey = "participants"
+	RelationKeyProblem                   RelationKey = "problem"
 	RelationKeyLayoutAlign               RelationKey = "layoutAlign"
 	RelationKeyDifficulty                RelationKey = "difficulty"
 	RelationKeyStatus                    RelationKey = "status"
 	RelationKeyHappenings                RelationKey = "happenings"
 	RelationKeyDurationInSeconds         RelationKey = "durationInSeconds"
+	RelationKeyAlternative               RelationKey = "alternative"
 	RelationKeyLinkedContacts            RelationKey = "linkedContacts"
 	RelationKeyIsHidden                  RelationKey = "isHidden"
 	RelationKeyEmail                     RelationKey = "email"
@@ -144,6 +147,17 @@ var (
 			Key:         "agenda",
 			MaxCount:    1,
 			Name:        "Agenda",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeyAlternative: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "alternative",
+			MaxCount:    1,
+			Name:        "Alternative",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
@@ -854,6 +868,17 @@ var (
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},
+		RelationKeyProblem: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "problem",
+			MaxCount:    1,
+			Name:        "Problem",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
 		RelationKeyRecommendedLayout: {
 
 			DataSource:  model.Relation_details,
@@ -1017,6 +1042,17 @@ var (
 			Key:         "socialProfile",
 			MaxCount:    1,
 			Name:        "Social Profile",
+			ReadOnly:    false,
+			Scope:       model.Relation_type,
+		},
+		RelationKeySolution: {
+
+			DataSource:  model.Relation_details,
+			Description: "",
+			Format:      model.RelationFormat_longtext,
+			Key:         "solution",
+			MaxCount:    1,
+			Name:        "Solution",
 			ReadOnly:    false,
 			Scope:       model.Relation_type,
 		},

@@ -1,6 +1,6 @@
 [
   {
-    "description": "Derious thought or consideration",
+    "description": "Serious thought or consideration",
     "emoji": "💭",
     "id": "dailyReflection",
     "layout": "basic",
@@ -191,7 +191,10 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "problem",
+      "solution",
+      "alternative"
     ],
     "types": [
       "Page"
