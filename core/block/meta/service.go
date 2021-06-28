@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gogo/protobuf/types"
+	
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -20,6 +22,7 @@ type Meta struct {
 
 type Service interface {
 	PubSub() PubSub
+	SetDetail(id string, key string, value *types.Value)
 	ReportChange(m Meta)
 	FetchMeta(ids []string) (metas []Meta)
 	FetchObjectTypes(objectTypeUrls []string) []*model.ObjectType
@@ -34,6 +37,16 @@ type service struct {
 	anytype core.Service
 	ps      *pubSub
 	m       sync.Mutex
+}
+
+func (s *service) SetDetail(id string, key string, value *types.Value) {
+	s.ps.m.Lock()
+	defer s.ps.m.Unlock()
+	if c, ok := s.ps.collectors[id]; ok {
+		m := copyMeta(c.GetMeta())
+		m.Details.Fields[key] = value
+		c.setMeta(m)
+	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
