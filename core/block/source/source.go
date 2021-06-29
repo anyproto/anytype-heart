@@ -54,10 +54,6 @@ type SourceWithType interface {
 	SourceType
 }
 
-type IndexerPreload interface {
-	Preload(id string) error
-}
-
 var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
 
 func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error) {
@@ -81,7 +77,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	}
 }
 
-func newSource(a core.Service, ss status.Service, is IndexerPreload, tid thread.ID, listenToOwnChanges bool) (s Source, err error) {
+func newSource(a core.Service, ss status.Service, tid thread.ID, listenToOwnChanges bool) (s Source, err error) {
 	id := tid.String()
 	sb, err := a.GetBlock(id)
 	if err != nil {
@@ -98,7 +94,6 @@ func newSource(a core.Service, ss status.Service, is IndexerPreload, tid thread.
 		id:                       id,
 		smartblockType:           sbt,
 		tid:                      tid,
-		is: 					  is,
 		a:                        a,
 		ss:                       ss,
 		sb:                       sb,
@@ -115,7 +110,6 @@ type source struct {
 	smartblockType           smartblock.SmartBlockType
 	a                        core.Service
 	ss                       status.Service
-	is						 IndexerPreload
 	sb                       core.SmartBlock
 	tree                     *change.Tree
 	lastSnapshotId           string
@@ -310,11 +304,6 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
-	err = s.is.Preload(s.id)
-	if err != nil {
-		return "", fmt.Errorf("failed to preload indexer: %s", err.Error())
-	}
-
 	var c = &pb.Change{
 		PreviousIds:     s.tree.Heads(),
 		LastSnapshotId:  s.lastSnapshotId,

@@ -31,7 +31,6 @@ type Service interface {
 type service struct {
 	anytype       core.Service
 	statusService status.Service
-	indexerService IndexerPreload
 
 	staticIds map[string]func() Source
 	mu        sync.Mutex
@@ -41,7 +40,6 @@ func (s *service) Init(a *app.App) (err error) {
 	s.staticIds = make(map[string]func() Source)
 	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.statusService = a.MustComponent(status.CName).(status.Service)
-	s.indexerService = a.MustComponent("indexer").(IndexerPreload)
 	return
 }
 
@@ -81,8 +79,7 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 	if newStatic := s.staticIds[id]; newStatic != nil {
 		return newStatic(), nil
 	}
-
-	return newSource(s.anytype, s.statusService, s.indexerService, tid, listenToOwnChanges)
+	return newSource(s.anytype, s.statusService, tid, listenToOwnChanges)
 }
 
 func (s *service) RegisterStaticSource(id string, new func() Source) {
