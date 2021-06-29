@@ -564,10 +564,11 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 
 					var wholeLineLink bool
 					textRunes := []rune(txt.Text)
-
-					if (txt.Marks.Marks[0].Range.From == 0 || strings.TrimSpace(string(textRunes[0:txt.Marks.Marks[0].Range.From])) == "") &&
-						(int(txt.Marks.Marks[0].Range.To) >= len(textRunes) || strings.TrimSpace(string(textRunes[txt.Marks.Marks[0].Range.To:])) == "") {
-						wholeLineLink = true
+					var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
+					if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
+						if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
+							wholeLineLink = true
+						}
 					}
 
 					ext := filepath.Ext(link)
