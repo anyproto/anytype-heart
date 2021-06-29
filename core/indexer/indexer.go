@@ -459,7 +459,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
 		} else {
-			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.ExtraRelations()}, false); err != nil {
+			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.ExtraRelations()}, true); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
 			}
 		}

@@ -101,7 +101,7 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 	s := p.NewState()
 	p.applyRestrictions(s)
 	return template.ApplyTemplate(p, s,
-		template.WithDetailName(name),
+		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
 		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent, false),
