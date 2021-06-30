@@ -563,7 +563,8 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if !q.WithSystemObjects {
 		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
-	} else if len(q.ObjectTypeFilter) > 0 {
+	}
+	if len(q.ObjectTypeFilter) > 0 {
 		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
 	}
 	if q.FullText != "" {
