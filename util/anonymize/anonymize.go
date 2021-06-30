@@ -130,8 +130,10 @@ func Block(b *model.Block) (res *model.Block) {
 	switch r := res.Content.(type) {
 	case *model.BlockContentOfText:
 		r.Text.Text = Text(r.Text.Text)
-		for _, m := range r.Text.Marks.Marks {
-			m.Param = Text(m.Param)
+		if r.Text.Marks != nil {
+			for _, m := range r.Text.Marks.Marks {
+				m.Param = Text(m.Param)
+			}
 		}
 	case *model.BlockContentOfLink:
 		r.Link.TargetBlockId = Text(r.Link.TargetBlockId)
