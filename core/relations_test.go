@@ -445,6 +445,133 @@ func TestRelationAdd(t *testing.T) {
 		require.Len(t, relOnPage.SelectDict, 3)
 	})
 
+	t.Run("relation_change_option_name", func(t *testing.T) {
+		respRelCreate := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
+			ContextId: mw.GetAnytype().PredefinedBlocks().SetPages,
+			BlockId:   "dataview",
+			Relation: &model.Relation{
+				Format: model.RelationFormat_status,
+				SelectDict: []*model.RelationOption{{
+					Text:  "opt1",
+					Color: "red",
+				}},
+				Name:     "relation2",
+				ReadOnly: false,
+			},
+		})
+		require.Equal(t, 0, int(respRelCreate.Error.Code), respRelCreate.Error.Description)
+
+		var foundRel *model.Relation
+		for _, msg := range respRelCreate.Event.GetMessages() {
+			if rel := msg.GetBlockDataviewRelationSet(); rel != nil && rel.Relation.Name == "relation2" {
+				foundRel = rel.Relation
+				break
+			}
+		}
+		require.NotNil(t, foundRel)
+		require.Equal(t, respRelCreate.RelationKey, foundRel.Key)
+		// option is trimmed
+		for _, opt := range foundRel.SelectDict {
+			require.NotEqual(t, model.RelationOption_local, opt.Scope)
+			require.NotEqual(t, "relation2", opt.Text)
+		}
+
+		respRecordCreate := mw.BlockDataviewRecordCreate(
+			&pb.RpcBlockDataviewRecordCreateRequest{
+				ContextId: mw.GetAnytype().PredefinedBlocks().SetPages,
+				BlockId:   "dataview",
+			})
+
+		require.Equal(t, 0, int(respRecordCreate.Error.Code), respRecordCreate.Error.Description)
+		newPageId := respRecordCreate.Record.Fields["id"].GetStringValue()
+
+		respRelOptCreate := mw.BlockDataviewRecordRelationOptionAdd(&pb.RpcBlockDataviewRecordRelationOptionAddRequest{
+			ContextId: mw.GetAnytype().PredefinedBlocks().SetPages,
+			BlockId:   "dataview",
+			Option: &model.RelationOption{
+				Text:  "opt3",
+				Color: "red",
+			},
+			RecordId:    newPageId,
+			RelationKey: respRelCreate.RelationKey,
+		})
+		require.Equal(t, 0, int(respRelOptCreate.Error.Code), respRelOptCreate.Error.Description)
+		time.Sleep(time.Millisecond * 200)
+
+		respRecordUpdate := mw.BlockDataviewRecordUpdate(
+			&pb.RpcBlockDataviewRecordUpdateRequest{
+				ContextId: mw.GetAnytype().PredefinedBlocks().SetPages,
+				BlockId:   "dataview",
+				RecordId:  newPageId,
+				Record: &types2.Struct{
+					Fields: map[string]*types2.Value{
+						foundRel.Key: pbtypes.StringList([]string{respRelOptCreate.Option.Id}),
+					},
+				},
+			})
+
+		require.Equal(t, 0, int(respRecordUpdate.Error.Code), respRecordUpdate.Error.Description)
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: newPageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+		require.Len(t, respOpenNewPage.Event.Messages, 1)
+
+		relOnPage := getRelationByKey(getEventObjectShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
+		require.Equal(t, foundRel.Key, relOnPage.Key)
+
+		respOpt4Add := mw.BlockDataviewRecordRelationOptionAdd(&pb.RpcBlockDataviewRecordRelationOptionAddRequest{
+			ContextId:   mw.GetAnytype().PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			RelationKey: foundRel.Key,
+			RecordId:    newPageId,
+			Option: &model.RelationOption{
+				Text:  "opt4",
+				Color: "green",
+			},
+		})
+
+		require.Equal(t, 0, int(respOpt4Add.Error.Code), respOpt4Add.Error.Description)
+		time.Sleep(time.Millisecond * 200)
+
+		respRecordUpdate2 := mw.BlockDataviewRecordUpdate(
+			&pb.RpcBlockDataviewRecordUpdateRequest{
+				ContextId: mw.GetAnytype().PredefinedBlocks().SetPages,
+				BlockId:   "dataview",
+				RecordId:  newPageId,
+				Record: &types2.Struct{
+					Fields: map[string]*types2.Value{
+						foundRel.Key: pbtypes.StringList([]string{respOpt4Add.Option.Id}),
+					},
+				},
+			})
+		require.Equal(t, 0, int(respRecordUpdate2.Error.Code), respRecordUpdate2.Error.Description)
+
+		respOptUpdate := mw.BlockDataviewRecordRelationOptionUpdate(&pb.RpcBlockDataviewRecordRelationOptionUpdateRequest{
+			ContextId:   mw.GetAnytype().PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			RelationKey: foundRel.Key,
+			RecordId:    newPageId,
+			Option: &model.RelationOption{
+				Id:    respOpt4Add.Option.Id,
+				Text:  "opt4_modified",
+				Color: "green",
+			},
+		})
+
+		require.Equal(t, 0, int(respOptUpdate.Error.Code), respOptUpdate.Error.Description)
+		time.Sleep(time.Millisecond * 200)
+
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: newPageId})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+		require.Len(t, respOpenNewPage.Event.Messages, 1)
+
+		relOnPage = getRelationByKey(getEventObjectShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
+		require.Equal(t, foundRel.Key, relOnPage.Key)
+		opt := pbtypes.GetOption(relOnPage.SelectDict, respOpt4Add.Option.Id)
+		require.NotNil(t, opt)
+		require.Equal(t, "opt4_modified", opt.Text)
+	})
+
 	t.Run("aggregated_options", func(t *testing.T) {
 		type test struct {
 			relKey             string

@@ -140,8 +140,7 @@ func newFixture(t *testing.T) *fixture {
 		FilesForceReindexCounter:   indexer.ForceFilesReindexCounter,
 		IdxRebuildCounter:          indexer.ForceIdxRebuildCounter,
 		FulltextRebuild:            indexer.ForceFulltextIndexCounter,
-		BundledObjects:            indexer.ForceBundledObjectsReindexCounter,
-
+		BundledObjects:             indexer.ForceBundledObjectsReindexCounter,
 	}).Times(1)
 
 	fx.Indexer = indexer.New()

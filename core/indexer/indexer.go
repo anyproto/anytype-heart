@@ -35,7 +35,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 2 // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 1 // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 3 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 4 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 1 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -148,7 +148,7 @@ func (i *indexer) saveLatestCounters() error {
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 		IdxRebuildCounter:          ForceIdxRebuildCounter,
 		FulltextRebuild:            ForceFulltextIndexCounter,
-		BundledObjects: 			ForceBundledObjectsReindexCounter,
+		BundledObjects:             ForceBundledObjectsReindexCounter,
 	}
 	return i.store.SaveChecksums(&checksums)
 }
@@ -556,10 +556,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		log.Warnf("can't get doc '%s': %v", id, err)
 		return
 	}
-	var (
-		dataviewRelationsBefore []*model.Relation
-		dataviewSourceBefore    string
-	)
+
 	d.mu.Lock()
 	if d.sb.Type() == smartblock.SmartBlockTypeArchive {
 		if err := i.store.AddToIndexQueue(id); err != nil {
@@ -569,14 +566,6 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		}
 		d.mu.Unlock()
 		return
-	}
-	if len(d.st.ObjectTypes()) == 1 && d.st.ObjectTypes()[0] == bundle.TypeKeySet.URL() {
-		b := d.st.Get("dataview")
-		if b != nil && b.Model().GetDataview() != nil {
-			b = b.Copy()
-			dataviewRelationsBefore = b.Model().GetDataview().Relations
-			dataviewSourceBefore = b.Model().GetDataview().Source
-		}
 	}
 
 	d.mu.Unlock()
@@ -627,7 +616,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 			dv = b.Model().GetDataview()
 		}
 		if b != nil && dv != nil {
-			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, dv.Source, &model.Relations{dataviewRelationsBefore}, &model.Relations{dv.Relations}); err != nil {
+			if err := i.store.UpdateRelationsInSet(id, dv.Source, dv.Relations); err != nil {
 				log.With("thread", id).Errorf("failed to index dataview relations")
 			}
 		}

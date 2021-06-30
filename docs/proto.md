@@ -12833,7 +12833,7 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | objectTypeUrls | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| relations | [Relations](#anytype.model.Relations) |  |  |
+| relationKeys | [string](#string) | repeated |  |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
 | objectType | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |

@@ -1,10 +1,8 @@
 package main
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/pb"
-	coreService "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/spf13/cobra"
 	"os"
 )
@@ -23,24 +21,18 @@ var reindex = &cobra.Command{
 	Use:   "reindex",
 	Short: "Reindex all existing objects in the local repo",
 	Run: func(c *cobra.Command, args []string) {
-		var mw = core.New()
-		mw.EventSender = event.NewCallbackSender(func(event *pb.Event) {
-			// nothing to do
-		})
-
-		resp := mw.AccountSelect(&pb.RpcAccountSelectRequest{Id: migrateAccount, RootPath: migrateRepoPath})
-		if resp.Error.Code != 0 {
-			c.PrintErrf("failed to open account repo: %s\n", resp.Error.Description)
-			return
+		// todo: reimplement reindex CLI using new mechanism
+		for _, arg := range args{
+			fmt.Print(arg+": ")
+			t, err := smartblock.SmartBlockTypeFromID(arg)
+			if err!= nil {
+				fmt.Println(err.Error())
+			} else {
+				fmt.Printf("%d\n", t)
+			}
 		}
-
-		migrated, err := coreService.ReindexAll(mw.GetAnytype().(*coreService.Anytype))
-		if err != nil {
-			c.PrintErrf("failed to run reindex migration: %s\n", resp.Error.Description)
-		}
-		c.Printf("reindexed %d objects\n", migrated)
-		c.Println("Shutting down account...")
-		mw.Shutdown(&pb.RpcShutdownRequest{})
+		fmt.Println("not implemented")
+		os.Exit(1)
 	},
 }
 
