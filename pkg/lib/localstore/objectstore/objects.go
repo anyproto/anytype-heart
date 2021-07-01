@@ -519,7 +519,7 @@ func (m *dsObjectStore) addSubscriptionIfNotExists(sub database.Subscription) (e
 			return true
 		}
 	}
-	log.Debugf("objStore subscription add %p", sub)
+
 	m.subscriptions = append(m.subscriptions, sub)
 	return false
 }
@@ -531,7 +531,6 @@ func (m *dsObjectStore) closeAndRemoveSubscription(sub database.Subscription) {
 
 	for i, s := range m.subscriptions {
 		if s == sub {
-			log.Debugf("objStore subscription remove %p", s)
 			m.subscriptions = append(m.subscriptions[:i], m.subscriptions[i+1:]...)
 			break
 		}
@@ -1321,14 +1320,18 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 
 	if details != nil {
 		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
-			return err
-		}
 	}
 
 	if relations != nil && relations.Relations != nil {
 		// intentionally do not pass txn, as this tx may be huge
 		if err = m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, before.Relations, relations.Relations); err != nil {
+			return err
+		}
+	}
+
+	if details != nil {
+		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
+		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
 	}
@@ -1512,9 +1515,6 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 
 	relationKeys := pbtypes.GetRelationKeys(relations)
 	detailsBefore, err := getObjectDetails(txn, setId)
-	if err != nil {
-		return err
-	}
 	setOfOldSl := pbtypes.GetStringList(detailsBefore.GetDetails(), bundle.RelationKeySetOf.String())
 	if setOfOldSl == nil {
 		err = localstore.AddIndexWithTxn(indexObjectTypeRelationSetId, txn, &relationObjectType{
@@ -1542,6 +1542,10 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 	err = m.storeRelations(txn, updatedRelations)
 	if err != nil {
 		return err
+	}
+
+	if pbtypes.RelationsEqual(relationsBefore, relations) {
+		return nil
 	}
 
 	b, err := proto.Marshal(&model.Relations{Relations: relations})
@@ -1613,6 +1617,10 @@ func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []strin
 		return err
 	}
 
+	if pbtypes.RelationsEqual(relationsBefore, relationsAfter) {
+		return nil
+	}
+
 	b, err := proto.Marshal(&model.Relations{Relations: relationsAfter})
 	if err != nil {
 		return err
@@ -1635,7 +1643,6 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
 
-	log.Errorf("updateDetails %s: %v", id, newDetails)
 	b, err := proto.Marshal(newDetails)
 	if err != nil {
 		return err

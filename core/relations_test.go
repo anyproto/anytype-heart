@@ -168,12 +168,13 @@ func TestRelationAdd(t *testing.T) {
 		}}})
 		require.Equal(t, 0, int(respPageCreate.Error.Code), respPageCreate.Error.Description)
 
-		time.Sleep(time.Millisecond * 200)
+		time.Sleep(time.Millisecond * 1000)
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respPageCreate.PageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 
 		blockShow := getEventObjectShow(respOpenNewPage.Event.Messages)
-
+		log.Debugf("block relations: %v", blockShow.Relations)
+		
 		relFromSet1 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate1.RelationKey)
 		require.NotNil(t, relFromSet1)
 		require.Equal(t, model.Relation_setOfTheSameType, relFromSet1.Scope)

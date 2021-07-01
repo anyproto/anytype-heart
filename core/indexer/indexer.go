@@ -620,7 +620,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		}
 		if b != nil && dv != nil {
 			if err := i.store.UpdateRelationsInSet(id, dv.Source, dv.Relations); err != nil {
-				log.With("thread", id).Errorf("failed to index dataview relations")
+				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
 			}
 		}
 	}
