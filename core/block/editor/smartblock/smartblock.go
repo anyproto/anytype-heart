@@ -775,10 +775,11 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 		}
 
 		if relEx, exists := existsMap[rel.Key]; exists {
+			c := pbtypes.CopyRelation(rel)
 			if !pbtypes.RelationEqualOmitDictionary(relEx, rel) {
+				c = relEx
 				log.Warnf("failed to AddExtraRelations: provided relation %s not equal to existing aggregated one", rel.Key)
 			}
-			c := pbtypes.CopyRelation(relEx)
 			relationsWithKeys = append(relationsWithKeys, c)
 			copy = append(copy, c)
 		} else {

@@ -122,7 +122,7 @@ func generateRelations() error {
 				Id("Format"):         Qual(relPbPkg, "RelationFormat_"+relation.Format),
 				Id("DataSource"):     Qual(relPbPkg, "Relation_"+relation.Source),
 				Id("ReadOnly"):       Lit(relation.Readonly),
-				Id("ReadOnlySchema"): Lit(true),
+				Id("ReadOnlyRelation"): Lit(true),
 				Id("Description"):    Lit(relation.Description),
 				Id("Scope"):          Qual(relPbPkg, "Relation_type"),
 			}
