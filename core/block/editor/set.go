@@ -85,7 +85,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 				},
 			},
 		}
-		templates = append(templates, template.WithDataview(dataview, false), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
+		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{"_otpage"})), template.WithDataview(dataview, false), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}

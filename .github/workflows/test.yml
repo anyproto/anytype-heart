@@ -31,6 +31,7 @@ jobs:
             go generate ./...
       - name: Go test
         run: |
+          export ANYTYPE_LOG_LEVEL=DEBUG
           go install gotest.tools/gotestsum@latest
           PACKAGE_NAMES=$(go list -tags nogrpcserver ./... | grep -v "github.com/anytypeio/go-anytype-middleware/cmd/grpserver" | grep -v "github.com/anytypeio/go-anytype-middleware/clientlibrary/clib")
           mkdir ~/gotestsum-report

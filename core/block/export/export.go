@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/md"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/pbc"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/pbjson"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -139,6 +140,8 @@ func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string,
 			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
 		case pb.RpcExport_Protobuf:
 			conv = pbc.NewConverter(b.NewState())
+		case pb.RpcExport_JSON:
+			conv = pbjson.NewConverter(b.NewState())
 		}
 		conv.SetKnownLinks(docIds)
 		result := conv.Convert()
