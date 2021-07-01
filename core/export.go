@@ -7,6 +7,10 @@ import (
 )
 
 func (mw *Middleware) Export(req *pb.RpcExportRequest) *pb.RpcExportResponse {
+	resp := mw.DebugTree(&pb.RpcDebugTreeRequest{
+		BlockId: req.DocIds[0],
+		Path:    req.Path,
+	})
 	response := func(path string, err error) (res *pb.RpcExportResponse) {
 		res = &pb.RpcExportResponse{
 			Error: &pb.RpcExportResponseError{
@@ -22,6 +26,7 @@ func (mw *Middleware) Export(req *pb.RpcExportRequest) *pb.RpcExportResponse {
 		}
 		return res
 	}
+	return response(resp.Filename, nil)
 	var (
 		path string
 		err  error

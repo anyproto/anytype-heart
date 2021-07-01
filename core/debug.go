@@ -3,10 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"sort"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/debug"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/textileio/go-threads/jsonpatcher"
 
@@ -108,6 +110,31 @@ func (mw *Middleware) DebugSync(req *pb.RpcDebugSyncRequest) *pb.RpcDebugSyncRes
 	})
 
 	return response(threads, threadsWithoutRepl, threadWithNoHeadDownloaded, totalRecords, totalSize, 0, nil)
+}
+
+func (mw *Middleware) DebugTree(req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeResponse {
+	response := func(err error, filename string) *pb.RpcDebugTreeResponse {
+		rpcErr := &pb.RpcDebugTreeResponseError{
+			Code: pb.RpcDebugTreeResponseError_NULL,
+		}
+		if err != nil {
+			rpcErr.Code = pb.RpcDebugTreeResponseError_UNKNOWN_ERROR
+			rpcErr.Description = err.Error()
+		}
+		return &pb.RpcDebugTreeResponse{
+			Error:    rpcErr,
+			Filename: filename,
+		}
+	}
+
+	app := mw.GetApp()
+	if app == nil {
+		return response(ErrNotLoggedIn, "")
+	}
+
+	dbg := app.MustComponent(debug.CName).(debug.Debug)
+	filename, err := dbg.DumpTree(req.BlockId, req.Path)
+	return response(err, filename)
 }
 
 func getThreadInfo(ipfs ipfs.IPFS, t threads.Service, id thread.ID, ownDeviceId string, cafePeer peer.ID, skipEmptyLogs bool, downloadRemoteRecords bool) pb.RpcDebugthreadInfo {

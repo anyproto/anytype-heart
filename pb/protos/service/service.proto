@@ -171,6 +171,7 @@ service ClientCommands {
     rpc DebugSync (anytype.Rpc.Debug.Sync.Request) returns (anytype.Rpc.Debug.Sync.Response);
 
     rpc DebugThread (anytype.Rpc.Debug.Thread.Request) returns (anytype.Rpc.Debug.Thread.Response);
+    rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
 
     // used only for lib-server via grpc
     rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);

@@ -108,19 +108,33 @@ func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 			v.ObjectRelationsAmend.Relations[i] = Relation(er)
 		}
 	case *pb.EventMessageValueOfBlockAdd:
-		for i, b := range v.BlockAdd.Blocks {
-			v.BlockAdd.Blocks[i] = Block(b)
+		if v.BlockAdd.Blocks != nil {
+			for i, b := range v.BlockAdd.Blocks {
+				v.BlockAdd.Blocks[i] = Block(b)
+			}
 		}
 	case *pb.EventMessageValueOfBlockSetText:
-		v.BlockSetText.Text.Value = Text(v.BlockSetText.Text.Value)
+		if v.BlockSetText.Text != nil {
+			v.BlockSetText.Text.Value = Text(v.BlockSetText.Text.Value)
+		}
 	case *pb.EventMessageValueOfBlockSetFile:
-		v.BlockSetFile.Name.Value = Text(v.BlockSetFile.Name.Value)
+		if v.BlockSetFile.Name != nil {
+			v.BlockSetFile.Name.Value = Text(v.BlockSetFile.Name.Value)
+		}
 	case *pb.EventMessageValueOfBlockSetLink:
-		v.BlockSetLink.Fields.Value = Struct(v.BlockSetLink.Fields.Value)
+		if v.BlockSetLink.Fields != nil {
+			v.BlockSetLink.Fields.Value = Struct(v.BlockSetLink.Fields.Value)
+		}
 	case *pb.EventMessageValueOfBlockSetBookmark:
-		v.BlockSetBookmark.Title.Value = Text(v.BlockSetBookmark.Title.Value)
-		v.BlockSetBookmark.Url.Value = Text(v.BlockSetBookmark.Url.Value)
-		v.BlockSetBookmark.Description.Value = Text(v.BlockSetBookmark.Description.Value)
+		if v.BlockSetBookmark.Title != nil {
+			v.BlockSetBookmark.Title.Value = Text(v.BlockSetBookmark.Title.Value)
+		}
+		if v.BlockSetBookmark.Url != nil {
+			v.BlockSetBookmark.Url.Value = Text(v.BlockSetBookmark.Url.Value)
+		}
+		if v.BlockSetBookmark.Description != nil {
+			v.BlockSetBookmark.Description.Value = Text(v.BlockSetBookmark.Description.Value)
+		}
 	}
 	return
 }
@@ -150,8 +164,10 @@ func Block(b *model.Block) (res *model.Block) {
 
 func Struct(in *types.Struct) (res *types.Struct) {
 	res = pbtypes.CopyStruct(in)
-	for k, v := range res.Fields {
-		res.Fields[k] = StructValue(v)
+	if res != nil && res.Fields != nil {
+		for k, v := range res.Fields {
+			res.Fields[k] = StructValue(v)
+		}
 	}
 	return
 }
