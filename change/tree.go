@@ -229,15 +229,13 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 	// 0 - equal
 	// 1 - c1 -> c2
 	// 2 - c2 -> c2 or parallel
+	var uniq = make(map[string]struct{})
 	var appendUniqueToBuf = func(next []*Change) {
-	RootFor:
 		for _, n := range next {
-			for _, ex := range t.iterCompBuf {
-				if ex.Id == n.Id {
-					continue RootFor
-				}
+			if _, ok := uniq[n.Id]; !ok {
+				t.iterCompBuf = append(t.iterCompBuf, n)
+				uniq[n.Id] = struct{}{}
 			}
-			t.iterCompBuf = append(t.iterCompBuf, n)
 		}
 	}
 	var comp = func(c1, c2 *Change) uint8 {
