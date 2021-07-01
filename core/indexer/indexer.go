@@ -2,6 +2,7 @@ package indexer
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"sync"
 	"time"
 
@@ -32,8 +33,9 @@ const (
 
 	// increasing counters below will trigger existing account to reindex their data
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
-	ForceFilesReindexCounter          int32 = 1 // reindex ipfs-file-based objects
-	ForceIdxRebuildCounter            int32 = 3 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceFilesReindexCounter          int32 = 2 // reindex ipfs-file-based objects
+	ForceBundledObjectsReindexCounter int32 = 1 // reindex objects like anytypeProfile
+	ForceIdxRebuildCounter            int32 = 4 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 1 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -128,8 +130,10 @@ func (i *indexer) saveLatestChecksums() error {
 		BundledTemplates:           i.btHash.Hash(),
 		ObjectsForceReindexCounter: ForceThreadsObjectsReindexCounter,
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
-		IdxRebuildCounter:          ForceIdxRebuildCounter,
-		FulltextRebuild:            ForceFulltextIndexCounter,
+
+		IdxRebuildCounter: ForceIdxRebuildCounter,
+		FulltextRebuild:   ForceFulltextIndexCounter,
+		BundledObjects:    ForceBundledObjectsReindexCounter,
 	}
 	return i.store.SaveChecksums(&checksums)
 }
@@ -144,6 +148,7 @@ func (i *indexer) saveLatestCounters() error {
 		FilesForceReindexCounter:   ForceFilesReindexCounter,
 		IdxRebuildCounter:          ForceIdxRebuildCounter,
 		FulltextRebuild:            ForceFulltextIndexCounter,
+		BundledObjects:             ForceBundledObjectsReindexCounter,
 	}
 	return i.store.SaveChecksums(&checksums)
 }
@@ -197,6 +202,7 @@ func (i *indexer) reindexIfNeeded() error {
 		reindexFileObjects      bool
 		reindexFulltext         bool
 		reindexBundledTemplates bool
+		reindexBundledObjects   bool
 	)
 
 	if checksums.BundledRelations != bundle.RelationChecksum {
@@ -217,6 +223,9 @@ func (i *indexer) reindexIfNeeded() error {
 	if checksums.BundledTemplates != i.btHash.Hash() {
 		reindexBundledTemplates = true
 	}
+	if checksums.BundledObjects != ForceBundledObjectsReindexCounter {
+		reindexBundledObjects = true
+	}
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
 		eraseIndexes = true
 		reindexFileObjects = true
@@ -224,10 +233,14 @@ func (i *indexer) reindexIfNeeded() error {
 		reindexBundledRelations = true
 		reindexBundledTypes = true
 		reindexBundledTemplates = true
+		reindexBundledObjects = true
 	}
+	return i.Reindex(reindexBundledTypes, reindexBundledRelations, eraseIndexes, reindexThreadObjects, reindexFileObjects, reindexFulltext, reindexBundledTemplates, reindexBundledObjects)
+}
 
-	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes || reindexFulltext || reindexBundledTemplates {
-		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes, reindexFulltext, reindexBundledTemplates)
+func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseIndexes, reindexThreadObjects, reindexFileObjects, reindexFulltext, reindexBundledTemplates, reindexBundledObjects bool) (err error) {
+	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes || reindexFulltext || reindexBundledTemplates || reindexBundledObjects {
+		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes, reindexFulltext, reindexBundledTemplates, reindexBundledObjects)
 	}
 
 	getIdsForTypes := func(sbt ...smartblock.SmartBlockType) ([]string, error) {
@@ -315,6 +328,18 @@ func (i *indexer) reindexIfNeeded() error {
 			log.Info(msg)
 		}
 	}
+	if reindexBundledObjects {
+		// hardcoded for now
+		ids := []string{addr.AnytypeProfileId}
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		msg := fmt.Sprintf("%d/%d bundled objects have been successfully reindexed", successfullyReindexed, len(ids))
+		if len(ids)-successfullyReindexed != 0 {
+			log.Error(msg)
+		} else {
+			log.Info(msg)
+		}
+	}
+
 	if reindexBundledTemplates {
 		existsRec, _, err := i.store.QueryObjectInfo(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
 		if err != nil {
@@ -429,8 +454,8 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 		curDetails = curDetailsO.Details
 	}
 	// compare only real object scoped details
-	detailsObjectScope := pbtypes.StructCutKeys(details, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+	detailsObjectScope := pbtypes.StructCutKeys(details, bundle.LocalRelationsKeys)
+	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, bundle.LocalRelationsKeys)
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails == nil {
 			if err := i.store.CreateObject(id, details, &model.Relations{d.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
@@ -534,10 +559,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		log.Warnf("can't get doc '%s': %v", id, err)
 		return
 	}
-	var (
-		dataviewRelationsBefore []*model.Relation
-		dataviewSourceBefore    string
-	)
+
 	d.mu.Lock()
 	if d.sb.Type() == smartblock.SmartBlockTypeArchive {
 		if err := i.store.AddToIndexQueue(id); err != nil {
@@ -547,14 +569,6 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		}
 		d.mu.Unlock()
 		return
-	}
-	if len(d.st.ObjectTypes()) == 1 && d.st.ObjectTypes()[0] == bundle.TypeKeySet.URL() {
-		b := d.st.Get("dataview")
-		if b != nil && b.Model().GetDataview() != nil {
-			b = b.Copy()
-			dataviewRelationsBefore = b.Model().GetDataview().Relations
-			dataviewSourceBefore = b.Model().GetDataview().Source
-		}
 	}
 
 	d.mu.Unlock()
@@ -605,8 +619,8 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 			dv = b.Model().GetDataview()
 		}
 		if b != nil && dv != nil {
-			if err := i.store.UpdateRelationsInSet(id, dataviewSourceBefore, dv.Source, &model.Relations{dataviewRelationsBefore}, &model.Relations{dv.Relations}); err != nil {
-				log.With("thread", id).Errorf("failed to index dataview relations")
+			if err := i.store.UpdateRelationsInSet(id, dv.Source, dv.Relations); err != nil {
+				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
 			}
 		}
 	}
