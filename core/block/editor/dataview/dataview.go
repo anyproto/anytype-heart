@@ -113,10 +113,12 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	} else {
 		existingRelation, err := d.Anytype().ObjectStore().GetRelation(relation.Key)
 		if err != nil {
-			return nil, err
+			log.Errorf("existingRelation failed to get: %s", err.Error())
 		}
 
-		if !pbtypes.RelationCompatible(existingRelation, &relation) {
+		if existingRelation != nil && (relation.ReadOnlyRelation || relation.Name == "") {
+			relation = *existingRelation
+		} else if existingRelation != nil && !pbtypes.RelationCompatible(existingRelation, &relation) {
 			return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
 		}
 	}
