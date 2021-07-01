@@ -256,7 +256,6 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
 	require.NoError(t, err)
 
-	log.Debugf("fff")
 	newDet := func(name, objtype string) *types.Struct {
 		return &types.Struct{
 			Fields: map[string]*types.Value{
@@ -326,7 +325,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, restOpts, 6)
 
-	time.Sleep(time.Second*3)
+	time.Sleep(time.Millisecond*50)
 	rels, err := ds.AggregateRelationsFromObjectsOfType("_ota1")
 	require.NoError(t, err)
 	require.Len(t, rels, 2)
