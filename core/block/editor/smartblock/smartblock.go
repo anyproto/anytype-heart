@@ -763,7 +763,7 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.R
 }
 
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
-	copy := pbtypes.CopyRelations(sb.RelationsState(s, false))
+	copy := pbtypes.CopyRelations(s.ExtraRelations())
 
 	var existsMap = map[string]*model.Relation{}
 	for _, rel := range copy {
@@ -773,15 +773,29 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 		if rel.Key == "" {
 			rel.Key = bson.NewObjectId().Hex()
 		}
-		if relEx, exists := existsMap[rel.Key]; !exists {
-			// we return the pointers slice here just for clarity
-			relationsWithKeys = append(relationsWithKeys, rel)
-			copy = append(copy, pbtypes.CopyRelation(rel))
-		} else {
+
+		if relEx, exists := existsMap[rel.Key]; exists {
+			c := pbtypes.CopyRelation(rel)
 			if !pbtypes.RelationEqualOmitDictionary(relEx, rel) {
+				c = relEx
 				log.Warnf("failed to AddExtraRelations: provided relation %s not equal to existing aggregated one", rel.Key)
 			}
-			relationsWithKeys = append(relationsWithKeys, relEx)
+			relationsWithKeys = append(relationsWithKeys, c)
+			copy = append(copy, c)
+		} else {
+			existingRelation, err := sb.Anytype().ObjectStore().GetRelation(rel.Key)
+			if err != nil {
+				log.Errorf("existingRelation failed to get: %s", err.Error())
+			}
+			c := pbtypes.CopyRelation(rel)
+
+			if existingRelation != nil && (existingRelation.ReadOnlyRelation || rel.Name == "") {
+				c = existingRelation
+			} else if existingRelation != nil && !pbtypes.RelationCompatible(existingRelation, rel) {
+				return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
+			}
+			relationsWithKeys = append(relationsWithKeys, c)
+			copy = append(copy, c)
 		}
 		if !pbtypes.HasField(s.Details(), rel.Key) {
 			s.SetDetail(rel.Key, pbtypes.Null())

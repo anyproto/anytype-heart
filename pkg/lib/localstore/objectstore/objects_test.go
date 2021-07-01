@@ -2,6 +2,7 @@ package objectstore
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"io/ioutil"
 	"os"
@@ -43,32 +44,32 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	require.NoError(t, err)
 	// bundle.RelationKeyLastOpenedDate is local relation (not stored in the changes tree)
 	err = ds.CreateObject(id.String(), &types.Struct{
-		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("p1")},
+		Fields: map[string]*types.Value{bundle.RelationKeyLastOpenedDate.String(): pbtypes.Int64(4), "type": pbtypes.String("_otp1")},
 	}, nil, nil, "")
 	require.NoError(t, err)
 
-	recs, _, err := ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "p1"}}, database.Query{})
+	recs, _, err := ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 
 	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("p1")},
+		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
 	}, nil, true)
 	require.NoError(t, err)
 
-	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "p1"}}, database.Query{})
+	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
 	require.Equal(t, "2", pbtypes.GetString(recs[0].Details, "k2"))
 
 	err = ds.UpdateObjectDetails(id.String(), &types.Struct{
-		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("p1")},
+		Fields: map[string]*types.Value{"k1": pbtypes.String("1"), "k2": pbtypes.String("2"), "type": pbtypes.String("_otp1")},
 	}, nil, false)
 	require.NoError(t, err)
 
-	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "p1"}}, database.Query{})
+	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -249,6 +250,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 
+	logging.ApplyLevelsFromEnv()
 	app := testapp.New()
 	ds := New()
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
@@ -323,6 +325,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, restOpts, 6)
 
+	time.Sleep(time.Millisecond*50)
 	rels, err := ds.AggregateRelationsFromObjectsOfType("_ota1")
 	require.NoError(t, err)
 	require.Len(t, rels, 2)

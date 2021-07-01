@@ -3120,6 +3120,7 @@ message Rpc {
         enum Format {
             Markdown = 0;
             Protobuf = 1;
+            JSON = 2;
         }
     }
 

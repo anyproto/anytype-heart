@@ -640,7 +640,7 @@
   {
     "description": "Name of the object",
     "format": "shorttext",
-    "hidden": false,
+    "hidden": true,
     "key": "name",
     "maxCount": 1,
     "name": "Name",
@@ -713,7 +713,7 @@
     "objectTypes": [
       "objectType"
     ],
-    "readonly": false,
+    "readonly": true,
     "source": "derived"
   },
   {

@@ -10230,6 +10230,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | Markdown | 0 |  |
 | Protobuf | 1 |  |
+| JSON | 2 |  |
 
 
 
@@ -12930,7 +12931,7 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | objectTypeUrls | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| relations | [Relations](#anytype.model.Relations) |  |  |
+| relations | [Relation](#anytype.model.Relation) | repeated |  |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
 | objectType | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |
@@ -13039,6 +13040,7 @@ Precondition: user A and user B opened the same block
 | idxRebuildCounter | [int32](#int32) |  | increased in order to remove indexes and reindex everything. Automatically triggers objects and files reindex(one time only) |
 | fulltextRebuild | [int32](#int32) |  | increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
 | bundledTemplates | [string](#string) |  |  |
+| bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
 
 
 
@@ -13542,7 +13544,8 @@ Relation describe the human-interpreted relation type. It may be something like 
 | defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 | dataSource | [Relation.DataSource](#anytype.model.Relation.DataSource) |  | where the data is stored |
 | hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
-| readOnly | [bool](#bool) |  | not editable by user |
+| readOnly | [bool](#bool) |  | value not editable by user tobe renamed to readonlyValue |
+| readOnlyRelation | [bool](#bool) |  | relation metadata, eg name and format is not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
 | objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
 | selectDict | [Relation.Option](#anytype.model.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
