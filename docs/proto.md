@@ -13446,7 +13446,8 @@ Relation describe the human-interpreted relation type. It may be something like 
 | defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 | dataSource | [Relation.DataSource](#anytype.model.Relation.DataSource) |  | where the data is stored |
 | hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
-| readOnly | [bool](#bool) |  | not editable by user |
+| readOnly | [bool](#bool) |  | value not editable by user tobe renamed to readonlyValue |
+| readOnlyRelation | [bool](#bool) |  | relation metadata, eg name and format is not editable by user |
 | multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
 | objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
 | selectDict | [Relation.Option](#anytype.model.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
