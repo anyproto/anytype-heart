@@ -235,7 +235,10 @@ func (i *indexer) reindexIfNeeded() error {
 		reindexBundledTemplates = true
 		reindexBundledObjects = true
 	}
+	return i.Reindex(reindexBundledTypes, reindexBundledRelations, eraseIndexes, reindexThreadObjects, reindexFileObjects, reindexFulltext, reindexBundledTemplates, reindexBundledObjects)
+}
 
+func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseIndexes, reindexThreadObjects, reindexFileObjects, reindexFulltext, reindexBundledTemplates, reindexBundledObjects bool) (err error) {
 	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes || reindexFulltext || reindexBundledTemplates || reindexBundledObjects {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes, reindexFulltext, reindexBundledTemplates, reindexBundledObjects)
 	}

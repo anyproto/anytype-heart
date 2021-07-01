@@ -9,7 +9,7 @@ message ObjectInfo {
     string id = 1;
     repeated string objectTypeUrls = 2;
     google.protobuf.Struct details = 3;
-    repeated string relationKeys = 4;
+    repeated Relation relations = 4;
 
     string snippet = 5;
     bool hasInboundLinks = 6;

@@ -1328,7 +1328,7 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 
 	if relations != nil && relations.Relations != nil {
 		// intentionally do not pass txn, as this tx may be huge
-		if err = m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, relations.Relations); err != nil {
+		if err = m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, before.Relations, relations.Relations); err != nil {
 			return err
 		}
 	}
@@ -1557,16 +1557,11 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id string, relationsAfter []*model.Relation) error {
+func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id string, relationsBefore []*model.Relation, relationsAfter []*model.Relation) error {
 	if relationsAfter == nil {
 		return fmt.Errorf("relationsAfter is nil")
 	}
-
-	relationsBefore, err := getObjectRelations(txn, id)
-	if err != nil {
-		return err
-	}
-
+	var err error
 	var updatedRelations []*model.Relation
 	var updatedOptions []*model.RelationOption
 
@@ -1910,7 +1905,7 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		Id:              id,
 		ObjectType:      sbt.ToProto(),
 		Details:         details.Details,
-		RelationKeys:    pbtypes.GetRelationKeys(relations),
+		Relations:       relations,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
 		ObjectTypeUrls:  objectTypes,
