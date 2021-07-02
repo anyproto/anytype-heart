@@ -62,6 +62,12 @@ func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (e
 	return
 }
 
+func (or ObjectRestrictions) Copy() ObjectRestrictions {
+	obj := make(ObjectRestrictions, len(or))
+	copy(obj, or)
+	return obj
+}
+
 func (s *service) ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions) {
 	var ok bool
 	if r, ok = objectRestrictionsByPbType[obj.Type()]; ok {

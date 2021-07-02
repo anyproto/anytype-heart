@@ -48,6 +48,19 @@ func (dr DataviewRestrictions) Check(dataviewId string, cr ...model.Restrictions
 	return
 }
 
+func (dr DataviewRestrictions) Copy() DataviewRestrictions {
+	cp := make(DataviewRestrictions, len(dr))
+	for i := range dr {
+		rt := make([]model.RestrictionsDataviewRestriction, len(dr[i].Restrictions))
+		copy(rt, dr[i].Restrictions)
+		cp[i] = model.RestrictionsDataviewRestrictions{
+			BlockId:      dr[i].BlockId,
+			Restrictions: rt,
+		}
+	}
+	return cp
+}
+
 func (s *service) DataviewRestrictionsByObj(obj Object) DataviewRestrictions {
 	if dr, ok := dataviewRestrictionsByPb[obj.Type()]; ok {
 		return dr

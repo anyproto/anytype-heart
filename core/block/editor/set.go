@@ -89,25 +89,27 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}
-	p.applyRestrictions(ctx.State)
 	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
-
+	p.applyRestrictions(ctx.State)
 	return p.FillAggregatedOptions(nil)
 }
 
 func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
 	s := p.NewState()
-	p.applyRestrictions(s)
-	return template.ApplyTemplate(p, s,
+	if err := template.ApplyTemplate(p, s,
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
 		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),
 		template.WithMaxCountMigration,
-	)
+	); err != nil {
+		return err
+	}
+	p.applyRestrictions(s)
+	return nil
 }
 
 func (p *Set) applyRestrictions(s *state.State) {
@@ -120,7 +122,7 @@ func (p *Set) applyRestrictions(s *state.State) {
 						model.Restrictions_DVRelation, model.Restrictions_DVCreateObject,
 					},
 				}
-				r := p.Restrictions()
+				r := p.Restrictions().Copy()
 				var found bool
 				for i, dr := range r.Dataview {
 					if dr.BlockId == br.BlockId {
