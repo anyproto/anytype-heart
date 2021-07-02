@@ -41,14 +41,14 @@ require (
 	github.com/ipfs/interface-go-ipfs-core v0.4.0
 	github.com/jsummers/gobmp v0.0.0-20151104160322-e2ba15ffa76e
 	github.com/kelseyhightower/envconfig v1.4.0
-	github.com/libp2p/go-libp2p v0.14.1
+	github.com/libp2p/go-libp2p v0.14.3
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
 	github.com/libp2p/go-libp2p-core v0.8.5
 	github.com/libp2p/go-libp2p-kad-dht v0.12.1
 	github.com/libp2p/go-libp2p-peerstore v0.2.7
 	github.com/libp2p/go-libp2p-swarm v0.5.0
 	github.com/libp2p/go-libp2p-tls v0.1.3
-	github.com/libp2p/go-tcp-transport v0.2.1
+	github.com/libp2p/go-tcp-transport v0.2.3
 	github.com/logrusorgru/aurora v2.0.3+incompatible
 	github.com/magiconair/properties v1.8.4
 	github.com/mauidude/go-readability v0.0.0-20141216012317-2f30b1a346f1
@@ -58,7 +58,7 @@ require (
 	github.com/mr-tron/base58 v1.2.0
 	github.com/msingleton/amplitude-go v0.0.0-20200312121213-b7c11448c30e
 	github.com/multiformats/go-base32 v0.0.3
-	github.com/multiformats/go-multiaddr v0.3.1
+	github.com/multiformats/go-multiaddr v0.3.3
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.15
 	github.com/opentracing/opentracing-go v1.2.0
@@ -83,7 +83,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.0.3-0.20210608073923-95804bedabf5
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20210701065147-e40f080237ba
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 

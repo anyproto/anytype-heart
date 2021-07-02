@@ -75,6 +75,8 @@ github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZ
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51/go.mod h1:SoKy+W8Mf6v7XBV30xFWkIFMs7UnXwsNGrGV12yVkEs=
 github.com/anytypeio/go-threads v1.0.3-0.20210608073923-95804bedabf5 h1:5nG5kc0+Cy39KEjEEeahOGUfc32Gb9514bQNx/I1Q4k=
 github.com/anytypeio/go-threads v1.0.3-0.20210608073923-95804bedabf5/go.mod h1:BPzUY6wMoHofmengai6JLNpLKDGNZv9W13b59Ph7v2s=
+github.com/anytypeio/go-threads v1.1.0-rc1.0.20210701065147-e40f080237ba h1:BheJPCAGmytgNr5fj1T0iSzj7A+O16BP9NctBE0gFK0=
+github.com/anytypeio/go-threads v1.1.0-rc1.0.20210701065147-e40f080237ba/go.mod h1:O7G/oTjIZfQmB6ZoeU42IdRxWEY9D+HZuLzF6wMk4jI=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1 h1:g/LEIEQ0ACBOKX9MhORhlmluUKvuxvrIDbGMI0cqF5A=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
 github.com/anytypeio/ipfs-lite v1.1.20-0.20210428105030-fc5b3446abae h1:drp4/4ippiDtCGQHJw9AEPFlNdZI49DUW/6dkCdmChc=
@@ -598,6 +600,7 @@ github.com/ipfs/go-bitswap v0.1.0/go.mod h1:FFJEf18E9izuCqUtHxbWEvq+reg7o4CW5wSA
 github.com/ipfs/go-bitswap v0.1.2/go.mod h1:qxSWS4NXGs7jQ6zQvoPY3+NmOfHHG47mhkiLzBpJQIs=
 github.com/ipfs/go-bitswap v0.1.3/go.mod h1:YEQlFy0kkxops5Vy+OxWdRSEZIoS7I7KDIwoa5Chkps=
 github.com/ipfs/go-bitswap v0.1.8/go.mod h1:TOWoxllhccevbWFUR2N7B1MTSVVge1s6XSMiCSA4MzM=
+github.com/ipfs/go-bitswap v0.3.3/go.mod h1:AyWWfN3moBzQX0banEtfKOfbXb3ZeoOeXnZGNPV9S6w=
 github.com/ipfs/go-bitswap v0.3.4-0.20210401172342-0fa397581ca6 h1:9HxhIMNnsFvxvG+8IYfO2CX1cbyLDooQOvYD+w7EJGI=
 github.com/ipfs/go-bitswap v0.3.4-0.20210401172342-0fa397581ca6/go.mod h1:4T7fvNv/LmOys+21tnLzGKncMeeXUYUd1nUiJ2teMvI=
 github.com/ipfs/go-block-format v0.0.1/go.mod h1:DK/YYcsSUIVAFNwo/KZCdIIbpN0ROH/baNLgayt4pFc=
@@ -846,6 +849,8 @@ github.com/libp2p/go-libp2p v0.13.0/go.mod h1:pM0beYdACRfHO1WcJlp65WXyG2A6NqYM+t
 github.com/libp2p/go-libp2p v0.13.1-0.20210426194311-0b6144a02fdf/go.mod h1:g4tmXep4ybDUhK204Bk3eXeIjToMCInkhRTSoesRu7Q=
 github.com/libp2p/go-libp2p v0.14.1 h1:R0vNY7nkU8IISlDuHd2yk4eNAZsVQ0rCr2bPfWU3sXo=
 github.com/libp2p/go-libp2p v0.14.1/go.mod h1:0PQMADQEjCM2l8cSMYDpTgsb8gr6Zq7i4LUgq1mlW2E=
+github.com/libp2p/go-libp2p v0.14.3 h1:NST/bkwGSyaOt+stT7GBHY1+OqaANZ+QUOjpsmjXVC4=
+github.com/libp2p/go-libp2p v0.14.3/go.mod h1:d12V4PdKbpL0T1/gsUNN8DfgMuRPDX8bS2QxCZlwRH0=
 github.com/libp2p/go-libp2p-asn-util v0.0.0-20200825225859-85005c6cf052 h1:BM7aaOF7RpmNn9+9g6uTjGJ0cTzWr5j9i9IKeun2M8U=
 github.com/libp2p/go-libp2p-asn-util v0.0.0-20200825225859-85005c6cf052/go.mod h1:nRMRTab+kZuk0LnKZpxhOVH/ndsdr2Nr//Zltc/vwgo=
 github.com/libp2p/go-libp2p-autonat v0.0.6/go.mod h1:uZneLdOkZHro35xIhpbtTzLlgYturpu4J5+0cZK3MqE=
@@ -906,6 +911,8 @@ github.com/libp2p/go-libp2p-discovery v0.2.0/go.mod h1:s4VGaxYMbw4+4+tsoQTqh7wfx
 github.com/libp2p/go-libp2p-discovery v0.3.0/go.mod h1:o03drFnz9BVAZdzC/QUQ+NeQOu38Fu7LJGEOK2gQltw=
 github.com/libp2p/go-libp2p-discovery v0.5.0 h1:Qfl+e5+lfDgwdrXdu4YNCWyEo3fWuP+WgN9mN0iWviQ=
 github.com/libp2p/go-libp2p-discovery v0.5.0/go.mod h1:+srtPIU9gDaBNu//UHvcdliKBIcr4SfDcm0/PfPJLug=
+github.com/libp2p/go-libp2p-gostream v0.3.0 h1:rnas//vRdHYCr7bjraZJISPwZV8OGMjeX5k5fN5Ax44=
+github.com/libp2p/go-libp2p-gostream v0.3.0/go.mod h1:pLBQu8db7vBMNINGsAwLL/ZCE8wng5V1FThoaE5rNjc=
 github.com/libp2p/go-libp2p-gostream v0.3.1 h1:XlwohsPn6uopGluEWs1Csv1QCEjrTXf2ZQagzZ5paAg=
 github.com/libp2p/go-libp2p-gostream v0.3.1/go.mod h1:1V3b+u4Zhaq407UUY9JLCpboaeufAeVQbnvAt12LRsI=
 github.com/libp2p/go-libp2p-host v0.0.1/go.mod h1:qWd+H1yuU0m5CwzAkvbSjqKairayEHdR5MMl7Cwa7Go=
@@ -917,6 +924,7 @@ github.com/libp2p/go-libp2p-interface-connmgr v0.0.5 h1:KG/KNYL2tYzXAfMvQN5K1aAG
 github.com/libp2p/go-libp2p-interface-connmgr v0.0.5/go.mod h1:GarlRLH0LdeWcLnYM/SaBykKFl9U5JFnbBGruAk/D5k=
 github.com/libp2p/go-libp2p-interface-pnet v0.0.1 h1:7GnzRrBTJHEsofi1ahFdPN9Si6skwXQE9UqR2S+Pkh8=
 github.com/libp2p/go-libp2p-interface-pnet v0.0.1/go.mod h1:el9jHpQAXK5dnTpKA4yfCNBZXvrzdOU75zz+C6ryp3k=
+github.com/libp2p/go-libp2p-kad-dht v0.11.0/go.mod h1:5ojtR2acDPqh/jXf5orWy8YGb8bHQDS+qeDcoscL/PI=
 github.com/libp2p/go-libp2p-kad-dht v0.11.1/go.mod h1:5ojtR2acDPqh/jXf5orWy8YGb8bHQDS+qeDcoscL/PI=
 github.com/libp2p/go-libp2p-kad-dht v0.12.1 h1:6HsBhzxcD34rE7Ds2lK9q6llPE7/tdqV7JmJiukEcQ8=
 github.com/libp2p/go-libp2p-kad-dht v0.12.1/go.mod h1:zdQYru1c7dnluMpZls4i9Fj2TwYXS7YyDkJ1Yahv0w0=
@@ -971,6 +979,8 @@ github.com/libp2p/go-libp2p-pnet v0.2.0/go.mod h1:Qqvq6JH/oMZGwqs3N1Fqhv8NVhrdYc
 github.com/libp2p/go-libp2p-protocol v0.0.1/go.mod h1:Af9n4PiruirSDjHycM1QuiMi/1VZNHYcK8cLgFJLZ4s=
 github.com/libp2p/go-libp2p-protocol v0.1.0 h1:HdqhEyhg0ToCaxgMhnOmUO8snQtt/kQlcjVk3UoJU3c=
 github.com/libp2p/go-libp2p-protocol v0.1.0/go.mod h1:KQPHpAabB57XQxGrXCNvbL6UEXfQqUgC/1adR2Xtflk=
+github.com/libp2p/go-libp2p-pubsub v0.4.0 h1:YNVRyXqBgv9i4RG88jzoTtkSOaSB45CqHkL29NNBZb4=
+github.com/libp2p/go-libp2p-pubsub v0.4.0/go.mod h1:izkeMLvz6Ht8yAISXjx60XUQZMq9ZMe5h2ih4dLIBIQ=
 github.com/libp2p/go-libp2p-pubsub v0.4.1 h1:j4umIg5nyus+sqNfU+FWvb9aeYFQH/A+nDFhWj+8yy8=
 github.com/libp2p/go-libp2p-pubsub v0.4.1/go.mod h1:izkeMLvz6Ht8yAISXjx60XUQZMq9ZMe5h2ih4dLIBIQ=
 github.com/libp2p/go-libp2p-quic-transport v0.10.0 h1:koDCbWD9CCHwcHZL3/WEvP2A+e/o5/W5L3QS/2SPMA0=
@@ -1061,6 +1071,7 @@ github.com/libp2p/go-nat v0.0.5 h1:qxnwkco8RLKqVh1NmjQ+tJ8p8khNLFxuElYG/TwqW4Q=
 github.com/libp2p/go-nat v0.0.5/go.mod h1:B7NxsVNPZmRLvMOwiEO1scOSyjA56zxYAGv1yQgRkEU=
 github.com/libp2p/go-netroute v0.1.2/go.mod h1:jZLDV+1PE8y5XxBySEBgbuVAXbhtuHSdmLPL2n9MKbk=
 github.com/libp2p/go-netroute v0.1.3/go.mod h1:jZLDV+1PE8y5XxBySEBgbuVAXbhtuHSdmLPL2n9MKbk=
+github.com/libp2p/go-netroute v0.1.5/go.mod h1:V1SR3AaECRkEQCoFFzYwVYWvYIEtlxx89+O3qcpCl4A=
 github.com/libp2p/go-netroute v0.1.6 h1:ruPJStbYyXVYGQ81uzEDzuvbYRLKRrLvTYd33yomC38=
 github.com/libp2p/go-netroute v0.1.6/go.mod h1:AqhkMh0VuWmfgtxKPp3Oc1LdU5QSWS7wl0QLhSZqXxQ=
 github.com/libp2p/go-openssl v0.0.2/go.mod h1:v8Zw2ijCSWBQi8Pq5GAixw6DbFfa9u6VIYDXnvOXkc0=
@@ -1077,6 +1088,7 @@ github.com/libp2p/go-reuseport-transport v0.0.3/go.mod h1:Spv+MPft1exxARzP2Sruj2
 github.com/libp2p/go-reuseport-transport v0.0.4 h1:OZGz0RB620QDGpv300n1zaOcKGGAoGVf8h9txtt/1uM=
 github.com/libp2p/go-reuseport-transport v0.0.4/go.mod h1:trPa7r/7TJK/d+0hdBLOCGvpQQVOU74OXbNCIMkufGw=
 github.com/libp2p/go-sockaddr v0.0.2/go.mod h1:syPvOmNs24S3dFVGJA1/mrqdeijPxLV2Le3BRLKd68k=
+github.com/libp2p/go-sockaddr v0.1.0/go.mod h1:syPvOmNs24S3dFVGJA1/mrqdeijPxLV2Le3BRLKd68k=
 github.com/libp2p/go-sockaddr v0.1.1 h1:yD80l2ZOdGksnOyHrhxDdTDFrf7Oy+v3FMVArIRgZxQ=
 github.com/libp2p/go-sockaddr v0.1.1/go.mod h1:syPvOmNs24S3dFVGJA1/mrqdeijPxLV2Le3BRLKd68k=
 github.com/libp2p/go-stream-muxer v0.0.1/go.mod h1:bAo8x7YkSpadMTbtTaxGVHWUQsR/l5MEaHbKaliuT14=
@@ -1092,6 +1104,8 @@ github.com/libp2p/go-tcp-transport v0.1.1/go.mod h1:3HzGvLbx6etZjnFlERyakbaYPdfj
 github.com/libp2p/go-tcp-transport v0.2.0/go.mod h1:vX2U0CnWimU4h0SGSEsg++AzvBcroCGYw28kh94oLe0=
 github.com/libp2p/go-tcp-transport v0.2.1 h1:ExZiVQV+h+qL16fzCWtd1HSzPsqWottJ8KXwWaVi8Ns=
 github.com/libp2p/go-tcp-transport v0.2.1/go.mod h1:zskiJ70MEfWz2MKxvFB/Pv+tPIB1PpPUrHIWQ8aFw7M=
+github.com/libp2p/go-tcp-transport v0.2.3 h1:Esfw8dbK3zwdZItnIJGmOOg1YGDYja4eOmJcoDx29uU=
+github.com/libp2p/go-tcp-transport v0.2.3/go.mod h1:9dvr03yqrPyYGIEN6Dy5UvdJZjyPFvl1S/igQ5QD1SU=
 github.com/libp2p/go-testutil v0.0.1/go.mod h1:iAcJc/DKJQanJ5ws2V+u5ywdL2n12X1WbbEG+Jjy69I=
 github.com/libp2p/go-testutil v0.1.0 h1:4QhjaWGO89udplblLVpgGDOQjzFlRavZOjuEnz2rLMc=
 github.com/libp2p/go-testutil v0.1.0/go.mod h1:81b2n5HypcVyrCg/MJx4Wgfp/VHojytjVe/gLzZ2Ehc=
@@ -1143,6 +1157,8 @@ github.com/marten-seemann/qtls v0.10.0 h1:ECsuYUKalRL240rRD4Ri33ISb7kAQ3qGDlrrl5
 github.com/marten-seemann/qtls v0.10.0/go.mod h1:UvMd1oaYDACI99/oZUYLzMCkBXQVT0aGm99sJhbT8hs=
 github.com/marten-seemann/qtls-go1-15 v0.1.1 h1:LIH6K34bPVttyXnUWixk0bzH6/N07VxbSabxn5A5gZQ=
 github.com/marten-seemann/qtls-go1-15 v0.1.1/go.mod h1:GyFwywLKkRt+6mfU99csTEY1joMZz5vmB1WNZH3P81I=
+github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd h1:br0buuQ854V8u83wA0rVZ8ttrq5CpaPZdvrK0LP2lOk=
+github.com/marten-seemann/tcp v0.0.0-20210406111302-dfbc87cc63fd/go.mod h1:QuCEs1Nt24+FYQEqAAncTDPJIuGs+LxK1MCiFL25pMU=
 github.com/mattn/go-colorable v0.0.9/go.mod h1:9vuHe8Xs5qXnSaW/c/ABM9alt+Vo+STaOChaDxuIBZU=
 github.com/mattn/go-colorable v0.1.1/go.mod h1:FuOcm+DKB9mbwrcAfNl7/TZVBZ6rcnceauSikq3lYCQ=
 github.com/mattn/go-colorable v0.1.2 h1:/bC9yWikZXAL9uJdulbSfyVNIR3n3trXl+v8+1sx8mU=
@@ -1172,6 +1188,11 @@ github.com/miekg/dns v1.1.28/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7
 github.com/miekg/dns v1.1.31/go.mod h1:KNUDUusw/aVsxyTYZM1oqvCicbwhgbNgztCETuNZ7xM=
 github.com/miekg/dns v1.1.41 h1:WMszZWJG0XmzbK9FEmzH2TVcqYzFesusSIB41b8KHxY=
 github.com/miekg/dns v1.1.41/go.mod h1:p6aan82bvRIyn+zDIv9xYNUpwa73JcSh9BKwknJysuI=
+github.com/mikioh/tcp v0.0.0-20190314235350-803a9b46060c/go.mod h1:0SQS9kMwD2VsyFEB++InYyBJroV/FRmBgcydeSUcJms=
+github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b h1:z78hV3sbSMAUoyUMM0I83AUIT6Hu17AWfgjzIbtrYFc=
+github.com/mikioh/tcpinfo v0.0.0-20190314235526-30a79bb1804b/go.mod h1:lxPUiZwKoFL8DUUmalo2yJJUCxbPKtm8OKfqr2/FTNU=
+github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc h1:PTfri+PuQmWDqERdnNMiD9ZejrlswWrCpBEZgWOiTrc=
+github.com/mikioh/tcpopt v0.0.0-20190314235656-172688c1accc/go.mod h1:cGKTAVKx4SxOuR/czcZ/E2RSJ3sfHs8FpHhQ5CWMf9s=
 github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1 h1:lYpkrQH5ajf0OXOcUbGjvZxxijuBwbbmlSxLiuofa+g=
 github.com/minio/blake2b-simd v0.0.0-20160723061019-3f5f724cb5b1/go.mod h1:pD8RvIylQ358TN4wwqatJ8rNavkEINozVn9DtGI3dfQ=
 github.com/minio/sha256-simd v0.0.0-20190131020904-2d45a736cd16/go.mod h1:2FMWW+8GMoPweT6+pI63m9YE3Lmw4J71hV56Chs1E/U=
@@ -1231,6 +1252,8 @@ github.com/multiformats/go-multiaddr v0.2.2/go.mod h1:NtfXiOtHvghW9KojvtySjH5y0u
 github.com/multiformats/go-multiaddr v0.3.0/go.mod h1:dF9kph9wfJ+3VLAaeBqo9Of8x4fJxp6ggJGteB8HQTI=
 github.com/multiformats/go-multiaddr v0.3.1 h1:1bxa+W7j9wZKTZREySx1vPMs2TqrYWjVZ7zE6/XLG1I=
 github.com/multiformats/go-multiaddr v0.3.1/go.mod h1:uPbspcUPd5AfaP6ql3ujFY+QWzmBD8uLLL4bXW0XfGc=
+github.com/multiformats/go-multiaddr v0.3.3 h1:vo2OTSAqnENB2rLk79pLtr+uhj+VAzSe3uef5q0lRSs=
+github.com/multiformats/go-multiaddr v0.3.3/go.mod h1:lCKNGP1EQ1eZ35Za2wlqnabm9xQkib3fyB+nZXHLag0=
 github.com/multiformats/go-multiaddr-dns v0.0.1/go.mod h1:9kWcqw/Pj6FwxAwW38n/9403szc57zJPs45fmnznu3Q=
 github.com/multiformats/go-multiaddr-dns v0.0.2/go.mod h1:9kWcqw/Pj6FwxAwW38n/9403szc57zJPs45fmnznu3Q=
 github.com/multiformats/go-multiaddr-dns v0.2.0/go.mod h1:TJ5pr5bBO7Y1B18djPuRsVkduhQH2YqYSbxWJzYGdK0=
@@ -1795,7 +1818,9 @@ golang.org/x/net v0.0.0-20200625001655-4c5254603344/go.mod h1:/O7V0waA8r7cgGh81R
 golang.org/x/net v0.0.0-20200707034311-ab3426394381/go.mod h1:/O7V0waA8r7cgGh81Ro3o1hOxt32SMVPicZroKQ2sZA=
 golang.org/x/net v0.0.0-20201021035429-f5854403a974/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
 golang.org/x/net v0.0.0-20201110031124-69a78807bb2b/go.mod h1:sp8m0HH+o8qH0wwXwYZr8TS3Oi6o0r6Gce1SSxlDquU=
+golang.org/x/net v0.0.0-20210119194325-5f4716e94777/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
 golang.org/x/net v0.0.0-20210226172049-e18ecbb05110/go.mod h1:m0MpNAwzfU5UDzcl9v0D8zg8gWTRqZa9RBIspLL5mdg=
+golang.org/x/net v0.0.0-20210316092652-d523dce5a7f4/go.mod h1:RBQZq4jEuRlivfhVLdyRGr576XBO4/greRjx4P4O3yc=
 golang.org/x/net v0.0.0-20210405180319-a5a99cb37ef4/go.mod h1:p54w0d4576C0XHj96bSt6lcn1PtDYWL6XObtHCRCNQM=
 golang.org/x/net v0.0.0-20210421230115-4e50805a0758/go.mod h1:72T/g9IO56b78aLF+1Kcs5dz7/ng1VjMUvfKvpfy+jM=
 golang.org/x/net v0.0.0-20210423184538-5f58ad60dda6 h1:0PC75Fz/kyMGhL0e1QnypqK2kQMqKt9csD1GnMJR+Zk=
@@ -1874,6 +1899,8 @@ golang.org/x/sys v0.0.0-20201119102817-f84b799fce68/go.mod h1:h1NjWce9XRLGQEsW7w
 golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210303074136-134d130e1a04/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210309074719-68d13333faf2/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20210315160823-c6e025ad8005/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
+golang.org/x/sys v0.0.0-20210317225723-c4fcb01b228e/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210330210617-4fbd30eecc44/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210420072515-93ed5bcd2bfe/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/sys v0.0.0-20210423082822-04245dca01da/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=

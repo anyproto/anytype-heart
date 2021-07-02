@@ -166,18 +166,18 @@ func getThreadInfo(ipfs ipfs.IPFS, t threads.Service, id thread.ID, ownDeviceId 
 }
 
 func getLogInfo(ipfs ipfs.IPFS, t threads.Service, thrd thread.Info, lg thread.LogInfo, downloadRemote bool, maxRecords int) pb.RpcDebuglogInfo {
-	lgInfo := pb.RpcDebuglogInfo{Id: lg.ID.String(), Head: lg.Head.String()}
-	if !lg.Head.Defined() {
+	lgInfo := pb.RpcDebuglogInfo{Id: lg.ID.String(), Head: lg.Head.ID.String()}
+	if !lg.Head.ID.Defined() {
 		return lgInfo
 	}
 
-	rec, rinfo, err := getRecord(ipfs, t, thrd, lg.Head, downloadRemote)
+	rec, rinfo, err := getRecord(ipfs, t, thrd, lg.Head.ID, downloadRemote)
 	if rec != nil && err == nil {
 		lgInfo.LastRecordTs = int32(rinfo.Time)
 		lgInfo.LastRecordVer = int32(rinfo.Version)
 
 		lgInfo.HeadDownloaded = true
-		rid := lg.Head
+		rid := lg.Head.ID
 		for {
 			if !rid.Defined() {
 				break

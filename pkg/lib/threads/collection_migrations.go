@@ -179,7 +179,7 @@ func (s *service) handleAllMissingDbRecords(threadId string) error {
 
 func handleAllRecordsInLog(tdb *threadsDb.DB, net threadsApp.Net, thrd thread.Info, li thread.LogInfo) {
 	var (
-		rid     = li.Head
+		rid     = li.Head.ID
 		total   = 0
 		records []threadRecord
 	)
