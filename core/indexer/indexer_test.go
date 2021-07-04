@@ -126,6 +126,7 @@ func newFixture(t *testing.T) *fixture {
 		fx.objectStore.EXPECT().GetDetails(ok.URL())
 		fx.objectStore.EXPECT().AddToIndexQueue(ok.URL())
 	}
+	fx.anytype.EXPECT().ProfileID().AnyTimes()
 	fx.objectStore.EXPECT().GetDetails("_anytype_profile")
 	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
