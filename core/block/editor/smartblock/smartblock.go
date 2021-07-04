@@ -852,7 +852,6 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 // UpdateExtraRelations sets the extra relations, it skips the
 func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
-	objectTypeRelations := pbtypes.CopyRelations(sb.ObjectTypeRelations())
 	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
 	relationsToSet := pbtypes.CopyRelations(relations)
 
@@ -860,25 +859,16 @@ func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*mode
 	var newRelations []*model.Relation
 mainLoop:
 	for i := range relationsToSet {
-		for j := range objectTypeRelations {
-			if objectTypeRelations[j].Key == relationsToSet[i].Key {
-				if pbtypes.RelationEqual(objectTypeRelations[j], relationsToSet[i]) {
-					continue mainLoop
-				} else if !pbtypes.RelationCompatible(objectTypeRelations[j], relationsToSet[i]) {
-					return fmt.Errorf("can't set extraRelation incompatible with the same-key relation in the objectType")
-				}
-			}
-		}
 		for j := range extraRelations {
 			if extraRelations[j].Key == relationsToSet[i].Key {
 				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
 					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
 						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
 					}
-
 					extraRelations[j] = relationsToSet[i]
 					somethingChanged = true
 				}
+
 				continue mainLoop
 			}
 		}
@@ -889,15 +879,21 @@ mainLoop:
 		}
 	}
 
+	st := sb.NewStateCtx(ctx)
+	st.SetExtraRelations(append(extraRelations, newRelations...))
+	for _, rel := range st.ExtraRelations() {
+		// no need to skip by format, already done inside
+		optionValuesRemoved := sb.removeNotExistingRelationOptionsValues(st, rel)
+		somethingChanged = somethingChanged || optionValuesRemoved
+	}
+
 	if !somethingChanged {
 		return
 	}
 
-	s := sb.NewStateCtx(ctx).SetExtraRelations(append(extraRelations, newRelations...))
-	if err = sb.Apply(s); err != nil {
+	if err = sb.Apply(st); err != nil {
 		return
 	}
-
 	return
 }
 
@@ -1010,6 +1006,36 @@ func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey 
 	return fmt.Errorf("relation not found")
 }
 
+func (sb *smartBlock) removeNotExistingRelationOptionsValues(st *state.State, rel *model.Relation) (changed bool) {
+	if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
+		return
+	}
+	vals := pbtypes.GetStringList(st.Details(), rel.Key)
+	if len(vals) == 0 {
+		return
+	}
+	var filtered = make([]string, 0, len(vals))
+	var found bool
+	for _, val := range pbtypes.GetStringList(st.Details(), rel.Key) {
+		found = false
+		for _, v := range rel.SelectDict {
+			if v.Id == val {
+				found = true
+				break
+			}
+		}
+		if found {
+			filtered = append(filtered, val)
+		}
+	}
+	if len(filtered) < len(vals) {
+		changed = true
+		st.SetDetail(rel.Key, pbtypes.StringList(filtered))
+	}
+
+	return
+}
+
 func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
 	s := sb.NewStateCtx(ctx)
 	for _, rel := range sb.ExtraRelations() {
@@ -1024,6 +1050,7 @@ func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey 
 				copy := pbtypes.CopyRelation(rel)
 				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
 				s.SetExtraRelation(copy)
+				sb.removeNotExistingRelationOptionsValues(s, copy)
 				if showEvent {
 					return sb.Apply(s)
 				}

@@ -345,6 +345,18 @@ func (m *dsObjectStore) Close() (err error) {
 	return nil
 }
 
+func (m *dsObjectStore) AggregateObjectIdsForOptionAndRelation(relationKey, optId string) (objectsIds []string, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	defer txn.Discard()
+
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey, optId}, "/", false, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return localstore.GetLeavesFromResults(res)
+}
+
 func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	defer txn.Discard()

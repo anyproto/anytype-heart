@@ -1,6 +1,7 @@
 package dataview
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -17,6 +18,7 @@ import (
 )
 
 var _ Block = (*Dataview)(nil)
+var ErrOptionNotExists = errors.New("option not exists")
 
 func init() {
 	simple.RegisterCreator(NewDataview)
@@ -518,7 +520,7 @@ func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error 
 			}
 		}
 
-		return fmt.Errorf("option not exists")
+		return ErrOptionNotExists
 	}
 	return nil
 }
