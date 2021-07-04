@@ -957,6 +957,20 @@ func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey str
 		return nil, fmt.Errorf("incorrect relation format")
 	}
 
+	if option.Id == "" {
+		existingOptions, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+		if err != nil {
+			log.Errorf("failed to get existing aggregated options: %s", err.Error())
+		} else {
+			for _, exOpt := range existingOptions {
+				if strings.EqualFold(exOpt.Text, option.Text) {
+					option.Id = exOpt.Id
+					option.Color = exOpt.Color
+					break
+				}
+			}
+		}
+	}
 	newOption, err := s.AddExtraRelationOption(*rel, option)
 	if err != nil {
 		return nil, err
