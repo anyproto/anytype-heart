@@ -74,6 +74,7 @@ type service struct {
 	// peerID => connected
 	connMap map[string]bool
 
+	isRunning bool
 	tsTrigger *queue.BulkQueue
 	emitter   func(event *pb.Event) // may be nil in case events sending is disabled
 	mu        sync.Mutex
@@ -119,6 +120,12 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() error {
+	s.mu.Lock()
+	defer func() {
+		s.isRunning = true
+		s.mu.Unlock()
+	}()
+
 	if err := s.startConnectivityTracking(); err != nil {
 		return err
 	}
@@ -203,8 +210,10 @@ func (s *service) UpdateTimeline(tid thread.ID, timeline []LogTime) {
 	if len(timeline) == 0 {
 		return
 	}
-
 	s.mu.Lock()
+	if !s.isRunning {
+		log.Errorf("calling UpdateTimeline when status component is not yet running!")
+	}
 	for _, logTime := range timeline {
 		// update account information for devices
 		s.devAccount[logTime.DeviceID] = logTime.AccountID
@@ -236,6 +245,7 @@ func (s *service) Close() error {
 	s.tsTrigger.Stop()
 
 	s.mu.Lock()
+	s.isRunning = false
 	defer s.mu.Unlock()
 
 	// just shutdown all thread status watchers, connectivity tracking
