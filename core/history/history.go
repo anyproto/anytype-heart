@@ -93,6 +93,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 		Blocks:      s.Blocks(),
 		Details:     details,
 		ObjectTypes: objectTypes,
+		Relations:   s.ExtraRelations(),
 	}, ver, nil
 }
 
