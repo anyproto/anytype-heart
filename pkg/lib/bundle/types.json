@@ -529,7 +529,6 @@
       "isHidden",
       "isArchived",
       "targetObjectType",
-      "templateName",
       "templateIsBundled"
     ],
     "types": [
