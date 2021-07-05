@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -879,6 +880,9 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 		st = b.NewState().Copy()
 		pbtypes.Delete(st.Details(), bundle.RelationKeyTemplateIsBundled.String())
 		st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(""))
+		if title := st.Get(template.TitleBlockId); title != nil {
+			title.Model().GetText().Text = ""
+		}
 		return nil
 	}); err != nil {
 		return
