@@ -35,7 +35,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 2 // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 1 // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 4 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 5 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 1 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -423,6 +423,22 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 		st.AddRelation(rel)
 	}
 
+	setCreator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
+	if setCreator == "" {
+		setCreator = i.anytype.ProfileID()
+	}
+	if st.ObjectType() == bundle.TypeKeySet.URL() {
+		b := st.Get("dataview")
+		var dv *model.BlockContentDataview
+		if b != nil {
+			dv = b.Model().GetDataview()
+		}
+		if b != nil && dv != nil {
+			if err := i.store.UpdateRelationsInSet(id, dv.Source, setCreator, dv.Relations); err != nil {
+				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
+			}
+		}
+	}
 	return st, nil
 }
 
@@ -612,6 +628,11 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		return
 	}
 
+	setCreator := pbtypes.GetString(d.st.Details(), bundle.RelationKeyCreator.String())
+	if setCreator == "" {
+		setCreator = i.anytype.ProfileID()
+	}
+
 	if len(meta.ObjectTypes) == 1 && meta.ObjectTypes[0] == bundle.TypeKeySet.URL() {
 		b := d.st.Get("dataview")
 		var dv *model.BlockContentDataview
@@ -619,7 +640,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 			dv = b.Model().GetDataview()
 		}
 		if b != nil && dv != nil {
-			if err := i.store.UpdateRelationsInSet(id, dv.Source, dv.Relations); err != nil {
+			if err := i.store.UpdateRelationsInSet(id, dv.Source, setCreator, dv.Relations); err != nil {
 				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
 			}
 		}

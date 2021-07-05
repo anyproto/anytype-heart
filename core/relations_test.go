@@ -935,6 +935,7 @@ func TestCustomType(t *testing.T) {
 	require.Equal(t, mw.GetAnytype().PredefinedBlocks().Profile, pbtypes.GetString(customObjectDetails, bundle.RelationKeyCreator.String()))
 	rel := getRelationByKey(show.Relations, newRelation.Key)
 	require.NotNil(t, rel)
+	newRelation.Creator = mw.GetAnytype().ProfileID()
 	require.Equal(t, newRelation, rel)
 
 	require.NotNil(t, customObjectDetails.Fields[newRelation.Key])

@@ -238,7 +238,7 @@ type ObjectStore interface {
 	DeleteObject(id string) error
 	RemoveRelationFromCache(key string) error
 
-	UpdateRelationsInSet(setId, objType string, relations []*model.Relation) error
+	UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
@@ -333,7 +333,37 @@ func (m *dsObjectStore) EraseIndexes() (err error) {
 			return
 		}
 	}
+	err = m.eraseStoredRelations()
+	if err != nil {
+		log.Errorf("eraseStoredRelations failed: %s", err.Error())
+	}
 	return
+}
+
+func (m *dsObjectStore) eraseStoredRelations() (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return err
+	}
+
+	defer txn.Discard()
+	res, err := localstore.GetKeys(txn, setRelationsBase.String(), 0)
+	if err != nil {
+		return err
+	}
+
+	keys, err := localstore.ExtractKeysFromResults(res)
+	if err != nil {
+		return err
+	}
+
+	for _, key := range keys {
+		err = txn.Delete(ds.NewKey(key))
+		if err != nil {
+			log.Errorf("eraseStoredRelations: failed to delete key %s: %s", key, err.Error())
+		}
+	}
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) Run() (err error) {
@@ -1315,23 +1345,17 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 		return ErrNotAnObject
 	}
 
-	var (
-		objTypes []string
-	)
+	objTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 
-	if details != nil {
-		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-	}
-
+	creatorId := pbtypes.GetString(details, bundle.RelationKeyCreator.String())
 	if relations != nil && relations.Relations != nil {
 		// intentionally do not pass txn, as this tx may be huge
-		if err = m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, before.Relations, relations.Relations); err != nil {
+		if err = m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, creatorId, before.Relations, relations.Relations); err != nil {
 			return err
 		}
 	}
 
 	if details != nil {
-		objTypes = pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
@@ -1423,14 +1447,19 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
 }
 
-func (m *dsObjectStore) UpdateRelationsInSet(setId, objType string, relations []*model.Relation) error {
+func (m *dsObjectStore) UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return err
 	}
 	defer txn.Discard()
 
-	err = m.updateSetRelations(txn, setId, objType, relations)
+	relationsBefore, err := getSetRelations(txn, setId)
+	if err != nil {
+		return err
+	}
+
+	err = m.updateSetRelations(txn, setId, objType, creatorId, relationsBefore, relations)
 	if err != nil {
 		return err
 	}
@@ -1477,14 +1506,9 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*model.Relation) 
 	return nil
 }
 
-func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf string, relations []*model.Relation) error {
+func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf string, creatorId string, relationsBefore []*model.Relation, relations []*model.Relation) error {
 	if relations == nil {
 		return fmt.Errorf("relationsAfter is nil")
-	}
-
-	relationsBefore, err := getSetRelations(txn, setId)
-	if err != nil {
-		return err
 	}
 
 	var updatedRelations []*model.Relation
@@ -1492,6 +1516,9 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 
 	for _, relAfter := range relations {
 		if relBefore := pbtypes.GetRelation(relationsBefore, relAfter.Key); relBefore == nil || !pbtypes.RelationEqual(relBefore, relAfter) {
+			if relAfter.Creator != creatorId && !bundle.HasRelation(relAfter.Key) {
+				relAfter.Creator = creatorId
+			}
 			updatedRelations = append(updatedRelations, relAfter)
 			if relAfter.Format == model.RelationFormat_status || relAfter.Format == model.RelationFormat_tag {
 				if relBefore == nil {
@@ -1504,7 +1531,7 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 		}
 	}
 
-	err = m.storeRelations(txn, updatedRelations)
+	err := m.storeRelations(txn, updatedRelations)
 	if err != nil {
 		return err
 	}
@@ -1540,11 +1567,6 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 		}
 	}
 
-	err = m.storeRelations(txn, updatedRelations)
-	if err != nil {
-		return err
-	}
-
 	if pbtypes.RelationsEqual(relationsBefore, relations) {
 		return nil
 	}
@@ -1562,7 +1584,7 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id string, relationsBefore []*model.Relation, relationsAfter []*model.Relation) error {
+func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id, creatorId string, relationsBefore []*model.Relation, relationsAfter []*model.Relation) error {
 	if relationsAfter == nil {
 		return fmt.Errorf("relationsAfter is nil")
 	}
@@ -1572,6 +1594,9 @@ func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []strin
 
 	for _, relAfter := range relationsAfter {
 		if relBefore := pbtypes.GetRelation(relationsBefore, relAfter.Key); relBefore == nil || !pbtypes.RelationEqual(relBefore, relAfter) {
+			if relAfter.Creator != creatorId && !bundle.HasRelation(relAfter.Key) {
+				relAfter.Creator = creatorId
+			}
 			updatedRelations = append(updatedRelations, relAfter)
 			// trigger index relation-option-object indexes updates
 			if relBefore == nil {

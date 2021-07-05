@@ -3,6 +3,7 @@ package dataview
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -109,6 +110,7 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	}
 
 	if relation.Key == "" {
+		relation.Creator = d.Anytype().ProfileID()
 		relation.Key = bson.NewObjectId().Hex()
 	} else {
 		existingRelation, err := d.Anytype().ObjectStore().GetRelation(relation.Key)
@@ -205,6 +207,21 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 	err = db.Update(recordId, []*model.Relation{rel}, database.Record{})
 	if err != nil {
 		return nil, err
+	}
+
+	if option.Id == "" {
+		existingOptions, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+		if err != nil {
+			log.Errorf("failed to get existing aggregated options: %s", err.Error())
+		} else {
+			for _, exOpt := range existingOptions {
+				if strings.EqualFold(exOpt.Text, option.Text) {
+					option.Id = exOpt.Id
+					option.Color = exOpt.Color
+					break
+				}
+			}
+		}
 	}
 
 	optionId, err := db.UpdateRelationOption(recordId, relationKey, option)
