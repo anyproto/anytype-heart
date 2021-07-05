@@ -783,7 +783,6 @@ func (s *State) SetObjectType(objectType string) *State {
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
-
 	return s
 }
 
