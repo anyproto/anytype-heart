@@ -110,6 +110,7 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	}
 
 	// todo: there is no timeout for reader
+	// pending bug: unmarshal NaN values
 	var exif mill.ImageExifSchema
 	err = json.NewDecoder(r).Decode(&exif)
 	if err != nil {
@@ -152,8 +153,8 @@ func (i *image) Details() (*types.Struct, error) {
 
 	exif, err := i.Exif()
 	if err != nil {
-		log.Errorf("failed to get exif for image: %w", err)
-		return nil, nil
+		log.Errorf("failed to get exif for image: %s", err.Error())
+		exif = &mill.ImageExifSchema{}
 	}
 
 	if exif.Width > 0 {
