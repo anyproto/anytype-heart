@@ -184,13 +184,13 @@ func (d *doc) buildState() (doc *state.State, err error) {
 
 	d.injectLocalRelations(st)
 	st.InjectDerivedDetails()
-	st.NormalizeRelations()
-	st.MigrateObjectTypes()
-
 	err = d.injectCreationInfo(st)
 	if err != nil {
 		log.With("thread", d.id).Errorf("injectCreationInfo failed: %s", err.Error())
 	}
+	st.NormalizeRelations()
+	st.MigrateObjectTypes()
+
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
@@ -203,7 +203,7 @@ func (d *doc) injectCreationInfo(st *state.State) (err error) {
 	}
 
 	// protect from the big documents with a large trees
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	fc, err := d.findFirstChange(ctx)

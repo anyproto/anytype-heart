@@ -421,6 +421,8 @@ func (s *State) NormalizeRelations() {
 			// reset bundle relation in case the bundle has it updated
 			updateRelation = bundle.MustGetRelation(bundle.RelationKey(r.Key))
 			updateRelation.SelectDict = r.SelectDict
+		} else if !exists && r.Creator == "" {
+			r.Creator = pbtypes.GetString(s.Details(), bundle.RelationKeyCreator.String())
 		}
 
 		/*if r.Format == relation.RelationFormat_status || r.Format == relation.RelationFormat_tag {

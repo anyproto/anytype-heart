@@ -112,6 +112,7 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 	}
 
 	if relation.Key == "" {
+		relation.Creator = d.Anytype().ProfileID()
 		relation.Key = bson.NewObjectId().Hex()
 	} else {
 		existingRelation, err := d.Anytype().ObjectStore().GetRelation(relation.Key)

@@ -88,9 +88,9 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(source.New()).
 		Register(core.New()).
 		Register(builtintemplate.New()).
-		Register(indexer.New()).
 		Register(pin.New()).
 		Register(status.New()).
+		Register(indexer.New()).
 		Register(meta.New()).
 		Register(block.New()).
 		Register(process.New()).

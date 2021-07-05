@@ -772,6 +772,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 	for _, rel := range relations {
 		if rel.Key == "" {
 			rel.Key = bson.NewObjectId().Hex()
+			rel.Creator = sb.Anytype().ProfileID()
 		}
 
 		if relEx, exists := existsMap[rel.Key]; exists {

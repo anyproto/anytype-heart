@@ -63,3 +63,10 @@ func (r Restrictions) Proto() *model.Restrictions {
 	}
 	return res
 }
+
+func (r Restrictions) Copy() Restrictions {
+	return Restrictions{
+		Object:   r.Object.Copy(),
+		Dataview: r.Dataview.Copy(),
+	}
+}
