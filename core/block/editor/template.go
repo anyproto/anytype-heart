@@ -51,12 +51,13 @@ func (t *Template) Init(ctx *smartblock.InitContext) (err error) {
 	return
 }
 
-func (t *Template) GetNewPageState() (st *state.State, err error) {
+func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
 	det := st.Details()
 	st.SetObjectType(pbtypes.GetString(det, bundle.RelationKeyTargetObjectType.String()))
 	pbtypes.Delete(det, bundle.RelationKeyTargetObjectType.String())
 	pbtypes.Delete(det, bundle.RelationKeyTemplateIsBundled.String())
 	st.SetDetails(det)
+	st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
 	return
 }

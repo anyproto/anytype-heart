@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "5ec5d6b0c40d3a5b0abf75761fb74474c81bbf328c0e0340839fc53a7de6e674"
+const RelationChecksum = "df97bb838d90ec3ce23f3613e9c02747a7ce6ea35b03e6002f50bb92305b4af1"
 
 type RelationKey string
 
@@ -71,7 +71,6 @@ const (
 	RelationKeySizeInBytes               RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf              RelationKey = "collectionOf"
 	RelationKeyEvents                    RelationKey = "events"
-	RelationKeyTemplateName              RelationKey = "templateName"
 	RelationKeyAddedDate                 RelationKey = "addedDate"
 	RelationKeyAssignee                  RelationKey = "assignee"
 	RelationKeyExposure                  RelationKey = "exposure"
@@ -856,6 +855,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "Name of the object",
 			Format:           model.RelationFormat_shorttext,
+			Hidden:           true,
 			Key:              "name",
 			MaxCount:         1,
 			Name:             "Name",
@@ -1211,19 +1211,6 @@ var (
 			MaxCount:         1,
 			Name:             "Bundled template",
 			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyTemplateName: {
-
-			DataSource:       model.Relation_details,
-			Description:      "Owner-given name for the template",
-			Format:           model.RelationFormat_shorttext,
-			Hidden:           true,
-			Key:              "templateName",
-			MaxCount:         1,
-			Name:             "Template name",
-			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

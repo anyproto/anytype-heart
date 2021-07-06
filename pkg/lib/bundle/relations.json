@@ -558,16 +558,6 @@
     "source": "details"
   },
   {
-    "description": "Owner-given name for the template",
-    "format": "shorttext",
-    "hidden": true,
-    "key": "templateName",
-    "maxCount": 1,
-    "name": "Template name",
-    "readonly": false,
-    "source": "details"
-  },
-  {
     "description": "Date when the file were added into the anytype",
     "format": "date",
     "hidden": false,
