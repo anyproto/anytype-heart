@@ -917,17 +917,13 @@ mainLoop:
 		}
 	}
 
-	st := sb.NewStateCtx(ctx)
-	st.SetExtraRelations(append(extraRelations, newRelations...))
-	for _, rel := range st.ExtraRelations() {
-		// no need to skip by format, already done inside
-		optionValuesRemoved := sb.removeNotExistingRelationOptionsValues(st, rel)
-		somethingChanged = somethingChanged || optionValuesRemoved
-	}
-
 	if !somethingChanged {
+		log.Warnf("UpdateExtraRelations obj %s: nothing changed", sb.Id())
 		return
 	}
+
+	st := sb.NewStateCtx(ctx)
+	st.SetExtraRelations(append(extraRelations, newRelations...))
 
 	if err = sb.Apply(st); err != nil {
 		return
@@ -1044,67 +1040,6 @@ func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey 
 	return fmt.Errorf("relation not found")
 }
 
-func (sb *smartBlock) removeNotExistingRelationOptionsValues(st *state.State, rel *model.Relation) (changed bool) {
-	if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
-		return
-	}
-	vals := pbtypes.GetStringList(st.Details(), rel.Key)
-	if len(vals) == 0 {
-		return
-	}
-	var filtered = make([]string, 0, len(vals))
-	var found bool
-	for _, val := range pbtypes.GetStringList(st.Details(), rel.Key) {
-		found = false
-		for _, v := range rel.SelectDict {
-			if v.Id == val {
-				found = true
-				break
-			}
-		}
-		if found {
-			filtered = append(filtered, val)
-		}
-	}
-	if len(filtered) < len(vals) {
-		changed = true
-		st.SetDetail(rel.Key, pbtypes.StringList(filtered))
-	}
-
-	if len(rel.SelectDict) == 0 {
-		return
-	}
-	var optionsMigrated bool
-	relCopy := pbtypes.CopyRelation(rel)
-	var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
-	var optExists = make(map[string]struct{}, len(relCopy.SelectDict))
-	for i, opt := range relCopy.SelectDict {
-		if opt.Scope != model.RelationOption_local {
-			optionsMigrated = true
-			if slice.FindPos(pbtypes.GetStringList(st.Details(), relCopy.Key), opt.Id) != -1 {
-				log.Errorf("obj %s rel %s opt %s migrate scope to local", sb.Id(), rel.Key, opt.Id)
-				relCopy.SelectDict[i].Scope = model.RelationOption_local
-				if _, exists := optExists[opt.Id]; !exists {
-					relCopy.SelectDict[i].Scope = model.RelationOption_local
-					dict = append(dict, relCopy.SelectDict[i])
-					optExists[opt.Id] = struct{}{}
-				}
-			} else {
-				log.Errorf("obj %s rel %s opt %s remove cause wrong scope and no detail", sb.Id(), rel.Key, opt.Id)
-			}
-		} else {
-			dict = append(dict, opt)
-		}
-	}
-	if optionsMigrated {
-		changed = true
-		relCopy.SelectDict = dict
-		st.SetExtraRelation(relCopy)
-	}
-
-	return
-}
-
 func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
 	s := sb.NewStateCtx(ctx)
 	for _, rel := range sb.ExtraRelations() {
@@ -1119,7 +1054,6 @@ func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey 
 				copy := pbtypes.CopyRelation(rel)
 				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
 				s.SetExtraRelation(copy)
-				sb.removeNotExistingRelationOptionsValues(s, copy)
 				if showEvent {
 					return sb.Apply(s)
 				}
