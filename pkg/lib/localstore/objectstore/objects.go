@@ -466,6 +466,14 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 		return nil, err
 	}
 
+	findOptionPos := func(opts []*model.RelationOption, id string) int {
+		for i := range opts {
+			if opts[i].Id == id {
+				return i
+			}
+		}
+		return -1
+	}
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, err
@@ -494,8 +502,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 
 	relationOption, err := m.getAggregatedOptionsForFormat(relationFormat)
 	for _, opt := range relationOption {
-		if opt.relationKey == relationKey {
-			// skip options for the same relation key because we already have them in the local/relation scope
+		if findOptionPos(options, opt.optionId) > -1 {
 			continue
 		}
 
