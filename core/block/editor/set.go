@@ -101,7 +101,6 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name strin
 	if err := template.ApplyTemplate(p, s,
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
-		template.WithDetailIconEmoji(icon),
 		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),
 		template.WithMaxCountMigration,
