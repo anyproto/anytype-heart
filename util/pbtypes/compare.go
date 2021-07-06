@@ -234,7 +234,7 @@ func RelationSelectDictEqual(dict1, dict2 []*model.RelationOption) bool {
 	}
 
 	for i := 0; i < len(dict1); i++ {
-		if !OptionEqualOmitScope(dict1[i], dict2[i]) {
+		if !OptionEqual(dict1[i], dict2[i]) {
 			return false
 		}
 	}
@@ -284,6 +284,34 @@ func OptionEqualOmitScope(opt1, opt2 *model.RelationOption) bool {
 		return false
 	}
 	if opt1.Color != opt2.Color {
+		return false
+	}
+	return true
+}
+
+func OptionEqual(opt1, opt2 *model.RelationOption) bool {
+	if (opt1 == nil) && (opt2 != nil) {
+		return false
+	}
+
+	if (opt1 != nil) && (opt2 == nil) {
+		return false
+	}
+
+	if opt1 == nil && opt2 == nil {
+		return true
+	}
+
+	if opt1.Id != opt2.Id {
+		return false
+	}
+	if opt1.Text != opt2.Text {
+		return false
+	}
+	if opt1.Color != opt2.Color {
+		return false
+	}
+	if opt1.Scope != opt2.Scope {
 		return false
 	}
 	return true

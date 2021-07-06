@@ -508,21 +508,26 @@ func (d *Dataview) UpdateRelationOption(relationKey string, option model.Relatio
 }
 
 func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error {
-	for _, rel := range d.content.Relations {
+	for relI, rel := range d.content.Relations {
 		if rel.Key != relationKey {
 			continue
 		}
-
-		for i, opt := range rel.SelectDict {
-			if optId == opt.Id {
-				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
-				return nil
+		var filtered = make([]*model.RelationOption, 0, len(rel.SelectDict))
+		for optI, opt := range rel.SelectDict {
+			if optId != opt.Id {
+				filtered = append(filtered, rel.SelectDict[optI])
 			}
 		}
 
-		return ErrOptionNotExists
+		if len(filtered) == len(rel.SelectDict) {
+			return ErrOptionNotExists
+		}
+
+		d.content.Relations[relI].SelectDict = filtered
+		return nil
 	}
-	return nil
+
+	return fmt.Errorf("relation not found")
 }
 
 func mergeSelectOptions(opts1, opts2 []*model.RelationOption) []*model.RelationOption {

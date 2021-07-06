@@ -233,6 +233,43 @@ func (sb *smartBlock) normalizeRelations(s *state.State) error {
 			s.SetExtraRelation(rel)
 		}
 	}
+
+	for _, rel := range s.ExtraRelations() {
+		// todo: REMOVE THIS TEMP MIGRATION
+		if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
+			continue
+		}
+		if len(rel.SelectDict) == 0 {
+			continue
+		}
+		relCopy := pbtypes.CopyRelation(rel)
+		var changed bool
+		var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
+		var optExists = make(map[string]struct{}, len(relCopy.SelectDict))
+		for i, opt := range relCopy.SelectDict {
+			// we had a bug resulted in duplicate options with different scope - this migration suppose to remove them and correct the scope if needed
+			// we can safely remove this later cause it was only affected internal testers
+			if _, exists := optExists[opt.Id]; exists {
+				changed = true
+				continue
+			}
+			optExists[opt.Id] = struct{}{}
+			if opt.Scope != model.RelationOption_local {
+				changed = true
+				if slice.FindPos(pbtypes.GetStringList(details, relCopy.Key), opt.Id) != -1 {
+					relCopy.SelectDict[i].Scope = model.RelationOption_local
+					dict = append(dict, relCopy.SelectDict[i])
+				}
+			} else {
+				dict = append(dict, opt)
+			}
+		}
+		if changed {
+			relCopy.SelectDict = dict
+			s.SetExtraRelation(relCopy)
+		}
+	}
+
 	return nil
 }
 
@@ -1032,6 +1069,37 @@ func (sb *smartBlock) removeNotExistingRelationOptionsValues(st *state.State, re
 	if len(filtered) < len(vals) {
 		changed = true
 		st.SetDetail(rel.Key, pbtypes.StringList(filtered))
+	}
+
+	if len(rel.SelectDict) == 0 {
+		return
+	}
+	var optionsMigrated bool
+	relCopy := pbtypes.CopyRelation(rel)
+	var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
+	var optExists = make(map[string]struct{}, len(relCopy.SelectDict))
+	for i, opt := range relCopy.SelectDict {
+		if opt.Scope != model.RelationOption_local {
+			optionsMigrated = true
+			if slice.FindPos(pbtypes.GetStringList(st.Details(), relCopy.Key), opt.Id) != -1 {
+				log.Errorf("obj %s rel %s opt %s migrate scope to local", sb.Id(), rel.Key, opt.Id)
+				relCopy.SelectDict[i].Scope = model.RelationOption_local
+				if _, exists := optExists[opt.Id]; !exists {
+					relCopy.SelectDict[i].Scope = model.RelationOption_local
+					dict = append(dict, relCopy.SelectDict[i])
+					optExists[opt.Id] = struct{}{}
+				}
+			} else {
+				log.Errorf("obj %s rel %s opt %s remove cause wrong scope and no detail", sb.Id(), rel.Key, opt.Id)
+			}
+		} else {
+			dict = append(dict, opt)
+		}
+	}
+	if optionsMigrated {
+		changed = true
+		relCopy.SelectDict = dict
+		st.SetExtraRelation(relCopy)
 	}
 
 	return
