@@ -774,11 +774,7 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 
-func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(dvBlock dataview.Block, rel *model.Relation) error {
-	d.Lock()
-	defer d.Unlock()
-	st := d.NewState()
-
+func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.State, dvBlock dataview.Block, rel *model.Relation) error {
 	options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvBlock.GetSource())
 	if err != nil {
 		return fmt.Errorf("failed to aggregate: %s", err.Error())
@@ -942,7 +938,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	filters := filter.AndFilters{qFilter, database.PreFilters(q.IncludeArchivedObjects, &sch)}
-	go func() {
+	go func(dvBlockId string) {
 		for {
 			select {
 			case rec, ok := <-recordsCh:
@@ -960,7 +956,15 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 							}}}})
 
 				} else {
-					rels, _ := d.GetDataviewRelations(dvBlock.Model().Id)
+					d.Lock()
+					st := d.NewState()
+					tb, _ := getDataviewBlock(st, dvBlockId)
+					if err != nil {
+						log.Errorf("fetchAndGetEventsMessages subscription getDataviewBlock failed: %s", err.Error())
+						d.Unlock()
+						continue
+					}
+					rels :=  tb.Model().GetDataview().GetRelations()
 					if rec != nil && rels != nil {
 						for k, v := range rec.Fields {
 							rel := pbtypes.GetRelation(rels, k)
@@ -979,7 +983,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 										}
 									}
 									if !found {
-										err = d.updateAggregatedOptionsForRelation(dvBlock, rel)
+										err = d.updateAggregatedOptionsForRelation(st, tb, rel)
 										if err != nil {
 											log.Errorf("failed to update dv relation: %s", err.Error())
 										}
@@ -989,6 +993,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 							}
 						}
 					}
+					d.Unlock()
 					depsEntries, _, err := updateDepIds(getDepsFromRecord(rec))
 					if err != nil {
 						log.Errorf("failed to subscribe dep records of updated record: %s", err.Error())
@@ -1007,7 +1012,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 			}
 
 		}
-	}()
+	}(dvBlock.Model().Id)
 	go func() {
 		for {
 			select {
