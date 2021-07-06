@@ -452,7 +452,7 @@ func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.
 func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateId != "" {
-		if createState, err = s.stateFromTemplate(templateId); err != nil {
+		if createState, err = s.stateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
 			return
 		}
 	} else {
@@ -676,10 +676,10 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	return
 }
 
-func (s *service) stateFromTemplate(templateId string) (st *state.State, err error) {
+func (s *service) stateFromTemplate(templateId, name string) (st *state.State, err error) {
 	if err = s.Do(templateId, func(b smartblock.SmartBlock) error {
 		if tmpl, ok := b.(*editor.Template); ok {
-			st, err = tmpl.GetNewPageState()
+			st, err = tmpl.GetNewPageState(name)
 		} else {
 			return fmt.Errorf("not a template")
 		}
@@ -889,13 +889,13 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 	return
 }
 
-func (s *service) ApplyTemplate(contextId, templateId string) (err error) {
-	ts, err := s.stateFromTemplate(templateId)
-	if err != nil {
-		return
-	}
+func (s *service) ApplyTemplate(contextId, templateId string) error {
 	return s.Do(contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
+		ts, err := s.stateFromTemplate(templateId, pbtypes.GetString(orig.Details(), bundle.RelationKeyName.String()))
+		if err != nil {
+			return err
+		}
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
