@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -98,6 +99,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(gateway.New()).
 		Register(export.New()).
 		Register(linkpreview.New()).
-		Register(restriction.New())
+		Register(restriction.New()).
+		Register(debug.New())
 	return
 }
