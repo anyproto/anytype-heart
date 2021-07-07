@@ -768,7 +768,6 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Relations: relations,
 					Filters:   nil,
 				},
 			},
