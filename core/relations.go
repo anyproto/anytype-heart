@@ -254,6 +254,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
 				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(recommendedRelationKeys),
+				bundle.RelationKeyIsArchived.String(): 			 pbtypes.Bool(req.ObjectType.IsArchived),
 			},
 		}, req.ObjectType.Relations)
 		if err != nil {
