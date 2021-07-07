@@ -121,7 +121,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 	// todo: filter by record type
 	var m = make(map[cid.Cid]struct{})
 
-	rid := li.Head
+	rid := li.Head.ID
 	if !rid.Defined() {
 		return []SnapshotWithMetadata{}, nil
 	}
