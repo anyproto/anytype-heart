@@ -32,6 +32,7 @@
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
     - [Rpc.Account](#anytype.Rpc.Account)
+    - [Rpc.Account.Config](#anytype.Rpc.Account.Config)
     - [Rpc.Account.Create](#anytype.Rpc.Account.Create)
     - [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request)
     - [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response)
@@ -1432,6 +1433,24 @@ Namespace, that agregates subtopics and actions, that relates to account.
 
 
 
+<a name="anytype.Rpc.Account.Config"></a>
+
+### Rpc.Account.Config
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enableDataview | [bool](#bool) |  |  |
+| enableDebug | [bool](#bool) |  |  |
+| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Account.Create"></a>
 
 ### Rpc.Account.Create
@@ -1470,6 +1489,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error) |  | Error while trying to create an account |
 | account | [model.Account](#anytype.model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
 
 
 
@@ -1581,6 +1601,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error) |  | Error while trying to launch/select an account |
 | account | [model.Account](#anytype.model.Account) |  | Selected account |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
 
 
 
