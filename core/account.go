@@ -109,11 +109,15 @@ func checkInviteCode(code string, account string) error {
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
-	clientConfig := mw.app.MustComponent(config.CName).(*config.Config).Client
 
 	defer mw.m.Unlock()
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
-		m := &pb.RpcAccountCreateResponse{Config: clientConfig.ToPB(), Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
+		cfg := mw.app.MustComponent(config.CName)
+		var clientConfig *pb.RpcAccountConfig
+		if cfg != nil {
+			clientConfig = cfg.(*config.Config).Client.ToPB()
+		}
+		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -362,9 +366,13 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 }
 
 func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAccountSelectResponse {
-	clientConfig := mw.app.MustComponent(config.CName).(*config.Config).Client
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
-		m := &pb.RpcAccountSelectResponse{Config: clientConfig.ToPB(), Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
+		cfg := mw.app.MustComponent(config.CName)
+		var clientConfig *pb.RpcAccountConfig
+		if cfg != nil {
+			clientConfig = cfg.(*config.Config).Client.ToPB()
+		}
+		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
