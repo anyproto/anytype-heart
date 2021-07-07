@@ -283,11 +283,11 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		ob = newOpenedBlock(sb, true)
 		s.openedBlocks[id] = ob
 	}
-	s.m.Unlock()
 
 	ob.Lock()
 	defer ob.Unlock()
 	ob.locked = true
+	s.m.Unlock()
 	ob.SetEventFunc(s.sendEvent)
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
@@ -347,10 +347,10 @@ func (s *service) CloseBlock(id string) error {
 		s.m.Unlock()
 		return ErrBlockNotFound
 	}
-	ob.locked = false
 	s.m.Unlock()
-
 	ob.Lock()
+	ob.locked = false
+
 	defer ob.Unlock()
 	ob.BlockClose()
 	return nil
