@@ -212,6 +212,8 @@ func generateTypes() error {
 				dictS[Id("IconEmoji")] = Lit(ot.Emoji)
 			}
 
+			dictS[Id("Readonly")] = Lit(true)
+
 			if len(ot.Relations) > 0 {
 				var t []Code
 				var m = make(map[string]struct{}, len(ot.Relations))

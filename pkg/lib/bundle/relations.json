@@ -558,6 +558,16 @@
     "source": "details"
   },
   {
+    "description": "Indicates whether the object is readonly",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isReadonly",
+    "maxCount": 1,
+    "name": "Readonly",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Date when the file were added into the anytype",
     "format": "date",
     "hidden": false,
