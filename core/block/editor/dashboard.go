@@ -40,7 +40,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 		template.WithEmpty,
 		template.WithDetailName("Home"),
 		template.WithDetailIconEmoji("🏠"),
-		template.WithRootLink(p.Anytype().PredefinedBlocks().Archive, model.BlockContentLink_Archive),
+		template.WithNoRootLink(p.Anytype().PredefinedBlocks().Archive),
 		template.WithRootLink(p.Anytype().PredefinedBlocks().SetPages, model.BlockContentLink_Dataview),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
 		template.WithRequiredRelations(),
