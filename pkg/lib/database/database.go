@@ -40,6 +40,7 @@ type Reader interface {
 	AggregateRelationsFromObjectsOfType(objType string) (relations []*model.Relation, err error)
 	AggregateRelationsFromSetsOfType(objType string) (relations []*model.Relation, err error)
 	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
+	AggregateObjectIdsForOptionAndRelation(relationKey, optionId string) (objIds []string, err error)
 }
 
 type Writer interface {

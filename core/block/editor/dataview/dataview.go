@@ -3,6 +3,7 @@ package dataview
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
 
@@ -29,6 +30,7 @@ import (
 const defaultLimit = 50
 
 var log = logging.Logger("anytype-mw-editor")
+var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
 	GetAggregatedRelations(blockId string) ([]*model.Relation, error)
@@ -43,7 +45,7 @@ type Dataview interface {
 	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error
 	AddRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
 	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
-	DeleteRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
+	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
@@ -284,7 +286,7 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 	return db.Update(recordId, []*model.Relation{rel}, database.Record{})
 }
 
-func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
+func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
@@ -304,14 +306,23 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockI
 		return fmt.Errorf("option id is empty")
 	}
 
-	err = tb.DeleteRelationOption(relationKey, optionId)
+	objIds, err := db.AggregateObjectIdsForOptionAndRelation(relationKey, optionId)
 	if err != nil {
 		return err
 	}
-	if showEvent {
-		err = d.Apply(s)
-	} else {
-		err = d.Apply(s, smartblock.NoEvent)
+
+	if len(objIds) > 1 && !allowMultiupdate {
+		return ErrMultiupdateWasNotAllowed
+	}
+
+	if slice.FindPos(objIds, recordId) == -1 {
+		// just in case we have some indexing lag
+		objIds = append(objIds, recordId)
+	}
+
+	err = tb.DeleteRelationOption(relationKey, optionId)
+	if err != nil {
+		return err
 	}
 
 	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
@@ -319,7 +330,26 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, blockI
 		return fmt.Errorf("relation not found in dataview")
 	}
 
-	return db.Update(recordId, []*model.Relation{rel}, database.Record{})
+	for _, objId := range objIds {
+		err = db.Update(objId, []*model.Relation{rel}, database.Record{})
+		if err != nil {
+			if objId != recordId {
+				// not sure it is a right approach here, but we may face some ACL problems later otherwise
+				log.Errorf("DeleteRelationOption failed to multiupdate %s: %s", objId, err.Error())
+			} else {
+				return err
+			}
+		}
+		log.Debugf("DeleteRelationOption updated %s", objId)
+	}
+
+	if showEvent {
+		err = d.Apply(s)
+	} else {
+		err = d.Apply(s, smartblock.NoEvent)
+	}
+
+	return nil
 }
 
 func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*model.Relation, error) {
@@ -744,11 +774,7 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 
-func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(dvBlock dataview.Block, rel *model.Relation) error {
-	d.Lock()
-	defer d.Unlock()
-	st := d.NewState()
-
+func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.State, dvBlock dataview.Block, rel *model.Relation) error {
 	options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvBlock.GetSource())
 	if err != nil {
 		return fmt.Errorf("failed to aggregate: %s", err.Error())
@@ -912,7 +938,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	}
 
 	filters := filter.AndFilters{qFilter, database.PreFilters(q.IncludeArchivedObjects, &sch)}
-	go func() {
+	go func(dvBlockId string) {
 		for {
 			select {
 			case rec, ok := <-recordsCh:
@@ -930,7 +956,15 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 							}}}})
 
 				} else {
-					rels, _ := d.GetDataviewRelations(dvBlock.Model().Id)
+					d.Lock()
+					st := d.NewState()
+					tb, _ := getDataviewBlock(st, dvBlockId)
+					if err != nil {
+						log.Errorf("fetchAndGetEventsMessages subscription getDataviewBlock failed: %s", err.Error())
+						d.Unlock()
+						continue
+					}
+					rels :=  tb.Model().GetDataview().GetRelations()
 					if rec != nil && rels != nil {
 						for k, v := range rec.Fields {
 							rel := pbtypes.GetRelation(rels, k)
@@ -949,7 +983,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 										}
 									}
 									if !found {
-										err = d.updateAggregatedOptionsForRelation(dvBlock, rel)
+										err = d.updateAggregatedOptionsForRelation(st, tb, rel)
 										if err != nil {
 											log.Errorf("failed to update dv relation: %s", err.Error())
 										}
@@ -959,6 +993,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 							}
 						}
 					}
+					d.Unlock()
 					depsEntries, _, err := updateDepIds(getDepsFromRecord(rec))
 					if err != nil {
 						log.Errorf("failed to subscribe dep records of updated record: %s", err.Error())
@@ -977,7 +1012,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 			}
 
 		}
-	}()
+	}(dvBlock.Model().Id)
 	go func() {
 		for {
 			select {

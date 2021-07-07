@@ -233,6 +233,43 @@ func (sb *smartBlock) normalizeRelations(s *state.State) error {
 			s.SetExtraRelation(rel)
 		}
 	}
+
+	for _, rel := range s.ExtraRelations() {
+		// todo: REMOVE THIS TEMP MIGRATION
+		if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
+			continue
+		}
+		if len(rel.SelectDict) == 0 {
+			continue
+		}
+		relCopy := pbtypes.CopyRelation(rel)
+		var changed bool
+		var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
+		var optExists = make(map[string]struct{}, len(relCopy.SelectDict))
+		for i, opt := range relCopy.SelectDict {
+			// we had a bug resulted in duplicate options with different scope - this migration suppose to remove them and correct the scope if needed
+			// we can safely remove this later cause it was only affected internal testers
+			if _, exists := optExists[opt.Id]; exists {
+				changed = true
+				continue
+			}
+			optExists[opt.Id] = struct{}{}
+			if opt.Scope != model.RelationOption_local {
+				changed = true
+				if slice.FindPos(pbtypes.GetStringList(details, relCopy.Key), opt.Id) != -1 {
+					relCopy.SelectDict[i].Scope = model.RelationOption_local
+					dict = append(dict, relCopy.SelectDict[i])
+				}
+			} else {
+				dict = append(dict, opt)
+			}
+		}
+		if changed {
+			relCopy.SelectDict = dict
+			s.SetExtraRelation(relCopy)
+		}
+	}
+
 	return nil
 }
 
@@ -853,7 +890,6 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 // UpdateExtraRelations sets the extra relations, it skips the
 func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
-	objectTypeRelations := pbtypes.CopyRelations(sb.ObjectTypeRelations())
 	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
 	relationsToSet := pbtypes.CopyRelations(relations)
 
@@ -861,25 +897,16 @@ func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*mode
 	var newRelations []*model.Relation
 mainLoop:
 	for i := range relationsToSet {
-		for j := range objectTypeRelations {
-			if objectTypeRelations[j].Key == relationsToSet[i].Key {
-				if pbtypes.RelationEqual(objectTypeRelations[j], relationsToSet[i]) {
-					continue mainLoop
-				} else if !pbtypes.RelationCompatible(objectTypeRelations[j], relationsToSet[i]) {
-					return fmt.Errorf("can't set extraRelation incompatible with the same-key relation in the objectType")
-				}
-			}
-		}
 		for j := range extraRelations {
 			if extraRelations[j].Key == relationsToSet[i].Key {
 				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
 					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
 						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
 					}
-
 					extraRelations[j] = relationsToSet[i]
 					somethingChanged = true
 				}
+
 				continue mainLoop
 			}
 		}
@@ -891,14 +918,16 @@ mainLoop:
 	}
 
 	if !somethingChanged {
+		log.Warnf("UpdateExtraRelations obj %s: nothing changed", sb.Id())
 		return
 	}
 
-	s := sb.NewStateCtx(ctx).SetExtraRelations(append(extraRelations, newRelations...))
-	if err = sb.Apply(s); err != nil {
+	st := sb.NewStateCtx(ctx)
+	st.SetExtraRelations(append(extraRelations, newRelations...))
+
+	if err = sb.Apply(st); err != nil {
 		return
 	}
-
 	return
 }
 

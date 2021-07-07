@@ -363,7 +363,7 @@ func (s *service) UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.
 
 func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error {
 	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		err := b.DeleteRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, req.OptionId, true)
+		err := b.DeleteRelationOption(ctx, true, req.BlockId, req.RecordId, req.RelationKey, req.OptionId, true)
 		if err != nil {
 			return err
 		}
@@ -638,12 +638,13 @@ func (s *service) ModifyExtraRelations(ctx *state.Context, objectId string, modi
 		return fmt.Errorf("modifier is nil")
 	}
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		rels, err := modifier(b.Relations())
+		st := b.NewStateCtx(ctx)
+		rels, err := modifier(st.ExtraRelations())
 		if err != nil {
 			return err
 		}
 
-		return b.UpdateExtraRelations(ctx, rels, true)
+		return b.UpdateExtraRelations(st.Context(), rels, true)
 	})
 }
 

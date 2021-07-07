@@ -699,6 +699,7 @@ func (s *State) SetExtraRelation(rel *model.Relation) {
 	}
 	relCopy := pbtypes.CopyRelation(rel)
 	relCopy.Scope = model.Relation_object
+	s.removeNotExistingRelationOptionsValues(relCopy)
 	var found bool
 	for i, exRel := range s.extraRelations {
 		if exRel.Key == rel.Key {
@@ -731,6 +732,7 @@ func (s *State) AddRelation(relation *model.Relation) *State {
 		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
+	s.removeNotExistingRelationOptionsValues(relCopy)
 	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relCopy)
 	return s
 }
@@ -743,9 +745,70 @@ func (s *State) SetExtraRelations(relations []*model.Relation) *State {
 		if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
 			rel.MaxCount = 1
 		}
+		s.removeNotExistingRelationOptionsValues(rel)
 	}
 	s.extraRelations = relationsCopy
 	return s
+}
+
+// removeNotExistingRelationOptionsValues may modify relation provided by pointer and set the Detail on the state
+func (s *State) removeNotExistingRelationOptionsValues(rel *model.Relation) (changed bool) {
+	if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
+		return
+	}
+	vals := pbtypes.GetStringList(s.Details(), rel.Key)
+	if len(vals) == 0 {
+		return
+	}
+	var filtered = make([]string, 0, len(vals))
+	var found bool
+	for _, val := range pbtypes.GetStringList(s.Details(), rel.Key) {
+		found = false
+		for _, v := range rel.SelectDict {
+			if v.Id == val {
+				found = true
+				break
+			}
+		}
+		if found {
+			filtered = append(filtered, val)
+		}
+	}
+	if len(filtered) < len(vals) {
+		changed = true
+		s.SetDetail(rel.Key, pbtypes.StringList(filtered))
+	}
+
+	if len(rel.SelectDict) == 0 {
+		return
+	}
+	var optionsMigrated bool
+	var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
+	var optExists = make(map[string]struct{}, len(rel.SelectDict))
+	for i, opt := range rel.SelectDict {
+		if opt.Scope != model.RelationOption_local {
+			optionsMigrated = true
+			if slice.FindPos(pbtypes.GetStringList(s.Details(), rel.Key), opt.Id) != -1 {
+				log.Warnf("obj %s rel %s opt %s migrate scope to local", s.RootId(), rel.Key, opt.Id)
+				rel.SelectDict[i].Scope = model.RelationOption_local
+				if _, exists := optExists[opt.Id]; !exists {
+					rel.SelectDict[i].Scope = model.RelationOption_local
+					dict = append(dict, rel.SelectDict[i])
+					optExists[opt.Id] = struct{}{}
+				}
+			} else {
+				log.Warnf("obj %s rel %s opt %s remove cause wrong scope and no detail", s.rootId, rel.Key, opt.Id)
+			}
+		} else {
+			dict = append(dict, opt)
+		}
+	}
+	if optionsMigrated {
+		changed = true
+		rel.SelectDict = dict
+	}
+
+	return
 }
 
 func (s *State) AddExtraRelationOption(rel model.Relation, option model.RelationOption) (*model.RelationOption, error) {
