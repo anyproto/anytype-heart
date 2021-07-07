@@ -2127,6 +2127,7 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 		}
 	}
 
+	objectType.IsArchived = pbtypes.GetBool(details, bundle.RelationKeyIsArchived.String())
 	// we use Page for all custom object types
 	objectType.Types = []model.SmartBlockType{model.SmartBlockType_Page}
 	return objectType, err

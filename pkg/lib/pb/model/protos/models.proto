@@ -413,6 +413,7 @@ message ObjectType {
     string description = 6;
     bool hidden = 7;
     repeated SmartBlockType types = 8;
+    bool isArchived = 9; // sets locally to hide object type from set and some other places
 
     enum Layout {
         basic = 0;
