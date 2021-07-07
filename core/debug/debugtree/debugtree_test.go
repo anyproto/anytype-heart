@@ -35,4 +35,8 @@ func TestOpen(t *testing.T) {
 		require.NoError(t, err)
 		assert.NotEmpty(t, rec)
 	})
+
+	t.Run("stats", func(t *testing.T) {
+		assert.NotEmpty(t, dt.Stats())
+	})
 }

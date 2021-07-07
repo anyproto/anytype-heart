@@ -17,8 +17,40 @@ import (
 
 var ErrNotImplemented = errors.New("not implemented for debug tree")
 
+type DebugTreeStats struct {
+	RecordCount      int
+	SnapshotCount    int
+	ChangeCount      int
+	LogCount         int
+	NotEmptyLogCount int
+	ReadErrorCount   int
+}
+
+func (dts DebugTreeStats) String() string {
+	return fmt.Sprintf("logs: %d (%d); records: %d; snapshots: %d; changes: %d; errors: %d",
+		dts.LogCount,
+		dts.NotEmptyLogCount,
+		dts.RecordCount,
+		dts.SnapshotCount,
+		dts.ChangeCount,
+		dts.ReadErrorCount,
+	)
+}
+
+func (dts DebugTreeStats) MlString() string {
+	return fmt.Sprintf("Logs:\t%d (%d)\nRecords:\t%d\nSnapshots:\t%d\nChanges:\t%d\nErrors:\t%d\n",
+		dts.LogCount,
+		dts.NotEmptyLogCount,
+		dts.RecordCount,
+		dts.SnapshotCount,
+		dts.ChangeCount,
+		dts.ReadErrorCount,
+	)
+}
+
 type DebugTree interface {
 	core.SmartBlock
+	Stats() DebugTreeStats
 	Close() error
 }
 
@@ -82,8 +114,27 @@ func (r *debugTree) GetLogs() ([]core.SmartblockLog, error) {
 }
 
 func (r *debugTree) GetRecord(ctx context.Context, recordID string) (*core.SmartblockRecordEnvelope, error) {
+	ch, err := r.getChange(recordID)
+	if err != nil {
+		return nil, fmt.Errorf("record '%s' %v", recordID, err)
+	}
+	var pl []byte
+	if ch.Change != nil {
+		pl, _ = ch.Change.Marshal()
+	}
+	return &core.SmartblockRecordEnvelope{
+		SmartblockRecord: core.SmartblockRecord{
+			ID:      ch.Id,
+			Payload: pl,
+		},
+		AccountID: ch.Account,
+		LogID:     ch.Device,
+	}, nil
+}
+
+func (r *debugTree) getChange(id string) (ch *change.Change, err error) {
 	for _, f := range r.zr.File {
-		if f.Name == recordID+".json" {
+		if f.Name == id+".json" {
 			rd, err := f.Open()
 			if err != nil {
 				return nil, err
@@ -93,22 +144,11 @@ func (r *debugTree) GetRecord(ctx context.Context, recordID string) (*core.Smart
 			if err = json.NewDecoder(rd).Decode(ch); err != nil {
 				return nil, err
 			}
-			var pl []byte
-			if ch.Change != nil {
-				pl, _ = ch.Change.Marshal()
-			}
-			rec := &core.SmartblockRecordEnvelope{
-				SmartblockRecord: core.SmartblockRecord{
-					ID:      ch.Id,
-					Payload: pl,
-				},
-				AccountID: ch.Account,
-				LogID:     ch.Device,
-			}
-			return rec, nil
+
+			return ch, nil
 		}
 	}
-	return nil, fmt.Errorf("record '%s' file not found", recordID)
+	return nil, fmt.Errorf("not found")
 }
 
 func (*debugTree) PushRecord(payload proto.Marshaler) (id string, err error) {
@@ -125,6 +165,31 @@ func (*debugTree) SubscribeClientEvents(event chan<- proto.Message) (cancelFunc 
 
 func (*debugTree) PublishClientEvent(event proto.Message) error {
 	return ErrNotImplemented
+}
+
+func (r *debugTree) Stats() (s DebugTreeStats) {
+	logs, _ := r.GetLogs()
+	s.LogCount = len(logs)
+	for _, l := range logs {
+		if l.Head != "" {
+			s.NotEmptyLogCount++
+		}
+	}
+	for _, f := range r.zr.File {
+		if filepath.Ext(f.Name) == ".json" && f.Name != "block_logs.json" {
+			l, err := r.getChange(strings.ReplaceAll(f.Name, ".json", ""))
+			if err == nil {
+				if l.Snapshot != nil {
+					s.SnapshotCount++
+				}
+				s.RecordCount++
+				s.ChangeCount += len(l.Content)
+			} else {
+				s.ReadErrorCount++
+			}
+		}
+	}
+	return
 }
 
 func (r *debugTree) Close() (err error) {
