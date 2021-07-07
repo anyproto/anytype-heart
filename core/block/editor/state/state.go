@@ -851,7 +851,7 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.rootId))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
 }
 

@@ -779,9 +779,6 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	if name == "" {
 		name = objType.Name + " set"
 	}
-	if icon == "" {
-		icon = "📒"
-	}
 
 	err = set.InitDataview(dataview, name, icon)
 	if err != nil {
