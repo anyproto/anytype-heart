@@ -299,9 +299,11 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
-			bs    = ob.NewState()
 			fList = func() []string {
-				return bs.FileRelationKeys()
+				ob.Lock()
+				defer ob.Unlock()
+				bs := ob.NewState()
+				return bs.GetAllFileHashes(bs.FileRelationKeys())
 			}
 		)
 
