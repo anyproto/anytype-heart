@@ -57,12 +57,15 @@ type Indexer interface {
 }
 
 type FullIndexInfo struct {
-	Id         string
-	Title      string
-	Snippet    string
-	Text       string
-	Links      []string
-	FileHashes []string
+	Id           string
+	Title        string
+	Snippet      string
+	Text         string
+	Links        []string
+	FileHashes   []string
+	SetRelations []*model.Relation
+	SetSource 	 string
+	Creator		 string
 }
 
 type GetFullIndexInfo interface {
@@ -424,22 +427,6 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 		st.AddRelation(rel)
 	}
 
-	setCreator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
-	if setCreator == "" {
-		setCreator = i.anytype.ProfileID()
-	}
-	if st.ObjectType() == bundle.TypeKeySet.URL() {
-		b := st.Get("dataview")
-		var dv *model.BlockContentDataview
-		if b != nil {
-			dv = b.Model().GetDataview()
-		}
-		if b != nil && dv != nil {
-			if err := i.store.UpdateRelationsInSet(id, dv.Source, setCreator, dv.Relations); err != nil {
-				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
-			}
-		}
-	}
 	return st, nil
 }
 
@@ -694,6 +681,12 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 			if err != nil {
 				log.With("id", hash).Error(err.Error())
 			}
+		}
+	}
+
+	if len(info.SetRelations) > 0 {
+		if err := i.store.UpdateRelationsInSet(id, info.SetSource, info.Creator, info.SetRelations); err != nil {
+			log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
 		}
 	}
 
