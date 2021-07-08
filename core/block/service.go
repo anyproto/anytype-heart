@@ -169,7 +169,7 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
-	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
+	GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error)
 
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)

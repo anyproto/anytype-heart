@@ -108,12 +108,12 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	fx.anytype = testMock.RegisterMockAnytype(fx.ctrl, ta)
-	fx.getSerach = mockIndexer.NewMockGetSearchInfo(fx.ctrl)
+	fx.getSerach = mockIndexer.NewMockGetFullIndexInfo(fx.ctrl)
 	fx.getSerach.EXPECT().Name().AnyTimes().Return("blockService")
 	fx.getSerach.EXPECT().Init(gomock.Any())
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
 
-	fx.getSerach.EXPECT().GetSearchInfo(gomock.Any()).AnyTimes()
+	fx.getSerach.EXPECT().GetFullIndexInfo(gomock.Any()).AnyTimes()
 	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
 	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
@@ -168,7 +168,7 @@ type fixture struct {
 	ctrl        *gomock.Controller
 	anytype     *testMock.MockService
 	objectStore *testMock.MockObjectStore
-	getSerach   *mockIndexer.MockGetSearchInfo
+	getSerach   *mockIndexer.MockGetFullIndexInfo
 	ch          chan core.SmartblockRecordWithThreadID
 	rb          recordsbatcher.RecordsBatcher
 	ta          *testapp.TestApp

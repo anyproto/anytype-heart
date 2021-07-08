@@ -614,9 +614,9 @@ func (s *service) AddRelationBlock(ctx *state.Context, req pb.RpcBlockRelationAd
 	})
 }
 
-func (s *service) GetSearchInfo(id string) (info indexer.SearchInfo, err error) {
+func (s *service) GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error) {
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		info, err = b.GetSearchInfo()
+		info, err = b.GetFullIndexInfo()
 		return err
 	}); err != nil {
 		return

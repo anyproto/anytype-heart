@@ -56,7 +56,7 @@ type Indexer interface {
 	app.ComponentRunnable
 }
 
-type SearchInfo struct {
+type FullIndexInfo struct {
 	Id         string
 	Title      string
 	Snippet    string
@@ -65,8 +65,8 @@ type SearchInfo struct {
 	FileHashes []string
 }
 
-type GetSearchInfo interface {
-	GetSearchInfo(id string) (info SearchInfo, err error)
+type GetFullIndexInfo interface {
+	GetFullIndexInfo(id string) (info FullIndexInfo, err error)
 	app.Component
 }
 
@@ -88,7 +88,7 @@ type indexer struct {
 	threadService     threads.Service
 	anytype           core.Service
 	source            source.Service
-	searchInfo        GetSearchInfo
+	FullIndexInfo     GetFullIndexInfo
 	cache             map[string]*doc
 	quitWG            *sync.WaitGroup
 	quit              chan struct{}
@@ -108,7 +108,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	if ts != nil {
 		i.threadService = ts.(threads.Service)
 	}
-	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
+	i.FullIndexInfo = a.MustComponent("blockService").(GetFullIndexInfo)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.cache = make(map[string]*doc)
 	i.newRecordsBatcher = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
@@ -669,7 +669,7 @@ func (i *indexer) ftIndex() {
 
 func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
-	info, err := i.searchInfo.GetSearchInfo(id)
+	info, err := i.FullIndexInfo.GetFullIndexInfo(id)
 	if err != nil {
 		return
 	}

@@ -54,8 +54,8 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
 
-func (st *SmartTest) GetSearchInfo() (indexer.SearchInfo, error) {
-	return indexer.SearchInfo{
+func (st *SmartTest) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
+	return indexer.FullIndexInfo{
 		Id:      st.Id(),
 		Title:   pbtypes.GetString(st.Details(), "name"),
 		Snippet: st.Snippet(),

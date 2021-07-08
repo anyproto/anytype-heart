@@ -95,7 +95,7 @@ type SmartBlock interface {
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
 	CheckSubscriptions() (changed bool)
-	GetSearchInfo() (indexer.SearchInfo, error)
+	GetFullIndexInfo() (indexer.FullIndexInfo, error)
 	MetaService() meta.Service
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
@@ -1347,12 +1347,12 @@ func (sb *smartBlock) execHooks(event Hook) {
 	}
 }
 
-func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
+func (sb *smartBlock) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
 	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
 	st := sb.NewState()
 	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
 
-	return indexer.SearchInfo{
+	return indexer.FullIndexInfo{
 		Id:      sb.Id(),
 		Title:   pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
 		Snippet: st.Snippet(),
