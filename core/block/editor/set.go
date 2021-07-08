@@ -3,6 +3,8 @@ package editor
 import (
 	"fmt"
 
+	"github.com/google/uuid"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -15,7 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/google/uuid"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
@@ -45,6 +47,21 @@ type Set struct {
 	stext.Text
 }
 
+func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation{
+	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
+	for _, rel := range rels {
+		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+			continue
+		}
+		var visible bool
+		if rel.Key == bundle.RelationKeyName.String() {
+			visible = true
+		}
+		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
+	}
+	return viewRels
+}
+
 func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
@@ -52,8 +69,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	templates := []template.StateTransformer{
-		template.WithTitle,
-		template.WithDefaultFeaturedRelations,
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
@@ -67,28 +83,41 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 					{
 						Id:   uuid.New().String(),
 						Type: model.BlockContentDataviewView_Table,
-						Name: "All pages",
+						Name: "All drafts",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
 								RelationKey: "name",
 								Type:        model.BlockContentDataviewSort_Asc,
 							},
 						},
-						Relations: []*model.BlockContentDataviewRelation{
-							{Key: bundle.RelationKeyId.String(), IsVisible: false},
-							{Key: bundle.RelationKeyName.String(), IsVisible: true},
-							{Key: bundle.RelationKeyLastOpenedDate.String(), IsVisible: true},
-							{Key: bundle.RelationKeyLastModifiedDate.String(), IsVisible: true},
-							{Key: bundle.RelationKeyCreator.String(), IsVisible: true}},
+						Relations: getDefaultViewRelations(bundle.MustGetType(bundle.TypeKeyPage).Relations),
 						Filters: nil,
 					},
 				},
 			},
 		}
-		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{"_otpage"})), template.WithDataview(dataview, false), template.WithDetailName("Pages"), template.WithDetailIconEmoji("📒"))
+		var (
+			oldName, oldIcon = "Pages", "📒"
+			newName, newIcon = "Drafts", "⚪"
+			forcedDataview bool
+		)
+		if slice.FindPos([]string{oldName, ""}, pbtypes.GetString(p.Details(), bundle.RelationKeyName.String())) > -1 &&
+			pbtypes.GetString(p.Details(), bundle.RelationKeyIconEmoji.String()) == oldIcon {
+			// we should migrate existing dataview
+			templates = append(templates, template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(newName)))
+			templates = append(templates, template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(newIcon)))
+			forcedDataview = true
+		}
+
+		templates = append(templates,
+			template.WithDataview(dataview, forcedDataview),
+			template.WithDetailName(newName),
+			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{"_otpage"})),
+			template.WithDetailIconEmoji(newIcon))
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
 	}
+	templates = append(templates, template.WithTitle)
 	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
@@ -96,10 +125,18 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	return p.FillAggregatedOptions(nil)
 }
 
-func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name string, icon string) error {
+func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name, icon string) error {
 	s := p.NewState()
+
+	for i, view := range blockContent.Dataview.Views {
+		if view.Relations == nil {
+			blockContent.Dataview.Views[i].Relations = getDefaultViewRelations(blockContent.Dataview.Relations)
+		}
+	}
+
 	if err := template.ApplyTemplate(p, s,
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
+		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
 		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
 		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),

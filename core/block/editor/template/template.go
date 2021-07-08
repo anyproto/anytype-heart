@@ -510,6 +510,32 @@ var WithRootLink = func(targetBlockId string, style model.BlockContentLinkStyle)
 	}
 }
 
+var WithNoRootLink = func(targetBlockId string) StateTransformer {
+	return func(s *state.State) {
+		var linkBlockId string
+		s.Iterate(func(b simple.Block) (isContinue bool) {
+			if b, ok := b.(*link.Link); !ok {
+				return true
+			} else {
+				if b.Model().GetLink().TargetBlockId == targetBlockId {
+					linkBlockId = b.Id
+					return false
+				}
+
+				return true
+			}
+		})
+
+		if linkBlockId == "" {
+			return
+		}
+
+		s.Unlink(linkBlockId)
+
+		return
+	}
+}
+
 func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	for _, template := range templates {
 		template(s)
