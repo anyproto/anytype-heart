@@ -1349,13 +1349,16 @@ func (sb *smartBlock) execHooks(event Hook) {
 
 func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
 	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
+	st := sb.NewState()
+	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
 
 	return indexer.SearchInfo{
 		Id:      sb.Id(),
-		Title:   pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String()),
-		Snippet: sb.Snippet(),
-		Text:    sb.Doc.SearchText(),
+		Title:   pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
+		Snippet: st.Snippet(),
+		Text:    st.SearchText(),
 		Links:   depIds,
+		FileHashes: fileHashes,
 	}, nil
 }
 

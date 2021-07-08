@@ -57,11 +57,12 @@ type Indexer interface {
 }
 
 type SearchInfo struct {
-	Id      string
-	Title   string
-	Snippet string
-	Text    string
-	Links   []string
+	Id         string
+	Title      string
+	Snippet    string
+	Text       string
+	Links      []string
+	FileHashes []string
 }
 
 type GetSearchInfo interface {
@@ -588,24 +589,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	d.mu.Unlock()
-	fileHashesBefore := d.st.GetAllFileHashes(d.st.FileRelationKeys())
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
-	fileHashesAfter := d.st.GetAllFileHashes(d.st.FileRelationKeys())
-	newFileHashes := slice.Difference(fileHashesAfter, fileHashesBefore)
-	if len(newFileHashes) > 0 {
-		for _, hash := range newFileHashes {
-			// file's hash is id
-			err = i.reindexDoc(hash, false)
-			if err != nil {
-				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
-			}
-
-			err = i.store.AddToIndexQueue(hash)
-			if err != nil {
-				log.With("id", hash).Error(err.Error())
-			}
-		}
-	}
 
 	meta := d.meta()
 	if meta.Details != nil && meta.Details.Fields != nil {
@@ -691,6 +675,26 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	}
 	if err = i.store.UpdateObjectLinksAndSnippet(id, info.Links, info.Snippet); err != nil {
 		return
+	}
+
+	if len(info.FileHashes) > 0 {
+		existingIDs, err := i.store.HasIDs()
+		if err != nil {
+			log.Errorf("failed to get existing file ids : %s", err.Error())
+		}
+		newIds := slice.Difference(info.FileHashes, existingIDs)
+		for _, hash := range newIds {
+			// file's hash is id
+			err = i.reindexDoc(hash, false)
+			if err != nil {
+				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
+			}
+
+			err = i.store.AddToIndexQueue(hash)
+			if err != nil {
+				log.With("id", hash).Error(err.Error())
+			}
+		}
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {

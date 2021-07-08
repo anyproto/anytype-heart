@@ -245,6 +245,7 @@ type ObjectStore interface {
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, relationFormat model.RelationFormat, objectType string) (options []*model.RelationOption, err error)
 
+	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
 	List() ([]*model.ObjectInfo, error)
 	ListIds() ([]string, error)
@@ -1123,6 +1124,22 @@ func (m *dsObjectStore) List() ([]*model.ObjectInfo, error) {
 	return getObjectsInfo(txn, ids)
 }
 
+func (m *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	for _, id := range ids {
+		if exist, err := hasObjectId(txn, id); err != nil {
+			return nil, err
+		} else if exist {
+			exists = append(exists, id)
+		}
+	}
+	return exists, nil
+}
+
 func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -1864,6 +1881,14 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	return &details, nil
+}
+
+func hasObjectId(txn ds.Txn, id string) (bool, error) {
+	if exists, err := txn.Has(pagesDetailsBase.ChildString(id)); err != nil {
+		return false, fmt.Errorf("failed to get details: %w", err)
+	} else {
+		return exists, nil
+	}
 }
 
 // getSetRelations returns the list of relations last time indexed for the set's dataview
