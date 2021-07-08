@@ -8,6 +8,7 @@ import (
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -59,5 +60,8 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	pbtypes.Delete(det, bundle.RelationKeyTemplateIsBundled.String())
 	st.SetDetails(det)
 	st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
+	if title := st.Get(template.TitleBlockId); title != nil {
+		title.Model().GetText().Text = ""
+	}
 	return
 }
