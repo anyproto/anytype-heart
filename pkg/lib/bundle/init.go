@@ -213,6 +213,7 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) ([]*model.Relation
 		RelationKeyLayout.String():           pbtypes.Float64(float64(model.ObjectType_relation)),
 		RelationKeyRelationFormat.String():   pbtypes.Float64(float64(rel.Format)),
 		RelationKeyIsHidden.String():         pbtypes.Bool(rel.Hidden),
+		RelationKeyIsReadonly.String():       pbtypes.Bool(rel.ReadOnlyRelation),
 		RelationKeyMpAddedToLibrary.String(): pbtypes.Bool(true), // temp
 	}}
 

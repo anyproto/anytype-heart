@@ -70,7 +70,7 @@ func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *
 		bundle.RelationKeyId.String():                   pbtypes.String(id),
 		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
 		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
-
+		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
 	}}
 
 	return extraRels, det, nil
