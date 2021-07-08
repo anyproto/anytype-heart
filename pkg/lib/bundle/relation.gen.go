@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "04129d078de17a8f1b0724e6bd4aa6b447c08dfc02af77dd67a3f9e1fd2bc65e"
+const RelationChecksum = "dec62f2d437a6e5e52312c60e27211a32f680d1e85079dd68daa8059e765f0c1"
 
 type RelationKey string
 
@@ -539,7 +539,7 @@ var (
 			Key:              "fileExt",
 			MaxCount:         1,
 			Name:             "File extension",
-			ReadOnly:         false,
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
