@@ -43,6 +43,7 @@ func (i *file) Details() (*types.Struct, error) {
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():           pbtypes.String(i.hash),
 			bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(model.ObjectType_file)),
+			bundle.RelationKeyIsReadonly.String():   pbtypes.Bool(true),
 			bundle.RelationKeyType.String():         pbtypes.String(bundle.TypeKeyFile.URL()),
 			bundle.RelationKeyFileMimeType.String(): pbtypes.String(meta.Media),
 			bundle.RelationKeyName.String():         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
