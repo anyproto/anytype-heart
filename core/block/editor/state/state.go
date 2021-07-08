@@ -456,14 +456,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
-			// cut-off derived keys but left local(account ones)
-			// client shouldn't be able to ctrl-z derived details
-			ignoreKeys := bundle.DerivedRelationsKeys
-			diffRevertible := pbtypes.StructCutKeys(diff, ignoreKeys)
-			if diffRevertible != nil && len(diffRevertible.Fields) > 0 {
-				action.Details = &undo.Details{Before: pbtypes.CopyStruct(pbtypes.StructCutKeys(prev, ignoreKeys)), After: pbtypes.CopyStruct(pbtypes.StructCutKeys(s.details, ignoreKeys))}
-			}
-
+			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
@@ -846,7 +839,6 @@ func (s *State) SetObjectType(objectType string) *State {
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
-
 	return s
 }
 
