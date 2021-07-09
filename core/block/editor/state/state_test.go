@@ -261,7 +261,7 @@ func BenchmarkState_Iterate(b *testing.B) {
 			s.Add(ch2)
 		}
 	}
-
+	b.ReportAllocs()
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {
