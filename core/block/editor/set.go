@@ -47,7 +47,7 @@ type Set struct {
 	stext.Text
 }
 
-func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation{
+func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
 	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
 	for _, rel := range rels {
 		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
@@ -91,7 +91,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 							},
 						},
 						Relations: getDefaultViewRelations(bundle.MustGetType(bundle.TypeKeyPage).Relations),
-						Filters: nil,
+						Filters:   nil,
 					},
 				},
 			},
@@ -99,7 +99,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		var (
 			oldName, oldIcon = "Pages", "📒"
 			newName, newIcon = "Drafts", "⚪"
-			forcedDataview bool
+			forcedDataview   bool
 		)
 		if slice.FindPos([]string{oldName, ""}, pbtypes.GetString(p.Details(), bundle.RelationKeyName.String())) > -1 &&
 			pbtypes.GetString(p.Details(), bundle.RelationKeyIconEmoji.String()) == oldIcon {
@@ -149,9 +149,14 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name, icon
 }
 
 func (p *Set) applyRestrictions(s *state.State) {
+	var restrictedSources = []string{
+		bundle.TypeKeyFile.URL(),
+		bundle.TypeKeyImage.URL(),
+		bundle.TypeKeyVideo.URL(),
+	}
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if dv := b.Model().GetDataview(); dv != nil {
-			if dv.Source == bundle.TypeKeyFile.URL() {
+			if slice.FindPos(restrictedSources, dv.Source) != -1 {
 				br := model.RestrictionsDataviewRestrictions{
 					BlockId: b.Model().Id,
 					Restrictions: []model.RestrictionsDataviewRestriction{
