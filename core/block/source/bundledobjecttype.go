@@ -2,13 +2,13 @@ package source
 
 import (
 	"context"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -37,20 +37,20 @@ func (v *bundledObjectType) Anytype() core.Service {
 	return v.a
 }
 
-func (v *bundledObjectType) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_ObjectType
+func (v *bundledObjectType) Type() model.SmartBlockType {
+	return model.SmartBlockType_BundledObjectType
 }
 
 func (v *bundledObjectType) Virtual() bool {
 	return false
 }
 
-func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation, p *types.Struct, err error) {
+func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *types.Struct, err error) {
 	ot, err := bundle.GetTypeByUrl(id)
 	if err != nil {
 		return nil, nil, err
 	}
-	extraRels = []*pbrelation.Relation{bundle.MustGetRelation(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelation(bundle.RelationKeyRecommendedLayout)}
+	extraRels = []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyRecommendedRelations), bundle.MustGetRelation(bundle.RelationKeyRecommendedLayout)}
 
 	var relationKeys []string
 	for i := range ot.Relations {
@@ -59,8 +59,8 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 	}
 
 	det := &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyType.String():                 pbtypes.StringList([]string{bundle.TypeKeyObjectType.String()}),
-		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(pbrelation.ObjectType_objectType)),
+		bundle.RelationKeyType.String():                 pbtypes.String(bundle.TypeKeyObjectType.URL()),
+		bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
 		bundle.RelationKeyName.String():                 pbtypes.String(ot.Name),
 		bundle.RelationKeyCreator.String():              pbtypes.String(addr.AnytypeProfileId),
 		bundle.RelationKeyIconEmoji.String():            pbtypes.String(ot.IconEmoji),
@@ -69,6 +69,8 @@ func getDetailsForBundledObjectType(id string) (extraRels []*pbrelation.Relation
 		bundle.RelationKeyDescription.String():          pbtypes.String(ot.Description),
 		bundle.RelationKeyId.String():                   pbtypes.String(id),
 		bundle.RelationKeyIsHidden.String():             pbtypes.Bool(ot.Hidden),
+		bundle.RelationKeyIsArchived.String():           pbtypes.Bool(false),
+		bundle.RelationKeyIsReadonly.String():           pbtypes.Bool(ot.Readonly),
 	}}
 
 	return extraRels, det, nil
@@ -109,6 +111,14 @@ func (v *bundledObjectType) PushChange(params PushChangeParams) (id string, err 
 
 func (v *bundledObjectType) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
 	return nil, change.ErrEmpty
+}
+
+func (v *bundledObjectType) ListIds() ([]string, error) {
+	var ids []string
+	for _, tk := range bundle.ListTypesKeys() {
+		ids = append(ids, tk.URL())
+	}
+	return ids, nil
 }
 
 func (v *bundledObjectType) Close() (err error) {

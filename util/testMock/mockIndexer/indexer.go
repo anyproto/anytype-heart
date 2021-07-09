@@ -1,2 +1,2 @@
-//go:generate mockgen -package mockIndexer -destination indexer_mock.go github.com/anytypeio/go-anytype-middleware/core/indexer GetSearchInfo,Indexer
+//go:generate mockgen -package mockIndexer -destination indexer_mock.go github.com/anytypeio/go-anytype-middleware/core/indexer GetFullIndexInfo,Indexer
 package mockIndexer

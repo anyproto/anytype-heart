@@ -7,13 +7,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/globalsign/mgo/bson"
@@ -35,18 +35,27 @@ func NewWithMeta(id string, ms meta.Service) *SmartTest {
 }
 
 type SmartTest struct {
-	Results Results
-	anytype *testMock.MockService
-	id      string
-	hist    undo.History
-	meta    *core.SmartBlockMeta
-	ms      meta.Service
+	Results          Results
+	anytype          *testMock.MockService
+	id               string
+	hist             undo.History
+	meta             *core.SmartBlockMeta
+	ms               meta.Service
+	TestRestrictions restriction.Restrictions
 	sync.Mutex
 	state.Doc
 }
 
-func (st *SmartTest) GetSearchInfo() (indexer.SearchInfo, error) {
-	return indexer.SearchInfo{
+func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
+	st.TestRestrictions = r
+}
+
+func (st *SmartTest) Restrictions() restriction.Restrictions {
+	return st.TestRestrictions
+}
+
+func (st *SmartTest) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
+	return indexer.FullIndexInfo{
 		Id:      st.Id(),
 		Title:   pbtypes.GetString(st.Details(), "name"),
 		Snippet: st.Snippet(),
@@ -62,11 +71,11 @@ func (st *SmartTest) HasRelation(relationKey string) bool {
 	return st.NewState().HasRelation(relationKey)
 }
 
-func (st *SmartTest) Relations() []*pbrelation.Relation {
+func (st *SmartTest) Relations() []*model.Relation {
 	return nil
 }
 
-func (st *SmartTest) RelationsState(s *state.State) []*pbrelation.Relation {
+func (st *SmartTest) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
 	return nil
 }
 
@@ -74,13 +83,13 @@ func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }
 
-func (st *SmartTest) AddExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) (*pbrelation.RelationOption, error) {
+func (st *SmartTest) AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
 	rel := pbtypes.GetRelation(st.Relations(), relationKey)
 	if rel == nil {
 		return nil, fmt.Errorf("relation not found")
 	}
 
-	if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+	if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 		return nil, fmt.Errorf("incorrect relation format")
 	}
 
@@ -96,12 +105,12 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 	return false
 }
 
-func (st *SmartTest) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option pbrelation.RelationOption, showEvent bool) error {
+func (st *SmartTest) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error {
 	for _, rel := range st.ExtraRelations() {
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
@@ -125,7 +134,7 @@ func (st *SmartTest) DeleteExtraRelationOption(ctx *state.Context, relationKey s
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			return fmt.Errorf("relation has incorrect format")
 		}
 		for i, opt := range rel.SelectDict {
@@ -144,7 +153,7 @@ func (st *SmartTest) DeleteExtraRelationOption(ctx *state.Context, relationKey s
 	return fmt.Errorf("relation not found")
 }
 
-func (st *SmartTest) AddExtraRelations(ctx *state.Context, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (st *SmartTest) AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -161,7 +170,7 @@ func (st *SmartTest) AddExtraRelations(ctx *state.Context, relations []*pbrelati
 	return st.meta.Relations, nil
 }
 
-func (st *SmartTest) UpdateExtraRelations(ctx *state.Context, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+func (st *SmartTest) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
 	if st.meta == nil {
 		st.meta = &core.SmartBlockMeta{
 			Details: &types.Struct{
@@ -225,8 +234,8 @@ func (st *SmartTest) Id() string {
 	return st.id
 }
 
-func (st *SmartTest) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_Page
+func (st *SmartTest) Type() model.SmartBlockType {
+	return model.SmartBlockType_Page
 }
 
 func (st *SmartTest) Show(*state.Context) (err error) {

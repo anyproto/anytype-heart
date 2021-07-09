@@ -3,6 +3,11 @@ package helpers
 import (
 	"context"
 	"fmt"
+	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p-core/network"
+	"github.com/libp2p/go-libp2p-core/peer"
+	swarm "github.com/libp2p/go-libp2p-swarm"
+	ma "github.com/multiformats/go-multiaddr"
 	"io"
 	"io/ioutil"
 	gopath "path"
@@ -397,4 +402,40 @@ func ResolveLinkByNames(nd ipld.Node, names []string) (*ipld.Link, error) {
 		}
 	}
 	return nil, nil
+}
+
+func PermanentConnection(ctx context.Context, addr ma.Multiaddr, host host.Host, retryInterval time.Duration) error {
+	addrInfo, err := peer.AddrInfoFromP2pAddr(addr)
+	if err != nil {
+		return fmt.Errorf("PermanentConnection invalid addr: %s", err.Error())
+	}
+
+	go func() {
+		for {
+			state := host.Network().Connectedness(addrInfo.ID)
+			// do not handle CanConnect purposefully
+			if state == network.NotConnected || state == network.CannotConnect {
+				if swrm, ok := host.Network().(*swarm.Swarm); ok {
+					// clear backoff in order to connect more aggressively
+					swrm.Backoff().Clear(addrInfo.ID)
+				}
+
+				err = host.Connect(ctx, *addrInfo)
+				if err != nil {
+					log.Warnf("PermanentConnection failed: %s", err.Error())
+				} else {
+					log.Debugf("PermanentConnection %s reconnected succesfully", addrInfo.ID.String())
+				}
+			}
+
+			select {
+			case <-ctx.Done():
+				return
+			case <-time.After(retryInterval):
+				continue
+			}
+		}
+	}()
+
+	return nil
 }

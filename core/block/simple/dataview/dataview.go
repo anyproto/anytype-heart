@@ -1,6 +1,7 @@
 package dataview
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -18,6 +18,7 @@ import (
 )
 
 var _ Block = (*Dataview)(nil)
+var ErrOptionNotExists = errors.New("option not exists")
 
 func init() {
 	simple.RegisterCreator(NewDataview)
@@ -35,17 +36,17 @@ func NewDataview(m *model.Block) simple.Block {
 
 type Block interface {
 	simple.Block
-	GetView(viewID string) *model.BlockContentDataviewView
+	GetView(viewID string) (*model.BlockContentDataviewView, error)
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
 
-	AddRelation(relation pbrelation.Relation)
-	UpdateRelation(relationKey string, relation pbrelation.Relation) error
+	AddRelation(relation model.Relation)
+	UpdateRelation(relationKey string, relation model.Relation) error
 	DeleteRelation(relationKey string) error
 
-	AddRelationOption(relationKey string, opt pbrelation.RelationOption) error
-	UpdateRelationOption(relationKey string, opt pbrelation.RelationOption) error
+	AddRelationOption(relationKey string, opt model.RelationOption) error
+	UpdateRelationOption(relationKey string, opt model.RelationOption) error
 	DeleteRelationOption(relationKey string, optId string) error
 
 	GetSource() string
@@ -183,14 +184,14 @@ func (s *Dataview) AddView(view model.BlockContentDataviewView) {
 	s.content.Views = append(s.content.Views, &view)
 }
 
-func (s *Dataview) GetView(viewId string) *model.BlockContentDataviewView {
+func (s *Dataview) GetView(viewId string) (*model.BlockContentDataviewView, error) {
 	for _, view := range s.GetDataview().Views {
 		if view.Id == viewId {
-			return view
+			return view, nil
 		}
 	}
 
-	return nil
+	return nil, fmt.Errorf("view '%s' not found", viewId)
 }
 
 func (s *Dataview) DeleteView(viewID string) error {
@@ -233,7 +234,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	return nil
 }
 
-func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) error {
+func (s *Dataview) UpdateRelation(relationKey string, rel model.Relation) error {
 	var found bool
 	if relationKey != rel.Key {
 		return fmt.Errorf("changing key of existing relation is retricted")
@@ -256,7 +257,7 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 			}
 			rel.SelectDict = v.SelectDict
 
-			if rel.Format == pbrelation.RelationFormat_status || rel.Format == pbrelation.RelationFormat_tag {
+			if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
 				rel.SelectDict = mergeSelectOptions(v.SelectDict, rel.SelectDict)
 				for i := range rel.SelectDict {
 					if rel.SelectDict[i].Id == "" {
@@ -281,7 +282,7 @@ func (s *Dataview) UpdateRelation(relationKey string, rel pbrelation.Relation) e
 func (l *Dataview) relationsWithObjectFormat() []string {
 	var relationsWithObjFormat []string
 	for _, rel := range l.GetDataview().Relations {
-		if rel.Format == pbrelation.RelationFormat_file || rel.Format == pbrelation.RelationFormat_object {
+		if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
 			relationsWithObjFormat = append(relationsWithObjFormat, rel.Key)
 		}
 	}
@@ -361,7 +362,7 @@ func (d *Dataview) GetSource() string {
 	return d.content.Source
 }
 
-func (d *Dataview) AddRelation(relation pbrelation.Relation) {
+func (d *Dataview) AddRelation(relation model.Relation) {
 	if relation.Key == "" {
 		relation.Key = bson.NewObjectId().Hex()
 	}
@@ -426,13 +427,13 @@ func (d *Dataview) SetActiveView(activeView string) {
 	d.content.ActiveView = activeView
 }
 
-func (d *Dataview) AddRelationOption(relationKey string, option pbrelation.RelationOption) error {
-	var relFound *pbrelation.Relation
+func (d *Dataview) AddRelationOption(relationKey string, option model.RelationOption) error {
+	var relFound *model.Relation
 	for _, rel := range d.content.Relations {
 		if rel.Key != relationKey {
 			continue
 		}
-		if rel.Format != pbrelation.RelationFormat_status && rel.Format != pbrelation.RelationFormat_tag {
+		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			return fmt.Errorf("relation has incorrect format")
 		}
 
@@ -442,7 +443,7 @@ func (d *Dataview) AddRelationOption(relationKey string, option pbrelation.Relat
 				return fmt.Errorf("option already exists")
 			}
 		}
-		if option.Scope != pbrelation.RelationOption_local {
+		if option.Scope != model.RelationOption_local {
 			return fmt.Errorf("incorrect option scope")
 		}
 		optionCopy := option
@@ -465,15 +466,15 @@ func (d *Dataview) AddRelationOption(relationKey string, option pbrelation.Relat
 		}
 		optionCopy := option
 
-		optionCopy.Scope = pbrelation.RelationOption_format
+		optionCopy.Scope = model.RelationOption_format
 		rel.SelectDict = append(rel.SelectDict, &optionCopy)
 	}
 
 	return nil
 }
 
-func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.RelationOption) error {
-	if option.Scope != pbrelation.RelationOption_local {
+func (d *Dataview) UpdateRelationOption(relationKey string, option model.RelationOption) error {
+	if option.Scope != model.RelationOption_local {
 		return fmt.Errorf("incorrect option scope")
 	}
 
@@ -484,9 +485,9 @@ func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.Re
 			if relFound.Format != rel.Format {
 				continue
 			}
-			option.Scope = pbrelation.RelationOption_format
+			option.Scope = model.RelationOption_format
 		} else {
-			option.Scope = pbrelation.RelationOption_local
+			option.Scope = model.RelationOption_local
 		}
 
 		var found bool
@@ -507,25 +508,30 @@ func (d *Dataview) UpdateRelationOption(relationKey string, option pbrelation.Re
 }
 
 func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error {
-	for _, rel := range d.content.Relations {
+	for relI, rel := range d.content.Relations {
 		if rel.Key != relationKey {
 			continue
 		}
-
-		for i, opt := range rel.SelectDict {
-			if optId == opt.Id {
-				rel.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
-				return nil
+		var filtered = make([]*model.RelationOption, 0, len(rel.SelectDict))
+		for optI, opt := range rel.SelectDict {
+			if optId != opt.Id {
+				filtered = append(filtered, rel.SelectDict[optI])
 			}
 		}
 
-		return fmt.Errorf("option not exists")
+		if len(filtered) == len(rel.SelectDict) {
+			return ErrOptionNotExists
+		}
+
+		d.content.Relations[relI].SelectDict = filtered
+		return nil
 	}
-	return nil
+
+	return fmt.Errorf("relation not found")
 }
 
-func mergeSelectOptions(opts1, opts2 []*pbrelation.RelationOption) []*pbrelation.RelationOption {
-	var opts []*pbrelation.RelationOption
+func mergeSelectOptions(opts1, opts2 []*model.RelationOption) []*model.RelationOption {
+	var opts []*model.RelationOption
 	for _, opt1 := range opts1 {
 		opts = append(opts, &*opt1)
 	}

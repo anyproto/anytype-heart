@@ -244,11 +244,11 @@ func (r *Renderer) renderHeading(w blocksUtil.RWriter, source []byte, node ast.N
 	case 3:
 		style = model.BlockContentText_Header3
 	case 4:
-		style = model.BlockContentText_Header4
+		style = model.BlockContentText_Header3
 	case 5:
-		style = model.BlockContentText_Header4
+		style = model.BlockContentText_Header3
 	case 6:
-		style = model.BlockContentText_Header4
+		style = model.BlockContentText_Header3
 	}
 
 	if entering {

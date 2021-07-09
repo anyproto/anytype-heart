@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"sort"
 	"strings"
@@ -71,10 +70,11 @@ func (snapshot smartBlockSnapshot) Meta() (*SmartBlockMeta, error) {
 }
 
 func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	return "", fmt.Errorf("not implemented")
+	/*ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
 	defer cancel()
 
-	ipfs := snapshot.node.Ipfs()
+	ipfs := snapshot.node.threadService.Threads()
 	if snapshot.eventID == cid.Undef {
 		// todo: extract from recordID?
 		return "", fmt.Errorf("eventID is empty")
@@ -105,7 +105,7 @@ func (snapshot smartBlockSnapshot) PublicWebURL() (string, error) {
 		snapshot.threadID.String(),
 		event.BodyID().String(),
 		base64.RawURLEncoding.EncodeToString(bodyKeyBin),
-	), nil
+	), nil*/
 }
 
 type SnapshotWithMetadata struct {
@@ -121,7 +121,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 	// todo: filter by record type
 	var m = make(map[cid.Cid]struct{})
 
-	rid := li.Head
+	rid := li.Head.ID
 	if !rid.Defined() {
 		return []SnapshotWithMetadata{}, nil
 	}
@@ -132,17 +132,17 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 		}
 
 		m[rid] = struct{}{}
-		rec, err := a.t.GetRecord(ctx, thrd.ID, rid)
+		rec, err := a.threadService.Threads().GetRecord(ctx, thrd.ID, rid)
 		if err != nil {
 			return nil, err
 		}
 
-		event, err := cbor.EventFromRecord(ctx, a.t, rec)
+		event, err := cbor.EventFromRecord(ctx, a.threadService.Threads(), rec)
 		if err != nil {
 			return nil, err
 		}
 
-		node, err := event.GetBody(context.TODO(), a.t, thrd.Key.Read())
+		node, err := event.GetBody(context.TODO(), a.threadService.Threads(), thrd.Key.Read())
 		if err != nil {
 			return nil, fmt.Errorf("failed to get record body: %w", err)
 		}
@@ -202,7 +202,7 @@ func (a *Anytype) snapshotTraverseFromCid(ctx context.Context, thrd thread.Info,
 
 func (a *Anytype) snapshotTraverseLogs(ctx context.Context, thrdId thread.ID, before vclock.VClock, limit int) ([]SnapshotWithMetadata, error) {
 	var allSnapshots []SnapshotWithMetadata
-	thrd, err := a.t.GetThread(context.Background(), thrdId)
+	thrd, err := a.threadService.Threads().GetThread(context.Background(), thrdId)
 	if err != nil {
 		return nil, err
 	}

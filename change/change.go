@@ -1,13 +1,14 @@
 package change
 
 import (
+	"encoding/json"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 )
@@ -76,7 +77,7 @@ func (ch *Change) HasMeta() bool {
 	return false
 }
 
-func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*pbrelation.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler {
+func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*model.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler {
 	fkeys := make([]*pb.ChangeFileKeys, len(fileKeys))
 	for i, k := range fileKeys {
 		fkeys[i] = &pb.ChangeFileKeys{
@@ -96,4 +97,40 @@ func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations [
 		},
 		Timestamp: time.Now().Unix(),
 	}
+}
+
+func (ch *Change) MarshalJSON() ([]byte, error) {
+	pbjson := ""
+	if ch.Change != nil {
+		var err error
+		ml := &jsonpb.Marshaler{}
+		pbjson, err = ml.MarshalToString(ch.Change)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var data = map[string]string{
+		"Id":      ch.Id,
+		"Account": ch.Account,
+		"Device":  ch.Device,
+		"Change":  pbjson,
+	}
+	return json.Marshal(data)
+}
+
+func (ch *Change) UnmarshalJSON(data []byte) (err error) {
+	var dataMap = make(map[string]string)
+	if err = json.Unmarshal(data, &dataMap); err != nil {
+		return
+	}
+	if chs, ok := dataMap["Change"]; ok {
+		ch.Change = &pb.Change{}
+		if err = jsonpb.UnmarshalString(chs, ch.Change); err != nil {
+			return
+		}
+	}
+	ch.Id = dataMap["Id"]
+	ch.Account = dataMap["Account"]
+	ch.Device = dataMap["Device"]
+	return
 }

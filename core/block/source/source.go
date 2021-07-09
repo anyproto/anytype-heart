@@ -3,7 +3,6 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"math/rand"
 	"sync"
 	"time"
@@ -11,13 +10,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
@@ -35,7 +35,7 @@ type ChangeReceiver interface {
 type Source interface {
 	Id() string
 	Anytype() core.Service
-	Type() pb.SmartBlockType
+	Type() model.SmartBlockType
 	Virtual() bool
 	ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
@@ -45,73 +45,81 @@ type Source interface {
 	Close() (err error)
 }
 
-var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
-
-func NewSource(a core.Service, ss status.Service, id string) (s Source, err error) {
-	st, err := smartblock.SmartBlockTypeFromID(id)
-
-	if id == addr.AnytypeProfileId {
-		return NewAnytypeProfile(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeFile {
-		return NewFiles(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledObjectType {
-		return NewBundledObjectType(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledRelation {
-		return NewBundledRelation(a, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeIndexedRelation {
-		return NewIndexedRelation(a, id), nil
-	}
-
-	return newSource(a, ss, id)
+type SourceType interface {
+	ListIds() ([]string, error)
 }
 
-func newSource(a core.Service, ss status.Service, id string) (s Source, err error) {
+type SourceWithType interface {
+	Source
+	SourceType
+}
+
+var ErrUnknownDataFormat = fmt.Errorf("unknown data format: you may need to upgrade anytype in order to open this page")
+
+func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error) {
+	switch blockType {
+	case smartblock.SmartBlockTypeAnytypeProfile:
+		return &anytypeProfile{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeFile:
+		return &files{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeBundledObjectType:
+		return &bundledObjectType{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
+		return &bundledRelation{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeBundledTemplate:
+		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
+	default:
+		if err := blockType.Valid(); err != nil {
+			return nil, err
+		} else {
+			return &source{a: s.anytype, smartblockType: blockType}, nil
+		}
+	}
+}
+
+func newSource(a core.Service, ss status.Service, tid thread.ID, listenToOwnChanges bool) (s Source, err error) {
+	id := tid.String()
 	sb, err := a.GetBlock(id)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %w", err)
 		return
 	}
 
-	tid, err := thread.Decode(id)
+	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
-		err = fmt.Errorf("can't restore thread ID: %w", err)
-		return
+		return nil, err
 	}
 
 	s = &source{
-		id:       id,
-		tid:      tid,
-		a:        a,
-		ss:       ss,
-		sb:       sb,
-		logId:    a.Device(),
-		openedAt: time.Now(),
+		id:                       id,
+		smartblockType:           sbt,
+		tid:                      tid,
+		a:                        a,
+		ss:                       ss,
+		sb:                       sb,
+		listenToOwnDeviceChanges: listenToOwnChanges,
+		logId:                    a.Device(),
+		openedAt:                 time.Now(),
 	}
 	return
 }
 
 type source struct {
-	id, logId      string
-	tid            thread.ID
-	a              core.Service
-	ss             status.Service
-	sb             core.SmartBlock
-	tree           *change.Tree
-	lastSnapshotId string
-	logHeads       map[string]*change.Change
-	receiver       ChangeReceiver
-	unsubscribe    func()
-	metaOnly       bool
-	closed         chan struct{}
-	openedAt       time.Time
+	id, logId                string
+	tid                      thread.ID
+	smartblockType           smartblock.SmartBlockType
+	a                        core.Service
+	ss                       status.Service
+	sb                       core.SmartBlock
+	tree                     *change.Tree
+	lastSnapshotId           string
+	logHeads                 map[string]*change.Change
+	receiver                 ChangeReceiver
+	unsubscribe              func()
+	metaOnly                 bool
+	listenToOwnDeviceChanges bool // false means we will ignore own(same-logID) changes in applyRecords
+	closed                   chan struct{}
+	openedAt                 time.Time
 }
 
 func (s *source) ReadOnly() bool {
@@ -126,8 +134,8 @@ func (s *source) Anytype() core.Service {
 	return s.a
 }
 
-func (s *source) Type() pb.SmartBlockType {
-	return smartblock.SmartBlockTypeToProto(s.sb.Type())
+func (s *source) Type() model.SmartBlockType {
+	return model.SmartBlockType(s.sb.Type())
 }
 
 func (s *source) Virtual() bool {
@@ -211,7 +219,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	st.SetDetailAndBundledRelation(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(s.openedAt.Unix()))
 	InjectLocalDetails(s, st)
 
-	if s.Type() != pb.SmartBlockType_Archive && !s.Virtual() {
+	if s.Type() != model.SmartBlockType_Archive && !s.Virtual() {
 		// we do not need details for archive or breadcrumbs
 		st.InjectDerivedDetails()
 		err = InjectCreationInfo(s, st)
@@ -247,7 +255,8 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 
 	var (
 		createdDate = time.Now().Unix()
-		createdBy   = s.Anytype().Account()
+		// todo: remove this default
+		createdBy = s.Anytype().Account()
 	)
 	// protect from the big documents with a large trees
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
@@ -255,6 +264,7 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	fc, err := s.FindFirstChange(ctx)
 	if err == change.ErrEmpty {
 		err = nil
+		createdBy = s.Anytype().Account()
 		log.Debugf("InjectCreationInfo set for the empty object")
 	} else if err != nil {
 		return fmt.Errorf("failed to find first change to derive creation info")
@@ -323,11 +333,30 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	s.logHeads[s.logId] = ch
 	if c.Snapshot != nil {
 		s.lastSnapshotId = id
-		log.Errorf("%s: pushed snapshot", s.id)
+		log.Infof("%s: pushed snapshot", s.id)
 	} else {
 		log.Debugf("%s: pushed %d changes", s.id, len(ch.Content))
 	}
 	return
+}
+
+func (v *source) ListIds() ([]string, error) {
+	ids, err := v.Anytype().ThreadsIds()
+	if err != nil {
+		return nil, err
+	}
+	ids = slice.Filter(ids, func(id string) bool {
+		if id == v.Anytype().PredefinedBlocks().Account {
+			return false
+		}
+		t, err := smartblock.SmartBlockTypeFromID(id)
+		if err != nil {
+			return false
+		}
+		return t == v.smartblockType
+	})
+	// exclude account thread id
+	return ids, nil
 }
 
 func (s *source) needSnapshot() bool {
@@ -378,7 +407,7 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
 func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	var changes = make([]*change.Change, 0, len(records))
 	for _, record := range records {
-		if record.LogID == s.a.Device() {
+		if record.LogID == s.a.Device() && !s.listenToOwnDeviceChanges {
 			// ignore self logs
 			continue
 		}
@@ -396,6 +425,10 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	if len(changes) == 0 {
 		return nil
 	}
+
+	metrics.SharedClient.RecordEvent(metrics.ChangesetEvent{
+		Diff: time.Now().Unix() - changes[0].Timestamp,
+	})
 
 	switch s.tree.Add(changes...) {
 	case change.Nothing:

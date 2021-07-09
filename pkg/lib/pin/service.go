@@ -3,25 +3,28 @@ package pin
 import (
 	"context"
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/dgtony/collections/hashset"
 )
 
 const (
+	CName                = "filepin"
 	pinCheckPeriodActive = 15 * time.Second
 	pinCheckPeriodIdle   = 10 * time.Minute
 	cafeRequestTimeout   = 30 * time.Second
 )
 
-var ErrNoCafe = errors.New("no cafe available")
-
-var log = logging.Logger("anytype-file-pinning")
+var (
+	log       = logging.Logger("anytype-file-pinning")
+	ErrNoCafe = errors.New("no cafe available")
+)
 
 type FilePinInfo struct {
 	Status  cafepb.PinStatus
@@ -29,37 +32,60 @@ type FilePinInfo struct {
 }
 
 type FilePinService interface {
+	app.ComponentRunnable
 	// on empty request must return status for all files
 	PinStatus(cids ...string) map[string]FilePinInfo
 	FilePin(cid string) error
-
-	Start()
 }
 
 var _ FilePinService = (*filePinService)(nil)
 
 type filePinService struct {
-	ctx   context.Context
-	cafe  cafe.Client
-	store localstore.FileStore
+	ctx       context.Context
+	ctxCancel context.CancelFunc
+	cafe      cafe.Client
+	store     filestore.FileStore
 
 	files    map[string]FilePinInfo
 	activate chan struct{}
 	mu       sync.RWMutex
 }
 
-func NewFilePinService(
-	ctx context.Context,
-	cafe cafe.Client,
-	store localstore.FileStore,
-) *filePinService {
+func New() *filePinService {
+	ctx, ctxCancel := context.WithCancel(context.Background())
+
 	return &filePinService{
-		ctx:      ctx,
-		cafe:     cafe,
-		store:    store,
-		activate: make(chan struct{}),
-		files:    make(map[string]FilePinInfo),
+		ctx:       ctx,
+		ctxCancel: ctxCancel,
+		activate:  make(chan struct{}),
+		files:     make(map[string]FilePinInfo),
 	}
+}
+
+func (c *filePinService) Name() (name string) {
+	return CName
+}
+
+func (f *filePinService) Init(a *app.App) error {
+	f.cafe = a.MustComponent(cafe.CName).(cafe.Client)
+	f.store = a.MustComponent(filestore.CName).(filestore.FileStore)
+
+	return nil
+}
+
+func (f *filePinService) Run() error {
+	if f.cafe != nil {
+		go f.syncCafe()
+	} else {
+		log.Warnf("cafe file pinning is disabled")
+	}
+
+	return nil
+}
+
+func (f *filePinService) Close() error {
+	f.ctxCancel()
+	return nil
 }
 
 func (f *filePinService) PinStatus(cids ...string) map[string]FilePinInfo {
@@ -100,12 +126,6 @@ func (f *filePinService) FilePin(cid string) error {
 	}
 
 	return err
-}
-
-func (f *filePinService) Start() {
-	if f.cafe != nil {
-		go f.syncCafe()
-	}
 }
 
 func (f *filePinService) findCids(cids []string) map[string]FilePinInfo {

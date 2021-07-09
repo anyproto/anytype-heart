@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -42,15 +41,13 @@ type Subscriber interface {
 	Close()
 }
 
-func newPubSub(a core.Service, ss status.Service) *pubSub {
+func newPubSub(a core.Service, ss source.Service) *pubSub {
 	ps := &pubSub{
 		subscribers: make(map[string]map[Subscriber]struct{}),
 		collectors:  make(map[string]*collector),
 		lastUsage:   make(map[string]time.Time),
 		anytype:     a,
-		newSource: func(id string) (source.Source, error) {
-			return source.NewSource(a, ss, id)
-		},
+		newSource:   ss.NewSource,
 	}
 	go ps.ticker()
 	return ps
@@ -61,7 +58,7 @@ type pubSub struct {
 	subscribers map[string]map[Subscriber]struct{}
 	collectors  map[string]*collector
 	lastUsage   map[string]time.Time
-	newSource   func(id string) (source.Source, error)
+	newSource   func(id string, listenToOwnChanges bool) (source.Source, error)
 	m           sync.Mutex
 	closed      bool
 }

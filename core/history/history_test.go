@@ -1,6 +1,7 @@
 package history
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -8,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
 	"github.com/golang/mock/gomock"

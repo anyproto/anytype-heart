@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -367,13 +366,15 @@ func (s *State) MigrateObjectTypes() {
 
 func (s *State) NormalizeRelations() {
 	for _, r := range s.ExtraRelations() {
-		var updateRelation *relation.Relation
+		var updateRelation *model.Relation
 
 		equal, exists := bundle.EqualWithRelation(r.Key, r)
 		if exists && !equal {
 			// reset bundle relation in case the bundle has it updated
 			updateRelation = bundle.MustGetRelation(bundle.RelationKey(r.Key))
 			updateRelation.SelectDict = r.SelectDict
+		} else if !exists && r.Creator == "" {
+			r.Creator = pbtypes.GetString(s.Details(), bundle.RelationKeyCreator.String())
 		}
 
 		/*if r.Format == relation.RelationFormat_status || r.Format == relation.RelationFormat_tag {
@@ -436,7 +437,7 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 
 }
 
-func (s *State) normalizeDvRelation(r *relation.Relation) {
+func (s *State) normalizeDvRelation(r *model.Relation) {
 	if exists, equal := bundle.EqualWithRelation(r.Key, r); exists && !equal {
 		*r = *bundle.MustGetRelation(bundle.RelationKey(r.Key))
 	}

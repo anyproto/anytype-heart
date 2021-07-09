@@ -10,7 +10,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -286,9 +285,9 @@ func TestState_Normalize(t *testing.T) {
 
 	t.Run("normalize relation: reset status max count", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
-		r1 := &relation.Relation{
+		r1 := &model.Relation{
 			Key:      "a1",
-			Format:   relation.RelationFormat_status,
+			Format:   model.RelationFormat_status,
 			Name:     "test",
 			MaxCount: 0,
 		}
@@ -314,9 +313,9 @@ func TestState_Normalize(t *testing.T) {
 
 	t.Run("normalize dv: reset status max count", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
-		r1 := &relation.Relation{
+		r1 := &model.Relation{
 			Key:      "a1",
-			Format:   relation.RelationFormat_status,
+			Format:   model.RelationFormat_status,
 			Name:     "test",
 			MaxCount: 0,
 		}
@@ -325,7 +324,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{
 			Id: "dataview",
 			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
-				Relations: []*relation.Relation{r1},
+				Relations: []*model.Relation{r1},
 			}},
 		}))
 
@@ -347,7 +346,7 @@ func TestState_Normalize(t *testing.T) {
 		r.Add(simple.New(&model.Block{
 			Id: "dataview",
 			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
-				Relations: []*relation.Relation{r1},
+				Relations: []*model.Relation{r1},
 			}},
 		}))
 

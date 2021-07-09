@@ -8,18 +8,20 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
 const (
-	HeaderLayoutId  = "header"
-	TitleBlockId    = "title"
-	DataviewBlockId = "dataview"
+	HeaderLayoutId      = "header"
+	TitleBlockId        = "title"
+	DescriptionBlockId  = "description"
+	DataviewBlockId     = "dataview"
+	FeaturedRelationsId = "featuredRelations"
 )
 
 var log = logging.Logger("anytype-state-template")
@@ -48,28 +50,63 @@ var WithObjectTypes = func(otypes []string) StateTransformer {
 	}
 }
 
+// WithNoObjectTypes is a special case used only for Archive
+var WithNoObjectTypes = func() StateTransformer {
+	return func(s *state.State) {
+		s.SetNoObjectType(true)
+	}
+}
+
 var WithObjectTypeLayoutMigration = func() StateTransformer {
 	return func(s *state.State) {
 		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())
 
-		if layout == float64(relation.ObjectType_objectType) {
+		if layout == float64(model.ObjectType_objectType) {
 			return
 		}
 
 		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedLayout, pbtypes.Float64(layout))
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(relation.ObjectType_objectType)))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(model.ObjectType_objectType)))
 	}
 }
 
-var WithObjectTypeRecommendedRelationsMigration = func(relations []*relation.Relation) StateTransformer {
+var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relation) StateTransformer {
 	return func(s *state.State) {
-		var keys []string
-		if len(pbtypes.GetStringList(s.Details(), bundle.RelationKeyRecommendedRelations.String())) > 0 {
-			return
+		var relIds []string
+		ot := bundle.MustGetType(bundle.TypeKeyObjectType)
+		rels := ot.GetRelations()
+
+		var objectTypeOnlyRelations []*model.Relation
+		for _, rel := range rels {
+			var found bool
+			for _, requiredRel := range bundle.RequiredInternalRelations {
+				if rel.Key == requiredRel.String() {
+					found = true
+					break
+				}
+			}
+			if !found {
+				objectTypeOnlyRelations = append(objectTypeOnlyRelations, pbtypes.CopyRelation(rel))
+			}
 		}
 
-		for _, rel := range relations {
-			keys = append(keys, rel.Key)
+		for _, rel := range append(relations, s.ExtraRelations()...) {
+			// so the idea is that we need to add all relations EXCEPT that only exists in the objectType
+			// e.g. we don't need to recommendedRelation and recommendedLayout
+			if pbtypes.HasRelation(objectTypeOnlyRelations, rel.Key) {
+				continue
+			}
+			var relId string
+			if bundle.HasRelation(rel.Key) {
+				relId = addr.BundledRelationURLPrefix + rel.Key
+			} else {
+				relId = addr.CustomRelationURLPrefix + rel.Key
+			}
+			if slice.FindPos(relIds, relId) > -1 {
+				continue
+			}
+
+			relIds = append(relIds, relId)
 			var found bool
 			for _, exRel := range s.ExtraRelations() {
 				if exRel.Key == rel.Key {
@@ -82,7 +119,40 @@ var WithObjectTypeRecommendedRelationsMigration = func(relations []*relation.Rel
 			}
 		}
 
-		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(keys))
+		s.SetDetailAndBundledRelation(bundle.RelationKeyRecommendedRelations, pbtypes.StringList(relIds))
+	}
+}
+
+var WithRequiredRelations = func() StateTransformer {
+	return func(s *state.State) {
+		for _, relKey := range bundle.RequiredInternalRelations {
+			if s.HasRelation(relKey.String()) {
+				continue
+			}
+			rel := bundle.MustGetRelation(relKey)
+			s.AddRelation(rel)
+		}
+	}
+}
+
+var WithMaxCountMigration = func(s *state.State) {
+	d := s.Details()
+	if d == nil || d.Fields == nil {
+		return
+	}
+
+	rels := s.ExtraRelations()
+	for k, v := range d.Fields {
+		rel := pbtypes.GetRelation(rels, k)
+		if rel == nil {
+			log.Errorf("obj %s relation %s is missing but detail is set", s.RootId(), k)
+		} else if rel.MaxCount == 1 {
+			if b := v.GetListValue(); b != nil {
+				if len(b.Values) > 0 {
+					d.Fields[k] = pbtypes.String(b.Values[0].String())
+				}
+			}
+		}
 	}
 }
 
@@ -90,6 +160,8 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 	return func(s *state.State) {
 		if len(s.ObjectTypes()) == 0 {
 			s.SetObjectTypes(otypes)
+		} else {
+			otypes = s.ObjectTypes()
 		}
 
 		d := s.Details()
@@ -100,13 +172,12 @@ var WithObjectTypesAndLayout = func(otypes []string) StateTransformer {
 					continue
 				}
 				s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(t.Layout)))
-				s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyLayout))
 			}
 		}
 	}
 }
 
-var WithLayout = func(layout relation.ObjectTypeLayout) StateTransformer {
+var WithLayout = func(layout model.ObjectTypeLayout) StateTransformer {
 	return WithDetail(bundle.RelationKeyLayout, pbtypes.Float64(float64(layout)))
 }
 
@@ -180,11 +251,27 @@ var WithHeader = StateTransformer(func(s *state.State) {
 var WithTitle = StateTransformer(func(s *state.State) {
 	WithHeader(s)
 
-	if s.Exists(TitleBlockId) {
-		return
+	var (
+		align model.BlockAlign
+	)
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int32(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
+		}
 	}
 
-	s.Add(simple.New(&model.Block{
+	blockExists := s.Exists(TitleBlockId)
+
+	if blockExists {
+		isAlignOk := s.Pick(TitleBlockId).Model().Align == align
+		isFieldOk := len(pbtypes.GetStringList(s.Pick(TitleBlockId).Model().Fields, text.DetailsKeyFieldName)) == 2
+		if isFieldOk && isAlignOk {
+			return
+		}
+	}
+
+	s.Set(simple.New(&model.Block{
 		Id: TitleBlockId,
 		Restrictions: &model.BlockRestrictions{
 			Remove: true,
@@ -194,13 +281,110 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Title}},
 		Fields: &types.Struct{
 			Fields: map[string]*types.Value{
-				text.DetailsKeyFieldName: pbtypes.String("name"),
+				text.DetailsKeyFieldName: pbtypes.StringList([]string{bundle.RelationKeyName.String(), bundle.RelationKeyDone.String()}),
 			},
 		},
+		Align: align,
 	}))
 
+	if blockExists {
+		return
+	}
 	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
 		log.Errorf("template WithTitle failed to insert: %w", err)
+	}
+})
+
+// WithDefaultFeaturedRelations **MUST** be called before WithDescription
+var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
+	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}))
+	}
+})
+
+var WithDescription = StateTransformer(func(s *state.State) {
+	WithHeader(s)
+
+	var align model.BlockAlign
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
+		}
+	}
+
+	blockExists := s.Exists(DescriptionBlockId)
+	blockShouldExists := slice.FindPos(pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String()), DescriptionBlockId) > -1
+	if !blockShouldExists {
+		if blockExists {
+			s.Unlink(DescriptionBlockId)
+		}
+		return
+	}
+
+	if blockExists && (s.Get(DescriptionBlockId).Model().Align == align) {
+		return
+	}
+
+	s.Set(simple.New(&model.Block{
+		Id: DescriptionBlockId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+		},
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{Style: model.BlockContentText_Description}},
+		Fields: &types.Struct{
+			Fields: map[string]*types.Value{
+				text.DetailsKeyFieldName: pbtypes.String("description"),
+			},
+		},
+		Align: align,
+	}))
+
+	if blockExists {
+		return
+	}
+
+	if err := s.InsertTo(TitleBlockId, model.Block_Bottom, DescriptionBlockId); err != nil {
+		log.Errorf("template WithDescription failed to insert: %s", err.Error())
+	}
+})
+
+var WithFeaturedRelations = StateTransformer(func(s *state.State) {
+	WithHeader(s)
+
+	var align model.BlockAlign
+	if pbtypes.HasField(s.Details(), bundle.RelationKeyLayoutAlign.String()) {
+		alignN := int(pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayoutAlign.String()))
+		if alignN >= 0 && alignN <= 2 {
+			align = model.BlockAlign(alignN)
+		}
+	}
+
+	blockExists := s.Exists(FeaturedRelationsId)
+	if blockExists && (s.Get(FeaturedRelationsId).Model().Align == align) {
+		return
+	}
+
+	s.Set(simple.New(&model.Block{
+		Id: FeaturedRelationsId,
+		Restrictions: &model.BlockRestrictions{
+			Remove: true,
+			Drag:   true,
+			DropOn: true,
+			Edit:   false,
+		},
+		Content: &model.BlockContentOfFeaturedRelations{FeaturedRelations: &model.BlockContentFeaturedRelations{}},
+		Align:   align,
+	}))
+
+	if blockExists {
+		return
+	}
+
+	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, FeaturedRelationsId); err != nil {
+		log.Errorf("template FeaturedRelations failed to insert: %w", err)
 	}
 })
 
@@ -234,7 +418,7 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 	}
 }
 
-var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		// remove old dataview
 		var blockNeedToUpdate bool
@@ -261,16 +445,30 @@ var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) 
 			return true
 		})
 
-		if blockNeedToUpdate || !s.Exists(DataviewBlockId) {
-			s.Set(simple.New(&model.Block{Content: &dataview, Id: DataviewBlockId}))
-			if !s.IsParentOf(s.RootId(), DataviewBlockId) {
-				err := s.InsertTo(s.RootId(), model.Block_Inner, DataviewBlockId)
+		if blockNeedToUpdate || !s.Exists(id) {
+			s.Set(simple.New(&model.Block{Content: &dataview, Id: id}))
+			if !s.IsParentOf(s.RootId(), id) {
+				err := s.InsertTo(s.RootId(), model.Block_Inner, id)
 				if err != nil {
 					log.Errorf("template WithDataview failed to insert: %w", err)
 				}
 			}
 		}
 
+	}
+}
+
+var WithDataview = func(dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
+	return WithDataviewID(DataviewBlockId, dataview, forceViews)
+}
+
+var WithChildrenSorter = func(blockId string, sort func(blockIds []string)) StateTransformer {
+	return func(s *state.State) {
+		b := s.Get(blockId)
+		sort(b.Model().ChildrenIds)
+
+		s.Set(b)
+		return
 	}
 }
 
@@ -307,6 +505,32 @@ var WithRootLink = func(targetBlockId string, style model.BlockContentLinkStyle)
 		if err := s.InsertTo(s.RootId(), model.Block_Inner, linkBlock.Model().Id); err != nil {
 			log.Errorf("can't insert link in template: %w", err)
 		}
+
+		return
+	}
+}
+
+var WithNoRootLink = func(targetBlockId string) StateTransformer {
+	return func(s *state.State) {
+		var linkBlockId string
+		s.Iterate(func(b simple.Block) (isContinue bool) {
+			if b, ok := b.(*link.Link); !ok {
+				return true
+			} else {
+				if b.Model().GetLink().TargetBlockId == targetBlockId {
+					linkBlockId = b.Id
+					return false
+				}
+
+				return true
+			}
+		})
+
+		if linkBlockId == "" {
+			return
+		}
+
+		s.Unlink(linkBlockId)
 
 		return
 	}

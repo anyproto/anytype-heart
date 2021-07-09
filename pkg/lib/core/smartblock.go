@@ -3,12 +3,12 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"strings"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/gogo/protobuf/proto"
@@ -56,7 +56,7 @@ type SmartBlockContentChange struct {
 
 type SmartBlockMeta struct {
 	ObjectTypes []string
-	Relations   []*pbrelation.Relation
+	Relations   []*model.Relation
 	Details     *types.Struct
 }
 
@@ -242,7 +242,12 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 		return "", err
 	}
 
-	signedPayload, err := newSignedPayload(payloadB, block.node.opts.Account)
+	acc, err := block.node.wallet.GetAccountPrivkey()
+	if err != nil {
+		return "", fmt.Errorf("failed to get account key: %v", err)
+	}
+
+	signedPayload, err := newSignedPayload(payloadB, acc)
 	if err != nil {
 		return "", err
 	}
@@ -252,7 +257,7 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 		return "", err
 	}
 
-	rec, err := block.node.t.CreateRecord(context.TODO(), block.thread.ID, body)
+	rec, err := block.node.threadService.Threads().CreateRecord(context.TODO(), block.thread.ID, body)
 	if err != nil {
 		log.Errorf("failed to create record: %w", err)
 		return "", err
@@ -267,7 +272,7 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 	ctx, cancel = context.WithCancel(context.Background())
 
 	// todo: this is not effective, need to make a single subscribe point for all subscribed threads
-	threadsCh, err := block.node.t.Subscribe(ctx, net.WithSubFilter(block.thread.ID))
+	threadsCh, err := block.node.threadService.Threads().Subscribe(ctx, net.WithSubFilter(block.thread.ID))
 	if err != nil {
 		return nil, fmt.Errorf("failed to subscribe: %s", err.Error())
 	}
@@ -329,7 +334,7 @@ func (block *smartBlock) PublishClientEvent(event proto.Message) error {
 }
 
 func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
-	thrd, err := block.node.t.GetThread(context.Background(), block.thread.ID)
+	thrd, err := block.node.ThreadService().Threads().GetThread(context.Background(), block.thread.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -337,8 +342,8 @@ func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
 	var logs []SmartblockLog
 	for _, l := range thrd.Logs {
 		var head string
-		if l.Head.Defined() {
-			head = l.Head.String()
+		if l.Head.ID.Defined() {
+			head = l.Head.ID.String()
 		}
 
 		logs = append(logs, SmartblockLog{
@@ -355,12 +360,12 @@ func (block *smartBlock) decodeRecord(
 	rec net.Record,
 	decodeLogID bool,
 ) (*SmartblockRecordEnvelope, error) {
-	event, err := cbor.EventFromRecord(ctx, block.node.t, rec)
+	event, err := cbor.EventFromRecord(ctx, block.node.threadService.Threads(), rec)
 	if err != nil {
 		return nil, err
 	}
 
-	node, err := event.GetBody(context.TODO(), block.node.t, block.thread.Key.Read())
+	node, err := event.GetBody(context.TODO(), block.node.threadService.Threads(), block.thread.Key.Read())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get record body: %w", err)
 	}
@@ -407,7 +412,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 		return nil, err
 	}
 
-	rec, err := block.node.t.GetRecord(ctx, block.thread.ID, rid)
+	rec, err := block.node.threadService.Threads().GetRecord(ctx, block.thread.ID, rid)
 	if err != nil {
 		return nil, err
 	}
@@ -415,7 +420,7 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	return block.decodeRecord(ctx, rec, true)
 }
 
-func (block *smartBlock) indexSnapshot(details *types.Struct, relations *pbrelation.Relations, blocks []*model.Block) error {
+func (block *smartBlock) indexSnapshot(details *types.Struct, relations *model.Relations, blocks []*model.Block) error {
 	if block.Type() == smartblock.SmartBlockTypeArchive {
 		return nil
 	}
@@ -423,7 +428,7 @@ func (block *smartBlock) indexSnapshot(details *types.Struct, relations *pbrelat
 	outgoingLinks := findOutgoingLinks(blocks)
 	snippet := getSnippet(blocks)
 
-	return block.node.ObjectStore().UpdateObject(block.ID(), details, relations, outgoingLinks, snippet)
+	return block.node.ObjectStore().CreateObject(block.ID(), details, relations, outgoingLinks, snippet)
 }
 
 func findOutgoingLinks(blocks []*model.Block) []string {

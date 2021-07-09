@@ -4,7 +4,9 @@ source: pkg/lib/bundle/types.json
 */
 package bundle
 
-import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+
+const TypeChecksum = "2f79013bf6bbd30748e3840b548edf8f1abc9ed98f2e7d436467f987bff0127f"
 
 type TypeKey string
 
@@ -19,98 +21,187 @@ const (
 	TypePrefix = "_ot"
 )
 const (
-	TypeKeyNote       TypeKey = "note"
-	TypeKeyContact    TypeKey = "contact"
-	TypeKeyIdea       TypeKey = "idea"
-	TypeKeyTask       TypeKey = "task"
-	TypeKeyRelation   TypeKey = "relation"
-	TypeKeyVideo      TypeKey = "video"
-	TypeKeyDashboard  TypeKey = "dashboard"
-	TypeKeyObjectType TypeKey = "objectType"
-	TypeKeyTemplate   TypeKey = "template"
-	TypeKeySet        TypeKey = "set"
-	TypeKeyPage       TypeKey = "page"
-	TypeKeyImage      TypeKey = "image"
-	TypeKeyProfile    TypeKey = "profile"
-	TypeKeyAudio      TypeKey = "audio"
-	TypeKeyDocument   TypeKey = "document"
-	TypeKeyFile       TypeKey = "file"
-	TypeKeyProject    TypeKey = "project"
+	TypeKeyDailyReflection TypeKey = "dailyReflection"
+	TypeKeyRecipe          TypeKey = "recipe"
+	TypeKeyNote            TypeKey = "note"
+	TypeKeyContact         TypeKey = "contact"
+	TypeKeyIdea            TypeKey = "idea"
+	TypeKeyTask            TypeKey = "task"
+	TypeKeyRelation        TypeKey = "relation"
+	TypeKeyVideo           TypeKey = "video"
+	TypeKeyDashboard       TypeKey = "dashboard"
+	TypeKeyDailyPlan       TypeKey = "dailyPlan"
+	TypeKeyMeetingNote     TypeKey = "meetingNote"
+	TypeKeyArticle         TypeKey = "article"
+	TypeKeyObjectType      TypeKey = "objectType"
+	TypeKeyTemplate        TypeKey = "template"
+	TypeKeySet             TypeKey = "set"
+	TypeKeyDiaryEntry      TypeKey = "diaryEntry"
+	TypeKeyPage            TypeKey = "page"
+	TypeKeyImage           TypeKey = "image"
+	TypeKeyProfile         TypeKey = "profile"
+	TypeKeyAudio           TypeKey = "audio"
+	TypeKeyActionPlan      TypeKey = "actionPlan"
+	TypeKeyDocument        TypeKey = "document"
+	TypeKeyFile            TypeKey = "file"
+	TypeKeyProject         TypeKey = "project"
 )
 
 var (
-	types = map[TypeKey]*relation.ObjectType{
+	types = map[TypeKey]*model.ObjectType{
+		TypeKeyActionPlan: {
+
+			Description: "Is a detailed plan outlining actions needed to reach one or more goals",
+			IconEmoji:   "🤝",
+			Layout:      model.ObjectType_basic,
+			Name:        "Action Plan",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyTasks], relations[RelationKeyResources], relations[RelationKeyResult], relations[RelationKeyDueDate], relations[RelationKeyResponsible]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "actionPlan",
+		},
+		TypeKeyArticle: {
+
+			Description: "A piece of writing included with others in a newspaper, magazine, or other publication.",
+			IconEmoji:   "📄",
+			Layout:      model.ObjectType_basic,
+			Name:        "Article",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "article",
+		},
 		TypeKeyAudio: {
 
-			Description: "",
+			Description: "Sound, especially when recorded, transmitted, or reproduced.",
 			Hidden:      true,
 			IconEmoji:   "🎵",
-			Layout:      relation.ObjectType_basic,
+			Layout:      model.ObjectType_basic,
 			Name:        "Audio",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyArtist], relations[RelationKeyAudioAlbum], relations[RelationKeyAudioAlbumTrackNumber], relations[RelationKeyAudioGenre], relations[RelationKeyReleasedYear], relations[RelationKeyThumbnailImage], relations[RelationKeyComposer], relations[RelationKeyDurationInSeconds], relations[RelationKeySizeInBytes], relations[RelationKeyFileMimeType], relations[RelationKeyAddedDate], relations[RelationKeyFileExt]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyArtist], relations[RelationKeyAudioAlbum], relations[RelationKeyAudioAlbumTrackNumber], relations[RelationKeyAudioGenre], relations[RelationKeyReleasedYear], relations[RelationKeyThumbnailImage], relations[RelationKeyComposer], relations[RelationKeyDurationInSeconds], relations[RelationKeySizeInBytes], relations[RelationKeyFileMimeType], relations[RelationKeyAddedDate], relations[RelationKeyFileExt]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_File},
 			Url:         TypePrefix + "audio",
 		},
 		TypeKeyContact: {
 
-			Description: "",
+			Description: "Information to make action of communicating or meeting with Human or Company",
 			IconEmoji:   "📇",
-			Layout:      relation.ObjectType_profile,
+			Layout:      model.ObjectType_profile,
 			Name:        "Contact",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyPhone], relations[RelationKeyEmail], relations[RelationKeyDateOfBirth], relations[RelationKeyPlaceOfBirth], relations[RelationKeyCompany], relations[RelationKeySocialProfile], relations[RelationKeyJob], relations[RelationKeyLinkedContacts], relations[RelationKeyOccupation], relations[RelationKeyInstagram], relations[RelationKeyGender], relations[RelationKeyFacebook]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "contact",
+		},
+		TypeKeyDailyPlan: {
+
+			Description: "A detailed proposal for doing or achieving something",
+			IconEmoji:   "📋",
+			Layout:      model.ObjectType_basic,
+			Name:        "Daily Plan",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyNotes], relations[RelationKeyTasks], relations[RelationKeyEvents]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "dailyPlan",
+		},
+		TypeKeyDailyReflection: {
+
+			Description: "Serious thought or consideration",
+			IconEmoji:   "💭",
+			Layout:      model.ObjectType_basic,
+			Name:        "Daily Reflection",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIntentions], relations[RelationKeyHappenings], relations[RelationKeyGratefulFor], relations[RelationKeyActionItems], relations[RelationKeyMood], relations[RelationKeyWorriedAbout]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "dailyReflection",
 		},
 		TypeKeyDashboard: {
 
-			Description: "Internal home dashboard",
+			Description: "Internal home dashboard with favourite objects",
 			Hidden:      true,
-			Layout:      relation.ObjectType_dashboard,
+			Layout:      model.ObjectType_dashboard,
 			Name:        "Dashboard",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Home},
 			Url:         TypePrefix + "dashboard",
+		},
+		TypeKeyDiaryEntry: {
+
+			Description: "Record of events and experiences",
+			IconEmoji:   "✨",
+			Layout:      model.ObjectType_basic,
+			Name:        "Diary Entry",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyMood]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "diaryEntry",
 		},
 		TypeKeyDocument: {
 
-			Description: "",
-			IconEmoji:   "📋",
-			Layout:      relation.ObjectType_basic,
+			Description: "A piece of matter that provides information or evidence or that serves as an official record.",
+			IconEmoji:   "📃",
+			Layout:      model.ObjectType_basic,
 			Name:        "Document",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "document",
 		},
 		TypeKeyFile: {
 
-			Description: "",
+			Description: "Computer resource for recording data in a computer storage device",
 			IconEmoji:   "🗂️",
-			Layout:      relation.ObjectType_basic,
+			Layout:      model.ObjectType_basic,
 			Name:        "File",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyFileMimeType], relations[RelationKeySizeInBytes], relations[RelationKeyAddedDate], relations[RelationKeyFileExt]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyFileMimeType], relations[RelationKeySizeInBytes], relations[RelationKeyAddedDate], relations[RelationKeyFileExt]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_File},
 			Url:         TypePrefix + "file",
 		},
 		TypeKeyIdea: {
 
-			Description: "",
+			Description: "A thought or suggestion as to a possible course of action",
 			IconEmoji:   "💡",
-			Layout:      relation.ObjectType_basic,
+			Layout:      model.ObjectType_basic,
 			Name:        "Idea",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyTag]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyProblem], relations[RelationKeySolution], relations[RelationKeyAlternative]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "idea",
 		},
 		TypeKeyImage: {
 
-			Description: "",
+			Description: "A representation of the external form of a person or thing in art.",
 			IconEmoji:   "🌅",
-			Layout:      relation.ObjectType_image,
+			Layout:      model.ObjectType_image,
 			Name:        "Image",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyFileMimeType], relations[RelationKeyWidthInPixels], relations[RelationKeyCamera], relations[RelationKeyHeightInPixels], relations[RelationKeySizeInBytes], relations[RelationKeyCameraIso], relations[RelationKeyAperture], relations[RelationKeyExposure], relations[RelationKeyAddedDate], relations[RelationKeyFocalRatio], relations[RelationKeyFileExt]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyFileMimeType], relations[RelationKeyWidthInPixels], relations[RelationKeyCamera], relations[RelationKeyHeightInPixels], relations[RelationKeySizeInBytes], relations[RelationKeyCameraIso], relations[RelationKeyAperture], relations[RelationKeyExposure], relations[RelationKeyAddedDate], relations[RelationKeyFocalRatio], relations[RelationKeyFileExt]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_File},
 			Url:         TypePrefix + "image",
+		},
+		TypeKeyMeetingNote: {
+
+			Description: "Quick references to ideas, goals, deadlines, data, and anything else important that's covered in your meeting.",
+			IconEmoji:   "✏️",
+			Layout:      model.ObjectType_basic,
+			Name:        "Meeting Note",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyParticipants], relations[RelationKeyActionItems], relations[RelationKeyAgenda]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "meetingNote",
 		},
 		TypeKeyNote: {
 
-			Description: "",
+			Description: "A brief record of points written down as an aid to memory.",
 			IconEmoji:   "🗒️",
-			Layout:      relation.ObjectType_basic,
+			Layout:      model.ObjectType_basic,
 			Name:        "Note",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "note",
 		},
 		TypeKeyObjectType: {
@@ -118,84 +209,111 @@ var (
 			Description: "Object that contains a definition of some object type",
 			Hidden:      true,
 			IconEmoji:   "🔮",
-			Layout:      relation.ObjectType_objectType,
+			Layout:      model.ObjectType_objectType,
 			Name:        "Type",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyRecommendedRelations], relations[RelationKeyRecommendedLayout], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyRecommendedRelations], relations[RelationKeyRecommendedLayout], relations[RelationKeyMpAddedToLibrary]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_STObjectType, model.SmartBlockType_BundledObjectType},
 			Url:         TypePrefix + "objectType",
 		},
 		TypeKeyPage: {
 
-			Description: "Base type to start with",
-			IconEmoji:   "📄",
-			Layout:      relation.ObjectType_basic,
+			Description: "Proto type to start with",
+			IconEmoji:   "⚪",
+			Layout:      model.ObjectType_basic,
 			Name:        "Draft",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "page",
 		},
 		TypeKeyProfile: {
 
-			Description: "",
+			Description: "Description of individuals' characteristics that identify you",
 			IconEmoji:   "🧍",
-			Layout:      relation.ObjectType_profile,
+			Layout:      model.ObjectType_profile,
 			Name:        "Human",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page, model.SmartBlockType_ProfilePage},
 			Url:         TypePrefix + "profile",
 		},
 		TypeKeyProject: {
 
-			Description: "",
+			Description: "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
 			IconEmoji:   "🔨",
-			Layout:      relation.ObjectType_basic,
+			Layout:      model.ObjectType_basic,
 			Name:        "Project",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "project",
+		},
+		TypeKeyRecipe: {
+
+			Description: "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
+			IconEmoji:   "🍲",
+			Layout:      model.ObjectType_basic,
+			Name:        "Recipe",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyTime], relations[RelationKeyServings], relations[RelationKeyIngredients], relations[RelationKeyInstructions], relations[RelationKeyDifficulty]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "recipe",
 		},
 		TypeKeyRelation: {
 
-			Description: "",
+			Description: "Meaningful connection between objects",
 			Hidden:      true,
 			IconEmoji:   "🔗",
-			Layout:      relation.ObjectType_relation,
+			Layout:      model.ObjectType_relation,
 			Name:        "Relation",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyCreator], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyRelationFormat], relations[RelationKeyIsHidden]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyLayout], relations[RelationKeyDescription], relations[RelationKeyCreator], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyMpAddedToLibrary], relations[RelationKeyRelationFormat], relations[RelationKeyRelationMaxCount], relations[RelationKeyRelationDict], relations[RelationKeyRelationDefaultValue], relations[RelationKeyRelationFormatObjectTypes]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_IndexedRelation, model.SmartBlockType_BundledRelation},
 			Url:         TypePrefix + "relation",
 		},
 		TypeKeySet: {
 
-			Description: "",
-			Hidden:      true,
+			Description: "Collection of objects sharing one characteristic",
 			IconEmoji:   "🗂️",
-			Layout:      relation.ObjectType_set,
+			Layout:      model.ObjectType_set,
 			Name:        "Set",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeySetOf]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeySetOf]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Set},
 			Url:         TypePrefix + "set",
 		},
 		TypeKeyTask: {
 
-			Description: "",
+			Description: "A piece of work to be done or undertaken",
 			IconEmoji:   "✔️",
-			Layout:      relation.ObjectType_todo,
+			Layout:      model.ObjectType_todo,
 			Name:        "Task",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyAssignee], relations[RelationKeyDueDate], relations[RelationKeyAttachments], relations[RelationKeyStatus], relations[RelationKeyDone], relations[RelationKeyPriority], relations[RelationKeyLinkedTasks], relations[RelationKeyLinkedProjects], relations[RelationKeyTag]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyAssignee], relations[RelationKeyDueDate], relations[RelationKeyAttachments], relations[RelationKeyStatus], relations[RelationKeyDone], relations[RelationKeyPriority], relations[RelationKeyTasks], relations[RelationKeyLinkedProjects]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "task",
 		},
 		TypeKeyTemplate: {
 
-			Description: "Special type to create objects from",
+			Description: "Sample object that has already some details in place and used to create objects from",
 			Hidden:      true,
-			IconEmoji:   "✨",
-			Layout:      relation.ObjectType_basic,
+			Layout:      model.ObjectType_basic,
 			Name:        "Template",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyTemplateType]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTargetObjectType], relations[RelationKeyTemplateIsBundled]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Template},
 			Url:         TypePrefix + "template",
 		},
 		TypeKeyVideo: {
 
-			Description: "",
+			Description: "The recording, reproducing, or broadcasting of moving visual images.",
 			IconEmoji:   "📹",
-			Layout:      relation.ObjectType_basic,
+			Layout:      model.ObjectType_basic,
 			Name:        "Video",
-			Relations:   []*relation.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyDurationInSeconds], relations[RelationKeySizeInBytes], relations[RelationKeyFileMimeType], relations[RelationKeyCamera], relations[RelationKeyThumbnailImage], relations[RelationKeyHeightInPixels], relations[RelationKeyWidthInPixels], relations[RelationKeyCameraIso], relations[RelationKeyAperture], relations[RelationKeyExposure], relations[RelationKeyAddedDate], relations[RelationKeyFileExt]},
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyDurationInSeconds], relations[RelationKeySizeInBytes], relations[RelationKeyFileMimeType], relations[RelationKeyCamera], relations[RelationKeyThumbnailImage], relations[RelationKeyHeightInPixels], relations[RelationKeyWidthInPixels], relations[RelationKeyCameraIso], relations[RelationKeyAperture], relations[RelationKeyExposure], relations[RelationKeyAddedDate], relations[RelationKeyFileExt]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_File},
 			Url:         TypePrefix + "video",
 		},
 	}

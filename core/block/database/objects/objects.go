@@ -2,14 +2,14 @@ package objects
 
 import (
 	"errors"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
@@ -22,14 +22,14 @@ const (
 var log = logging.Logger("anytype-core-db")
 
 func New(
-	pageStore localstore.ObjectStore,
+	pageStore objectstore.ObjectStore,
 	objectTypeUrl string,
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
-	getRelations func(objectId string) (relations []*pbrelation.Relation, err error),
-	setRelations func(id string, relations []*pbrelation.Relation) (err error),
-	modifyExtraRelations func(id string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) error,
-	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *pbrelation.RelationOption, err error),
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error),
+	getRelations func(objectId string) (relations []*model.Relation, err error),
+	setRelations func(id string, relations []*model.Relation) (err error),
+	modifyExtraRelations func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error,
+	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *model.RelationOption, err error),
+	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error),
 ) database.Database {
 	return &setOfObjects{
 		ObjectStore:               pageStore,
@@ -44,30 +44,43 @@ func New(
 }
 
 type setOfObjects struct {
-	localstore.ObjectStore
+	objectstore.ObjectStore
 	objectTypeUrl             string
 	setDetails                func(req pb.RpcBlockSetDetailsRequest) error
-	getRelations              func(objectId string) (relations []*pbrelation.Relation, err error)
-	setRelations              func(id string, relations []*pbrelation.Relation) (err error)
-	modifyExtraRelations      func(id string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) error
-	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *pbrelation.RelationOption, err error)
-	createSmartBlock          func(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
+	getRelations              func(objectId string) (relations []*model.Relation, err error)
+	setRelations              func(id string, relations []*model.Relation) (err error)
+	modifyExtraRelations      func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error
+	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *model.RelationOption, err error)
+	createSmartBlock          func(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 }
 
-func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Record, sub database.Subscription) (database.Record, error) {
+func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, sub database.Subscription, templateId string) (database.Record, error) {
 	if rec.Details == nil || rec.Details.Fields == nil {
 		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
 
-	var relsToSet []*pbrelation.Relation
+	var relsToSet []*model.Relation
 	for _, rel := range relations {
 		if pbtypes.HasField(rec.Details, rel.Key) {
 			relsToSet = append(relsToSet, rel)
 		}
 	}
 
-	rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl})
-	id, newDetails, err := sp.createSmartBlock(coresb.SmartBlockTypePage, rec.Details, relsToSet)
+	var sbType = coresb.SmartBlockTypePage
+	for sbT, objType := range bundle.DefaultObjectTypePerSmartblockType {
+		if objType.URL() == sp.objectTypeUrl {
+			sbType = sbT
+			break
+		}
+	}
+
+	if targetType := pbtypes.GetString(rec.Details, bundle.RelationKeyTargetObjectType.String()); targetType != "" {
+		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl, targetType})
+	} else {
+		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
+	}
+
+	id, newDetails, err := sp.createSmartBlock(sbType, rec.Details, relsToSet, templateId)
 	if err != nil {
 		return rec, err
 	}
@@ -86,7 +99,7 @@ func (sp setOfObjects) Create(relations []*pbrelation.Relation, rec database.Rec
 	return rec, nil
 }
 
-func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec database.Record) error {
+func (sp *setOfObjects) Update(id string, rels []*model.Relation, rec database.Record) error {
 	var details []*pb.RpcBlockSetDetailsDetail
 	if rec.Details != nil && rec.Details.Fields != nil {
 		for k, v := range rec.Details.Fields {
@@ -113,7 +126,7 @@ func (sp *setOfObjects) Update(id string, rels []*pbrelation.Relation, rec datab
 	})
 }
 
-func (sp *setOfObjects) UpdateRelationOption(id string, relationKey string, option pbrelation.RelationOption) (optionId string, err error) {
+func (sp *setOfObjects) UpdateRelationOption(id string, relationKey string, option model.RelationOption) (optionId string, err error) {
 	o, err := sp.updateExtraRelationOption(pb.RpcObjectRelationOptionUpdateRequest{
 		ContextId:   id,
 		RelationKey: relationKey,

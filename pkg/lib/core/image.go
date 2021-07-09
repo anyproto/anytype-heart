@@ -11,7 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -110,6 +110,7 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	}
 
 	// todo: there is no timeout for reader
+	// pending bug: unmarshal NaN values
 	var exif mill.ImageExifSchema
 	err = json.NewDecoder(r).Decode(&exif)
 	if err != nil {
@@ -122,9 +123,11 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 func (i *image) Details() (*types.Struct, error) {
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			"id":     pbtypes.String(i.hash),
-			"type":   pbtypes.StringList([]string{bundle.TypeKeyImage.URL()}),
-			"layout": pbtypes.Float64(float64(relation.ObjectType_image)),
+			bundle.RelationKeyId.String():         pbtypes.String(i.hash),
+			bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
+			bundle.RelationKeyIconImage.String():  pbtypes.String(i.hash),
+			bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeyImage.URL()),
+			bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_image)),
 		},
 	}
 
@@ -135,8 +138,6 @@ func (i *image) Details() (*types.Struct, error) {
 	if err != nil {
 		return details, nil
 	}
-	details.Fields[bundle.RelationKeyLayout.String()] = pbtypes.Float64(float64(relation.ObjectType_file))
-
 	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
 	details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
 	details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
@@ -153,8 +154,8 @@ func (i *image) Details() (*types.Struct, error) {
 
 	exif, err := i.Exif()
 	if err != nil {
-		log.Errorf("failed to get exif for image: %w", err)
-		return nil, nil
+		log.Errorf("failed to get exif for image: %s", err.Error())
+		exif = &mill.ImageExifSchema{}
 	}
 
 	if exif.Width > 0 {

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/ipfs/go-cid"
@@ -15,23 +14,23 @@ import (
 type SmartBlockType uint64
 
 const (
-	SmartBlockTypePage                SmartBlockType = 0x10
-	SmartBlockTypeProfilePage         SmartBlockType = 0x11
-	SmartBlockTypeHome                SmartBlockType = 0x20
-	SmartBlockTypeArchive             SmartBlockType = 0x30
-	SmartBlockTypeDatabase            SmartBlockType = 0x40
-	SmartBlockTypeSet                 SmartBlockType = 0x41
-	SmartBlockTypeObjectType          SmartBlockType = 0x60
-	SmartBlockTypeFile                SmartBlockType = 0x100
-	SmartblockTypeMarketplaceType     SmartBlockType = 0x110
-	SmartblockTypeMarketplaceRelation SmartBlockType = 0x111
-	SmartblockTypeMarketplaceTemplate SmartBlockType = 0x112
-	SmartBlockTypeTemplate            SmartBlockType = 0x120
-
-	SmartBlockTypeBundledRelation   SmartBlockType = 0x200 // temp
-	SmartBlockTypeIndexedRelation   SmartBlockType = 0x201 // temp
-	SmartBlockTypeBundledObjectType SmartBlockType = 0x202 // temp
-
+	SmartBlockTypePage                = SmartBlockType(model.SmartBlockType_Page)
+	SmartBlockTypeProfilePage         = SmartBlockType(model.SmartBlockType_ProfilePage)
+	SmartBlockTypeHome                = SmartBlockType(model.SmartBlockType_Home)
+	SmartBlockTypeArchive             = SmartBlockType(model.SmartBlockType_Archive)
+	SmartBlockTypeDatabase            = SmartBlockType(model.SmartBlockType_Database)
+	SmartBlockTypeSet                 = SmartBlockType(model.SmartBlockType_Set)
+	SmartBlockTypeObjectType          = SmartBlockType(model.SmartBlockType_STObjectType)
+	SmartBlockTypeFile                = SmartBlockType(model.SmartBlockType_File)
+	SmartblockTypeMarketplaceType     = SmartBlockType(model.SmartBlockType_MarketplaceType)
+	SmartblockTypeMarketplaceRelation = SmartBlockType(model.SmartBlockType_MarketplaceRelation)
+	SmartblockTypeMarketplaceTemplate = SmartBlockType(model.SmartBlockType_MarketplaceTemplate)
+	SmartBlockTypeTemplate            = SmartBlockType(model.SmartBlockType_Template)
+	SmartBlockTypeBundledTemplate     = SmartBlockType(model.SmartBlockType_BundledTemplate)
+	SmartBlockTypeBundledRelation     = SmartBlockType(model.SmartBlockType_BundledRelation)
+	SmartBlockTypeIndexedRelation     = SmartBlockType(model.SmartBlockType_IndexedRelation)
+	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)
+	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -71,8 +70,7 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	blockType, _ := uvarint(rawid[n+n2:])
 
 	// checks in order to detect invalid sb type
-	_, err := SmartBlockType(blockType).toProto()
-	if err != nil {
+	if err := SmartBlockType(blockType).Valid(); err != nil {
 		return 0, err
 	}
 
@@ -80,47 +78,15 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 }
 
 // Panics in case of incorrect sb type!
-func (sbt SmartBlockType) ToProto() model.ObjectInfoType {
-	t, err := sbt.toProto()
-	if err != nil {
-		panic(err)
-	}
-	return t
+func (sbt SmartBlockType) ToProto() model.SmartBlockType {
+	return model.SmartBlockType(sbt)
 }
 
-func (sbt SmartBlockType) toProto() (model.ObjectInfoType, error) {
-	switch sbt {
-	case SmartBlockTypePage:
-		return model.ObjectInfo_Page, nil
-	case SmartBlockTypeProfilePage:
-		return model.ObjectInfo_ProfilePage, nil
-	case SmartBlockTypeHome:
-		return model.ObjectInfo_Home, nil
-	case SmartBlockTypeArchive:
-		return model.ObjectInfo_Archive, nil
-	case SmartBlockTypeSet:
-		return model.ObjectInfo_Set, nil
-	case SmartblockTypeMarketplaceType:
-		return model.ObjectInfo_Set, nil
-	case SmartblockTypeMarketplaceTemplate:
-		return model.ObjectInfo_Set, nil
-	case SmartblockTypeMarketplaceRelation:
-		return model.ObjectInfo_Set, nil
-	case SmartBlockTypeFile:
-		return model.ObjectInfo_File, nil
-	case SmartBlockTypeObjectType:
-		return model.ObjectInfo_ObjectType, nil
-	case SmartBlockTypeBundledObjectType:
-		return model.ObjectInfo_ObjectType, nil
-	case SmartBlockTypeBundledRelation:
-		return model.ObjectInfo_Relation, nil
-	case SmartBlockTypeIndexedRelation:
-		return model.ObjectInfo_Relation, nil
-	case SmartBlockTypeTemplate:
-		return model.ObjectInfo_Page, nil
-	default:
-		return 0, fmt.Errorf("unknown smartblock type")
+func (sbt SmartBlockType) Valid() (err error) {
+	if _, ok := model.SmartBlockType_name[int32(sbt)]; ok {
+		return nil
 	}
+	return fmt.Errorf("unknown smartblock type")
 }
 
 // Snapshot of varint function that work with a string rather than
@@ -154,62 +120,4 @@ func uvarint(buf string) (uint64, int) {
 		s += 7
 	}
 	return 0, 0
-}
-
-func SmartBlockTypeToProto(t SmartBlockType) pb.SmartBlockType {
-	switch t {
-	case SmartBlockTypePage:
-		return pb.SmartBlockType_Page
-	case SmartBlockTypeArchive:
-		return pb.SmartBlockType_Archive
-	case SmartBlockTypeHome:
-		return pb.SmartBlockType_Home
-	case SmartBlockTypeProfilePage:
-		return pb.SmartBlockType_ProfilePage
-	case SmartBlockTypeSet:
-		return pb.SmartBlockType_Set
-	case SmartBlockTypeObjectType:
-		return pb.SmartBlockType_ObjectType
-	case SmartBlockTypeBundledObjectType:
-		return pb.SmartBlockType_ObjectType
-	case SmartBlockTypeBundledRelation:
-		return pb.SmartBlockType_Relation
-	case SmartBlockTypeIndexedRelation:
-		return pb.SmartBlockType_Relation
-	case SmartblockTypeMarketplaceRelation:
-		return pb.SmartBlockType_MarketplaceRelation
-	case SmartblockTypeMarketplaceType:
-		return pb.SmartBlockType_MarketplaceType
-	case SmartblockTypeMarketplaceTemplate:
-		return pb.SmartBlockType_MarketplaceTemplate
-	case SmartBlockTypeTemplate:
-		return pb.SmartBlockType_Template
-	default:
-		panic(fmt.Errorf("unknown smartblock type: %v", t))
-	}
-}
-
-func SmartBlockTypeToCore(t pb.SmartBlockType) SmartBlockType {
-	switch t {
-	case pb.SmartBlockType_Page:
-		return SmartBlockTypePage
-	case pb.SmartBlockType_Archive:
-		return SmartBlockTypeArchive
-	case pb.SmartBlockType_Home:
-		return SmartBlockTypeHome
-	case pb.SmartBlockType_ProfilePage:
-		return SmartBlockTypeProfilePage
-	case pb.SmartBlockType_Set:
-		return SmartBlockTypeSet
-	case pb.SmartBlockType_ObjectType:
-		return SmartBlockTypeObjectType
-	case pb.SmartBlockType_MarketplaceType:
-		return SmartblockTypeMarketplaceType
-	case pb.SmartBlockType_MarketplaceRelation:
-		return SmartblockTypeMarketplaceRelation
-	case pb.SmartBlockType_Template:
-		return SmartBlockTypeTemplate
-	default:
-		panic(fmt.Errorf("unknown smartblock type: %v", t))
-	}
 }

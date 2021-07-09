@@ -7,9 +7,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
 )
 
@@ -49,8 +49,46 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
-	rels := p.RelationsState(ctx.State)
-	recommendedRelationsKeys := pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String())
+	templatesDataview := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source: bundle.TypeKeyTemplate.URL(),
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   uuid.New().String(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{},
+					Filters: []*model.BlockContentDataviewFilter{
+						{
+							Operator:    model.BlockContentDataviewFilter_And,
+							RelationKey: bundle.RelationKeyTargetObjectType.String(),
+							Condition:   model.BlockContentDataviewFilter_Equal,
+							Value:       pbtypes.String(p.RootId()),
+						}},
+				},
+			},
+		},
+	}
+
+	rels := p.RelationsState(ctx.State, false)
+	var recommendedRelationsKeys []string
+	for _, relId := range pbtypes.GetStringList(p.Details(), bundle.RelationKeyRecommendedRelations.String()) {
+		relKey, err := pbtypes.RelationIdToKey(relId)
+		if err != nil {
+			log.Errorf("recommendedRelations has incorrect id: %s", relId)
+			continue
+		}
+		if slice.FindPos(recommendedRelationsKeys, relKey) == -1 {
+			recommendedRelationsKeys = append(recommendedRelationsKeys, relKey)
+		}
+	}
+
 	for _, rel := range bundle.RequiredInternalRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.String()) == -1 {
 			recommendedRelationsKeys = append(recommendedRelationsKeys, rel.String())
@@ -59,19 +97,19 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	recommendedLayout := pbtypes.GetString(p.Details(), bundle.RelationKeyRecommendedLayout.String())
 	if recommendedLayout == "" {
-		recommendedLayout = relation.ObjectType_basic.String()
-	} else if _, ok := relation.ObjectTypeLayout_value[recommendedLayout]; !ok {
-		recommendedLayout = relation.ObjectType_basic.String()
+		recommendedLayout = model.ObjectType_basic.String()
+	} else if _, ok := model.ObjectTypeLayout_value[recommendedLayout]; !ok {
+		recommendedLayout = model.ObjectType_basic.String()
 	}
 
-	recommendedLayoutObj := bundle.MustGetLayout(relation.ObjectTypeLayout(relation.ObjectTypeLayout_value[recommendedLayout]))
+	recommendedLayoutObj := bundle.MustGetLayout(model.ObjectTypeLayout(model.ObjectTypeLayout_value[recommendedLayout]))
 	for _, rel := range recommendedLayoutObj.RequiredRelations {
 		if slice.FindPos(recommendedRelationsKeys, rel.Key) == -1 {
 			recommendedRelationsKeys = append(recommendedRelationsKeys, rel.Key)
 		}
 	}
 
-	var recommendedRelations []*relation.Relation
+	var recommendedRelations []*model.Relation
 	for _, rk := range recommendedRelationsKeys {
 		rel := pbtypes.GetRelation(rels, rk)
 		if rel == nil {
@@ -82,7 +120,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		}
 
 		relCopy := pbtypes.CopyRelation(rel)
-		relCopy.Scope = relation.Relation_type
+		relCopy.Scope = model.Relation_type
 		recommendedRelations = append(recommendedRelations, relCopy)
 		dataview.Dataview.Relations = append(dataview.Dataview.Relations, relCopy)
 		dataview.Dataview.Views[0].Relations = append(dataview.Dataview.Views[0].Relations, &model.BlockContentDataviewRelation{
@@ -91,11 +129,31 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		})
 	}
 
-	return template.ApplyTemplate(p, ctx.State,
+	err = template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
+		template.WithDefaultFeaturedRelations,
+		template.WithDescription,
+		template.WithFeaturedRelations,
+		template.WithDataviewID("templates", templatesDataview, true),
 		template.WithDataview(dataview, true),
+		template.WithChildrenSorter(p.RootId(), func(blockIds []string) {
+			i := slice.FindPos(blockIds, "templates")
+			j := slice.FindPos(blockIds, template.DataviewBlockId)
+			// templates dataview must come before the type dataview
+			if i > j {
+				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
+			}
+		}),
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
-		template.WithObjectTypeLayoutMigration())
+		template.WithObjectTypeLayoutMigration(),
+		template.WithRequiredRelations(),
+	)
+	if err != nil {
+		return err
+	}
+
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
+	return p.Set.SetNewRecordDefaultFields("templates", defaultValue)
 }

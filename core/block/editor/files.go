@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -35,7 +33,7 @@ func detectFileType(mime string) model.BlockContentFileType {
 }
 
 func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.Source.Type() != pb.SmartBlockType_File {
+	if ctx.Source.Type() != model.SmartBlockType_File {
 		return fmt.Errorf("source type should be a file")
 	}
 
@@ -118,6 +116,9 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	return template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
+		template.WithDefaultFeaturedRelations,
+		template.WithDescription,
+		template.WithFeaturedRelations,
 		template.WithRootBlocks(blocks),
 		template.WithAllBlocksEditsRestricted,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyFile.URL()}),

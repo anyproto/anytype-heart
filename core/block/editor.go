@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -21,9 +23,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -180,7 +180,7 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 		}
 
 		if req.ObjectType != "" {
-			fields["type"] = pbtypes.String(req.ObjectType)
+			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
 
 		children := s.AllDescendantIds(blockId, blocks)
@@ -231,7 +231,7 @@ func (s *service) SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFields
 	})
 }
 
-func (s *service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*pbrelation.Relation, err error) {
+func (s *service) GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		relations, err = b.GetAggregatedRelations(req.BlockId)
 		return err
@@ -273,7 +273,7 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 
 func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (rec *types.Struct, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		cr, err := b.CreateRecord(ctx, req.BlockId, model.ObjectDetails{Details: req.Record})
+		cr, err := b.CreateRecord(ctx, req.BlockId, model.ObjectDetails{Details: req.Record}, req.TemplateId)
 		if err != nil {
 			return err
 		}
@@ -306,7 +306,7 @@ func (s *service) UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockData
 	})
 }
 
-func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (relation *pbrelation.Relation, err error) {
+func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (relation *model.Relation, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		var err error
 		relation, err = b.AddRelation(ctx, req.BlockId, *req.Relation, true)
@@ -319,7 +319,7 @@ func (s *service) AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDatavie
 		}
 
 		relation = pbtypes.GetRelation(rels, relation.Key)
-		if relation.Format == pbrelation.RelationFormat_status || relation.Format == pbrelation.RelationFormat_tag {
+		if relation.Format == model.RelationFormat_status || relation.Format == model.RelationFormat_tag {
 			err = b.FillAggregatedOptions(nil)
 			if err != nil {
 				log.Errorf("FillAggregatedOptions failed: %s", err.Error())
@@ -337,7 +337,7 @@ func (s *service) DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockData
 	})
 }
 
-func (s *service) AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error) {
+func (s *service) AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *model.RelationOption, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		opt, err = b.AddRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, *req.Option, true)
 		if err != nil {
@@ -363,7 +363,7 @@ func (s *service) UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.
 
 func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error {
 	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		err := b.DeleteRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, req.OptionId, true)
+		err := b.DeleteRelationOption(ctx, true, req.BlockId, req.RecordId, req.RelationKey, req.OptionId, true)
 		if err != nil {
 			return err
 		}
@@ -496,10 +496,7 @@ func (s *service) SetBackgroundColor(ctx *state.Context, contextId string, color
 
 func (s *service) SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.Update(ctx, func(b simple.Block) error {
-			b.Model().Align = align
-			return nil
-		}, blockIds...)
+		return b.SetAlign(ctx, align, blockIds...)
 	})
 }
 
@@ -617,9 +614,9 @@ func (s *service) AddRelationBlock(ctx *state.Context, req pb.RpcBlockRelationAd
 	})
 }
 
-func (s *service) GetSearchInfo(id string) (info indexer.SearchInfo, err error) {
+func (s *service) GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error) {
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		info, err = b.GetSearchInfo()
+		info, err = b.GetFullIndexInfo()
 		return err
 	}); err != nil {
 		return
@@ -627,7 +624,7 @@ func (s *service) GetSearchInfo(id string) (info indexer.SearchInfo, err error) 
 	return
 }
 
-func (s *service) GetRelations(objectId string) (relations []*pbrelation.Relation, err error) {
+func (s *service) GetRelations(objectId string) (relations []*model.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		relations = b.Relations()
 		return nil
@@ -636,17 +633,18 @@ func (s *service) GetRelations(objectId string) (relations []*pbrelation.Relatio
 }
 
 // ModifyExtraRelations gets and updates extra relations under the sb lock to make sure no modifications are done in the middle
-func (s *service) ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*pbrelation.Relation) ([]*pbrelation.Relation, error)) (err error) {
+func (s *service) ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*model.Relation) ([]*model.Relation, error)) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		rels, err := modifier(b.Relations())
+		st := b.NewStateCtx(ctx)
+		rels, err := modifier(st.ExtraRelations())
 		if err != nil {
 			return err
 		}
 
-		return b.UpdateExtraRelations(ctx, rels, true)
+		return b.UpdateExtraRelations(st.Context(), rels, true)
 	})
 }
 
@@ -665,13 +663,13 @@ func (s *service) ModifyDetails(objectId string, modifier func(current *types.St
 	})
 }
 
-func (s *service) UpdateExtraRelations(ctx *state.Context, objectId string, relations []*pbrelation.Relation, createIfMissing bool) (err error) {
+func (s *service) UpdateExtraRelations(ctx *state.Context, objectId string, relations []*model.Relation, createIfMissing bool) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
 		return b.UpdateExtraRelations(ctx, relations, createIfMissing)
 	})
 }
 
-func (s *service) AddExtraRelations(ctx *state.Context, objectId string, relations []*pbrelation.Relation) (relationsWithKeys []*pbrelation.Relation, err error) {
+func (s *service) AddExtraRelations(ctx *state.Context, objectId string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		var err2 error
 		relationsWithKeys, err2 = b.AddExtraRelations(ctx, relations)
@@ -684,7 +682,7 @@ func (s *service) AddExtraRelations(ctx *state.Context, objectId string, relatio
 	return
 }
 
-func (s *service) AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (opt *pbrelation.RelationOption, err error) {
+func (s *service) AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (opt *model.RelationOption, err error) {
 	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		opt, err = b.AddExtraRelationOption(ctx, req.RelationKey, *req.Option, true)
 		if err != nil {
@@ -723,7 +721,7 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	objType, err := localstore.GetObjectType(s.anytype.ObjectStore(), req.ObjectTypeUrl)
+	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), req.ObjectTypeUrl)
 	if err != nil {
 		return "", "", err
 	}
@@ -770,7 +768,6 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Relations: relations,
 					Filters:   nil,
 				},
 			},
@@ -781,9 +778,6 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 
 	if name == "" {
 		name = objType.Name + " set"
-	}
-	if icon == "" {
-		icon = "📒"
 	}
 
 	err = set.InitDataview(dataview, name, icon)
@@ -824,7 +818,7 @@ func (s *service) RemoveExtraRelations(ctx *state.Context, objectTypeId string, 
 	})
 }
 
-func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations []*pbrelation.Relation, err error) {
+func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error) {
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		objType := b.ObjectType()
 		aggregatedRelations = b.Relations()

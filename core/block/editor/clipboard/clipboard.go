@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"unicode/utf8"
@@ -243,7 +242,7 @@ func (cb *clipboard) Export(req pb.RpcBlockExportRequest) (path string, err erro
 	s := cb.blocksToState(req.Blocks)
 	htmlData := html.NewHTMLConverter(cb.Anytype(), s).Export()
 
-	dir := os.TempDir()
+	dir := cb.Anytype().TempDir()
 	fileName := "export-" + cb.Id() + ".html"
 	filePath := filepath.Join(dir, fileName)
 	err = ioutil.WriteFile(filePath, []byte(htmlData), 0644)
@@ -341,7 +340,7 @@ func (cb *clipboard) blocksToState(blocks []*model.Block) (cbs *state.State) {
 		cbs.Add(simple.New(b))
 	}
 	cbs.Pick(cbs.RootId()).Model().ChildrenIds = rootIds
-	cbs.BlocksInit()
+	cbs.BlocksInit(cbs)
 	state.CleanupLayouts(cbs)
 	cbs.Normalize(false)
 	return

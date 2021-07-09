@@ -2,14 +2,14 @@ package state
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -37,6 +37,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
 	}
+	s.InjectDerivedDetails()
 
 	return s
 }
@@ -190,7 +191,7 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	}
 
 	rel := add.Relation
-	if rel.Format == pbrelation.RelationFormat_file && rel.ObjectTypes == nil {
+	if rel.Format == model.RelationFormat_file && rel.ObjectTypes == nil {
 		rel.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
@@ -242,24 +243,28 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 			return nil
 		}
 	}
+	objectTypes := append(s.ObjectTypes(), add.Url)
+	s.SetObjectTypes(objectTypes)
+	// Set only the first(0) object type to the detail
+	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
 
-	s.objectTypes = append(s.objectTypes, add.Url)
 	return nil
 }
 
 func (s *State) changeObjectTypeRemove(remove *pb.ChangeObjectTypeRemove) error {
-	otypes := s.ObjectTypes()
-	otypesCopy := make([]string, len(otypes))
-	copy(otypesCopy, otypes)
-
-	for i, ot := range otypesCopy {
-		if ot == remove.Url {
-			s.objectTypes = append(otypesCopy[:i], otypesCopy[i+1:]...)
-			return nil
+	var found bool
+	s.objectTypes = slice.Filter(s.ObjectTypes(), func(s string) bool {
+		if s == remove.Url {
+			found = true
+			return false
 		}
+		return true
+	})
+	if !found {
+		log.Warnf("changeObjectTypeRemove: type to remove not found: '%s'", remove.Url)
+	} else {
+		s.SetObjectTypes(s.objectTypes)
 	}
-
-	log.Warnf("changeObjectTypeRemove: type to remove not found")
 	return nil
 }
 
@@ -339,6 +344,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
 		case *pb.EventMessageValueOfBlockAdd:
 			for _, b := range o.BlockAdd.Blocks {
+				s.newIds = append(s.newIds, b.Id)
 				if len(b.ChildrenIds) > 0 {
 					structMsgs = append(structMsgs, &pb.EventBlockSetChildrenIds{
 						Id:          b.Id,
@@ -358,7 +364,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
 			updMsgs = append(updMsgs, msg.Msg)
 		default:
-			log.Errorf("unexpected event - can't convert to changes: %T", msg)
+			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)
 		}
 	}
 	var cb = &changeBuilder{changes: s.changes}
@@ -485,7 +491,7 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	return
 }
 
-func diffRelationsIntoUpdates(prev pbrelation.Relation, new pbrelation.Relation) ([]*pb.ChangeRelationUpdate, error) {
+func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.ChangeRelationUpdate, error) {
 	var updates []*pb.ChangeRelationUpdate
 
 	if prev.Key != new.Key {
@@ -542,7 +548,7 @@ func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
 	if s.extraRelations == nil {
 		return nil
 	}
-	var prev []*pbrelation.Relation
+	var prev []*model.Relation
 	if s.parent != nil {
 		prev = s.parent.ExtraRelations()
 	}

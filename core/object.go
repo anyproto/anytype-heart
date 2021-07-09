@@ -6,9 +6,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -52,20 +54,29 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 
+	var includeArchived bool
+	for _, filter := range req.Filters {
+		// include archived objects if we have explicit filter about it
+		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+			includeArchived = true
+		}
+	}
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
-		Offset:   int(req.Offset),
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
+		Filters:          req.Filters,
+		Sorts:            req.Sorts,
+		Offset:           int(req.Offset),
+		Limit:            int(req.Limit),
+		FullText:         req.FullText,
+		ObjectTypeFilter: req.ObjectTypeFilter,
+		IncludeArchivedObjects: includeArchived,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	var records2 []*types.Struct
+	var records2 = make([]*types.Struct, 0, len(records))
 	for _, rec := range records {
-		records2 = append(records2, rec.Details)
+		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
@@ -73,7 +84,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 
 func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(relation *pbrelation.Relation, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
+	response := func(relation *model.Relation, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
 		var relKey string
 		if relation != nil {
 			relKey = relation.Key
@@ -90,9 +101,9 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
 	}
 
-	var relations []*pbrelation.Relation
+	var relations []*model.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddExtraRelations(ctx, req.ContextId, []*pbrelation.Relation{req.Relation})
+		relations, err = bs.AddExtraRelations(ctx, req.ContextId, []*model.Relation{req.Relation})
 		return err
 	})
 	if err != nil {
@@ -114,7 +125,7 @@ func (mw *Middleware) ObjectRelationUpdate(req *pb.RpcObjectRelationUpdateReques
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateExtraRelations(nil, req.ContextId, []*pbrelation.Relation{req.Relation}, false)
+		return bs.UpdateExtraRelations(nil, req.ContextId, []*model.Relation{req.Relation}, false)
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationUpdateResponseError_BAD_INPUT, err)
@@ -145,7 +156,7 @@ func (mw *Middleware) ObjectRelationDelete(req *pb.RpcObjectRelationDeleteReques
 
 func (mw *Middleware) ObjectRelationOptionAdd(req *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(opt *pbrelation.RelationOption, code pb.RpcObjectRelationOptionAddResponseErrorCode, err error) *pb.RpcObjectRelationOptionAddResponse {
+	response := func(opt *model.RelationOption, code pb.RpcObjectRelationOptionAddResponseErrorCode, err error) *pb.RpcObjectRelationOptionAddResponse {
 		m := &pb.RpcObjectRelationOptionAddResponse{Option: opt, Error: &pb.RpcObjectRelationOptionAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
@@ -154,7 +165,7 @@ func (mw *Middleware) ObjectRelationOptionAdd(req *pb.RpcObjectRelationOptionAdd
 		}
 		return m
 	}
-	var opt *pbrelation.RelationOption
+	var opt *model.RelationOption
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		var err2 error
 		opt, err2 = bs.AddExtraRelationOption(ctx, *req)
@@ -210,14 +221,14 @@ func (mw *Middleware) ObjectRelationOptionDelete(req *pb.RpcObjectRelationOption
 }
 
 func (mw *Middleware) ObjectRelationListAvailable(req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {
-	response := func(code pb.RpcObjectRelationListAvailableResponseErrorCode, relations []*pbrelation.Relation, err error) *pb.RpcObjectRelationListAvailableResponse {
+	response := func(code pb.RpcObjectRelationListAvailableResponseErrorCode, relations []*model.Relation, err error) *pb.RpcObjectRelationListAvailableResponse {
 		m := &pb.RpcObjectRelationListAvailableResponse{Relations: relations, Error: &pb.RpcObjectRelationListAvailableResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
 		return m
 	}
-	var rels []*pbrelation.Relation
+	var rels []*model.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		rels, err = bs.ListAvailableRelations(req.ContextId)
 		return

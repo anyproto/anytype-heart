@@ -7,11 +7,10 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -40,15 +39,15 @@ func (v *indexedRelation) Anytype() core.Service {
 	return v.a
 }
 
-func (v *indexedRelation) Type() pb.SmartBlockType {
-	return pb.SmartBlockType_Relation
+func (v *indexedRelation) Type() model.SmartBlockType {
+	return model.SmartBlockType_IndexedRelation
 }
 
 func (v *indexedRelation) Virtual() bool {
 	return false
 }
 
-func (v *indexedRelation) getDetails(id string) (rels []*relation.Relation, p *types.Struct, err error) {
+func (v *indexedRelation) getDetails(id string) (rels []*model.Relation, p *types.Struct, err error) {
 	if !strings.HasPrefix(id, addr.CustomRelationURLPrefix) {
 		return nil, nil, fmt.Errorf("incorrect relation id: not an indexed relation id")
 	}
@@ -99,6 +98,10 @@ func (v *indexedRelation) PushChange(params PushChangeParams) (id string, err er
 
 func (v *indexedRelation) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
 	return nil, change.ErrEmpty
+}
+
+func (v *indexedRelation) ListIds() ([]string, error) {
+	return v.Anytype().ObjectStore().ListRelationsKeys()
 }
 
 func (v *indexedRelation) Close() (err error) {

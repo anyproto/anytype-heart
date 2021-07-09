@@ -63,6 +63,8 @@ func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
 	if p.mode.removeSelection {
 		p.removeSelection()
 	}
+	p.normalize()
+
 	p.processFiles()
 	return
 }
@@ -175,8 +177,9 @@ func (p *pasteCtrl) singleRange() (err error) {
 	}
 	p.s.Add(secondBlock)
 	targetId := selText.Model().Id
+	isPasteToHeader := targetId == template.TitleBlockId || targetId == template.DescriptionBlockId
 	pos := model.Block_Bottom
-	if targetId == template.TitleBlockId {
+	if isPasteToHeader {
 		targetId = template.HeaderLayoutId
 	}
 	if err = p.s.InsertTo(targetId, pos, secondBlock.Model().Id); err != nil {
@@ -185,7 +188,7 @@ func (p *pasteCtrl) singleRange() (err error) {
 	if secondBlock.Model().GetText().Text == "" {
 		p.s.Unlink(secondBlock.Model().Id)
 	}
-	if selText.Model().Id == template.TitleBlockId && selText.GetText() == "" {
+	if isPasteToHeader && selText.GetText() == "" {
 		firstPasteText := p.getFirstPasteText()
 		if firstPasteText != nil {
 			selText.SetText(firstPasteText.GetText(), nil)
@@ -254,7 +257,7 @@ func (p *pasteCtrl) insertUnderSelection() (err error) {
 	)
 	if len(p.selIds) > 0 {
 		targetId = p.selIds[0]
-		if targetId == template.TitleBlockId {
+		if targetId == template.TitleBlockId || targetId == template.DescriptionBlockId {
 			targetId = template.HeaderLayoutId
 		}
 		targetPos = model.Block_Bottom
@@ -288,6 +291,19 @@ func (p *pasteCtrl) processFiles() {
 	})
 }
 
+func (p *pasteCtrl) normalize() {
+	p.ps.Iterate(func(b simple.Block) (isContinue bool) {
+		if txtBlock := b.Model().GetText(); txtBlock != nil {
+			if txtBlock.Style == model.BlockContentText_Title && b.Model().Id != template.TitleBlockId {
+				txtBlock.Style = model.BlockContentText_Header1
+			} else if txtBlock.Style == model.BlockContentText_Description && b.Model().Id != template.DescriptionBlockId {
+				txtBlock.Style = model.BlockContentText_Paragraph
+			}
+		}
+		return true
+	})
+}
+
 func (p *pasteCtrl) intoCodeBlock() (err error) {
 	selText := p.getFirstSelectedText()
 	var txt = p.mode.textBuf
@@ -310,6 +326,6 @@ func (p *pasteCtrl) intoCodeBlock() (err error) {
 		},
 	}
 	p.ps.Get(p.ps.RootId()).Model().ChildrenIds = nil
-	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, false)
+	p.caretPos, err = selText.RangeTextPaste(p.selRange.From, p.selRange.To, tb, true)
 	return err
 }

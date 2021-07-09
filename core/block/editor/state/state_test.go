@@ -101,26 +101,90 @@ func TestApplyState(t *testing.T) {
 		require.Len(t, msgs, 2)
 	})
 	t.Run("details handle", func(t *testing.T) {
-		d := NewDoc("1", map[string]simple.Block{
-			"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
-			"2": text.NewDetails(&model.Block{
-				Id: "2",
-				Content: &model.BlockContentOfText{
-					Text: &model.BlockContentText{},
+		t.Run("text", func(t *testing.T) {
+			d := NewDoc("1", map[string]simple.Block{
+				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+				"2": text.NewDetails(&model.Block{
+					Id: "2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{},
+					},
+					Fields: &types.Struct{
+						Fields: map[string]*types.Value{
+							text.DetailsKeyFieldName: pbtypes.String("name"),
+						},
+					},
+				}, text.DetailsKeys{
+					Text: "name",
+				}),
+			})
+			d.BlocksInit(d.(simple.DetailsService))
+			s := d.NewState()
+			s.SetDetails(&types.Struct{
+				Fields: map[string]*types.Value{
+					"name": pbtypes.String("new name"),
 				},
-			}, "name"),
+			})
+			msgs, _, err := ApplyState(s, true)
+			require.NoError(t, err)
+			assert.Len(t, msgs, 2)
 		})
-		d.BlocksInit()
-		s := d.NewState()
-		s.SetDetails(&types.Struct{
-			Fields: map[string]*types.Value{
-				"name": pbtypes.String("new name"),
-			},
+		t.Run("checked", func(t *testing.T) {
+			d := NewDoc("1", map[string]simple.Block{
+				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+				"2": text.NewDetails(&model.Block{
+					Id: "2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{},
+					},
+					Fields: &types.Struct{
+						Fields: map[string]*types.Value{
+							text.DetailsKeyFieldName: pbtypes.StringList([]string{"", "done"}),
+						},
+					},
+				}, text.DetailsKeys{
+					Checked: "done",
+				}),
+			})
+			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.BlocksInit(d.(simple.DetailsService))
+			s := d.NewState()
+			s.SetDetails(&types.Struct{
+				Fields: map[string]*types.Value{
+					"done": pbtypes.Bool(false),
+				},
+			})
+			msgs, _, err := ApplyState(s, true)
+			require.NoError(t, err)
+			assert.Len(t, msgs, 2)
 		})
-		msgs, _, err := ApplyState(s, true)
-		require.NoError(t, err)
-		assert.Len(t, msgs, 2)
+		t.Run("setChecked", func(t *testing.T) {
+			d := NewDoc("1", map[string]simple.Block{
+				"1": base.NewBase(&model.Block{Id: "1", ChildrenIds: []string{"2"}}),
+				"2": text.NewDetails(&model.Block{
+					Id: "2",
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{},
+					},
+					Fields: &types.Struct{
+						Fields: map[string]*types.Value{
+							text.DetailsKeyFieldName: pbtypes.StringList([]string{"", "done"}),
+						},
+					},
+				}, text.DetailsKeys{
+					Checked: "done",
+				}),
+			})
+			d.(*State).SetDetail("done", pbtypes.Bool(true))
+			d.BlocksInit(d.(simple.DetailsService))
+			s := d.NewState()
+			s.Get("2").(text.Block).SetChecked(false)
+			msgs, _, err := ApplyState(s, true)
+			require.NoError(t, err)
+			assert.Len(t, msgs, 2)
+		})
 	})
+
 }
 
 func TestState_Diff(t *testing.T) {
@@ -156,4 +220,22 @@ func TestState_IsChild(t *testing.T) {
 	assert.True(t, s.IsChild("root", "2"))
 	assert.False(t, s.IsChild("root", "root"))
 	assert.False(t, s.IsChild("3", "2"))
+}
+
+func TestState_HasParent(t *testing.T) {
+	s := NewDoc("root", map[string]simple.Block{
+		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"1", "2"}}),
+		"1":    base.NewBase(&model.Block{Id: "1"}),
+		"2":    base.NewBase(&model.Block{Id: "2", ChildrenIds: []string{"3"}}),
+		"3":    base.NewBase(&model.Block{Id: "3"}),
+	}).NewState()
+	t.Run("not parent", func(t *testing.T) {
+		assert.False(t, s.HasParent("1", "2"))
+		assert.False(t, s.HasParent("1", ""))
+	})
+	t.Run("parent", func(t *testing.T) {
+		assert.True(t, s.HasParent("3", "2"))
+		assert.True(t, s.HasParent("3", "root"))
+		assert.True(t, s.HasParent("2", "root"))
+	})
 }

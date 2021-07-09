@@ -7,13 +7,12 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/threads"
-
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -70,15 +69,15 @@ type detailsGetter interface {
 func (d *doc) meta() core.SmartBlockMeta {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	objectTypes := make([]string, len(d.st.ObjectTypes()))
-	copy(objectTypes, d.st.ObjectTypes())
 	details := pbtypes.CopyStruct(d.st.Details())
 	if details == nil || details.Fields == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList(objectTypes)
+
+	otype := d.st.ObjectType()
+	details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(otype)
 	return core.SmartBlockMeta{
-		ObjectTypes: objectTypes,
+		ObjectTypes: []string{otype},
 		Relations:   pbtypes.CopyRelations(d.st.ExtraRelations()),
 		Details:     details,
 	}
@@ -185,13 +184,13 @@ func (d *doc) buildState() (doc *state.State, err error) {
 
 	d.injectLocalRelations(st)
 	st.InjectDerivedDetails()
-	st.NormalizeRelations()
-	st.MigrateObjectTypes()
-
 	err = d.injectCreationInfo(st)
 	if err != nil {
 		log.With("thread", d.id).Errorf("injectCreationInfo failed: %s", err.Error())
 	}
+	st.NormalizeRelations()
+	st.MigrateObjectTypes()
+
 	if _, _, err = state.ApplyStateFast(st); err != nil {
 		return
 	}
@@ -204,7 +203,7 @@ func (d *doc) injectCreationInfo(st *state.State) (err error) {
 	}
 
 	// protect from the big documents with a large trees
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
 
 	fc, err := d.findFirstChange(ctx)

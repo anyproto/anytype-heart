@@ -26,8 +26,9 @@ func init() {
 		if _, err := toTextContent(m.Content); err != nil {
 			return nil
 		}
-		if key := pbtypes.GetString(m.GetFields(), DetailsKeyFieldName); key != "" {
-			return NewDetails(m, key)
+		if keysList := pbtypes.GetStringList(m.GetFields(), DetailsKeyFieldName); len(keysList) > 0 {
+			keys := newDetailKeys(keysList)
+			return NewDetails(m, keys)
 		}
 		return NewText(m)
 	})
@@ -45,6 +46,7 @@ type Block interface {
 	GetText() (text string)
 	SetStyle(style model.BlockContentTextStyle)
 	SetChecked(v bool)
+	GetChecked() bool
 	SetMarkForAllText(mark *model.BlockContentTextMark)
 	RemoveMarkType(markType model.BlockContentTextMarkType)
 	HasMarkForAllText(mark *model.BlockContentTextMark) bool
@@ -132,6 +134,10 @@ func (t *Text) SetStyle(style model.BlockContentTextStyle) {
 
 func (t *Text) SetChecked(v bool) {
 	t.content.Checked = v
+}
+
+func (t *Text) GetChecked() bool {
+	return t.content.Checked
 }
 
 func (t *Text) SetTextColor(color string) {

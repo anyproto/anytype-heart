@@ -5,12 +5,12 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/google/uuid"
 )
 
-func NewVirtual(a core.Service, t pb.SmartBlockType) (s Source) {
+func NewVirtual(a core.Service, t model.SmartBlockType) (s Source) {
 	return &virtual{
 		id:     uuid.New().String(),
 		a:      a,
@@ -21,7 +21,7 @@ func NewVirtual(a core.Service, t pb.SmartBlockType) (s Source) {
 type virtual struct {
 	id     string
 	a      core.Service
-	sbType pb.SmartBlockType
+	sbType model.SmartBlockType
 }
 
 func (v *virtual) ReadOnly() bool {
@@ -36,7 +36,7 @@ func (v *virtual) Anytype() core.Service {
 	return v.a
 }
 
-func (v *virtual) Type() pb.SmartBlockType {
+func (v *virtual) Type() model.SmartBlockType {
 	return v.sbType
 }
 
@@ -58,6 +58,11 @@ func (v *virtual) PushChange(params PushChangeParams) (id string, err error) {
 
 func (v *virtual) FindFirstChange(ctx context.Context) (c *change.Change, err error) {
 	return nil, change.ErrEmpty
+}
+
+func (v *virtual) ListIds() ([]string, error) {
+	// not supported
+	return nil, nil
 }
 
 func (v *virtual) Close() (err error) {

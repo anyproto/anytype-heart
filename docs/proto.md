@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -32,10 +28,6 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -56,6 +48,10 @@
     - [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request)
     - [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response)
     - [Rpc.Account.Stop.Response.Error](#anytype.Rpc.Account.Stop.Response.Error)
+    - [Rpc.ApplyTemplate](#anytype.Rpc.ApplyTemplate)
+    - [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request)
+    - [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response)
+    - [Rpc.ApplyTemplate.Response.Error](#anytype.Rpc.ApplyTemplate.Response.Error)
     - [Rpc.Block](#anytype.Rpc.Block)
     - [Rpc.Block.Bookmark](#anytype.Rpc.Block.Bookmark)
     - [Rpc.Block.Bookmark.CreateAndFetch](#anytype.Rpc.Block.Bookmark.CreateAndFetch)
@@ -280,6 +276,10 @@
     - [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request)
     - [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response)
     - [Rpc.Block.SetBreadcrumbs.Response.Error](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error)
+    - [Rpc.Block.Show](#anytype.Rpc.Block.Show)
+    - [Rpc.Block.Show.Request](#anytype.Rpc.Block.Show.Request)
+    - [Rpc.Block.Show.Response](#anytype.Rpc.Block.Show.Response)
+    - [Rpc.Block.Show.Response.Error](#anytype.Rpc.Block.Show.Response.Error)
     - [Rpc.Block.Split](#anytype.Rpc.Block.Split)
     - [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request)
     - [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response)
@@ -360,6 +360,10 @@
     - [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request)
     - [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response)
     - [Rpc.BlockList.TurnInto.Response.Error](#anytype.Rpc.BlockList.TurnInto.Response.Error)
+    - [Rpc.CloneTemplate](#anytype.Rpc.CloneTemplate)
+    - [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request)
+    - [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response)
+    - [Rpc.CloneTemplate.Response.Error](#anytype.Rpc.CloneTemplate.Response.Error)
     - [Rpc.Config](#anytype.Rpc.Config)
     - [Rpc.Config.Get](#anytype.Rpc.Config.Get)
     - [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request)
@@ -374,12 +378,20 @@
     - [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request)
     - [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response)
     - [Rpc.Debug.Thread.Response.Error](#anytype.Rpc.Debug.Thread.Response.Error)
+    - [Rpc.Debug.Tree](#anytype.Rpc.Debug.Tree)
+    - [Rpc.Debug.Tree.Request](#anytype.Rpc.Debug.Tree.Request)
+    - [Rpc.Debug.Tree.Response](#anytype.Rpc.Debug.Tree.Response)
+    - [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error)
     - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
     - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
     - [Rpc.Export](#anytype.Rpc.Export)
     - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
     - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
     - [Rpc.Export.Response.Error](#anytype.Rpc.Export.Response.Error)
+    - [Rpc.ExportTemplates](#anytype.Rpc.ExportTemplates)
+    - [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request)
+    - [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response)
+    - [Rpc.ExportTemplates.Response.Error](#anytype.Rpc.ExportTemplates.Response.Error)
     - [Rpc.ExternalDrop](#anytype.Rpc.ExternalDrop)
     - [Rpc.ExternalDrop.Content](#anytype.Rpc.ExternalDrop.Content)
     - [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request)
@@ -432,6 +444,10 @@
     - [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request)
     - [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response)
     - [Rpc.MakeTemplate.Response.Error](#anytype.Rpc.MakeTemplate.Response.Error)
+    - [Rpc.MakeTemplateByObjectType](#anytype.Rpc.MakeTemplateByObjectType)
+    - [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request)
+    - [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response)
+    - [Rpc.MakeTemplateByObjectType.Response.Error](#anytype.Rpc.MakeTemplateByObjectType.Response.Error)
     - [Rpc.Navigation](#anytype.Rpc.Navigation)
     - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype.Rpc.Navigation.GetObjectInfoWithLinks)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request)
@@ -550,6 +566,7 @@
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
+    - [Rpc.ApplyTemplate.Response.Error.Code](#anytype.Rpc.ApplyTemplate.Response.Error.Code)
     - [Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code)
     - [Rpc.Block.Bookmark.Fetch.Response.Error.Code](#anytype.Rpc.Block.Bookmark.Fetch.Response.Error.Code)
     - [Rpc.Block.Close.Response.Error.Code](#anytype.Rpc.Block.Close.Response.Error.Code)
@@ -602,6 +619,7 @@
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
     - [Rpc.Block.Set.Video.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Width.Response.Error.Code)
     - [Rpc.Block.SetBreadcrumbs.Response.Error.Code](#anytype.Rpc.Block.SetBreadcrumbs.Response.Error.Code)
+    - [Rpc.Block.Show.Response.Error.Code](#anytype.Rpc.Block.Show.Response.Error.Code)
     - [Rpc.Block.Split.Request.Mode](#anytype.Rpc.Block.Split.Request.Mode)
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
@@ -621,11 +639,14 @@
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
     - [Rpc.BlockList.TurnInto.Response.Error.Code](#anytype.Rpc.BlockList.TurnInto.Response.Error.Code)
+    - [Rpc.CloneTemplate.Response.Error.Code](#anytype.Rpc.CloneTemplate.Response.Error.Code)
     - [Rpc.Config.Get.Response.Error.Code](#anytype.Rpc.Config.Get.Response.Error.Code)
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
+    - [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
+    - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code)
@@ -638,6 +659,7 @@
     - [Rpc.Log.Send.Request.Level](#anytype.Rpc.Log.Send.Request.Level)
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.MakeTemplate.Response.Error.Code](#anytype.Rpc.MakeTemplate.Response.Error.Code)
+    - [Rpc.MakeTemplateByObjectType.Response.Error.Code](#anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code)
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
@@ -666,9 +688,6 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -801,11 +820,7 @@
     - [Event.Status.Thread.SyncStatus](#anytype.Event.Status.Thread.SyncStatus)
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
-    - [SmartBlockType](#anytype.SmartBlockType)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -814,12 +829,8 @@
     - [ObjectInfoWithOutboundLinksIDs](#anytype.model.ObjectInfoWithOutboundLinksIDs)
     - [ObjectLinks](#anytype.model.ObjectLinks)
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
+    - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
-    - [ObjectInfo.Type](#anytype.model.ObjectInfo.Type)
-  
-  
-  
-
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -832,6 +843,7 @@
     - [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort)
     - [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View)
     - [Block.Content.Div](#anytype.model.Block.Content.Div)
+    - [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
@@ -843,8 +855,16 @@
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
     - [Block.Restrictions](#anytype.model.Block.Restrictions)
     - [BlockMetaOnly](#anytype.model.BlockMetaOnly)
+    - [Layout](#anytype.model.Layout)
     - [LinkPreview](#anytype.model.LinkPreview)
+    - [ObjectType](#anytype.model.ObjectType)
     - [Range](#anytype.model.Range)
+    - [Relation](#anytype.model.Relation)
+    - [Relation.Option](#anytype.model.Relation.Option)
+    - [RelationWithValue](#anytype.model.RelationWithValue)
+    - [Relations](#anytype.model.Relations)
+    - [Restrictions](#anytype.model.Restrictions)
+    - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
   
     - [Block.Align](#anytype.model.Block.Align)
@@ -863,28 +883,15 @@
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
     - [Block.Position](#anytype.model.Block.Position)
     - [LinkPreview.Type](#anytype.model.LinkPreview.Type)
+    - [ObjectType.Layout](#anytype.model.ObjectType.Layout)
+    - [Relation.DataSource](#anytype.model.Relation.DataSource)
+    - [Relation.Option.Scope](#anytype.model.Relation.Option.Scope)
+    - [Relation.Scope](#anytype.model.Relation.Scope)
+    - [RelationFormat](#anytype.model.RelationFormat)
+    - [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction)
+    - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
+    - [SmartBlockType](#anytype.model.SmartBlockType)
   
-  
-  
-
-- [pkg/lib/pb/relation/protos/relation.proto](#pkg/lib/pb/relation/protos/relation.proto)
-    - [Detail](#anytype.relation.Detail)
-    - [Layout](#anytype.relation.Layout)
-    - [ObjectType](#anytype.relation.ObjectType)
-    - [Relation](#anytype.relation.Relation)
-    - [Relation.Option](#anytype.relation.Relation.Option)
-    - [RelationWithValue](#anytype.relation.RelationWithValue)
-    - [Relations](#anytype.relation.Relations)
-  
-    - [ObjectType.Layout](#anytype.relation.ObjectType.Layout)
-    - [Relation.DataSource](#anytype.relation.Relation.DataSource)
-    - [Relation.Option.Scope](#anytype.relation.Relation.Option.Scope)
-    - [Relation.Scope](#anytype.relation.Relation.Scope)
-    - [RelationFormat](#anytype.relation.RelationFormat)
-  
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -928,6 +935,7 @@
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
+| BlockShow | [Rpc.Block.Show.Request](#anytype.Rpc.Block.Show.Request) | [Rpc.Block.Show.Response](#anytype.Rpc.Block.Show.Response) |  |
 | BlockGetPublicWebURL | [Rpc.Block.GetPublicWebURL.Request](#anytype.Rpc.Block.GetPublicWebURL.Request) | [Rpc.Block.GetPublicWebURL.Response](#anytype.Rpc.Block.GetPublicWebURL.Response) |  |
 | BlockOpenBreadcrumbs | [Rpc.Block.OpenBreadcrumbs.Request](#anytype.Rpc.Block.OpenBreadcrumbs.Request) | [Rpc.Block.OpenBreadcrumbs.Response](#anytype.Rpc.Block.OpenBreadcrumbs.Response) |  |
 | BlockSetBreadcrumbs | [Rpc.Block.SetBreadcrumbs.Request](#anytype.Rpc.Block.SetBreadcrumbs.Request) | [Rpc.Block.SetBreadcrumbs.Response](#anytype.Rpc.Block.SetBreadcrumbs.Response) |  |
@@ -1019,9 +1027,14 @@
 | HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
+| ExportTemplates | [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request) | [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response) |  |
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
+| MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
+| CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
+| ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
+| DebugTree | [Rpc.Debug.Tree.Request](#anytype.Rpc.Debug.Tree.Request) | [Rpc.Debug.Tree.Response](#anytype.Rpc.Debug.Tree.Response) |  |
 | ListenEvents | [Empty](#anytype.Empty) | [Event](#anytype.Event) stream | used only for lib-server via grpc |
 
  
@@ -1264,7 +1277,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -1295,7 +1308,7 @@ the element of change tree used to store and internal apply smartBlock history
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
-| format | [relation.RelationFormat](#anytype.relation.RelationFormat) |  |  |
+| format | [model.RelationFormat](#anytype.model.RelationFormat) |  |  |
 | name | [string](#string) |  |  |
 | defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 | objectTypes | [Change.RelationUpdate.ObjectTypes](#anytype.Change.RelationUpdate.ObjectTypes) |  |  |
@@ -1315,7 +1328,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| dict | [relation.Relation.Option](#anytype.relation.Relation.Option) | repeated |  |
+| dict | [model.Relation.Option](#anytype.model.Relation.Option) | repeated |  |
 
 
 
@@ -1639,6 +1652,63 @@ Middleware-to-front-end response for an account stop request
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ApplyTemplate"></a>
+
+### Rpc.ApplyTemplate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ApplyTemplate.Request"></a>
+
+### Rpc.ApplyTemplate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| templateId | [string](#string) |  | id of template |
+
+
+
+
+
+
+<a name="anytype.Rpc.ApplyTemplate.Response"></a>
+
+### Rpc.ApplyTemplate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ApplyTemplate.Response.Error](#anytype.Rpc.ApplyTemplate.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ApplyTemplate.Response.Error"></a>
+
+### Rpc.ApplyTemplate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ApplyTemplate.Response.Error.Code](#anytype.Rpc.ApplyTemplate.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -2197,6 +2267,7 @@ common simple block command
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
 | record | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -2315,7 +2386,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
 | relationKey | [string](#string) |  | relation key to add the option |
-| option | [relation.Relation.Option](#anytype.relation.Relation.Option) |  | id of select options will be autogenerated |
+| option | [model.Relation.Option](#anytype.model.Relation.Option) |  | id of select options will be autogenerated |
 | recordId | [string](#string) |  | id of record which is used to add an option |
 
 
@@ -2333,7 +2404,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Dataview.RecordRelationOptionAdd.Response.Error](#anytype.Rpc.Block.Dataview.RecordRelationOptionAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-| option | [relation.Relation.Option](#anytype.relation.Relation.Option) |  |  |
+| option | [model.Relation.Option](#anytype.model.Relation.Option) |  |  |
 
 
 
@@ -2438,7 +2509,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
 | relationKey | [string](#string) |  | relation key to add the option |
-| option | [relation.Relation.Option](#anytype.relation.Relation.Option) |  | id of select options will be autogenerated |
+| option | [model.Relation.Option](#anytype.model.Relation.Option) |  | id of select options will be autogenerated |
 | recordId | [string](#string) |  | id of record which is used to update an option |
 
 
@@ -2557,7 +2628,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -2575,7 +2646,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | error | [Rpc.Block.Dataview.RelationAdd.Response.Error](#anytype.Rpc.Block.Dataview.RelationAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 | relationKey | [string](#string) |  | deprecated |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -2692,7 +2763,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Block.Dataview.RelationListAvailable.Response.Error](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error) |  |  |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -2736,7 +2807,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  | id of dataview block to add relation |
 | relationKey | [string](#string) |  | key of relation to update |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -3820,7 +3891,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -4943,6 +5014,64 @@ Image/Video/File blocks then:
 
 
 
+<a name="anytype.Rpc.Block.Show"></a>
+
+### Rpc.Block.Show
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Request"></a>
+
+### Rpc.Block.Show.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context blo1k |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Response"></a>
+
+### Rpc.Block.Show.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Show.Response.Error](#anytype.Rpc.Block.Show.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Show.Response.Error"></a>
+
+### Rpc.Block.Show.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Show.Response.Error.Code](#anytype.Rpc.Block.Show.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Split"></a>
 
 ### Rpc.Block.Split
@@ -5546,7 +5675,7 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
+| blockIds | [string](#string) | repeated | when empty - align will be applied as layoutAlign |
 | align | [model.Block.Align](#anytype.model.Block.Align) |  |  |
 
 
@@ -6102,6 +6231,63 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.CloneTemplate"></a>
+
+### Rpc.CloneTemplate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Request"></a>
+
+### Rpc.CloneTemplate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of template block for cloning |
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Response"></a>
+
+### Rpc.CloneTemplate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.CloneTemplate.Response.Error](#anytype.Rpc.CloneTemplate.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.CloneTemplate.Response.Error"></a>
+
+### Rpc.CloneTemplate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.CloneTemplate.Response.Error.Code](#anytype.Rpc.CloneTemplate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Config"></a>
 
 ### Rpc.Config
@@ -6304,6 +6490,64 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.Debug.Tree"></a>
+
+### Rpc.Debug.Tree
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Tree.Request"></a>
+
+### Rpc.Debug.Tree.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Tree.Response"></a>
+
+### Rpc.Debug.Tree.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error) |  |  |
+| filename | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Debug.Tree.Response.Error"></a>
+
+### Rpc.Debug.Tree.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Debug.logInfo"></a>
 
 ### Rpc.Debug.logInfo
@@ -6410,6 +6654,64 @@ commands acceptable only for text blocks, others will be ignored
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates"></a>
+
+### Rpc.ExportTemplates
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Request"></a>
+
+### Rpc.ExportTemplates.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  | the path where export files will place |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response"></a>
+
+### Rpc.ExportTemplates.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ExportTemplates.Response.Error](#anytype.Rpc.ExportTemplates.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response.Error"></a>
+
+### Rpc.ExportTemplates.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7147,6 +7449,63 @@ Usage: send request with topic (Level) and description (message) from client to 
 
 
 
+<a name="anytype.Rpc.MakeTemplateByObjectType"></a>
+
+### Rpc.MakeTemplateByObjectType
+
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Request"></a>
+
+### Rpc.MakeTemplateByObjectType.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectType | [string](#string) |  | id of desired object type |
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Response"></a>
+
+### Rpc.MakeTemplateByObjectType.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.MakeTemplateByObjectType.Response.Error](#anytype.Rpc.MakeTemplateByObjectType.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Response.Error"></a>
+
+### Rpc.MakeTemplateByObjectType.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.MakeTemplateByObjectType.Response.Error.Code](#anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Navigation"></a>
 
 ### Rpc.Navigation
@@ -7304,7 +7663,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -7322,7 +7681,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | error | [Rpc.Object.RelationAdd.Response.Error](#anytype.Rpc.Object.RelationAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 | relationKey | [string](#string) |  | deprecated |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -7437,7 +7796,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.RelationListAvailable.Response.Error](#anytype.Rpc.Object.RelationListAvailable.Response.Error) |  |  |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -7480,7 +7839,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | relationKey | [string](#string) |  | relation key to add the option |
-| option | [relation.Relation.Option](#anytype.relation.Relation.Option) |  | id of select options will be autogenerated |
+| option | [model.Relation.Option](#anytype.model.Relation.Option) |  | id of select options will be autogenerated |
 
 
 
@@ -7497,7 +7856,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.RelationOptionAdd.Response.Error](#anytype.Rpc.Object.RelationOptionAdd.Response.Error) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-| option | [relation.Relation.Option](#anytype.relation.Relation.Option) |  |  |
+| option | [model.Relation.Option](#anytype.model.Relation.Option) |  |  |
 
 
 
@@ -7600,7 +7959,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | relationKey | [string](#string) |  | relation key to add the option |
-| option | [relation.Relation.Option](#anytype.relation.Relation.Option) |  | id of select options will be autogenerated |
+| option | [model.Relation.Option](#anytype.model.Relation.Option) |  | id of select options will be autogenerated |
 
 
 
@@ -7659,7 +8018,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | relationKey | [string](#string) |  | key of relation to update |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -7721,6 +8080,8 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 
 
 
@@ -7787,7 +8148,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectType | [relation.ObjectType](#anytype.relation.ObjectType) |  |  |
+| objectType | [model.ObjectType](#anytype.model.ObjectType) |  |  |
 
 
 
@@ -7803,7 +8164,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Create.Response.Error](#anytype.Rpc.ObjectType.Create.Response.Error) |  |  |
-| objectType | [relation.ObjectType](#anytype.relation.ObjectType) |  |  |
+| objectType | [model.ObjectType](#anytype.model.ObjectType) |  |  |
 
 
 
@@ -7855,7 +8216,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.List.Response.Error](#anytype.Rpc.ObjectType.List.Response.Error) |  |  |
-| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated |  |
+| objectTypes | [model.ObjectType](#anytype.model.ObjectType) | repeated |  |
 
 
 
@@ -7907,7 +8268,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -7923,7 +8284,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Relation.Add.Response.Error](#anytype.Rpc.ObjectType.Relation.Add.Response.Error) |  |  |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -7981,7 +8342,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectType.Relation.List.Response.Error](#anytype.Rpc.ObjectType.Relation.List.Response.Error) |  |  |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -8080,7 +8441,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectTypeUrl | [string](#string) |  |  |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -8816,6 +9177,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.ApplyTemplate.Response.Error.Code"></a>
+
+### Rpc.ApplyTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code"></a>
 
 ### Rpc.Block.Bookmark.CreateAndFetch.Response.Error.Code
@@ -9497,6 +9871,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Show.Response.Error.Code"></a>
+
+### Rpc.Block.Show.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| ANYTYPE_NEEDS_UPGRADE | 10 | failed to read unknown data format – need to upgrade anytype |
+
+
+
 <a name="anytype.Rpc.Block.Split.Request.Mode"></a>
 
 ### Rpc.Block.Split.Request.Mode
@@ -9746,6 +10134,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.CloneTemplate.Response.Error.Code"></a>
+
+### Rpc.CloneTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Config.Get.Response.Error.Code"></a>
 
 ### Rpc.Config.Get.Response.Error.Code
@@ -9786,6 +10187,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Debug.Tree.Response.Error.Code"></a>
+
+### Rpc.Debug.Tree.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Export.Format"></a>
 
 ### Rpc.Export.Format
@@ -9793,13 +10207,28 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| MD | 0 |  |
+| Markdown | 0 |  |
+| Protobuf | 1 |  |
+| JSON | 2 |  |
 
 
 
 <a name="anytype.Rpc.Export.Response.Error.Code"></a>
 
 ### Rpc.Export.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ExportTemplates.Response.Error.Code"></a>
+
+### Rpc.ExportTemplates.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -9969,6 +10398,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.MakeTemplate.Response.Error.Code"></a>
 
 ### Rpc.MakeTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code"></a>
+
+### Rpc.MakeTemplateByObjectType.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -10559,7 +11001,7 @@ sent when the dataview relation has been changed or added
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
 | relationKey | [string](#string) |  | relation key to update |
-| relation | [relation.Relation](#anytype.relation.Relation) |  |  |
+| relation | [model.Relation](#anytype.model.Relation) |  |  |
 
 
 
@@ -11840,7 +12282,7 @@ Precondition: user A opened a block
 <a name="anytype.Event.Object.Details.Amend"></a>
 
 ### Event.Object.Details.Amend
-Amend existing state
+Amend (i.e. add a new key-value pair or update an existing key-value pair) existing state
 
 
 | Field | Type | Label | Description |
@@ -11937,7 +12379,7 @@ Unset existing detail keys
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
 | relationKey | [string](#string) |  |  |
-| relation | [relation.Relation](#anytype.relation.Relation) |  | missing value means relation should be removed |
+| relation | [model.Relation](#anytype.model.Relation) |  | missing value means relation should be removed |
 
 
 
@@ -11963,7 +12405,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -11995,7 +12437,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated |  |
+| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
 
 
 
@@ -12014,9 +12456,10 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | rootId | [string](#string) |  | Root block id |
 | blocks | [model.Block](#anytype.model.Block) | repeated | dependent simple blocks (descendants) |
 | details | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) | repeated | details for the current and dependent objects |
-| type | [SmartBlockType](#anytype.SmartBlockType) |  |  |
-| objectTypes | [relation.ObjectType](#anytype.relation.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
-| relations | [relation.Relation](#anytype.relation.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| type | [model.SmartBlockType](#anytype.model.SmartBlockType) |  |  |
+| objectTypes | [model.ObjectType](#anytype.model.ObjectType) | repeated | objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model |
+| relations | [model.Relation](#anytype.model.Relation) | repeated | combined relations of object&#39;s type &#43; extra relations. If object doesn&#39;t has some relation key in the details this means client should hide it and only suggest when adding existing one |
+| restrictions | [model.Restrictions](#anytype.model.Restrictions) |  | object restrictions |
 
 
 
@@ -12032,7 +12475,7 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | objectId | [string](#string) |  |  |
-| relations | [relation.RelationWithValue](#anytype.relation.RelationWithValue) | repeated |  |
+| relations | [model.RelationWithValue](#anytype.model.RelationWithValue) | repeated |  |
 
 
 
@@ -12426,29 +12869,6 @@ Precondition: user A and user B opened the same block
 | Export | 2 |  |
 
 
-
-<a name="anytype.SmartBlockType"></a>
-
-### SmartBlockType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Page | 0 |  |
-| Home | 1 | have only Link simpleblocks |
-| ProfilePage | 2 | just a usual page for now |
-| Archive | 3 | have only Link simpleblocks |
-| Breadcrumbs | 4 | have only Link simpleblocks |
-| Set | 5 | only have dataview simpleblock |
-| ObjectType | 6 | have relations list |
-| File | 7 |  |
-| Relation | 10 |  |
-| Template | 11 |  |
-| MarketplaceType | 8 |  |
-| MarketplaceRelation | 9 |  |
-| MarketplaceTemplate | 12 |  |
-
-
  
 
  
@@ -12490,10 +12910,10 @@ Precondition: user A and user B opened the same block
 | id | [string](#string) |  |  |
 | objectTypeUrls | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| relations | [anytype.relation.Relations](#anytype.relation.Relations) |  |  |
+| relations | [Relation](#anytype.model.Relation) | repeated |  |
 | snippet | [string](#string) |  |  |
 | hasInboundLinks | [bool](#bool) |  |  |
-| objectType | [ObjectInfo.Type](#anytype.model.ObjectInfo.Type) |  |  |
+| objectType | [SmartBlockType](#anytype.model.SmartBlockType) |  |  |
 
 
 
@@ -12582,25 +13002,30 @@ Precondition: user A and user B opened the same block
 
 
 
+
+<a name="anytype.model.ObjectStoreChecksums"></a>
+
+### ObjectStoreChecksums
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bundledObjectTypes | [string](#string) |  |  |
+| bundledRelations | [string](#string) |  |  |
+| bundledLayouts | [string](#string) |  |  |
+| objectsForceReindexCounter | [int32](#int32) |  | increased in order to trigger all objects reindex |
+| filesForceReindexCounter | [int32](#int32) |  | increased in order to fully reindex all objects |
+| idxRebuildCounter | [int32](#int32) |  | increased in order to remove indexes and reindex everything. Automatically triggers objects and files reindex(one time only) |
+| fulltextRebuild | [int32](#int32) |  | increased in order to perform fulltext indexing for all type of objects (useful when we change fulltext config) |
+| bundledTemplates | [string](#string) |  |  |
+| bundledObjects | [int32](#int32) |  | anytypeProfile and maybe some others in the feature |
+
+
+
+
+
  
-
-
-<a name="anytype.model.ObjectInfo.Type"></a>
-
-### ObjectInfo.Type
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Page | 0 |  |
-| Home | 1 |  |
-| ProfilePage | 2 |  |
-| Archive | 3 |  |
-| Set | 5 |  |
-| File | 6 |  |
-| ObjectType | 7 |  |
-| Relation | 8 |  |
-
 
  
 
@@ -12674,6 +13099,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | link | [Block.Content.Link](#anytype.model.Block.Content.Link) |  |  |
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype.model.Block.Content.Relation) |  |  |
+| featuredRelations | [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations) |  |  |
 
 
 
@@ -12720,7 +13146,7 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | source | [string](#string) |  |  |
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
-| relations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
+| relations | [Relation](#anytype.model.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |
 
 
@@ -12812,6 +13238,16 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | style | [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.FeaturedRelations"></a>
+
+### Block.Content.FeaturedRelations
+
 
 
 
@@ -12998,6 +13434,23 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype.model.Layout"></a>
+
+### Layout
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
+| name | [string](#string) |  |  |
+| requiredRelations | [Relation](#anytype.model.Relation) | repeated | relations required for this object type |
+
+
+
+
+
+
 <a name="anytype.model.LinkPreview"></a>
 
 ### LinkPreview
@@ -13012,6 +13465,30 @@ Used to decode block meta only, without the content itself
 | imageUrl | [string](#string) |  |  |
 | faviconUrl | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype.model.LinkPreview.Type) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.ObjectType"></a>
+
+### ObjectType
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| url | [string](#string) |  | leave empty in case you want to create the new one |
+| name | [string](#string) |  | name of objectType (can be localized for bundled types) |
+| relations | [Relation](#anytype.model.Relation) | repeated | cannot contain more than one Relation with the same RelationType |
+| layout | [ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
+| iconEmoji | [string](#string) |  | emoji symbol |
+| description | [string](#string) |  |  |
+| hidden | [bool](#bool) |  |  |
+| readonly | [bool](#bool) |  |  |
+| types | [SmartBlockType](#anytype.model.SmartBlockType) | repeated |  |
+| isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 
 
 
@@ -13034,10 +13511,124 @@ General purpose structure, uses in Mark.
 
 
 
+<a name="anytype.model.Relation"></a>
+
+### Relation
+Relation describe the human-interpreted relation type. It may be something like &#34;Date of creation, format=date&#34; or &#34;Assignee, format=objectId, objectType=person&#34;
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  | Key under which the value is stored in the map. Must be unique for the object type. It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types. |
+| format | [RelationFormat](#anytype.model.RelationFormat) |  | format of the underlying data |
+| name | [string](#string) |  | name to show (can be localized for bundled types) |
+| defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+| dataSource | [Relation.DataSource](#anytype.model.Relation.DataSource) |  | where the data is stored |
+| hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
+| readOnly | [bool](#bool) |  | value not editable by user tobe renamed to readonlyValue |
+| readOnlyRelation | [bool](#bool) |  | relation metadata, eg name and format is not editable by user |
+| multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
+| objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
+| selectDict | [Relation.Option](#anytype.model.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
+
+default dictionary with unique values to choose for select/multiSelect format |
+| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
+| description | [string](#string) |  |  |
+| scope | [Relation.Scope](#anytype.model.Relation.Scope) |  | on-store fields, injected only locally
+
+scope from which this relation have been aggregated |
+| creator | [string](#string) |  | creator profile id |
+
+
+
+
+
+
+<a name="anytype.model.Relation.Option"></a>
+
+### Relation.Option
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | id generated automatically if omitted |
+| text | [string](#string) |  |  |
+| color | [string](#string) |  | stored |
+| scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+
+
+
+
+
+
+<a name="anytype.model.RelationWithValue"></a>
+
+### RelationWithValue
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relation | [Relation](#anytype.model.Relation) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Relations"></a>
+
+### Relations
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relations | [Relation](#anytype.model.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Restrictions"></a>
+
+### Restrictions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| object | [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction) | repeated |  |
+| dataview | [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.Restrictions.DataviewRestrictions"></a>
+
+### Restrictions.DataviewRestrictions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+| restrictions | [Restrictions.DataviewRestriction](#anytype.model.Restrictions.DataviewRestriction) | repeated |  |
+
+
+
+
+
+
 <a name="anytype.model.SmartBlockSnapshotBase"></a>
 
 ### SmartBlockSnapshotBase
-deprecated
+
 
 
 | Field | Type | Label | Description |
@@ -13045,7 +13636,7 @@ deprecated
 | blocks | [Block](#anytype.model.Block) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
-| extraRelations | [anytype.relation.Relation](#anytype.relation.Relation) | repeated |  |
+| extraRelations | [Relation](#anytype.model.Relation) | repeated |  |
 | objectTypes | [string](#string) | repeated |  |
 
 
@@ -13075,20 +13666,21 @@ deprecated
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Equal | 0 |  |
-| NotEqual | 1 |  |
-| Greater | 2 |  |
-| Less | 3 |  |
-| GreaterOrEqual | 4 |  |
-| LessOrEqual | 5 |  |
-| Like | 6 |  |
-| NotLike | 7 |  |
-| In | 8 |  |
-| NotIn | 9 |  |
-| Empty | 10 |  |
-| NotEmpty | 11 |  |
-| AllIn | 12 |  |
-| NotAllIn | 13 |  |
+| None | 0 |  |
+| Equal | 1 |  |
+| NotEqual | 2 |  |
+| Greater | 3 |  |
+| Less | 4 |  |
+| GreaterOrEqual | 5 |  |
+| LessOrEqual | 6 |  |
+| Like | 7 |  |
+| NotLike | 8 |  |
+| In | 9 |  |
+| NotIn | 10 |  |
+| Empty | 11 |  |
+| NotEmpty | 12 |  |
+| AllIn | 13 |  |
+| NotAllIn | 14 |  |
 
 
 
@@ -13255,14 +13847,15 @@ deprecated
 | Header1 | 1 |  |
 | Header2 | 2 |  |
 | Header3 | 3 |  |
-| Header4 | 4 |  |
+| Header4 | 4 | deprecated |
 | Quote | 5 |  |
 | Code | 6 |  |
-| Title | 7 |  |
+| Title | 7 | currently only only one block of this style can exists on a page |
 | Checkbox | 8 |  |
 | Marked | 9 |  |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
+| Description | 12 | currently only only one block of this style can exists on a page |
 
 
 
@@ -13296,159 +13889,8 @@ deprecated
 | Text | 3 |  |
 
 
- 
 
- 
-
- 
-
-
-
-<a name="pkg/lib/pb/relation/protos/relation.proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## pkg/lib/pb/relation/protos/relation.proto
-
-
-
-<a name="anytype.relation.Detail"></a>
-
-### Detail
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.relation.Layout"></a>
-
-### Layout
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
-| name | [string](#string) |  |  |
-| requiredRelations | [Relation](#anytype.relation.Relation) | repeated | relations required for this object type |
-
-
-
-
-
-
-<a name="anytype.relation.ObjectType"></a>
-
-### ObjectType
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| url | [string](#string) |  | leave empty in case you want to create the new one |
-| name | [string](#string) |  | name of objectType (can be localized for bundled types) |
-| relations | [Relation](#anytype.relation.Relation) | repeated | cannot contain more than one Relation with the same RelationType |
-| layout | [ObjectType.Layout](#anytype.relation.ObjectType.Layout) |  |  |
-| iconEmoji | [string](#string) |  | emoji symbol |
-| description | [string](#string) |  |  |
-| hidden | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.relation.Relation"></a>
-
-### Relation
-Relation describe the human-interpreted relation type. It may be something like &#34;Date of creation, format=date&#34; or &#34;Assignee, format=objectId, objectType=person&#34;
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  | Key under which the value is stored in the map. Must be unique for the object type. It usually auto-generated bsonid, but also may be something human-readable in case of prebuilt types. |
-| format | [RelationFormat](#anytype.relation.RelationFormat) |  | format of the underlying data |
-| name | [string](#string) |  | name to show (can be localized for bundled types) |
-| defaultValue | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-| dataSource | [Relation.DataSource](#anytype.relation.Relation.DataSource) |  | where the data is stored |
-| hidden | [bool](#bool) |  | internal, not displayed to user (e.g. coverX, coverY) |
-| readOnly | [bool](#bool) |  | not editable by user |
-| multi | [bool](#bool) |  | allow multiple values (stored in pb list) |
-| objectTypes | [string](#string) | repeated | URL of object type, empty to allow link to any object |
-| selectDict | [Relation.Option](#anytype.relation.Relation.Option) | repeated | index 10, 11 was used in internal-only builds. Can be reused, but may break some test accounts
-
-default dictionary with unique values to choose for select/multiSelect format |
-| maxCount | [int32](#int32) |  | max number of values can be set for this relation. 0 means no limit. 1 means the value can be stored in non-repeated field |
-| description | [string](#string) |  |  |
-| scope | [Relation.Scope](#anytype.relation.Relation.Scope) |  | on-store fields, injected only locally
-
-scope from which this relation have been aggregated |
-| creator | [string](#string) |  | creator profile id |
-
-
-
-
-
-
-<a name="anytype.relation.Relation.Option"></a>
-
-### Relation.Option
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | id generated automatically if omitted |
-| text | [string](#string) |  |  |
-| color | [string](#string) |  | stored |
-| scope | [Relation.Option.Scope](#anytype.relation.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
-
-
-
-
-
-
-<a name="anytype.relation.RelationWithValue"></a>
-
-### RelationWithValue
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relation | [Relation](#anytype.relation.Relation) |  |  |
-| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.relation.Relations"></a>
-
-### Relations
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| relations | [Relation](#anytype.relation.Relation) | repeated |  |
-
-
-
-
-
- 
-
-
-<a name="anytype.relation.ObjectType.Layout"></a>
+<a name="anytype.model.ObjectType.Layout"></a>
 
 ### ObjectType.Layout
 
@@ -13468,7 +13910,7 @@ scope from which this relation have been aggregated |
 
 
 
-<a name="anytype.relation.Relation.DataSource"></a>
+<a name="anytype.model.Relation.DataSource"></a>
 
 ### Relation.DataSource
 
@@ -13481,7 +13923,7 @@ scope from which this relation have been aggregated |
 
 
 
-<a name="anytype.relation.Relation.Option.Scope"></a>
+<a name="anytype.model.Relation.Option.Scope"></a>
 
 ### Relation.Option.Scope
 
@@ -13494,7 +13936,7 @@ scope from which this relation have been aggregated |
 
 
 
-<a name="anytype.relation.Relation.Scope"></a>
+<a name="anytype.model.Relation.Scope"></a>
 
 ### Relation.Scope
 
@@ -13509,7 +13951,7 @@ scope from which this relation have been aggregated |
 
 
 
-<a name="anytype.relation.RelationFormat"></a>
+<a name="anytype.model.RelationFormat"></a>
 
 ### RelationFormat
 RelationFormat describes how the underlying data is stored in the google.protobuf.Value and how it should be validated/sanitized
@@ -13530,6 +13972,66 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | emoji | 10 | one emoji, can contains multiple utf-8 symbols |
 | object | 100 | relation can has objectType to specify objectType |
 | relations | 101 | base64-encoded |
+
+
+
+<a name="anytype.model.Restrictions.DataviewRestriction"></a>
+
+### Restrictions.DataviewRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DVNone | 0 |  |
+| DVRelation | 1 |  |
+| DVCreateObject | 2 |  |
+| DVViews | 3 |  |
+
+
+
+<a name="anytype.model.Restrictions.ObjectRestriction"></a>
+
+### Restrictions.ObjectRestriction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Delete | 1 | restricts delete |
+| Relations | 2 | restricts work with relations |
+| Blocks | 3 | restricts work with blocks |
+| Details | 4 | restricts work with details |
+| TypeChange | 5 |  |
+| LayoutChange | 6 |  |
+| Template | 7 |  |
+
+
+
+<a name="anytype.model.SmartBlockType"></a>
+
+### SmartBlockType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Breadcrumbs | 0 |  |
+| Page | 16 |  |
+| ProfilePage | 17 |  |
+| Home | 32 |  |
+| Archive | 48 |  |
+| Database | 64 |  |
+| Set | 65 | only have dataview simpleblock |
+| STObjectType | 96 | have relations list |
+| File | 256 |  |
+| Template | 288 |  |
+| BundledTemplate | 289 |  |
+| MarketplaceType | 272 |  |
+| MarketplaceRelation | 273 |  |
+| MarketplaceTemplate | 274 |  |
+| BundledRelation | 512 |  |
+| IndexedRelation | 513 |  |
+| BundledObjectType | 514 |  |
+| AnytypeProfile | 515 |  |
 
 
  

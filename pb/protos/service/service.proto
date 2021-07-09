@@ -32,6 +32,7 @@ service ClientCommands {
     rpc BlockUpload (anytype.Rpc.Block.Upload.Request) returns (anytype.Rpc.Block.Upload.Response);
     rpc BlockReplace (anytype.Rpc.Block.Replace.Request) returns (anytype.Rpc.Block.Replace.Response);
     rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);
+    rpc BlockShow (anytype.Rpc.Block.Show.Request) returns (anytype.Rpc.Block.Show.Response);
     rpc BlockGetPublicWebURL (anytype.Rpc.Block.GetPublicWebURL.Request) returns (anytype.Rpc.Block.GetPublicWebURL.Response);
     rpc BlockOpenBreadcrumbs (anytype.Rpc.Block.OpenBreadcrumbs.Request) returns (anytype.Rpc.Block.OpenBreadcrumbs.Response);
     rpc BlockSetBreadcrumbs (anytype.Rpc.Block.SetBreadcrumbs.Request) returns (anytype.Rpc.Block.SetBreadcrumbs.Response);
@@ -160,12 +161,17 @@ service ClientCommands {
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
 
     rpc Export (anytype.Rpc.Export.Request) returns (anytype.Rpc.Export.Response);
+    rpc ExportTemplates (anytype.Rpc.ExportTemplates.Request) returns (anytype.Rpc.ExportTemplates.Response);
 
     rpc MakeTemplate (anytype.Rpc.MakeTemplate.Request) returns (anytype.Rpc.MakeTemplate.Response);
+    rpc MakeTemplateByObjectType (anytype.Rpc.MakeTemplateByObjectType.Request) returns (anytype.Rpc.MakeTemplateByObjectType.Response);
+    rpc CloneTemplate (anytype.Rpc.CloneTemplate.Request) returns (anytype.Rpc.CloneTemplate.Response);
+    rpc ApplyTemplate (anytype.Rpc.ApplyTemplate.Request) returns (anytype.Rpc.ApplyTemplate.Response);
 
     rpc DebugSync (anytype.Rpc.Debug.Sync.Request) returns (anytype.Rpc.Debug.Sync.Response);
 
     rpc DebugThread (anytype.Rpc.Debug.Thread.Request) returns (anytype.Rpc.Debug.Thread.Response);
+    rpc DebugTree (anytype.Rpc.Debug.Tree.Request) returns (anytype.Rpc.Debug.Tree.Response);
 
     // used only for lib-server via grpc
     rpc ListenEvents (anytype.Empty) returns (stream anytype.Event);

@@ -1,5 +1,87 @@
 [
   {
+    "description": "Serious thought or consideration",
+    "emoji": "💭",
+    "id": "dailyReflection",
+    "layout": "basic",
+    "name": "Daily Reflection",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "intentions",
+      "happenings",
+      "gratefulFor",
+      "actionItems",
+      "mood",
+      "worriedAbout"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A recipe is a set of instructions that describes how to prepare or make something, especially a dish of prepared food",
+    "emoji": "🍲",
+    "id": "recipe",
+    "layout": "basic",
+    "name": "Recipe",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "time",
+      "servings",
+      "ingredients",
+      "instructions",
+      "difficulty"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A brief record of points written down as an aid to memory.",
     "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
@@ -25,10 +107,16 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
+    "description": "Information to make action of communicating or meeting with Human or Company",
     "emoji": "📇",
     "id": "contact",
     "layout": "profile",
@@ -54,10 +142,28 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived",
+      "tag",
+      "phone",
+      "email",
+      "dateOfBirth",
+      "placeOfBirth",
+      "company",
+      "socialProfile",
+      "job",
+      "linkedContacts",
+      "occupation",
+      "instagram",
+      "gender",
+      "facebook"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
+    "description": "A thought or suggestion as to a possible course of action",
     "emoji": "💡",
     "id": "idea",
     "layout": "basic",
@@ -84,10 +190,18 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "tag"
+      "isArchived",
+      "tag",
+      "problem",
+      "solution",
+      "alternative"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
+    "description": "A piece of work to be done or undertaken",
     "emoji": "✔️",
     "id": "task",
     "layout": "todo",
@@ -114,18 +228,23 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
+      "tag",
       "assignee",
       "dueDate",
       "attachments",
       "status",
       "done",
       "priority",
-      "linkedTasks",
-      "linkedProjects",
-      "tag"
+      "tasks",
+      "linkedProjects"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
+    "description": "Meaningful connection between objects",
     "emoji": "🔗",
     "hidden": true,
     "id": "relation",
@@ -141,10 +260,18 @@
       "isHidden",
       "mpAddedToLibrary",
       "relationFormat",
-      "isHidden"
+      "relationMaxCount",
+      "relationDict",
+      "relationDefaultValue",
+      "relationFormatObjectTypes"
+    ],
+    "types": [
+      "IndexedRelation",
+      "BundledRelation"
     ]
   },
   {
+    "description": "The recording, reproducing, or broadcasting of moving visual images.",
     "emoji": "📹",
     "id": "video",
     "layout": "basic",
@@ -171,6 +298,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -183,10 +311,13 @@
       "exposure",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
-    "description": "Internal home dashboard",
+    "description": "Internal home dashboard with favourite objects",
     "hidden": true,
     "id": "dashboard",
     "layout": "dashboard",
@@ -213,6 +344,120 @@
       "coverType",
       "layoutAlign",
       "isHidden"
+    ],
+    "types": [
+      "Home"
+    ]
+  },
+  {
+    "description": "A detailed proposal for doing or achieving something",
+    "emoji": "📋",
+    "id": "dailyPlan",
+    "layout": "basic",
+    "name": "Daily Plan",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "notes",
+      "tasks",
+      "events"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "Quick references to ideas, goals, deadlines, data, and anything else important that's covered in your meeting.",
+    "emoji": "✏️",
+    "id": "meetingNote",
+    "layout": "basic",
+    "name": "Meeting Note",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "participants",
+      "actionItems",
+      "agenda"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A piece of writing included with others in a newspaper, magazine, or other publication.",
+    "emoji": "📄",
+    "id": "article",
+    "layout": "basic",
+    "name": "Article",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -244,15 +489,18 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "recommendedRelations",
       "recommendedLayout",
-      "mpAddedToLibrary",
-      "isHidden"
+      "mpAddedToLibrary"
+    ],
+    "types": [
+      "STObjectType",
+      "BundledObjectType"
     ]
   },
   {
-    "description": "Special type to create objects from",
-    "emoji": "✨",
+    "description": "Sample object that has already some details in place and used to create objects from",
     "hidden": true,
     "id": "template",
     "layout": "basic",
@@ -279,12 +527,17 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "templateType"
+      "isArchived",
+      "targetObjectType",
+      "templateIsBundled"
+    ],
+    "types": [
+      "Template"
     ]
   },
   {
+    "description": "Collection of objects sharing one characteristic",
     "emoji": "🗂️",
-    "hidden": true,
     "id": "set",
     "layout": "set",
     "name": "Set",
@@ -310,12 +563,53 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
+      "tag",
       "setOf"
+    ],
+    "types": [
+      "Set"
     ]
   },
   {
-    "description": "Base type to start with",
-    "emoji": "📄",
+    "description": "Record of events and experiences",
+    "emoji": "✨",
+    "id": "diaryEntry",
+    "layout": "basic",
+    "name": "Diary Entry",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "mood"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "Proto type to start with",
+    "emoji": "⚪",
     "id": "page",
     "layout": "basic",
     "name": "Draft",
@@ -340,10 +634,16 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
+    "description": "A representation of the external form of a person or thing in art.",
     "emoji": "🌅",
     "id": "image",
     "layout": "image",
@@ -370,6 +670,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -381,9 +682,13 @@
       "addedDate",
       "focalRatio",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
+    "description": "Description of individuals' characteristics that identify you",
     "emoji": "🧍",
     "id": "profile",
     "layout": "profile",
@@ -409,10 +714,16 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived"
+    ],
+    "types": [
+      "Page",
+      "ProfilePage"
     ]
   },
   {
+    "description": "Sound, especially when recorded, transmitted, or reproduced.",
     "emoji": "🎵",
     "hidden": true,
     "id": "audio",
@@ -440,6 +751,7 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -452,10 +764,54 @@
       "fileMimeType",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
-    "emoji": "📋",
+    "description": "Is a detailed plan outlining actions needed to reach one or more goals",
+    "emoji": "🤝",
+    "id": "actionPlan",
+    "layout": "basic",
+    "name": "Action Plan",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "tasks",
+      "resources",
+      "result",
+      "dueDate",
+      "responsible"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A piece of matter that provides information or evidence or that serves as an official record.",
+    "emoji": "📃",
     "id": "document",
     "layout": "basic",
     "name": "Document",
@@ -480,10 +836,16 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
+    "description": "Computer resource for recording data in a computer storage device",
     "emoji": "🗂️",
     "id": "file",
     "layout": "basic",
@@ -510,13 +872,18 @@
       "coverType",
       "layoutAlign",
       "isHidden",
+      "isArchived",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
       "fileExt"
+    ],
+    "types": [
+      "File"
     ]
   },
   {
+    "description": "An individual or collaborative enterprise that is carefully planned to achieve a particular aim",
     "emoji": "🔨",
     "id": "project",
     "layout": "basic",
@@ -542,7 +909,12 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isArchived",
+      "tag"
+    ],
+    "types": [
+      "Page"
     ]
   }
 ]

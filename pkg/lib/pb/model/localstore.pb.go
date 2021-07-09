@@ -5,7 +5,6 @@ package model
 
 import (
 	fmt "fmt"
-	relation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	proto "github.com/gogo/protobuf/proto"
 	types "github.com/gogo/protobuf/types"
 	io "io"
@@ -24,57 +23,14 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.GoGoProtoPackageIsVersion3 // please upgrade the proto package
 
-type ObjectInfoType int32
-
-const (
-	ObjectInfo_Page        ObjectInfoType = 0
-	ObjectInfo_Home        ObjectInfoType = 1
-	ObjectInfo_ProfilePage ObjectInfoType = 2
-	ObjectInfo_Archive     ObjectInfoType = 3
-	ObjectInfo_Set         ObjectInfoType = 5
-	ObjectInfo_File        ObjectInfoType = 6
-	ObjectInfo_ObjectType  ObjectInfoType = 7
-	ObjectInfo_Relation    ObjectInfoType = 8
-)
-
-var ObjectInfoType_name = map[int32]string{
-	0: "Page",
-	1: "Home",
-	2: "ProfilePage",
-	3: "Archive",
-	5: "Set",
-	6: "File",
-	7: "ObjectType",
-	8: "Relation",
-}
-
-var ObjectInfoType_value = map[string]int32{
-	"Page":        0,
-	"Home":        1,
-	"ProfilePage": 2,
-	"Archive":     3,
-	"Set":         5,
-	"File":        6,
-	"ObjectType":  7,
-	"Relation":    8,
-}
-
-func (x ObjectInfoType) String() string {
-	return proto.EnumName(ObjectInfoType_name, int32(x))
-}
-
-func (ObjectInfoType) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_9c35df71910469a5, []int{0, 0}
-}
-
 type ObjectInfo struct {
-	Id              string              `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	ObjectTypeUrls  []string            `protobuf:"bytes,2,rep,name=objectTypeUrls,proto3" json:"objectTypeUrls,omitempty"`
-	Details         *types.Struct       `protobuf:"bytes,3,opt,name=details,proto3" json:"details,omitempty"`
-	Relations       *relation.Relations `protobuf:"bytes,4,opt,name=relations,proto3" json:"relations,omitempty"`
-	Snippet         string              `protobuf:"bytes,5,opt,name=snippet,proto3" json:"snippet,omitempty"`
-	HasInboundLinks bool                `protobuf:"varint,6,opt,name=hasInboundLinks,proto3" json:"hasInboundLinks,omitempty"`
-	ObjectType      ObjectInfoType      `protobuf:"varint,7,opt,name=objectType,proto3,enum=anytype.model.ObjectInfoType" json:"objectType,omitempty"`
+	Id              string         `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ObjectTypeUrls  []string       `protobuf:"bytes,2,rep,name=objectTypeUrls,proto3" json:"objectTypeUrls,omitempty"`
+	Details         *types.Struct  `protobuf:"bytes,3,opt,name=details,proto3" json:"details,omitempty"`
+	Relations       []*Relation    `protobuf:"bytes,4,rep,name=relations,proto3" json:"relations,omitempty"`
+	Snippet         string         `protobuf:"bytes,5,opt,name=snippet,proto3" json:"snippet,omitempty"`
+	HasInboundLinks bool           `protobuf:"varint,6,opt,name=hasInboundLinks,proto3" json:"hasInboundLinks,omitempty"`
+	ObjectType      SmartBlockType `protobuf:"varint,7,opt,name=objectType,proto3,enum=anytype.model.SmartBlockType" json:"objectType,omitempty"`
 }
 
 func (m *ObjectInfo) Reset()         { *m = ObjectInfo{} }
@@ -131,7 +87,7 @@ func (m *ObjectInfo) GetDetails() *types.Struct {
 	return nil
 }
 
-func (m *ObjectInfo) GetRelations() *relation.Relations {
+func (m *ObjectInfo) GetRelations() []*Relation {
 	if m != nil {
 		return m.Relations
 	}
@@ -152,11 +108,11 @@ func (m *ObjectInfo) GetHasInboundLinks() bool {
 	return false
 }
 
-func (m *ObjectInfo) GetObjectType() ObjectInfoType {
+func (m *ObjectInfo) GetObjectType() SmartBlockType {
 	if m != nil {
 		return m.ObjectType
 	}
-	return ObjectInfo_Page
+	return SmartBlockType_Breadcrumbs
 }
 
 type ObjectDetails struct {
@@ -487,8 +443,115 @@ func (m *ObjectInfoWithOutboundLinksIDs) GetOutboundLinks() []string {
 	return nil
 }
 
+type ObjectStoreChecksums struct {
+	BundledObjectTypes         string `protobuf:"bytes,1,opt,name=bundledObjectTypes,proto3" json:"bundledObjectTypes,omitempty"`
+	BundledRelations           string `protobuf:"bytes,2,opt,name=bundledRelations,proto3" json:"bundledRelations,omitempty"`
+	BundledLayouts             string `protobuf:"bytes,3,opt,name=bundledLayouts,proto3" json:"bundledLayouts,omitempty"`
+	ObjectsForceReindexCounter int32  `protobuf:"varint,4,opt,name=objectsForceReindexCounter,proto3" json:"objectsForceReindexCounter,omitempty"`
+	FilesForceReindexCounter   int32  `protobuf:"varint,5,opt,name=filesForceReindexCounter,proto3" json:"filesForceReindexCounter,omitempty"`
+	IdxRebuildCounter          int32  `protobuf:"varint,6,opt,name=idxRebuildCounter,proto3" json:"idxRebuildCounter,omitempty"`
+	FulltextRebuild            int32  `protobuf:"varint,7,opt,name=fulltextRebuild,proto3" json:"fulltextRebuild,omitempty"`
+	BundledTemplates           string `protobuf:"bytes,8,opt,name=bundledTemplates,proto3" json:"bundledTemplates,omitempty"`
+	BundledObjects             int32  `protobuf:"varint,9,opt,name=bundledObjects,proto3" json:"bundledObjects,omitempty"`
+}
+
+func (m *ObjectStoreChecksums) Reset()         { *m = ObjectStoreChecksums{} }
+func (m *ObjectStoreChecksums) String() string { return proto.CompactTextString(m) }
+func (*ObjectStoreChecksums) ProtoMessage()    {}
+func (*ObjectStoreChecksums) Descriptor() ([]byte, []int) {
+	return fileDescriptor_9c35df71910469a5, []int{7}
+}
+func (m *ObjectStoreChecksums) XXX_Unmarshal(b []byte) error {
+	return m.Unmarshal(b)
+}
+func (m *ObjectStoreChecksums) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	if deterministic {
+		return xxx_messageInfo_ObjectStoreChecksums.Marshal(b, m, deterministic)
+	} else {
+		b = b[:cap(b)]
+		n, err := m.MarshalToSizedBuffer(b)
+		if err != nil {
+			return nil, err
+		}
+		return b[:n], nil
+	}
+}
+func (m *ObjectStoreChecksums) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ObjectStoreChecksums.Merge(m, src)
+}
+func (m *ObjectStoreChecksums) XXX_Size() int {
+	return m.Size()
+}
+func (m *ObjectStoreChecksums) XXX_DiscardUnknown() {
+	xxx_messageInfo_ObjectStoreChecksums.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ObjectStoreChecksums proto.InternalMessageInfo
+
+func (m *ObjectStoreChecksums) GetBundledObjectTypes() string {
+	if m != nil {
+		return m.BundledObjectTypes
+	}
+	return ""
+}
+
+func (m *ObjectStoreChecksums) GetBundledRelations() string {
+	if m != nil {
+		return m.BundledRelations
+	}
+	return ""
+}
+
+func (m *ObjectStoreChecksums) GetBundledLayouts() string {
+	if m != nil {
+		return m.BundledLayouts
+	}
+	return ""
+}
+
+func (m *ObjectStoreChecksums) GetObjectsForceReindexCounter() int32 {
+	if m != nil {
+		return m.ObjectsForceReindexCounter
+	}
+	return 0
+}
+
+func (m *ObjectStoreChecksums) GetFilesForceReindexCounter() int32 {
+	if m != nil {
+		return m.FilesForceReindexCounter
+	}
+	return 0
+}
+
+func (m *ObjectStoreChecksums) GetIdxRebuildCounter() int32 {
+	if m != nil {
+		return m.IdxRebuildCounter
+	}
+	return 0
+}
+
+func (m *ObjectStoreChecksums) GetFulltextRebuild() int32 {
+	if m != nil {
+		return m.FulltextRebuild
+	}
+	return 0
+}
+
+func (m *ObjectStoreChecksums) GetBundledTemplates() string {
+	if m != nil {
+		return m.BundledTemplates
+	}
+	return ""
+}
+
+func (m *ObjectStoreChecksums) GetBundledObjects() int32 {
+	if m != nil {
+		return m.BundledObjects
+	}
+	return 0
+}
+
 func init() {
-	proto.RegisterEnum("anytype.model.ObjectInfoType", ObjectInfoType_name, ObjectInfoType_value)
 	proto.RegisterType((*ObjectInfo)(nil), "anytype.model.ObjectInfo")
 	proto.RegisterType((*ObjectDetails)(nil), "anytype.model.ObjectDetails")
 	proto.RegisterType((*ObjectLinks)(nil), "anytype.model.ObjectLinks")
@@ -496,6 +559,7 @@ func init() {
 	proto.RegisterType((*ObjectInfoWithLinks)(nil), "anytype.model.ObjectInfoWithLinks")
 	proto.RegisterType((*ObjectInfoWithOutboundLinks)(nil), "anytype.model.ObjectInfoWithOutboundLinks")
 	proto.RegisterType((*ObjectInfoWithOutboundLinksIDs)(nil), "anytype.model.ObjectInfoWithOutboundLinksIDs")
+	proto.RegisterType((*ObjectStoreChecksums)(nil), "anytype.model.ObjectStoreChecksums")
 }
 
 func init() {
@@ -503,43 +567,49 @@ func init() {
 }
 
 var fileDescriptor_9c35df71910469a5 = []byte{
-	// 572 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x94, 0x41, 0x8b, 0xd3, 0x4e,
-	0x18, 0xc6, 0x3b, 0x4d, 0x77, 0xd3, 0xbe, 0xf9, 0x6f, 0x1b, 0xe6, 0x7f, 0x30, 0xee, 0x4a, 0x08,
-	0x41, 0x24, 0x0a, 0x26, 0xd8, 0xd5, 0x83, 0x17, 0xc5, 0x65, 0x11, 0x0b, 0x42, 0x97, 0xac, 0x22,
-	0x78, 0x4b, 0xda, 0x69, 0x3b, 0x6e, 0x36, 0x13, 0x92, 0xa9, 0xd0, 0x83, 0x47, 0x2f, 0x9e, 0xfc,
-	0x02, 0x1e, 0xfc, 0x36, 0x1e, 0xf7, 0xe8, 0x51, 0xda, 0x2f, 0x22, 0x99, 0xe9, 0xb4, 0x69, 0x59,
-	0xab, 0xa0, 0xa7, 0x76, 0xde, 0xf9, 0xcd, 0xd3, 0xe7, 0x7d, 0xde, 0x97, 0x82, 0x97, 0x5d, 0x8c,
-	0x83, 0x84, 0xc6, 0x41, 0x16, 0x07, 0x97, 0x6c, 0x48, 0x92, 0x20, 0xcb, 0x19, 0x67, 0x45, 0x90,
-	0xb0, 0x41, 0x94, 0x14, 0x9c, 0xe5, 0xc4, 0x17, 0x15, 0x7c, 0x10, 0xa5, 0x33, 0x3e, 0xcb, 0x88,
-	0x2f, 0xb0, 0xc3, 0x5b, 0x63, 0xc6, 0xc6, 0x09, 0x91, 0x78, 0x3c, 0x1d, 0x05, 0x05, 0xcf, 0xa7,
-	0x03, 0x2e, 0xe1, 0xc3, 0xbb, 0x15, 0xd9, 0x9c, 0x24, 0x11, 0xa7, 0x2c, 0x55, 0xca, 0xea, 0x2c,
-	0x51, 0xf7, 0xab, 0x06, 0xd0, 0x8f, 0xdf, 0x91, 0x01, 0xef, 0xa5, 0x23, 0x86, 0xdb, 0x50, 0xa7,
-	0x43, 0x0b, 0x39, 0xc8, 0x6b, 0x85, 0x75, 0x3a, 0xc4, 0x77, 0xa0, 0xcd, 0xc4, 0xed, 0xab, 0x59,
-	0x46, 0x5e, 0xe7, 0x49, 0x61, 0xd5, 0x1d, 0xcd, 0x6b, 0x85, 0x5b, 0x55, 0xfc, 0x00, 0xf4, 0x21,
-	0xe1, 0x11, 0x4d, 0x0a, 0x4b, 0x73, 0x90, 0x67, 0x74, 0x6f, 0xf8, 0xd2, 0xa1, 0xaf, 0x1c, 0xfa,
-	0xe7, 0xc2, 0x61, 0xa8, 0x38, 0xfc, 0x18, 0x5a, 0xca, 0x4b, 0x61, 0x35, 0xc4, 0xa3, 0x23, 0x5f,
-	0x75, 0xb9, 0x72, 0x19, 0x2a, 0x24, 0x5c, 0xd3, 0xd8, 0x02, 0xbd, 0x48, 0x69, 0x96, 0x11, 0x6e,
-	0xed, 0x09, 0xab, 0xea, 0x88, 0x3d, 0xe8, 0x4c, 0xa2, 0xa2, 0x97, 0xc6, 0x6c, 0x9a, 0x0e, 0x5f,
-	0xd2, 0xf4, 0xa2, 0xb0, 0xf6, 0x1d, 0xe4, 0x35, 0xc3, 0xed, 0x32, 0x7e, 0x02, 0xb0, 0xee, 0xc1,
-	0xd2, 0x1d, 0xe4, 0xb5, 0xbb, 0xb6, 0xbf, 0x91, 0xb2, 0xbf, 0x0e, 0xc6, 0x2f, 0xa9, 0xb0, 0xf2,
-	0xc2, 0xa5, 0xd0, 0x28, 0x3f, 0x71, 0x13, 0x1a, 0x67, 0xd1, 0x98, 0x98, 0xb5, 0xf2, 0xdb, 0x0b,
-	0x76, 0x49, 0x4c, 0x84, 0x3b, 0x60, 0x9c, 0xe5, 0x6c, 0x44, 0x13, 0x22, 0xae, 0xea, 0xd8, 0x00,
-	0xfd, 0x59, 0x3e, 0x98, 0xd0, 0xf7, 0xc4, 0xd4, 0xb0, 0x0e, 0xda, 0x39, 0xe1, 0xe6, 0x5e, 0xf9,
-	0xe0, 0x39, 0x4d, 0x88, 0xb9, 0x8f, 0xdb, 0x6a, 0x08, 0xa5, 0xa4, 0xa9, 0xe3, 0xff, 0xa0, 0xa9,
-	0x1a, 0x37, 0x9b, 0xee, 0x09, 0x1c, 0xc8, 0xdb, 0xd3, 0x65, 0x74, 0x95, 0xb4, 0xd1, 0x9f, 0xa5,
-	0xed, 0xf6, 0xc1, 0x90, 0x1a, 0xb2, 0x7b, 0x1b, 0x80, 0xca, 0x34, 0x7a, 0xa7, 0xa5, 0x48, 0x39,
-	0xd3, 0x4a, 0x05, 0x3b, 0x60, 0xb0, 0x29, 0x5f, 0x01, 0x72, 0xe8, 0xd5, 0x92, 0xfb, 0x01, 0x3a,
-	0x15, 0x41, 0xb1, 0x3c, 0xc7, 0xa0, 0x2f, 0x25, 0x84, 0xa2, 0xd1, 0xbd, 0xf9, 0xcb, 0x3c, 0x43,
-	0x45, 0xe2, 0x47, 0xd0, 0x54, 0xb2, 0xe2, 0x67, 0x76, 0xbe, 0x5a, 0xa1, 0xee, 0x27, 0x04, 0xff,
-	0xaf, 0x2f, 0xde, 0x50, 0x3e, 0x91, 0x8d, 0x6d, 0x2f, 0xf0, 0x7d, 0x68, 0xd0, 0x74, 0xc4, 0xac,
-	0xba, 0xc8, 0x69, 0x87, 0xb4, 0xc0, 0xf0, 0x43, 0xd8, 0x4b, 0xc4, 0xd6, 0xc8, 0x2d, 0xbe, 0x7e,
-	0x21, 0x56, 0x1d, 0x87, 0x12, 0x76, 0xbf, 0x20, 0x38, 0xda, 0x34, 0xd3, 0x5f, 0xfa, 0xfc, 0x27,
-	0xa6, 0x9e, 0xc2, 0x01, 0xab, 0xea, 0x59, 0xda, 0xef, 0x72, 0xda, 0xe4, 0xdd, 0x8f, 0x08, 0xec,
-	0x1d, 0xfe, 0xca, 0x81, 0xff, 0xa5, 0xc5, 0xdb, 0xd7, 0x59, 0x6c, 0x6d, 0xf9, 0x38, 0xb9, 0xf7,
-	0x6d, 0x6e, 0xa3, 0xab, 0xb9, 0x8d, 0x7e, 0xcc, 0x6d, 0xf4, 0x79, 0x61, 0xd7, 0xae, 0x16, 0x76,
-	0xed, 0xfb, 0xc2, 0xae, 0xbd, 0x35, 0xb7, 0xff, 0x08, 0xe3, 0x7d, 0xb1, 0xca, 0xc7, 0x3f, 0x03,
-	0x00, 0x00, 0xff, 0xff, 0x81, 0xeb, 0x89, 0x41, 0x23, 0x05, 0x00, 0x00,
+	// 667 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xac, 0x55, 0xcd, 0x6a, 0xdb, 0x4a,
+	0x14, 0x8e, 0xec, 0x38, 0x8e, 0x8f, 0xc9, 0xcf, 0x9d, 0x7b, 0xe1, 0xce, 0xcd, 0x6d, 0x85, 0x10,
+	0xa1, 0x88, 0xd0, 0xca, 0x34, 0x69, 0x36, 0x85, 0xb6, 0x90, 0x84, 0x42, 0x20, 0x60, 0x98, 0xa4,
+	0x14, 0xba, 0x93, 0xac, 0x71, 0x32, 0xf5, 0x58, 0x23, 0x34, 0x23, 0x88, 0x17, 0x5d, 0x76, 0xd3,
+	0x55, 0x5f, 0xa0, 0x0f, 0xd1, 0x57, 0xe8, 0xaa, 0xcb, 0x2c, 0xbb, 0x2c, 0xc9, 0x8b, 0x14, 0xcd,
+	0xc8, 0xb6, 0xac, 0x38, 0x6e, 0xa1, 0x5d, 0xea, 0x3b, 0xdf, 0xf9, 0xe6, 0x3b, 0xe7, 0xcc, 0x1c,
+	0x81, 0x97, 0x0c, 0xce, 0x3b, 0x9c, 0x85, 0x9d, 0x24, 0xec, 0x0c, 0x45, 0x44, 0x79, 0x27, 0x49,
+	0x85, 0x12, 0xb2, 0xc3, 0x45, 0x2f, 0xe0, 0x52, 0x89, 0x94, 0xfa, 0x1a, 0x41, 0x6b, 0x41, 0x3c,
+	0x52, 0xa3, 0x84, 0xfa, 0x9a, 0xb6, 0x75, 0xef, 0x5c, 0x88, 0x73, 0x4e, 0x0d, 0x3d, 0xcc, 0xfa,
+	0x1d, 0xa9, 0xd2, 0xac, 0xa7, 0x0c, 0x79, 0x6b, 0xfb, 0x2e, 0x59, 0xfd, 0x21, 0x0d, 0xcb, 0xfd,
+	0x5c, 0x03, 0xe8, 0x86, 0x6f, 0x69, 0x4f, 0x1d, 0xc7, 0x7d, 0x81, 0xd6, 0xa1, 0xc6, 0x22, 0x6c,
+	0x39, 0x96, 0xd7, 0x22, 0x35, 0x16, 0xa1, 0x07, 0xb0, 0x2e, 0x74, 0xf4, 0x6c, 0x94, 0xd0, 0x57,
+	0x29, 0x97, 0xb8, 0xe6, 0xd4, 0xbd, 0x16, 0xa9, 0xa0, 0xe8, 0x31, 0x34, 0x23, 0xaa, 0x02, 0xc6,
+	0x25, 0xae, 0x3b, 0x96, 0xd7, 0xde, 0xfd, 0xd7, 0x37, 0xe6, 0xfc, 0xb1, 0x39, 0xff, 0x54, 0x9b,
+	0x23, 0x63, 0x1e, 0xda, 0x87, 0x56, 0x4a, 0x79, 0xa0, 0x98, 0x88, 0x25, 0x5e, 0x76, 0xea, 0x3a,
+	0x69, 0xa6, 0x40, 0x9f, 0x14, 0x71, 0x32, 0x65, 0x22, 0x0c, 0x4d, 0x19, 0xb3, 0x24, 0xa1, 0x0a,
+	0x37, 0xb4, 0xcd, 0xf1, 0x27, 0xf2, 0x60, 0xe3, 0x22, 0x90, 0xc7, 0x71, 0x28, 0xb2, 0x38, 0x3a,
+	0x61, 0xf1, 0x40, 0xe2, 0x15, 0xc7, 0xf2, 0x56, 0x49, 0x15, 0x46, 0xcf, 0x00, 0xa6, 0xfe, 0x71,
+	0xd3, 0xb1, 0xbc, 0xf5, 0xdd, 0xfb, 0x95, 0xb3, 0x4f, 0x87, 0x41, 0xaa, 0x0e, 0xb8, 0xe8, 0x0d,
+	0x72, 0x12, 0x29, 0x25, 0xb8, 0x07, 0xb0, 0x66, 0x5a, 0x76, 0x54, 0x94, 0x52, 0xaa, 0xde, 0xfa,
+	0xb5, 0xea, 0xdd, 0x2e, 0xb4, 0x8d, 0x86, 0x71, 0x64, 0x03, 0x30, 0xe3, 0xf0, 0xf8, 0x28, 0x17,
+	0xc9, 0x7b, 0x5c, 0x42, 0x90, 0x03, 0x6d, 0x91, 0xa9, 0x09, 0xc1, 0x0c, 0xa1, 0x0c, 0xb9, 0xef,
+	0x60, 0xa3, 0x24, 0xa8, 0x87, 0xb9, 0x07, 0xcd, 0x42, 0x42, 0x2b, 0xb6, 0x77, 0xff, 0xab, 0xd4,
+	0x38, 0x1d, 0x3c, 0x19, 0x33, 0xd1, 0x3e, 0xac, 0x8e, 0x65, 0xf5, 0x31, 0x0b, 0xb3, 0x26, 0x54,
+	0xf7, 0x83, 0x05, 0x7f, 0x4f, 0x03, 0xaf, 0x99, 0xba, 0x30, 0x85, 0x55, 0x2f, 0xd4, 0x23, 0x58,
+	0x66, 0x71, 0x5f, 0xe0, 0x9a, 0xee, 0xd3, 0x02, 0x69, 0x4d, 0x43, 0x4f, 0xa0, 0xc1, 0xf5, 0x24,
+	0xcd, 0xad, 0xb2, 0xe7, 0xf2, 0x27, 0x15, 0x13, 0x43, 0x76, 0x3f, 0x59, 0xf0, 0xff, 0xac, 0x99,
+	0x6e, 0xe1, 0xf3, 0x8f, 0x98, 0x7a, 0x01, 0x6b, 0xa2, 0xac, 0x87, 0xeb, 0x3f, 0xeb, 0xd3, 0x2c,
+	0xdf, 0x7d, 0x6f, 0x81, 0xbd, 0xc0, 0x5f, 0x3e, 0xf0, 0xdf, 0xb4, 0xb8, 0x3d, 0xcf, 0x62, 0xab,
+	0xea, 0xe3, 0x4b, 0x1d, 0xfe, 0x31, 0xa9, 0xa7, 0xf9, 0x96, 0x39, 0xbc, 0xa0, 0xbd, 0x81, 0xcc,
+	0x86, 0x12, 0xf9, 0x80, 0xc2, 0x2c, 0x8e, 0x38, 0x8d, 0xba, 0x93, 0x6b, 0x2f, 0x0b, 0x37, 0x73,
+	0x22, 0x68, 0x07, 0x36, 0x0b, 0x94, 0x4c, 0x9e, 0x74, 0x4d, 0xb3, 0x6f, 0xe1, 0xf9, 0x4a, 0x29,
+	0xb0, 0x93, 0x60, 0x24, 0x32, 0x65, 0x66, 0xdb, 0x22, 0x15, 0x14, 0x3d, 0x87, 0x2d, 0xf3, 0xe6,
+	0xe4, 0x4b, 0x91, 0xf6, 0x28, 0xa1, 0x2c, 0x8e, 0xe8, 0xe5, 0xa1, 0xc8, 0x62, 0x45, 0x53, 0xbc,
+	0xec, 0x58, 0x5e, 0x83, 0x2c, 0x60, 0xa0, 0xa7, 0x80, 0xfb, 0x8c, 0xd3, 0xb9, 0xd9, 0x0d, 0x9d,
+	0x7d, 0x67, 0x1c, 0x3d, 0x84, 0xbf, 0x58, 0x74, 0x49, 0x68, 0x98, 0x31, 0x1e, 0x8d, 0x93, 0x56,
+	0x74, 0xd2, 0xed, 0x40, 0xbe, 0x78, 0xfa, 0x19, 0xe7, 0x8a, 0x5e, 0xaa, 0x22, 0xa2, 0x77, 0x4a,
+	0x83, 0x54, 0xe1, 0x52, 0x9f, 0xce, 0xe8, 0x30, 0xe1, 0x81, 0xa2, 0x12, 0xaf, 0xce, 0xf4, 0x69,
+	0x82, 0x97, 0xfa, 0x64, 0x3a, 0x2d, 0x71, 0x4b, 0x8b, 0x56, 0xd0, 0x83, 0x9d, 0xaf, 0xd7, 0xb6,
+	0x75, 0x75, 0x6d, 0x5b, 0xdf, 0xaf, 0x6d, 0xeb, 0xe3, 0x8d, 0xbd, 0x74, 0x75, 0x63, 0x2f, 0x7d,
+	0xbb, 0xb1, 0x97, 0xde, 0x6c, 0x56, 0xff, 0x00, 0xe1, 0x8a, 0xde, 0x47, 0x7b, 0x3f, 0x02, 0x00,
+	0x00, 0xff, 0xff, 0x69, 0x3b, 0x47, 0x8d, 0x73, 0x06, 0x00, 0x00,
 }
 
 func (m *ObjectInfo) Marshal() (dAtA []byte, err error) {
@@ -584,17 +654,19 @@ func (m *ObjectInfo) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		i--
 		dAtA[i] = 0x2a
 	}
-	if m.Relations != nil {
-		{
-			size, err := m.Relations.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
+	if len(m.Relations) > 0 {
+		for iNdEx := len(m.Relations) - 1; iNdEx >= 0; iNdEx-- {
+			{
+				size, err := m.Relations[iNdEx].MarshalToSizedBuffer(dAtA[:i])
+				if err != nil {
+					return 0, err
+				}
+				i -= size
+				i = encodeVarintLocalstore(dAtA, i, uint64(size))
 			}
-			i -= size
-			i = encodeVarintLocalstore(dAtA, i, uint64(size))
+			i--
+			dAtA[i] = 0x22
 		}
-		i--
-		dAtA[i] = 0x22
 	}
 	if m.Details != nil {
 		{
@@ -915,6 +987,82 @@ func (m *ObjectInfoWithOutboundLinksIDs) MarshalToSizedBuffer(dAtA []byte) (int,
 	return len(dAtA) - i, nil
 }
 
+func (m *ObjectStoreChecksums) Marshal() (dAtA []byte, err error) {
+	size := m.Size()
+	dAtA = make([]byte, size)
+	n, err := m.MarshalToSizedBuffer(dAtA[:size])
+	if err != nil {
+		return nil, err
+	}
+	return dAtA[:n], nil
+}
+
+func (m *ObjectStoreChecksums) MarshalTo(dAtA []byte) (int, error) {
+	size := m.Size()
+	return m.MarshalToSizedBuffer(dAtA[:size])
+}
+
+func (m *ObjectStoreChecksums) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+	i := len(dAtA)
+	_ = i
+	var l int
+	_ = l
+	if m.BundledObjects != 0 {
+		i = encodeVarintLocalstore(dAtA, i, uint64(m.BundledObjects))
+		i--
+		dAtA[i] = 0x48
+	}
+	if len(m.BundledTemplates) > 0 {
+		i -= len(m.BundledTemplates)
+		copy(dAtA[i:], m.BundledTemplates)
+		i = encodeVarintLocalstore(dAtA, i, uint64(len(m.BundledTemplates)))
+		i--
+		dAtA[i] = 0x42
+	}
+	if m.FulltextRebuild != 0 {
+		i = encodeVarintLocalstore(dAtA, i, uint64(m.FulltextRebuild))
+		i--
+		dAtA[i] = 0x38
+	}
+	if m.IdxRebuildCounter != 0 {
+		i = encodeVarintLocalstore(dAtA, i, uint64(m.IdxRebuildCounter))
+		i--
+		dAtA[i] = 0x30
+	}
+	if m.FilesForceReindexCounter != 0 {
+		i = encodeVarintLocalstore(dAtA, i, uint64(m.FilesForceReindexCounter))
+		i--
+		dAtA[i] = 0x28
+	}
+	if m.ObjectsForceReindexCounter != 0 {
+		i = encodeVarintLocalstore(dAtA, i, uint64(m.ObjectsForceReindexCounter))
+		i--
+		dAtA[i] = 0x20
+	}
+	if len(m.BundledLayouts) > 0 {
+		i -= len(m.BundledLayouts)
+		copy(dAtA[i:], m.BundledLayouts)
+		i = encodeVarintLocalstore(dAtA, i, uint64(len(m.BundledLayouts)))
+		i--
+		dAtA[i] = 0x1a
+	}
+	if len(m.BundledRelations) > 0 {
+		i -= len(m.BundledRelations)
+		copy(dAtA[i:], m.BundledRelations)
+		i = encodeVarintLocalstore(dAtA, i, uint64(len(m.BundledRelations)))
+		i--
+		dAtA[i] = 0x12
+	}
+	if len(m.BundledObjectTypes) > 0 {
+		i -= len(m.BundledObjectTypes)
+		copy(dAtA[i:], m.BundledObjectTypes)
+		i = encodeVarintLocalstore(dAtA, i, uint64(len(m.BundledObjectTypes)))
+		i--
+		dAtA[i] = 0xa
+	}
+	return len(dAtA) - i, nil
+}
+
 func encodeVarintLocalstore(dAtA []byte, offset int, v uint64) int {
 	offset -= sovLocalstore(v)
 	base := offset
@@ -946,9 +1094,11 @@ func (m *ObjectInfo) Size() (n int) {
 		l = m.Details.Size()
 		n += 1 + l + sovLocalstore(uint64(l))
 	}
-	if m.Relations != nil {
-		l = m.Relations.Size()
-		n += 1 + l + sovLocalstore(uint64(l))
+	if len(m.Relations) > 0 {
+		for _, e := range m.Relations {
+			l = e.Size()
+			n += 1 + l + sovLocalstore(uint64(l))
+		}
 	}
 	l = len(m.Snippet)
 	if l > 0 {
@@ -1081,6 +1231,46 @@ func (m *ObjectInfoWithOutboundLinksIDs) Size() (n int) {
 			l = len(s)
 			n += 1 + l + sovLocalstore(uint64(l))
 		}
+	}
+	return n
+}
+
+func (m *ObjectStoreChecksums) Size() (n int) {
+	if m == nil {
+		return 0
+	}
+	var l int
+	_ = l
+	l = len(m.BundledObjectTypes)
+	if l > 0 {
+		n += 1 + l + sovLocalstore(uint64(l))
+	}
+	l = len(m.BundledRelations)
+	if l > 0 {
+		n += 1 + l + sovLocalstore(uint64(l))
+	}
+	l = len(m.BundledLayouts)
+	if l > 0 {
+		n += 1 + l + sovLocalstore(uint64(l))
+	}
+	if m.ObjectsForceReindexCounter != 0 {
+		n += 1 + sovLocalstore(uint64(m.ObjectsForceReindexCounter))
+	}
+	if m.FilesForceReindexCounter != 0 {
+		n += 1 + sovLocalstore(uint64(m.FilesForceReindexCounter))
+	}
+	if m.IdxRebuildCounter != 0 {
+		n += 1 + sovLocalstore(uint64(m.IdxRebuildCounter))
+	}
+	if m.FulltextRebuild != 0 {
+		n += 1 + sovLocalstore(uint64(m.FulltextRebuild))
+	}
+	l = len(m.BundledTemplates)
+	if l > 0 {
+		n += 1 + l + sovLocalstore(uint64(l))
+	}
+	if m.BundledObjects != 0 {
+		n += 1 + sovLocalstore(uint64(m.BundledObjects))
 	}
 	return n
 }
@@ -1249,10 +1439,8 @@ func (m *ObjectInfo) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Relations == nil {
-				m.Relations = &relation.Relations{}
-			}
-			if err := m.Relations.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			m.Relations = append(m.Relations, &Relation{})
+			if err := m.Relations[len(m.Relations)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -1322,7 +1510,7 @@ func (m *ObjectInfo) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.ObjectType |= ObjectInfoType(b&0x7F) << shift
+				m.ObjectType |= SmartBlockType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -1333,10 +1521,7 @@ func (m *ObjectInfo) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1422,10 +1607,7 @@ func (m *ObjectDetails) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1539,10 +1721,7 @@ func (m *ObjectLinks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1660,10 +1839,7 @@ func (m *ObjectLinksInfo) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1817,10 +1993,7 @@ func (m *ObjectInfoWithLinks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -1972,10 +2145,7 @@ func (m *ObjectInfoWithOutboundLinks) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
-				return ErrInvalidLengthLocalstore
-			}
-			if (iNdEx + skippy) < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {
@@ -2125,10 +2295,280 @@ func (m *ObjectInfoWithOutboundLinksIDs) Unmarshal(dAtA []byte) error {
 			if err != nil {
 				return err
 			}
-			if skippy < 0 {
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
-			if (iNdEx + skippy) < 0 {
+			if (iNdEx + skippy) > l {
+				return io.ErrUnexpectedEOF
+			}
+			iNdEx += skippy
+		}
+	}
+
+	if iNdEx > l {
+		return io.ErrUnexpectedEOF
+	}
+	return nil
+}
+func (m *ObjectStoreChecksums) Unmarshal(dAtA []byte) error {
+	l := len(dAtA)
+	iNdEx := 0
+	for iNdEx < l {
+		preIndex := iNdEx
+		var wire uint64
+		for shift := uint(0); ; shift += 7 {
+			if shift >= 64 {
+				return ErrIntOverflowLocalstore
+			}
+			if iNdEx >= l {
+				return io.ErrUnexpectedEOF
+			}
+			b := dAtA[iNdEx]
+			iNdEx++
+			wire |= uint64(b&0x7F) << shift
+			if b < 0x80 {
+				break
+			}
+		}
+		fieldNum := int32(wire >> 3)
+		wireType := int(wire & 0x7)
+		if wireType == 4 {
+			return fmt.Errorf("proto: ObjectStoreChecksums: wiretype end group for non-group")
+		}
+		if fieldNum <= 0 {
+			return fmt.Errorf("proto: ObjectStoreChecksums: illegal tag %d (wire type %d)", fieldNum, wire)
+		}
+		switch fieldNum {
+		case 1:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BundledObjectTypes", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BundledObjectTypes = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 2:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BundledRelations", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BundledRelations = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 3:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BundledLayouts", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BundledLayouts = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 4:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field ObjectsForceReindexCounter", wireType)
+			}
+			m.ObjectsForceReindexCounter = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.ObjectsForceReindexCounter |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 5:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FilesForceReindexCounter", wireType)
+			}
+			m.FilesForceReindexCounter = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FilesForceReindexCounter |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 6:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field IdxRebuildCounter", wireType)
+			}
+			m.IdxRebuildCounter = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.IdxRebuildCounter |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 7:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field FulltextRebuild", wireType)
+			}
+			m.FulltextRebuild = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.FulltextRebuild |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		case 8:
+			if wireType != 2 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BundledTemplates", wireType)
+			}
+			var stringLen uint64
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				stringLen |= uint64(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+			intStringLen := int(stringLen)
+			if intStringLen < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			postIndex := iNdEx + intStringLen
+			if postIndex < 0 {
+				return ErrInvalidLengthLocalstore
+			}
+			if postIndex > l {
+				return io.ErrUnexpectedEOF
+			}
+			m.BundledTemplates = string(dAtA[iNdEx:postIndex])
+			iNdEx = postIndex
+		case 9:
+			if wireType != 0 {
+				return fmt.Errorf("proto: wrong wireType = %d for field BundledObjects", wireType)
+			}
+			m.BundledObjects = 0
+			for shift := uint(0); ; shift += 7 {
+				if shift >= 64 {
+					return ErrIntOverflowLocalstore
+				}
+				if iNdEx >= l {
+					return io.ErrUnexpectedEOF
+				}
+				b := dAtA[iNdEx]
+				iNdEx++
+				m.BundledObjects |= int32(b&0x7F) << shift
+				if b < 0x80 {
+					break
+				}
+			}
+		default:
+			iNdEx = preIndex
+			skippy, err := skipLocalstore(dAtA[iNdEx:])
+			if err != nil {
+				return err
+			}
+			if (skippy < 0) || (iNdEx+skippy) < 0 {
 				return ErrInvalidLengthLocalstore
 			}
 			if (iNdEx + skippy) > l {

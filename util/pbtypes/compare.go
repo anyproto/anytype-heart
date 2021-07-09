@@ -2,7 +2,6 @@ package pbtypes
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
@@ -42,6 +41,22 @@ func StructEqualIgnore(det1 *types.Struct, det2 *types.Struct, excludeKeys []str
 	}
 
 	return true
+}
+
+// StructFilterKeys returns provided keys reusing underlying pb values pointers
+func StructFilterKeys(st *types.Struct, filteredKeys []string) *types.Struct {
+	if st == nil || st.Fields == nil {
+		return st
+	}
+
+	m := make(map[string]*types.Value, len(st.Fields))
+	for k, v := range st.Fields {
+		if slice.FindPos(filteredKeys, k) > -1 {
+			m[k] = v
+		}
+	}
+
+	return &types.Struct{Fields: m}
 }
 
 // StructCutKeys excludes provided keys reusing underlying pb values pointers
@@ -101,7 +116,7 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 	return diff
 }
 
-func RelationsDiff(rels1, rels2 []*pbrelation.Relation) (added []*pbrelation.Relation, updated []*pbrelation.Relation, removed []string) {
+func RelationsDiff(rels1, rels2 []*model.Relation) (added []*model.Relation, updated []*model.Relation, removed []string) {
 	for i := 0; i < len(rels2); i++ {
 		if r := GetRelation(rels1, rels2[i].Key); r == nil {
 			added = append(added, rels2[i])
@@ -124,7 +139,7 @@ func RelationsDiff(rels1, rels2 []*pbrelation.Relation) (added []*pbrelation.Rel
 	return
 }
 
-func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) (equal bool) {
+func RelationsEqual(rels1 []*model.Relation, rels2 []*model.Relation) (equal bool) {
 	if len(rels1) != len(rels2) {
 		return false
 	}
@@ -138,7 +153,7 @@ func RelationsEqual(rels1 []*pbrelation.Relation, rels2 []*pbrelation.Relation) 
 	return true
 }
 
-func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal bool) {
+func RelationEqualOmitDictionary(rel1 *model.Relation, rel2 *model.Relation) (equal bool) {
 	if rel1 == nil && rel2 != nil {
 		return false
 	}
@@ -159,9 +174,6 @@ func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Rel
 		return false
 	}
 	if rel1.DefaultValue.Compare(rel2.DefaultValue) != 0 {
-		return false
-	}
-	if rel1.DataSource != rel2.DataSource {
 		return false
 	}
 	if rel1.Hidden != rel2.Hidden {
@@ -185,7 +197,7 @@ func RelationEqualOmitDictionary(rel1 *pbrelation.Relation, rel2 *pbrelation.Rel
 
 // RelationCompatible returns if provided relations are compatible in terms of underlying data format
 // e.g. it is ok if relation can have a different name and selectDict, while having the same key and format
-func RelationCompatible(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal bool) {
+func RelationCompatible(rel1 *model.Relation, rel2 *model.Relation) (equal bool) {
 	if rel1 == nil && rel2 != nil {
 		return false
 	}
@@ -208,7 +220,7 @@ func RelationCompatible(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (e
 	return true
 }
 
-func RelationEqual(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal bool) {
+func RelationEqual(rel1 *model.Relation, rel2 *model.Relation) (equal bool) {
 	if !RelationEqualOmitDictionary(rel1, rel2) {
 		return false
 	}
@@ -216,13 +228,13 @@ func RelationEqual(rel1 *pbrelation.Relation, rel2 *pbrelation.Relation) (equal 
 	return RelationSelectDictEqual(rel1.SelectDict, rel2.SelectDict)
 }
 
-func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationOption) bool {
+func RelationSelectDictEqual(dict1, dict2 []*model.RelationOption) bool {
 	if len(dict1) != len(dict2) {
 		return false
 	}
 
 	for i := 0; i < len(dict1); i++ {
-		if !OptionEqualOmitScope(dict1[i], dict2[i]) {
+		if !OptionEqual(dict1[i], dict2[i]) {
 			return false
 		}
 	}
@@ -230,7 +242,29 @@ func RelationSelectDictEqual(dict1, dict2 []*pbrelation.RelationOption) bool {
 	return true
 }
 
-func OptionEqualOmitScope(opt1, opt2 *pbrelation.RelationOption) bool {
+func RelationSelectDictDiff(dict1, dict2 []*model.RelationOption) (added []*model.RelationOption, updated []*model.RelationOption, removed []string) {
+	for i := 0; i < len(dict2); i++ {
+		if opt := GetOption(dict1, dict2[i].Id); opt == nil {
+			added = append(added, dict2[i])
+			continue
+		} else {
+			if !OptionEqualOmitScope(opt, dict2[i]) {
+				updated = append(updated, dict2[i])
+				continue
+			}
+		}
+	}
+
+	for i := 0; i < len(dict1); i++ {
+		if r := GetOption(dict2, dict1[i].Id); r == nil {
+			removed = append(removed, dict1[i].Id)
+			continue
+		}
+	}
+	return
+}
+
+func OptionEqualOmitScope(opt1, opt2 *model.RelationOption) bool {
 	if (opt1 == nil) && (opt2 != nil) {
 		return false
 	}
@@ -250,6 +284,34 @@ func OptionEqualOmitScope(opt1, opt2 *pbrelation.RelationOption) bool {
 		return false
 	}
 	if opt1.Color != opt2.Color {
+		return false
+	}
+	return true
+}
+
+func OptionEqual(opt1, opt2 *model.RelationOption) bool {
+	if (opt1 == nil) && (opt2 != nil) {
+		return false
+	}
+
+	if (opt1 != nil) && (opt2 == nil) {
+		return false
+	}
+
+	if opt1 == nil && opt2 == nil {
+		return true
+	}
+
+	if opt1.Id != opt2.Id {
+		return false
+	}
+	if opt1.Text != opt2.Text {
+		return false
+	}
+	if opt1.Color != opt2.Color {
+		return false
+	}
+	if opt1.Scope != opt2.Scope {
 		return false
 	}
 	return true

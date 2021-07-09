@@ -2,11 +2,13 @@ package logging
 
 import (
 	"fmt"
+	"github.com/cheggaaa/mb"
 	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gobwas/glob"
 	logging "github.com/ipfs/go-log/v2"
@@ -62,16 +64,17 @@ func getLoggingConfig() logging.Config {
 }
 
 func init() {
-	// should it be in goroutine?
+	gelfSinkWrapper.batch = mb.New(1000)
 	tlsWriter, err := gelf.NewTLSWriter(graylogHost, nil)
 	if err != nil {
 		fmt.Printf("failed to init gelf tls: %s", err.Error())
 	} else {
-		tlsWriter.MaxReconnect = 1
-		tlsWriter.ReconnectDelay = 1 // bug within geld, will be multiplied by time.Second
+		tlsWriter.MaxReconnect = 0
+		tlsWriter.ReconnectDelay = time.Second
 		gelfSinkWrapper.gelfWriter = tlsWriter
 	}
 
+	go gelfSinkWrapper.Run()
 	err = zap.RegisterSink(graylogScheme, func(url *url.URL) (zap.Sink, error) {
 		// init tlsWriter outside to make sure it is available
 		return &gelfSinkWrapper, nil
@@ -84,11 +87,19 @@ func init() {
 	logging.SetupLogging(cfg)
 }
 
-func Logger(system string) zap.SugaredLogger {
+type LWrapper struct {
+	zap.SugaredLogger
+}
+
+func (l *LWrapper) Warningf(template string, args ...interface{}) {
+	l.Warnf(template, args...)
+}
+
+func Logger(system string) *LWrapper {
 	logger := logging.Logger(system)
 	setSubsystemLevels()
 
-	return logger.SugaredLogger
+	return &LWrapper{logger.SugaredLogger}
 }
 
 func SetLoggingFilepath(logPath string) {

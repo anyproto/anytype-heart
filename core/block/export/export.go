@@ -1,20 +1,30 @@
 package export
 
 import (
+	"bytes"
 	"context"
+	"math/rand"
 	"path/filepath"
-	"strings"
+	"strconv"
+	"sync"
+	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/md"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/pbc"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/pbjson"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -82,7 +92,7 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
 		did := docId
 		if err = queue.Wait(func() {
 			log.With("threadId", did).Debugf("write doc")
-			if werr := e.writeDoc(wr, docIds, queue, did); werr != nil {
+			if werr := e.writeDoc(req.Format, wr, docIds, queue, did); werr != nil {
 				log.With("threadId", did).Warnf("can't export doc: %v", werr)
 			}
 		}); err != nil {
@@ -101,7 +111,15 @@ func (e *export) idsForExport(reqIds []string) (ids []string, err error) {
 	if len(reqIds) > 0 {
 		return reqIds, nil
 	}
-	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{}, []smartblock.SmartBlockType{
+	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.Bool(false),
+			},
+		},
+	}, []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeHome,
 		smartblock.SmartBlockTypePage,
 	})
@@ -114,15 +132,24 @@ func (e *export) idsForExport(reqIds []string) (ids []string, err error) {
 	return
 }
 
-func (e *export) writeDoc(wr writer, docIds []string, queue process.Queue, docId string) (err error) {
+func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string, queue process.Queue, docId string) (err error) {
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
-		conv := md.NewMDConverter(e.a, b.NewState()).SetKnownKinks(docIds)
-		result := conv.Convert()
-		filename := docId + ".md"
-		if docId == e.a.PredefinedBlocks().Home {
-			filename = "index.md"
+		var conv converter.Converter
+		switch format {
+		case pb.RpcExport_Markdown:
+			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
+		case pb.RpcExport_Protobuf:
+			conv = pbc.NewConverter(b.NewState())
+		case pb.RpcExport_JSON:
+			conv = pbjson.NewConverter(b.NewState())
 		}
-		if err = wr.WriteFile(filename, strings.NewReader(result)); err != nil {
+		conv.SetKnownLinks(docIds)
+		result := conv.Convert()
+		filename := docId + conv.Ext()
+		if docId == e.a.PredefinedBlocks().Home {
+			filename = "index" + conv.Ext()
+		}
+		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
 			return err
 		}
 		for _, fh := range conv.FileHashes() {
@@ -154,7 +181,7 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	filename := filepath.Join("files", hash+"_"+file.Meta().Name)
+	filename := filepath.Join("files", wr.Namer().Get(hash, file.Meta().Name))
 	rd, err := file.Reader()
 	if err != nil {
 		return
@@ -171,10 +198,56 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	filename := filepath.Join("files", hash+"_"+orig.Meta().Name)
+	filename := filepath.Join("files", wr.Namer().Get(hash, orig.Meta().Name))
 	rd, err := orig.Reader()
 	if err != nil {
 		return
 	}
 	return wr.WriteFile(filename, rd)
+}
+
+func newNamer() *fileNamer {
+	return &fileNamer{
+		names: make(map[string]string),
+	}
+}
+
+type fileNamer struct {
+	// id -> name and name -> id
+	names map[string]string
+	mu    sync.Mutex
+}
+
+func (fn *fileNamer) Get(hash, title string) (name string) {
+	const fileLenLimit = 30
+	fn.mu.Lock()
+	defer fn.mu.Unlock()
+	var ok bool
+	if name, ok = fn.names[hash]; ok {
+		return name
+	}
+	if l := utf8.RuneCountInString(title); l > fileLenLimit {
+		buf := bytes.NewBuffer(nil)
+		for i := l - fileLenLimit; i < l; i++ {
+			buf.WriteRune([]rune(title)[i])
+		}
+		name = buf.String()
+	} else {
+		name = title
+	}
+	var (
+		i = 0
+		b = 36
+	)
+	gname := name
+	for {
+		if _, ok = fn.names[gname]; !ok {
+			fn.names[hash] = gname
+			fn.names[gname] = hash
+			return gname
+		}
+		i++
+		n := int64(i * b)
+		gname = strconv.FormatInt(rand.Int63n(n), b) + "_" + name
+	}
 }

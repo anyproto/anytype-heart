@@ -17,11 +17,13 @@ var (
 func MakeAndFilter(protoFilters []*model.BlockContentDataviewFilter) (Filter, error) {
 	var and AndFilters
 	for _, pf := range protoFilters {
-		f, err := MakeFilter(pf)
-		if err != nil {
-			return nil, err
+		if pf.Condition != model.BlockContentDataviewFilter_None {
+			f, err := MakeFilter(pf)
+			if err != nil {
+				return nil, err
+			}
+			and = append(and, f)
 		}
-		and = append(and, f)
 	}
 	return and, nil
 }
@@ -33,6 +35,15 @@ func MakeFilter(proto *model.BlockContentDataviewFilter) (Filter, error) {
 			RelationKey:      proto.RelationKey,
 			RelationProperty: proto.RelationProperty,
 			Condition:        model.BlockContentDataviewFilter_NotEqual,
+			Value:            pbtypes.Bool(true),
+		}
+	}
+	// replaces "value != false" to "value == true" for expected work with checkboxes
+	if proto.Condition == model.BlockContentDataviewFilter_NotEqual && proto.Value != nil && proto.Value.Equal(pbtypes.Bool(false)) {
+		proto = &model.BlockContentDataviewFilter{
+			RelationKey:      proto.RelationKey,
+			RelationProperty: proto.RelationProperty,
+			Condition:        model.BlockContentDataviewFilter_Equal,
 			Value:            pbtypes.Bool(true),
 		}
 	}

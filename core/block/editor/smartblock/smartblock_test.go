@@ -3,8 +3,10 @@ package smartblock
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -113,7 +115,7 @@ type fixture struct {
 func newFixture(t *testing.T) *fixture {
 	ctrl := gomock.NewController(t)
 	source := mockSource.NewMockSource(ctrl)
-	source.EXPECT().Type().AnyTimes().Return(pb.SmartBlockType_Page)
+	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
 	source.EXPECT().Anytype().AnyTimes().Return(nil)
 	source.EXPECT().Virtual().AnyTimes().Return(false)
 
@@ -147,7 +149,8 @@ func (fx *fixture) init(blocks []*model.Block) {
 	doc := state.NewDoc(id, bm)
 	fx.source.EXPECT().ReadDoc(gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
-
-	err := fx.Init(&InitContext{Source: fx.source})
+	ap := new(app.App)
+	ap.Register(restriction.New())
+	err := fx.Init(&InitContext{Source: fx.source, App: ap})
 	require.NoError(fx.t, err)
 }

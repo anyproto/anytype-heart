@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -76,11 +77,10 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 		})
 
 		if len(m.ObjectTypes) > 0 {
-			if len(m.ObjectTypes) > 1 {
-				log.Error("object has more than 1 object type which is not supported on clients. types are truncated")
-			}
-			if slice.FindPos(uniqueObjTypes, m.ObjectTypes[0]) == -1 {
-				uniqueObjTypes = append(uniqueObjTypes, m.ObjectTypes[0])
+			for _, ot := range m.ObjectTypes {
+				if slice.FindPos(uniqueObjTypes, ot) == -1 {
+					uniqueObjTypes = append(uniqueObjTypes, ot)
+				}
 			}
 		}
 
@@ -89,10 +89,11 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 	objectTypes := h.meta.FetchObjectTypes(uniqueObjTypes)
 	return &pb.EventObjectShow{
 		RootId:      pageId,
-		Type:        smartblock.SmartBlockTypeToProto(sbType),
+		Type:        model.SmartBlockType(sbType),
 		Blocks:      s.Blocks(),
 		Details:     details,
 		ObjectTypes: objectTypes,
+		Relations:   s.ExtraRelations(),
 	}, ver, nil
 }
 
@@ -193,8 +194,14 @@ func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree 
 		err = fmt.Errorf("history: anytype.GetBlock error: %v", err)
 		return
 	}
-	if tree, err = change.BuildTreeBefore(sb, versionId, includeLastId); err != nil {
-		return
+	if versionId != "" {
+		if tree, err = change.BuildTreeBefore(sb, versionId, includeLastId); err != nil {
+			return
+		}
+	} else {
+		if tree, _, err = change.BuildTree(sb); err != nil {
+			return
+		}
 	}
 	return tree, sb.Type(), nil
 }
@@ -222,7 +229,7 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 		// todo: set case not handled
 		template.InitTemplate(s, template.WithTitle)
 	}
-	s.BlocksInit()
+	s.BlocksInit(s)
 	if ch := tree.Get(versionId); ch != nil {
 		profileId, profileName, e := h.getProfileInfo()
 		if e != nil {

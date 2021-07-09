@@ -6,6 +6,8 @@ import (
 	"crypto/aes"
 	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"io"
 	"io/ioutil"
 	"strconv"
@@ -34,15 +36,30 @@ import (
 	mh "github.com/multiformats/go-multihash"
 )
 
-const maxPinAttempts = 10
+const (
+	CName = "files"
+)
 
 var log = logging.Logger("anytype-files")
 var ErrorFailedToUnmarhalNotencrypted = fmt.Errorf("failed to unmarshal not-encrypted file info")
 
+var _ app.Component = (*Service)(nil)
+
 type Service struct {
-	store localstore.FileStore
-	ipfs  ipfs.IPFS
+	store filestore.FileStore
+	ipfs  ipfs.Node
 	pins  pin.FilePinService
+}
+
+func (s *Service) Init(a *app.App) (err error) {
+	s.ipfs = a.MustComponent("ipfs").(ipfs.Node)
+	s.store = a.MustComponent("filestore").(filestore.FileStore)
+	s.pins = a.MustComponent(pin.CName).(pin.FilePinService)
+	return nil
+}
+
+func (s *Service) Name() (name string) {
+	return CName
 }
 
 type FileKeys struct {
@@ -50,12 +67,8 @@ type FileKeys struct {
 	Keys map[string]string
 }
 
-func New(store localstore.FileStore, ipfs ipfs.IPFS, pins pin.FilePinService) *Service {
-	return &Service{
-		store: store,
-		ipfs:  ipfs,
-		pins:  pins,
-	}
+func New() *Service {
+	return &Service{}
 }
 
 var ErrMissingMetaLink = fmt.Errorf("meta link not in node")
@@ -86,7 +99,7 @@ func (s *Service) FileAdd(ctx context.Context, opts AddOptions) (string, *storag
 		return "", nil, err
 	}
 
-	if err = s.store.AddFileKeys(localstore.FileKeys{
+	if err = s.store.AddFileKeys(filestore.FileKeys{
 		Hash: nodeHash,
 		Keys: keys.KeysByPath,
 	}); err != nil {
@@ -150,7 +163,7 @@ func (s *Service) FileRestoreKeys(ctx context.Context, hash string) (map[string]
 		}
 	}
 
-	err = s.store.AddFileKeys(localstore.FileKeys{
+	err = s.store.AddFileKeys(filestore.FileKeys{
 		Hash: hash,
 		Keys: fileKeys,
 	})
@@ -700,7 +713,7 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists
 	keys, err := s.store.GetFileKeys(hash)
 	if err != nil {
 		// no keys means file is not encrypted or keys are missing
-		log.Debugf("failed to get file keys from cache: %w", err)
+		log.Debugf("failed to get file keys from cache: %s", err.Error())
 	}
 
 	var files []*storage.FileInfo

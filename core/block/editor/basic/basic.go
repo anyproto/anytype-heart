@@ -10,7 +10,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -27,17 +29,18 @@ type Basic interface {
 	InternalPaste(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
+	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
 func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
 	s := bs.NewStateCtx(ctx)
-
+	var uniqMap = make(map[string]struct{})
 	for _, bId := range req.BlockIds {
 		b := s.Pick(bId)
 		if b != nil {
-			descendants := bs.getAllDescendants(b.Copy(), []simple.Block{})
+			descendants := bs.getAllDescendants(uniqMap, b.Copy(), []simple.Block{})
 			blocks = append(blocks, descendants...)
 			s.Unlink(b.Model().Id)
 		}
@@ -89,7 +92,10 @@ type basic struct {
 }
 
 func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return
+	}
+	if bs.Type() == model.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
 	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
@@ -111,7 +117,7 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 }
 
 func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return nil, ErrNotSupported
 	}
 
@@ -154,7 +160,7 @@ func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 }
 
 func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
 
@@ -168,7 +174,7 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 }
 
 func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
 
@@ -191,7 +197,7 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 }
 
 func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error) {
-	if bs.Type() == pb.SmartBlockType_Set {
+	if bs.Type() == model.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
 
@@ -215,7 +221,7 @@ func (bs *basic) SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFiel
 			b.Model().Fields = fr.Fields
 		}
 	}
-	return bs.Apply(s, smartblock.NoHistory)
+	return bs.Apply(s)
 }
 
 func (bs *basic) Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error) {
@@ -286,10 +292,28 @@ func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAd
 	return bs.Apply(s)
 }
 
-func (bs *basic) getAllDescendants(block simple.Block, blocks []simple.Block) []simple.Block {
+func (bs *basic) getAllDescendants(uniqMap map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
+	if _, ok := uniqMap[block.Model().Id]; ok {
+		return blocks
+	}
 	blocks = append(blocks, block)
+	uniqMap[block.Model().Id] = struct{}{}
 	for _, cId := range block.Model().ChildrenIds {
-		blocks = bs.getAllDescendants(bs.Pick(cId).Copy(), blocks)
+		blocks = bs.getAllDescendants(uniqMap, bs.Pick(cId).Copy(), blocks)
 	}
 	return blocks
+}
+
+func (bs *basic) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
+	s := bs.NewStateCtx(ctx)
+	if len(ids) == 0 {
+		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
+		ids = []string{template.TitleBlockId, template.DescriptionBlockId, template.FeaturedRelationsId}
+	}
+	for _, id := range ids {
+		if b := s.Get(id); b != nil {
+			b.Model().Align = align
+		}
+	}
+	return bs.Apply(s)
 }

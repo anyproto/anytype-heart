@@ -95,7 +95,7 @@ func (c *collector) fetchInitialMeta() (err error) {
 	if c.s != nil {
 		c.s.Close()
 	}
-	c.s, err = c.ps.newSource(c.blockId)
+	c.s, err = c.ps.newSource(c.blockId, true)
 	if err != nil {
 		return err
 	}

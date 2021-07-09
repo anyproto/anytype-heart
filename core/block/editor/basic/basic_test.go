@@ -6,11 +6,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
@@ -43,6 +44,19 @@ func TestBasic_Create(t *testing.T) {
 		require.NotEmpty(t, id)
 		s := sb.NewState()
 		assert.Equal(t, []string{template.HeaderLayoutId, id}, s.Pick(s.RootId()).Model().ChildrenIds)
+	})
+	t.Run("restricted", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.TestRestrictions = restriction.Restrictions{
+			Object: restriction.ObjectRestrictions{
+				model.Restrictions_Blocks,
+			},
+		}
+		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
+		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		b := NewBasic(sb)
+		_, err := b.Create(nil, "", pb.RpcBlockCreateRequest{})
+		assert.Equal(t, restriction.ErrRestricted, err)
 	})
 }
 
@@ -184,6 +198,20 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
 
+func TestBasic_InternalCut(t *testing.T) {
+	sb := smarttest.New("test")
+	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}}))
+	sb.AddBlock(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}))
+	sb.AddBlock(simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}))
+	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
+	b := NewBasic(sb)
+	blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveRequest{
+		BlockIds: []string{"1", "1.1", "1.1.1"},
+	})
+	require.NoError(t, err)
+	assert.Len(t, blocks, 3)
+}
+
 func TestBasic_InternalPaste(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
@@ -208,7 +236,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{},
 			}}))
-		sb.AddExtraRelations(nil, []*pbrelation.Relation{
+		sb.AddExtraRelations(nil, []*model.Relation{
 			{Key: "key"},
 		})
 	}
@@ -251,5 +279,27 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			BlockId: "2",
 			Key:     "not exists",
 		}))
+	})
+}
+
+func TestBasic_SetAlign(t *testing.T) {
+	t.Run("with ids", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"title", "2"}})).
+			AddBlock(simple.New(&model.Block{Id: "title"})).
+			AddBlock(simple.New(&model.Block{Id: "2"}))
+		b := NewBasic(sb)
+		require.NoError(t, b.SetAlign(nil, model.Block_AlignRight, "2", "3"))
+		assert.Equal(t, model.Block_AlignRight, sb.NewState().Get("2").Model().Align)
+	})
+	t.Run("without ids", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"title", "2"}})).
+			AddBlock(simple.New(&model.Block{Id: "title"})).
+			AddBlock(simple.New(&model.Block{Id: "2"}))
+		b := NewBasic(sb)
+		require.NoError(t, b.SetAlign(nil, model.Block_AlignRight))
+		assert.Equal(t, model.Block_AlignRight, sb.NewState().Get("title").Model().Align)
+		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(sb.NewState().Details(), bundle.RelationKeyLayoutAlign.String()))
 	})
 }

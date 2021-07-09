@@ -21,7 +21,6 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -63,7 +62,7 @@ type fileInfo struct {
 }
 
 type Services interface {
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*pbrelation.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error
@@ -78,6 +77,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	progress.SetProgressMessage("read dir")
 	s := imp.NewStateCtx(ctx)
 	defer log.Debug("5. ImportMarkdown: all smartBlocks done")
+	tempDir := imp.Anytype().TempDir()
 
 	files, close, err := imp.DirWithMarkdownToBlocks(req.ImportPath)
 	defer func() {
@@ -385,7 +385,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				}
 
 				baseName := filepath.Base(f.Name)
-				tmpFile, err := os.Create(filepath.Join(os.TempDir(), baseName))
+				tmpFile, err := os.Create(filepath.Join(tempDir, baseName))
 
 				shortPath := f.Name
 
@@ -564,10 +564,11 @@ func (imp *importImpl) DirWithMarkdownToBlocks(importPath string) (files map[str
 
 					var wholeLineLink bool
 					textRunes := []rune(txt.Text)
-
-					if (txt.Marks.Marks[0].Range.From == 0 || strings.TrimSpace(string(textRunes[0:txt.Marks.Marks[0].Range.From])) == "") &&
-						(int(txt.Marks.Marks[0].Range.To) >= (len(textRunes)-1) || strings.TrimSpace(string(textRunes[txt.Marks.Marks[0].Range.To:])) == "") {
-						wholeLineLink = true
+					var from, to = int(txt.Marks.Marks[0].Range.From), int(txt.Marks.Marks[0].Range.To)
+					if from == 0 || (from < len(textRunes) && len(strings.TrimSpace(string(textRunes[0:from]))) == 0) {
+						if to >= len(textRunes) || len(strings.TrimSpace(string(textRunes[to:]))) == 0 {
+							wholeLineLink = true
+						}
 					}
 
 					ext := filepath.Ext(link)

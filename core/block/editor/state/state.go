@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	pbrelation "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/anytypeio/go-anytype-middleware/util/text"
@@ -41,8 +40,9 @@ type Doc interface {
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
+	ObjectScopedDetails() *types.Struct
 	Details() *types.Struct
-	ExtraRelations() []*pbrelation.Relation
+	ExtraRelations() []*model.Relation
 
 	ObjectTypes() []string
 	ObjectType() string
@@ -50,7 +50,7 @@ type Doc interface {
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
 	GetFileKeys() []pb.ChangeFileKeys
-	BlocksInit()
+	BlocksInit(ds simple.DetailsService)
 	SearchText() string
 }
 
@@ -75,7 +75,7 @@ type State struct {
 	changes        []*pb.ChangeContent
 	fileKeys       []pb.ChangeFileKeys
 	details        *types.Struct
-	extraRelations []*pbrelation.Relation
+	extraRelations []*model.Relation
 	objectTypes    []string
 
 	changesStructureIgnoreIds []string
@@ -129,9 +129,6 @@ func (s *State) Add(b simple.Block) (ok bool) {
 	id := b.Model().Id
 	if s.Pick(id) == nil {
 		s.blocks[id] = b
-		if s.parent != nil {
-			s.newIds = append(s.newIds, id)
-		}
 		s.blockInit(b)
 		return true
 	}
@@ -155,7 +152,6 @@ func (s *State) Get(id string) (b simple.Block) {
 		if b = s.Pick(id); b != nil {
 			b = b.Copy()
 			s.blocks[id] = b
-			s.blockInit(b)
 			return
 		}
 	}
@@ -210,6 +206,19 @@ func (s *State) IsParentOf(parentId string, childId string) bool {
 	}
 
 	return false
+}
+
+func (s *State) HasParent(id, parentId string) bool {
+	for {
+		parent := s.PickParentOf(id)
+		if parent == nil {
+			return false
+		}
+		if parent.Model().Id == parentId {
+			return true
+		}
+		id = parent.Model().Id
+	}
 }
 
 func (s *State) PickParentOf(id string) (res simple.Block) {
@@ -325,18 +334,22 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prev := s.parent.Details()
 		detailsChanged = !prev.Equal(s.details)
 	}
+
 	if err = s.Iterate(func(b simple.Block) (isContinue bool) {
 		id := b.Model().Id
 		inUse[id] = struct{}{}
 		if _, ok := s.blocks[id]; ok {
 			affectedIds = append(affectedIds, id)
 		}
+
 		if db, ok := b.(simple.DetailsHandler); ok {
-			if dmsgs, err := db.DetailsApply(s); err == nil && len(dmsgs) > 0 {
-				chmsgs = append(chmsgs, dmsgs...)
-			} else if detailsChanged {
-				if dmsgs, err := db.OnDetailsChange(s); err == nil {
-					chmsgs = append(chmsgs, dmsgs...)
+			db = s.Get(id).(simple.DetailsHandler)
+			if ok, err := db.ApplyToDetails(s.PickOrigin(id), s); err == nil && ok {
+				detailsChanged = true
+			}
+			if detailsChanged {
+				if slice.FindPos(affectedIds, id) == -1 {
+					affectedIds = append(affectedIds, id)
 				}
 			}
 		}
@@ -367,7 +380,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			action.Add = append(action.Add, bc)
 		} else {
 			flushNewBlocks()
-			b := s.blocks[id]
+			b := s.Get(id)
+			if detailsChanged {
+				if db, ok := b.(simple.DetailsHandler); ok {
+					db.DetailsInit(s)
+				}
+			}
 			diff, err := orig.Diff(b)
 			if err != nil {
 				return nil, undo.Action{}, err
@@ -438,13 +456,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		if diff := pbtypes.StructDiff(prev, s.details); diff != nil {
-			ignoreKeys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)
-			// cut-off local and derived keys
-			diffPersisted := pbtypes.StructCutKeys(diff, ignoreKeys)
-			if diffPersisted != nil && len(diffPersisted.Fields) > 0 {
-				action.Details = &undo.Details{Before: pbtypes.CopyStruct(pbtypes.StructCutKeys(prev, ignoreKeys)), After: pbtypes.CopyStruct(pbtypes.StructCutKeys(s.details, ignoreKeys))}
-			}
-
+			action.Details = &undo.Details{Before: pbtypes.CopyStruct(prev), After: pbtypes.CopyStruct(s.details)}
 			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.details = s.details
 		} else if !s.details.Equal(s.parent.details) {
@@ -631,6 +643,24 @@ func (s *State) writeString(buf *bytes.Buffer, l int, id string) {
 	}
 }
 
+func (s *State) StringDebug() string {
+	buf := bytes.NewBuffer(nil)
+	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
+	fmt.Fprintf(buf, "ObjectTypes: %v\n", s.ObjectTypes())
+	fmt.Fprintf(buf, "Relations:\n")
+	for _, rel := range s.ExtraRelations() {
+		fmt.Fprintf(buf, "\t%v\n", rel.String())
+	}
+	fmt.Fprintf(buf, "Details:\n")
+	if det := s.Details(); det != nil && det.Fields != nil {
+		for k, v := range det.Fields {
+			fmt.Fprintf(buf, "\t%s:\t%v\n", k, v.String())
+		}
+	}
+	s.writeString(buf, 0, s.RootId())
+	return buf.String()
+}
+
 func (s *State) SetDetails(d *types.Struct) *State {
 	s.details = d
 	return s
@@ -656,12 +686,13 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	return
 }
 
-func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
+func (s *State) SetExtraRelation(rel *model.Relation) {
 	if s.extraRelations == nil && s.parent != nil {
 		s.extraRelations = pbtypes.CopyRelations(s.parent.ExtraRelations())
 	}
 	relCopy := pbtypes.CopyRelation(rel)
-	relCopy.Scope = pbrelation.Relation_object
+	relCopy.Scope = model.Relation_object
+	s.removeNotExistingRelationOptionsValues(relCopy)
 	var found bool
 	for i, exRel := range s.extraRelations {
 		if exRel.Key == rel.Key {
@@ -676,7 +707,7 @@ func (s *State) SetExtraRelation(rel *pbrelation.Relation) {
 
 // AddRelation adds new extraRelation to the state.
 // In case the one is already exists with the same key it does nothing
-func (s *State) AddRelation(relation *pbrelation.Relation) *State {
+func (s *State) AddRelation(relation *model.Relation) *State {
 	for _, rel := range s.ExtraRelations() {
 		if rel.Key == relation.Key {
 			return s
@@ -685,33 +716,95 @@ func (s *State) AddRelation(relation *pbrelation.Relation) *State {
 
 	relCopy := pbtypes.CopyRelation(relation)
 	// reset the scope to object
-	relCopy.Scope = pbrelation.Relation_object
+	relCopy.Scope = model.Relation_object
 	if !pbtypes.RelationFormatCanHaveListValue(relCopy.Format) && relCopy.MaxCount != 1 {
 		relCopy.MaxCount = 1
 	}
 
-	if relCopy.Format == pbrelation.RelationFormat_file && relCopy.ObjectTypes == nil {
+	if relCopy.Format == model.RelationFormat_file && relCopy.ObjectTypes == nil {
 		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
+	s.removeNotExistingRelationOptionsValues(relCopy)
 	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relCopy)
 	return s
 }
 
-func (s *State) SetExtraRelations(relations []*pbrelation.Relation) *State {
+func (s *State) SetExtraRelations(relations []*model.Relation) *State {
 	relationsCopy := pbtypes.CopyRelations(relations)
 	for _, rel := range relationsCopy {
 		// reset scopes for all relations
-		rel.Scope = pbrelation.Relation_object
+		rel.Scope = model.Relation_object
 		if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
 			rel.MaxCount = 1
 		}
+		s.removeNotExistingRelationOptionsValues(rel)
 	}
 	s.extraRelations = relationsCopy
 	return s
 }
 
-func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelation.RelationOption) (*pbrelation.RelationOption, error) {
+// removeNotExistingRelationOptionsValues may modify relation provided by pointer and set the Detail on the state
+func (s *State) removeNotExistingRelationOptionsValues(rel *model.Relation) (changed bool) {
+	if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
+		return
+	}
+	vals := pbtypes.GetStringList(s.Details(), rel.Key)
+	if len(vals) == 0 {
+		return
+	}
+	var filtered = make([]string, 0, len(vals))
+	var found bool
+	for _, val := range pbtypes.GetStringList(s.Details(), rel.Key) {
+		found = false
+		for _, v := range rel.SelectDict {
+			if v.Id == val {
+				found = true
+				break
+			}
+		}
+		if found {
+			filtered = append(filtered, val)
+		}
+	}
+	if len(filtered) < len(vals) {
+		changed = true
+		s.SetDetail(rel.Key, pbtypes.StringList(filtered))
+	}
+
+	if len(rel.SelectDict) == 0 {
+		return
+	}
+	var optionsMigrated bool
+	var dict = make([]*model.RelationOption, 0, len(rel.SelectDict))
+	var optExists = make(map[string]struct{}, len(rel.SelectDict))
+	for i, opt := range rel.SelectDict {
+		if opt.Scope != model.RelationOption_local {
+			optionsMigrated = true
+			if slice.FindPos(pbtypes.GetStringList(s.Details(), rel.Key), opt.Id) != -1 {
+				log.Warnf("obj %s rel %s opt %s migrate scope to local", s.RootId(), rel.Key, opt.Id)
+				rel.SelectDict[i].Scope = model.RelationOption_local
+				if _, exists := optExists[opt.Id]; !exists {
+					rel.SelectDict[i].Scope = model.RelationOption_local
+					dict = append(dict, rel.SelectDict[i])
+					optExists[opt.Id] = struct{}{}
+				}
+			} else {
+				log.Warnf("obj %s rel %s opt %s remove cause wrong scope and no detail", s.rootId, rel.Key, opt.Id)
+			}
+		} else {
+			dict = append(dict, opt)
+		}
+	}
+	if optionsMigrated {
+		changed = true
+		rel.SelectDict = dict
+	}
+
+	return
+}
+
+func (s *State) AddExtraRelationOption(rel model.Relation, option model.RelationOption) (*model.RelationOption, error) {
 	exRel := pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
 	if exRel == nil {
 		rel.SelectDict = nil
@@ -720,7 +813,7 @@ func (s *State) AddExtraRelationOption(rel pbrelation.Relation, option pbrelatio
 	}
 	exRel = pbtypes.CopyRelation(exRel)
 
-	if exRel.Format != pbrelation.RelationFormat_status && exRel.Format != pbrelation.RelationFormat_tag {
+	if exRel.Format != model.RelationFormat_status && exRel.Format != model.RelationFormat_tag {
 		return nil, fmt.Errorf("relation has incorrect format")
 	}
 
@@ -746,12 +839,11 @@ func (s *State) SetObjectType(objectType string) *State {
 func (s *State) SetObjectTypes(objectTypes []string) *State {
 	s.objectTypes = objectTypes
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
-
 	return s
 }
 
 func (s *State) InjectDerivedDetails() {
-	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.rootId))
+	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
 }
 
@@ -780,7 +872,7 @@ func (s *State) Details() *types.Struct {
 	return s.details
 }
 
-func (s *State) ExtraRelations() []*pbrelation.Relation {
+func (s *State) ExtraRelations() []*model.Relation {
 	if s.extraRelations == nil && s.parent != nil {
 		return s.parent.ExtraRelations()
 	}
@@ -799,7 +891,7 @@ func (s *State) ObjectTypes() []string {
 func (s *State) ObjectType() string {
 	objTypes := s.ObjectTypes()
 	if len(objTypes) != 1 && !s.noObjectType {
-		log.Errorf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
+		log.Debugf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
 	}
 
 	if len(objTypes) > 0 {
@@ -825,6 +917,17 @@ func (s *State) Snippet() (snippet string) {
 	return text.Truncate(snippet, snippetMaxSize)
 }
 
+func (s *State) FileRelationKeys() (fileKeys []string) {
+	for _, rel := range s.ExtraRelations() {
+		if rel.Format == model.RelationFormat_file {
+			if slice.FindPos(fileKeys, rel.Key) == -1 {
+				fileKeys = append(fileKeys, rel.Key)
+			}
+		}
+	}
+	return
+}
+
 func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if fh, ok := b.(simple.FileHashes); ok {
@@ -840,6 +943,9 @@ func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	for _, key := range detailsKeys {
 		if v := pbtypes.GetStringList(det, key); v != nil {
 			for _, hash := range v {
+				if hash == "" {
+					continue
+				}
 				if slice.FindPos(hashes, hash) == -1 {
 					hashes = append(hashes, hash)
 				}
@@ -855,10 +961,10 @@ func (s *State) blockInit(b simple.Block) {
 	}
 }
 
-func (s *State) BlocksInit() {
+func (s *State) BlocksInit(st simple.DetailsService) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if db, ok := b.(simple.DetailsHandler); ok {
-			db.DetailsInit(s)
+			db.DetailsInit(st)
 		}
 		return true
 	})
@@ -1028,6 +1134,9 @@ func (s *State) SetNoObjectType(noObjectType bool) *State {
 }
 
 func (s *State) SetRootId(newRootId string) {
+	if s.rootId == "" {
+		s.RootId()
+	}
 	if s.rootId != newRootId {
 		if b := s.Get(s.rootId); b != nil {
 			b.Model().Id = newRootId
@@ -1035,6 +1144,10 @@ func (s *State) SetRootId(newRootId string) {
 		}
 		s.rootId = newRootId
 	}
+}
+
+func (s *State) ParentState() *State {
+	return s.parent
 }
 
 type linkSource interface {

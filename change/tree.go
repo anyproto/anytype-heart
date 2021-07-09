@@ -34,6 +34,10 @@ type Tree struct {
 	// missed id -> list of dependency ids
 	waitList map[string][]string
 	metaOnly bool
+
+	// bufs
+	iterCompBuf []*Change
+	iterQueue   []*Change
 }
 
 func (t *Tree) RootId() string {
@@ -222,13 +226,61 @@ func (t *Tree) iterate(start *Change, f func(c *Change) (isContinue bool)) {
 		return true
 	}
 
-	var toQueue = func(c *Change) {
-		for _, qc := range queue {
-			if qc.Id == c.Id {
-				return
+	// 0 - equal
+	// 1 - c1 -> c2
+	// 2 - c2 -> c2 or parallel
+	var comp = func(c1, c2 *Change) uint8 {
+		if c1.Id == c2.Id {
+			return 0
+		}
+		t.iterCompBuf = t.iterCompBuf[:0]
+		t.iterCompBuf = append(t.iterCompBuf, c1.Next...)
+		var uniq = make(map[string]struct{})
+		var appendUniqueToBuf = func(next []*Change) {
+			for _, n := range next {
+				if _, ok := uniq[n.Id]; !ok {
+					t.iterCompBuf = append(t.iterCompBuf, n)
+					uniq[n.Id] = struct{}{}
+				}
 			}
 		}
-		queue = append(queue, c)
+		var used int
+		for len(t.iterCompBuf)-used > 0 {
+			l := len(t.iterCompBuf) - used
+			for _, n := range t.iterCompBuf[used:] {
+				delete(uniq, n.Id)
+				if n.Id == c2.Id {
+					return 1
+				} else {
+					appendUniqueToBuf(n.Next)
+				}
+			}
+			used += l
+		}
+		return 2
+	}
+
+	var toQueue = func(c *Change) {
+		var pos = -1
+	For:
+		for i, qc := range queue {
+			switch comp(c, qc) {
+			// exists
+			case 0:
+				return
+			//
+			case 1:
+				pos = i
+				break For
+			}
+		}
+		if pos == -1 {
+			queue = append(queue, c)
+		} else if pos == 0 {
+			queue = append([]*Change{c}, queue...)
+		} else {
+			queue = append(queue[:pos], append([]*Change{c}, queue[pos:]...)...)
+		}
 	}
 
 	for len(queue) > 0 {

@@ -9,7 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/relation"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
@@ -38,18 +38,26 @@ type FileMeta struct {
 
 func (i *file) Details() (*types.Struct, error) {
 	meta := i.Meta()
-	return &types.Struct{
+
+	t := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():           pbtypes.String(i.hash),
-			bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(relation.ObjectType_file)),
-			bundle.RelationKeyType.String():         pbtypes.StringList([]string{bundle.TypeKeyFile.URL()}),
+			bundle.RelationKeyLayout.String():       pbtypes.Float64(float64(model.ObjectType_file)),
+			bundle.RelationKeyIsReadonly.String():   pbtypes.Bool(true),
+			bundle.RelationKeyType.String():         pbtypes.String(bundle.TypeKeyFile.URL()),
 			bundle.RelationKeyFileMimeType.String(): pbtypes.String(meta.Media),
 			bundle.RelationKeyName.String():         pbtypes.String(strings.TrimSuffix(meta.Name, filepath.Ext(meta.Name))),
 			bundle.RelationKeyFileExt.String():      pbtypes.String(strings.TrimPrefix(filepath.Ext(meta.Name), ".")),
 			bundle.RelationKeySizeInBytes.String():  pbtypes.Float64(float64(meta.Size)),
 			bundle.RelationKeyAddedDate.String():    pbtypes.Float64(float64(meta.Added.Unix())),
 		},
-	}, nil
+	}
+
+	if strings.HasPrefix(meta.Media, "video") {
+		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyVideo.URL())
+	}
+
+	return t, nil
 }
 
 func (i *file) Info() *storage.FileInfo {
