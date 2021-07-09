@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -238,4 +239,34 @@ func TestState_HasParent(t *testing.T) {
 		assert.True(t, s.HasParent("3", "root"))
 		assert.True(t, s.HasParent("2", "root"))
 	})
+}
+
+func BenchmarkState_Iterate(b *testing.B) {
+	newBlock := func(id string, childrenIds ...string) simple.Block {
+		return simple.New(&model.Block{Id: id, ChildrenIds: childrenIds})
+	}
+
+	s := NewDoc("root", nil).NewState()
+	root := newBlock("root")
+	s.Add(root)
+	for i := 0; i < 100; i++ {
+		ch1Id := bson.NewObjectId().Hex()
+		root.Model().ChildrenIds = append(root.Model().ChildrenIds, ch1Id)
+		ch1 := newBlock(ch1Id)
+		s.Add(ch1)
+		for j := 0; j < 10; j++ {
+			ch2Id := bson.NewObjectId().Hex()
+			ch2 := newBlock(ch2Id)
+			ch1.Model().ChildrenIds = append(ch1.Model().ChildrenIds, ch2Id)
+			s.Add(ch2)
+		}
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		s.Iterate(func(b simple.Block) (isContinue bool) {
+			return true
+		})
+	}
 }
