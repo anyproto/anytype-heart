@@ -169,7 +169,7 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
-	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
+	GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error)
 
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
@@ -299,9 +299,11 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
-			bs    = ob.NewState()
 			fList = func() []string {
-				return bs.FileRelationKeys()
+				ob.Lock()
+				defer ob.Unlock()
+				bs := ob.NewState()
+				return bs.GetAllFileHashes(bs.FileRelationKeys())
 			}
 		)
 

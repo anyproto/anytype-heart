@@ -927,7 +927,7 @@
     "key": "fileExt",
     "maxCount": 1,
     "name": "File extension",
-    "readonly": false,
+    "readonly": true,
     "source": "derived"
   },
   {

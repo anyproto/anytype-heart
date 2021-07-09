@@ -943,6 +943,9 @@ func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	for _, key := range detailsKeys {
 		if v := pbtypes.GetStringList(det, key); v != nil {
 			for _, hash := range v {
+				if hash == "" {
+					continue
+				}
 				if slice.FindPos(hashes, hash) == -1 {
 					hashes = append(hashes, hash)
 				}

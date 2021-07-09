@@ -560,7 +560,7 @@ func TestRelationAdd(t *testing.T) {
 		})
 
 		require.Equal(t, 0, int(respOptUpdate.Error.Code), respOptUpdate.Error.Description)
-		time.Sleep(time.Millisecond * 200)
+		time.Sleep(time.Second * 1)
 
 		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: newPageId})
 		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)

@@ -34,9 +34,9 @@ const (
 	// increasing counters below will trigger existing account to reindex their data
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 2 // reindex ipfs-file-based objects
-	ForceBundledObjectsReindexCounter int32 = 1 // reindex objects like anytypeProfile
+	ForceBundledObjectsReindexCounter int32 = 2 // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 5 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceFulltextIndexCounter         int32 = 1 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
+	ForceFulltextIndexCounter         int32 = 2 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
 var log = logging.Logger("anytype-doc-indexer")
@@ -56,16 +56,20 @@ type Indexer interface {
 	app.ComponentRunnable
 }
 
-type SearchInfo struct {
-	Id      string
-	Title   string
-	Snippet string
-	Text    string
-	Links   []string
+type FullIndexInfo struct {
+	Id           string
+	Title        string
+	Snippet      string
+	Text         string
+	Links        []string
+	FileHashes   []string
+	SetRelations []*model.Relation
+	SetSource 	 string
+	Creator		 string
 }
 
-type GetSearchInfo interface {
-	GetSearchInfo(id string) (info SearchInfo, err error)
+type GetFullIndexInfo interface {
+	GetFullIndexInfo(id string) (info FullIndexInfo, err error)
 	app.Component
 }
 
@@ -87,7 +91,7 @@ type indexer struct {
 	threadService     threads.Service
 	anytype           core.Service
 	source            source.Service
-	searchInfo        GetSearchInfo
+	FullIndexInfo     GetFullIndexInfo
 	cache             map[string]*doc
 	quitWG            *sync.WaitGroup
 	quit              chan struct{}
@@ -107,7 +111,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	if ts != nil {
 		i.threadService = ts.(threads.Service)
 	}
-	i.searchInfo = a.MustComponent("blockService").(GetSearchInfo)
+	i.FullIndexInfo = a.MustComponent("blockService").(GetFullIndexInfo)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	i.cache = make(map[string]*doc)
 	i.newRecordsBatcher = a.MustComponent(recordsbatcher.CName).(recordsbatcher.RecordsBatcher)
@@ -423,22 +427,6 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 		st.AddRelation(rel)
 	}
 
-	setCreator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
-	if setCreator == "" {
-		setCreator = i.anytype.ProfileID()
-	}
-	if st.ObjectType() == bundle.TypeKeySet.URL() {
-		b := st.Get("dataview")
-		var dv *model.BlockContentDataview
-		if b != nil {
-			dv = b.Model().GetDataview()
-		}
-		if b != nil && dv != nil {
-			if err := i.store.UpdateRelationsInSet(id, dv.Source, setCreator, dv.Relations); err != nil {
-				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
-			}
-		}
-	}
 	return st, nil
 }
 
@@ -588,24 +576,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	d.mu.Unlock()
-	fileHashesBefore := d.st.GetAllFileHashes(d.st.FileRelationKeys())
 	lastChangeTS, lastChangeBy, _ := d.addRecords(records...)
-	fileHashesAfter := d.st.GetAllFileHashes(d.st.FileRelationKeys())
-	newFileHashes := slice.Difference(fileHashesAfter, fileHashesBefore)
-	if len(newFileHashes) > 0 {
-		for _, hash := range newFileHashes {
-			// file's hash is id
-			err = i.reindexDoc(hash, false)
-			if err != nil {
-				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
-			}
-
-			err = i.store.AddToIndexQueue(hash)
-			if err != nil {
-				log.With("id", hash).Error(err.Error())
-			}
-		}
-	}
 
 	meta := d.meta()
 	if meta.Details != nil && meta.Details.Fields != nil {
@@ -685,12 +656,38 @@ func (i *indexer) ftIndex() {
 
 func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
-	info, err := i.searchInfo.GetSearchInfo(id)
+	info, err := i.FullIndexInfo.GetFullIndexInfo(id)
 	if err != nil {
 		return
 	}
 	if err = i.store.UpdateObjectLinksAndSnippet(id, info.Links, info.Snippet); err != nil {
 		return
+	}
+
+	if len(info.FileHashes) > 0 {
+		existingIDs, err := i.store.HasIDs()
+		if err != nil {
+			log.Errorf("failed to get existing file ids : %s", err.Error())
+		}
+		newIds := slice.Difference(info.FileHashes, existingIDs)
+		for _, hash := range newIds {
+			// file's hash is id
+			err = i.reindexDoc(hash, false)
+			if err != nil {
+				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
+			}
+
+			err = i.store.AddToIndexQueue(hash)
+			if err != nil {
+				log.With("id", hash).Error(err.Error())
+			}
+		}
+	}
+
+	if len(info.SetRelations) > 0 {
+		if err := i.store.UpdateRelationsInSet(id, info.SetSource, info.Creator, info.SetRelations); err != nil {
+			log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
+		}
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {

@@ -95,7 +95,7 @@ type SmartBlock interface {
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
 	CheckSubscriptions() (changed bool)
-	GetSearchInfo() (indexer.SearchInfo, error)
+	GetFullIndexInfo() (indexer.FullIndexInfo, error)
 	MetaService() meta.Service
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
@@ -1347,15 +1347,32 @@ func (sb *smartBlock) execHooks(event Hook) {
 	}
 }
 
-func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
+func (sb *smartBlock) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
 	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
-
-	return indexer.SearchInfo{
-		Id:      sb.Id(),
-		Title:   pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String()),
-		Snippet: sb.Snippet(),
-		Text:    sb.Doc.SearchText(),
-		Links:   depIds,
+	st := sb.NewState()
+	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
+	var setRelations []*model.Relation
+	var setSource string
+	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
+	if creator == "" {
+		creator = sb.Anytype().ProfileID()
+	}
+	if st.ObjectType() == bundle.TypeKeySet.URL() {
+		if b := st.Get("dataview"); b != nil {
+			setRelations = b.Model().GetDataview().GetRelations()
+			setSource = b.Model().GetDataview().GetSource()
+		}
+	}
+	return indexer.FullIndexInfo{
+		Id:           sb.Id(),
+		Title:        pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
+		Snippet:      st.Snippet(),
+		Text:         st.SearchText(),
+		Links:        depIds,
+		FileHashes:   fileHashes,
+		SetRelations: setRelations,
+		SetSource:    setSource,
+		Creator:      creator,
 	}, nil
 }
 
