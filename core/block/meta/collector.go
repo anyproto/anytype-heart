@@ -64,7 +64,7 @@ func (c *collector) updateMeta() {
 		SmartBlockMeta: core.SmartBlockMeta{
 			ObjectTypes: c.doc.ObjectTypes(),
 			Relations:   c.doc.ExtraRelations(),
-			Details:     c.doc.Details(),
+			Details:     c.doc.CombinedDetails(),
 		},
 	}
 	if !c.lastMeta.Details.Equal(m.Details) || !slice.SortedEquals(c.lastMeta.ObjectTypes, m.ObjectTypes) || !pbtypes.RelationsEqual(c.lastMeta.Relations, m.Relations) {
@@ -108,7 +108,7 @@ func (c *collector) fetchInitialMeta() (err error) {
 		SmartBlockMeta: core.SmartBlockMeta{
 			ObjectTypes: c.doc.ObjectTypes(),
 			Relations:   c.doc.ExtraRelations(),
-			Details:     c.doc.Details(),
+			Details:     c.doc.CombinedDetails(),
 		},
 	}
 	return nil

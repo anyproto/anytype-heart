@@ -211,21 +211,12 @@ func (s *source) buildState() (doc state.Doc, err error) {
 			log.With("thread", s.id).With("sbType", s.sb.Type()).Errorf("not valid state: %v", verr)
 		}
 	}
+
+	InjectLocalDetails(s, st)
+	InjectCreationInfo(s, st)
+	st.InjectDerivedDetails()
 	if err = st.Normalize(false); err != nil {
 		return
-	}
-
-	// set local-only details
-	st.SetDetailAndBundledRelation(bundle.RelationKeyLastOpenedDate, pbtypes.Int64(s.openedAt.Unix()))
-	InjectLocalDetails(s, st)
-
-	if s.Type() != model.SmartBlockType_Archive && !s.Virtual() {
-		// we do not need details for archive or breadcrumbs
-		st.InjectDerivedDetails()
-		err = InjectCreationInfo(s, st)
-		if err != nil {
-			log.With("thread", s.id).Errorf("injectCreationInfo failed: %s", err.Error())
-		}
 	}
 
 	if _, _, err = state.ApplyState(st, false); err != nil {
@@ -249,7 +240,7 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 		}
 	}()
 
-	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
+	if pbtypes.HasField(st.LocalDetails(), bundle.RelationKeyCreator.String()) {
 		return nil
 	}
 
@@ -284,8 +275,8 @@ func InjectLocalDetails(s Source, st *state.State) {
 	if details, err := s.Anytype().ObjectStore().GetDetails(s.Id()); err == nil {
 		if details != nil && details.Details != nil {
 			for key, v := range details.Details.Fields {
-				if slice.FindPos(bundle.LocalRelationsKeys, key) != -1 {
-					st.SetDetail(key, v)
+				if slice.FindPos(append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...), key) != -1 {
+					st.SetLocalDetail(key, v)
 					if !pbtypes.HasRelation(st.ExtraRelations(), key) {
 						st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
 					}

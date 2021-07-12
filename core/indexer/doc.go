@@ -69,7 +69,7 @@ type detailsGetter interface {
 func (d *doc) meta() core.SmartBlockMeta {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	details := pbtypes.CopyStruct(d.st.Details())
+	details := pbtypes.CopyStruct(d.st.CombinedDetails())
 	if details == nil || details.Fields == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
@@ -198,7 +198,7 @@ func (d *doc) buildState() (doc *state.State, err error) {
 }
 
 func (d *doc) injectCreationInfo(st *state.State) (err error) {
-	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
+	if pbtypes.HasField(st.LocalDetails(), bundle.RelationKeyCreator.String()) {
 		return nil
 	}
 

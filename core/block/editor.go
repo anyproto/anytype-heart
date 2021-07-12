@@ -654,7 +654,7 @@ func (s *service) ModifyDetails(objectId string, modifier func(current *types.St
 		return fmt.Errorf("modifier is nil")
 	}
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		dets, err := modifier(b.Details())
+		dets, err := modifier(b.CombinedDetails())
 		if err != nil {
 			return err
 		}

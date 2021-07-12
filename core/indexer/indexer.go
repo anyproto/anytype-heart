@@ -64,8 +64,8 @@ type FullIndexInfo struct {
 	Links        []string
 	FileHashes   []string
 	SetRelations []*model.Relation
-	SetSource 	 string
-	Creator		 string
+	SetSource    string
+	Creator      string
 }
 
 type GetFullIndexInfo interface {
@@ -451,7 +451,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 		return fmt.Errorf("failed to open doc: %s", err.Error())
 	}
 
-	details := d.Details()
+	details := d.CombinedDetails()
 	var curDetails *types.Struct
 	curDetailsO, _ := i.store.GetDetails(id)
 	if curDetailsO != nil {
@@ -599,7 +599,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		return
 	}
 
-	setCreator := pbtypes.GetString(d.st.Details(), bundle.RelationKeyCreator.String())
+	setCreator := pbtypes.GetString(d.st.LocalDetails(), bundle.RelationKeyCreator.String())
 	if setCreator == "" {
 		setCreator = i.anytype.ProfileID()
 	}
@@ -618,7 +618,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	if len(meta.ObjectTypes) > 0 && meta.Details != nil {
-		meta.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList(meta.ObjectTypes)
+		meta.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(meta.ObjectTypes[0])
 	}
 
 	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}, true); err != nil {

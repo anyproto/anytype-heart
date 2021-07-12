@@ -293,6 +293,11 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		v.SmartblockOpened(ctx)
 	}
 
+	lastOpened := time.Now().Unix()
+	// inject into state in order to show the correct date in the object
+	// inject into the object
+	s.app.MustComponent(indexer.CName).(indexer.Indexer).SetDetail(id, bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(lastOpened))
+
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
