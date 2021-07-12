@@ -153,6 +153,9 @@ func (p *Set) applyRestrictions(s *state.State) {
 		bundle.TypeKeyFile.URL(),
 		bundle.TypeKeyImage.URL(),
 		bundle.TypeKeyVideo.URL(),
+		bundle.TypeKeyObjectType.URL(),
+		bundle.TypeKeySet.URL(),
+		bundle.TypeKeyRelation.URL(),
 	}
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if dv := b.Model().GetDataview(); dv != nil {
