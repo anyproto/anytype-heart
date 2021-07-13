@@ -515,12 +515,14 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if len(msgs) == 0 && action.IsEmpty() {
 		// revert lastModified update if we don't have any actual change been made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
-		if prevModifiedDate == nil {
-
+		if s.localDetails != nil {
+			if prevModifiedDate == nil {
+				delete(s.localDetails.Fields, bundle.RelationKeyLastModifiedDate.String())
+			} else {
+				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
+			}
 		}
-
 		// todo: revert lastModifiedBy?
-		s.SetDetail(bundle.RelationKeyLastModifiedDate.String(), prevModifiedDate)
 	}
 
 	if s.parent != nil && s.localDetails != nil {
@@ -545,6 +547,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.details != nil {
 		s.parent.details = s.details
+	}
+	if s.localDetails != nil {
+		s.parent.localDetails = s.localDetails
 	}
 	if s.extraRelations != nil {
 		s.parent.extraRelations = s.extraRelations

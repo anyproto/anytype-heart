@@ -235,7 +235,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 			if rel.Key == "" {
 				rel.Key = bson.NewObjectId().Hex()
 			}
-
+			rel.Creator = mw.GetAnytype().ProfileID()
 			if bundle.HasRelation(rel.Key) {
 				recommendedRelationKeys = append(recommendedRelationKeys, addr.BundledRelationURLPrefix+rel.Key)
 			} else {

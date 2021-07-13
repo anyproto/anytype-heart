@@ -39,6 +39,13 @@ func newDoc(id string, a core.Service) (d *doc, err error) {
 	if err == change.ErrEmpty {
 		d.tree = change.NewMetaTree()
 		d.st = state.NewDoc(id, nil).(*state.State)
+
+		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(a.ProfileID()))
+
+		if err != nil {
+			log.With("thread", d.id).Errorf("injectCreationInfo failed: %s", err.Error())
+		}
 		err = nil
 	} else if err != nil {
 		return

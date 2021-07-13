@@ -250,8 +250,9 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 		createdBy = s.Anytype().Account()
 	)
 	// protect from the big documents with a large trees
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
+	start := time.Now()
 	fc, err := s.FindFirstChange(ctx)
 	if err == change.ErrEmpty {
 		err = nil
@@ -262,6 +263,10 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	} else {
 		createdDate = fc.Timestamp
 		createdBy = fc.Account
+	}
+	spent := time.Since(start).Seconds()
+	if spent > 0.05 {
+		log.Warnf("Calculate creation info %s: %.2fs", s.Id(), time.Since(start).Seconds())
 	}
 
 	st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
