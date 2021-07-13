@@ -40,7 +40,6 @@ type Doc interface {
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
-	ObjectScopedDetails() *types.Struct
 	Details() *types.Struct
 	CombinedDetails() *types.Struct
 	LocalDetails() *types.Struct
@@ -907,23 +906,6 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 func (s *State) InjectDerivedDetails() {
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
-}
-
-// ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
-func (s *State) ObjectScopedDetails() *types.Struct {
-	if s.details == nil && s.parent != nil {
-		return s.parent.ObjectScopedDetails()
-	}
-
-	return s.objectScopedDetailsForCurrentState()
-}
-
-// objectScopedDetailsForCurrentState clears current state details from local-only relations
-func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
-	if s.details == nil || s.details.Fields == nil {
-		return nil
-	}
-	return pbtypes.StructCutKeys(s.Details(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
 }
 
 func (s *State) LocalDetails() *types.Struct {

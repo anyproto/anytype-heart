@@ -311,7 +311,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 			LogHeads: s.logHeadIDs(),
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:         params.State.Blocks(),
-				Details:        params.State.ObjectScopedDetails(),
+				Details:        params.State.Details(),
 				ExtraRelations: params.State.ExtraRelations(),
 				ObjectTypes:    params.State.ObjectTypes(),
 			},

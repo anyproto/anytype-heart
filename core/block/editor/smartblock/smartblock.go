@@ -562,7 +562,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	st := sb.Doc.(*state.State)
 	if !act.IsEmpty() {
 		changes := st.GetChanges()
-		if len(changes) == 0 || len(msgs) > 0 {
+		if len(changes) == 0 && !doSnapshot {
 			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
 		}
 		fileDetailsKeys := st.FileRelationKeys()
