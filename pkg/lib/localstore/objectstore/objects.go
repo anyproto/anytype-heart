@@ -1400,6 +1400,7 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 	return nil
 }
 
+// should be called under the mutex
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pb.ToValue(id)
@@ -1484,6 +1485,8 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 }
 
 func (m *dsObjectStore) UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return err

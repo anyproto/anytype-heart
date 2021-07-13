@@ -58,6 +58,10 @@ loop:
 func (sub *subscription) Publish(id string, msg *types.Struct) bool {
 	sub.RLock()
 	defer sub.RUnlock()
+	if sub.closed {
+		return false
+	}
+
 	for _, idE := range sub.ids {
 		if idE == id {
 			log.Debugf("objStore subscription send %s %p", id, sub)
