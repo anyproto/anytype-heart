@@ -30,6 +30,7 @@ type Basic interface {
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
+	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -304,8 +305,15 @@ func (bs *basic) getAllDescendants(uniqMap map[string]struct{}, block simple.Blo
 	return blocks
 }
 
-func (bs *basic) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
+func (bs *basic) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
+	if err = bs.setAlign(s, align, ids...); err != nil {
+		return
+	}
+	return bs.Apply(s)
+}
+
+func (bs *basic) setAlign(s *state.State, align model.BlockAlign, ids ...string) (err error) {
 	if len(ids) == 0 {
 		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
 		ids = []string{template.TitleBlockId, template.DescriptionBlockId, template.FeaturedRelationsId}
@@ -313,6 +321,18 @@ func (bs *basic) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...str
 	for _, id := range ids {
 		if b := s.Get(id); b != nil {
 			b.Model().Align = align
+		}
+	}
+	return
+}
+
+func (bs *basic) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
+	s := bs.NewStateCtx(ctx)
+	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(layout)))
+	// reset align when layout todo
+	if layout == model.ObjectType_todo {
+		if err = bs.setAlign(s, model.Block_AlignLeft); err != nil {
+			return
 		}
 	}
 	return bs.Apply(s)

@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -28,6 +32,10 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -338,6 +346,10 @@
     - [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField)
     - [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response)
     - [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error)
+    - [Rpc.BlockList.Set.Layout](#anytype.Rpc.BlockList.Set.Layout)
+    - [Rpc.BlockList.Set.Layout.Request](#anytype.Rpc.BlockList.Set.Layout.Request)
+    - [Rpc.BlockList.Set.Layout.Response](#anytype.Rpc.BlockList.Set.Layout.Response)
+    - [Rpc.BlockList.Set.Layout.Response.Error](#anytype.Rpc.BlockList.Set.Layout.Response.Error)
     - [Rpc.BlockList.Set.Page](#anytype.Rpc.BlockList.Set.Page)
     - [Rpc.BlockList.Set.Page.IsArchived](#anytype.Rpc.BlockList.Set.Page.IsArchived)
     - [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request)
@@ -634,6 +646,7 @@
     - [Rpc.BlockList.Set.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code)
     - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
+    - [Rpc.BlockList.Set.Layout.Response.Error.Code](#anytype.Rpc.BlockList.Set.Layout.Response.Error.Code)
     - [Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
@@ -688,6 +701,9 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -821,6 +837,9 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -831,6 +850,10 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
+  
+  
+  
+
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -892,6 +915,9 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -959,6 +985,7 @@
 | BlockListDuplicate | [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request) | [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response) |  |
 | BlockListSetBackgroundColor | [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request) | [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response) |  |
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
+| BlockListSetLayout | [Rpc.BlockList.Set.Layout.Request](#anytype.Rpc.BlockList.Set.Layout.Request) | [Rpc.BlockList.Set.Layout.Response](#anytype.Rpc.BlockList.Set.Layout.Response) |  |
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
 | BlockListSetPageIsArchived | [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request) | [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response) |  |
 | BlockListDeletePage | [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request) | [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response) |  |
@@ -5917,6 +5944,64 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Layout"></a>
+
+### Rpc.BlockList.Set.Layout
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Layout.Request"></a>
+
+### Rpc.BlockList.Set.Layout.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| layout | [model.ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Layout.Response"></a>
+
+### Rpc.BlockList.Set.Layout.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Layout.Response.Error](#anytype.Rpc.BlockList.Set.Layout.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Layout.Response.Error"></a>
+
+### Rpc.BlockList.Set.Layout.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Layout.Response.Error.Code](#anytype.Rpc.BlockList.Set.Layout.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Page"></a>
 
 ### Rpc.BlockList.Set.Page
@@ -10069,6 +10154,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Layout.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Layout.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code
@@ -13315,7 +13413,7 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | targetBlockId | [string](#string) |  | id of the target block |
-| style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  |  |
+| style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  | deprecated |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
