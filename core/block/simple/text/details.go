@@ -71,7 +71,7 @@ func (td *textDetails) ApplyToDetails(prevBlock simple.Block, s simple.DetailsSe
 		}
 	}
 	if td.keys.Checked != "" {
-		if prev == nil || prev.GetChecked() != td.GetChecked() {
+		if prev == nil && td.GetChecked() || prev != nil && prev.GetChecked() != td.GetChecked() {
 			s.SetDetail(td.keys.Checked, pbtypes.Bool(td.GetChecked()))
 			ok = true
 		}
