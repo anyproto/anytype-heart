@@ -330,29 +330,6 @@ message Rpc {
                     }
                 }
             }
-            message Layout {
-                message Request {
-                    string contextId = 1;
-                    anytype.model.ObjectType.Layout layout = 3;
-                }
-
-                message Response {
-                    Error error = 1;
-                    ResponseEvent event = 2;
-
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
-
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            // ...
-                        }
-                    }
-                }
-            }
             message Fields {
                 message Request {
                     string contextId = 1;
@@ -3094,6 +3071,31 @@ message Rpc {
             message Response {
                 Error error = 1;
                 repeated google.protobuf.Struct records = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+
+        message SetLayout {
+            message Request {
+                string contextId = 1;
+                anytype.model.ObjectType.Layout layout = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
 
                 message Error {
                     Code code = 1;

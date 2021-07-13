@@ -659,26 +659,6 @@ func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb
 	return response(pb.RpcBlockListSetAlignResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockListSetLayout(req *pb.RpcBlockListSetLayoutRequest) *pb.RpcBlockListSetLayoutResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockListSetLayoutResponseErrorCode, err error) *pb.RpcBlockListSetLayoutResponse {
-		m := &pb.RpcBlockListSetLayoutResponse{Error: &pb.RpcBlockListSetLayoutResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetLayout(ctx, req.ContextId, req.Layout)
-	})
-	if err != nil {
-		return response(pb.RpcBlockListSetLayoutResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockListSetLayoutResponseError_NULL, nil)
-}
-
 func (mw *Middleware) ExternalDropFiles(req *pb.RpcExternalDropFilesRequest) *pb.RpcExternalDropFilesResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcExternalDropFilesResponseErrorCode, err error) *pb.RpcExternalDropFilesResponse {
