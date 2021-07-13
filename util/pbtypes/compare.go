@@ -116,6 +116,24 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 	return diff
 }
 
+func StructMerge(st1, st2 *types.Struct) *types.Struct {
+	var res *types.Struct
+	if st1 == nil || st1.Fields == nil {
+		return st2
+	}
+
+	if st2 == nil || st2.Fields == nil {
+		return st1
+	}
+
+	res = CopyStruct(st1)
+	for k, v := range st2.Fields {
+		res.Fields[k] = CopyVal(v)
+	}
+
+	return res
+}
+
 func RelationsDiff(rels1, rels2 []*model.Relation) (added []*model.Relation, updated []*model.Relation, removed []string) {
 	for i := 0; i < len(rels2); i++ {
 		if r := GetRelation(rels1, rels2[i].Key); r == nil {

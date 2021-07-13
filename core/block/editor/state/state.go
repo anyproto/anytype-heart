@@ -40,8 +40,10 @@ type Doc interface {
 	NewStateCtx(ctx *Context) *State
 	Blocks() []*model.Block
 	Pick(id string) (b simple.Block)
-	ObjectScopedDetails() *types.Struct
 	Details() *types.Struct
+	CombinedDetails() *types.Struct
+	LocalDetails() *types.Struct
+
 	ExtraRelations() []*model.Relation
 
 	ObjectTypes() []string
@@ -75,6 +77,7 @@ type State struct {
 	changes        []*pb.ChangeContent
 	fileKeys       []pb.ChangeFileKeys
 	details        *types.Struct
+	localDetails   *types.Struct
 	extraRelations []*model.Relation
 	objectTypes    []string
 
@@ -507,6 +510,29 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
+
+	if len(msgs) == 0 && action.IsEmpty() {
+		// revert lastModified update if we don't have any actual changes being made
+		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
+		if s.localDetails != nil {
+			if prevModifiedDate == nil {
+				delete(s.localDetails.Fields, bundle.RelationKeyLastModifiedDate.String())
+			} else {
+				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
+			}
+		}
+		// todo: revert lastModifiedBy?
+	}
+
+	if s.parent != nil && s.localDetails != nil {
+		prev := s.parent.LocalDetails()
+		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
+			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(s.RootId(), diff))...)
+			s.parent.localDetails = s.localDetails
+		} else if !s.localDetails.Equal(s.parent.localDetails) {
+			s.parent.localDetails = s.localDetails
+		}
+	}
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -520,6 +546,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.details != nil {
 		s.parent.details = s.details
+	}
+	if s.localDetails != nil {
+		s.parent.localDetails = s.localDetails
 	}
 	if s.extraRelations != nil {
 		s.parent.extraRelations = s.extraRelations
@@ -662,6 +691,12 @@ func (s *State) StringDebug() string {
 }
 
 func (s *State) SetDetails(d *types.Struct) *State {
+	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+	if len(local.GetFields()) > 0 {
+		s.SetLocalDetails(local)
+		s.details = pbtypes.StructCutKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
+		return s
+	}
 	s.details = d
 	return s
 }
@@ -675,12 +710,38 @@ func (s *State) SetDetailAndBundledRelation(key bundle.RelationKey, value *types
 	return
 }
 
+func (s *State) SetLocalDetail(key string, value *types.Value) {
+	if s.localDetails == nil && s.parent != nil {
+		s.localDetails = pbtypes.CopyStruct(s.parent.LocalDetails())
+	}
+	if s.localDetails == nil || s.localDetails.Fields == nil {
+		s.localDetails = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+
+	s.localDetails.Fields[key] = value
+	return
+}
+
+func (s *State) SetLocalDetails(d *types.Struct) {
+	s.localDetails = d
+}
+
 func (s *State) SetDetail(key string, value *types.Value) {
+	if slice.FindPos(bundle.LocalRelationsKeys, key) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, key) > -1 {
+		s.SetLocalDetail(key, value)
+		return
+	}
+
 	if s.details == nil && s.parent != nil {
 		s.details = pbtypes.CopyStruct(s.parent.Details())
 	}
 	if s.details == nil || s.details.Fields == nil {
 		s.details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
+
+	if value == nil {
+		delete(s.details.Fields, key)
+		return
 	}
 	s.details.Fields[key] = value
 	return
@@ -847,21 +908,18 @@ func (s *State) InjectDerivedDetails() {
 	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
 }
 
-// ObjectScopedDetails contains only persistent details that are going to be saved in changes/snapshots
-func (s *State) ObjectScopedDetails() *types.Struct {
-	if s.details == nil && s.parent != nil {
-		return s.parent.ObjectScopedDetails()
+func (s *State) LocalDetails() *types.Struct {
+	if s.localDetails == nil && s.parent != nil {
+		return s.parent.LocalDetails()
 	}
 
-	return s.objectScopedDetailsForCurrentState()
+	return s.localDetails
 }
 
-// objectScopedDetailsForCurrentState clears current state details from local-only relations
-func (s *State) objectScopedDetailsForCurrentState() *types.Struct {
-	if s.details == nil || s.details.Fields == nil {
-		return nil
-	}
-	return pbtypes.StructCutKeys(s.Details(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+func (s *State) CombinedDetails() *types.Struct {
+	persisted := s.Details()
+	local := s.LocalDetails()
+	return pbtypes.StructMerge(persisted, local)
 }
 
 func (s *State) Details() *types.Struct {

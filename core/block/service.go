@@ -293,6 +293,12 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		v.SmartblockOpened(ctx)
 	}
 
+	st := ob.NewState()
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	if err = ob.Apply(st); err != nil {
+		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
+	}
+
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
@@ -499,6 +505,9 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		}
 	}
 
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
+
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -516,7 +525,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		return id, nil, err
 	}
 	defer sb.Close()
-	return id, sb.Details(), nil
+	return id, sb.CombinedDetails(), nil
 }
 
 func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
