@@ -1750,11 +1750,11 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return err
 	}
 
-	log.Debugf("updateDetails %s: %s", id, pbtypes.Sprint(newDetails.GetDetails()))
 	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
-		log.Errorf("empty diff")
 		return nil
 	}
+
+	log.Debugf("updateDetails %s: %s", id, pbtypes.Sprint(newDetails.GetDetails()))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
