@@ -513,7 +513,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 
 	if len(msgs) == 0 && action.IsEmpty() {
-		// revert lastModified update if we don't have any actual change been made
+		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {
 			if prevModifiedDate == nil {
@@ -528,7 +528,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	if s.parent != nil && s.localDetails != nil {
 		prev := s.parent.LocalDetails()
 		if diff := pbtypes.StructDiff(prev, s.localDetails); diff != nil {
-			msgs = append(msgs, WrapEventMessages(false, StructDiffIntoEvents(s.RootId(), diff))...)
+			msgs = append(msgs, WrapEventMessages(true, StructDiffIntoEvents(s.RootId(), diff))...)
 			s.parent.localDetails = s.localDetails
 		} else if !s.localDetails.Equal(s.parent.localDetails) {
 			s.parent.localDetails = s.localDetails
