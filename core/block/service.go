@@ -123,6 +123,8 @@ type Service interface {
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	SetLayout(ctx *state.Context, id string, layout model.ObjectTypeLayout) error
+
 	TurnInto(ctx *state.Context, id string, style model.BlockContentTextStyle, ids ...string) error
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)

@@ -500,6 +500,12 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 	})
 }
 
+func (s *service) SetLayout(ctx *state.Context, contextId string, layout model.ObjectTypeLayout) (err error) {
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.SetLayout(ctx, layout)
+	})
+}
+
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest, groupId string) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
@@ -768,7 +774,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Filters:   nil,
+					Filters: nil,
 				},
 			},
 		},
