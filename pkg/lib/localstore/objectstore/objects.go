@@ -1401,6 +1401,8 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 }
 
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
+	m.l.Lock()
+	defer m.l.Unlock()
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pb.ToValue(id)
 	for i := range m.subscriptions {
