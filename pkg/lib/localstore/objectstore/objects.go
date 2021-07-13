@@ -3,7 +3,6 @@ package objectstore
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/gogo/protobuf/jsonpb"
 	"strings"
 	"sync"
 	"time"
@@ -1751,13 +1750,8 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return err
 	}
 
-	jpb := jsonpb.Marshaler{Indent: " "}
-	d := pbtypes.StructDiff(oldDetails.Details, newDetails.Details)
-	result, _ := jpb.MarshalToString(newDetails.Details)
-	resultDiff, _ := jpb.MarshalToString(d)
-
-	log.Warnf("updateDetails %s: diff %s, %s", id, resultDiff, result)
-	if d == nil || len(d.Fields) == 0 {
+	log.Debugf("updateDetails %s: %s", id, pbtypes.Sprint(newDetails.GetDetails()))
+	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
 		log.Errorf("empty diff")
 		return nil
 	}

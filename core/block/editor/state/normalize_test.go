@@ -72,7 +72,7 @@ func TestState_Normalize(t *testing.T) {
 		s.SetLastModified(3, "abc")
 		msgs, hist, err = ApplyState(s, true)
 		require.NoError(t, err)
-		assert.Len(t, msgs, 0) // add block, add children,
+		assert.Len(t, msgs, 0) // last modified should be reverted and not msg should be produced
 		assert.Len(t, s.changes, 0)
 		assert.Len(t, hist.Add, 0)
 		assert.Len(t, hist.Change, 0)
