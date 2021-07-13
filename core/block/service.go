@@ -294,7 +294,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	}
 
 	st := ob.NewState()
-	st.SetDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}

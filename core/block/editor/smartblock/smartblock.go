@@ -552,6 +552,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	if sb.Anytype() != nil {
+		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
