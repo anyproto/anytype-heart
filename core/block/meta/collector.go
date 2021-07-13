@@ -12,6 +12,10 @@ import (
 )
 
 func newCollector(ps *pubSub, id string) *collector {
+	if id == "" {
+		// d should be not be empty
+		log.Fatalf("empty ID collectot")
+	}
 	c := &collector{
 		blockId:  id,
 		ps:       ps,

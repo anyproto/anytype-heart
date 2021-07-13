@@ -486,6 +486,10 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator boo
 
 		if includeObjTypes {
 			for _, ot := range sb.ObjectTypes() {
+				if ot == "" {
+					log.Errorf("sb %s has empty ot", sb.Id())
+					continue
+				}
 				ids = append(ids, ot)
 			}
 		}
