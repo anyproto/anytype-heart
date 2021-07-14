@@ -29,12 +29,12 @@ require (
 	github.com/improbable-eng/grpc-web v0.14.0
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5
-	github.com/ipfs/go-ds-badger v0.2.6
-	github.com/ipfs/go-ipfs-blockstore v1.0.3
+	github.com/ipfs/go-ds-badger v0.2.7
+	github.com/ipfs/go-ipfs-blockstore v1.0.4
 	github.com/ipfs/go-ipfs-files v0.0.8
 	github.com/ipfs/go-ipld-cbor v0.0.5
 	github.com/ipfs/go-ipld-format v0.2.0
-	github.com/ipfs/go-log/v2 v2.1.3
+	github.com/ipfs/go-log/v2 v2.3.0
 	github.com/ipfs/go-merkledag v0.3.2
 	github.com/ipfs/go-path v0.0.7
 	github.com/ipfs/go-unixfs v0.2.5
@@ -44,7 +44,7 @@ require (
 	github.com/libp2p/go-libp2p v0.14.3
 	github.com/libp2p/go-libp2p-connmgr v0.2.4
 	github.com/libp2p/go-libp2p-core v0.8.5
-	github.com/libp2p/go-libp2p-kad-dht v0.12.1
+	github.com/libp2p/go-libp2p-kad-dht v0.12.2
 	github.com/libp2p/go-libp2p-peerstore v0.2.7
 	github.com/libp2p/go-libp2p-swarm v0.5.0
 	github.com/libp2p/go-libp2p-tls v0.1.3
@@ -83,7 +83,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20210704124207-90a1a491c094
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20210713133746-31acca4bf287
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 

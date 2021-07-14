@@ -36,6 +36,14 @@ func (h *history) Undo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter,
 	for _, b := range action.Change {
 		s.Set(b.Before.Copy())
 	}
+	if action.ObjectTypes != nil {
+		ot := make([]string, len(action.ObjectTypes.Before))
+		copy(ot, action.ObjectTypes.Before)
+		s.SetObjectTypes(ot)
+	}
+	if action.Relations != nil {
+		s.SetExtraRelations(pbtypes.CopyRelations(action.Relations.Before))
+	}
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.Before))
 	}
@@ -61,6 +69,14 @@ func (h *history) Redo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter,
 	}
 	for _, b := range action.Change {
 		s.Set(b.After.Copy())
+	}
+	if action.ObjectTypes != nil {
+		ot := make([]string, len(action.ObjectTypes.After))
+		copy(ot, action.ObjectTypes.After)
+		s.SetObjectTypes(ot)
+	}
+	if action.Relations != nil {
+		s.SetExtraRelations(pbtypes.CopyRelations(action.Relations.After))
 	}
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.After))

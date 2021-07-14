@@ -2,11 +2,8 @@ package state
 
 import (
 	"fmt"
-	"io/ioutil"
-	"strings"
-	"testing"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -15,6 +12,9 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"io/ioutil"
+	"strings"
+	"testing"
 )
 
 func TestState_Normalize(t *testing.T) {
@@ -46,6 +46,37 @@ func TestState_Normalize(t *testing.T) {
 		require.NoError(t, err)
 		assert.Len(t, msgs, 0)
 		assert.Empty(t, hist)
+	})
+
+	t.Run("lastmodifieddate should not change", func(t *testing.T) {
+		r := NewDoc("1", map[string]simple.Block{
+			"1": base.NewBase(&model.Block{Id: "1"}),
+		})
+
+		r.(*State).SetLastModified(1, "abc")
+
+		s := r.NewState()
+		s.Add(simple.New(&model.Block{Id: "2"}))
+		s.InsertTo("1", model.Block_Inner, "2")
+
+		s.SetLastModified(2, "abc")
+		msgs, hist, err := ApplyState(s, true)
+		require.NoError(t, err)
+		assert.Len(t, msgs, 3) // BlockSetChildrenIds, BlockAdd, ObjectDetailsAmend(lastmodifieddate)
+		assert.Len(t, s.changes, 1) // BlockCreate
+		assert.Len(t, hist.Add, 1)
+		assert.Len(t, hist.Change, 1)
+		assert.Nil(t, hist.Details)
+
+		s = s.NewState()
+		s.SetLastModified(3, "abc")
+		msgs, hist, err = ApplyState(s, true)
+		require.NoError(t, err)
+		assert.Len(t, msgs, 0) // last modified should be reverted and not msg should be produced
+		assert.Len(t, s.changes, 0)
+		assert.Len(t, hist.Add, 0)
+		assert.Len(t, hist.Change, 0)
+		assert.Nil(t, hist.Details)
 	})
 
 	t.Run("clean missing children", func(t *testing.T) {

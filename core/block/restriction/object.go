@@ -25,7 +25,7 @@ var (
 		model.SmartBlockType_Breadcrumbs:    objRestrictAll,
 		model.SmartBlockType_ProfilePage:    {model.Restrictions_LayoutChange, model.Restrictions_TypeChange},
 		model.SmartBlockType_AnytypeProfile: objRestrictAll,
-		model.SmartBlockType_Page:           {model.Restrictions_LayoutChange},
+		model.SmartBlockType_Page:           {},
 		model.SmartBlockType_Home: {
 			model.Restrictions_Details,
 			model.Restrictions_Relations,

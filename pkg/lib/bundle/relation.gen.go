@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "df97bb838d90ec3ce23f3613e9c02747a7ce6ea35b03e6002f50bb92305b4af1"
+const RelationChecksum = "dec62f2d437a6e5e52312c60e27211a32f680d1e85079dd68daa8059e765f0c1"
 
 type RelationKey string
 
@@ -71,6 +71,7 @@ const (
 	RelationKeySizeInBytes               RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf              RelationKey = "collectionOf"
 	RelationKeyEvents                    RelationKey = "events"
+	RelationKeyIsReadonly                RelationKey = "isReadonly"
 	RelationKeyAddedDate                 RelationKey = "addedDate"
 	RelationKeyAssignee                  RelationKey = "assignee"
 	RelationKeyExposure                  RelationKey = "exposure"
@@ -538,7 +539,7 @@ var (
 			Key:              "fileExt",
 			MaxCount:         1,
 			Name:             "File extension",
-			ReadOnly:         false,
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -726,6 +727,19 @@ var (
 			MaxCount:         1,
 			Name:             "Hidden",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsReadonly: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Indicates whether the object is readonly",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isReadonly",
+			MaxCount:         1,
+			Name:             "Readonly",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

@@ -500,6 +500,12 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 	})
 }
 
+func (s *service) SetLayout(ctx *state.Context, contextId string, layout model.ObjectTypeLayout) (err error) {
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.SetLayout(ctx, layout)
+	})
+}
+
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest, groupId string) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{
@@ -614,9 +620,9 @@ func (s *service) AddRelationBlock(ctx *state.Context, req pb.RpcBlockRelationAd
 	})
 }
 
-func (s *service) GetSearchInfo(id string) (info indexer.SearchInfo, err error) {
+func (s *service) GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error) {
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		info, err = b.GetSearchInfo()
+		info, err = b.GetFullIndexInfo()
 		return err
 	}); err != nil {
 		return
@@ -654,7 +660,7 @@ func (s *service) ModifyDetails(objectId string, modifier func(current *types.St
 		return fmt.Errorf("modifier is nil")
 	}
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-		dets, err := modifier(b.Details())
+		dets, err := modifier(b.CombinedDetails())
 		if err != nil {
 			return err
 		}
@@ -768,8 +774,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Relations: relations,
-					Filters:   nil,
+					Filters: nil,
 				},
 			},
 		},
@@ -779,9 +784,6 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 
 	if name == "" {
 		name = objType.Name + " set"
-	}
-	if icon == "" {
-		icon = "📒"
 	}
 
 	err = set.InitDataview(dataview, name, icon)

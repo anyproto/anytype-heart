@@ -39,6 +39,13 @@ func newDoc(id string, a core.Service) (d *doc, err error) {
 	if err == change.ErrEmpty {
 		d.tree = change.NewMetaTree()
 		d.st = state.NewDoc(id, nil).(*state.State)
+
+		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(a.ProfileID()))
+
+		if err != nil {
+			log.With("thread", d.id).Errorf("injectCreationInfo failed: %s", err.Error())
+		}
 		err = nil
 	} else if err != nil {
 		return
@@ -69,7 +76,7 @@ type detailsGetter interface {
 func (d *doc) meta() core.SmartBlockMeta {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	details := pbtypes.CopyStruct(d.st.Details())
+	details := pbtypes.CopyStruct(d.st.CombinedDetails())
 	if details == nil || details.Fields == nil {
 		details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
@@ -198,7 +205,7 @@ func (d *doc) buildState() (doc *state.State, err error) {
 }
 
 func (d *doc) injectCreationInfo(st *state.State) (err error) {
-	if pbtypes.HasField(st.Details(), bundle.RelationKeyCreator.String()) {
+	if pbtypes.HasField(st.LocalDetails(), bundle.RelationKeyCreator.String()) {
 		return nil
 	}
 

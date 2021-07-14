@@ -123,6 +123,8 @@ type Service interface {
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
+	SetLayout(ctx *state.Context, id string, layout model.ObjectTypeLayout) error
+
 	TurnInto(ctx *state.Context, id string, style model.BlockContentTextStyle, ids ...string) error
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
@@ -169,7 +171,7 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
-	GetSearchInfo(id string) (info indexer.SearchInfo, err error)
+	GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error)
 
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
@@ -283,14 +285,20 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		ob = newOpenedBlock(sb, true)
 		s.openedBlocks[id] = ob
 	}
-	s.m.Unlock()
 
 	ob.Lock()
 	defer ob.Unlock()
 	ob.locked = true
+	s.m.Unlock()
 	ob.SetEventFunc(s.sendEvent)
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
+	}
+
+	st := ob.NewState()
+	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
+	if err = ob.Apply(st); err != nil {
+		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
 
 	if err = ob.Show(ctx); err != nil {
@@ -299,9 +307,11 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
-			bs    = ob.NewState()
 			fList = func() []string {
-				return bs.FileRelationKeys()
+				ob.Lock()
+				defer ob.Unlock()
+				bs := ob.NewState()
+				return bs.GetAllFileHashes(bs.FileRelationKeys())
 			}
 		)
 
@@ -347,10 +357,10 @@ func (s *service) CloseBlock(id string) error {
 		s.m.Unlock()
 		return ErrBlockNotFound
 	}
-	ob.locked = false
 	s.m.Unlock()
-
 	ob.Lock()
+	ob.locked = false
+
 	defer ob.Unlock()
 	ob.BlockClose()
 	return nil
@@ -497,6 +507,9 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		}
 	}
 
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
+	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
+
 	csm, err := s.anytype.CreateBlock(sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -514,7 +527,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		return id, nil, err
 	}
 	defer sb.Close()
-	return id, sb.Details(), nil
+	return id, sb.CombinedDetails(), nil
 }
 
 func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {

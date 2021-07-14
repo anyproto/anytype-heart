@@ -2,6 +2,8 @@ package pbtypes
 
 import (
 	"fmt"
+	"github.com/gogo/protobuf/jsonpb"
+	"github.com/gogo/protobuf/proto"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -371,4 +373,11 @@ func Map(s *types.Struct, keys ...string) *types.Struct {
 		}
 	}
 	return ns
+}
+
+
+func Sprint(p proto.Message) string {
+	m := jsonpb.Marshaler{Indent: " "}
+	result, _ := m.MarshalToString(p)
+	return string(result)
 }

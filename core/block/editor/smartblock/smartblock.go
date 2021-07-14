@@ -95,7 +95,7 @@ type SmartBlock interface {
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
 	CheckSubscriptions() (changed bool)
-	GetSearchInfo() (indexer.SearchInfo, error)
+	GetFullIndexInfo() (indexer.FullIndexInfo, error)
 	MetaService() meta.Service
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
@@ -153,7 +153,7 @@ func (sb *smartBlock) Id() string {
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{
 		ObjectTypes: sb.ObjectTypes(),
-		Details:     sb.Details(),
+		Details:     sb.CombinedDetails(),
 		Relations:   sb.ExtraRelations(),
 	}
 }
@@ -211,7 +211,7 @@ func (sb *smartBlock) normalizeRelations(s *state.State) error {
 	}
 
 	relations := sb.RelationsState(s, true)
-	details := s.Details()
+	details := s.CombinedDetails()
 	if details == nil || details.Fields == nil {
 		return nil
 	}
@@ -292,7 +292,6 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		if err != nil {
 			return err
 		}
-
 		// omit relations
 		// todo: switch to other pb type
 		for _, ot := range objectTypes {
@@ -487,11 +486,15 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator boo
 
 		if includeObjTypes {
 			for _, ot := range sb.ObjectTypes() {
+				if ot == "" {
+					log.Errorf("sb %s has empty ot", sb.Id())
+					continue
+				}
 				ids = append(ids, ot)
 			}
 		}
 
-		details := sb.Details()
+		details := sb.CombinedDetails()
 
 		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
 			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
@@ -551,64 +554,43 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
-	err = source.InjectCreationInfo(sb.source, s)
-	if err != nil {
-		log.With("thread", sb.Id()).Errorf("injectCreationInfo failed: %s", err.Error())
+
+	if sb.Anytype() != nil {
+		// this one will be reverted in case we don't have any actual change being made
+		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
-	// inject lastModifiedDate
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
 	}
-	if act.IsEmpty() {
-		return nil
-	}
-	if sb.Anytype() != nil {
-		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
-	}
+
 	st := sb.Doc.(*state.State)
-	if act.Details != nil && act.Details.After != nil {
-		var hasDetailsChange bool
-		for _, ch := range s.GetChanges() {
-			if ch.GetDetailsSet() != nil {
-				hasDetailsChange = true
-				break
-			}
+	if !act.IsEmpty() {
+		changes := st.GetChanges()
+		if len(changes) == 0 && !doSnapshot {
+			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
 		}
-		// we don't need to do this in case we have other details changes inside...
-		if !hasDetailsChange {
-			// todo: REFACTOR ME: we need to rework indexer to include virtual changes so the localstore update will be triggered from the same place
-			// here is we handling a case for indexing local-only details
-			before := pbtypes.StructFilterKeys(act.Details.Before, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-			after := pbtypes.StructFilterKeys(act.Details.After, append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-			if !pbtypes.StructEqualIgnore(before, after, nil) {
-				err = sb.Anytype().ObjectStore().UpdateObjectDetails(sb.Id(), s.Details(), &model.Relations{Relations: s.ExtraRelations()}, false)
-				if err != nil {
-					log.Errorf("failed to update object details: %s", err.Error())
-				}
-			}
+		fileDetailsKeys := st.FileRelationKeys()
+		pushChangeParams := source.PushChangeParams{
+			State:             st,
+			Changes:           changes,
+			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
+			DoSnapshot:        doSnapshot,
+			GetAllFileHashes: func() []string {
+				return st.GetAllFileHashes(fileDetailsKeys)
+			},
 		}
-	}
+		var id string
+		id, err = sb.source.PushChange(pushChangeParams)
+		if err != nil {
+			return
+		}
+		sb.Doc.(*state.State).SetChangeId(id)
 
-	fileDetailsKeys := st.FileRelationKeys()
-	pushChangeParams := source.PushChangeParams{
-		State:             st,
-		Changes:           st.GetChanges(),
-		FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
-		DoSnapshot:        doSnapshot,
-		GetAllFileHashes: func() []string {
-			return st.GetAllFileHashes(fileDetailsKeys)
-		},
-	}
-	id, err := sb.source.PushChange(pushChangeParams)
-	if err != nil {
-		return
-	}
-
-	sb.Doc.(*state.State).SetChangeId(id)
-	if sb.undo != nil && addHistory {
-		act.Group = s.GroupId()
-		sb.undo.Add(act)
+		if sb.undo != nil && addHistory {
+			act.Group = s.GroupId()
+			sb.undo.Add(act)
+		}
 	}
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -622,11 +604,35 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if act.Details != nil || act.ObjectTypes != nil || act.Relations != nil {
+	var hasMetaChange, hasDetailsChange bool
+	for _, msg := range msgs {
+		switch msg.Msg.Value.(type) {
+		case *pb.EventMessageValueOfObjectDetailsSet,
+			*pb.EventMessageValueOfObjectDetailsUnset,
+			*pb.EventMessageValueOfObjectDetailsAmend:
+			hasMetaChange = true
+			hasDetailsChange = true
+		case *pb.EventMessageValueOfObjectRelationsAmend,
+			*pb.EventMessageValueOfObjectRelationsSet,
+			*pb.EventMessageValueOfObjectRelationsRemove:
+			hasMetaChange = true
+		}
+	}
+	if hasMetaChange {
 		sb.meta.ReportChange(meta.Meta{
 			BlockId:        sb.Id(),
 			SmartBlockMeta: *sb.Meta(),
 		})
+	}
+	if hasDetailsChange && sb.Type() != 0 {
+		localDetails := st.LocalDetails()
+		if localDetails != nil {
+			err = sb.Anytype().ObjectStore().InjectObjectDetails(sb.Id(), localDetails)
+			if err != nil {
+				log.Errorf("failed to update object details: %s", err.Error())
+			}
+		}
+
 	}
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
@@ -1347,15 +1353,32 @@ func (sb *smartBlock) execHooks(event Hook) {
 	}
 }
 
-func (sb *smartBlock) GetSearchInfo() (indexer.SearchInfo, error) {
+func (sb *smartBlock) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
 	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
-
-	return indexer.SearchInfo{
-		Id:      sb.Id(),
-		Title:   pbtypes.GetString(sb.Details(), bundle.RelationKeyName.String()),
-		Snippet: sb.Snippet(),
-		Text:    sb.Doc.SearchText(),
-		Links:   depIds,
+	st := sb.NewState()
+	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
+	var setRelations []*model.Relation
+	var setSource string
+	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
+	if creator == "" {
+		creator = sb.Anytype().ProfileID()
+	}
+	if st.ObjectType() == bundle.TypeKeySet.URL() {
+		if b := st.Get("dataview"); b != nil {
+			setRelations = b.Model().GetDataview().GetRelations()
+			setSource = b.Model().GetDataview().GetSource()
+		}
+	}
+	return indexer.FullIndexInfo{
+		Id:           sb.Id(),
+		Title:        pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
+		Snippet:      st.Snippet(),
+		Text:         st.SearchText(),
+		Links:        depIds,
+		FileHashes:   fileHashes,
+		SetRelations: setRelations,
+		SetSource:    setSource,
+		Creator:      creator,
 	}, nil
 }
 

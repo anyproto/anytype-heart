@@ -76,8 +76,8 @@ func TestStruct(t *testing.T) {
 	in := &types.Struct{
 		Fields: map[string]*types.Value{
 			"string":      pbtypes.String("string value"),
-			"string_list": pbtypes.StringList([]string{"one", "two"}),
-			"number":      pbtypes.Int64(42),
+			"string_list": pbtypes.StringList([]string{"onelistvalue", "twolistvalue"}),
+			"number":      pbtypes.Int64(4242),
 			"struct": &types.Value{Kind: &types.Value_StructValue{
 				StructValue: &types.Struct{
 					Fields: map[string]*types.Value{
@@ -91,6 +91,6 @@ func TestStruct(t *testing.T) {
 
 	out := Struct(in)
 	for k := range in.Fields {
-		assert.False(t, in.Fields[k].Equal(out.Fields[k]))
+		assert.False(t, in.Fields[k].Equal(out.Fields[k]), in.Fields[k], out.Fields[k])
 	}
 }

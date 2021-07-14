@@ -491,6 +491,10 @@
     - [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request)
     - [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response)
     - [Rpc.Object.Search.Response.Error](#anytype.Rpc.Object.Search.Response.Error)
+    - [Rpc.Object.SetLayout](#anytype.Rpc.Object.SetLayout)
+    - [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request)
+    - [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response)
+    - [Rpc.Object.SetLayout.Response.Error](#anytype.Rpc.Object.SetLayout.Response.Error)
     - [Rpc.ObjectType](#anytype.Rpc.ObjectType)
     - [Rpc.ObjectType.Create](#anytype.Rpc.ObjectType.Create)
     - [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request)
@@ -672,6 +676,7 @@
     - [Rpc.Object.RelationOptionUpdate.Response.Error.Code](#anytype.Rpc.Object.RelationOptionUpdate.Response.Error.Code)
     - [Rpc.Object.RelationUpdate.Response.Error.Code](#anytype.Rpc.Object.RelationUpdate.Response.Error.Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code)
+    - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code)
@@ -1022,6 +1027,7 @@
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype.Rpc.ObjectType.Relation.Add.Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype.Rpc.ObjectType.Relation.Add.Response) |  |
 | ObjectTypeRelationUpdate | [Rpc.ObjectType.Relation.Update.Request](#anytype.Rpc.ObjectType.Relation.Update.Request) | [Rpc.ObjectType.Relation.Update.Response](#anytype.Rpc.ObjectType.Relation.Update.Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype.Rpc.ObjectType.Relation.Remove.Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype.Rpc.ObjectType.Relation.Remove.Response) |  |
+| ObjectSetLayout | [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request) | [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | HistoryShow | [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request) | [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response) |  |
@@ -8141,6 +8147,64 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 
 
+<a name="anytype.Rpc.Object.SetLayout"></a>
+
+### Rpc.Object.SetLayout
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetLayout.Request"></a>
+
+### Rpc.Object.SetLayout.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| layout | [model.ObjectType.Layout](#anytype.model.ObjectType.Layout) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetLayout.Response"></a>
+
+### Rpc.Object.SetLayout.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SetLayout.Response.Error](#anytype.Rpc.Object.SetLayout.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetLayout.Response.Error"></a>
+
+### Rpc.Object.SetLayout.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ObjectType"></a>
 
 ### Rpc.ObjectType
@@ -10576,6 +10640,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.Search.Response.Error.Code"></a>
 
 ### Rpc.Object.Search.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.SetLayout.Response.Error.Code"></a>
+
+### Rpc.Object.SetLayout.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -13336,7 +13413,7 @@ Link: block to link some content from an external sources.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | targetBlockId | [string](#string) |  | id of the target block |
-| style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  |  |
+| style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  | deprecated |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
@@ -13507,6 +13584,7 @@ Used to decode block meta only, without the content itself
 | iconEmoji | [string](#string) |  | emoji symbol |
 | description | [string](#string) |  |  |
 | hidden | [bool](#bool) |  |  |
+| readonly | [bool](#bool) |  |  |
 | types | [SmartBlockType](#anytype.model.SmartBlockType) | repeated |  |
 | isArchived | [bool](#bool) |  | sets locally to hide object type from set and some other places |
 
