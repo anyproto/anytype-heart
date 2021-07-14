@@ -47,7 +47,6 @@ type Config struct {
 
 	Threads threads.Config
 	DS      clientds.Config
-	Client  ClientConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 }
 
