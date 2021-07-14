@@ -12,6 +12,10 @@ import (
 )
 
 func newCollector(ps *pubSub, id string) *collector {
+	if id == "" {
+		// d should be not be empty
+		log.Error("empty ID passed in collector")
+	}
 	c := &collector{
 		blockId:  id,
 		ps:       ps,
@@ -64,7 +68,7 @@ func (c *collector) updateMeta() {
 		SmartBlockMeta: core.SmartBlockMeta{
 			ObjectTypes: c.doc.ObjectTypes(),
 			Relations:   c.doc.ExtraRelations(),
-			Details:     c.doc.Details(),
+			Details:     c.doc.CombinedDetails(),
 		},
 	}
 	if !c.lastMeta.Details.Equal(m.Details) || !slice.SortedEquals(c.lastMeta.ObjectTypes, m.ObjectTypes) || !pbtypes.RelationsEqual(c.lastMeta.Relations, m.Relations) {
@@ -108,7 +112,7 @@ func (c *collector) fetchInitialMeta() (err error) {
 		SmartBlockMeta: core.SmartBlockMeta{
 			ObjectTypes: c.doc.ObjectTypes(),
 			Relations:   c.doc.ExtraRelations(),
-			Details:     c.doc.Details(),
+			Details:     c.doc.CombinedDetails(),
 		},
 	}
 	return nil

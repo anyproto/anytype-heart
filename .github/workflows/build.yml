@@ -143,9 +143,9 @@ jobs:
       - name: Compile ios lib
         run: |
           go get golang.org/x/mobile/cmd/...
-          gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=ios -o Lib.framework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+          gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
           sudo /usr/sbin/purge
-          gtar -czvf ios_framework_${VERSION}.tar.gz Lib.framework protobuf
+          gtar -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf
           mv ios_framework_${VERSION}.tar.gz .release/
       - name: Make java protos
         run: |

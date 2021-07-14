@@ -2,16 +2,11 @@ package core
 
 import (
 	"fmt"
-	"time"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -106,13 +101,6 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 			return response(pb.RpcBlockOpenResponseError_ANYTYPE_NEEDS_UPGRADE, err)
 		}
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
-	}
-
-	err = mw.doBlockService(func(bs block.Service) error {
-		return mw.app.MustComponent(indexer.CName).(indexer.Indexer).SetDetail(req.BlockId, bundle.RelationKeyLastOpenedDate.String(), pbtypes.Float64(float64(time.Now().Unix())))
-	})
-	if err != nil {
-		log.Errorf("failed to update last opened for the object %s: %s", req.BlockId, err.Error())
 	}
 
 	return response(pb.RpcBlockOpenResponseError_NULL, nil)

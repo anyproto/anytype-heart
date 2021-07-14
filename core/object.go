@@ -62,12 +62,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		}
 	}
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:          req.Filters,
-		Sorts:            req.Sorts,
-		Offset:           int(req.Offset),
-		Limit:            int(req.Limit),
-		FullText:         req.FullText,
-		ObjectTypeFilter: req.ObjectTypeFilter,
+		Filters:                req.Filters,
+		Sorts:                  req.Sorts,
+		Offset:                 int(req.Offset),
+		Limit:                  int(req.Limit),
+		FullText:               req.FullText,
+		ObjectTypeFilter:       req.ObjectTypeFilter,
 		IncludeArchivedObjects: includeArchived,
 	})
 	if err != nil {
@@ -239,4 +239,24 @@ func (mw *Middleware) ObjectRelationListAvailable(req *pb.RpcObjectRelationListA
 	}
 
 	return response(pb.RpcObjectRelationListAvailableResponseError_NULL, rels, nil)
+}
+
+func (mw *Middleware) ObjectSetLayout(req *pb.RpcObjectSetLayoutRequest) *pb.RpcObjectSetLayoutResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcObjectSetLayoutResponseErrorCode, err error) *pb.RpcObjectSetLayoutResponse {
+		m := &pb.RpcObjectSetLayoutResponse{Error: &pb.RpcObjectSetLayoutResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetLayout(ctx, req.ContextId, req.Layout)
+	})
+	if err != nil {
+		return response(pb.RpcObjectSetLayoutResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectSetLayoutResponseError_NULL, nil)
 }

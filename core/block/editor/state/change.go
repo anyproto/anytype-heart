@@ -246,7 +246,7 @@ func (s *State) changeObjectTypeAdd(add *pb.ChangeObjectTypeAdd) error {
 	objectTypes := append(s.ObjectTypes(), add.Url)
 	s.SetObjectTypes(objectTypes)
 	// Set only the first(0) object type to the detail
-	s.SetDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
+	s.SetLocalDetail(bundle.RelationKeyType.String(), pbtypes.String(s.ObjectType()))
 
 	return nil
 }
@@ -463,12 +463,12 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	}
 	var prev *types.Struct
 	if s.parent != nil {
-		prev = s.parent.ObjectScopedDetails()
+		prev = s.parent.Details()
 	}
 	if prev == nil || prev.Fields == nil {
 		prev = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
-	curDetails := s.objectScopedDetailsForCurrentState()
+	curDetails := s.Details()
 	for k, v := range curDetails.Fields {
 		pv, ok := prev.Fields[k]
 		if !ok || !pv.Equal(v) {

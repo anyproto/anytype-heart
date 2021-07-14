@@ -233,6 +233,7 @@ type ObjectStore interface {
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
+	InjectObjectDetails(id string, details *types.Struct) error
 	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
 
 	DeleteObject(id string) error
@@ -1239,6 +1240,41 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 	return nil
 }
 
+func (m *dsObjectStore) InjectObjectDetails(id string, details *types.Struct) error {
+	if details == nil {
+		return nil
+	}
+
+	m.l.Lock()
+	defer m.l.Unlock()
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	detailsBefore, err := getObjectDetails(txn, id)
+	if err != nil {
+		return err
+	}
+
+	result := pbtypes.CopyStruct(detailsBefore.GetDetails())
+	for k, v := range details.Fields {
+		result.Fields[k] = v
+	}
+
+	err = m.updateDetails(txn, id, detailsBefore, &model.ObjectDetails{Details: result})
+	if err != nil {
+		return err
+	}
+	err = txn.Commit()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -1400,6 +1436,7 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 	return nil
 }
 
+// should be called under the mutex
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pb.ToValue(id)
@@ -1484,6 +1521,8 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 }
 
 func (m *dsObjectStore) UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error {
+	m.l.Lock()
+	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return err
@@ -1714,6 +1753,11 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return err
 	}
 
+	if oldDetails.GetDetails().Equal(newDetails.GetDetails()) {
+		return nil
+	}
+
+	log.Debugf("updateDetails %s: %s", id, pbtypes.Sprint(newDetails.GetDetails()))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
@@ -1870,11 +1914,15 @@ func isRelationBelongToType(txn ds.Txn, relKey, objectType string) (bool, error)
 }
 
 /* internal */
-
+// getObjectDetails returns empty(not nil) details when not found in the DS
 func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	var details model.ObjectDetails
 	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
-		return nil, fmt.Errorf("failed to get details: %w", err)
+		if err != ds.ErrNotFound {
+			return nil, fmt.Errorf("failed to get relations: %w", err)
+		}
+		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		// return empty details in case not found
 	} else if err := proto.Unmarshal(val, &details); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}

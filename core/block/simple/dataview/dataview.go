@@ -310,7 +310,7 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 	for _, filter := range activeView.Filters {
 		if slice.FindPos(relationsWithObjFormat, filter.RelationKey) >= 0 {
 			for _, objId := range pbtypes.GetStringListValue(filter.Value) {
-				if slice.FindPos(ids, objId) == -1 {
+				if objId != "" && slice.FindPos(ids, objId) == -1 {
 					ids = append(ids, objId)
 				}
 			}
