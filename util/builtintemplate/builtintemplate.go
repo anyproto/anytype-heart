@@ -97,6 +97,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	st.SetRootId(id)
 	st = st.Copy()
 	st.SetDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
+	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	if ots := st.ObjectTypes(); len(ots) != 2 {

@@ -1208,6 +1208,22 @@ func (s *State) ParentState() *State {
 	return s.parent
 }
 
+func (s *State) RemoveDetail(keys ...string) (ok bool) {
+	det := pbtypes.CopyStruct(s.Details())
+	if det != nil && det.Fields != nil {
+		for _, key := range keys {
+			if _, ex := det.Fields[key]; ex {
+				delete(det.Fields, key)
+				ok = true
+			}
+		}
+	}
+	if ok {
+		s.SetDetails(det)
+	}
+	return
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
