@@ -1162,6 +1162,7 @@ func (s *State) Copy() *State {
 		blocks:         blocks,
 		rootId:         s.rootId,
 		details:        pbtypes.CopyStruct(s.Details()),
+		localDetails:   pbtypes.CopyStruct(s.LocalDetails()),
 		extraRelations: pbtypes.CopyRelations(s.ExtraRelations()),
 		objectTypes:    objTypes,
 		noObjectType:   s.noObjectType,
@@ -1206,6 +1207,22 @@ func (s *State) SetRootId(newRootId string) {
 
 func (s *State) ParentState() *State {
 	return s.parent
+}
+
+func (s *State) RemoveDetail(keys ...string) (ok bool) {
+	det := pbtypes.CopyStruct(s.Details())
+	if det != nil && det.Fields != nil {
+		for _, key := range keys {
+			if _, ex := det.Fields[key]; ex {
+				delete(det.Fields, key)
+				ok = true
+			}
+		}
+	}
+	if ok {
+		s.SetDetails(det)
+	}
+	return
 }
 
 type linkSource interface {

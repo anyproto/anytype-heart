@@ -912,6 +912,7 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
+		ts.InjectDerivedDetails()
 		return b.Apply(ts)
 	})
 }
