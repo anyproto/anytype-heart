@@ -710,7 +710,7 @@
     "emoji": "🥕",
     "id": "habitTrack",
     "layout": "todo",
-    "name": "Habit track",
+    "name": "Habit Track",
     "relations": [
       "id",
       "name",
@@ -1126,7 +1126,8 @@
       "scope",
       "timeframe",
       "budget",
-      "stakeholders"
+      "stakeholders",
+      "tasks"
     ],
     "types": [
       "Page"
