@@ -1162,6 +1162,7 @@ func (s *State) Copy() *State {
 		blocks:         blocks,
 		rootId:         s.rootId,
 		details:        pbtypes.CopyStruct(s.Details()),
+		localDetails:   pbtypes.CopyStruct(s.LocalDetails()),
 		extraRelations: pbtypes.CopyRelations(s.ExtraRelations()),
 		objectTypes:    objTypes,
 		noObjectType:   s.noObjectType,
