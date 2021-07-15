@@ -209,6 +209,15 @@ func (c *Online) ProfileFind(ctx context.Context, in *pb.ProfileFindRequest, opt
 	return c.client.ProfileFind(ctx, in, opts...)
 }
 
+func (c *Online) GetConfig(ctx context.Context, in *pb.GetConfigRequest, opts ...grpc.CallOption) (*pb.GetConfigResponse, error) {
+	ctx, err := c.withToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.client.GetConfig(ctx, in, opts...)
+}
+
 func New() Client {
 	limiter := make(chan struct{}, simultaneousRequests)
 
