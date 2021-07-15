@@ -1,6 +1,10 @@
 package filter
 
-import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+import (
+	"github.com/gogo/protobuf/types"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+)
 
 type Order interface {
 	Compare(a, b Getter) int
@@ -18,14 +22,24 @@ func (so SetOrder) Compare(a, b Getter) int {
 }
 
 type KeyOrder struct {
-	Key  string
-	Type model.BlockContentDataviewSortType
+	Key       string
+	Type      model.BlockContentDataviewSortType
+	EmptyLast bool // consider empty strings as the last, not first
 }
 
 func (ko KeyOrder) Compare(a, b Getter) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 	comp := av.Compare(bv)
+	_, aString := av.Kind.(*types.Value_StringValue)
+	_, bString := bv.Kind.(*types.Value_StringValue)
+	if ko.EmptyLast && aString && bString {
+		if av.GetStringValue() == "" && bv.GetStringValue() != "" {
+			comp = 1
+		} else if av.GetStringValue() != "" && bv.GetStringValue() == "" {
+			comp = -1
+		}
+	}
 	if ko.Type == model.BlockContentDataviewSort_Desc {
 		comp = -comp
 	}

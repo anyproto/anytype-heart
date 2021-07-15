@@ -143,7 +143,7 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 				qf.Value = dateOnly(qf.Value)
 			}
 		}
-		
+
 		preFilter := PreFilters(q.IncludeArchivedObjects, sch)
 		if preFilter != nil {
 			mainFilter = append(mainFilter, preFilter)
@@ -161,9 +161,14 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 	if len(q.Sorts) > 0 {
 		ord := filter.SetOrder{}
 		for _, s := range q.Sorts {
+			var emptyLast bool
+			if s.RelationKey == bundle.RelationKeyName.String() {
+				emptyLast = true
+			}
 			ord = append(ord, filter.KeyOrder{
-				Key:  s.RelationKey,
-				Type: s.Type,
+				Key:       s.RelationKey,
+				Type:      s.Type,
+				EmptyLast: emptyLast,
 			})
 		}
 		f.order = ord
