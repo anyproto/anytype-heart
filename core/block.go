@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -984,7 +985,7 @@ func (mw *Middleware) BlockMerge(req *pb.RpcBlockMergeRequest) *pb.RpcBlockMerge
 		return bs.MergeBlock(ctx, *req)
 	})
 	if err != nil {
-		return response(pb.RpcBlockMergeResponseError_UNKNOWN_ERROR, nil)
+		return response(pb.RpcBlockMergeResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcBlockMergeResponseError_NULL, nil)
 }
