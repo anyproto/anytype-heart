@@ -174,7 +174,7 @@ func TestRelationAdd(t *testing.T) {
 
 		blockShow := getEventObjectShow(respOpenNewPage.Event.Messages)
 		log.Debugf("block relations: %v", blockShow.Relations)
-		
+
 		relFromSet1 := pbtypes.GetRelation(blockShow.Relations, respSetRelCreate1.RelationKey)
 		require.NotNil(t, relFromSet1)
 		require.Equal(t, model.Relation_setOfTheSameType, relFromSet1.Scope)

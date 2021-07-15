@@ -2,9 +2,11 @@ package indexer
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"math"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -84,6 +86,19 @@ type ThreadLister interface {
 type Hasher interface {
 	Hash() string
 }
+
+type reindexFlags uint64
+
+const (
+	reindexBundledTypes reindexFlags = 1 << iota
+	reindexBundledRelations
+	eraseIndexes
+	reindexThreadObjects
+	reindexFileObjects
+	reindexFulltext
+	reindexBundledTemplates
+	reindexBundledObjects
+)
 
 type indexer struct {
 	store objectstore.ObjectStore
@@ -198,53 +213,38 @@ func (i *indexer) reindexIfNeeded() error {
 		checksums = &model.ObjectStoreChecksums{}
 	}
 
-	var (
-		reindexBundledTypes     bool
-		reindexBundledRelations bool
-		eraseIndexes            bool
-		reindexThreadObjects    bool
-		reindexFileObjects      bool
-		reindexFulltext         bool
-		reindexBundledTemplates bool
-		reindexBundledObjects   bool
-	)
+	var reindex reindexFlags
 
 	if checksums.BundledRelations != bundle.RelationChecksum {
-		reindexBundledRelations = true
+		reindex = reindex | reindexBundledRelations
 	}
 	if checksums.BundledObjectTypes != bundle.TypeChecksum {
-		reindexBundledTypes = true
+		reindex = reindex | reindexBundledTypes
 	}
 	if checksums.ObjectsForceReindexCounter != ForceThreadsObjectsReindexCounter {
-		reindexThreadObjects = true
+		reindex = reindex | reindexThreadObjects
 	}
 	if checksums.FilesForceReindexCounter != ForceFilesReindexCounter {
-		reindexFileObjects = true
+		reindex = reindex | reindexFileObjects
 	}
 	if checksums.FulltextRebuild != ForceFulltextIndexCounter {
-		reindexFulltext = true
+		reindex = reindex | reindexFulltext
 	}
 	if checksums.BundledTemplates != i.btHash.Hash() {
-		reindexBundledTemplates = true
+		reindex = reindex | reindexBundledTemplates
 	}
 	if checksums.BundledObjects != ForceBundledObjectsReindexCounter {
-		reindexBundledObjects = true
+		reindex = reindex | reindexBundledObjects
 	}
 	if checksums.IdxRebuildCounter != ForceIdxRebuildCounter {
-		eraseIndexes = true
-		reindexFileObjects = true
-		reindexThreadObjects = true
-		reindexBundledRelations = true
-		reindexBundledTypes = true
-		reindexBundledTemplates = true
-		reindexBundledObjects = true
+		reindex = math.MaxUint64
 	}
-	return i.Reindex(reindexBundledTypes, reindexBundledRelations, eraseIndexes, reindexThreadObjects, reindexFileObjects, reindexFulltext, reindexBundledTemplates, reindexBundledObjects)
+	return i.Reindex(reindex)
 }
 
-func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseIndexes, reindexThreadObjects, reindexFileObjects, reindexFulltext, reindexBundledTemplates, reindexBundledObjects bool) (err error) {
-	if eraseIndexes || reindexFileObjects || reindexThreadObjects || reindexBundledRelations || reindexBundledTypes || reindexFulltext || reindexBundledTemplates || reindexBundledObjects {
-		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", eraseIndexes, reindexFileObjects, reindexThreadObjects, reindexBundledRelations, reindexBundledTypes, reindexFulltext, reindexBundledTemplates, reindexBundledObjects)
+func (i *indexer) Reindex(reindex reindexFlags) (err error) {
+	if reindex != 0 {
+		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0)
 	}
 
 	getIdsForTypes := func(sbt ...smartblock.SmartBlockType) ([]string, error) {
@@ -263,7 +263,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 		return ids, nil
 	}
 	var indexesWereRemoved bool
-	if eraseIndexes {
+	if reindex&eraseIndexes != 0 {
 		err = i.store.EraseIndexes()
 		if err != nil {
 			log.Errorf("reindex failed to erase indexes: %v", err.Error())
@@ -273,7 +273,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 			indexesWereRemoved = true
 		}
 	}
-	if reindexThreadObjects {
+	if reindex&reindexThreadObjects != 0 {
 		ids, err := getIdsForTypes(
 			smartblock.SmartBlockTypePage,
 			smartblock.SmartBlockTypeSet,
@@ -292,7 +292,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
 		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
 	}
-	if reindexFileObjects {
+	if reindex&reindexFileObjects != 0 {
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
@@ -305,7 +305,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 			log.Info(msg)
 		}
 	}
-	if reindexBundledRelations {
+	if reindex&reindexBundledRelations != 0 {
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return err
@@ -318,7 +318,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 			log.Info(msg)
 		}
 	}
-	if reindexBundledTypes {
+	if reindex&reindexBundledTypes != 0 {
 		// lets add anytypeProfile here, because it's seems too much to create one more counter especially for it
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
@@ -332,7 +332,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 			log.Info(msg)
 		}
 	}
-	if reindexBundledObjects {
+	if reindex&reindexBundledObjects != 0 {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId}
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
@@ -344,7 +344,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 		}
 	}
 
-	if reindexBundledTemplates {
+	if reindex&reindexBundledTemplates != 0 {
 		existsRec, _, err := i.store.QueryObjectInfo(database.Query{}, []smartblock.SmartBlockType{smartblock.SmartBlockTypeBundledTemplate})
 		if err != nil {
 			return err
@@ -372,7 +372,7 @@ func (i *indexer) Reindex(reindexBundledTypes, reindexBundledRelations, eraseInd
 			log.Info(msg)
 		}
 	}
-	if reindexFulltext {
+	if reindex&reindexFulltext != 0 {
 		var ids []string
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
