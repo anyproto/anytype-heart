@@ -32,9 +32,9 @@
       "intentions",
       "happenings",
       "gratefulFor",
-      "actionItems",
       "mood",
-      "worriedAbout"
+      "worriedAbout",
+      "tasks"
     ],
     "types": [
       "Page"
@@ -81,7 +81,7 @@
     ]
   },
   {
-    "description": "A brief record of points written down as an aid to memory.",
+    "description": "A brief record of points written down as an aid to memory",
     "emoji": "🗒️",
     "id": "note",
     "layout": "basic",
@@ -110,6 +110,48 @@
       "isHidden",
       "isArchived",
       "tag"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A resume is a formal document that a job applicant creates to itemize his or her qualifications for a position",
+    "emoji": "👋",
+    "id": "resume",
+    "layout": "profile",
+    "name": "Resume",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "candidate",
+      "job",
+      "phone",
+      "email",
+      "location",
+      "website",
+      "socialProfile"
     ],
     "types": [
       "Page"
@@ -157,6 +199,50 @@
       "instagram",
       "gender",
       "facebook"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A list of goods sent or services provided, with a statement of the sum due for these; a bill",
+    "emoji": "🧾",
+    "id": "invoice",
+    "layout": "todo",
+    "name": "Invoice",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "company",
+      "companyAddress",
+      "billTo",
+      "billToAddress",
+      "shipTo",
+      "shipToAddress",
+      "dueDate",
+      "total",
+      "number"
     ],
     "types": [
       "Page"
@@ -271,10 +357,50 @@
     ]
   },
   {
-    "description": "The recording, reproducing, or broadcasting of moving visual images.",
+    "description": "A book is a medium for recording information in the form of writing or images, typically composed of many pages bound together and protected by a cover",
+    "emoji": "📘",
+    "id": "book",
+    "layout": "basic",
+    "name": "Book",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "author",
+      "category",
+      "cover",
+      "rating",
+      "status"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "Auto-generated object from .MPEG-4 files added to Anytype. The recording of moving visual images",
     "emoji": "📹",
     "id": "video",
-    "layout": "basic",
+    "layout": "file",
     "name": "Video",
     "relations": [
       "id",
@@ -353,7 +479,7 @@
     "description": "A detailed proposal for doing or achieving something",
     "emoji": "📋",
     "id": "dailyPlan",
-    "layout": "basic",
+    "layout": "todo",
     "name": "Daily Plan",
     "relations": [
       "id",
@@ -388,7 +514,7 @@
     ]
   },
   {
-    "description": "Quick references to ideas, goals, deadlines, data, and anything else important that's covered in your meeting.",
+    "description": "Quick references to ideas, goals, deadlines, data, and anything else important that's covered in your meeting",
     "emoji": "✏️",
     "id": "meetingNote",
     "layout": "basic",
@@ -418,15 +544,59 @@
       "isArchived",
       "tag",
       "participants",
-      "actionItems",
-      "agenda"
+      "agenda",
+      "tasks"
     ],
     "types": [
       "Page"
     ]
   },
   {
-    "description": "A piece of writing included with others in a newspaper, magazine, or other publication.",
+    "description": "Motion picture or Moving picture, is a work of visual art used to simulate experiences that communicate ideas, stories, perceptions, feelings, beauty, or atmosphere through the use of moving images",
+    "emoji": "🍿",
+    "id": "movie",
+    "layout": "basic",
+    "name": "Movie",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "director",
+      "stars",
+      "genre",
+      "cover",
+      "trailer",
+      "rating",
+      "imdbRating",
+      "rottenTomatoesRating",
+      "status"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
+    "description": "A piece of writing included with others in a newspaper, magazine, or other publication",
     "emoji": "📄",
     "id": "article",
     "layout": "basic",
@@ -533,6 +703,46 @@
     ],
     "types": [
       "Template"
+    ]
+  },
+  {
+    "description": "A habit track is a simple way to measure whether you did a habit",
+    "emoji": "🥕",
+    "id": "habitTrack",
+    "layout": "todo",
+    "name": "Habit track",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "running",
+      "meditation",
+      "7hourssleep",
+      "journaling",
+      "healthyEating"
+    ],
+    "types": [
+      "Page"
     ]
   },
   {
@@ -643,8 +853,8 @@
     ]
   },
   {
-    "description": "A representation of the external form of a person or thing in art.",
-    "emoji": "🌅",
+    "description": "Auto-generated object from .JPG & .PNG files added to Anytype. A representation of the external form of a person or thing in art",
+    "emoji": "🖌️",
     "id": "image",
     "layout": "image",
     "name": "Image",
@@ -688,7 +898,7 @@
     ]
   },
   {
-    "description": "Description of individuals' characteristics that identify you",
+    "description": "A man, woman, or child of the species Homo sapiens",
     "emoji": "🧍",
     "id": "profile",
     "layout": "profile",
@@ -723,11 +933,11 @@
     ]
   },
   {
-    "description": "Sound, especially when recorded, transmitted, or reproduced.",
+    "description": "Sound when recorded, with ability to reproduce",
     "emoji": "🎵",
     "hidden": true,
     "id": "audio",
-    "layout": "basic",
+    "layout": "file",
     "name": "Audio",
     "relations": [
       "id",
@@ -773,7 +983,7 @@
     "description": "Is a detailed plan outlining actions needed to reach one or more goals",
     "emoji": "🤝",
     "id": "actionPlan",
-    "layout": "basic",
+    "layout": "todo",
     "name": "Action Plan",
     "relations": [
       "id",
@@ -810,7 +1020,7 @@
     ]
   },
   {
-    "description": "A piece of matter that provides information or evidence or that serves as an official record.",
+    "description": "A piece of matter that provides information or evidence or that serves as an official record",
     "emoji": "📃",
     "id": "document",
     "layout": "basic",
@@ -845,10 +1055,10 @@
     ]
   },
   {
-    "description": "Computer resource for recording data in a computer storage device",
+    "description": "Auto-generated object from files added to Anytype. Computer resource for recording data in a computer storage device",
     "emoji": "🗂️",
     "id": "file",
-    "layout": "basic",
+    "layout": "file",
     "name": "File",
     "relations": [
       "id",
@@ -911,7 +1121,12 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "objectives",
+      "scope",
+      "timeframe",
+      "budget",
+      "stakeholders"
     ],
     "types": [
       "Page"
