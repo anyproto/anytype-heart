@@ -1,5 +1,6 @@
 syntax = "proto3";
 package pb;
+import "google/protobuf/struct.proto";
 
 option go_package = "pb";
 
@@ -10,6 +11,7 @@ message WithSignature {
     string accountSignature = 3; // base58_encode(accountPrivateKey(payload))
     string deviceSignature = 4; // base58_encode(devicePrivateKey(payload+accountAddress))
 }
+
 
 // this is a 2-step flow similar to OAuth2 except it also contains account/device address + signature made with account/device private key
 // this flow used to protect from the outgoing request leak that can be reused indefinite amount of times to receive the cafe token on behalf of user/device
@@ -71,6 +73,19 @@ message GetFilePinsResponse {
     }
 }
 
+message GetConfigRequest {}
+
+message GetConfigResponse {
+    Config config = 1;
+    message Config {
+        bool enableDataview = 1;
+        bool enableDebug = 2;
+        bool enableReleaseChannelSwitch = 3;
+
+        google.protobuf.Struct extra = 100;
+    }
+}
+
 enum PinStatus {
     Queued = 0;
     Failed = 8;
@@ -79,6 +94,7 @@ enum PinStatus {
 
 service API {
     rpc AuthGetToken(stream AuthGetTokenRequest) returns (stream AuthGetTokenResponse) {}
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {}
     rpc ThreadLogFollow(ThreadLogFollowRequest) returns (ThreadLogFollowResponse) {}
     rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {}
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}

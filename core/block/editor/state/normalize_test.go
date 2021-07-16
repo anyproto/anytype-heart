@@ -2,6 +2,9 @@ package state
 
 import (
 	"fmt"
+	"io/ioutil"
+	"testing"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -12,9 +15,6 @@ import (
 	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"io/ioutil"
-	"strings"
-	"testing"
 )
 
 func TestState_Normalize(t *testing.T) {
@@ -62,7 +62,7 @@ func TestState_Normalize(t *testing.T) {
 		s.SetLastModified(2, "abc")
 		msgs, hist, err := ApplyState(s, true)
 		require.NoError(t, err)
-		assert.Len(t, msgs, 3) // BlockSetChildrenIds, BlockAdd, ObjectDetailsAmend(lastmodifieddate)
+		assert.Len(t, msgs, 3)      // BlockSetChildrenIds, BlockAdd, ObjectDetailsAmend(lastmodifieddate)
 		assert.Len(t, s.changes, 1) // BlockCreate
 		assert.Len(t, hist.Add, 1)
 		assert.Len(t, hist.Change, 1)
@@ -217,79 +217,6 @@ func TestState_Normalize(t *testing.T) {
 		require.NoError(t, err)
 	})
 
-	genIds := func(s *State, length, start int, isList ...bool) []string {
-		res := make([]string, length)
-		for i := range res {
-			res[i] = fmt.Sprint(start)
-			b := simple.New(&model.Block{Id: res[i]})
-			if len(isList) > 0 {
-				b = simple.New(&model.Block{
-					Id: res[i],
-					Content: &model.BlockContentOfText{
-						Text: &model.BlockContentText{
-							Style: model.BlockContentText_Numbered,
-						},
-					},
-				})
-			}
-			s.Add(b)
-			start++
-		}
-		return res
-	}
-
-	t.Run("div balance", func(t *testing.T) {
-		t.Run("0-0", func(t *testing.T) {
-			s := NewDoc("root", nil).(*State)
-			d1 := &model.Block{}
-			d2 := &model.Block{}
-			require.False(t, s.divBalance(d1, d2))
-			assert.Len(t, d1.ChildrenIds, 0)
-			assert.Len(t, d2.ChildrenIds, 0)
-		})
-		t.Run("1-0", func(t *testing.T) {
-			s := NewDoc("root", nil).(*State)
-			d1 := &model.Block{ChildrenIds: genIds(s, 1, 1)}
-			d2 := &model.Block{}
-			require.False(t, s.divBalance(d1, d2))
-			assert.Len(t, d1.ChildrenIds, 0)
-			assert.Len(t, d2.ChildrenIds, 1)
-		})
-		t.Run("4-2", func(t *testing.T) {
-			s := NewDoc("root", nil).(*State)
-			d1 := &model.Block{ChildrenIds: genIds(s, 4, 1)}
-			d2 := &model.Block{ChildrenIds: genIds(s, 2, 5)}
-			require.False(t, s.divBalance(d1, d2))
-			assert.Equal(t, []string{"1", "2", "3"}, d1.ChildrenIds)
-			assert.Equal(t, []string{"4", "5", "6"}, d2.ChildrenIds)
-		})
-		t.Run("overflow", func(t *testing.T) {
-			s := NewDoc("root", nil).(*State)
-			d1 := &model.Block{ChildrenIds: genIds(s, maxChildrenThreshold, 1)}
-			d2 := &model.Block{ChildrenIds: genIds(s, maxChildrenThreshold+1, maxChildrenThreshold+10)}
-			require.True(t, s.divBalance(d1, d2))
-			assert.Len(t, d1.ChildrenIds, divSize)
-			assert.Len(t, d2.ChildrenIds, maxChildrenThreshold-divSize+maxChildrenThreshold+1)
-		})
-		t.Run("not divide 4-0", func(t *testing.T) {
-			s := NewDoc("root", nil).(*State)
-			d1 := &model.Block{ChildrenIds: genIds(s, 4, 1, true)}
-			d2 := &model.Block{ChildrenIds: []string{}}
-
-			require.False(t, s.divBalance(d1, d2))
-			assert.Len(t, d1.ChildrenIds, 4)
-			assert.Len(t, d2.ChildrenIds, 0)
-		})
-		t.Run("not divide 4-2", func(t *testing.T) {
-			s := NewDoc("root", nil).(*State)
-			d1 := &model.Block{ChildrenIds: append(genIds(s, 4, 1, true), genIds(s, 2, 5)...)}
-			d2 := &model.Block{ChildrenIds: []string{}}
-
-			require.False(t, s.divBalance(d1, d2))
-			assert.Len(t, d1.ChildrenIds, 4)
-			assert.Len(t, d2.ChildrenIds, 2)
-		})
-	})
 	t.Run("normalize on insert", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root"}))
@@ -330,36 +257,6 @@ func TestState_Normalize(t *testing.T) {
 		}
 		assert.Len(t, result, 100)
 		assert.True(t, len(divs) > 0)
-	})
-	t.Run("merge divided list", func(t *testing.T) {
-		r := NewDoc("root", nil).(*State)
-		div1 := r.newDiv()
-		div2 := r.newDiv()
-		div1.Model().ChildrenIds = genIds(r, 5, 1, true)
-		div2.Model().ChildrenIds = genIds(r, 5, 6, true)
-		r.Add(div1)
-		r.Add(div2)
-		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{div1.Model().Id, div2.Model().Id}}))
-
-		s := r.NewState()
-		_, _, err := ApplyState(s, true)
-		require.NoError(t, err)
-		divId := r.Pick(r.RootId()).Model().ChildrenIds[0]
-		require.True(t, strings.HasPrefix(divId, "div"))
-		assert.Len(t, r.Pick(divId).Model().ChildrenIds, 10)
-	})
-	t.Run("do not split numeric list", func(t *testing.T) {
-		r := NewDoc("root", nil).(*State)
-		s := r.NewState()
-		ids := genIds(s, maxChildrenThreshold*3, 1, true)
-		ids = append(ids, genIds(s, 1, 1000)...)
-		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: ids}))
-		_, _, err := ApplyState(s, true)
-		require.NoError(t, err)
-		root := r.Pick("root").Model()
-		require.Len(t, root.ChildrenIds, 2)
-		assert.Len(t, r.Pick(root.ChildrenIds[0]).Model().ChildrenIds, maxChildrenThreshold*3)
-		assert.Len(t, r.Pick(root.ChildrenIds[1]).Model().ChildrenIds, 1)
 	})
 	t.Run("split with numeric #349", func(t *testing.T) {
 		data, err := ioutil.ReadFile("./testdata/349_blocks.pb")

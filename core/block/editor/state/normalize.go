@@ -130,7 +130,6 @@ func isDivLayout(m *model.Block) bool {
 }
 
 func (s *State) normalizeTree() (err error) {
-	s.checkDividedLists(s.RootId())
 	s.normalizeTreeBranch(s.RootId())
 	const headerId = "header"
 	if s.Pick(headerId) != nil && slice.FindPos(s.Pick(s.RootId()).Model().ChildrenIds, headerId) != 0 {
@@ -141,38 +140,13 @@ func (s *State) normalizeTree() (err error) {
 	return nil
 }
 
-func (s *State) checkDividedLists(id string) {
-	pb := s.Pick(id)
-	if pb == nil {
-		return
-	}
-	parent := pb.Model()
-	if isDivLayout(parent) {
-		if nextDiv := s.pickNextDiv(parent.Id); nextDiv != nil {
-			nextDivM := nextDiv.Model()
-			if len(parent.ChildrenIds) > 0 && len(nextDivM.ChildrenIds) > 0 {
-				if !s.canDivide(parent.ChildrenIds[len(parent.ChildrenIds)-1]) && !s.canDivide(nextDivM.ChildrenIds[0]) {
-					parent = s.Get(id).Model()
-					parent.ChildrenIds = append(parent.ChildrenIds, nextDivM.ChildrenIds...)
-					s.Unlink(nextDivM.Id)
-					s.checkDividedLists(id)
-					return
-				}
-			}
-		}
-	}
-	for _, chId := range parent.ChildrenIds {
-		s.checkDividedLists(chId)
-	}
-}
-
 func (s *State) normalizeTreeBranch(id string) {
 	parentB := s.Pick(id)
 	if parentB == nil {
 		return
 	}
 	parent := parentB.Model()
-	if s.dividedLen(parent.ChildrenIds) > maxChildrenThreshold {
+	if len(parent.ChildrenIds) > maxChildrenThreshold {
 		if nextId := s.wrapChildrenToDiv(id); nextId != "" {
 			s.normalizeTreeBranch(nextId)
 			return
@@ -181,17 +155,6 @@ func (s *State) normalizeTreeBranch(id string) {
 	for _, chId := range parent.ChildrenIds {
 		s.normalizeTreeBranch(chId)
 	}
-}
-
-func (s *State) dividedLen(ids []string) int {
-	l := len(ids)
-	for l > 0 {
-		if s.canDivide(ids[l-1]) {
-			return l
-		}
-		l--
-	}
-	return 0
 }
 
 func (s *State) wrapChildrenToDiv(id string) (nextId string) {
@@ -237,22 +200,11 @@ func (s *State) divBalance(d1, d2 *model.Block) (overflow bool) {
 	if sum > maxChildrenThreshold*2 {
 		div = maxChildrenThreshold / 2
 	}
-	for div < sum && !s.canDivide(d1.ChildrenIds[div]) {
-		div++
-	}
+
 	d2.ChildrenIds = make([]string, len(d1.ChildrenIds[div:]))
 	copy(d2.ChildrenIds, d1.ChildrenIds[div:])
 	d1.ChildrenIds = d1.ChildrenIds[:div]
-	return s.dividedLen(d2.ChildrenIds) > maxChildrenThreshold
-}
-
-func (s *State) canDivide(id string) bool {
-	if b := s.Pick(id); b != nil {
-		if tb := b.Model().GetText(); tb != nil && tb.Style == model.BlockContentText_Numbered {
-			return false
-		}
-	}
-	return true
+	return len(d2.ChildrenIds) > maxChildrenThreshold
 }
 
 func (s *State) newDiv() simple.Block {

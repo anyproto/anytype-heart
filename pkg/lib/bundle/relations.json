@@ -1,5 +1,14 @@
 [
   {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "meditation",
+    "maxCount": 1,
+    "name": "Meditation",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Strict dictionary to select relation values from",
     "format": "status",
     "hidden": false,
@@ -35,6 +44,15 @@
     "key": "heightInPixels",
     "maxCount": 1,
     "name": "Height",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "location",
+    "maxCount": 1,
+    "name": "Location",
     "readonly": false,
     "source": "details"
   },
@@ -97,6 +115,15 @@
     "source": "derived"
   },
   {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "shipTo",
+    "maxCount": 1,
+    "name": "Ship to",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "date",
     "hidden": false,
     "key": "dateOfBirth",
@@ -154,6 +181,15 @@
     "source": "details"
   },
   {
+    "format": "url",
+    "hidden": false,
+    "key": "website",
+    "maxCount": 1,
+    "name": "Website",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Type of the underlying value",
     "format": "number",
     "hidden": true,
@@ -186,6 +222,15 @@
     "source": "details"
   },
   {
+    "format": "number",
+    "hidden": false,
+    "key": "total",
+    "maxCount": 1,
+    "name": "Total",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "object",
     "hidden": false,
     "key": "responsible",
@@ -194,6 +239,15 @@
     "objectTypes": [
       "objectType"
     ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "tag",
+    "hidden": false,
+    "key": "genre",
+    "maxCount": 0,
+    "name": "Genre",
     "readonly": false,
     "source": "details"
   },
@@ -313,12 +367,30 @@
     "source": "details"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "director",
+    "maxCount": 0,
+    "name": "Director",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Task status",
     "format": "status",
     "hidden": false,
     "key": "status",
     "maxCount": 1,
     "name": "Status",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "candidate",
+    "maxCount": 0,
+    "name": "Candidate",
     "readonly": false,
     "source": "details"
   },
@@ -342,6 +414,15 @@
     "source": "details"
   },
   {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "billToAddress",
+    "maxCount": 1,
+    "name": "Bill to Address",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "alternative",
@@ -360,12 +441,39 @@
     "source": "details"
   },
   {
+    "format": "number",
+    "hidden": false,
+    "key": "rottenTomatoesRating",
+    "maxCount": 1,
+    "name": "Rotten Tomatoes rating",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Specify if object is hidden",
     "format": "checkbox",
     "hidden": true,
     "key": "isHidden",
     "maxCount": 1,
     "name": "Hidden",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "budget",
+    "maxCount": 1,
+    "name": "Budget",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "rating",
+    "maxCount": 1,
+    "name": "Rating",
     "readonly": false,
     "source": "details"
   },
@@ -405,6 +513,15 @@
     "name": "Last modified date",
     "readonly": true,
     "source": "derived"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "stakeholders",
+    "maxCount": 0,
+    "name": "Stakeholders",
+    "readonly": false,
+    "source": "details"
   },
   {
     "format": "longtext",
@@ -468,6 +585,15 @@
     "source": "account"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "author",
+    "maxCount": 0,
+    "name": "Author",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Name of artist",
     "format": "shorttext",
     "hidden": false,
@@ -483,6 +609,18 @@
     "key": "dueDate",
     "maxCount": 1,
     "name": "Due date",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "file",
+    "hidden": false,
+    "key": "cover",
+    "maxCount": 0,
+    "name": "Cover",
+    "objectTypes": [
+      "image"
+    ],
     "readonly": false,
     "source": "details"
   },
@@ -558,6 +696,15 @@
     "source": "details"
   },
   {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "timeframe",
+    "maxCount": 1,
+    "name": "Timeframe",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Indicates whether the object is readonly",
     "format": "checkbox",
     "hidden": true,
@@ -610,6 +757,33 @@
     "source": "details"
   },
   {
+    "format": "object",
+    "hidden": false,
+    "key": "stars",
+    "maxCount": 0,
+    "name": "Stars",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "journaling",
+    "maxCount": 1,
+    "name": "Journaling",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "billTo",
+    "maxCount": 1,
+    "name": "Bill to",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Audio record's genre name",
     "format": "shorttext",
     "hidden": false,
@@ -638,6 +812,21 @@
     "source": "details"
   },
   {
+    "format": "file",
+    "hidden": false,
+    "key": "trailer",
+    "maxCount": 0,
+    "name": "Trailer",
+    "objectTypes": [
+      "file",
+      "image",
+      "video",
+      "audio"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Name of the object",
     "format": "shorttext",
     "hidden": true,
@@ -662,6 +851,15 @@
     "key": "agenda",
     "maxCount": 1,
     "name": "Agenda",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "number",
+    "maxCount": 1,
+    "name": "Number",
     "readonly": false,
     "source": "details"
   },
@@ -773,6 +971,15 @@
     "source": "details"
   },
   {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "7hourssleep",
+    "maxCount": 1,
+    "name": "7+ hours sleep",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Image x offset of the provided image",
     "format": "number",
     "hidden": true,
@@ -801,6 +1008,15 @@
     "source": "details"
   },
   {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "companyAddress",
+    "maxCount": 1,
+    "name": "Company Address",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Link to itself. Used in databases",
     "format": "object",
     "hidden": true,
@@ -813,9 +1029,9 @@
   {
     "format": "longtext",
     "hidden": false,
-    "key": "actionItems",
+    "key": "objectives",
     "maxCount": 1,
-    "name": "Action Items",
+    "name": "Objectives",
     "readonly": false,
     "source": "details"
   },
@@ -829,11 +1045,38 @@
     "source": "details"
   },
   {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "healthyEating",
+    "maxCount": 1,
+    "name": "Healthy eating",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "servings",
     "maxCount": 1,
     "name": "Servings",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "tag",
+    "hidden": false,
+    "key": "category",
+    "maxCount": 0,
+    "name": "Category",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "shorttext",
+    "hidden": false,
+    "key": "shipToAddress",
+    "maxCount": 1,
+    "name": "Ship to Address",
     "readonly": false,
     "source": "details"
   },
@@ -890,6 +1133,15 @@
     "source": "details"
   },
   {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "running",
+    "maxCount": 1,
+    "name": "Running",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
     "format": "object",
     "hidden": false,
@@ -931,6 +1183,15 @@
     "source": "derived"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "scope",
+    "maxCount": 1,
+    "name": "Scope",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "shorttext",
     "hidden": false,
     "key": "job",
@@ -968,6 +1229,15 @@
     "key": "phone",
     "maxCount": 1,
     "name": "Phone",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "imdbRating",
+    "maxCount": 1,
+    "name": "IMDb rating",
     "readonly": false,
     "source": "details"
   }

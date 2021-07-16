@@ -83,9 +83,9 @@ type State struct {
 
 	changesStructureIgnoreIds []string
 
-	bufIterateParentIds []string
-	groupId             string
-	noObjectType        bool
+	stringBuf    []string
+	groupId      string
+	noObjectType bool
 }
 
 func (s *State) RootId() string {
@@ -255,17 +255,35 @@ func (s *State) PickOriginParentOf(id string) (res simple.Block) {
 	return
 }
 
+func (s *State) getStringBuf() []string {
+	if s.parent != nil {
+		return s.parent.getStringBuf()
+	}
+	return s.stringBuf[:0]
+}
+
+func (s *State) setStringBuf(buf []string) {
+	if s.parent != nil {
+		s.parent.setStringBuf(buf)
+	} else {
+		s.stringBuf = buf[:0]
+	}
+}
+
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	var iter func(id string) (isContinue bool, err error)
-	var parentIds = s.bufIterateParentIds[:0]
+	var parentIds = s.getStringBuf()
+	defer func() {
+		s.setStringBuf(parentIds[:0])
+	}()
+
 	iter = func(id string) (isContinue bool, err error) {
 		if slice.FindPos(parentIds, id) != -1 {
 			return false, fmt.Errorf("cycle reference: %v %s", parentIds, id)
 		}
 		parentIds = append(parentIds, id)
 		parentSize := len(parentIds)
-		b := s.Pick(id)
-		if b != nil {
+		if b := s.Pick(id); b != nil {
 			if isContinue = f(b); !isContinue {
 				return
 			}
