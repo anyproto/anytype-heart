@@ -29,6 +29,13 @@ func TestKeyOrder_Compare(t *testing.T) {
 		assert.Equal(t, -1, asc.Compare(a, b))
 	})
 
+	t.Run("asc_nil", func(t *testing.T) {
+		a := testGetter{"k": nil}
+		b := testGetter{"k": pbtypes.String("")}
+		asc := KeyOrder{Key: "k", Type: model.BlockContentDataviewSort_Asc}
+		assert.Equal(t, -1, asc.Compare(a, b))
+	})
+
 	t.Run("asc_notemptylast", func(t *testing.T) {
 		a := testGetter{"k": pbtypes.String("a")}
 		b := testGetter{"k": pbtypes.String("")}
