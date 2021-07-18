@@ -31,9 +31,10 @@ func (ko KeyOrder) Compare(a, b Getter) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 	comp := av.Compare(bv)
-	_, aString := av.Kind.(*types.Value_StringValue)
-	_, bString := bv.Kind.(*types.Value_StringValue)
-	if ko.EmptyLast && aString && bString {
+
+	_, aString := av.GetKind().(*types.Value_StringValue)
+	_, bString := bv.GetKind().(*types.Value_StringValue)
+	if ko.EmptyLast && (aString || av == nil) && (bString || bv == nil) {
 		if av.GetStringValue() == "" && bv.GetStringValue() != "" {
 			comp = 1
 		} else if av.GetStringValue() != "" && bv.GetStringValue() == "" {
