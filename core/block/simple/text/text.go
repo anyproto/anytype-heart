@@ -389,13 +389,14 @@ func (t *Text) RangeSplit(from int32, to int32, top bool) (newBlock simple.Block
 
 		t.content.Text = string(runes[to:])
 		t.content.Marks = newMarks
+		t.content.Checked = false
 	} else {
 		newBlock = simple.New(&model.Block{
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{
 				Text:    string(runes[to:]),
 				Style:   t.content.Style,
 				Marks:   newMarks,
-				Checked: t.content.Checked,
+				Checked: false,
 				Color:   t.content.Color,
 			}},
 			BackgroundColor: t.BackgroundColor,
