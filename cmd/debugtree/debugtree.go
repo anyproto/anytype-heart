@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/debug/debugtree"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/goccy/go-graphviz"
 )
 
@@ -20,6 +21,7 @@ var (
 	file       = flag.String("f", "", "path to debug file")
 	makeTree   = flag.Bool("t", false, "generate graphviz file")
 	printState = flag.Bool("s", false, "print result state debug")
+	changeIdx  = flag.Int("c", -1, "build tree before given index and print change")
 )
 
 func main() {
@@ -40,6 +42,26 @@ func main() {
 	t, _, err := change.BuildTree(dt)
 	if err != nil {
 		log.Fatal("build tree error:", err)
+	}
+	if *changeIdx != -1 {
+		id := ""
+		i := 0
+		t.Iterate(t.RootId(), func(c *change.Change) (isContinue bool) {
+			if i == *changeIdx {
+				id = c.Id
+				fmt.Println("Change:")
+				fmt.Println(pbtypes.Sprint(c.Change))
+				return false
+			} else {
+				i++
+			}
+			return true
+		})
+		if id != "" {
+			if t, err = change.BuildTreeBefore(dt, id, true); err != nil {
+				log.Fatal("build tree before error:", err)
+			}
+		}
 	}
 
 	fmt.Printf("Tree len:\t%d\n", t.Len())
