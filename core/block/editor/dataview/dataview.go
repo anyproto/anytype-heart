@@ -72,6 +72,8 @@ type dataviewImpl struct {
 	defaultRecordFields        *types.Struct // will be always set to the new record
 	recordsUpdatesSubscription database.Subscription
 	depsUpdatesSubscription    database.Subscription
+	depIds []string
+
 
 	recordsUpdatesCancel context.CancelFunc
 }
@@ -686,7 +688,14 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 		}
 	}
 
-	depDetails, _, err := db.QueryByIdAndSubscribeForChanges(depIds, dv.depsUpdatesSubscription)
+	var depIdsNew []string
+	for _, depId := range depIds {
+		if slice.FindPos(dv.depIds, depId) == -1 {
+			depIdsNew = append(depIdsNew, depId)
+		}
+	}
+
+	depDetails, _, err := db.QueryByIdAndSubscribeForChanges(depIdsNew, dv.depsUpdatesSubscription)
 	if err != nil {
 		return err
 	}
@@ -697,6 +706,10 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 			sub.Publish(pbtypes.GetString(det.Details, bundle.RelationKeyId.String()), det.Details)
 		}
 	}()
+
+	// replace dependent ids
+	dv.depIds = depIds
+
 	return nil
 }
 
