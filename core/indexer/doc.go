@@ -234,3 +234,10 @@ func (d *doc) SetDetail(key string, val *types.Value) {
 
 	d.st.SetDetail(key, val)
 }
+
+func (d *doc) SetLocalDetails(st *types.Struct) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+
+	d.st.SetLocalDetails(st)
+}
