@@ -7,6 +7,9 @@ package change
 import (
 	"bytes"
 	"fmt"
+	"strings"
+	"time"
+	"unicode"
 
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
@@ -40,12 +43,40 @@ func (t *Tree) Graphviz() (data string, err error) {
 		if e != nil {
 			return e
 		}
+		if c.Snapshot != nil {
+			n.SetStyle(cgraph.FilledNodeStyle)
+		} else if c.HasMeta() {
+			n.SetStyle(cgraph.DashedNodeStyle)
+		}
 		nodes[c.Id] = n
 		ord := order[c.Id]
 		if ord == "" {
 			ord = "miss"
 		}
-		n.SetLabel(fmt.Sprintf("%s: %s", c.Id, ord))
+		var chSymbs []string
+		for _, chc := range c.Content {
+			tp := fmt.Sprintf("%T", chc.Value)
+			tp = strings.Replace(tp, "ChangeContentValueOf", "", 1)
+			res := ""
+			for _, ts := range tp {
+				if unicode.IsUpper(ts) {
+					res += string(ts)
+				}
+			}
+			chSymbs = append(chSymbs, res)
+		}
+
+		shortId := c.Id
+		if len(shortId) > 10 {
+			shortId = shortId[len(c.Id)-10:]
+		}
+		n.SetLabel(fmt.Sprintf("Id: %s\nOrd: %s\nTime: %s\nChanges: %s (%d)\n",
+			shortId,
+			ord,
+			time.Unix(c.Timestamp, 0).Format("02.01.06 15:04:05"),
+			strings.Join(chSymbs, ","),
+			len(c.Content),
+		))
 		return nil
 	}
 	for _, c := range t.attached {

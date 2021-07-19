@@ -166,7 +166,9 @@ func Struct(in *types.Struct) (res *types.Struct) {
 	res = pbtypes.CopyStruct(in)
 	if res != nil && res.Fields != nil {
 		for k, v := range res.Fields {
-			res.Fields[k] = StructValue(v)
+			if k != "featuredRelations" {
+				res.Fields[k] = StructValue(v)
+			}
 		}
 	}
 	return

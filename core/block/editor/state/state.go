@@ -696,20 +696,22 @@ func (s *State) StringDebug() string {
 	fmt.Fprintf(buf, "ObjectTypes: %v\n", s.ObjectTypes())
 	fmt.Fprintf(buf, "Relations:\n")
 	for _, rel := range s.ExtraRelations() {
-		fmt.Fprintf(buf, "\t%v\n", rel.String())
+		fmt.Fprintf(buf, "\t%v\n", rel.Key)
 	}
-	fmt.Fprintf(buf, "Details:\n")
+
+	fmt.Fprintf(buf, "\nDetails:\n")
 	if det := s.Details(); det != nil && det.Fields != nil {
 		for k, v := range det.Fields {
-			fmt.Fprintf(buf, "\t%s:\t%v\n", k, v.String())
+			fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
 		}
 	}
-	fmt.Fprintf(buf, "Local details:\n")
+	fmt.Fprintf(buf, "\nLocal details:\n")
 	if det := s.LocalDetails(); det != nil && det.Fields != nil {
 		for k, v := range det.Fields {
-			fmt.Fprintf(buf, "\t%s:\t%v\n", k, v.String())
+			fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
 		}
 	}
+	fmt.Fprintf(buf, "\nBlocks:\n")
 	s.writeString(buf, 0, s.RootId())
 	return buf.String()
 }
