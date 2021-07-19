@@ -7,6 +7,7 @@ import (
 	_ "embed"
 	"encoding/binary"
 	"encoding/hex"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -96,7 +97,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 	}
 	st.SetRootId(id)
 	st = st.Copy()
-	st.SetDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
+	st.SetLocalDetail(bundle.RelationKeyTemplateIsBundled.String(), pbtypes.Bool(true))
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
@@ -104,10 +105,27 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
 	}
 	st.InjectDerivedDetails()
+	if err = b.validate(st.Copy()); err != nil {
+		return
+	}
 	b.source.RegisterStaticSource(id, func() source.Source {
 		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy())
 	})
 	return
+}
+
+func (b *builtinTemplate) validate(st *state.State) (err error) {
+	cd := st.CombinedDetails()
+	if st.ObjectType() != bundle.TypeKeyTemplate.URL() {
+		return fmt.Errorf("bundled template validation: %s unexpected object type: %v", st.RootId(), st.ObjectType())
+	}
+	if !pbtypes.GetBool(cd, bundle.RelationKeyTemplateIsBundled.String()) {
+		return fmt.Errorf("bundled template validation: %s not bundled", st.RootId())
+	}
+	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectType() {
+		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), tt)
+	}
+	return nil
 }
 
 func (b *builtinTemplate) Close() (err error) {

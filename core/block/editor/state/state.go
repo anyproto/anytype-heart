@@ -704,14 +704,22 @@ func (s *State) StringDebug() string {
 			fmt.Fprintf(buf, "\t%s:\t%v\n", k, v.String())
 		}
 	}
+	fmt.Fprintf(buf, "Local details:\n")
+	if det := s.LocalDetails(); det != nil && det.Fields != nil {
+		for k, v := range det.Fields {
+			fmt.Fprintf(buf, "\t%s:\t%v\n", k, v.String())
+		}
+	}
 	s.writeString(buf, 0, s.RootId())
 	return buf.String()
 }
 
 func (s *State) SetDetails(d *types.Struct) *State {
 	local := pbtypes.StructFilterKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
-	if len(local.GetFields()) > 0 {
-		s.SetLocalDetails(local)
+	if local != nil && local.GetFields() != nil && len(local.GetFields()) > 0 {
+		for k, v := range local.Fields {
+			s.SetLocalDetail(k, v)
+		}
 		s.details = pbtypes.StructCutKeys(d, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...))
 		return s
 	}
@@ -944,7 +952,6 @@ func (s *State) Details() *types.Struct {
 	if s.details == nil && s.parent != nil {
 		return s.parent.Details()
 	}
-
 	return s.details
 }
 
