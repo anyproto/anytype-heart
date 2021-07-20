@@ -94,6 +94,8 @@ func TestSmartBlock_Apply(t *testing.T) {
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e
 		})
+		fx.metaService.EXPECT().IndexerIndexOutgoingLinks(gomock.Any(),gomock.Any()).MaxTimes(1)
+
 		err := fx.Apply(s)
 		require.NoError(t, err)
 		assert.Equal(t, 1, fx.History().Len())

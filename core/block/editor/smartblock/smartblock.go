@@ -632,12 +632,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 
-	if hasLocalDetailChange && sb.Type() != 0 {
+	if sb.meta != nil && hasLocalDetailChange && sb.Type() != 0 {
 		// we should call reindex in case we don't have any real details changed
 		sb.meta.IndexerSetLocalDetails(sb.Id(), st.LocalDetails(), !hasNotLocalDetailsChange)
 	}
 
-	if hasBlockChanges || hasNotLocalDetailsChange {
+	if sb.meta != nil && (hasBlockChanges || hasNotLocalDetailsChange) {
 		outLinks := sb.dependentSmartIds(false, false)
 		sb.meta.IndexerIndexOutgoingLinks(sb.Id(), outLinks)
 	}
