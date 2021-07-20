@@ -54,7 +54,9 @@ func New() Indexer {
 }
 
 type Indexer interface {
-	SetDetail(id string, key string, val *types.Value) error
+	SetLocalDetails(id string, st *types.Struct, index bool) error
+	IndexOutgoingLinks(id string, links []string) error
+
 	app.ComponentRunnable
 }
 
@@ -117,6 +119,10 @@ type indexer struct {
 	btHash            Hasher
 
 	newAccount bool
+}
+
+func (i *indexer) IndexOutgoingLinks(id string, links []string) error {
+	return i.store.UpdateObjectLinks(id, links)
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -762,13 +768,15 @@ func (i *indexer) Close() error {
 	return nil
 }
 
-func (i *indexer) SetDetail(id string, key string, val *types.Value) error {
+func (i *indexer) SetLocalDetails(id string, st *types.Struct, index bool) error {
 	d, err := i.getDoc(id)
 	if err != nil {
 		return err
 	}
 
-	d.SetDetail(key, val)
-	i.index(id, nil, true)
+	d.SetLocalDetails(st)
+	if index {
+		i.index(id, nil, true)
+	}
 	return nil
 }

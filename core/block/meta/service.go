@@ -1,6 +1,9 @@
 package meta
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"sync"
 	"time"
 
@@ -22,7 +25,9 @@ type Meta struct {
 
 type Service interface {
 	PubSub() PubSub
-	SetDetail(id string, key string, value *types.Value)
+	IndexerSetLocalDetails(id string, st *types.Struct, index bool)
+	IndexerIndexOutgoingLinks(id string, links []string)
+
 	ReportChange(m Meta)
 	FetchMeta(ids []string) (metas []Meta)
 	FetchObjectTypes(objectTypeUrls []string) []*model.ObjectType
@@ -35,22 +40,37 @@ func New() Service {
 
 type service struct {
 	anytype core.Service
+	indexer indexer.Indexer
 	ps      *pubSub
 	m       sync.Mutex
 }
 
-func (s *service) SetDetail(id string, key string, value *types.Value) {
+func (s *service) IndexerIndexOutgoingLinks(id string, links []string) {
+	s.indexer.IndexOutgoingLinks(id, links)
+}
+
+func (s *service) IndexerSetLocalDetails(id string, st *types.Struct, index bool) {
+	s.indexer.SetLocalDetails(id, st, index)
+}
+
+// SetLocalDetails inject local details into the meta pubsub
+func (s *service) SetLocalDetails(id string, st *types.Struct) {
 	s.ps.m.Lock()
 	defer s.ps.m.Unlock()
 	if c, ok := s.ps.collectors[id]; ok {
 		m := copyMeta(c.GetMeta())
-		m.Details.Fields[key] = value
+		for k, v := range st.GetFields() {
+			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 {
+				m.Details.Fields[k] = v
+			}
+		}
 		c.setMeta(m)
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
+	s.indexer = a.MustComponent(indexer.CName).(indexer.Indexer)
 	s.ps = newPubSub(s.anytype, a.MustComponent(source.CName).(source.Service))
 	return
 }

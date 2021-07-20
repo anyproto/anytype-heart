@@ -202,7 +202,7 @@ func New() ObjectStore {
 }
 
 type DetailInjector interface {
-	SetDetail(id string, key string, value *types.Value)
+	SetLocalDetails(id string, st *types.Struct)
 }
 
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
@@ -236,6 +236,7 @@ type ObjectStore interface {
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
 	InjectObjectDetails(id string, details *types.Struct) error
+	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
 
 	DeleteObject(id string) error
@@ -1218,6 +1219,22 @@ func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations
 	return txn.Commit()
 }
 
+func (m *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
+	m.l.Lock()
+	defer m.l.Unlock()
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	err = m.updateObjectLinks(txn, id, links)
+	if err != nil {
+		return err
+	}
+	return txn.Commit()
+}
+
 func (m *dsObjectStore) UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -1356,7 +1373,7 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 	exLinks, _ := findOutboundLinks(txn, id)
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
 	getCurrentDetails := func(id string) (*types.Struct, error) {
-		det, err := m.GetDetails(id)
+		det, err := getObjectDetails(txn, id)
 		if err != nil {
 			return nil, err
 		}
@@ -1376,17 +1393,15 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 		}
 		newDet := pbtypes.CopyStruct(det)
 		newDet.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(val)
+
 		err = m.updateDetails(txn, id, &model.ObjectDetails{det}, &model.ObjectDetails{newDet})
 		if err != nil {
-			return fmt.Errorf("updateObject failed: %s", err.Error())
+			return err
 		}
-		if m.meta != nil {
-			go func() {
-				m.meta.SetDetail(id, bundle.RelationKeyIsArchived.String(), pbtypes.Bool(val))
-			}()
-		} else {
-			log.Errorf("updateArchive failed: meta service is nil")
-		}
+		
+		// inject localDetails into the meta pubsub
+		m.meta.SetLocalDetails(id, newDet)
+
 		return nil
 	}
 
@@ -1408,7 +1423,7 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links []string, snippet string) error {
+func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string) error {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		return fmt.Errorf("failed to extract smartblock type: %w", err)
@@ -1437,6 +1452,15 @@ func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links
 				return err
 			}
 		}
+	}
+
+	return nil
+}
+
+func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links []string, snippet string) error {
+	err := m.updateObjectLinks(txn, id, links)
+	if err != nil {
+		return err
 	}
 
 	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {

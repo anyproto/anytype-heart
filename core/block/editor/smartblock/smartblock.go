@@ -604,14 +604,20 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	var hasMetaChange, hasDetailsChange bool
+	var hasMetaChange, hasNotLocalDetailsChange, hasLocalDetailChange, hasBlockChanges bool
 	for _, msg := range msgs {
 		switch msg.Msg.Value.(type) {
 		case *pb.EventMessageValueOfObjectDetailsSet,
 			*pb.EventMessageValueOfObjectDetailsUnset,
 			*pb.EventMessageValueOfObjectDetailsAmend:
 			hasMetaChange = true
-			hasDetailsChange = true
+			if msg.Virtual {
+				hasLocalDetailChange = true
+			} else {
+				hasNotLocalDetailsChange = true
+			}
+		case *pb.EventMessageValueOfBlockAdd, *pb.EventMessageValueOfBlockSetText:
+			hasBlockChanges = true
 		case *pb.EventMessageValueOfObjectRelationsAmend,
 			*pb.EventMessageValueOfObjectRelationsSet,
 			*pb.EventMessageValueOfObjectRelationsRemove:
@@ -624,16 +630,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			SmartBlockMeta: *sb.Meta(),
 		})
 	}
-	if hasDetailsChange && sb.Type() != 0 {
-		localDetails := st.LocalDetails()
-		if localDetails != nil {
-			err = sb.Anytype().ObjectStore().InjectObjectDetails(sb.Id(), localDetails)
-			if err != nil {
-				log.Errorf("failed to update object details: %s", err.Error())
-			}
-		}
 
+
+	if sb.meta != nil && hasLocalDetailChange && sb.Type() != 0 {
+		// we should call reindex in case we don't have any real details changed
+		sb.meta.IndexerSetLocalDetails(sb.Id(), st.LocalDetails(), !hasNotLocalDetailsChange)
 	}
+
+	if sb.meta != nil && (hasBlockChanges || hasNotLocalDetailsChange) {
+		outLinks := sb.dependentSmartIds(false, false)
+		sb.meta.IndexerIndexOutgoingLinks(sb.Id(), outLinks)
+	}
+
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
