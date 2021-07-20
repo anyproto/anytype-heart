@@ -1373,7 +1373,7 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 	exLinks, _ := findOutboundLinks(txn, id)
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
 	getCurrentDetails := func(id string) (*types.Struct, error) {
-		det, err := m.GetDetails(id)
+		det, err := getObjectDetails(txn, id)
 		if err != nil {
 			return nil, err
 		}
@@ -1394,6 +1394,11 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 		newDet := pbtypes.CopyStruct(det)
 		newDet.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(val)
 
+		err = m.updateDetails(txn, id, &model.ObjectDetails{det}, &model.ObjectDetails{newDet})
+		if err != nil {
+			return err
+		}
+		
 		// inject localDetails into the meta pubsub
 		m.meta.SetLocalDetails(id, newDet)
 

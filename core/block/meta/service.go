@@ -66,7 +66,6 @@ func (s *service) SetLocalDetails(id string, st *types.Struct) {
 		}
 		c.setMeta(m)
 	}
-	s.indexer.SetLocalDetails(id, st, true)
 }
 
 func (s *service) Init(a *app.App) (err error) {
