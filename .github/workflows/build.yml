@@ -16,7 +16,11 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
+          which gomobile
+          echo $GITHUB_PATH
           go install golang.org/x/mobile/cmd/gomobile@76c259c465ba39f84de7e2751a666612ddca556b
+          which gomobile
+          exit 1
       - name: Install patched gox
         run: |
           mkdir -p $GOPATH/src/github.com/mitchellh
