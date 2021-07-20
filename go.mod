@@ -83,7 +83,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20210713133746-31acca4bf287
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20210716181919-c9e52e6abd14
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 
