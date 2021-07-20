@@ -18,10 +18,11 @@ import (
 )
 
 var (
-	file       = flag.String("f", "", "path to debug file")
-	makeTree   = flag.Bool("t", false, "generate graphviz file")
-	printState = flag.Bool("s", false, "print result state debug")
-	changeIdx  = flag.Int("c", -1, "build tree before given index and print change")
+	file        = flag.String("f", "", "path to debug file")
+	makeTree    = flag.Bool("t", false, "generate graphviz file")
+	printState  = flag.Bool("s", false, "print result state debug")
+	changeIdx   = flag.Int("c", -1, "build tree before given index and print change")
+	objectStore = flag.Bool("o", false, "show object store info")
 )
 
 func main() {
@@ -88,6 +89,16 @@ func main() {
 		sbt, _ := smartblock.SmartBlockTypeFromID(st.RootId())
 		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
 		fmt.Println("state building time:", dur)
+	}
+
+	if *objectStore {
+		fmt.Println("fetch object store info..")
+		ls, err := dt.LocalStore()
+		if err != nil {
+			fmt.Println("can't open objectStore info:", err)
+		} else {
+			fmt.Println(pbtypes.Sprint(ls))
+		}
 	}
 
 	if *makeTree {
