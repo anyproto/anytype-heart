@@ -15,7 +15,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/util/anonymize"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 type treeBuilder struct {
@@ -23,6 +25,7 @@ type treeBuilder struct {
 	b       core.SmartBlock
 	changes map[string]struct{}
 	zw      *zip.Writer
+	s       objectstore.ObjectStore
 }
 
 func (b *treeBuilder) Build(path string) (filename string, err error) {
@@ -64,6 +67,33 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 	b.log.Printf("write changes...")
 	b.writeChanges(logs)
 	b.log.Printf("wrote %d changes for a %v", len(b.changes), time.Since(st))
+
+	b.log.Printf("write localstore data...")
+	data, err := b.s.GetByIDs(b.b.ID())
+	if err != nil {
+		b.log.Printf("can't fetch localstore info: %v", err)
+	} else {
+		if len(data) > 0 {
+			data[0].Details = anonymize.Struct(data[0].Details)
+			data[0].Snippet = anonymize.Text(data[0].Snippet)
+			for i, r := range data[0].Relations {
+				data[0].Relations[i] = anonymize.Relation(r)
+			}
+			osData := pbtypes.Sprint(data[0])
+			lsWr, er := b.zw.Create("localstore.json")
+			if er != nil {
+				b.log.Printf("create file in zip error: %v", er)
+			} else {
+				if _, err := lsWr.Write([]byte(osData)); err != nil {
+					b.log.Printf("localstore.json write error: %v", err)
+				} else {
+					b.log.Printf("localstore.json wrote")
+				}
+			}
+		} else {
+			b.log.Printf("not data in objectstore")
+		}
+	}
 
 	logW, err := b.zw.Create("creation.log")
 	if err != nil {

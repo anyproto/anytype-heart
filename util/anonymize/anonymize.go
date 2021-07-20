@@ -166,7 +166,9 @@ func Struct(in *types.Struct) (res *types.Struct) {
 	res = pbtypes.CopyStruct(in)
 	if res != nil && res.Fields != nil {
 		for k, v := range res.Fields {
-			res.Fields[k] = StructValue(v)
+			if k != "featuredRelations" {
+				res.Fields[k] = StructValue(v)
+			}
 		}
 	}
 	return
@@ -198,6 +200,9 @@ func Relation(r *model.Relation) (res *model.Relation) {
 	if _, err := bundle.GetRelation(bundle.RelationKey(res.Key)); err != nil {
 		res.Name = Text(res.Name)
 		res.Description = Text(res.Description)
+		for _, so := range res.SelectDict {
+			so.Text = Text(so.Text)
+		}
 	}
 	return
 }

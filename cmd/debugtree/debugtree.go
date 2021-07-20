@@ -7,15 +7,22 @@ import (
 	"log"
 	"os/exec"
 	"runtime"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/debug/debugtree"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/goccy/go-graphviz"
 )
 
 var (
-	file     = flag.String("f", "", "path to debug file")
-	makeTree = flag.Bool("t", false, "generate graphviz file")
+	file        = flag.String("f", "", "path to debug file")
+	makeTree    = flag.Bool("t", false, "generate graphviz file")
+	printState  = flag.Bool("s", false, "print result state debug")
+	changeIdx   = flag.Int("c", -1, "build tree before given index and print change")
+	objectStore = flag.Bool("o", false, "show object store info")
 )
 
 func main() {
@@ -37,9 +44,62 @@ func main() {
 	if err != nil {
 		log.Fatal("build tree error:", err)
 	}
+	if *changeIdx != -1 {
+		id := ""
+		i := 0
+		t.Iterate(t.RootId(), func(c *change.Change) (isContinue bool) {
+			if i == *changeIdx {
+				id = c.Id
+				fmt.Println("Change:")
+				fmt.Println(pbtypes.Sprint(c.Change))
+				return false
+			} else {
+				i++
+			}
+			return true
+		})
+		if id != "" {
+			if t, err = change.BuildTreeBefore(dt, id, true); err != nil {
+				log.Fatal("build tree before error:", err)
+			}
+		}
+	}
 
 	fmt.Printf("Tree len:\t%d\n", t.Len())
 	fmt.Printf("Tree root:\t%s\n", t.RootId())
+
+	if *printState {
+		fmt.Println("Building state...")
+		stt := time.Now()
+		root := t.Root()
+		if root == nil || root.GetSnapshot() == nil {
+			log.Fatal("root missing or not a snapshot")
+		}
+		s := state.NewDocFromSnapshot("", root.GetSnapshot()).(*state.State)
+		s.SetChangeId(root.Id)
+		st, err := change.BuildStateSimpleCRDT(s, t)
+		if err != nil {
+			return
+		}
+		if _, _, err = state.ApplyStateFast(st); err != nil {
+			return
+		}
+		dur := time.Since(stt)
+		fmt.Println(s.StringDebug())
+		sbt, _ := smartblock.SmartBlockTypeFromID(st.RootId())
+		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
+		fmt.Println("state building time:", dur)
+	}
+
+	if *objectStore {
+		fmt.Println("fetch object store info..")
+		ls, err := dt.LocalStore()
+		if err != nil {
+			fmt.Println("can't open objectStore info:", err)
+		} else {
+			fmt.Println(pbtypes.Sprint(ls))
+		}
+	}
 
 	if *makeTree {
 		fmt.Println("saving tree file...")

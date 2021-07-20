@@ -12,6 +12,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/jsonpb"
 	"github.com/gogo/protobuf/proto"
 )
 
@@ -51,6 +53,7 @@ func (dts DebugTreeStats) MlString() string {
 type DebugTree interface {
 	core.SmartBlock
 	Stats() DebugTreeStats
+	LocalStore() (*model.ObjectInfo, error)
 	Close() error
 }
 
@@ -176,7 +179,7 @@ func (r *debugTree) Stats() (s DebugTreeStats) {
 		}
 	}
 	for _, f := range r.zr.File {
-		if filepath.Ext(f.Name) == ".json" && f.Name != "block_logs.json" {
+		if filepath.Ext(f.Name) == ".json" && f.Name != "block_logs.json" && f.Name != "localstore.json" {
 			l, err := r.getChange(strings.ReplaceAll(f.Name, ".json", ""))
 			if err == nil {
 				if l.Snapshot != nil {
@@ -190,6 +193,24 @@ func (r *debugTree) Stats() (s DebugTreeStats) {
 		}
 	}
 	return
+}
+
+func (r *debugTree) LocalStore() (*model.ObjectInfo, error) {
+	for _, f := range r.zr.File {
+		if f.Name == "localstore.json" {
+			rd, err := f.Open()
+			if err != nil {
+				return nil, err
+			}
+			defer rd.Close()
+			var oi = &model.ObjectInfo{}
+			if err = jsonpb.Unmarshal(rd, oi); err != nil {
+				return nil, err
+			}
+			return oi, nil
+		}
+	}
+	return nil, fmt.Errorf("block logs file not found")
 }
 
 func (r *debugTree) Close() (err error) {
