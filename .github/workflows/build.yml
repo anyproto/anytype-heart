@@ -10,12 +10,15 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.16.4
+          go-version: 1.16.6
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
+      - name: Install gomobile
+        run: |
+          go get golang.org/x/mobile/cmd/...@76c259c465ba39f84de7e2751a666612ddca556b
       - name: Install patched gox
         run: |
           mkdir -p $GOPATH/src/github.com/mitchellh
@@ -142,7 +145,6 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile ios lib
         run: |
-          go get golang.org/x/mobile/cmd/...@76c259c465ba39f84de7e2751a666612ddca556b
           gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
           sudo /usr/sbin/purge
           gtar -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf
@@ -158,7 +160,6 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile android lib
         run: |
-          go get golang.org/x/mobile/cmd/...@76c259c465ba39f84de7e2751a666612ddca556b
           gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
           sudo /usr/sbin/purge
           gtar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
