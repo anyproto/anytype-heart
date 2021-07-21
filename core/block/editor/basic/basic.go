@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -31,6 +32,8 @@ type Basic interface {
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
+	FeaturedRelationAdd(ctx *state.Context, relations ...string) error
+	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -335,5 +338,40 @@ func (bs *basic) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (e
 			return
 		}
 	}
+	template.WithDescription(s)
 	return bs.Apply(s)
+}
+
+func (bs *basic) FeaturedRelationAdd(ctx *state.Context, relations ...string) (err error) {
+	s := bs.NewStateCtx(ctx)
+	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	frc := make([]string, len(fr))
+	copy(frc, fr)
+	for _, r := range relations {
+		if (bundle.HasRelation(r) || s.HasRelation(r)) && slice.FindPos(frc, r) == -1 {
+			frc = append(frc, r)
+		}
+	}
+	if len(frc) != len(fr) {
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
+		template.WithDescription(s)
+	}
+	return bs.Apply(s, smartblock.NoRestrictions)
+}
+
+func (bs *basic) FeaturedRelationRemove(ctx *state.Context, relations ...string) (err error) {
+	s := bs.NewStateCtx(ctx)
+	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	frc := make([]string, len(fr))
+	copy(frc, fr)
+	for _, r := range relations {
+		if slice.FindPos(frc, r) != -1 {
+			frc = slice.Remove(frc, r)
+		}
+	}
+	if len(frc) != len(fr) {
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(frc))
+		template.WithDescription(s)
+	}
+	return bs.Apply(s, smartblock.NoRestrictions)
 }

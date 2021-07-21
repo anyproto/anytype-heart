@@ -152,6 +152,8 @@ service ClientCommands {
     rpc ObjectTypeRelationUpdate (anytype.Rpc.ObjectType.Relation.Update.Request) returns (anytype.Rpc.ObjectType.Relation.Update.Response);
     rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);
     rpc ObjectSetLayout (anytype.Rpc.Object.SetLayout.Request) returns (anytype.Rpc.Object.SetLayout.Response);
+    rpc ObjectFeaturedRelationAdd (anytype.Rpc.Object.FeaturedRelation.Add.Request) returns (anytype.Rpc.Object.FeaturedRelation.Add.Response);
+    rpc ObjectFeaturedRelationRemove (anytype.Rpc.Object.FeaturedRelation.Remove.Request) returns (anytype.Rpc.Object.FeaturedRelation.Remove.Response);
 
     rpc Ping (anytype.Rpc.Ping.Request) returns (anytype.Rpc.Ping.Response);
 

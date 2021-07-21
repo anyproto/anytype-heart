@@ -506,6 +506,18 @@ func (s *service) SetLayout(ctx *state.Context, contextId string, layout model.O
 	})
 }
 
+func (s *service) FeaturedRelationAdd(ctx *state.Context, contextId string, relations ...string) error {
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.FeaturedRelationAdd(ctx, relations...)
+	})
+}
+
+func (s *service) FeaturedRelationRemove(ctx *state.Context, contextId string, relations ...string) error {
+	return s.DoBasic(contextId, func(b basic.Basic) error {
+		return b.FeaturedRelationRemove(ctx, relations...)
+	})
+}
+
 func (s *service) UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest, groupId string) (err error) {
 	return s.DoFile(req.ContextId, func(b file.File) error {
 		err = b.Upload(ctx, req.BlockId, file.FileSource{

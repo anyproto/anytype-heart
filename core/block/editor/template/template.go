@@ -347,7 +347,11 @@ var WithDescription = StateTransformer(func(s *state.State) {
 	}
 
 	if err := s.InsertTo(TitleBlockId, model.Block_Bottom, DescriptionBlockId); err != nil {
-		log.Errorf("template WithDescription failed to insert: %s", err.Error())
+		if err = s.InsertTo(FeaturedRelationsId, model.Block_Top, DescriptionBlockId); err != nil {
+			if err = s.InsertTo(HeaderLayoutId, model.Block_Inner, DescriptionBlockId); err != nil {
+				log.Errorf("template WithDescription failed to insert: %s", err.Error())
+			}
+		}
 	}
 })
 

@@ -125,6 +125,9 @@ type Service interface {
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
 	SetLayout(ctx *state.Context, id string, layout model.ObjectTypeLayout) error
 
+	FeaturedRelationAdd(ctx *state.Context, contextId string, relations ...string) error
+	FeaturedRelationRemove(ctx *state.Context, contextId string, relations ...string) error
+
 	TurnInto(ctx *state.Context, id string, style model.BlockContentTextStyle, ids ...string) error
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)

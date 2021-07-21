@@ -260,3 +260,43 @@ func (mw *Middleware) ObjectSetLayout(req *pb.RpcObjectSetLayoutRequest) *pb.Rpc
 	}
 	return response(pb.RpcObjectSetLayoutResponseError_NULL, nil)
 }
+
+func (mw *Middleware) ObjectFeaturedRelationAdd(req *pb.RpcObjectFeaturedRelationAddRequest) *pb.RpcObjectFeaturedRelationAddResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcObjectFeaturedRelationAddResponseErrorCode, err error) *pb.RpcObjectFeaturedRelationAddResponse {
+		m := &pb.RpcObjectFeaturedRelationAddResponse{Error: &pb.RpcObjectFeaturedRelationAddResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.FeaturedRelationAdd(ctx, req.ContextId, req.Relations...)
+	})
+	if err != nil {
+		return response(pb.RpcObjectFeaturedRelationAddResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectFeaturedRelationAddResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectFeaturedRelationRemove(req *pb.RpcObjectFeaturedRelationRemoveRequest) *pb.RpcObjectFeaturedRelationRemoveResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcObjectFeaturedRelationRemoveResponseErrorCode, err error) *pb.RpcObjectFeaturedRelationRemoveResponse {
+		m := &pb.RpcObjectFeaturedRelationRemoveResponse{Error: &pb.RpcObjectFeaturedRelationRemoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.FeaturedRelationRemove(ctx, req.ContextId, req.Relations...)
+	})
+	if err != nil {
+		return response(pb.RpcObjectFeaturedRelationRemoveResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectFeaturedRelationRemoveResponseError_NULL, nil)
+}

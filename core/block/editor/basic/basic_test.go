@@ -303,3 +303,33 @@ func TestBasic_SetAlign(t *testing.T) {
 		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(sb.NewState().Details(), bundle.RelationKeyLayoutAlign.String()))
 	})
 }
+
+func TestBasic_FeaturedRelationAdd(t *testing.T) {
+	sb := smarttest.New("test")
+	s := sb.NewState()
+	template.WithTitle(s)
+	require.NoError(t, sb.Apply(s))
+
+	b := NewBasic(sb)
+	newRel := []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}
+	require.NoError(t, b.FeaturedRelationAdd(nil, newRel...))
+
+	res := sb.NewState()
+	assert.Equal(t, newRel, pbtypes.GetStringList(res.Details(), bundle.RelationKeyFeaturedRelations.String()))
+	assert.NotNil(t, res.Pick(template.DescriptionBlockId))
+}
+
+func TestBasic_FeaturedRelationRemove(t *testing.T) {
+	sb := smarttest.New("test")
+	s := sb.NewState()
+	s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyName.String()}))
+	template.WithDescription(s)
+	require.NoError(t, sb.Apply(s))
+
+	b := NewBasic(sb)
+	require.NoError(t, b.FeaturedRelationRemove(nil, bundle.RelationKeyDescription.String()))
+
+	res := sb.NewState()
+	assert.Equal(t, []string{bundle.RelationKeyName.String()}, pbtypes.GetStringList(res.Details(), bundle.RelationKeyFeaturedRelations.String()))
+	assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
+}
