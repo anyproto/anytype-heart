@@ -308,6 +308,8 @@ func TestBasic_FeaturedRelationAdd(t *testing.T) {
 	sb := smarttest.New("test")
 	s := sb.NewState()
 	template.WithTitle(s)
+	s.AddRelation(bundle.MustGetRelation(bundle.RelationKeyName))
+	s.AddRelation(bundle.MustGetRelation(bundle.RelationKeyDescription))
 	require.NoError(t, sb.Apply(s))
 
 	b := NewBasic(sb)

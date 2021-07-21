@@ -348,7 +348,7 @@ func (bs *basic) FeaturedRelationAdd(ctx *state.Context, relations ...string) (e
 	frc := make([]string, len(fr))
 	copy(frc, fr)
 	for _, r := range relations {
-		if (bundle.HasRelation(r) || s.HasRelation(r)) && slice.FindPos(frc, r) == -1 {
+		if bs.HasRelation(r) && slice.FindPos(frc, r) == -1 {
 			frc = append(frc, r)
 		}
 	}
