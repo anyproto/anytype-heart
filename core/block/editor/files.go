@@ -114,6 +114,7 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	return template.ApplyTemplate(p, ctx.State,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyFile.URL()}),
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
@@ -121,6 +122,5 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithRootBlocks(blocks),
 		template.WithAllBlocksEditsRestricted,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyFile.URL()}),
 	)
 }

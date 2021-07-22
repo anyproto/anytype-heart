@@ -24,11 +24,11 @@ func (p *Relation) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	return template.ApplyTemplate(p, ctx.State,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyRelation.URL()}),
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
 		template.WithDescription,
 		template.WithFeaturedRelations,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyRelation.URL()}),
 	)
 }

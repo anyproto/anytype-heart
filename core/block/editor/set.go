@@ -69,10 +69,10 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	templates := []template.StateTransformer{
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDescription,
 		template.WithFeaturedRelations,
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
 	}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		dataview := model.BlockContentOfDataview{

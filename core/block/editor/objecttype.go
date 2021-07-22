@@ -130,6 +130,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	err = template.ApplyTemplate(p, ctx.State,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
@@ -145,7 +146,6 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 				blockIds[i], blockIds[j] = blockIds[j], blockIds[i]
 			}
 		}),
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),

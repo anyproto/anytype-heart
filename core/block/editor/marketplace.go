@@ -31,12 +31,12 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 
 	ot := bundle.TypeKeyObjectType.URL()
 	templates := []template.StateTransformer{
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()}),
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
 		template.WithDescription,
 		template.WithFeaturedRelations,
-		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot})),
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeySet.URL()})}
+		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{ot}))}
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:    ot,
