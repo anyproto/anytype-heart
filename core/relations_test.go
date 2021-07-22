@@ -37,7 +37,7 @@ func getRelationByKey(relations []*model.Relation, key string) *model.Relation {
 	return nil
 }
 
-func start(t *testing.T) (rootPath string, mw *Middleware) {
+func start(t *testing.T, eventSender event.Sender) (rootPath string, mw *Middleware) {
 	mw = New()
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
@@ -48,9 +48,13 @@ func start(t *testing.T) (rootPath string, mw *Middleware) {
 	config.DefaultConfig.CafeP2PAddr = "-"
 	config.DefaultConfig.CafeGRPCAddr = "-"
 
-	mw.EventSender = event.NewCallbackSender(func(event *pb.Event) {
-		// nothing to do
-	})
+	if eventSender == nil {
+		eventSender = event.NewCallbackSender(func(event *pb.Event) {
+			log.Debugf("got event: %s", pbtypes.Sprint(event))
+		})
+	}
+
+	mw.EventSender = eventSender
 
 	respWalletCreate := mw.WalletCreate(&pb.RpcWalletCreateRequest{RootPath: rootPath})
 	require.Equal(t, 0, int(respWalletCreate.Error.Code), respWalletCreate.Error.Description)
@@ -80,7 +84,14 @@ func addRelation(t *testing.T, contextId string, mw *Middleware) (key string, na
 }
 
 func TestRelationAdd(t *testing.T) {
-	rootPath, mw := start(t)
+	eventHandler := func(event *pb.Event) {
+		return
+	}
+
+	rootPath, mw := start(t, event.NewCallbackSender(func(event *pb.Event) {
+		eventHandler(event)
+	}))
+
 	respOpenNewPage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
 	require.Len(t, respOpenNewPage.Event.Messages, 2)
@@ -790,6 +801,81 @@ func TestRelationAdd(t *testing.T) {
 		}
 	})
 
+	t.Run("aggregated_options_set_details", func(t *testing.T) {
+		rel1 := &model.Relation{
+			Format:   model.RelationFormat_status,
+			Name:     "2ao_relation_status1",
+			ReadOnly: false,
+		}
+
+		respPage1Create := mw.PageCreate(&pb.RpcPageCreateRequest{
+			Details: &types2.Struct{Fields: map[string]*types2.Value{
+				bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyPage.URL()}),
+			}},
+		})
+		require.Equal(t, 0, int(respPage1Create.Error.Code), respPage1Create.Error.Description)
+		respPage2Create := mw.PageCreate(&pb.RpcPageCreateRequest{
+			Details: &types2.Struct{Fields: map[string]*types2.Value{
+				bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyPage.URL()}),
+			}},
+		})
+		require.Equal(t, 0, int(respPage1Create.Error.Code), respPage1Create.Error.Description)
+		respTask1Create := mw.PageCreate(&pb.RpcPageCreateRequest{
+			Details: &types2.Struct{Fields: map[string]*types2.Value{
+				bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyTask.URL()}),
+			}},
+		})
+		require.Equal(t, 0, int(respTask1Create.Error.Code), respTask1Create.Error.Description)
+
+		respRelAdd1 := mw.ObjectRelationAdd(&pb.RpcObjectRelationAddRequest{
+			ContextId: respPage1Create.PageId,
+			Relation:  rel1,
+		})
+		require.Equal(t, 0, int(respRelAdd1.Error.Code), respRelAdd1.Error.Description)
+		rel1.Key = respRelAdd1.RelationKey
+
+		respRelAdd1_2 := mw.ObjectRelationAdd(&pb.RpcObjectRelationAddRequest{
+			ContextId: respPage2Create.PageId,
+			Relation:  rel1,
+		})
+		require.Equal(t, 0, int(respRelAdd1_2.Error.Code), respRelAdd1_2.Error.Description)
+
+		respOptionAdd1 := mw.ObjectRelationOptionAdd(&pb.RpcObjectRelationOptionAddRequest{
+			ContextId:   respPage1Create.PageId,
+			RelationKey: rel1.Key,
+			Option: &model.RelationOption{
+				Id:    "ao_opt1_id",
+				Text:  "ao_opt1",
+				Color: "red",
+			},
+		})
+		require.Equal(t, 0, int(respOptionAdd1.Error.Code), respOptionAdd1.Error.Description)
+		time.Sleep(time.Second)
+
+		respSetDetails := mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{
+			ContextId: respPage2Create.PageId,
+			Details: []*pb.RpcBlockSetDetailsDetail{{Key: rel1.Key, Value: pbtypes.StringList([]string{respOptionAdd1.Option.Id})}},
+		})
+		require.Equal(t, 0, int(respSetDetails.Error.Code), respSetDetails.Error.Description)
+
+		var found bool
+		for _, msg := range respSetDetails.Event.Messages {
+			for _, rel := range msg.GetObjectRelationsAmend().GetRelations() {
+				for _, opt := range rel.SelectDict {
+					if opt.Id == respOptionAdd1.Option.Id {
+						if opt.Scope == model.RelationOption_local {
+							found = true
+						} else {
+							t.Fatalf("wrong scope: %s", opt.Scope.String())
+						}
+					}
+				}
+			}
+		}
+		require.True(t, found, "event not found")
+
+	})
+
 	t.Run("new_record_creator", func(t *testing.T) {
 		f := func(event *pb.Event) {
 			return
@@ -848,7 +934,7 @@ func TestRelationAdd(t *testing.T) {
 }
 
 func TestCustomType(t *testing.T) {
-	_, mw := start(t)
+	_, mw := start(t, nil)
 
 	respObjectTypeList := mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
@@ -970,7 +1056,7 @@ func TestCustomType(t *testing.T) {
 }
 
 func TestBundledType(t *testing.T) {
-	_, mw := start(t)
+	_, mw := start(t, nil)
 
 	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)

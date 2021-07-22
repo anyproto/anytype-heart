@@ -9,7 +9,7 @@ import (
 )
 
 func TestFile(t *testing.T) {
-	_, mw := start(t)
+	_, mw := start(t, nil)
 	t.Run("image_should_open_as_object", func(t *testing.T) {
 		respUploadImage := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
 		require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)

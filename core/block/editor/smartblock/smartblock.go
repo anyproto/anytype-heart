@@ -722,11 +722,12 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 			}
 			if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
 				rel = pbtypes.GetRelation(s.ExtraRelations(), rel.Key)
-				newOptsIds := slice.Difference(pbtypes.GetStringListValue(detail.Value), pbtypes.GetStringListValue(detCopy.Fields[detail.Key]))
+				optIds := pbtypes.GetStringListValue(detail.Value)
+
 				var missingOptsIds []string
-				for _, newOptId := range newOptsIds {
-					if opt := pbtypes.GetOption(rel.SelectDict, newOptId); opt == nil || opt.Scope != model.RelationOption_local {
-						missingOptsIds = append(missingOptsIds, newOptId)
+				for _, optId := range optIds {
+					if opt := pbtypes.GetOption(rel.SelectDict, optId); opt == nil || opt.Scope != model.RelationOption_local {
+						missingOptsIds = append(missingOptsIds, optId)
 					}
 				}
 
