@@ -342,8 +342,8 @@ func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
 	var logs []SmartblockLog
 	for _, l := range thrd.Logs {
 		var head string
-		if l.Head.ID.Defined() {
-			head = l.Head.ID.String()
+		if l.Head.Defined() {
+			head = l.Head.String()
 		}
 
 		logs = append(logs, SmartblockLog{

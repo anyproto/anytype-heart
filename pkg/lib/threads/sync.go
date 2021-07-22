@@ -24,7 +24,7 @@ func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bo
 
 	var headPerLog = make(map[peer.ID]cid.Cid, len(thrd.Logs))
 	for _, log := range thrd.Logs {
-		headPerLog[log.ID] = log.Head.ID
+		headPerLog[log.ID] = log.Head
 	}
 
 	err = s.t.PullThread(ctx, id)
@@ -38,11 +38,11 @@ func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bo
 	}
 
 	for _, log := range thrd.Logs {
-		if v, exists := headPerLog[log.ID]; !exists && log.Head.ID.Defined() {
+		if v, exists := headPerLog[log.ID]; !exists && log.Head.Defined() {
 			headsChanged = true
 			break
 		} else {
-			if !log.Head.ID.Equals(v) {
+			if !log.Head.Equals(v) {
 				headsChanged = true
 				break
 			}
