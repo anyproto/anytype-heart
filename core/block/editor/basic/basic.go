@@ -338,7 +338,6 @@ func (bs *basic) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (e
 			return
 		}
 	}
-	template.WithDescription(s)
 	return bs.Apply(s)
 }
 
