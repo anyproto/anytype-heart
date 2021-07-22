@@ -115,7 +115,7 @@ func (p *Archive) Delete(id string) (err error) {
 		return true
 	})
 	if !found {
-		err = fmt.Errorf("page %s not archived", id)
+		err = fmt.Errorf("page not archived")
 		return
 	}
 
