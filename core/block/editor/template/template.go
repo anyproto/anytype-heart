@@ -297,8 +297,12 @@ var WithTitle = StateTransformer(func(s *state.State) {
 
 // WithDefaultFeaturedRelations **MUST** be called before WithDescription
 var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
+	var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+	if s.ObjectType() == bundle.TypeKeyPage.URL() {
+		fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+	}
 	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
-		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}))
+		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
 })
 

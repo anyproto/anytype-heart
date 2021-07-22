@@ -37,12 +37,12 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 func (p *Dashboard) init(s *state.State) (err error) {
 	state.CleanupLayouts(s)
 	if err = template.ApplyTemplate(p, s,
+		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
 		template.WithEmpty,
 		template.WithDetailName("Home"),
 		template.WithDetailIconEmoji("🏠"),
 		template.WithNoRootLink(p.Anytype().PredefinedBlocks().Archive),
 		template.WithRootLink(p.Anytype().PredefinedBlocks().SetPages, model.BlockContentLink_Dataview),
-		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
 		template.WithRequiredRelations(),
 	); err != nil {
 		return
