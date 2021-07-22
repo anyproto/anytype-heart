@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "0b3a88ec10b3535192e9f5e4236c56d2dc8436b69658a7ff226835684359ffe8"
+const RelationChecksum = "5e05ebd83863c0b1936ea7fc480c06e0877974e1aae7b3e61249e23209c8184a"
 
 type RelationKey string
 
@@ -32,7 +32,9 @@ const (
 	RelationKeyThumbnailImage            RelationKey = "thumbnailImage"
 	RelationKeyAttachments               RelationKey = "attachments"
 	RelationKeyTasks                     RelationKey = "tasks"
+	RelationKeyHypothesisAssumptions     RelationKey = "hypothesisAssumptions"
 	RelationKeyGratefulFor               RelationKey = "gratefulFor"
+	RelationKeyFounders                  RelationKey = "founders"
 	RelationKeyWebsite                   RelationKey = "website"
 	RelationKeyRelationFormat            RelationKey = "relationFormat"
 	RelationKeyIconImage                 RelationKey = "iconImage"
@@ -45,12 +47,14 @@ const (
 	RelationKeyCoverScale                RelationKey = "coverScale"
 	RelationKeyTwitter                   RelationKey = "twitter"
 	RelationKeyResources                 RelationKey = "resources"
+	RelationKeyUserStories               RelationKey = "userStories"
 	RelationKeyRelationDefaultValue      RelationKey = "relationDefaultValue"
 	RelationKeyLinkedProjects            RelationKey = "linkedProjects"
 	RelationKeyAudioAlbum                RelationKey = "audioAlbum"
 	RelationKeyParticipants              RelationKey = "participants"
 	RelationKeyProblem                   RelationKey = "problem"
 	RelationKeyLayoutAlign               RelationKey = "layoutAlign"
+	RelationKeyClass                     RelationKey = "class"
 	RelationKeyDifficulty                RelationKey = "difficulty"
 	RelationKeyDirector                  RelationKey = "director"
 	RelationKeyStatus                    RelationKey = "status"
@@ -58,10 +62,13 @@ const (
 	RelationKeyHappenings                RelationKey = "happenings"
 	RelationKeyDurationInSeconds         RelationKey = "durationInSeconds"
 	RelationKeyBillToAddress             RelationKey = "billToAddress"
+	RelationKeyLogic                     RelationKey = "logic"
 	RelationKeyAlternative               RelationKey = "alternative"
 	RelationKeyLinkedContacts            RelationKey = "linkedContacts"
 	RelationKeyRottenTomatoesRating      RelationKey = "rottenTomatoesRating"
 	RelationKeyIsHidden                  RelationKey = "isHidden"
+	RelationKeySubsidiaries              RelationKey = "subsidiaries"
+	RelationKeyAdditional                RelationKey = "additional"
 	RelationKeyBudget                    RelationKey = "budget"
 	RelationKeyRating                    RelationKey = "rating"
 	RelationKeyEmail                     RelationKey = "email"
@@ -69,29 +76,36 @@ const (
 	RelationKeyAperture                  RelationKey = "aperture"
 	RelationKeyLastModifiedDate          RelationKey = "lastModifiedDate"
 	RelationKeyStakeholders              RelationKey = "stakeholders"
+	RelationKeyMeasureOfSuccess          RelationKey = "measureOfSuccess"
 	RelationKeyNotes                     RelationKey = "notes"
 	RelationKeyRecommendedRelations      RelationKey = "recommendedRelations"
 	RelationKeyCreator                   RelationKey = "creator"
 	RelationKeyRecommendedLayout         RelationKey = "recommendedLayout"
 	RelationKeyResult                    RelationKey = "result"
+	RelationKeyReflection                RelationKey = "reflection"
 	RelationKeyLastOpenedDate            RelationKey = "lastOpenedDate"
 	RelationKeyAuthor                    RelationKey = "author"
 	RelationKeyArtist                    RelationKey = "artist"
 	RelationKeyDueDate                   RelationKey = "dueDate"
-	RelationKeyCover                     RelationKey = "cover"
+	RelationKeyCeo                       RelationKey = "ceo"
+	RelationKeyRecords                   RelationKey = "records"
 	RelationKeyIconEmoji                 RelationKey = "iconEmoji"
 	RelationKeyCoverType                 RelationKey = "coverType"
+	RelationKeyTickerSymbol              RelationKey = "tickerSymbol"
 	RelationKeyCoverY                    RelationKey = "coverY"
+	RelationKeyStory                     RelationKey = "story"
 	RelationKeyTime                      RelationKey = "time"
 	RelationKeySizeInBytes               RelationKey = "sizeInBytes"
 	RelationKeyCollectionOf              RelationKey = "collectionOf"
 	RelationKeyEvents                    RelationKey = "events"
+	RelationKeyOwner                     RelationKey = "owner"
 	RelationKeyTimeframe                 RelationKey = "timeframe"
 	RelationKeyIsReadonly                RelationKey = "isReadonly"
 	RelationKeyAddedDate                 RelationKey = "addedDate"
 	RelationKeyAssignee                  RelationKey = "assignee"
 	RelationKeyExposure                  RelationKey = "exposure"
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
+	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -104,10 +118,13 @@ const (
 	RelationKeyAgenda                    RelationKey = "agenda"
 	RelationKeyNumber                    RelationKey = "number"
 	RelationKeyInstagram                 RelationKey = "instagram"
+	RelationKeyClassType                 RelationKey = "classType"
+	RelationKeyHowToReproduce            RelationKey = "howToReproduce"
 	RelationKeyFocalRatio                RelationKey = "focalRatio"
 	RelationKeyPriority                  RelationKey = "priority"
 	RelationKeyFileMimeType              RelationKey = "fileMimeType"
 	RelationKeyType                      RelationKey = "type"
+	RelationKeyNumberOfEmployees         RelationKey = "numberOfEmployees"
 	RelationKeyLayout                    RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
 	RelationKeyPlaceOfBirth              RelationKey = "placeOfBirth"
@@ -118,20 +135,25 @@ const (
 	RelationKeyCoverX                    RelationKey = "coverX"
 	RelationKeyDescription               RelationKey = "description"
 	RelationKeyFacebook                  RelationKey = "facebook"
-	RelationKeyCompanyAddress            RelationKey = "companyAddress"
+	RelationKeyAddress                   RelationKey = "address"
 	RelationKeyId                        RelationKey = "id"
+	RelationKeyStockprice                RelationKey = "stockprice"
 	RelationKeyObjectives                RelationKey = "objectives"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
 	RelationKeyServings                  RelationKey = "servings"
 	RelationKeyCategory                  RelationKey = "category"
 	RelationKeyShipToAddress             RelationKey = "shipToAddress"
+	RelationKeyFounded                   RelationKey = "founded"
 	RelationKeyCoverId                   RelationKey = "coverId"
 	RelationKeyLastModifiedBy            RelationKey = "lastModifiedBy"
 	RelationKeyRelationMaxCount          RelationKey = "relationMaxCount"
+	RelationKeyQuestions                 RelationKey = "questions"
 	RelationKeyWorriedAbout              RelationKey = "worriedAbout"
+	RelationKeyHeadquarters              RelationKey = "headquarters"
 	RelationKeyWidthInPixels             RelationKey = "widthInPixels"
 	RelationKeyRunning                   RelationKey = "running"
+	RelationKeyProgress                  RelationKey = "progress"
 	RelationKeySetOf                     RelationKey = "setOf"
 	RelationKeyGender                    RelationKey = "gender"
 	RelationKeyIsArchived                RelationKey = "isArchived"
@@ -170,6 +192,30 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyAdditional: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "additional",
+			MaxCount:         1,
+			Name:             "Additional",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAddress: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "address",
+			MaxCount:         1,
+			Name:             "Address",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyAgenda: {
 
 			DataSource:       model.Relation_details,
@@ -201,7 +247,7 @@ var (
 			Format:           model.RelationFormat_shorttext,
 			Key:              "aperture",
 			MaxCount:         1,
-			Name:             "Camera Aperture",
+			Name:             "Camera aperture",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -292,7 +338,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "billTo",
 			MaxCount:         1,
 			Name:             "Bill to",
@@ -304,10 +350,10 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "billToAddress",
 			MaxCount:         1,
-			Name:             "Bill to Address",
+			Name:             "Bill to address",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -370,6 +416,39 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyCeo: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_object,
+			Key:              "ceo",
+			Name:             "CEO",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyClass: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_object,
+			Key:              "class",
+			Name:             "Class",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyClassType: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_tag,
+			Key:              "classType",
+			Name:             "Class type",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyCollectionOf: {
 
 			DataSource:       model.Relation_details,
@@ -394,18 +473,6 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
-		RelationKeyCompanyAddress: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_shorttext,
-			Key:              "companyAddress",
-			MaxCount:         1,
-			Name:             "Company Address",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
 		RelationKeyComposer: {
 
 			DataSource:       model.Relation_details,
@@ -414,18 +481,6 @@ var (
 			Key:              "composer",
 			MaxCount:         1,
 			Name:             "Composer",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyCover: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_file,
-			Key:              "cover",
-			Name:             "Cover",
-			ObjectTypes:      []string{TypePrefix + "image"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -634,7 +689,7 @@ var (
 			Format:           model.RelationFormat_shorttext,
 			Key:              "exposure",
 			MaxCount:         1,
-			Name:             "Camera Exposure",
+			Name:             "Camera exposure",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -701,6 +756,29 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyFounded: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_date,
+			Key:              "founded",
+			MaxCount:         1,
+			Name:             "Founded",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyFounders: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_object,
+			Key:              "founders",
+			Name:             "Founders",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyGender: {
 
 			DataSource:       model.Relation_details,
@@ -748,6 +826,18 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyHeadquarters: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "headquarters",
+			MaxCount:         1,
+			Name:             "Headquarters",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyHealthyEating: {
 
 			DataSource:       model.Relation_details,
@@ -768,6 +858,30 @@ var (
 			Key:              "heightInPixels",
 			MaxCount:         1,
 			Name:             "Height",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHowToReproduce: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "howToReproduce",
+			MaxCount:         1,
+			Name:             "How-to reproduce",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyHypothesisAssumptions: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "hypothesisAssumptions",
+			MaxCount:         1,
+			Name:             "Hypothesis & assumptions",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -915,7 +1029,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "job",
 			MaxCount:         1,
 			Name:             "Job",
@@ -1024,10 +1138,46 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "location",
 			MaxCount:         1,
 			Name:             "Location",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyLogic: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "logic",
+			MaxCount:         1,
+			Name:             "Logic",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMaterials: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "materials",
+			MaxCount:         1,
+			Name:             "Materials",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMeasureOfSuccess: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "measureOfSuccess",
+			MaxCount:         1,
+			Name:             "Measure of success",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1105,6 +1255,18 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyNumberOfEmployees: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_number,
+			Key:              "numberOfEmployees",
+			MaxCount:         1,
+			Name:             "Number of employees",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyObjectives: {
 
 			DataSource:       model.Relation_details,
@@ -1121,10 +1283,21 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "occupation",
 			MaxCount:         1,
 			Name:             "Occupation",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyOwner: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_object,
+			Key:              "owner",
+			Name:             "Owner",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1136,7 +1309,6 @@ var (
 			Format:           model.RelationFormat_object,
 			Key:              "participants",
 			Name:             "Participants",
-			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1157,7 +1329,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "placeOfBirth",
 			MaxCount:         1,
 			Name:             "Place of birth",
@@ -1189,11 +1361,35 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyProgress: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_number,
+			Key:              "progress",
+			MaxCount:         1,
+			Name:             "Progress",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyQuestions: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "questions",
+			MaxCount:         1,
+			Name:             "Questions",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRating: {
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "rating",
 			MaxCount:         1,
 			Name:             "Rating",
@@ -1227,6 +1423,30 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyRecords: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "records",
+			MaxCount:         1,
+			Name:             "Records",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyReflection: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_checkbox,
+			Key:              "reflection",
+			MaxCount:         1,
+			Name:             "Reflection",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyRelationDefaultValue: {
 
 			DataSource:       model.Relation_details,
@@ -1234,7 +1454,7 @@ var (
 			Format:           model.RelationFormat_shorttext,
 			Key:              "relationDefaultValue",
 			MaxCount:         1,
-			Name:             "Default Value",
+			Name:             "Default value",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1302,7 +1522,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "resources",
 			MaxCount:         1,
 			Name:             "Resources",
@@ -1317,7 +1537,6 @@ var (
 			Format:           model.RelationFormat_object,
 			Key:              "responsible",
 			Name:             "Responsible",
-			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1398,7 +1617,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "shipTo",
 			MaxCount:         1,
 			Name:             "Ship to",
@@ -1410,10 +1629,10 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "shipToAddress",
 			MaxCount:         1,
-			Name:             "Ship to Address",
+			Name:             "Ship to address",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1437,7 +1656,7 @@ var (
 			Format:           model.RelationFormat_url,
 			Key:              "socialProfile",
 			MaxCount:         1,
-			Name:             "Social Profile",
+			Name:             "Profile in social media",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1484,6 +1703,41 @@ var (
 			Key:              "status",
 			MaxCount:         1,
 			Name:             "Status",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyStockprice: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_number,
+			Key:              "stockprice",
+			MaxCount:         1,
+			Name:             "Stock Price",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyStory: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "story",
+			MaxCount:         1,
+			Name:             "Story",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySubsidiaries: {
+
+			DataSource:       model.Relation_details,
+			Description:      "A subsidiary, subsidiary company or daughter company is a company owned or controlled by another company, which is called the parent company or holding company",
+			Format:           model.RelationFormat_object,
+			Key:              "subsidiaries",
+			Name:             "Subsidiaries",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1545,7 +1799,7 @@ var (
 			Hidden:           true,
 			Key:              "templateIsBundled",
 			MaxCount:         1,
-			Name:             "Bundled template",
+			Name:             "Bundled Template",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1558,6 +1812,18 @@ var (
 			Key:              "thumbnailImage",
 			Name:             "Thumbnail image",
 			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyTickerSymbol: {
+
+			DataSource:       model.Relation_details,
+			Description:      "A ticker symbol or stock symbol is an abbreviation used to uniquely identify publicly traded shares of a particular stock on a particular stock market",
+			Format:           model.RelationFormat_longtext,
+			Key:              "tickerSymbol",
+			MaxCount:         1,
+			Name:             "Ticker Symbol",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1578,7 +1844,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "",
-			Format:           model.RelationFormat_shorttext,
+			Format:           model.RelationFormat_longtext,
 			Key:              "timeframe",
 			MaxCount:         1,
 			Name:             "Timeframe",
@@ -1646,6 +1912,18 @@ var (
 			Name:             "Object type",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUserStories: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Key:              "userStories",
+			MaxCount:         1,
+			Name:             "User stories",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

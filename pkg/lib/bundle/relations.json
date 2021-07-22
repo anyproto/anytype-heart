@@ -48,7 +48,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "location",
     "maxCount": 1,
@@ -110,12 +110,12 @@
     "hidden": true,
     "key": "templateIsBundled",
     "maxCount": 1,
-    "name": "Bundled template",
+    "name": "Bundled Template",
     "readonly": true,
     "source": "derived"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "shipTo",
     "maxCount": 1,
@@ -174,9 +174,27 @@
   {
     "format": "longtext",
     "hidden": false,
+    "key": "hypothesisAssumptions",
+    "maxCount": 1,
+    "name": "Hypothesis & assumptions",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
     "key": "gratefulFor",
     "maxCount": 1,
     "name": "Grateful for",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "founders",
+    "maxCount": 0,
+    "name": "Founders",
     "readonly": false,
     "source": "details"
   },
@@ -236,9 +254,6 @@
     "key": "responsible",
     "maxCount": 0,
     "name": "Responsible",
-    "objectTypes": [
-      "objectType"
-    ],
     "readonly": false,
     "source": "details"
   },
@@ -290,7 +305,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "resources",
     "maxCount": 1,
@@ -299,11 +314,20 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": false,
+    "key": "userStories",
+    "maxCount": 1,
+    "name": "User stories",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "shorttext",
     "hidden": false,
     "key": "relationDefaultValue",
     "maxCount": 1,
-    "name": "Default Value",
+    "name": "Default value",
     "readonly": false,
     "source": "details"
   },
@@ -332,9 +356,6 @@
     "key": "participants",
     "maxCount": 0,
     "name": "Participants",
-    "objectTypes": [
-      "objectType"
-    ],
     "readonly": false,
     "source": "details"
   },
@@ -354,6 +375,15 @@
     "key": "layoutAlign",
     "maxCount": 1,
     "name": "Layout align",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": false,
+    "key": "class",
+    "maxCount": 0,
+    "name": "Class",
     "readonly": false,
     "source": "details"
   },
@@ -414,11 +444,20 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "billToAddress",
     "maxCount": 1,
-    "name": "Bill to Address",
+    "name": "Bill to address",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "logic",
+    "maxCount": 1,
+    "name": "Logic",
     "readonly": false,
     "source": "details"
   },
@@ -460,6 +499,25 @@
     "source": "details"
   },
   {
+    "description": "A subsidiary, subsidiary company or daughter company is a company owned or controlled by another company, which is called the parent company or holding company",
+    "format": "object",
+    "hidden": false,
+    "key": "subsidiaries",
+    "maxCount": 0,
+    "name": "Subsidiaries",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "additional",
+    "maxCount": 1,
+    "name": "Additional",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "budget",
@@ -469,7 +527,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "rating",
     "maxCount": 1,
@@ -500,7 +558,7 @@
     "hidden": false,
     "key": "aperture",
     "maxCount": 1,
-    "name": "Camera Aperture",
+    "name": "Camera aperture",
     "readonly": false,
     "source": "details"
   },
@@ -520,6 +578,15 @@
     "key": "stakeholders",
     "maxCount": 0,
     "name": "Stakeholders",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "measureOfSuccess",
+    "maxCount": 1,
+    "name": "Measure of success",
     "readonly": false,
     "source": "details"
   },
@@ -575,6 +642,15 @@
     "source": "details"
   },
   {
+    "format": "checkbox",
+    "hidden": false,
+    "key": "reflection",
+    "maxCount": 1,
+    "name": "Reflection",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Date when the object was modified last opened",
     "format": "date",
     "hidden": false,
@@ -613,14 +689,20 @@
     "source": "details"
   },
   {
-    "format": "file",
+    "format": "object",
     "hidden": false,
-    "key": "cover",
+    "key": "ceo",
     "maxCount": 0,
-    "name": "Cover",
-    "objectTypes": [
-      "image"
-    ],
+    "name": "CEO",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "records",
+    "maxCount": 1,
+    "name": "Records",
     "readonly": false,
     "source": "details"
   },
@@ -645,12 +727,31 @@
     "source": "details"
   },
   {
+    "description": "A ticker symbol or stock symbol is an abbreviation used to uniquely identify publicly traded shares of a particular stock on a particular stock market",
+    "format": "longtext",
+    "hidden": false,
+    "key": "tickerSymbol",
+    "maxCount": 1,
+    "name": "Ticker Symbol",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Image y offset of the provided image",
     "format": "number",
     "hidden": true,
     "key": "coverY",
     "maxCount": 1,
     "name": "Cover y offset",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "story",
+    "maxCount": 1,
+    "name": "Story",
     "readonly": false,
     "source": "details"
   },
@@ -696,7 +797,16 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "object",
+    "hidden": false,
+    "key": "owner",
+    "maxCount": 0,
+    "name": "Owner",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
     "hidden": false,
     "key": "timeframe",
     "maxCount": 1,
@@ -739,7 +849,7 @@
     "hidden": false,
     "key": "exposure",
     "maxCount": 1,
-    "name": "Camera Exposure",
+    "name": "Camera exposure",
     "readonly": false,
     "source": "details"
   },
@@ -753,6 +863,15 @@
     "objectTypes": [
       "objectType"
     ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "materials",
+    "maxCount": 1,
+    "name": "Materials",
     "readonly": false,
     "source": "details"
   },
@@ -775,7 +894,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "billTo",
     "maxCount": 1,
@@ -873,6 +992,24 @@
     "source": "details"
   },
   {
+    "format": "tag",
+    "hidden": false,
+    "key": "classType",
+    "maxCount": 0,
+    "name": "Class type",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "howToReproduce",
+    "maxCount": 1,
+    "name": "How-to reproduce",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "focalRatio",
@@ -915,6 +1052,15 @@
     "source": "derived"
   },
   {
+    "format": "number",
+    "hidden": false,
+    "key": "numberOfEmployees",
+    "maxCount": 1,
+    "name": "Number of employees",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Anytype layout ID(from pb enum)",
     "format": "number",
     "hidden": true,
@@ -935,7 +1081,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "placeOfBirth",
     "maxCount": 1,
@@ -957,12 +1103,12 @@
     "hidden": false,
     "key": "socialProfile",
     "maxCount": 1,
-    "name": "Social Profile",
+    "name": "Profile in social media",
     "readonly": false,
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "occupation",
     "maxCount": 1,
@@ -1008,11 +1154,11 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
-    "key": "companyAddress",
+    "key": "address",
     "maxCount": 1,
-    "name": "Company Address",
+    "name": "Address",
     "readonly": false,
     "source": "details"
   },
@@ -1025,6 +1171,15 @@
     "name": "Anytype ID",
     "readonly": false,
     "source": "derived"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "stockprice",
+    "maxCount": 1,
+    "name": "Stock Price",
+    "readonly": false,
+    "source": "details"
   },
   {
     "format": "longtext",
@@ -1072,11 +1227,20 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "shipToAddress",
     "maxCount": 1,
-    "name": "Ship to Address",
+    "name": "Ship to address",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "date",
+    "hidden": false,
+    "key": "founded",
+    "maxCount": 1,
+    "name": "Founded",
     "readonly": false,
     "source": "details"
   },
@@ -1116,9 +1280,27 @@
   {
     "format": "longtext",
     "hidden": false,
+    "key": "questions",
+    "maxCount": 1,
+    "name": "Questions",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
     "key": "worriedAbout",
     "maxCount": 1,
     "name": "Worried about",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": false,
+    "key": "headquarters",
+    "maxCount": 1,
+    "name": "Headquarters",
     "readonly": false,
     "source": "details"
   },
@@ -1138,6 +1320,15 @@
     "key": "running",
     "maxCount": 1,
     "name": "Running",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "number",
+    "hidden": false,
+    "key": "progress",
+    "maxCount": 1,
+    "name": "Progress",
     "readonly": false,
     "source": "details"
   },
@@ -1192,7 +1383,7 @@
     "source": "details"
   },
   {
-    "format": "shorttext",
+    "format": "longtext",
     "hidden": false,
     "key": "job",
     "maxCount": 1,
