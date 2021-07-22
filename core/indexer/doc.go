@@ -42,6 +42,7 @@ func newDoc(id string, a core.Service) (d *doc, err error) {
 
 		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(a.ProfileID()))
+		d.st.InjectDerivedDetails()
 
 		if err != nil {
 			log.With("thread", d.id).Errorf("injectCreationInfo failed: %s", err.Error())

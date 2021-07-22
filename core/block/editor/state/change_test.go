@@ -106,8 +106,8 @@ func TestState_ChangesCreate_MoveAdd_Side(t *testing.T) {
 }
 
 func TestState_SetParent(t *testing.T) {
-	orig := NewDoc("origRoot", nil).(*State)
-	orig.Add(simple.New(&model.Block{Id: "origRoot", ChildrenIds: []string{"header"}}))
+	orig := NewDoc("root", nil).(*State)
+	orig.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"header"}}))
 	orig.Add(simple.New(&model.Block{Id: "header"}))
 	orig.SetObjectType("orig")
 	orig.AddRelation(&model.Relation{Key: "one"})

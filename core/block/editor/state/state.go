@@ -64,6 +64,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 		rootId: rootId,
 		blocks: blocks,
 	}
+	s.InjectDerivedDetails()
 	return s
 }
 
@@ -933,7 +934,9 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 
 func (s *State) InjectDerivedDetails() {
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
-	s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(s.ObjectType()))
+	if ot := s.ObjectType(); ot != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
+	}
 }
 
 func (s *State) LocalDetails() *types.Struct {
