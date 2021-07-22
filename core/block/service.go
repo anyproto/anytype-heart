@@ -893,7 +893,7 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 			return fmt.Errorf("can clone bundled templates only")
 		}
 		st = b.NewState().Copy()
-		pbtypes.Delete(st.Details(), bundle.RelationKeyTemplateIsBundled.String())
+		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
 		return nil
 	}); err != nil {
 		return
