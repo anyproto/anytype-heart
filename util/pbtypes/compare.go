@@ -200,6 +200,9 @@ func RelationEqualOmitDictionary(rel1 *model.Relation, rel2 *model.Relation) (eq
 	if rel1.ReadOnly != rel2.ReadOnly {
 		return false
 	}
+	if rel1.ReadOnlyRelation != rel2.ReadOnlyRelation {
+		return false
+	}
 	if rel1.Multi != rel2.Multi {
 		return false
 	}
