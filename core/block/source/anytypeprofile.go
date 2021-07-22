@@ -56,6 +56,9 @@ func (v *anytypeProfile) getDetails() (p *types.Struct) {
 		bundle.RelationKeyDescription.String(): pbtypes.String("Authored by Anytype team"),
 		bundle.RelationKeyIconImage.String():   pbtypes.String("bafybeiczpkejw3lhm6ub2kshgyllwawcqtgz53cyior7fgf2nytqckgrtq"),
 		bundle.RelationKeyId.String():          pbtypes.String(v.id),
+		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
+		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(true),
 		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_profile)),
 	}}
 }
