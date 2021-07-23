@@ -211,7 +211,7 @@ func (s *source) buildState() (doc state.Doc, err error) {
 			log.With("thread", s.id).With("sbType", s.sb.Type()).Errorf("not valid state: %v", verr)
 		}
 	}
-
+	st.BlocksInit(st)
 	InjectLocalDetails(s, st)
 	InjectCreationInfo(s, st)
 	st.InjectDerivedDetails()
@@ -310,7 +310,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 		c.Snapshot = &pb.ChangeSnapshot{
 			LogHeads: s.logHeadIDs(),
 			Data: &model.SmartBlockSnapshotBase{
-				Blocks:         params.State.Blocks(),
+				Blocks:         params.State.BlocksToSave(),
 				Details:        params.State.Details(),
 				ExtraRelations: params.State.ExtraRelations(),
 				ObjectTypes:    params.State.ObjectTypes(),
