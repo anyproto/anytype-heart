@@ -896,8 +896,13 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 	}
 
 	ot := otypes[len(otypes)-1]
+
+	prevType := sb.meta.FetchObjectTypes([]string{s.ObjectType()})
 	s.SetObjectTypes(objectTypes)
-	if pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()) == nil {
+	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String());
+		v == nil || // if layout is not set yet
+		prevType == nil || // if we have no type set for some reason or it is missing
+		float64(prevType[0].Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 	}
 	return
