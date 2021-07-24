@@ -916,7 +916,7 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
 		ts.InjectDerivedDetails()
-		return b.Apply(ts)
+		return b.Apply(ts, smartblock.NoRestrictions)
 	})
 }
 
