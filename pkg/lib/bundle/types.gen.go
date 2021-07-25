@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "24d176abbd8214db13d84955435d5a90ecb41b0d92bcd15ad2bb709134548804"
+const TypeChecksum = "cbdf26c315f91430ff88a34a8000bd538e07be0a95234a7fc03bfcdc6393663a"
 
 type TypeKey string
 
@@ -207,7 +207,7 @@ var (
 		TypeKeyFeature: {
 
 			Description: "A distinguishing characteristic of a software item (e.g., performance, portability, or functionality)",
-			IconEmoji:   "🔮",
+			IconEmoji:   "🪁",
 			Layout:      model.ObjectType_todo,
 			Name:        "Feature",
 			Readonly:    true,

@@ -1228,7 +1228,7 @@
   },
   {
     "description": "A distinguishing characteristic of a software item (e.g., performance, portability, or functionality)",
-    "emoji": "🔮",
+    "emoji": "🪁",
     "id": "feature",
     "layout": "todo",
     "name": "Feature",
