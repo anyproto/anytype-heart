@@ -74,10 +74,7 @@ func (s *service) threadsDbListen() error {
 	go func() {
 		defer func() {
 			l.Close()
-			ch := s.getNewThreadChan()
-			if ch != nil {
-				close(s.newThreadChan)
-			}
+			s.closeThreadChan()
 		}()
 
 		for {
