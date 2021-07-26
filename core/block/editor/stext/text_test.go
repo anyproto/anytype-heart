@@ -291,6 +291,17 @@ func TestTextImpl_SetText(t *testing.T) {
 
 		assert.Equal(t, "1", sb.Pick("1").Model().GetText().Text)
 	})
+	t.Run("on error", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(simple.New(&model.Block{Id: "2"}))
+		tb := NewText(sb)
+		assert.Error(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+			BlockId:   "2",
+			Text:      "",
+		}))
+	})
 }
 
 func TestTextImpl_TurnInto(t *testing.T) {
