@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/debug/debugtree"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -71,22 +70,13 @@ func main() {
 	if *printState {
 		fmt.Println("Building state...")
 		stt := time.Now()
-		root := t.Root()
-		if root == nil || root.GetSnapshot() == nil {
-			log.Fatal("root missing or not a snapshot")
-		}
-		s := state.NewDocFromSnapshot("", root.GetSnapshot()).(*state.State)
-		s.SetChangeId(root.Id)
-		st, err := change.BuildStateSimpleCRDT(s, t)
+		s, err := dt.BuildStateByTree(t)
 		if err != nil {
-			return
-		}
-		if _, _, err = state.ApplyStateFast(st); err != nil {
-			return
+			log.Fatal("can't build state:", err)
 		}
 		dur := time.Since(stt)
 		fmt.Println(s.StringDebug())
-		sbt, _ := smartblock.SmartBlockTypeFromID(st.RootId())
+		sbt, _ := smartblock.SmartBlockTypeFromID(s.RootId())
 		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
 		fmt.Println("state building time:", dur)
 	}
