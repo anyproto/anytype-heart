@@ -725,6 +725,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 				optIds := pbtypes.GetStringListValue(detail.Value)
 
 				var missingOptsIds []string
+				var excludeOptsIds []string
 				for _, optId := range optIds {
 					if opt := pbtypes.GetOption(rel.SelectDict, optId); opt == nil || opt.Scope != model.RelationOption_local {
 						missingOptsIds = append(missingOptsIds, optId)
@@ -740,6 +741,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 					for _, missingOptsId := range missingOptsIds {
 						opt := pbtypes.GetOption(opts, missingOptsId)
 						if opt == nil {
+							excludeOptsIds = append(excludeOptsIds, missingOptsId)
 							log.Errorf("relation %s is missing option: %s", rel.Key, missingOptsId)
 							continue
 						}
@@ -751,6 +753,13 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 							return err
 						}
 					}
+				}
+				if len(excludeOptsIds) > 0 {
+					log.Errorf("options normilization is removing %d options", len(excludeOptsIds))
+					// filter-out excluded options and amend the detail value
+					detail.Value = pbtypes.StringList(slice.Filter(optIds, func(s string) bool {
+						return slice.FindPos(excludeOptsIds, s) == -1
+					}))
 				}
 			}
 
@@ -901,7 +910,7 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 	s.SetObjectTypes(objectTypes)
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String());
 		v == nil || // if layout is not set yet
-		prevType == nil || // if we have no type set for some reason or it is missing
+		len(prevType) == 0 || // if we have no type set for some reason or it is missing
 		float64(prevType[0].Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 	}
