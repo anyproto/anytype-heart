@@ -597,7 +597,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	if onlyDetails {
-		if err := i.store.UpdateObjectDetails(id, meta.Details, nil, true); err != nil {
+		if err := i.store.UpdateObjectDetails(id, meta.Details, nil, false); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
 		} else {
 			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
@@ -627,7 +627,7 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		meta.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(meta.ObjectTypes[0])
 	}
 
-	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}, true); err != nil {
+	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}, false); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
 	} else {
 		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
