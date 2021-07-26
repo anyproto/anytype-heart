@@ -13,6 +13,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -631,7 +632,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		})
 	}
 
-
 	if sb.meta != nil && hasLocalDetailChange && sb.Type() != 0 {
 		// we should call reindex in case we don't have any real details changed
 		sb.meta.IndexerSetLocalDetails(sb.Id(), st.LocalDetails(), !hasNotLocalDetailsChange)
@@ -910,8 +910,8 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 	s.SetObjectTypes(objectTypes)
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String());
 		v == nil || // if layout is not set yet
-		len(prevType) == 0 || // if we have no type set for some reason or it is missing
-		float64(prevType[0].Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
+			len(prevType) == 0 || // if we have no type set for some reason or it is missing
+			float64(prevType[0].Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 	}
 	return
@@ -965,10 +965,21 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 	filtered := []*model.Relation{}
 	st := sb.NewStateCtx(ctx)
 	det := st.Details()
+
+	var simpleRelKeys []string
+	if err = st.Iterate(func(b simple.Block) (isContinue bool) {
+		if _, ok := b.(relation.Block); ok {
+			simpleRelKeys = append(simpleRelKeys, b.Model().GetRelation().Key)
+		}
+		return true
+	}); err != nil {
+		return
+	}
+
 	for _, rel := range copy {
 		var toBeRemoved bool
 		for _, relationKey := range relationKeys {
-			if rel.Key == relationKey {
+			if rel.Key == relationKey && slice.FindPos(simpleRelKeys, relationKey) == -1 {
 				toBeRemoved = true
 				break
 			}
