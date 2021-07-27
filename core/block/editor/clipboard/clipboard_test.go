@@ -542,6 +542,17 @@ func TestClipboard_PasteToTitle(t *testing.T) {
 		_, _, _, _, err := cb.Paste(nil, req, "")
 		require.NoError(t, err)
 		assert.Equal(t, "tsinglee", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
+		assert.Equal(t, model.BlockContentText_Title, st.Doc.Pick(template.TitleBlockId).Model().GetText().Style)
+	})
+	t.Run("single to not empty title - select all", func(t *testing.T) {
+		st := withTitle(t, "title")
+		cb := NewClipboard(st, nil)
+		req := singleBlockReq
+		req.SelectedTextRange = &model.Range{From: 0, To: 5}
+		_, _, _, _, err := cb.Paste(nil, req, "")
+		require.NoError(t, err)
+		assert.Equal(t, "single", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
+		assert.Equal(t, model.BlockContentText_Title, st.Doc.Pick(template.TitleBlockId).Model().GetText().Style)
 	})
 	t.Run("multi to empty title", func(t *testing.T) {
 		st := withTitle(t, "")
