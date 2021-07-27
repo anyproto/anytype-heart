@@ -131,7 +131,6 @@ func TestState_SetParent(t *testing.T) {
 	require.NoError(t, st2.ApplyChange(st.GetChanges()...))
 
 	assert.Equal(t, st.StringDebug(), st2.StringDebug())
-	t.Log(st2.StringDebug())
 }
 
 func TestStateNormalizeMerge(t *testing.T) {
