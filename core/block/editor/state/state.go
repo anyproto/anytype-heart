@@ -701,17 +701,13 @@ func (s *State) StringDebug() string {
 	}
 
 	fmt.Fprintf(buf, "\nDetails:\n")
-	if det := s.Details(); det != nil && det.Fields != nil {
-		for k, v := range det.Fields {
-			fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
-		}
-	}
+	pbtypes.SortedRange(s.Details(), func(k string, v *types.Value) {
+		fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
+	})
 	fmt.Fprintf(buf, "\nLocal details:\n")
-	if det := s.LocalDetails(); det != nil && det.Fields != nil {
-		for k, v := range det.Fields {
-			fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
-		}
-	}
+	pbtypes.SortedRange(s.LocalDetails(), func(k string, v *types.Value) {
+		fmt.Fprintf(buf, "\t%s:\t%v\n", k, pbtypes.Sprint(v))
+	})
 	fmt.Fprintf(buf, "\nBlocks:\n")
 	s.writeString(buf, 0, s.RootId())
 	return buf.String()

@@ -106,7 +106,8 @@ func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
 			return
 		}
 		selText := p.getFirstSelectedText()
-		p.mode.toTitle = selText != nil && selText.Model().Id == template.TitleBlockId
+		p.mode.toTitle = selText != nil && p.s.HasParent(selText.Model().Id, template.HeaderLayoutId)
+		p.mode.intoBlockPasteStyle = p.mode.toTitle
 		if selText != nil && textCount == 1 && nonTextCount == 0 {
 			p.mode.intoBlock = true
 			if selText.GetText() == "" {
