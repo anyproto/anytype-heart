@@ -435,7 +435,10 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 	if err = tb.DeleteView(viewId); err != nil {
 		return err
 	}
-
+	if len(tb.Model().GetDataview().Views) == 0 {
+		return fmt.Errorf("cannot remove the last view")
+	}
+	
 	dv := d.getDataviewImpl(tb)
 	if dv.activeViewId == viewId {
 		views := tb.Model().GetDataview().Views
