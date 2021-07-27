@@ -854,7 +854,7 @@ func TestRelationAdd(t *testing.T) {
 
 		respSetDetails := mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{
 			ContextId: respPage2Create.PageId,
-			Details: []*pb.RpcBlockSetDetailsDetail{{Key: rel1.Key, Value: pbtypes.StringList([]string{respOptionAdd1.Option.Id})}},
+			Details:   []*pb.RpcBlockSetDetailsDetail{{Key: rel1.Key, Value: pbtypes.StringList([]string{respOptionAdd1.Option.Id})}},
 		})
 		require.Equal(t, 0, int(respSetDetails.Error.Code), respSetDetails.Error.Description)
 
@@ -1101,6 +1101,35 @@ func TestBundledType(t *testing.T) {
 	require.True(t, hasRecordWithKeyAndVal(getEventRecordsSet(respOpenPagesSet.Event.Messages).Records, "id", respCreatePage.PageId))
 }
 
+func TestArchiveIndex(t *testing.T) {
+	_, mw := start(t, nil)
+
+	resp := mw.BlockCreatePage(&pb.RpcBlockCreatePageRequest{})
+	require.Equal(t, int(resp.Error.Code), 0, resp.Error.Description)
+
+	respArchive := mw.BlockListSetPageIsArchived(&pb.RpcBlockListSetPageIsArchivedRequest{
+		ContextId:  "",
+		BlockIds:   []string{resp.TargetId},
+		IsArchived: true,
+	})
+	require.Equal(t, int(respArchive.Error.Code), 0, respArchive.Error.Description)
+
+	d, err := mw.GetAnytype().ObjectStore().GetDetails(resp.TargetId)
+	require.NoError(t, err)
+	pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(true))
+
+	respArchive = mw.BlockListSetPageIsArchived(&pb.RpcBlockListSetPageIsArchivedRequest{
+		ContextId:  "",
+		BlockIds:   []string{resp.TargetId},
+		IsArchived: false,
+	})
+	require.Equal(t, int(respArchive.Error.Code), 0, respArchive.Error.Description)
+
+	d, err = mw.GetAnytype().ObjectStore().GetDetails(resp.TargetId)
+	require.NoError(t, err)
+	pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(false))
+}
+
 func hasRecordWithKeyAndVal(recs []*types2.Struct, key string, val string) bool {
 	for _, rec := range recs {
 		if pbtypes.GetString(rec, key) == val {
@@ -1136,3 +1165,4 @@ func getDetailsForContext(msgs []*pb.EventObjectDetailsSet, contextId string) *t
 	}
 	return nil
 }
+

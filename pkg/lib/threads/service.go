@@ -303,6 +303,15 @@ func (s *service) getNewThreadChan() chan<- string {
 	return s.newThreadChan
 }
 
+func (s *service) closeThreadChan() {
+	s.Lock()
+	defer s.Unlock()
+	if s.newThreadChan != nil {
+		close(s.newThreadChan)
+	}
+	s.newThreadChan = nil
+}
+
 func (s *service) ThreadsCollection() (*threadsDb.Collection, error) {
 	if s.threadsCollection == nil {
 		return nil, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")

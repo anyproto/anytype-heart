@@ -13,6 +13,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -105,6 +107,18 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), pbtypes.Get(st.Details(), bundle.RelationKeyTargetObjectType.String()).GetStringValue()})
 	}
 	st.InjectDerivedDetails()
+
+	// fix divergence between extra relations and simple block relations
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		if _, ok := b.(relation.Block); ok {
+			relKey := b.Model().GetRelation().Key
+			if !st.HasRelation(relKey) {
+				st.AddRelation(bundle.MustGetRelation(bundle.RelationKey(relKey)))
+			}
+		}
+		return true
+	})
+
 	if err = b.validate(st.Copy()); err != nil {
 		return
 	}
@@ -124,6 +138,18 @@ func (b *builtinTemplate) validate(st *state.State) (err error) {
 	}
 	if tt := pbtypes.GetString(cd, bundle.RelationKeyTargetObjectType.String()); tt == "" || tt == st.ObjectType() {
 		return fmt.Errorf("bundled template validation: %s unexpected target object type: %v", st.RootId(), tt)
+	}
+	var relKeys []string
+	st.Iterate(func(b simple.Block) (isContinue bool) {
+		if rb, ok := b.(relation.Block); ok {
+			relKeys = append(relKeys, rb.Model().GetRelation().Key)
+		}
+		return true
+	})
+	for _, rk := range relKeys {
+		if !st.HasRelation(rk) {
+			return fmt.Errorf("bundled template validation: relation '%v' exists in block but not in extra relations", rk)
+		}
 	}
 	return nil
 }

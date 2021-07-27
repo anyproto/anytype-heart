@@ -77,11 +77,14 @@ func (s *service) addMissingThreadsFromCollection() error {
 					return
 				}
 
-				ch := s.getNewThreadChan()
-				if ch != nil {
+				// here we need to lock any changes to the channel before we send to it
+				// otherwise we may receive panic
+				s.Lock()
+				defer s.Unlock()
+				if s.newThreadChan != nil {
 					select {
 					case <-s.ctx.Done():
-					case ch <- tid.String():
+					case s.newThreadChan <- tid.String():
 					}
 				}
 			}()

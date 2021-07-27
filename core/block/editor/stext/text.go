@@ -212,6 +212,12 @@ func (t *textImpl) flushSetTextState() {
 		if err := t.Apply(t.lastSetTextState, smartblock.NoEvent, smartblock.NoHooks); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
 		}
+		t.cancelSetTextState()
+	}
+}
+
+func (t *textImpl) cancelSetTextState() {
+	if t.lastSetTextState != nil {
 		t.lastSetTextState = nil
 		select {
 		case t.setTextFlushed <- struct{}{}:
@@ -221,6 +227,11 @@ func (t *textImpl) flushSetTextState() {
 }
 
 func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
+	defer func() {
+		if err != nil {
+			t.cancelSetTextState()
+		}
+	}()
 	ctx := state.NewContext(nil)
 	s := t.newSetTextState(req.BlockId, ctx)
 	tb, err := getText(s, req.BlockId)
@@ -234,6 +245,7 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	afterIds := tb.FillSmartIds(nil)
 
 	if _, ok := tb.(text.DetailsBlock); ok {
+		defer t.cancelSetTextState()
 		if err = t.Apply(s); err != nil {
 			return
 		}
@@ -245,8 +257,6 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 			}
 		}
 		t.SendEvent(filtered)
-		t.lastSetTextState = nil
-		t.setTextFlushed <- struct{}{}
 		return
 	}
 	if len(beforeIds)+len(afterIds) > 0 {
