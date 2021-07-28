@@ -34,14 +34,34 @@ func newDoc(id string, a core.Service) (d *doc, err error) {
 		store:     a.ObjectStore(),
 		sb:        sb,
 	}
+	return
+}
 
-	d.tree, _, err = change.BuildMetaTree(sb)
+type doc struct {
+	id   string
+	tree *change.Tree
+	st   *state.State
+
+	changesBuf []*change.Change
+	store      detailsGetter
+	lastUsage  time.Time
+	mu         sync.Mutex
+	sb         core.SmartBlock
+}
+
+func (d *doc) buildMetaTree(profileId string) (err error){
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	if d.tree != nil {
+		return
+	}
+	d.tree, _, err = change.BuildMetaTree(d.sb)
 	if err == change.ErrEmpty {
 		d.tree = change.NewMetaTree()
-		d.st = state.NewDoc(id, nil).(*state.State)
+		d.st = state.NewDoc(d.id, nil).(*state.State)
 
 		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
-		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(a.ProfileID()))
+		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(profileId))
 		d.st.InjectDerivedDetails()
 
 		if err != nil {
@@ -56,18 +76,6 @@ func newDoc(id string, a core.Service) (d *doc, err error) {
 		}
 	}
 	return
-}
-
-type doc struct {
-	id   string
-	tree *change.Tree
-	st   *state.State
-
-	changesBuf []*change.Change
-	store      detailsGetter
-	lastUsage  time.Time
-	mu         sync.Mutex
-	sb         core.SmartBlock
 }
 
 type detailsGetter interface {
