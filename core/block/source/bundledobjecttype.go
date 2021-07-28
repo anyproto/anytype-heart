@@ -42,7 +42,7 @@ func (v *bundledObjectType) Type() model.SmartBlockType {
 }
 
 func (v *bundledObjectType) Virtual() bool {
-	return false
+	return true
 }
 
 func getDetailsForBundledObjectType(id string) (extraRels []*model.Relation, p *types.Struct, err error) {

@@ -47,7 +47,7 @@ func (v *anytypeProfile) Type() model.SmartBlockType {
 }
 
 func (v *anytypeProfile) Virtual() bool {
-	return false
+	return true
 }
 
 func (v *anytypeProfile) getDetails() (p *types.Struct) {

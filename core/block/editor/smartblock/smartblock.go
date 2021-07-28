@@ -632,7 +632,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		})
 	}
 
-	if sb.meta != nil && hasLocalDetailChange && sb.Type() != 0 {
+	if sb.meta != nil && !sb.source.Virtual() && hasLocalDetailChange && sb.Type() != 0 {
+		// todo: allow to index virtual sources
 		// we should call reindex in case we don't have any real details changed
 		sb.meta.IndexerSetLocalDetails(sb.Id(), st.LocalDetails(), !hasNotLocalDetailsChange)
 	}
