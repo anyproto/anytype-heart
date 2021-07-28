@@ -141,7 +141,6 @@ func (s *service) Init(a *app.App) (err error) {
 		grpc_prometheus.EnableClientHandlingTimeHistogram()
 	}
 	s.GRPCServerOptions = []grpc.ServerOption{
-		grpc.MaxRecvMsgSize(maxReceiveMessageSize),
 		grpc.UnaryInterceptor(unaryServerInterceptor),
 	}
 	s.GRPCDialOptions = []grpc.DialOption{
