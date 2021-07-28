@@ -555,7 +555,7 @@ func (i *indexer) getDoc(id string) (d *doc, err error) {
 	i.mu.Lock()
 	if d, ok = i.cache[id]; ok {
 		i.mu.Unlock()
-		return
+		return d, d.buildMetaTree(i.anytype.ProfileID())
 	}
 
 	if d, err = newDoc(id, i.anytype); err != nil {
@@ -566,12 +566,7 @@ func (i *indexer) getDoc(id string) (d *doc, err error) {
 	i.cache[id] = d
 	i.mu.Unlock()
 
-	d.mu.Lock()
-	defer d.mu.Unlock()
-
-	err = d.buildMetaTree(i.anytype.ProfileID())
-
-	return
+	return d, d.buildMetaTree(i.anytype.ProfileID())
 }
 
 func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, onlyDetails bool) {

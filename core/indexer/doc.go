@@ -50,6 +50,8 @@ type doc struct {
 }
 
 func (d *doc) buildMetaTree(profileId string) (err error){
+	d.mu.Lock()
+	defer d.mu.Unlock()
 	if d.tree != nil {
 		return
 	}
