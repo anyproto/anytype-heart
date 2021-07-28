@@ -48,6 +48,8 @@ var (
 	permanentConnectionRetryDelay = time.Second * 5
 )
 
+const maxReceiveMessageSize int = 100 * 1024 * 1024
+
 type service struct {
 	Config
 	GRPCServerOptions []grpc.ServerOption
@@ -139,13 +141,12 @@ func (s *service) Init(a *app.App) (err error) {
 		grpc_prometheus.EnableClientHandlingTimeHistogram()
 	}
 	s.GRPCServerOptions = []grpc.ServerOption{
-		grpc.MaxRecvMsgSize(5 << 20), // 5Mb max message size
+		grpc.MaxRecvMsgSize(maxReceiveMessageSize),
 		grpc.UnaryInterceptor(unaryServerInterceptor),
 	}
 	s.GRPCDialOptions = []grpc.DialOption{
 		grpc.WithDefaultCallOptions(
-			grpc.MaxCallRecvMsgSize(5<<20),
-			grpc.MaxCallSendMsgSize(5<<20),
+			grpc.MaxCallRecvMsgSize(maxReceiveMessageSize),
 		),
 		grpc.WithUnaryInterceptor(unaryClientInterceptor),
 	}

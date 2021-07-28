@@ -155,7 +155,7 @@ func main() {
 		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer, streamOptions...))
 	}
 
-	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
+	server := grpc.NewServer(grpc.MaxRecvMsgSize(100*1024*1024),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
 		grpc.StreamInterceptor(grpc_middleware.ChainStreamServer(streamInterceptors...)),
 	)
