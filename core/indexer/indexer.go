@@ -553,20 +553,26 @@ func (i *indexer) applyRecords(records []core.SmartblockRecordWithThreadID) {
 func (i *indexer) getDoc(id string) (d *doc, err error) {
 	var ok bool
 	i.mu.Lock()
-	defer i.mu.Unlock()
-	if d, ok = i.cache[id]; !ok {
-		if d, err = newDoc(id, i.anytype); err != nil {
-			return
-		}
-		i.cache[id] = d
+	if d, ok = i.cache[id]; ok {
+		i.mu.Unlock()
+		return d, d.buildMetaTree(i.anytype.ProfileID())
 	}
-	return
+
+	if d, err = newDoc(id, i.anytype); err != nil {
+		i.mu.Unlock()
+		return
+	}
+
+	i.cache[id] = d
+	i.mu.Unlock()
+
+	return d, d.buildMetaTree(i.anytype.ProfileID())
 }
 
 func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, onlyDetails bool) {
 	d, err := i.getDoc(id)
 	if err != nil {
-		log.Warnf("can't get doc '%s': %v", id, err)
+		log.With("thread", id).Errorf("indexer getDoc error: %s", err.Error())
 		return
 	}
 
@@ -771,6 +777,7 @@ func (i *indexer) Close() error {
 func (i *indexer) SetLocalDetails(id string, st *types.Struct, index bool) error {
 	d, err := i.getDoc(id)
 	if err != nil {
+		log.With("thread", id).Errorf("indexer getDoc error: %s", err.Error())
 		return err
 	}
 

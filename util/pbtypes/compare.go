@@ -1,6 +1,8 @@
 package pbtypes
 
 import (
+	"sort"
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -456,4 +458,18 @@ func DataviewViewEqual(view1, view2 *model.BlockContentDataviewView) bool {
 	}
 
 	return true
+}
+
+func SortedRange(s *types.Struct, f func(k string, v *types.Value)) {
+	if s == nil || s.Fields == nil {
+		return
+	}
+	var keys = make([]string, 0, len(s.Fields))
+	for k := range s.Fields {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	for _, k := range keys {
+		f(k, s.Fields[k])
+	}
 }

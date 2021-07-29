@@ -45,7 +45,7 @@ func (v *files) Type() model.SmartBlockType {
 }
 
 func (v *files) Virtual() bool {
-	return false
+	return true
 }
 
 func getDetailsForFileOrImage(ctx context.Context, a core.Service, id string) (p *types.Struct, isImage bool, err error) {

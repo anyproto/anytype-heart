@@ -44,7 +44,7 @@ func (v *indexedRelation) Type() model.SmartBlockType {
 }
 
 func (v *indexedRelation) Virtual() bool {
-	return false
+	return true
 }
 
 func (v *indexedRelation) getDetails(id string) (rels []*model.Relation, p *types.Struct, err error) {

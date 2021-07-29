@@ -43,11 +43,11 @@ lint:
 
 test:
 	@echo 'Running tests...'
-	@go test -cover github.com/anytypeio/go-anytype-middleware/...
+	@ANYTYPE_LOG_NOGELF=1 go test -cover github.com/anytypeio/go-anytype-middleware/...
 
 test-race:
 	@echo 'Running tests with race-detector...'
-	@go test -race github.com/anytypeio/go-anytype-middleware/...
+	@ANYTYPE_LOG_NOGELF=1 go test -race github.com/anytypeio/go-anytype-middleware/...
 
 test-deps:
 	@echo 'Generating test mocks...'

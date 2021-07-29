@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/config"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
@@ -42,11 +41,6 @@ func start(t *testing.T, eventSender event.Sender) (rootPath string, mw *Middlew
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
 	defer os.RemoveAll(rootPath)
-	// override default config
-	config.DefaultConfig.InMemoryDS = true
-	config.DefaultConfig.Offline = true
-	config.DefaultConfig.CafeP2PAddr = "-"
-	config.DefaultConfig.CafeGRPCAddr = "-"
 
 	if eventSender == nil {
 		eventSender = event.NewCallbackSender(func(event *pb.Event) {

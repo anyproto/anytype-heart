@@ -14,7 +14,8 @@ import (
 )
 
 var (
-	ErrEmpty = errors.New("logs empty")
+	ErrEmpty          = errors.New("logs empty")
+	changeLoadTimeout = time.Second * 3
 )
 
 var log = logging.Logger("anytype-mw-change-builder")
@@ -355,7 +356,9 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return nil, fmt.Errorf("no smarblock in builder")
 	}
 	st := time.Now()
-	sr, err := sb.smartblock.GetRecord(context.TODO(), id)
+	ctx, cancel := context.WithTimeout(context.Background(), changeLoadTimeout)
+	defer cancel()
+	sr, err := sb.smartblock.GetRecord(ctx, id)
 	if err != nil {
 		return
 	}
