@@ -572,10 +572,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
 		}
 		fileDetailsKeys := st.FileRelationKeys()
+		fileDetailsKeysFiltered := fileDetailsKeys[:0]
+		for _, ch := range changes {
+			if ds := ch.GetDetailsSet(); ds != nil {
+				if slice.FindPos(fileDetailsKeys, ds.Key) != -1 {
+					fileDetailsKeysFiltered = append(fileDetailsKeysFiltered, ds.Key)
+				}
+			}
+		}
 		pushChangeParams := source.PushChangeParams{
 			State:             st,
 			Changes:           changes,
-			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeys, act),
+			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
 			DoSnapshot:        doSnapshot,
 			GetAllFileHashes: func() []string {
 				return st.GetAllFileHashes(fileDetailsKeys)
