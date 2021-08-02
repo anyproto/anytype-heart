@@ -282,7 +282,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 
 func hasNonEmptyLogs(logs []thread.LogInfo) bool {
 	for _, l := range logs {
-		if l.Head.Defined() {
+		if l.Head.ID.Defined() {
 			return true
 		}
 	}
