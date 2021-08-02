@@ -149,7 +149,7 @@ var WithMaxCountMigration = func(s *state.State) {
 		} else if rel.MaxCount == 1 {
 			if b := v.GetListValue(); b != nil {
 				if len(b.Values) > 0 {
-					d.Fields[k] = pbtypes.String(b.Values[0].String())
+					d.Fields[k] = pbtypes.CopyVal(b.Values[0])
 				}
 			}
 		}
