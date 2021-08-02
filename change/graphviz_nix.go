@@ -70,13 +70,23 @@ func (t *Tree) Graphviz() (data string, err error) {
 		if len(shortId) > 10 {
 			shortId = shortId[len(c.Id)-10:]
 		}
-		n.SetLabel(fmt.Sprintf("Id: %s\nOrd: %s\nTime: %s\nChanges: %s (%d)\n",
+		label := fmt.Sprintf("Id: %s\nOrd: %s\nTime: %s\nChanges: %s (%d)\n",
 			shortId,
 			ord,
 			time.Unix(c.Timestamp, 0).Format("02.01.06 15:04:05"),
 			strings.Join(chSymbs, ","),
 			len(c.Content),
-		))
+		)
+		if len(c.FileKeys) > 0 || c.Snapshot != nil {
+			var l int
+			if c.Snapshot != nil {
+				l = len(c.Snapshot.FileKeys)
+			} else {
+				l = len(c.FileKeys)
+			}
+			label += fmt.Sprintf("FileHashes: %d\n", l)
+		}
+		n.SetLabel(label)
 		return nil
 	}
 	for _, c := range t.attached {

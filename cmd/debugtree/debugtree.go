@@ -22,6 +22,7 @@ var (
 	printState  = flag.Bool("s", false, "print result state debug")
 	changeIdx   = flag.Int("c", -1, "build tree before given index and print change")
 	objectStore = flag.Bool("o", false, "show object store info")
+	fileHashes  = flag.Bool("h", false, "show file hashes in state")
 )
 
 func main() {
@@ -78,6 +79,12 @@ func main() {
 		fmt.Println(s.StringDebug())
 		sbt, _ := smartblock.SmartBlockTypeFromID(s.RootId())
 		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
+		if *fileHashes {
+			fmt.Println("File keys:")
+			for _, fk := range s.GetFileKeys() {
+				fmt.Printf("\t%s: %d\n", fk.Hash, len(fk.Keys))
+			}
+		}
 		fmt.Println("state building time:", dur)
 	}
 
