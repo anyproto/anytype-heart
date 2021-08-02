@@ -585,9 +585,6 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			Changes:           changes,
 			FileChangedHashes: getChangedFileHashes(s, fileDetailsKeysFiltered, act),
 			DoSnapshot:        doSnapshot,
-			GetAllFileHashes: func() []string {
-				return st.GetAllFileHashes(fileDetailsKeys)
-			},
 		}
 		var id string
 		id, err = sb.source.PushChange(pushChangeParams)
@@ -917,10 +914,9 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 	prevType := sb.meta.FetchObjectTypes([]string{s.ObjectType()})
 	s.SetObjectTypes(objectTypes)
-	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String());
-		v == nil || // if layout is not set yet
-			len(prevType) == 0 || // if we have no type set for some reason or it is missing
-			float64(prevType[0].Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
+	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
+		len(prevType) == 0 || // if we have no type set for some reason or it is missing
+		float64(prevType[0].Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 	}
 	return
