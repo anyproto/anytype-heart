@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
@@ -71,53 +72,121 @@ func (s *service) threadsDbListen() error {
 		return err
 	}
 
+	updateChannel := make(chan struct{}, 1)
+	doneChannel := make(chan struct{}, 1)
+	bufferedIds := make([]db.InstanceID, 100)
+	mx := sync.Mutex{}
+
+	// consumer
+	go func() {
+		for {
+			select {
+			case <-doneChannel:
+				return
+			default:
+			}
+
+			var lastId db.InstanceID
+			mx.Lock()
+			if len(bufferedIds) > 0 {
+				lastId = bufferedIds[len(bufferedIds)-1]
+				bufferedIds = bufferedIds[:len(bufferedIds)-1]
+			}
+			mx.Unlock()
+
+			// if buffer is empty
+			if lastId == "" {
+				<-updateChannel
+				continue
+			}
+
+			instanceBytes, err := s.threadsCollection.FindByID(lastId)
+			if err != nil {
+				log.Errorf("failed to find thread info for id %s: %w", lastId.String(), err)
+				continue
+			}
+
+			ti := threadInfo{}
+			threadsUtil.InstanceFromJSON(instanceBytes, &ti)
+			tid, err := thread.Decode(ti.ID.String())
+			if err != nil {
+				log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+				continue
+			}
+
+			info, _ := s.t.GetThread(context.Background(), tid)
+			if info.ID != thread.Undef {
+				// our own event
+				continue
+			}
+
+			metrics.ExternalThreadReceivedCounter.Inc()
+			go func() {
+				if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
+					log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
+					return
+				}
+				ch := s.getNewThreadChan()
+				if ch != nil && !s.stopped {
+					select {
+					case <-s.ctx.Done():
+					case ch <- tid.String():
+					}
+				}
+			}()
+		}
+	}()
+
+	// producer
 	go func() {
 		defer func() {
 			l.Close()
 			s.closeThreadChan()
 		}()
-
+		pollInterval := 1 * time.Second
+		ticker := time.NewTicker(pollInterval)
+		stopped := false
+		flushBuffer := make([]db.InstanceID, 100)
 		for {
 			select {
 			case <-s.ctx.Done():
+				// first sending to unblock consumer
+				select {
+				case updateChannel <- struct{}{}:
+				default:
+				}
+				// sending done signal to finalize
+				select {
+				case doneChannel <- struct{}{}:
+				default:
+				}
 				return
+			case _ = <-ticker.C:
+				// flushing the queue in regular intervals
+				mx.Lock()
+				bufferedIds = append(bufferedIds, flushBuffer...)
+				mx.Unlock()
+				// stopping timer if we don't need it
+				if len(flushBuffer) == 0 {
+					ticker.Stop()
+					stopped = true
+				}
+				flushBuffer = flushBuffer[:0]
+				select {
+				// signaling consumer to continue
+				case updateChannel <- struct{}{}:
+				default:
+				}
 			case c := <-l.Channel():
+				// starting timer if needed
+				if stopped {
+					ticker = time.NewTicker(pollInterval)
+					stopped = false
+				}
+				// trying to not block here as much as possible, because producer can be fast
 				switch c.Type {
 				case threadsDb.ActionCreate:
-					instanceBytes, err := s.threadsCollection.FindByID(c.ID)
-					if err != nil {
-						log.Errorf("failed to find thread info for id %s: %w", c.ID.String(), err)
-						continue
-					}
-
-					ti := threadInfo{}
-					threadsUtil.InstanceFromJSON(instanceBytes, &ti)
-					tid, err := thread.Decode(ti.ID.String())
-					if err != nil {
-						log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
-						continue
-					}
-
-					info, _ := s.t.GetThread(context.Background(), tid)
-					if info.ID != thread.Undef {
-						// our own event
-						continue
-					}
-
-					metrics.ExternalThreadReceivedCounter.Inc()
-					go func() {
-						if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
-							log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
-							return
-						}
-						ch := s.getNewThreadChan()
-						if ch != nil && !s.stopped {
-							select {
-							case <-s.ctx.Done():
-							case ch <- tid.String():
-							}
-						}
-					}()
+					flushBuffer = append(flushBuffer, c.ID)
 				}
 			}
 		}
