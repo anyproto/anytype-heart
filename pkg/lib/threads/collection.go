@@ -73,15 +73,14 @@ func (s *service) threadsDbListen() error {
 	}
 
 	updateChannel := make(chan struct{}, 1)
-	doneChannel := make(chan struct{}, 1)
-	bufferedIds := make([]db.InstanceID, 100)
+	bufferedIds := make([]db.InstanceID, 0, 100)
 	mx := sync.Mutex{}
 
 	// consumer
 	go func() {
 		for {
 			select {
-			case <-doneChannel:
+			case <-s.ctx.Done():
 				return
 			default:
 			}
@@ -143,10 +142,10 @@ func (s *service) threadsDbListen() error {
 			l.Close()
 			s.closeThreadChan()
 		}()
-		pollInterval := 1 * time.Second
-		ticker := time.NewTicker(pollInterval)
-		stopped := false
-		flushBuffer := make([]db.InstanceID, 100)
+		deadline := 1 * time.Second
+		tmr := time.NewTimer(deadline)
+		flushBuffer := make([]db.InstanceID, 0, 100)
+		timerRead := false
 		for {
 			select {
 			case <-s.ctx.Done():
@@ -155,35 +154,30 @@ func (s *service) threadsDbListen() error {
 				case updateChannel <- struct{}{}:
 				default:
 				}
-				// sending done signal to finalize
-				select {
-				case doneChannel <- struct{}{}:
-				default:
-				}
 				return
-			case _ = <-ticker.C:
-				// flushing the queue in regular intervals
-				mx.Lock()
-				bufferedIds = append(bufferedIds, flushBuffer...)
-				mx.Unlock()
-				// stopping timer if we don't need it
-				if len(flushBuffer) == 0 {
-					ticker.Stop()
-					stopped = true
-				}
-				flushBuffer = flushBuffer[:0]
-				select {
-				// signaling consumer to continue
-				case updateChannel <- struct{}{}:
-				default:
+			case _ = <-tmr.C:
+				timerRead = true
+				// we don't have new messages for at least deadline and we have something to flush
+				if len(flushBuffer) != 0 {
+					mx.Lock()
+					bufferedIds = append(bufferedIds, flushBuffer...)
+					mx.Unlock()
+
+					flushBuffer = flushBuffer[:0]
+					select {
+					// signaling consumer to continue
+					case updateChannel <- struct{}{}:
+					default:
+					}
+					continue
 				}
 			case c := <-l.Channel():
-				// starting timer if needed
-				if stopped {
-					ticker = time.NewTicker(pollInterval)
-					stopped = false
+				// as per docs the timer should be stopped or expired with drained channel
+				// to be reset
+				if !tmr.Stop() && !timerRead {
+					<-tmr.C
 				}
-				// trying to not block here as much as possible, because producer can be fast
+				tmr.Reset(deadline)
 				switch c.Type {
 				case threadsDb.ActionCreate:
 					flushBuffer = append(flushBuffer, c.ID)
