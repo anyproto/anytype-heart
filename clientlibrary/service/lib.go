@@ -22,6 +22,7 @@ var mw = core.New()
 func init() {
 	fmt.Printf("mw jsaddon: %s\n", core.GetVersionDescription())
 	registerClientCommandsHandler(mw)
+	PanicHandler = mw.OnPanic
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
 		go func() {

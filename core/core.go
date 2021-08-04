@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"runtime/debug"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -36,7 +37,8 @@ type Middleware struct {
 }
 
 func New() *Middleware {
-	return &Middleware{accountSearchCancel: func() {}}
+	mw := &Middleware{accountSearchCancel: func() {}}
+	return mw
 }
 
 func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
@@ -94,6 +96,11 @@ func (mw *Middleware) GetApp() *app.App {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	return mw.app
+}
+
+func (mw *Middleware) OnPanic(v interface{}) {
+	stack := debug.Stack()
+	log.With("stack", stack).Errorf("panic recovered: %v", v)
 }
 
 func init() {
