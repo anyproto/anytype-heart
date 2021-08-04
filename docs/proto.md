@@ -410,6 +410,8 @@
     - [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request)
     - [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response)
     - [Rpc.ExternalDrop.Files.Response.Error](#anytype.Rpc.ExternalDrop.Files.Response.Error)
+    - [Rpc.GenericErrorResponse](#anytype.Rpc.GenericErrorResponse)
+    - [Rpc.GenericErrorResponse.Error](#anytype.Rpc.GenericErrorResponse.Error)
     - [Rpc.History](#anytype.Rpc.History)
     - [Rpc.History.SetVersion](#anytype.Rpc.History.SetVersion)
     - [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request)
@@ -671,6 +673,7 @@
     - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
+    - [Rpc.GenericErrorResponse.Error.Code](#anytype.Rpc.GenericErrorResponse.Error.Code)
     - [Rpc.History.SetVersion.Response.Error.Code](#anytype.Rpc.History.SetVersion.Response.Error.Code)
     - [Rpc.History.Show.Response.Error.Code](#anytype.Rpc.History.Show.Response.Error.Code)
     - [Rpc.History.Versions.Response.Error.Code](#anytype.Rpc.History.Versions.Response.Error.Code)
@@ -6908,6 +6911,37 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.GenericErrorResponse"></a>
+
+### Rpc.GenericErrorResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.GenericErrorResponse.Error](#anytype.Rpc.GenericErrorResponse.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.GenericErrorResponse.Error"></a>
+
+### Rpc.GenericErrorResponse.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.GenericErrorResponse.Error.Code](#anytype.Rpc.GenericErrorResponse.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.History"></a>
 
 ### Rpc.History
@@ -10500,6 +10534,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.ExternalDrop.Files.Response.Error.Code"></a>
 
 ### Rpc.ExternalDrop.Files.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.GenericErrorResponse.Error.Code"></a>
+
+### Rpc.GenericErrorResponse.Error.Code
 
 
 | Name | Number | Description |

@@ -5,13 +5,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
-	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
-	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
-	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
-	"github.com/opentracing/opentracing-go"
-	"github.com/uber/jaeger-client-go"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -19,6 +12,14 @@ import (
 	"os/signal"
 	"strconv"
 	"syscall"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	grpc_middleware "github.com/grpc-ecosystem/go-grpc-middleware"
+	grpc_zap "github.com/grpc-ecosystem/go-grpc-middleware/logging/zap"
+	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
+	"github.com/grpc-ecosystem/grpc-opentracing/go/otgrpc"
+	"github.com/opentracing/opentracing-go"
+	"github.com/uber/jaeger-client-go"
 
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -154,6 +155,23 @@ func main() {
 		unaryInterceptors = append(unaryInterceptors, otgrpc.OpenTracingServerInterceptor(tracer, unaryOptions...))
 		streamInterceptors = append(streamInterceptors, otgrpc.OpenTracingStreamServerInterceptor(tracer, streamOptions...))
 	}
+
+	unaryInterceptors = append(unaryInterceptors, func(ctx context.Context, req interface{}, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (resp interface{}, err error) {
+		defer func() {
+			if r := recover(); r != nil {
+				mw.OnPanic(r)
+				resp = &pb.RpcGenericErrorResponse{
+					Error: &pb.RpcGenericErrorResponseError{
+						Code:        pb.RpcGenericErrorResponseError_UNKNOWN_ERROR,
+						Description: "panic recovered",
+					},
+				}
+			}
+		}()
+
+		resp, err = handler(ctx, req)
+		return resp, err
+	})
 
 	server := grpc.NewServer(grpc.MaxRecvMsgSize(20*1024*1024),
 		grpc.UnaryInterceptor(grpc_middleware.ChainUnaryServer(unaryInterceptors...)),
