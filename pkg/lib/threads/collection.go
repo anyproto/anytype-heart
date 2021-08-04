@@ -87,10 +87,10 @@ func (s *service) threadsDbListen() error {
 				continue
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 			info, err := s.t.GetThread(ctx, tid)
 			cancel()
-			if err != nil {
+			if err != logstore.ErrThreadNotFound {
 				log.With("thread", tid.String()).
 					Errorf("error getting thread while processing: %v", err)
 				continue
