@@ -297,7 +297,6 @@ type PushChangeParams struct {
 	Changes           []*pb.ChangeContent
 	FileChangedHashes []string
 	DoSnapshot        bool
-	GetAllFileHashes  func() []string
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
@@ -316,7 +315,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 				ExtraRelations: params.State.ExtraRelations(),
 				ObjectTypes:    params.State.ObjectTypes(),
 			},
-			FileKeys: s.getFileKeysByHashes(params.GetAllFileHashes()),
+			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}
 	}
 	c.Content = params.Changes
@@ -446,6 +445,24 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	default:
 		return fmt.Errorf("unsupported tree mode")
 	}
+}
+
+func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {
+	fileKeys := s.getFileKeysByHashes(changeHashes)
+	var uniqKeys = make(map[string]struct{})
+	for _, fk := range fileKeys {
+		uniqKeys[fk.Hash] = struct{}{}
+	}
+	s.tree.Iterate(s.tree.RootId(), func(c *change.Change) (isContinue bool) {
+		for _, fk := range c.FileKeys {
+			if _, ok := uniqKeys[fk.Hash]; !ok {
+				uniqKeys[fk.Hash] = struct{}{}
+				fileKeys = append(fileKeys, fk)
+			}
+		}
+		return true
+	})
+	return fileKeys
 }
 
 func (s *source) getFileKeysByHashes(hashes []string) []*pb.ChangeFileKeys {

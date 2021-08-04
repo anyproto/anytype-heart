@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -54,6 +55,8 @@ type DebugTree interface {
 	core.SmartBlock
 	Stats() DebugTreeStats
 	LocalStore() (*model.ObjectInfo, error)
+	BuildStateByTree(t *change.Tree) (*state.State, error)
+	BuildState() (*state.State, error)
 	Close() error
 }
 
@@ -193,6 +196,31 @@ func (r *debugTree) Stats() (s DebugTreeStats) {
 		}
 	}
 	return
+}
+
+func (r *debugTree) BuildState() (*state.State, error) {
+	t, _, err := change.BuildTree(r)
+	if err != nil {
+		return nil, err
+	}
+	return r.BuildStateByTree(t)
+}
+
+func (r *debugTree) BuildStateByTree(t *change.Tree) (*state.State, error) {
+	root := t.Root()
+	if root == nil || root.GetSnapshot() == nil {
+		return nil, fmt.Errorf("root missing or not a snapshot")
+	}
+	s := state.NewDocFromSnapshot("", root.GetSnapshot()).(*state.State)
+	s.SetChangeId(root.Id)
+	st, err := change.BuildStateSimpleCRDT(s, t)
+	if err != nil {
+		return nil, err
+	}
+	if _, _, err = state.ApplyStateFast(st); err != nil {
+		return nil, err
+	}
+	return s, nil
 }
 
 func (r *debugTree) LocalStore() (*model.ObjectInfo, error) {
