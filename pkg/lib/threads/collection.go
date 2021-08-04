@@ -155,6 +155,7 @@ func (s *service) threadsDbListen() error {
 					<-tmr.C
 				}
 				tmr.Reset(deadline)
+				timerRead = false
 				switch c.Type {
 				case threadsDb.ActionCreate:
 					flushBuffer = append(flushBuffer, c.ID)
