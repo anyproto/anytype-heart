@@ -71,53 +71,94 @@ func (s *service) threadsDbListen() error {
 		return err
 	}
 
+	processThreads := func(ids []db.InstanceID) {
+		for _, id := range ids {
+			instanceBytes, err := s.threadsCollection.FindByID(id)
+			if err != nil {
+				log.Errorf("failed to find thread info for id %s: %w", id.String(), err)
+				continue
+			}
+
+			ti := threadInfo{}
+			threadsUtil.InstanceFromJSON(instanceBytes, &ti)
+			tid, err := thread.Decode(ti.ID.String())
+			if err != nil {
+				log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+				continue
+			}
+
+			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+			info, err := s.t.GetThread(ctx, tid)
+			cancel()
+			if err != logstore.ErrThreadNotFound {
+				log.With("thread", tid.String()).
+					Errorf("error getting thread while processing: %v", err)
+				continue
+			}
+			if info.ID != thread.Undef {
+				// our own event
+				continue
+			}
+
+			metrics.ExternalThreadReceivedCounter.Inc()
+			go func() {
+				if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
+					log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
+					return
+				}
+				ch := s.getNewThreadChan()
+				if ch != nil && !s.stopped {
+					select {
+					case <-s.ctx.Done():
+					case ch <- tid.String():
+					}
+				}
+			}()
+		}
+	}
+
 	go func() {
 		defer func() {
 			l.Close()
 			s.closeThreadChan()
 		}()
+		deadline := 1 * time.Second
+		tmr := time.NewTimer(deadline)
+		flushBuffer := make([]db.InstanceID, 0, 100)
+		timerRead := false
+
+		processBuffer := func() {
+			if len(flushBuffer) == 0 {
+				return
+			}
+			buffCopy := make([]db.InstanceID, len(flushBuffer))
+			for index, id := range flushBuffer {
+				buffCopy[index] = id
+			}
+			flushBuffer = flushBuffer[:0]
+			go processThreads(buffCopy)
+		}
 
 		for {
 			select {
 			case <-s.ctx.Done():
+				processBuffer()
 				return
+			case _ = <-tmr.C:
+				timerRead = true
+				// we don't have new messages for at least deadline and we have something to flush
+				processBuffer()
 			case c := <-l.Channel():
+				// as per docs the timer should be stopped or expired with drained channel
+				// to be reset
+				if !tmr.Stop() && !timerRead {
+					<-tmr.C
+				}
+				tmr.Reset(deadline)
+				timerRead = false
 				switch c.Type {
 				case threadsDb.ActionCreate:
-					instanceBytes, err := s.threadsCollection.FindByID(c.ID)
-					if err != nil {
-						log.Errorf("failed to find thread info for id %s: %w", c.ID.String(), err)
-						continue
-					}
-
-					ti := threadInfo{}
-					threadsUtil.InstanceFromJSON(instanceBytes, &ti)
-					tid, err := thread.Decode(ti.ID.String())
-					if err != nil {
-						log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
-						continue
-					}
-
-					info, _ := s.t.GetThread(context.Background(), tid)
-					if info.ID != thread.Undef {
-						// our own event
-						continue
-					}
-
-					metrics.ExternalThreadReceivedCounter.Inc()
-					go func() {
-						if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
-							log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
-							return
-						}
-						ch := s.getNewThreadChan()
-						if ch != nil && !s.stopped {
-							select {
-							case <-s.ctx.Done():
-							case ch <- tid.String():
-							}
-						}
-					}()
+					flushBuffer = append(flushBuffer, c.ID)
 				}
 			}
 		}
