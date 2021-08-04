@@ -142,7 +142,6 @@ func (s *service) threadsDbListen() error {
 		for {
 			select {
 			case <-s.ctx.Done():
-				// first sending to unblock consumer
 				processBuffer()
 				return
 			case _ = <-tmr.C:
