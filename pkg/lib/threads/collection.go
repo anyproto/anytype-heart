@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
@@ -72,36 +71,11 @@ func (s *service) threadsDbListen() error {
 		return err
 	}
 
-	updateChannel := make(chan struct{}, 1)
-	bufferedIds := make([]db.InstanceID, 0, 100)
-	mx := sync.Mutex{}
-
-	// consumer
-	go func() {
-		for {
-			select {
-			case <-s.ctx.Done():
-				return
-			default:
-			}
-
-			var lastId db.InstanceID
-			mx.Lock()
-			if len(bufferedIds) > 0 {
-				lastId = bufferedIds[len(bufferedIds)-1]
-				bufferedIds = bufferedIds[:len(bufferedIds)-1]
-			}
-			mx.Unlock()
-
-			// if buffer is empty
-			if lastId == "" {
-				<-updateChannel
-				continue
-			}
-
-			instanceBytes, err := s.threadsCollection.FindByID(lastId)
+	processThreads := func(ids []db.InstanceID) {
+		for _, id := range ids {
+			instanceBytes, err := s.threadsCollection.FindByID(id)
 			if err != nil {
-				log.Errorf("failed to find thread info for id %s: %w", lastId.String(), err)
+				log.Errorf("failed to find thread info for id %s: %w", id.String(), err)
 				continue
 			}
 
@@ -134,9 +108,8 @@ func (s *service) threadsDbListen() error {
 				}
 			}()
 		}
-	}()
+	}
 
-	// producer
 	go func() {
 		defer func() {
 			l.Close()
@@ -146,31 +119,29 @@ func (s *service) threadsDbListen() error {
 		tmr := time.NewTimer(deadline)
 		flushBuffer := make([]db.InstanceID, 0, 100)
 		timerRead := false
+
+		processBuffer := func() {
+			if len(flushBuffer) == 0 {
+				return
+			}
+			buffCopy := make([]db.InstanceID, len(flushBuffer))
+			for index, id := range flushBuffer {
+				buffCopy[index] = id
+			}
+			flushBuffer = flushBuffer[:0]
+			go processThreads(buffCopy)
+		}
+
 		for {
 			select {
 			case <-s.ctx.Done():
 				// first sending to unblock consumer
-				select {
-				case updateChannel <- struct{}{}:
-				default:
-				}
+				processBuffer()
 				return
 			case _ = <-tmr.C:
 				timerRead = true
 				// we don't have new messages for at least deadline and we have something to flush
-				if len(flushBuffer) != 0 {
-					mx.Lock()
-					bufferedIds = append(bufferedIds, flushBuffer...)
-					mx.Unlock()
-
-					flushBuffer = flushBuffer[:0]
-					select {
-					// signaling consumer to continue
-					case updateChannel <- struct{}{}:
-					default:
-					}
-					continue
-				}
+				processBuffer()
 			case c := <-l.Channel():
 				// as per docs the timer should be stopped or expired with drained channel
 				// to be reset
