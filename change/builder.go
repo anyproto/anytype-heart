@@ -145,6 +145,9 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 		changes = filteredChanges
 	}
 	sb.tree.AddFast(changes...)
+	if sb.duplicateEvents > 0 {
+		log.With("thread", sb.smartblock.ID()).Errorf("found %d duplicate events", sb.duplicateEvents)
+	}
 	sb.tree.duplicateEvents = sb.duplicateEvents
 	return
 }
