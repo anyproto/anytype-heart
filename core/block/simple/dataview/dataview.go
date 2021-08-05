@@ -18,7 +18,10 @@ import (
 )
 
 var _ Block = (*Dataview)(nil)
-var ErrOptionNotExists = errors.New("option not exists")
+var (
+	ErrRelationNotFound = fmt.Errorf("relation not found")
+	ErrOptionNotExists  = errors.New("option not exists")
+)
 
 func init() {
 	simple.RegisterCreator(NewDataview)
@@ -273,7 +276,7 @@ func (s *Dataview) UpdateRelation(relationKey string, rel model.Relation) error 
 	}
 
 	if !found {
-		return fmt.Errorf("relation not found")
+		return ErrRelationNotFound
 	}
 
 	return nil
