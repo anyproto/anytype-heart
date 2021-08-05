@@ -385,7 +385,6 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 				curr, _ := bue.Marshal()
 				if bytes.Equal(prev, curr) {
 					bu.Events[i] = nil
-					fmt.Println("filtered")
 					continue
 				}
 				prev = curr

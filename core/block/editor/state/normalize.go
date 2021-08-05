@@ -57,9 +57,7 @@ func (s *State) normalize(withLayouts bool) (err error) {
 
 	for _, b := range s.blocks {
 		if dv := b.Model().GetDataview(); dv != nil {
-			for i, _ := range dv.Relations {
-				s.normalizeDvRelation(dv.Relations[i])
-			}
+			s.normalizeDvRelations(b)
 		}
 	}
 
@@ -418,7 +416,12 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 		return
 	}
 
-	for _, r := range b.Model().GetDataview().Relations {
+	var relationsFiltered = make(map[string]int, len(b.Model().GetDataview().Relations))
+	for i, r := range b.Model().GetDataview().Relations {
+		if _, exists := relationsFiltered[r.Key]; exists{
+			continue
+		}
+		relationsFiltered[r.Key] = i
 		equal, exists := bundle.EqualWithRelation(r.Key, r)
 		if exists && !equal {
 			rc := bundle.MustGetRelation(bundle.RelationKey(r.Key))
@@ -435,6 +438,15 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 		}
 	}
 
+	if len(relationsFiltered) < len(b.Model().GetDataview().Relations) {
+		var filtered = make([]*model.Relation, len(relationsFiltered))
+		var i int
+		for _, index := range relationsFiltered {
+			filtered[i] = b.Model().GetDataview().Relations[index]
+			i++
+		}
+		b.Model().GetDataview().Relations = filtered
+	}
 }
 
 func (s *State) normalizeDvRelation(r *model.Relation) {
