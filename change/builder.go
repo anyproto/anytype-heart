@@ -49,6 +49,7 @@ type stateBuilder struct {
 	onlyMeta        bool
 	beforeId        string
 	includeBeforeId bool
+	duplicateEvents int
 }
 
 func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
@@ -144,6 +145,7 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 		changes = filteredChanges
 	}
 	sb.tree.AddFast(changes...)
+	sb.tree.duplicateEvents = sb.duplicateEvents
 	return
 }
 
@@ -391,6 +393,7 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 				filtered = append(filtered, bue)
 			}
 			if len(filtered) != len(bu.Events) {
+				sb.duplicateEvents += len(bu.Events)-len(filtered)
 				bu.Events = filtered
 				runtime.GC()
 			}

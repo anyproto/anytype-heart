@@ -301,6 +301,10 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+	if s.tree.GetDuplicateEvents() > 30 {
+		params.DoSnapshot = true
+		s.tree.ResetDuplicateEvents()
+	}
 	var c = &pb.Change{
 		PreviousIds:     s.tree.Heads(),
 		LastSnapshotId:  s.lastSnapshotId,
