@@ -63,6 +63,11 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	if err != nil {
 		return fmt.Errorf("getActualHeads error: %v", err)
 	}
+	if sb.duplicateEvents > 0 {
+		log.With("thread", sb.smartblock.ID()).Errorf("found %d duplicate events after actualHeads", sb.duplicateEvents)
+		sb.duplicateEvents = 0
+	}
+
 	breakpoint, err := sb.findBreakpoint(heads)
 	if err != nil {
 		return fmt.Errorf("findBreakpoint error: %v", err)
