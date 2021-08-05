@@ -38,6 +38,8 @@ type Tree struct {
 	// bufs
 	iterCompBuf []*Change
 	iterQueue   []*Change
+
+	duplicateEvents int
 }
 
 func (t *Tree) RootId() string {
@@ -341,6 +343,14 @@ func (t *Tree) Hash() string {
 		return true
 	})
 	return fmt.Sprintf("%d-%x", n, h.Sum(nil))
+}
+
+func (t *Tree) GetDuplicateEvents() int {
+	return t.duplicateEvents
+}
+
+func (t *Tree) ResetDuplicateEvents() {
+	t.duplicateEvents = 0
 }
 
 func (t *Tree) Len() int {
