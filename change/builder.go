@@ -1,9 +1,11 @@
 package change
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sort"
 	"time"
 
@@ -372,6 +374,27 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		Account: sr.AccountID,
 		Device:  sr.LogID,
 		Change:  chp,
+	}
+
+	// filter blockUpdate duplicate events
+	for _, c := range ch.Content {
+		if bu := c.GetBlockUpdate(); bu != nil {
+			var prev []byte
+			var filtered = bu.Events[:0]
+			for i, bue := range bu.Events {
+				curr, _ := bue.Marshal()
+				if bytes.Equal(prev, curr) {
+					bu.Events[i] = nil
+					continue
+				}
+				prev = curr
+				filtered = append(filtered, bue)
+			}
+			if len(filtered) != len(bu.Events) {
+				bu.Events = filtered
+				runtime.GC()
+			}
+		}
 	}
 
 	if sb.onlyMeta {
