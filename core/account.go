@@ -109,6 +109,36 @@ func checkInviteCode(code string, account string) error {
 	return nil
 }
 
+func (mw *Middleware) fetchAccountConfigUntilSuccess() {
+	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	cafe := mw.app.MustComponent(cafeClient.CName).(cafeClient.Client)
+	var attempt int
+	for {
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+		defer cancel()
+		resp, err := cafe.GetConfig(ctx, &pb2.GetConfigRequest{})
+		if err != nil {
+			log.Errorf("failed to request client config from cafe: %s", err.Error())
+		}
+		if resp != nil {
+			cfg := &pb.RpcAccountConfig{
+				EnableDataview:             resp.Config.EnableDataview,
+				EnableDebug:                resp.Config.EnableDebug,
+				EnableReleaseChannelSwitch: resp.Config.EnableReleaseChannelSwitch,
+				Extra:                      resp.Config.Extra,
+			}
+			err = store.SaveClientConfig(cfg)
+			if err != nil {
+				log.Errorf("failed to save client config to objectstore: %s", err.Error())
+			} else {
+				return
+			}
+		}
+		attempt++
+		time.Sleep(time.Second*2*time.Duration(attempt))
+	}
+}
+
 func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
 	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	cafe := mw.app.MustComponent(cafeClient.CName).(cafeClient.Client)
@@ -135,6 +165,7 @@ func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
 
 	cfg, err := store.GetClientConfig()
 	if err != nil {
+		go mw.fetchAccountConfigUntilSuccess()
 		log.Errorf("failed to load client config from objectstore: %s", err.Error())
 	} else {
 		return cfg
