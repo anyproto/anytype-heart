@@ -342,8 +342,8 @@ func (m *dsObjectStore) GetClientConfig() (cfg *pb2.RpcAccountConfig, err error)
 	defer txn.Discard()
 
 	var clientcfg pb2.RpcAccountConfig
-	if val, err := txn.Get(clientConfig); err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get details: %w", err)
+	if val, err := txn.Get(clientConfig); err != nil {
+		return nil, err
 	} else if err := proto.Unmarshal(val, &clientcfg); err != nil {
 		return nil, err
 	}
