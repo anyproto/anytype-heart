@@ -49,10 +49,10 @@ type doc struct {
 	sb         core.SmartBlock
 }
 
-func (d *doc) buildMetaTree(profileId string) (err error){
+func (d *doc) buildMetaTree(profileId string) (err error) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	if d.tree != nil {
+	if d.tree != nil && d.st != nil {
 		return
 	}
 	d.tree, _, err = change.BuildMetaTree(d.sb)
@@ -63,10 +63,6 @@ func (d *doc) buildMetaTree(profileId string) (err error){
 		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 		d.st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(profileId))
 		d.st.InjectDerivedDetails()
-
-		if err != nil {
-			log.With("thread", d.id).Errorf("injectCreationInfo failed: %s", err.Error())
-		}
 		err = nil
 	} else if err != nil {
 		return
