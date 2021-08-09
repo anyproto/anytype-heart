@@ -774,6 +774,9 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 	// total number of records matching specified filters. Query
 	// returns this number for handy pagination on clients.
 	for rec := range res.Next() {
+		if rec.Error != nil {
+			return nil, 0, rec.Error
+		}
 		total++
 
 		if offset > 0 {
@@ -790,7 +793,10 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 		id := keyList[len(keyList)-1]
 		oi, err := getObjectInfo(txn, id)
 		if err != nil {
-			return nil, 0, err
+			// probably details are not yet indexed, let's skip it
+			log.Errorf("QueryObjectInfo getObjectInfo error: %s", err.Error())
+			total--
+			continue
 		}
 		results = append(results, oi)
 	}
@@ -1951,31 +1957,6 @@ func isObjectBelongToType(txn ds.Txn, id, objType string) (bool, error) {
 	}
 
 	return localstore.HasPrimaryKeyByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{objTypeCompact}, "", false, id)
-}
-
-func isRelationBelongToType(txn ds.Txn, relKey, objectType string) (bool, error) {
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationObject.Name, []string{relKey}, "", false, 0)
-	if err != nil {
-		return false, err
-	}
-	i := 0
-	for v := range res.Next() {
-		i++
-		objId, err := localstore.CarveKeyParts(v.Key, -1, 0)
-		if err != nil {
-			return false, err
-		}
-
-		belong, err := isObjectBelongToType(txn, objId, objectType)
-		if err != nil {
-			return false, err
-		}
-		if belong {
-			return true, nil
-		}
-	}
-
-	return false, nil
 }
 
 /* internal */
