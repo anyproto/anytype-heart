@@ -40,7 +40,7 @@ func (b *treeBuilder) Build(path string) (filename string, err error) {
 	defer b.zw.Close()
 
 	logBuf := bytes.NewBuffer(nil)
-	b.log = log.New(logBuf, "", log.LstdFlags)
+	b.log = log.New(io.MultiWriter(logBuf, os.Stderr), "", log.LstdFlags)
 
 	// write logs
 	b.log.Printf("dump block_logs...")

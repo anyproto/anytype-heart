@@ -172,6 +172,20 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
+	ex, _ := tb.GetRelation(relationKey)
+	if ex != nil {
+		if ex.Format != relation.Format {
+			return fmt.Errorf("changing format of existing relation is retricted")
+		}
+		if ex.DataSource != relation.DataSource {
+			return fmt.Errorf("changing data source of existing relation is retricted")
+		}
+
+		if ex.Hidden != relation.Hidden {
+			return fmt.Errorf("changing hidden flag of existing relation is retricted")
+		}
+	}
+
 	if err = tb.UpdateRelation(relationKey, relation); err != nil {
 		return err
 	}
