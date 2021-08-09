@@ -382,8 +382,13 @@ func GetLeavesFromResults(results query.Results) ([]string, error) {
 func GetKeyPartFromResults(results query.Results, from, to int, removeDuplicates bool) ([]string, error) {
 	var keyParts []string
 	for res := range results.Next() {
+		if res.Error != nil {
+			return nil, res.Error
+		}
 		p, err := CarveKeyParts(res.Key, from, to)
 		if err != nil {
+			// should not happen, lets early-close iterator and return error
+			_ = results.Close()
 			return nil, err
 		}
 		if removeDuplicates {
