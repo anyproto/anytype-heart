@@ -435,7 +435,7 @@ func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string
 	txn, err := m.ds.NewTransaction(true)
 	defer txn.Discard()
 
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, "/", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +470,7 @@ func (m *dsObjectStore) getAggregatedOptionsForFormat(format model.RelationForma
 	txn, err := m.ds.NewTransaction(true)
 	defer txn.Discard()
 
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -1828,7 +1828,7 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return nil
 	}
 
-	log.Debugf("updateDetails %s: %s", id, pbtypes.Sprint(newDetails.GetDetails()))
+	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
@@ -1889,7 +1889,7 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 }
 
 func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 0)
 	if err != nil {
 		return nil, err
 	}
