@@ -186,6 +186,16 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 		}
 	}
 
+	if relation.Format == model.RelationFormat_status || relation.Format == model.RelationFormat_tag {
+		// reinject relation options
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(relationKey, relation.Format, tb.GetSource())
+		if err != nil {
+			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+		} else {
+			relation.SelectDict = options
+		}
+	}
+
 	if err = tb.UpdateRelation(relationKey, relation); err != nil {
 		return err
 	}
@@ -812,14 +822,7 @@ func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.St
 
 	rel.SelectDict = options
 	dvBlock.UpdateRelation(rel.Key, *rel)
-	// we need to send event manually because selectDict is trimmed from the pb changes
-	d.SendEvent([]*pb.EventMessage{
-		{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
-			&pb.EventBlockDataviewRelationSet{
-				Id:          dvBlock.Model().Id,
-				RelationKey: rel.Key,
-				Relation:    rel,
-			}}}})
+
 	st.Set(dvBlock)
 	return d.Apply(st)
 }
