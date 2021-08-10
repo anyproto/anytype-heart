@@ -257,7 +257,7 @@ func (s *Dataview) UpdateRelation(relationKey string, rel model.Relation) error 
 		if v.Key == relationKey {
 			found = true
 
-			s.content.Relations[i] = &rel
+			s.content.Relations[i] = pbtypes.CopyRelation(&rel)
 			break
 		}
 	}
