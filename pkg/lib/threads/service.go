@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -38,7 +39,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 )
 
-const simultaneousRequests = 20
+const simultaneousRequests = 50
 
 const CName = "threads"
 
@@ -55,24 +56,30 @@ type service struct {
 	GRPCServerOptions []grpc.ServerOption
 	GRPCDialOptions   []grpc.DialOption
 
+	objstore objectstore.ObjectStore
+
+	// the number of simultaneous requests when processing threads or adding replicator
+	simultaneousRequests int
+
 	logstore    tlcore.Logstore
 	ds          datastore.Datastore
 	logstoreDS  datastore.DSTxnBatching
 	threadsDbDS keytransform.TxnDatastoreExtended
 	stopped     bool
 
-	ctxCancel                  context.CancelFunc
-	ctx                        context.Context
-	presubscribedChangesChan   <-chan net.ThreadRecord
-	t                          threadsApp.Net
-	db                         *threadsDb.DB
-	threadsCollection          *threadsDb.Collection
-	device                     walletUtil.Keypair
-	account                    walletUtil.Keypair
-	ipfsNode                   ipfs.Node
-	repoRootPath               string
-	newThreadChan              chan<- string
-	newThreadProcessingLimiter chan struct{}
+	ctxCancel                      context.CancelFunc
+	ctx                            context.Context
+	presubscribedChangesChan       <-chan net.ThreadRecord
+	t                              threadsApp.Net
+	db                             *threadsDb.DB
+	threadsCollection              *threadsDb.Collection
+	device                         walletUtil.Keypair
+	account                        walletUtil.Keypair
+	ipfsNode                       ipfs.Node
+	repoRootPath                   string
+	newThreadChan                  chan<- string
+	newThreadProcessingLimiter     chan struct{}
+	newReplicatorProcessingLimiter chan struct{}
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -104,20 +111,17 @@ func New() Service {
 	threadsQueue.InBufSize = 5
 	threadsQueue.OutBufSize = 2
 	ctx, cancel := context.WithCancel(context.Background())
-	limiter := make(chan struct{}, simultaneousRequests)
-	for i := 0; i < cap(limiter); i++ {
-		limiter <- struct{}{}
-	}
 
 	return &service{
-		newThreadProcessingLimiter: limiter,
-		ctx:                        ctx,
-		ctxCancel:                  cancel,
+		ctx:                            ctx,
+		ctxCancel:                      cancel,
+		simultaneousRequests:           simultaneousRequests,
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
+	s.objstore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
@@ -153,6 +157,21 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
+	// we will not get the config on the first run though which can be a problem
+	cafeCfg, err := s.objstore.GetCafeConfig()
+	if err == nil && cafeCfg.SimultaneousRequests != 0 {
+		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
+	}
+
+	s.newThreadProcessingLimiter = make(chan struct{}, s.simultaneousRequests)
+	for i := 0; i < cap(s.newThreadProcessingLimiter); i++ {
+		s.newThreadProcessingLimiter <- struct{}{}
+	}
+	s.newReplicatorProcessingLimiter = make(chan struct{}, s.simultaneousRequests)
+	for i := 0; i < cap(s.newReplicatorProcessingLimiter); i++ {
+		s.newReplicatorProcessingLimiter <- struct{}{}
+	}
+
 	s.logstoreDS, err = s.ds.LogstoreDS()
 	if err != nil {
 		return err
