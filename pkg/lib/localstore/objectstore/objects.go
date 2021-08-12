@@ -494,6 +494,12 @@ func (m *dsObjectStore) getAggregatedOptionsForFormat(format model.RelationForma
 		if _, exists := ex[optionId]; exists {
 			continue
 		}
+		objId, err := localstore.CarveKeyParts(key, -1, 0)
+		if err != nil {
+			return nil, err
+		}
+		fmt.Printf("ag opt by format: %s/%s found in %s\n", relKey, optionId, objId)
+
 		ex[optionId] = struct{}{}
 		options = append(options, relationOption{
 			relationKey: relKey,
@@ -1670,7 +1676,7 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 				if relBefore == nil {
 					updatedOptions = append(updatedOptions, relAfter.SelectDict...)
 				} else {
-					added, updated, _ := pbtypes.RelationSelectDictDiff(relBefore.SelectDict, relAfter.SelectDict)
+					added, updated, _ := pbtypes.RelationSelectDictDiffOmitScope(relBefore.SelectDict, relAfter.SelectDict)
 					updatedOptions = append(updatedOptions, append(added, updated...)...)
 				}
 			}
@@ -1761,7 +1767,7 @@ func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []strin
 				if relBefore == nil {
 					updatedOptions = append(updatedOptions, relAfter.SelectDict...)
 				} else {
-					added, updated, _ := pbtypes.RelationSelectDictDiff(relBefore.SelectDict, relAfter.SelectDict)
+					added, updated, _ := pbtypes.RelationSelectDictDiffOmitScope(relBefore.SelectDict, relAfter.SelectDict)
 					updatedOptions = append(updatedOptions, append(added, updated...)...)
 				}
 			}

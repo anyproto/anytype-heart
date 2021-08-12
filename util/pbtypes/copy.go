@@ -81,6 +81,14 @@ func CopyRelation(in *model.Relation) (out *model.Relation) {
 	return out
 }
 
+func CopyRelationOptions(in []*model.RelationOption) (out []*model.RelationOption) {
+	out = make([]*model.RelationOption, len(in))
+	for i := range in {
+		out[i] = &*in[i]
+	}
+	return
+}
+
 func CopyLayout(in *model.Layout) (out *model.Layout) {
 	return &model.Layout{Id: in.Id, Name: in.Name, RequiredRelations: CopyRelations(in.RequiredRelations)}
 }

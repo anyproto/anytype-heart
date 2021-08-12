@@ -181,6 +181,18 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
+	for _, rel := range  ctx.State.ExtraRelations() {
+		if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
+			continue
+		}
+
+		opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, ctx.State.ObjectType())
+		if err != nil {
+			log.Errorf("GetAggregatedOptions error: %s", err.Error())
+		} else {
+			ctx.State.SetAggregatedRelationsOptions(rel.Key, opts)
+		}
+	}
 
 	if len(ctx.ObjectTypeUrls) > 0 && len(sb.ObjectTypes()) == 0 {
 		err = sb.setObjectTypes(ctx.State, ctx.ObjectTypeUrls)
@@ -842,6 +854,15 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			rel.Creator = sb.Anytype().ProfileID()
 		}
 
+		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
+			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+			if err != nil {
+				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
+			} else {
+				s.SetAggregatedRelationsOptions(rel.Key, opts)
+			}
+		}
+
 		if relEx, exists := existsMap[rel.Key]; exists {
 			c := pbtypes.CopyRelation(rel)
 			if !pbtypes.RelationEqualOmitDictionary(relEx, rel) {
@@ -958,7 +979,16 @@ mainLoop:
 
 	st := sb.NewStateCtx(ctx)
 	st.SetExtraRelations(append(extraRelations, newRelations...))
-
+	for _, rel := range newRelations {
+		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
+			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, st.ObjectType())
+			if err != nil {
+				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
+			} else {
+				st.SetAggregatedRelationsOptions(rel.Key, opts)
+			}
+		}
+	}
 	if err = sb.Apply(st); err != nil {
 		return
 	}

@@ -533,12 +533,15 @@ func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.Ch
 		})
 	}
 
-	if !pbtypes.RelationSelectDictEqual(prev.SelectDict, new.SelectDict) {
-		// todo: CRDT SelectDict patches
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: new.SelectDict}},
-		})
+	if new.Format == model.RelationFormat_tag || new.Format == model.RelationFormat_status {
+		newDict := pbtypes.RelationOptionsFilterScope(new.SelectDict, model.RelationOption_local)
+		if !pbtypes.RelationSelectDictEqual(pbtypes.RelationOptionsFilterScope(prev.SelectDict, model.RelationOption_local), newDict) {
+			// todo: CRDT SelectDict patches
+			updates = append(updates, &pb.ChangeRelationUpdate{
+				Key:   prev.Key,
+				Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: newDict}},
+			})
+		}
 	}
 
 	return updates, nil

@@ -69,18 +69,20 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx            *Context
-	parent         *State
-	blocks         map[string]simple.Block
-	rootId         string
-	newIds         []string
-	changeId       string
-	changes        []*pb.ChangeContent
-	fileKeys       []pb.ChangeFileKeys
-	details        *types.Struct
-	localDetails   *types.Struct
-	extraRelations []*model.Relation
-	objectTypes    []string
+	ctx                         *Context
+	parent                      *State
+	blocks                      map[string]simple.Block
+	rootId                      string
+	newIds                      []string
+	changeId                    string
+	changes                     []*pb.ChangeContent
+	fileKeys                    []pb.ChangeFileKeys
+	details                     *types.Struct
+	localDetails                *types.Struct
+	extraRelations              []*model.Relation
+	aggregatedOptionsByRelation map[string][]*model.RelationOption
+
+	objectTypes []string
 
 	changesStructureIgnoreIds []string
 
@@ -492,6 +494,14 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
 			s.parent.extraRelations = s.extraRelations
 			if len(added)+len(updated) > 0 {
+				aggregetedOptions := s.AggregatedOptionsByRelation()
+				if aggregetedOptions != nil {
+					for _, rel := range append(added, updated...) {
+						if m, exists := aggregetedOptions[rel.Key]; exists {
+							rel.SelectDict = pbtypes.MergeOptionsPreserveScope(rel.SelectDict, m)
+						}
+					}
+				}
 				msgs = append(msgs, simple.EventMessage{
 					Msg: &pb.EventMessage{
 						Value: &pb.EventMessageValueOfObjectRelationsAmend{
@@ -552,6 +562,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			s.parent.localDetails = s.localDetails
 		}
 	}
+
+	if s.parent != nil && s.aggregatedOptionsByRelation != nil {
+		// todo: when we will have an external subscription for the aggregatedOptionsByRelation we should send events here for all relations
+		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
+	}
+
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -568,6 +584,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.localDetails != nil {
 		s.parent.localDetails = s.localDetails
+	}
+	if s.aggregatedOptionsByRelation != nil {
+		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
 	}
 	if s.extraRelations != nil {
 		s.parent.extraRelations = s.extraRelations
@@ -830,6 +849,16 @@ func (s *State) SetExtraRelations(relations []*model.Relation) *State {
 	return s
 }
 
+func (s *State) SetAggregatedRelationsOptions(relationKey string, options []*model.RelationOption) *State {
+	s.aggregatedOptionsByRelation = s.AggregatedOptionsByRelation()
+	if s.aggregatedOptionsByRelation == nil {
+		s.aggregatedOptionsByRelation = make(map[string][]*model.RelationOption)
+	}
+
+	s.aggregatedOptionsByRelation[relationKey] = pbtypes.CopyRelationOptions(options)
+	return s
+}
+
 // removeNotExistingRelationOptionsValues may modify relation provided by pointer and set the Detail on the state
 func (s *State) removeNotExistingRelationOptionsValues(rel *model.Relation) (changed bool) {
 	if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
@@ -941,6 +970,14 @@ func (s *State) LocalDetails() *types.Struct {
 	}
 
 	return s.localDetails
+}
+
+func (s *State) AggregatedOptionsByRelation() map[string][]*model.RelationOption {
+	if s.aggregatedOptionsByRelation == nil && s.parent != nil {
+		return s.parent.AggregatedOptionsByRelation()
+	}
+
+	return s.aggregatedOptionsByRelation
 }
 
 func (s *State) CombinedDetails() *types.Struct {
@@ -1183,15 +1220,20 @@ func (s *State) Copy() *State {
 	objTypes := make([]string, len(s.ObjectTypes()))
 	copy(objTypes, s.ObjectTypes())
 
+	agOptsCopy := make(map[string][]*model.RelationOption, len(s.AggregatedOptionsByRelation()))
+	for k, v := range s.AggregatedOptionsByRelation() {
+		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
+	}
 	copy := &State{
-		ctx:            s.ctx,
-		blocks:         blocks,
-		rootId:         s.rootId,
-		details:        pbtypes.CopyStruct(s.Details()),
-		localDetails:   pbtypes.CopyStruct(s.LocalDetails()),
-		extraRelations: pbtypes.CopyRelations(s.ExtraRelations()),
-		objectTypes:    objTypes,
-		noObjectType:   s.noObjectType,
+		ctx:                         s.ctx,
+		blocks:                      blocks,
+		rootId:                      s.rootId,
+		details:                     pbtypes.CopyStruct(s.Details()),
+		localDetails:                pbtypes.CopyStruct(s.LocalDetails()),
+		extraRelations:              pbtypes.CopyRelations(s.ExtraRelations()),
+		aggregatedOptionsByRelation: agOptsCopy,
+		objectTypes:                 objTypes,
+		noObjectType:                s.noObjectType,
 	}
 	return copy
 }

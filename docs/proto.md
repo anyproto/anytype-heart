@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -32,10 +28,6 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -716,9 +708,6 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -852,9 +841,6 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -865,10 +851,6 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
-  
-  
-  
-
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -899,6 +881,7 @@
     - [Range](#anytype.model.Range)
     - [Relation](#anytype.model.Relation)
     - [Relation.Option](#anytype.model.Relation.Option)
+    - [RelationOptions](#anytype.model.RelationOptions)
     - [RelationWithValue](#anytype.model.RelationWithValue)
     - [Relations](#anytype.model.Relations)
     - [Restrictions](#anytype.model.Restrictions)
@@ -930,9 +913,6 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -13887,6 +13867,21 @@ scope from which this relation have been aggregated |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
 | scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+
+
+
+
+
+
+<a name="anytype.model.RelationOptions"></a>
+
+### RelationOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| options | [Relation.Option](#anytype.model.Relation.Option) | repeated |  |
 
 
 

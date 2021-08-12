@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
@@ -368,6 +369,8 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 		}
 		log.Debugf("DeleteRelationOption updated %s", objId)
 	}
+	// todo: remove after source refactoring
+	time.Sleep(time.Second*1)
 
 	if showEvent {
 		err = d.Apply(s)
