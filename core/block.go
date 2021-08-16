@@ -1127,7 +1127,7 @@ func (mw *Middleware) getFileOrLargestImage(ctx context.Context, hash string) (c
 		return mw.GetAnytype().FileByHash(ctx, hash)
 	}
 
-	f, err := image.GetFileForLargestWidth(ctx)
+	f, err := image.GetOriginalFile(ctx)
 	if err != nil {
 		return mw.GetAnytype().FileByHash(ctx, hash)
 	}
