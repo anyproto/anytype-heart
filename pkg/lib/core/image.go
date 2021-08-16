@@ -23,6 +23,7 @@ type Image interface {
 	Details() (*types.Struct, error)
 	GetFileForWidth(ctx context.Context, wantWidth int) (File, error)
 	GetFileForLargestWidth(ctx context.Context) (File, error)
+	GetOriginalFile(ctx context.Context) (File, error)
 }
 
 type image struct {
@@ -60,7 +61,8 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 	}, nil
 }
 
-func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
+// GetOriginalFile doesn't contains Meta
+func (i *image) GetOriginalFile(ctx context.Context) (File, error) {
 	sizeName := "original"
 	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
 	if err == nil {
@@ -71,13 +73,18 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 		}, nil
 	}
 
+	// fallback for the old schema without an original
+	return i.GetFileForLargestWidth(ctx)
+}
+
+func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 	if i.variantsByWidth != nil {
 		return i.getFileForWidthFromCache(math.MaxInt32)
 	}
 
 	// fallback to large size, because older image nodes don't have an original
-	sizeName = "large"
-	fileIndex, err = i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
+	sizeName := "large"
+	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
 	if err != nil {
 		return nil, err
 	}
@@ -138,17 +145,20 @@ func (i *image) Details() (*types.Struct, error) {
 	if err != nil {
 		return details, nil
 	}
-	details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
-	details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
-	details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
-	details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
-	details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
 
-	if v, exists := largest.Info().Meta.Fields["width"]; exists {
+	if largest.Meta() != nil {
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(strings.TrimSuffix(largest.Meta().Name, filepath.Ext(largest.Meta().Name)))
+		details.Fields[bundle.RelationKeyFileExt.String()] = pbtypes.String(strings.TrimPrefix(filepath.Ext(largest.Meta().Name), "."))
+		details.Fields[bundle.RelationKeyFileMimeType.String()] = pbtypes.String(largest.Meta().Media)
+		details.Fields[bundle.RelationKeySizeInBytes.String()] = pbtypes.Float64(float64(largest.Meta().Size))
+		details.Fields[bundle.RelationKeyAddedDate.String()] = pbtypes.Float64(float64(largest.Meta().Added.Unix()))
+
+	}
+	if v := pbtypes.Get(largest.Info().GetMeta(), "width"); v != nil {
 		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
 	}
 
-	if v, exists := largest.Info().Meta.Fields["height"]; exists {
+	if v := pbtypes.Get(largest.Info().GetMeta(), "height"); v != nil {
 		details.Fields[bundle.RelationKeyHeightInPixels.String()] = v
 	}
 

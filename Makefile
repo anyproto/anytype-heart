@@ -99,9 +99,11 @@ setup-protoc-go:
 	@echo 'Setting up protobuf compiler...'
 	@rm -rf $(GOPATH)/src/github.com/gogo
 	@mkdir -p $(GOPATH)/src/github.com/gogo
-	@cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/anytypeio/protobuf
+	@cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/gogo/protobuf
 	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
 	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
+	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogo/gomobile
+
 
 setup-protoc-jsweb:
 	@echo 'Installing grpc-web plugin...'
@@ -144,8 +146,9 @@ protos-go:
 	@$(eval P_PROTOS4 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
 	@$(eval P_PROTOS5 := Mpb/protos/events.proto=github.com/anytypeio/go-anytype-middleware/pb)
 	@$(eval PKGMAP := $$(P_TIMESTAMP),$$(P_STRUCT),$$(P_PROTOS),$$(P_PROTOS2),$$(P_PROTOS3),$$(P_PROTOS4),$$(P_PROTOS5))
-	@GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./clientlibrary/service/
-	@protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+	@echo 'Generating protobuf packages for mw (Go)...2'
+	GOGO_NO_UNDERSCORE=1 GOGO_EXPORT_ONEOF_INTERFACE=1 PACKAGE_PATH=github.com/anytypeio/go-anytype-middleware/pb protoc -I=. --gogofaster_out=$(PKGMAP),plugins=gomobile:. ./pb/protos/service/service.proto; mv ./pb/protos/service/*.pb.go ./clientlibrary/service/
+	protoc -I ./ --doc_out=./docs --doc_opt=markdown,proto.md pb/protos/service/*.proto pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
 
 protos-gomobile:
 	@$(eval P_PROTOS2 := Mpb/protos/commands.proto=github.com/anytypeio/go-anytype-middleware/pb)
