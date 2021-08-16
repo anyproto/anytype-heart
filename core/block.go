@@ -1067,7 +1067,7 @@ func (mw *Middleware) DownloadFile(req *pb.RpcDownloadFileRequest) *pb.RpcDownlo
 		return response("", pb.RpcDownloadFileResponseError_BAD_INPUT, err)
 	}
 	progress := process.NewProgress(pb.ModelProcess_SaveFile)
-	defer progress.Cancel()
+	defer progress.Finish()
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
 		return bs.ProcessAdd(progress)
@@ -1117,7 +1117,6 @@ func (mw *Middleware) DownloadFile(req *pb.RpcDownloadFileRequest) *pb.RpcDownlo
 		return response("", pb.RpcDownloadFileResponseError_UNKNOWN_ERROR, err)
 	}
 
-	progress.Finish()
 	return response(path, pb.RpcDownloadFileResponseError_NULL, nil)
 }
 
