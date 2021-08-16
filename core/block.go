@@ -1087,7 +1087,7 @@ func (mw *Middleware) DownloadFile(req *pb.RpcDownloadFileRequest) *pb.RpcDownlo
 				return
 			case <-progress.Canceled():
 				cancel()
-			case <-time.After(time.Second*3):
+			case <-time.After(time.Second):
 				if countReader != nil {
 					progress.SetDone(int64(countReader.Count()))
 				}
@@ -1112,7 +1112,7 @@ func (mw *Middleware) DownloadFile(req *pb.RpcDownloadFileRequest) *pb.RpcDownlo
 		fileName = f.Info().Name
 	}
 
-	path, err := files.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, r)
+	path, err := files.WriteReaderIntoFileReuseSameExistingFile(req.Path+string(os.PathSeparator)+fileName, countReader)
 	if err != nil {
 		return response("", pb.RpcDownloadFileResponseError_UNKNOWN_ERROR, err)
 	}
