@@ -61,10 +61,6 @@ func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error
 }
 
 func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
-	if i.variantsByWidth != nil {
-		return i.getFileForWidthFromCache(math.MaxInt32)
-	}
-
 	sizeName := "original"
 	fileIndex, err := i.service.FileGetInfoForPath("/ipfs/" + i.hash + "/0/" + sizeName)
 	if err == nil {
@@ -73,6 +69,10 @@ func (i *image) GetFileForLargestWidth(ctx context.Context) (File, error) {
 			info: fileIndex,
 			node: i.service,
 		}, nil
+	}
+
+	if i.variantsByWidth != nil {
+		return i.getFileForWidthFromCache(math.MaxInt32)
 	}
 
 	// fallback to large size, because older image nodes don't have an original
