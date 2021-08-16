@@ -35,6 +35,8 @@ type ApplyFlag int
 var (
 	ErrSimpleBlockNotFound                         = errors.New("simple block not found")
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
+	ErrRelationOptionNotFound                      = errors.New("relation option not found")
+	ErrRelationNotFound                            = errors.New("relation not found")
 )
 
 const (
@@ -181,7 +183,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
 	}
-	for _, rel := range  ctx.State.ExtraRelations() {
+	for _, rel := range ctx.State.ExtraRelations() {
 		if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
 			continue
 		}
@@ -1109,10 +1111,10 @@ func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey 
 			}
 		}
 
-		return fmt.Errorf("relation option not found")
+		return ErrRelationOptionNotFound
 	}
 
-	return fmt.Errorf("relation not found")
+	return ErrRelationNotFound
 }
 
 func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
@@ -1126,6 +1128,16 @@ func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey 
 		}
 		for i, opt := range rel.SelectDict {
 			if opt.Id == optionId {
+				// filter-out this option from details also
+				if opts := pbtypes.GetStringList(s.Details(), relationKey); len(opts) > 0 {
+					filtered := slice.Filter(opts, func(s string) bool {
+						return s != opt.Id
+					})
+					if len(filtered) != len(opts) {
+						s.SetDetail(relationKey, pbtypes.StringList(filtered))
+					}
+				}
+
 				copy := pbtypes.CopyRelation(rel)
 				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
 				s.SetExtraRelation(copy)
