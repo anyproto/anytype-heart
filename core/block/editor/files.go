@@ -64,41 +64,60 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 
 	switch fileType {
 	case model.BlockContentFile_Image:
-		blocks = append(blocks,
-			[]*model.Block{
-				{
-					Id: "rel1",
-					Content: &model.BlockContentOfRelation{
-						Relation: &model.BlockContentRelation{
-							Key: bundle.RelationKeyWidthInPixels.String(),
-						},
+		if pbtypes.GetInt64(d, bundle.RelationKeyWidthInPixels.String()) != 0 {
+			blocks = append(blocks, &model.Block{
+				Id: "rel1",
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: bundle.RelationKeyWidthInPixels.String(),
 					},
 				},
-				{
-					Id: "rel2",
-					Content: &model.BlockContentOfRelation{
-						Relation: &model.BlockContentRelation{
-							Key: bundle.RelationKeyHeightInPixels.String(),
-						},
+			})
+		}
+
+		if pbtypes.GetInt64(d, bundle.RelationKeyHeightInPixels.String()) != 0 {
+			blocks = append(blocks, &model.Block{
+				Id: "rel2",
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: bundle.RelationKeyHeightInPixels.String(),
 					},
 				},
-				{
-					Id: "rel3",
-					Content: &model.BlockContentOfRelation{
-						Relation: &model.BlockContentRelation{
-							Key: bundle.RelationKeyCamera.String(),
-						},
+			})
+		}
+
+		if pbtypes.GetString(d, bundle.RelationKeyCamera.String()) != "" {
+			blocks = append(blocks, &model.Block{
+				Id: "rel3",
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: bundle.RelationKeyCamera.String(),
 					},
 				},
-				{
-					Id: "rel4",
-					Content: &model.BlockContentOfRelation{
-						Relation: &model.BlockContentRelation{
-							Key: bundle.RelationKeySizeInBytes.String(),
-						},
+			})
+		}
+
+		if pbtypes.GetInt64(d, bundle.RelationKeySizeInBytes.String()) != 0 {
+			blocks = append(blocks, &model.Block{
+				Id: "rel4",
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: bundle.RelationKeySizeInBytes.String(),
 					},
 				},
-			}...)
+			})
+		}
+
+		if pbtypes.GetInt64(d, bundle.RelationKeySizeInBytes.String()) != 0 {
+			blocks = append(blocks, &model.Block{
+				Id: "rel5",
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: bundle.RelationKeySizeInBytes.String(),
+					},
+				},
+			})
+		}
 	default:
 		blocks = append(blocks,
 			[]*model.Block{
@@ -118,7 +137,6 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithDefaultFeaturedRelations,
-		template.WithDescription,
 		template.WithFeaturedRelations,
 		template.WithRootBlocks(blocks),
 		template.WithAllBlocksEditsRestricted,
