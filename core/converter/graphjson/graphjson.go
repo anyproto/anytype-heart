@@ -33,7 +33,7 @@ type Node struct {
 	Id          string `json:"id,omitempty"`
 	Type        string `json:"type,omitempty"`
 	Name        string `json:"name,omitempty"`
-	Layput      int    `json:"layput,omitempty"`
+	Layout      int    `json:"layout,omitempty"`
 	Description string `json:"description,omitempty"`
 	IconImage   string `json:"iconImage,omitempty"`
 	IconEmoji   string `json:"iconEmoji,omitempty"`
@@ -79,7 +79,7 @@ func (g *graphjson) Add(st *state.State) error {
 		IconEmoji:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String()),
 		Description: pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String()),
 		Type:        st.ObjectType(),
-		Layput:      int(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())),
+		Layout:      int(pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())),
 	}
 
 	g.nodes[st.RootId()] = &n
