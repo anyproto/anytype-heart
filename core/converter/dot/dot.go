@@ -92,6 +92,10 @@ func (d *dot) Add(st *state.State) error {
 		if rel.Format != model.RelationFormat_object {
 			continue
 		}
+		if rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyId.String() {
+			continue
+		}
+
 		objIds := pbtypes.GetStringList(st.Details(), rel.Key)
 
 		for _, objId := range objIds {
