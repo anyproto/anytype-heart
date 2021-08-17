@@ -494,11 +494,6 @@ func (m *dsObjectStore) getAggregatedOptionsForFormat(format model.RelationForma
 		if _, exists := ex[optionId]; exists {
 			continue
 		}
-		objId, err := localstore.CarveKeyParts(key, -1, 0)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("ag opt by format: %s/%s found in %s\n", relKey, optionId, objId)
 
 		ex[optionId] = struct{}{}
 		options = append(options, relationOption{

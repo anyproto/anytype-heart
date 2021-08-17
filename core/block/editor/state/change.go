@@ -560,6 +560,15 @@ func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
 	var curMap = pbtypes.CopyRelationsToMap(s.extraRelations)
 
 	for _, v := range s.extraRelations {
+		var rel *model.Relation
+		if v.Format == model.RelationFormat_tag || v.Format == model.RelationFormat_status {
+			rel = pbtypes.CopyRelation(v)
+			// filter-out non-local scope options which we can have in the state to receive events
+			rel.SelectDict = pbtypes.RelationOptionsFilterScope(rel.SelectDict, model.RelationOption_local)
+		} else {
+			rel = v
+		}
+
 		pv, ok := prevMap[v.Key]
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{
