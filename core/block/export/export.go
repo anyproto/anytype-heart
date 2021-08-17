@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/dot"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/graphjson"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -89,8 +90,18 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
 	defer wr.Close()
 
 	queue.SetMessage("export docs")
-	if req.Format == pb.RpcExport_DOT {
-		mc := dot.NewMultiConverter()
+	if req.Format == pb.RpcExport_DOT || req.Format == pb.RpcExport_SVG {
+		var format = dot.ExportFormatDOT
+		if req.Format == pb.RpcExport_SVG {
+			format = dot.ExportFormatSVG
+		}
+		mc := dot.NewMultiConverter(format)
+		mc.SetKnownLinks(docIds)
+		if werr := e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
+			log.Warnf("can't export docs: %v", werr)
+		}
+	} else if req.Format == pb.RpcExport_GRAPH_JSON {
+		mc := graphjson.NewMultiConverter()
 		mc.SetKnownLinks(docIds)
 		if werr := e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)

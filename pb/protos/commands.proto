@@ -3229,7 +3229,8 @@ message Rpc {
             Protobuf = 1;
             JSON = 2;
             DOT = 3;
-
+            SVG = 4;
+            GRAPH_JSON = 5;
         }
     }
 

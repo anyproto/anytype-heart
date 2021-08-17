@@ -15,15 +15,20 @@ import (
 	"io/ioutil"
 )
 
-func NewMultiConverter() converter.MultiConverter {
+func NewMultiConverter(format graphviz.Format) converter.MultiConverter {
 	g := graphviz.New()
 	graph, err := g.Graph()
 	if err != nil {
 		return nil
 	}
 
-	return &dot{graph: graph, graphviz: g, linksByNode: map[string][]linkInfo{}, nodes: map[string]*cgraph.Node{}}
+	return &dot{graph: graph, graphviz: g, exportFormat: format, linksByNode: map[string][]linkInfo{}, nodes: map[string]*cgraph.Node{}}
 }
+
+const (
+	ExportFormatDOT = graphviz.XDOT
+	ExportFormatSVG = graphviz.SVG
+)
 
 type edgeType int
 
@@ -45,7 +50,7 @@ type dot struct {
 	knownIds    []string
 	fileHashes  []string
 	imageHashes []string
-
+	exportFormat graphviz.Format
 	nodes       map[string]*cgraph.Node
 	linksByNode map[string][]linkInfo
 }
@@ -77,14 +82,17 @@ func (d *dot) Add(st *state.State) error {
 		//n.SetImage(image+".jpg")
 	}
 
+	iconEmoji := pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String())
+	if iconEmoji != "" {
+		n.Set("iconEmoji", iconEmoji)
+	}
+
 	desc := pbtypes.GetString(st.Details(), bundle.RelationKeyDescription.String())
 	if desc != "" {
 		n.Set("description", desc)
 	}
 
-	objType := pbtypes.GetString(st.Details(), bundle.RelationKeyType.String())
-	n.Set("type", objType)
-
+	n.Set("type", st.ObjectType())
 	layout := pbtypes.GetInt64(st.Details(), bundle.RelationKeyLayout.String())
 	n.Set("layout", fmt.Sprintf("%d", layout))
 
@@ -170,7 +178,7 @@ func (d *dot) Convert() []byte {
 	}
 
 	var buf bytes.Buffer
-	if err = d.graphviz.Render(d.graph, "dot", &buf); err != nil {
+	if err = d.graphviz.Render(d.graph, d.exportFormat, &buf); err != nil {
 		return nil
 	}
 
@@ -179,5 +187,8 @@ func (d *dot) Convert() []byte {
 }
 
 func (d *dot) Ext() string {
+	if d.exportFormat == graphviz.SVG {
+		return ".svg"
+	}
 	return ".dot"
 }
