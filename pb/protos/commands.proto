@@ -3228,6 +3228,8 @@ message Rpc {
             Markdown = 0;
             Protobuf = 1;
             JSON = 2;
+            DOT = 3;
+
         }
     }
 

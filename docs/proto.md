@@ -10546,6 +10546,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Markdown | 0 |  |
 | Protobuf | 1 |  |
 | JSON | 2 |  |
+| DOT | 3 |  |
 
 
 
