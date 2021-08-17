@@ -194,7 +194,7 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	orig, err := file.GetFileForLargestWidth(context.TODO())
+	orig, err := file.GetOriginalFile(context.TODO())
 	if err != nil {
 		return
 	}

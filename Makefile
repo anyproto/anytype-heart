@@ -99,9 +99,11 @@ setup-protoc-go:
 	@echo 'Setting up protobuf compiler...'
 	@rm -rf $(GOPATH)/src/github.com/gogo
 	@mkdir -p $(GOPATH)/src/github.com/gogo
-	@cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/anytypeio/protobuf
+	@cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/gogo/protobuf
 	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
 	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
+	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogo/gomobile
+
 
 setup-protoc-jsweb:
 	@echo 'Installing grpc-web plugin...'
