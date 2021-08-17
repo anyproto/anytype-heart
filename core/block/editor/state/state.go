@@ -797,7 +797,7 @@ func (s *State) SetExtraRelation(rel *model.Relation) {
 	}
 	relCopy := pbtypes.CopyRelation(rel)
 	relCopy.Scope = model.Relation_object
-	s.removeNotExistingRelationOptionsValues(relCopy)
+	s.normalizeRelationOptionsValues(relCopy)
 	var found bool
 	for i, exRel := range s.extraRelations {
 		if exRel.Key == rel.Key {
@@ -830,7 +830,7 @@ func (s *State) AddRelation(relation *model.Relation) *State {
 		relCopy.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
 
-	s.removeNotExistingRelationOptionsValues(relCopy)
+	s.normalizeRelationOptionsValues(relCopy)
 	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relCopy)
 	return s
 }
@@ -843,7 +843,7 @@ func (s *State) SetExtraRelations(relations []*model.Relation) *State {
 		if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
 			rel.MaxCount = 1
 		}
-		s.removeNotExistingRelationOptionsValues(rel)
+		s.normalizeRelationOptionsValues(rel)
 	}
 	s.extraRelations = relationsCopy
 	return s
@@ -859,8 +859,10 @@ func (s *State) SetAggregatedRelationsOptions(relationKey string, options []*mod
 	return s
 }
 
-// removeNotExistingRelationOptionsValues may modify relation provided by pointer and set the Detail on the state
-func (s *State) removeNotExistingRelationOptionsValues(rel *model.Relation) (changed bool) {
+// normalizeRelationOptionsValues may modify relation provided by pointer and set the Detail on the state
+// - removes details values that not exists in the selectDict for the relation
+// - migrate non-local scope options in case we have this optionId in the corresponding detail
+func (s *State) normalizeRelationOptionsValues(rel *model.Relation) (changed bool) {
 	if rel.Format != model.RelationFormat_tag && rel.Format != model.RelationFormat_status {
 		return
 	}
@@ -908,6 +910,12 @@ func (s *State) removeNotExistingRelationOptionsValues(rel *model.Relation) (cha
 				log.Warnf("obj %s rel %s opt %s remove cause wrong scope and no detail", s.rootId, rel.Key, opt.Id)
 			}
 		} else {
+			if _, exists := optExists[opt.Id]; exists {
+				optionsMigrated = true
+				continue
+			}
+
+			optExists[opt.Id] = struct{}{}
 			dict = append(dict, opt)
 		}
 	}
@@ -934,6 +942,10 @@ func (s *State) AddExtraRelationOption(rel model.Relation, option model.Relation
 
 	for _, opt := range exRel.SelectDict {
 		if strings.EqualFold(opt.Text, option.Text) && (option.Id == "" || opt.Id == option.Id) {
+			if opt.Scope != option.Scope {
+				opt.Scope = option.Scope
+				s.SetExtraRelation(exRel)
+			}
 			// here we can have the option with another color, but we can ignore this
 			return opt, nil
 		}
