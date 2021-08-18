@@ -148,6 +148,11 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 				if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
 					continue
 				}
+
+				if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
+					continue
+				}
+
 				for _, l := range list {
 					edges = append(edges, &pb.RpcObjectGraphEdge{
 						Source:      id,
