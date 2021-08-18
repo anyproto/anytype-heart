@@ -155,14 +155,16 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 					continue
 				}
 
-				if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String()  || rel.Key == bundle.RelationKeyCreator.String()  || rel.Key == bundle.RelationKeyLastModifiedBy.String()  {
-					continue
-				}
-
 				for _, l := range list {
 					if _, exists := nodeExists[l]; !exists {
 						continue
 					}
+
+					if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String()  || rel.Key == bundle.RelationKeyCreator.String()  || rel.Key == bundle.RelationKeyLastModifiedBy.String()  {
+						outgoingRelationLink[l] = struct{}{}
+						continue
+					}
+
 					edges = append(edges, &pb.RpcObjectGraphEdge{
 						Source:      id,
 						Target:      l,
