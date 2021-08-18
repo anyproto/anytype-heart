@@ -120,6 +120,12 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 	var nodes = make([]*pb.RpcObjectGraphNode, 0, len(records))
 	var edges = make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
+	var nodeExists = make(map[string]struct{}, len(records))
+
+	for _, rec := range records {
+		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		nodeExists[id] = struct{}{}
+	}
 
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
@@ -154,6 +160,9 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 				}
 
 				for _, l := range list {
+					if _, exists := nodeExists[l]; !exists {
+						continue
+					}
 					edges = append(edges, &pb.RpcObjectGraphEdge{
 						Source:      id,
 						Target:      l,
@@ -168,6 +177,9 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 		links, _ := at.ObjectStore().GetOutboundLinksById(id)
 		for _, link := range links {
 			if _, exists := outgoingRelationLink[link]; !exists {
+				if _, exists := nodeExists[link]; !exists {
+					continue
+				}
 				edges = append(edges, &pb.RpcObjectGraphEdge{
 					Source: id,
 					Target: link,
