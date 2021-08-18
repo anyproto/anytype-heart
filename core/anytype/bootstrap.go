@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
+	"github.com/anytypeio/go-anytype-middleware/core/block/listener"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -100,6 +101,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(export.New()).
 		Register(linkpreview.New()).
 		Register(restriction.New()).
-		Register(debug.New())
+		Register(debug.New()).
+		Register(listener.New())
 	return
 }

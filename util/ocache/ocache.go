@@ -12,6 +12,7 @@ import (
 
 var (
 	ErrClosed = errors.New("object cache closed")
+	ErrExists = errors.New("object exists")
 )
 
 var (
@@ -78,8 +79,15 @@ type OCache interface {
 	// Increases the object refs counter on successful
 	// When 'loadFunc' returns a non-nil error, an object will not be stored to cache
 	Get(ctx context.Context, id string) (value Object, err error)
+	// Add adds new object to cache
+	// Returns error when object exists
+	Add(id string, value Object) (err error)
 	// Release decreases the refs counter
 	Release(id string) bool
+	// Reset sets refs counter to 0
+	Reset(id string) bool
+	// ForEach iterates over all loaded objects, breaks when callback returns false
+	ForEach(f func(v Object) (isContinue bool))
 	// GC frees not used and expired objects
 	// Will automatically called every 'gcPeriod'
 	GC()
@@ -157,6 +165,57 @@ func (c *oCache) Release(id string) bool {
 		}
 	}
 	return false
+}
+
+func (c *oCache) Reset(id string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return false
+	}
+	if e, ok := c.data[id]; ok {
+		e.refCount = 0
+		return true
+	}
+	return false
+}
+
+func (c *oCache) Add(id string, value Object) (err error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if _, ok := c.data[id]; ok {
+		return ErrExists
+	}
+	e := &entry{
+		id:        id,
+		lastUsage: time.Now(),
+		refCount:  0,
+		load:      make(chan struct{}),
+		value:     value,
+	}
+	close(e.load)
+	c.data[id] = e
+	return
+}
+
+func (c *oCache) ForEach(f func(obj Object) (isContinue bool)) {
+	var objects []Object
+	c.mu.Lock()
+	for _, v := range c.data {
+		select {
+		case <-v.load:
+			if v.value != nil {
+				objects = append(objects, v.value)
+			}
+		default:
+		}
+	}
+	c.mu.Unlock()
+	for _, obj := range objects {
+		if !f(obj) {
+			return
+		}
+	}
 }
 
 func (c *oCache) ticker() {
