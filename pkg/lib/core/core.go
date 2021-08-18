@@ -60,6 +60,7 @@ type Service interface {
 	InitPredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
+	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
 	DeleteBlock(blockId string) error
 	CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error)
 
