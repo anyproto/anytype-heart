@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -107,12 +108,17 @@ type SmartBlock interface {
 	sync.Locker
 }
 
+type ChangeReporter interface {
+	ReportChange(ctx context.Context, id string, s *state.State)
+}
+
 type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
 	State          *state.State
 	Relations      []*model.Relation
 	App            *app.App
+	ChangeReport   ChangeReporter
 }
 
 type linkSource interface {
@@ -136,6 +142,7 @@ type smartBlock struct {
 	onNewStateHooks   []func()
 	onCloseHooks      []func()
 	onBlockCloseHooks []func()
+	changeReport      ChangeReporter
 }
 
 func (sb *smartBlock) HasRelation(key string) bool {
@@ -199,6 +206,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+	sb.changeReport = ctx.ChangeReport
 	return
 }
 
@@ -646,6 +654,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if sb.meta != nil && (hasBlockChanges || hasNotLocalDetailsChange) {
 		outLinks := sb.dependentSmartIds(false, false)
 		sb.meta.IndexerIndexOutgoingLinks(sb.Id(), outLinks)
+	}
+	if sb.changeReport != nil {
+		sb.changeReport.ReportChange(context.TODO(), sb.Id(), s)
 	}
 
 	if hasDepIds(&act) {

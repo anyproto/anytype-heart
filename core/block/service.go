@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/listener"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -213,17 +214,18 @@ func New() Service {
 }
 
 type service struct {
-	anytype      core.Service
-	meta         meta.Service
-	status       status.Service
-	sendEvent    func(event *pb.Event)
-	openedBlocks map[string]*openedBlock
-	closed       bool
-	linkPreview  linkpreview.LinkPreview
-	process      process.Service
-	m            sync.Mutex
-	app          *app.App
-	source       source.Service
+	anytype             core.Service
+	meta                meta.Service
+	status              status.Service
+	sendEvent           func(event *pb.Event)
+	openedBlocks        map[string]*openedBlock
+	closed              bool
+	linkPreview         linkpreview.LinkPreview
+	process             process.Service
+	stateChangeListener listener.Listener
+	m                   sync.Mutex
+	app                 *app.App
+	source              source.Service
 }
 
 func (s *service) Name() string {
@@ -239,6 +241,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.openedBlocks = make(map[string]*openedBlock)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
+	s.stateChangeListener = a.MustComponent(listener.CName).(listener.Listener)
 	s.app = a
 	return
 }
@@ -336,8 +339,9 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs(s.meta)
 	if err = bs.Init(&smartblock.InitContext{
-		App:    s.app,
-		Source: source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
+		App:          s.app,
+		ChangeReport: s.stateChangeListener,
+		Source:       source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
 	}
@@ -686,6 +690,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	if initCtx.App == nil {
 		initCtx.App = s.app
+	}
+	if initCtx.ChangeReport == nil {
+		initCtx.ChangeReport = s.stateChangeListener
 	}
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
