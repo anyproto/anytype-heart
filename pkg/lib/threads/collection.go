@@ -278,7 +278,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			}
 
 			addr, err = util.MultiAddressAddThread(addr, tid)
-			localThreadInfo, err = s.t.AddThread(s.ctx, addr, net.WithThreadKey(key), net.WithLogKey(s.device))
+			localThreadInfo, err = s.t.AddThread(s.ctx, addr, net.WithThreadKey(key), net.WithoutLog())
 			if err != nil {
 				if err == logstore.ErrLogExists || err == logstore.ErrThreadExists {
 					err2 := err
