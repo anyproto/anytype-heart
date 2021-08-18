@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -11,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
 )
 
 // To be renamed to ObjectSetDetails
@@ -80,6 +80,100 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
+}
+
+func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
+	response := func(code pb.RpcObjectGraphResponseErrorCode, nodes []*pb.RpcObjectGraphNode, edges []*pb.RpcObjectGraphEdge, err error) *pb.RpcObjectGraphResponse {
+		m := &pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: code}, Nodes: nodes, Edges: edges}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return response(pb.RpcObjectGraphResponseError_BAD_INPUT, nil, nil, fmt.Errorf("account must be started"))
+	}
+
+	at := mw.app.MustComponent(core.CName).(core.Service)
+
+	var includeArchived bool
+	for _, filter := range req.Filters {
+		// include archived objects if we have explicit filter about it
+		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+			includeArchived = true
+		}
+	}
+	records, _, err := at.ObjectStore().Query(nil, database.Query{
+		Filters:                req.Filters,
+		Limit:                  int(req.Limit),
+		ObjectTypeFilter:       req.ObjectTypeFilter,
+		IncludeArchivedObjects: includeArchived,
+	})
+	if err != nil {
+		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
+	}
+
+	var nodes = make([]*pb.RpcObjectGraphNode, 0, len(records))
+	var edges = make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
+
+	for _, rec := range records {
+		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		nodes = append(nodes, &pb.RpcObjectGraphNode{
+			Id:          id,
+			Type:        pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()),
+			Name:        pbtypes.GetString(rec.Details, bundle.RelationKeyName.String()),
+			Layout:      int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyLayout.String())),
+			Description: pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
+			IconImage:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
+			IconEmoji:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
+		})
+
+		var outgoingRelationLink = make(map[string]struct{}, 10)
+		for k, v := range rec.Details.GetFields() {
+			if list := pbtypes.GetStringListValue(v); len(list) == 0 {
+				continue
+			} else {
+
+				rel, err := at.ObjectStore().GetRelation(k)
+				if err != nil {
+					log.Errorf("ObjectGraph failed to get relation %s: %s", k, err.Error())
+					continue
+				}
+
+				if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
+					continue
+				}
+				for _, l := range list {
+					edges = append(edges, &pb.RpcObjectGraphEdge{
+						Source:      id,
+						Target:      l,
+						Name:        rel.Name,
+						Type:        pb.RpcObjectGraphEdge_Relation,
+						Description: rel.Description,
+					})
+					outgoingRelationLink[l] = struct{}{}
+				}
+			}
+		}
+		links, _ := at.ObjectStore().GetOutboundLinksById(id)
+		for _, link := range links {
+			if _, exists := outgoingRelationLink[link]; !exists {
+				edges = append(edges, &pb.RpcObjectGraphEdge{
+					Source: id,
+					Target: link,
+					Name:   "",
+					Type:   pb.RpcObjectGraphEdge_Link,
+				})
+			}
+		}
+	}
+
+	return response(pb.RpcObjectGraphResponseError_NULL, nodes, edges, nil)
 }
 
 func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {

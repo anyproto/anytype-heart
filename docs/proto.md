@@ -474,6 +474,12 @@
     - [Rpc.Object.FeaturedRelation.Remove.Request](#anytype.Rpc.Object.FeaturedRelation.Remove.Request)
     - [Rpc.Object.FeaturedRelation.Remove.Response](#anytype.Rpc.Object.FeaturedRelation.Remove.Response)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error)
+    - [Rpc.Object.Graph](#anytype.Rpc.Object.Graph)
+    - [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge)
+    - [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node)
+    - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
+    - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
+    - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
     - [Rpc.Object.RelationAdd](#anytype.Rpc.Object.RelationAdd)
     - [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request)
     - [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response)
@@ -687,6 +693,8 @@
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Add.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
+    - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
+    - [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code)
     - [Rpc.Object.RelationAdd.Response.Error.Code](#anytype.Rpc.Object.RelationAdd.Response.Error.Code)
     - [Rpc.Object.RelationDelete.Response.Error.Code](#anytype.Rpc.Object.RelationDelete.Response.Error.Code)
     - [Rpc.Object.RelationListAvailable.Response.Error.Code](#anytype.Rpc.Object.RelationListAvailable.Response.Error.Code)
@@ -1030,6 +1038,7 @@
 | BlockObjectTypeSet | [Rpc.Block.ObjectType.Set.Request](#anytype.Rpc.Block.ObjectType.Set.Request) | [Rpc.Block.ObjectType.Set.Response](#anytype.Rpc.Block.ObjectType.Set.Response) | ## Object&#39;s relations set an existing object type to the object so it will appear in sets and suggests relations from this type TODO: rename BlockObjectTypeSet -&gt; ObjectObjectTypeSet |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request) | [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
+| ObjectGraph | [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request) | [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
 | ObjectRelationAdd | [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request) | [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response) |  |
 | ObjectRelationUpdate | [Rpc.Object.RelationUpdate.Request](#anytype.Rpc.Object.RelationUpdate.Request) | [Rpc.Object.RelationUpdate.Response](#anytype.Rpc.Object.RelationUpdate.Response) |  |
@@ -7908,6 +7917,108 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object.Graph"></a>
+
+### Rpc.Object.Graph
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Edge"></a>
+
+### Rpc.Object.Graph.Edge
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| source | [string](#string) |  |  |
+| target | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| type | [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type) |  |  |
+| description | [string](#string) |  |  |
+| iconImage | [string](#string) |  |  |
+| iconEmoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Node"></a>
+
+### Rpc.Object.Graph.Node
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| type | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| layout | [int32](#int32) |  |  |
+| description | [string](#string) |  |  |
+| iconImage | [string](#string) |  |  |
+| iconEmoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Request"></a>
+
+### Rpc.Object.Graph.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+| limit | [int32](#int32) |  |  |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Response"></a>
+
+### Rpc.Object.Graph.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error) |  |  |
+| nodes | [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node) | repeated |  |
+| edges | [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Response.Error"></a>
+
+### Rpc.Object.Graph.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.RelationAdd"></a>
 
 ### Rpc.Object.RelationAdd
@@ -10828,6 +10939,31 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code"></a>
 
 ### Rpc.Object.FeaturedRelation.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.Graph.Edge.Type"></a>
+
+### Rpc.Object.Graph.Edge.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Link | 0 |  |
+| Relation | 1 |  |
+
+
+
+<a name="anytype.Rpc.Object.Graph.Response.Error.Code"></a>
+
+### Rpc.Object.Graph.Response.Error.Code
 
 
 | Name | Number | Description |
