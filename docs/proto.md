@@ -886,6 +886,7 @@
     - [Range](#anytype.model.Range)
     - [Relation](#anytype.model.Relation)
     - [Relation.Option](#anytype.model.Relation.Option)
+    - [RelationOptions](#anytype.model.RelationOptions)
     - [RelationWithValue](#anytype.model.RelationWithValue)
     - [Relations](#anytype.model.Relations)
     - [Restrictions](#anytype.model.Restrictions)
@@ -13945,6 +13946,21 @@ scope from which this relation have been aggregated |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
 | scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+
+
+
+
+
+
+<a name="anytype.model.RelationOptions"></a>
+
+### RelationOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| options | [Relation.Option](#anytype.model.Relation.Option) | repeated |  |
 
 
 

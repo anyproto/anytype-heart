@@ -2,6 +2,7 @@ package database
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -25,6 +26,7 @@ type Ctrl interface {
 	ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*model.Relation) ([]*model.Relation, error)) (err error)
 	UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionUpdateRequest) (err error)
 	AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (option *model.RelationOption, err error)
+	Do(id string, apply func(b smartblock.SmartBlock) error) error
 
 	SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error)
 }
@@ -53,6 +55,16 @@ func (r router) Get(id string) (database.Database, error) {
 		return req.Option, r.s.UpdateExtraRelationOption(nil, req)
 	}
 
+	deleteOptionNoContext := func(id, relKey, optionId string) error {
+		return r.s.Do(id, func(b smartblock.SmartBlock) error {
+			err := b.DeleteExtraRelationOption(nil, relKey, optionId, true)
+			if err != nil {
+				return err
+			}
+			return nil
+		})
+	}
+
 	modifyExtraRelationsNoContext := func(objectId string, modifier func(current []*model.Relation) ([]*model.Relation, error)) (err error) {
 		return r.s.ModifyExtraRelations(nil, objectId, modifier)
 	}
@@ -77,6 +89,7 @@ func (r router) Get(id string) (database.Database, error) {
 		setOrAddRelations,
 		modifyExtraRelationsNoContext,
 		updateOptionNoContext,
+		deleteOptionNoContext,
 		r.s.CreateSmartBlockFromTemplate,
 	), nil
 }

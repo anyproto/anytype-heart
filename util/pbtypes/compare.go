@@ -271,6 +271,28 @@ func RelationSelectDictDiff(dict1, dict2 []*model.RelationOption) (added []*mode
 			added = append(added, dict2[i])
 			continue
 		} else {
+			if !OptionEqual(opt, dict2[i]) {
+				updated = append(updated, dict2[i])
+				continue
+			}
+		}
+	}
+
+	for i := 0; i < len(dict1); i++ {
+		if r := GetOption(dict2, dict1[i].Id); r == nil {
+			removed = append(removed, dict1[i].Id)
+			continue
+		}
+	}
+	return
+}
+
+func RelationSelectDictDiffOmitScope(dict1, dict2 []*model.RelationOption) (added []*model.RelationOption, updated []*model.RelationOption, removed []string) {
+	for i := 0; i < len(dict2); i++ {
+		if opt := GetOption(dict1, dict2[i].Id); opt == nil {
+			added = append(added, dict2[i])
+			continue
+		} else {
 			if !OptionEqualOmitScope(opt, dict2[i]) {
 				updated = append(updated, dict2[i])
 				continue
@@ -472,4 +494,20 @@ func SortedRange(s *types.Struct, f func(k string, v *types.Value)) {
 	for _, k := range keys {
 		f(k, s.Fields[k])
 	}
+}
+
+// RelationOptionsFilterScope returns only options with provided scope reusing underlying pb values pointers
+func RelationOptionsFilterScope(options []*model.RelationOption, scope model.RelationOptionScope) []*model.RelationOption {
+	if len(options) == 0 {
+		return nil
+	}
+
+	res := make([]*model.RelationOption, 0, len(options))
+	for i := range options {
+		if options[i].Scope == scope {
+			res = append(res, options[i])
+		}
+	}
+
+	return res
 }
