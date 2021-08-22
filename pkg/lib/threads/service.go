@@ -160,7 +160,6 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
-	// we will not get the config on the first run though which can be a problem
 	s.configPullAction()
 	cafeCfg, err := s.cafeCfgGetter.GetCafeConfig()
 	if err == nil && cafeCfg.SimultaneousRequests != 0 {
