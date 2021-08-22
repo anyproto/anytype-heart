@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
@@ -72,8 +73,7 @@ type dataviewImpl struct {
 	defaultRecordFields        *types.Struct // will be always set to the new record
 	recordsUpdatesSubscription database.Subscription
 	depsUpdatesSubscription    database.Subscription
-	depIds []string
-
+	depIds                     []string
 
 	recordsUpdatesCancel context.CancelFunc
 }
@@ -357,10 +357,10 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 	}
 
 	for _, objId := range objIds {
-		err = db.Update(objId, []*model.Relation{rel}, database.Record{})
+		err = db.DeleteRelationOption(objId, relationKey, optionId)
 		if err != nil {
 			if objId != recordId {
-				// not sure it is a right approach here, but we may face some ACL problems later otherwise
+				// not sure if it is a right approach here, but we may face some ACL problems later otherwise
 				log.Errorf("DeleteRelationOption failed to multiupdate %s: %s", objId, err.Error())
 			} else {
 				return err
@@ -368,6 +368,8 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 		}
 		log.Debugf("DeleteRelationOption updated %s", objId)
 	}
+	// todo: remove after source refactoring
+	time.Sleep(time.Second * 1)
 
 	if showEvent {
 		err = d.Apply(s)
@@ -462,7 +464,7 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 	if len(tb.Model().GetDataview().Views) == 0 {
 		return fmt.Errorf("cannot remove the last view")
 	}
-	
+
 	dv := d.getDataviewImpl(tb)
 	if dv.activeViewId == viewId {
 		views := tb.Model().GetDataview().Views
@@ -997,7 +999,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 						d.Unlock()
 						continue
 					}
-					rels :=  tb.Model().GetDataview().GetRelations()
+					rels := tb.Model().GetDataview().GetRelations()
 					if rec != nil && rels != nil {
 						for k, v := range rec.Fields {
 							rel := pbtypes.GetRelation(rels, k)

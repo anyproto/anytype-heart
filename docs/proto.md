@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -32,10 +28,6 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -393,6 +385,10 @@
     - [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error)
     - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
     - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
+    - [Rpc.DownloadFile](#anytype.Rpc.DownloadFile)
+    - [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request)
+    - [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response)
+    - [Rpc.DownloadFile.Response.Error](#anytype.Rpc.DownloadFile.Response.Error)
     - [Rpc.Export](#anytype.Rpc.Export)
     - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
     - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
@@ -668,6 +664,7 @@
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code)
+    - [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
     - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
@@ -716,9 +713,6 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -852,9 +846,6 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -865,10 +856,6 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
-  
-  
-  
-
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -899,6 +886,7 @@
     - [Range](#anytype.model.Range)
     - [Relation](#anytype.model.Relation)
     - [Relation.Option](#anytype.model.Relation.Option)
+    - [RelationOptions](#anytype.model.RelationOptions)
     - [RelationWithValue](#anytype.model.RelationWithValue)
     - [Relations](#anytype.model.Relations)
     - [Restrictions](#anytype.model.Restrictions)
@@ -930,9 +918,6 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -973,6 +958,7 @@
 | ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype.Rpc.LinkPreview.Request) | [Rpc.LinkPreview.Response](#anytype.Rpc.LinkPreview.Response) |  |
 | UploadFile | [Rpc.UploadFile.Request](#anytype.Rpc.UploadFile.Request) | [Rpc.UploadFile.Response](#anytype.Rpc.UploadFile.Response) |  |
+| DownloadFile | [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request) | [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
@@ -6664,6 +6650,64 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.DownloadFile"></a>
+
+### Rpc.DownloadFile
+
+
+
+
+
+
+
+<a name="anytype.Rpc.DownloadFile.Request"></a>
+
+### Rpc.DownloadFile.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| hash | [string](#string) |  |  |
+| path | [string](#string) |  | path to save file. Temp directory is used if empty |
+
+
+
+
+
+
+<a name="anytype.Rpc.DownloadFile.Response"></a>
+
+### Rpc.DownloadFile.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.DownloadFile.Response.Error](#anytype.Rpc.DownloadFile.Response.Error) |  |  |
+| localPath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.DownloadFile.Response.Error"></a>
+
+### Rpc.DownloadFile.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Export"></a>
 
 ### Rpc.Export
@@ -10479,6 +10523,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.DownloadFile.Response.Error.Code"></a>
+
+### Rpc.DownloadFile.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+
+
+
 <a name="anytype.Rpc.Export.Format"></a>
 
 ### Rpc.Export.Format
@@ -13198,6 +13256,7 @@ Precondition: user A and user B opened the same block
 | DropFiles | 0 |  |
 | Import | 1 |  |
 | Export | 2 |  |
+| SaveFile | 3 |  |
 
 
  
@@ -13887,6 +13946,21 @@ scope from which this relation have been aggregated |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
 | scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+
+
+
+
+
+
+<a name="anytype.model.RelationOptions"></a>
+
+### RelationOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| options | [Relation.Option](#anytype.model.Relation.Option) | repeated |  |
 
 
 

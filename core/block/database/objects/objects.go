@@ -29,6 +29,7 @@ func New(
 	setRelations func(id string, relations []*model.Relation) (err error),
 	modifyExtraRelations func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error,
 	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *model.RelationOption, err error),
+	deleteRelationOption func(id string, relationKey string, optionId string) error,
 	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error),
 ) database.Database {
 	return &setOfObjects{
@@ -39,6 +40,7 @@ func New(
 		setRelations:              setRelations,
 		createSmartBlock:          createSmartBlock,
 		modifyExtraRelations:      modifyExtraRelations,
+		deleteExtraRelationOption: deleteRelationOption,
 		updateExtraRelationOption: updateExtraRelationOption,
 	}
 }
@@ -50,6 +52,7 @@ type setOfObjects struct {
 	getRelations              func(objectId string) (relations []*model.Relation, err error)
 	setRelations              func(id string, relations []*model.Relation) (err error)
 	modifyExtraRelations      func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error
+	deleteExtraRelationOption func(id string, relationKey string, optionId string) error
 	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *model.RelationOption, err error)
 	createSmartBlock          func(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 }
@@ -124,6 +127,14 @@ func (sp *setOfObjects) Update(id string, rels []*model.Relation, rec database.R
 		ContextId: id, // not sure?
 		Details:   details,
 	})
+}
+
+func (sp *setOfObjects) ModifyExtraRelations(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error {
+	return sp.modifyExtraRelations(id, modifier)
+}
+
+func (sp *setOfObjects) DeleteRelationOption(id string, relKey string, optionId string) error {
+	return sp.deleteExtraRelationOption(id, relKey, optionId)
 }
 
 func (sp *setOfObjects) UpdateRelationOption(id string, relationKey string, option model.RelationOption) (optionId string, err error) {

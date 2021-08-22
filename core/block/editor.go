@@ -29,6 +29,8 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
+var ErrOptionUsedByOtherObjects = fmt.Errorf("option is used by other objects")
+
 func (s *service) MarkArchived(id string, archived bool) (err error) {
 	return s.Do(id, func(b smartblock.SmartBlock) error {
 		return b.SetDetails(nil, []*pb.RpcBlockSetDetailsDetail{
@@ -723,13 +725,32 @@ func (s *service) UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObject
 }
 
 func (s *service) DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionDeleteRequest) error {
-	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		err := b.DeleteExtraRelationOption(ctx, req.RelationKey, req.OptionId, true)
-		if err != nil {
-			return err
+	objIds, err := s.anytype.ObjectStore().AggregateObjectIdsForOptionAndRelation(req.RelationKey, req.OptionId)
+	if err != nil {
+		return err
+	}
+
+	if !req.ConfirmRemoveAllValuesInRecords {
+		for _, objId := range objIds {
+			if objId != req.ContextId {
+				return ErrOptionUsedByOtherObjects
+			}
 		}
-		return nil
-	})
+	} else {
+		for _, objId := range objIds {
+			err = s.Do(objId, func(b smartblock.SmartBlock) error {
+				err := b.DeleteExtraRelationOption(ctx, req.RelationKey, req.OptionId, true)
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+			if err != nil && err != smartblock.ErrRelationOptionNotFound {
+				return err
+			}
+		}
+	}
+	return nil
 }
 
 func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error) {
