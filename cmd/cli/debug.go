@@ -41,7 +41,7 @@ var dumpTree = &cobra.Command{
 
 		comps = append(comps, event.NewCallbackSender(func(event *pb.Event) {}))
 
-		app, err := anytype.StartNewApp(comps...)
+		app, err := anytype.StartNewApp(nil, comps...)
 		if err != nil {
 			console.Fatal("failed to start anytype: %s", err.Error())
 		}
