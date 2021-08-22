@@ -80,11 +80,13 @@ type service struct {
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
 
+	configPullAction func()
+
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
 }
 
-func New() Service {
+func New(configPullAction func()) Service {
 	/* adjust ThreadsDB parameters */
 
 	// thread pulling cycle
@@ -112,9 +114,10 @@ func New() Service {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	return &service{
-		ctx:                            ctx,
-		ctxCancel:                      cancel,
-		simultaneousRequests:           simultaneousRequests,
+		ctx:                  ctx,
+		ctxCancel:            cancel,
+		simultaneousRequests: simultaneousRequests,
+		configPullAction:     configPullAction,
 	}
 }
 
@@ -158,6 +161,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Run() (err error) {
 	// we will not get the config on the first run though which can be a problem
+	s.configPullAction()
 	cafeCfg, err := s.cafeCfgGetter.GetCafeConfig()
 	if err == nil && cafeCfg.SimultaneousRequests != 0 {
 		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)

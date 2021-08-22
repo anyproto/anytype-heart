@@ -64,16 +64,16 @@ func BootstrapConfigAndWallet(newAccount bool, rootPath, accountId string) ([]ap
 	}, nil
 }
 
-func StartNewApp(components ...app.Component) (a *app.App, err error) {
+func StartNewApp(configPullAction func(*app.App), components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
-	Bootstrap(a, components...)
+	Bootstrap(a, func() { configPullAction(a) }, components...)
 	if err = a.Start(); err != nil {
 		return
 	}
 	return
 }
 
-func Bootstrap(a *app.App, components ...app.Component) {
+func Bootstrap(a *app.App, configPullAction func(), components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
@@ -85,7 +85,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
-		Register(threads.New()).
+		Register(threads.New(configPullAction)).
 		Register(source.New()).
 		Register(core.New()).
 		Register(builtintemplate.New()).
