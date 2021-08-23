@@ -127,6 +127,17 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 		nodeExists[id] = struct{}{}
 	}
 
+	homeId := at.PredefinedBlocks().Home
+	if _, exists := nodeExists[homeId]; !exists {
+		records = append(records, database.Record{&types.Struct{
+			Fields: map[string]*types.Value{
+				"id": pbtypes.String(homeId),
+				"name": pbtypes.String("Home"),
+				"iconEmoji": pbtypes.String("🏠"),
+			},
+		}})
+	}
+
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		nodes = append(nodes, &pb.RpcObjectGraphNode{
