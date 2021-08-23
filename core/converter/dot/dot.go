@@ -45,14 +45,14 @@ type linkInfo struct {
 }
 
 type dot struct {
-	graph       *cgraph.Graph
-	graphviz    *graphviz.Graphviz
-	knownIds    []string
-	fileHashes  []string
-	imageHashes []string
+	graph        *cgraph.Graph
+	graphviz     *graphviz.Graphviz
+	knownIds     []string
+	fileHashes   []string
+	imageHashes  []string
 	exportFormat graphviz.Format
-	nodes       map[string]*cgraph.Node
-	linksByNode map[string][]linkInfo
+	nodes        map[string]*cgraph.Node
+	linksByNode  map[string][]linkInfo
 }
 
 func (d *dot) SetKnownLinks(ids []string) converter.Converter {

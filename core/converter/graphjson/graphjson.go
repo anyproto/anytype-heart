@@ -74,7 +74,7 @@ func (g *graphjson) ImageHashes() []string {
 
 func (g *graphjson) Add(st *state.State) error {
 	n := Node{
-		Id: 		 st.RootId(),
+		Id:          st.RootId(),
 		Name:        pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
 		IconImage:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconImage.String()),
 		IconEmoji:   pbtypes.GetString(st.Details(), bundle.RelationKeyIconEmoji.String()),
