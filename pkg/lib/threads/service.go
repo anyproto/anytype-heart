@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
@@ -55,8 +56,6 @@ type service struct {
 	GRPCServerOptions []grpc.ServerOption
 	GRPCDialOptions   []grpc.DialOption
 
-	cafeCfgGetter CafeConfigGetter
-
 	// the number of simultaneous requests when processing threads or adding replicator
 	simultaneousRequests int
 
@@ -80,13 +79,13 @@ type service struct {
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
 
-	configPullAction func()
+	configPullAction func() (*pb.GetConfigResponseConfig, error)
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
 }
 
-func New(configPullAction func()) Service {
+func New(configPullAction func() (*pb.GetConfigResponseConfig, error)) Service {
 	/* adjust ThreadsDB parameters */
 
 	// thread pulling cycle
@@ -123,8 +122,6 @@ func New(configPullAction func()) Service {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
-	// we can't import objectsstore directly otherwise we get an import cycle in tests
-	s.cafeCfgGetter = a.MustComponent("objectstore").(CafeConfigGetter)
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
@@ -160,8 +157,7 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
-	s.configPullAction()
-	cafeCfg, err := s.cafeCfgGetter.GetCafeConfig()
+	cafeCfg, err := s.configPullAction()
 	if err == nil && cafeCfg.SimultaneousRequests != 0 {
 		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
 	}

@@ -576,7 +576,7 @@ func keypairsToAddresses(keypairs []wallet.Keypair) []string {
 	return addresses
 }
 
-func tryGetAccountConfigOnceAndSave(a *app.App) {
+func tryGetAccountConfigOnceAndSave(a *app.App) (*pb2.GetConfigResponseConfig, error) {
 	store := a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	cafe := a.MustComponent(cafeClient.CName).(cafeClient.Client)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
@@ -584,6 +584,7 @@ func tryGetAccountConfigOnceAndSave(a *app.App) {
 	resp, err := cafe.GetConfig(ctx, &pb2.GetConfigRequest{})
 	if err != nil {
 		log.Errorf("failed to request client config from cafe: %s", err.Error())
+		return nil, err
 	}
 	if resp != nil {
 		cfg := &pb.RpcAccountConfig{
@@ -595,10 +596,15 @@ func tryGetAccountConfigOnceAndSave(a *app.App) {
 		err = store.SaveCafeConfig(resp.Config)
 		if err != nil {
 			log.Errorf("failed to save cafe config to objectstore: %s", err.Error())
+			return nil, err
 		}
 		err = store.SaveClientConfig(cfg)
 		if err != nil {
 			log.Errorf("failed to save client config to objectstore: %s", err.Error())
+			return nil, err
 		}
+		return resp.Config, nil
+	} else {
+		return nil, fmt.Errorf("got nil response from cafe")
 	}
 }

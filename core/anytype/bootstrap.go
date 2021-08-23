@@ -1,6 +1,7 @@
 package anytype
 
 import (
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -17,6 +18,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
+	pb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -64,16 +66,22 @@ func BootstrapConfigAndWallet(newAccount bool, rootPath, accountId string) ([]ap
 	}, nil
 }
 
-func StartNewApp(configPullAction func(*app.App), components ...app.Component) (a *app.App, err error) {
+func StartNewApp(configPullAction func(*app.App) (*pb.GetConfigResponseConfig, error), components ...app.Component) (a *app.App, err error) {
 	a = new(app.App)
-	Bootstrap(a, func() { configPullAction(a) }, components...)
+	wrappedAction := func() (*pb.GetConfigResponseConfig, error) {
+		if configPullAction != nil {
+			return configPullAction(a)
+		}
+		return nil, fmt.Errorf("nil config pull function")
+	}
+	Bootstrap(a, wrappedAction, components...)
 	if err = a.Start(); err != nil {
 		return
 	}
 	return
 }
 
-func Bootstrap(a *app.App, configPullAction func(), components ...app.Component) {
+func Bootstrap(a *app.App, configPullAction func() (*pb.GetConfigResponseConfig, error), components ...app.Component) {
 	for _, c := range components {
 		a.Register(c)
 	}
