@@ -23,13 +23,6 @@ const (
 	EdgeTypeLink
 )
 
-type linkInfo struct {
-	target   string
-	edgeType edgeType
-	name     string
-	full     string
-}
-
 type dot struct {
 }
 
