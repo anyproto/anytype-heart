@@ -871,6 +871,7 @@
     - [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
+    - [Block.Content.Latex](#anytype.model.Block.Content.Latex)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
     - [Block.Content.Link](#anytype.model.Block.Content.Link)
     - [Block.Content.Relation](#anytype.model.Block.Content.Relation)
@@ -13490,6 +13491,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype.model.Block.Content.Relation) |  |  |
 | featuredRelations | [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations) |  |  |
+| latex | [Block.Content.Latex](#anytype.model.Block.Content.Latex) |  |  |
 
 
 
@@ -13674,6 +13676,21 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Latex"></a>
+
+### Block.Content.Latex
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
 
 
 
