@@ -1,8 +1,15 @@
+// +build !windows
+
 package dot
 
 import (
 	"bytes"
 	"fmt"
+	"io/ioutil"
+
+	"github.com/goccy/go-graphviz"
+	"github.com/goccy/go-graphviz/cgraph"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -10,9 +17,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/goccy/go-graphviz"
-	"github.com/goccy/go-graphviz/cgraph"
-	"io/ioutil"
 )
 
 func NewMultiConverter(format graphviz.Format) converter.MultiConverter {
