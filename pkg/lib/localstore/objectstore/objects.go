@@ -245,6 +245,7 @@ type ObjectStore interface {
 	UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetOutboundLinksById(id string) ([]string, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, relationFormat model.RelationFormat, objectType string) (options []*model.RelationOption, err error)
@@ -1114,6 +1115,16 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 			Outbound: outbound,
 		},
 	}, nil
+}
+
+func (m *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return findOutboundLinks(txn, id)
 }
 
 func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error) {
