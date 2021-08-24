@@ -1,4 +1,4 @@
-// +build linux darwin
+// +build !gomobile,!windows
 
 package dot
 
