@@ -46,6 +46,8 @@ var (
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
 	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
+	indexedHeadsState       = ds.NewKey("/" + pagesPrefix + "/headsstate")
+
 	clientConfig           = ds.NewKey("/" + pagesPrefix + "/clientconfig")
 
 	relationsPrefix = "relations"
@@ -267,6 +269,9 @@ type ObjectStore interface {
 	GetChecksums() (checksums *model.ObjectStoreChecksums, err error)
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(checksums *model.ObjectStoreChecksums) (err error)
+
+	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
+	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
 
 	GetClientConfig() (cfg *pb2.RpcAccountConfig, err error)
 	SaveClientConfig(cfg *pb2.RpcAccountConfig) (err error)
@@ -1349,6 +1354,37 @@ func (m *dsObjectStore) InjectObjectDetails(id string, details *types.Struct) er
 	}
 
 	return nil
+}
+
+// GetLastIndexedHeadsHash return empty hash without error if record was not found
+func (m *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return "", fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if val, err := txn.Get(indexedHeadsState.ChildString(id)); err != nil && err != ds.ErrNotFound {
+		return "", fmt.Errorf("failed to get heads hash: %w", err)
+	} else if val == nil {
+		return "", nil
+	} else {
+		return string(val), nil
+	}
+}
+
+func (m *dsObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Put(indexedHeadsState.ChildString(id), []byte(headsHash)); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {

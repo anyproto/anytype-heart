@@ -2,7 +2,9 @@ package indexer
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"math"
+	"sort"
 	"sync"
 	"time"
 
@@ -54,7 +56,7 @@ func New() Indexer {
 }
 
 type Indexer interface {
-	SetLocalDetails(id string, st *types.Struct, index bool) error
+	SetLocalDetails(id string, st *types.Struct, index bool)
 	IndexOutgoingLinks(id string, links []string) error
 
 	app.ComponentRunnable
@@ -248,6 +250,55 @@ func (i *indexer) reindexIfNeeded() error {
 	return i.Reindex(reindex)
 }
 
+func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
+	tids, err := i.threadService.Logstore().Threads()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var idsToReindex []string
+	for _, tid := range tids {
+		lastHash, err := i.store.GetLastIndexedHeadsHash(tid.String())
+		if err != nil {
+			log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
+			continue
+		}
+
+		info, err := i.threadService.Logstore().GetThread(tid)
+		if err != nil {
+			log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
+			continue
+		}
+		var heads = make([]string, 0, len(info.Logs))
+		for _, li := range info.Logs {
+			head := li.Head.ID
+			if !head.Defined() {
+				continue
+			}
+
+			heads = append(heads, head.String())
+		}
+		sort.Strings(heads)
+		hh := headsHash(heads)
+		if lastHash != hh {
+			log.With("thread",tid.String()).Errorf("not equal hash: %s!=%s. Current heads: %v", lastHash, hh, heads)
+			idsToReindex = append(idsToReindex, tid.String())
+		}
+	}
+
+	if len(idsToReindex) > 0 {
+		for _, id := range idsToReindex {
+			err = i.index(id, nil, false)
+			if err == nil {
+				success++
+			} else {
+				log.With("thread", id).Errorf("reindexOutdatedThreads failed to index doc: %s", err.Error())
+			}
+		}
+	}
+	return len(idsToReindex), success, nil
+}
+
 func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 	if reindex != 0 {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0)
@@ -295,14 +346,42 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		if err != nil {
 			return err
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		if metrics.Enabled {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType: metrics.ReindexTypeThreads,
+				Total:       len(ids),
+				Success:     successfullyReindexed,
+				SpentMs:     int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
+	} else {
+		start := time.Now()
+		total, success, err := i.reindexOutdatedThreads()
+		if err != nil {
+			log.Infof("failed to reindex outdated objects: %s", err.Error())
+		} else {
+			log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
+		}
+		if metrics.Enabled && total > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType: metrics.ReindexTypeOutdatedHeads,
+				Total:       total,
+				Success:     success,
+				SpentMs:     int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 	}
 	if reindex&reindexFileObjects != 0 {
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
 		msg := fmt.Sprintf("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
@@ -310,8 +389,19 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		} else {
 			log.Info(msg)
 		}
+
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType: metrics.ReindexTypeFiles,
+				Total:       len(ids),
+				Success:     successfullyReindexed,
+				SpentMs:     int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 	}
 	if reindex&reindexBundledRelations != 0 {
+		start := time.Now()
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return err
@@ -323,6 +413,16 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		} else {
 			log.Info(msg)
 		}
+
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType: metrics.ReindexTypeBundledRelations,
+				Total:       len(ids),
+				Success:     successfullyReindexed,
+				SpentMs:     int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 	}
 	if reindex&reindexBundledTypes != 0 {
 		// lets add anytypeProfile here, because it's seems too much to create one more counter especially for it
@@ -330,12 +430,22 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		if err != nil {
 			return err
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
 		msg := fmt.Sprintf("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
 		} else {
 			log.Info(msg)
+		}
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType: metrics.ReindexTypeBundledTypes,
+				Total:       len(ids),
+				Success:     successfullyReindexed,
+				SpentMs:     int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
 		}
 	}
 	if reindex&reindexBundledObjects != 0 {
@@ -370,12 +480,22 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 				i.store.DeleteObject(eId)
 			}
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
 		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed; removed: %d", successfullyReindexed, len(ids), removed)
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
 		} else {
 			log.Info(msg)
+		}
+
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType: metrics.ReindexTypeBundledTemplates,
+				Total:       len(ids),
+				Success:     successfullyReindexed,
+				SpentMs:     int(time.Since(start).Milliseconds()),
+			})
 		}
 	}
 	if reindex&reindexFulltext != 0 {
@@ -404,16 +524,35 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 	return i.saveLatestChecksums()
 }
 
-func (i *indexer) openDoc(id string) (state.Doc, error) {
+func (i *indexer) openDoc(id string) (doc state.Doc, headsHash string, err error) {
+	sbType, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		return nil, "", err
+	}
+	sourcetype, err := i.source.SourceTypeBySbType(sbType)
+	if err != nil {
+		return nil, "", err
+	}
+
+	if !sourcetype.Virtual() {
+		d, err := i.getDoc(id)
+		if err != nil {
+			return nil, "", err
+		}
+
+		return d.st, d.headsHash(), nil
+	}
+
 	// set listenToOwnChanges to false because it doesn't means. We do not use source's applyRecords
 	s, err := i.source.NewSource(id, false)
 	if err != nil {
 		err = fmt.Errorf("anytype.GetBlock error: %v", err)
-		return nil, err
+		return nil, "", err
 	}
+
 	d, err := s.ReadDoc(nil, false)
 	if err != nil {
-		return nil, err
+		return nil, "", err
 	}
 
 	st := d.(*state.State)
@@ -433,7 +572,7 @@ func (i *indexer) openDoc(id string) (state.Doc, error) {
 		st.AddRelation(rel)
 	}
 
-	return st, nil
+	return st, "", nil
 }
 
 func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
@@ -451,7 +590,7 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 		return nil
 	}
 
-	d, err := i.openDoc(id)
+	d, headsHash, err := i.openDoc(id)
 	if err != nil {
 		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
 		return fmt.Errorf("failed to open doc: %s", err.Error())
@@ -474,6 +613,13 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 		} else {
 			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.ExtraRelations()}, true); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
+			}
+		}
+
+		if headsHash != "" {
+			err = i.store.SaveLastIndexedHeadsHash(id, headsHash)
+			if err != nil {
+				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
 			}
 		}
 		if curDetails == nil || t == smartblock.SmartBlockTypeFile {
@@ -569,22 +715,22 @@ func (i *indexer) getDoc(id string) (d *doc, err error) {
 	return d, d.buildMetaTree(i.anytype.ProfileID())
 }
 
-func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, onlyDetails bool) {
+func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, onlyDetails bool) error {
 	d, err := i.getDoc(id)
 	if err != nil {
-		log.With("thread", id).Errorf("indexer getDoc error: %s", err.Error())
-		return
+		return fmt.Errorf("failed to get doc: %s", err.Error())
 	}
 
 	d.mu.Lock()
 	if d.sb.Type() == smartblock.SmartBlockTypeArchive {
 		if err := i.store.AddToIndexQueue(id); err != nil {
 			log.With("thread", id).Errorf("can't add archive to index queue: %v", err)
+			return err
 		} else {
 			log.With("thread", id).Debugf("archive added to index queue")
 		}
 		d.mu.Unlock()
-		return
+		return nil
 	}
 
 	d.mu.Unlock()
@@ -605,10 +751,16 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	if onlyDetails {
 		if err := i.store.UpdateObjectDetails(id, meta.Details, nil, false); err != nil {
 			log.With("thread", id).Errorf("can't update object store: %v", err)
+			return err
 		} else {
 			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
+			log.With("thread", id).Errorf("save last indexed heads: %v", d.heads())
+			err = i.store.SaveLastIndexedHeadsHash(id, d.headsHash())
+			if err != nil {
+				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
+			}
 		}
-		return
+		return nil
 	}
 
 	setCreator := pbtypes.GetString(d.st.LocalDetails(), bundle.RelationKeyCreator.String())
@@ -635,15 +787,24 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 
 	if err := i.store.UpdateObjectDetails(id, meta.Details, &model.Relations{Relations: meta.Relations}, false); err != nil {
 		log.With("thread", id).Errorf("can't update object store: %v", err)
+		return err
 	} else {
 		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
+		log.With("thread", id).Errorf("save last indexed heads: %v", d.heads())
+		err = i.store.SaveLastIndexedHeadsHash(id, d.headsHash())
+		if err != nil {
+			log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
+		}
 	}
 
 	if err := i.store.AddToIndexQueue(id); err != nil {
 		log.With("thread", id).Errorf("can't add id to index queue: %v", err)
+		return err
 	} else {
 		log.With("thread", id).Debugf("to index queue")
 	}
+
+	return nil
 }
 
 func (i *indexer) ftLoop() {
@@ -774,16 +935,19 @@ func (i *indexer) Close() error {
 	return nil
 }
 
-func (i *indexer) SetLocalDetails(id string, st *types.Struct, index bool) error {
+func (i *indexer) SetLocalDetails(id string, st *types.Struct, index bool) {
 	d, err := i.getDoc(id)
 	if err != nil {
 		log.With("thread", id).Errorf("indexer getDoc error: %s", err.Error())
-		return err
+
+		// still, lets save the local object details so we can inject them later
+		err = i.store.UpdateObjectDetails(id, st, nil, false)
+		return
 	}
 
 	d.SetLocalDetails(st)
 	if index {
 		i.index(id, nil, true)
 	}
-	return nil
+	return
 }
