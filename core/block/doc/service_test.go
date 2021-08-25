@@ -1,4 +1,4 @@
-package listener
+package doc
 
 import (
 	"context"
@@ -21,15 +21,15 @@ func TestListener_ReportChange(t *testing.T) {
 	}).(*state.State)
 	var expCount = 2
 	for i := 0; i < expCount; i++ {
-		l.OnWholeChange(func(ctx context.Context, id string, s *state.State) error {
-			assert.Equal(t, expId, id)
-			assert.Equal(t, expState.StringDebug(), s.StringDebug())
+		l.OnWholeChange(func(ctx context.Context, info DocInfo) error {
+			assert.Equal(t, expId, info.Id)
+			assert.Equal(t, expState.StringDebug(), info.State.StringDebug())
 			calls++
 			return nil
 		})
 	}
 
-	l.ReportChange(context.Background(), expId, expState)
+	l.ReportChange(context.Background(), DocInfo{Id: expId, State: expState})
 
 	assert.Equal(t, expCount, calls)
 }

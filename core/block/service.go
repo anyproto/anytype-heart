@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/listener"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 
@@ -28,7 +28,6 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -176,7 +175,8 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
-	GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error)
+	GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, err error)
+	Wakeup(ctx context.Context, id string) (err error)
 
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
@@ -209,17 +209,17 @@ func New() Service {
 }
 
 type service struct {
-	anytype             core.Service
-	meta                meta.Service
-	status              status.Service
-	sendEvent           func(event *pb.Event)
-	closed              bool
-	linkPreview         linkpreview.LinkPreview
-	process             process.Service
-	stateChangeListener listener.Listener
-	app                 *app.App
-	source              source.Service
-	cache               ocache.OCache
+	anytype     core.Service
+	meta        meta.Service
+	status      status.Service
+	sendEvent   func(event *pb.Event)
+	closed      bool
+	linkPreview linkpreview.LinkPreview
+	process     process.Service
+	doc         doc.Service
+	app         *app.App
+	source      source.Service
+	cache       ocache.OCache
 }
 
 func (s *service) Name() string {
@@ -234,7 +234,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
-	s.stateChangeListener = a.MustComponent(listener.CName).(listener.Listener)
+	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -320,9 +320,9 @@ func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
 	bs := editor.NewBreadcrumbs(s.meta)
 	if err = bs.Init(&smartblock.InitContext{
-		App:          s.app,
-		ChangeReport: s.stateChangeListener,
-		Source:       source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
+		App:    s.app,
+		Doc:    s.doc,
+		Source: source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
 	}
@@ -338,13 +338,13 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 }
 
 func (s *service) CloseBlock(id string) error {
-	ob, err := s.getSmartblock(context.TODO(), id)
+	err := s.Do(id, func(b smartblock.SmartBlock) error {
+		b.BlockClose()
+		return nil
+	})
 	if err != nil {
 		return err
 	}
-	ob.Lock()
-	defer ob.Unlock()
-	ob.BlockClose()
 	s.cache.Release(id)
 	return nil
 }
@@ -630,8 +630,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	if initCtx.App == nil {
 		initCtx.App = s.app
 	}
-	if initCtx.ChangeReport == nil {
-		initCtx.ChangeReport = s.stateChangeListener
+	if initCtx.Doc == nil {
+		initCtx.Doc = s.doc
 	}
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
