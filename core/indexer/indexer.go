@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"math"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -251,6 +252,10 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
+	if i.threadService == nil {
+		return 0, 0, nil
+	}
+
 	tids, err := i.threadService.Logstore().Threads()
 	if err != nil {
 		return 0, 0, err
@@ -281,7 +286,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 		sort.Strings(heads)
 		hh := headsHash(heads)
 		if lastHash != hh {
-			log.With("thread",tid.String()).Errorf("not equal hash: %s!=%s. Current heads: %v", lastHash, hh, heads)
+			log.With("thread",tid.String()).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
 			idsToReindex = append(idsToReindex, tid.String())
 		}
 	}
@@ -534,7 +539,7 @@ func (i *indexer) openDoc(id string) (doc state.Doc, headsHash string, err error
 		return nil, "", err
 	}
 
-	if !sourcetype.Virtual() {
+	if !sourcetype.Virtual() && !strings.HasPrefix(id, "_"){
 		d, err := i.getDoc(id)
 		if err != nil {
 			return nil, "", err
@@ -754,7 +759,6 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 			return err
 		} else {
 			log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
-			log.With("thread", id).Errorf("save last indexed heads: %v", d.heads())
 			err = i.store.SaveLastIndexedHeadsHash(id, d.headsHash())
 			if err != nil {
 				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
@@ -790,7 +794,6 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 		return err
 	} else {
 		log.With("thread", id).Infof("indexed %d records: det: %v", len(records), pbtypes.GetString(meta.Details, bundle.RelationKeyName.String()))
-		log.With("thread", id).Errorf("save last indexed heads: %v", d.heads())
 		err = i.store.SaveLastIndexedHeadsHash(id, d.headsHash())
 		if err != nil {
 			log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
@@ -941,7 +944,10 @@ func (i *indexer) SetLocalDetails(id string, st *types.Struct, index bool) {
 		log.With("thread", id).Errorf("indexer getDoc error: %s", err.Error())
 
 		// still, lets save the local object details so we can inject them later
-		err = i.store.UpdateObjectDetails(id, st, nil, false)
+		err = i.store.InjectObjectDetails(id, st)
+		if err != nil {
+			log.Errorf("SetLocalDetails InjectObjectDetails error: %s", err.Error())
+		}
 		return
 	}
 
