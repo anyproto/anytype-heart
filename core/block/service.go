@@ -176,7 +176,7 @@ type Service interface {
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
 	GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, err error)
-	Wakeup(ctx context.Context, id string) (err error)
+	Wakeup(id string) (err error)
 
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)

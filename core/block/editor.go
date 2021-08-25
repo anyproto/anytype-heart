@@ -642,7 +642,7 @@ func (s *service) GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, 
 	return
 }
 
-func (s *service) Wakeup(_ context.Context, id string) (err error) {
+func (s *service) Wakeup(id string) (err error) {
 	return s.Do(id, func(b smartblock.SmartBlock) error {
 		return nil
 	})

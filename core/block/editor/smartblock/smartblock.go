@@ -1101,6 +1101,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
+	sb.reportChange(s)
 	return nil
 }
 
@@ -1121,6 +1122,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.storeFileKeys()
 	sb.CheckSubscriptions()
+	sb.reportChange(sb.Doc.(*state.State))
 	return nil
 }
 
