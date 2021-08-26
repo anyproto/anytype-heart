@@ -336,13 +336,16 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		}
 	}
 	var archivedMap = make(map[string]struct{}, 100)
-	d, _, err := i.openDoc(i.anytype.PredefinedBlocks().Archive)
-	if err != nil {
-		log.Errorf("reindex failed to open archive: %s", err.Error())
-	} else {
-		for _, b := range d.Blocks() {
-			if v := b.GetLink(); v != nil {
-				archivedMap[v.TargetBlockId] = struct{}{}
+
+	if reindex > 0 {
+		d, _, err := i.openDoc(i.anytype.PredefinedBlocks().Archive)
+		if err != nil {
+			log.Errorf("reindex failed to open archive: %s", err.Error())
+		} else {
+			for _, b := range d.Blocks() {
+				if v := b.GetLink(); v != nil {
+					archivedMap[v.TargetBlockId] = struct{}{}
+				}
 			}
 		}
 	}

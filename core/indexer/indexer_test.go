@@ -116,6 +116,8 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.getSerach.EXPECT().GetFullIndexInfo(gomock.Any()).AnyTimes()
 	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
+	fx.anytype.EXPECT().PredefinedBlocks()
+
 	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
 	for _, rk := range bundle.ListRelationsKeys() {
