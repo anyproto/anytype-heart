@@ -333,7 +333,8 @@ func (s *service) testArchiveInconsistency() {
 
 	for id, proceed := range archivedObjects {
 		if !proceed {
-			log.Errorf("ARCHIVE INCONSISTENCY: object %s not found in objectsearch", id)
+			// this may be ok in case of recovery, so keep it debug
+			log.Debugf("ARCHIVE INCONSISTENCY: object %s not found in objectsearch", id)
 		}
 	}
 }
