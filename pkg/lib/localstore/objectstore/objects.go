@@ -387,6 +387,12 @@ func (m *dsObjectStore) EraseIndexes() (err error) {
 	if err != nil {
 		log.Errorf("eraseStoredRelations failed: %s", err.Error())
 	}
+
+	err = m.eraseLinks()
+	if err != nil {
+		log.Errorf("eraseLinks failed: %s", err.Error())
+	}
+
 	return
 }
 
@@ -413,6 +419,28 @@ func (m *dsObjectStore) eraseStoredRelations() (err error) {
 			log.Errorf("eraseStoredRelations: failed to delete key %s: %s", key, err.Error())
 		}
 	}
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) eraseLinks() (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return err
+	}
+	defer txn.Discard()
+	n, err := removeByPrefix(txn, pagesOutboundLinksBase.String())
+	if err != nil {
+		return err
+	}
+
+	log.Infof("eraseLinks: removed %d outbound links", n)
+	n, err = removeByPrefix(txn, pagesInboundLinksBase.String())
+	if err != nil {
+		return err
+	}
+
+	log.Infof("eraseLinks: removed %d inbound links", n)
+
 	return txn.Commit()
 }
 
@@ -2183,6 +2211,26 @@ func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
 	}
 
 	return localstore.GetLeavesFromResults(results)
+}
+
+func removeByPrefix(txn ds.Txn, prefix string) (int, error) {
+	results, err := txn.Query(query.Query{
+		Prefix:   prefix,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	var removed int
+	for res := range results.Next() {
+		err := txn.Delete(ds.NewKey(res.Key))
+		if err != nil {
+			return removed, err
+		}
+		removed++
+	}
+	return removed, nil
 }
 
 func pageLinkKeys(id string, in []string, out []string) []ds.Key {
