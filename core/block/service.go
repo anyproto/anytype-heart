@@ -247,7 +247,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Run() (err error) {
 	s.initPredefinedBlocks()
-	s.testArchiveInconsistency()
+	s.testArchiveInconsistency() //// TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
 	go s.cleanupTicker()
 	return
 }
@@ -275,6 +275,7 @@ func (s *service) initPredefinedBlocks() {
 	}
 }
 
+// TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
 func (s *service) testArchiveInconsistency() {
 	var (
 		archivedObjects = make(map[string]bool)

@@ -1465,7 +1465,6 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, exLinks, links []string) error
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
 
 	setArchived := func(id string, val bool) error {
-		log.Errorf("objectstore setArchived %s %v", id, val)
 		merged, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyIsArchived.String(): pbtypes.Bool(val)}})
 		if err != nil {
 			return err
