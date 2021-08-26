@@ -46,9 +46,9 @@ var (
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
 	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
-	indexedHeadsState       = ds.NewKey("/" + pagesPrefix + "/headsstate")
+	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
-	clientConfig           = ds.NewKey("/" + pagesPrefix + "/clientconfig")
+	clientConfig = ds.NewKey("/" + pagesPrefix + "/clientconfig")
 
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
@@ -237,7 +237,7 @@ type ObjectStore interface {
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
-	InjectObjectDetails(id string, details *types.Struct) error
+	InjectObjectDetails(id string, details *types.Struct) (mergedDetails *types.Struct, err error)
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
 
@@ -1349,39 +1349,49 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 	return nil
 }
 
-func (m *dsObjectStore) InjectObjectDetails(id string, details *types.Struct) error {
-	if details == nil {
-		return nil
-	}
-
+func (m *dsObjectStore) InjectObjectDetails(id string, details *types.Struct) (mergedDetails *types.Struct, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	detailsBefore, err := getObjectDetails(txn, id)
+	mergedDetails, err = m.injectObjectDetails(txn, id, details)
 	if err != nil {
-		return err
+		return mergedDetails, err
 	}
 
-	result := pbtypes.CopyStruct(detailsBefore.GetDetails())
-	for k, v := range details.Fields {
-		result.Fields[k] = v
-	}
-
-	err = m.updateDetails(txn, id, detailsBefore, &model.ObjectDetails{Details: result})
-	if err != nil {
-		return err
-	}
 	err = txn.Commit()
 	if err != nil {
-		return err
+		return mergedDetails, err
 	}
 
-	return nil
+	return mergedDetails, nil
+}
+
+func (m *dsObjectStore) injectObjectDetails(txn ds.Txn, id string, details *types.Struct) (mergedDetails *types.Struct, err error) {
+	detailsBefore, err := getObjectDetails(txn, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if details == nil {
+		return detailsBefore.GetDetails(), nil
+	}
+
+	mergedDetails = pbtypes.CopyStruct(detailsBefore.GetDetails())
+	for k, v := range details.Fields {
+		mergedDetails.Fields[k] = v
+	}
+
+	err = m.updateDetails(txn, id, detailsBefore, &model.ObjectDetails{Details: mergedDetails})
+	if err != nil {
+		return mergedDetails, err
+	}
+
+	return mergedDetails, nil
 }
 
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
@@ -1451,38 +1461,18 @@ func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) error {
-	exLinks, _ := findOutboundLinks(txn, id)
+func (m *dsObjectStore) updateArchive(txn ds.Txn, exLinks, links []string) error {
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
-	getCurrentDetails := func(id string) (*types.Struct, error) {
-		det, err := getObjectDetails(txn, id)
-		if err != nil {
-			return nil, err
-		}
-		if det == nil || det.Details == nil || det.Details.Fields == nil {
-			return &types.Struct{
-				Fields: map[string]*types.Value{},
-			}, nil
-		}
-
-		return det.Details, nil
-	}
 
 	setArchived := func(id string, val bool) error {
-		det, err := getCurrentDetails(id)
-		if err != nil {
-			return fmt.Errorf("failed to get current details: %s", err.Error())
-		}
-		newDet := pbtypes.CopyStruct(det)
-		newDet.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(val)
-
-		err = m.updateDetails(txn, id, &model.ObjectDetails{det}, &model.ObjectDetails{newDet})
+		log.Errorf("objectstore setArchived %s %v", id, val)
+		merged, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyIsArchived.String(): pbtypes.Bool(val)}})
 		if err != nil {
 			return err
 		}
-		
+
 		// inject localDetails into the meta pubsub
-		m.meta.SetLocalDetails(id, newDet)
+		m.meta.SetLocalDetails(id, merged)
 
 		return nil
 	}
@@ -1491,14 +1481,14 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) err
 	for _, objId := range removedLinks {
 		err = setArchived(objId, false)
 		if err != nil {
-			log.Errorf("setArchived failed: %s", err.Error())
+			return fmt.Errorf("failed to setArchived: %s", err.Error())
 		}
 	}
 
 	for _, objId := range addedLinks {
 		err = setArchived(objId, true)
 		if err != nil {
-			log.Errorf("setArchived failed: %s", err.Error())
+			return fmt.Errorf("failed to setArchived: %s", err.Error())
 		}
 	}
 
@@ -1511,14 +1501,17 @@ func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string)
 		return fmt.Errorf("failed to extract smartblock type: %w", err)
 	}
 
+	exLinks, _ := findOutboundLinks(txn, id)
 	if sbt == smartblock.SmartBlockTypeArchive {
-		// special case for Archive. We don't need to index the outgoing links for the navigation, instead we should use it to set archived flag on objects
-		return m.updateArchive(txn, id, links)
+		// special case for Archive
+		err = m.updateArchive(txn, exLinks, links)
+		if err != nil {
+			return err
+		}
 	}
 
 	var addedLinks, removedLinks []string
 
-	exLinks, _ := findOutboundLinks(txn, id)
 	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
 	if len(addedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, nil, addedLinks) {
