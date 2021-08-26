@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -54,12 +54,9 @@ func (st *SmartTest) Restrictions() restriction.Restrictions {
 	return st.TestRestrictions
 }
 
-func (st *SmartTest) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
-	return indexer.FullIndexInfo{
-		Id:      st.Id(),
-		Title:   pbtypes.GetString(st.Details(), "name"),
-		Snippet: st.Snippet(),
-		Text:    st.Doc.SearchText(),
+func (st *SmartTest) GetDocInfo() (doc.DocInfo, error) {
+	return doc.DocInfo{
+		Id: st.Id(),
 	}, nil
 }
 
