@@ -282,7 +282,7 @@ func (s *service) testArchiveInconsistency() {
 		archivedObjectsSl []string
 	)
 
-	_ = s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+	err := s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		for _, b := range b.Blocks() {
 			if v := b.GetLink(); v != nil {
 				if _, exists := archivedObjects[v.TargetBlockId]; !exists {
@@ -293,6 +293,11 @@ func (s *service) testArchiveInconsistency() {
 		}
 		return nil
 	})
+	if err != nil {
+		log.Errorf("ARCHIVE INCONSISTENCY: failed to open archive sb")
+		return
+	}
+
 	archiveLinks, err := s.anytype.ObjectStore().GetOutboundLinksById(s.anytype.PredefinedBlocks().Archive)
 	if err != nil {
 		log.Errorf("ARCHIVE INCONSISTENCY: failed to get archive outbound links from localstore")
@@ -302,11 +307,15 @@ func (s *service) testArchiveInconsistency() {
 	if len(added)+len(removed) > 0 {
 		log.Errorf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
 	}
-	records3, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
+	records, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
 		IncludeArchivedObjects: true,
 	})
+	if err != nil {
+		log.Errorf("ARCHIVE INCONSISTENCY: failed to query objectstore")
+		return
+	}
 
-	for _, rec := range records3 {
+	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, "id")
 		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsArchived.String()) {
 			if _, exists := archivedObjects[id]; !exists {
