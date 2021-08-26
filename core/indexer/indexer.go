@@ -40,7 +40,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 2 // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2 // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 6 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 7 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 2 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -286,7 +286,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 		sort.Strings(heads)
 		hh := headsHash(heads)
 		if lastHash != hh {
-			log.With("thread",tid.String()).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+			log.With("thread", tid.String()).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
 			idsToReindex = append(idsToReindex, tid.String())
 		}
 	}
@@ -335,30 +335,43 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			indexesWereRemoved = true
 		}
 	}
+	var archivedMap = make(map[string]struct{}, 100)
+	d, _, err := i.openDoc(i.anytype.PredefinedBlocks().Archive)
+	if err != nil {
+		log.Errorf("reindex failed to open archive: %s", err.Error())
+	} else {
+		for _, b := range d.Blocks() {
+			if v := b.GetLink(); v != nil {
+				archivedMap[v.TargetBlockId] = struct{}{}
+			}
+		}
+	}
+
 	if reindex&reindexThreadObjects != 0 {
+
 		ids, err := getIdsForTypes(
 			smartblock.SmartBlockTypePage,
 			smartblock.SmartBlockTypeSet,
 			smartblock.SmartBlockTypeObjectType,
 			smartblock.SmartBlockTypeProfilePage,
-			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
 			smartblock.SmartBlockTypeTemplate,
 			smartblock.SmartblockTypeMarketplaceType,
 			smartblock.SmartblockTypeMarketplaceTemplate,
 			smartblock.SmartblockTypeMarketplaceRelation,
+			smartblock.SmartBlockTypeArchive,
 		)
 		if err != nil {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
 		if metrics.Enabled {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType: metrics.ReindexTypeThreads,
-				Total:       len(ids),
-				Success:     successfullyReindexed,
-				SpentMs:     int(time.Since(start).Milliseconds()),
+				ReindexType:    metrics.ReindexTypeThreads,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
 				IndexesRemoved: indexesWereRemoved,
 			})
 		}
@@ -373,10 +386,10 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		}
 		if metrics.Enabled && total > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType: metrics.ReindexTypeOutdatedHeads,
-				Total:       total,
-				Success:     success,
-				SpentMs:     int(time.Since(start).Milliseconds()),
+				ReindexType:    metrics.ReindexTypeOutdatedHeads,
+				Total:          total,
+				Success:        success,
+				SpentMs:        int(time.Since(start).Milliseconds()),
 				IndexesRemoved: indexesWereRemoved,
 			})
 		}
@@ -387,7 +400,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
 		msg := fmt.Sprintf("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -397,10 +410,10 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 
 		if metrics.Enabled && len(ids) > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType: metrics.ReindexTypeFiles,
-				Total:       len(ids),
-				Success:     successfullyReindexed,
-				SpentMs:     int(time.Since(start).Milliseconds()),
+				ReindexType:    metrics.ReindexTypeFiles,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
 				IndexesRemoved: indexesWereRemoved,
 			})
 		}
@@ -411,7 +424,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		if err != nil {
 			return err
 		}
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled relations have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -421,10 +434,10 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 
 		if metrics.Enabled && len(ids) > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType: metrics.ReindexTypeBundledRelations,
-				Total:       len(ids),
-				Success:     successfullyReindexed,
-				SpentMs:     int(time.Since(start).Milliseconds()),
+				ReindexType:    metrics.ReindexTypeBundledRelations,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
 				IndexesRemoved: indexesWereRemoved,
 			})
 		}
@@ -436,7 +449,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -445,10 +458,10 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		}
 		if metrics.Enabled && len(ids) > 0 {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType: metrics.ReindexTypeBundledTypes,
-				Total:       len(ids),
-				Success:     successfullyReindexed,
-				SpentMs:     int(time.Since(start).Milliseconds()),
+				ReindexType:    metrics.ReindexTypeBundledTypes,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
 				IndexesRemoved: indexesWereRemoved,
 			})
 		}
@@ -456,7 +469,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 	if reindex&reindexBundledObjects != 0 {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId}
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled objects have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -486,7 +499,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			}
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed; removed: %d", successfullyReindexed, len(ids), removed)
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -539,7 +552,7 @@ func (i *indexer) openDoc(id string) (doc state.Doc, headsHash string, err error
 		return nil, "", err
 	}
 
-	if !sourcetype.Virtual() && !strings.HasPrefix(id, "_"){
+	if !sourcetype.Virtual() && !strings.HasPrefix(id, "_") {
 		d, err := i.getDoc(id)
 		if err != nil {
 			return nil, "", err
@@ -580,7 +593,7 @@ func (i *indexer) openDoc(id string) (doc state.Doc, headsHash string, err error
 	return st, "", nil
 }
 
-func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
+func (i *indexer) reindexDoc(id string, isArchived bool, indexesWereRemoved bool) error {
 	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		return fmt.Errorf("incorrect sb type: %v", err)
@@ -603,6 +616,9 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 
 	details := d.CombinedDetails()
 	var curDetails *types.Struct
+	// reindex isarchived flag
+	details.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
+
 	curDetailsO, _ := i.store.GetDetails(id)
 	if curDetailsO != nil {
 		curDetails = curDetailsO.Details
@@ -637,9 +653,10 @@ func (i *indexer) reindexDoc(id string, indexesWereRemoved bool) error {
 	return nil
 }
 
-func (i *indexer) reindexIdsIgnoreErr(indexRemoved bool, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(indexRemoved bool, archivedMap map[string]struct{}, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
-		err := i.reindexDoc(id, indexRemoved)
+		_, isArchived := archivedMap[id]
+		err := i.reindexDoc(id, isArchived, indexRemoved)
 		if err != nil {
 			log.With("thread", id).Errorf("failed to reindex: %v", err)
 		} else {
@@ -848,7 +865,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 		newIds := slice.Difference(info.FileHashes, existingIDs)
 		for _, hash := range newIds {
 			// file's hash is id
-			err = i.reindexDoc(hash, false)
+			err = i.reindexDoc(hash, false, false)
 			if err != nil {
 				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
 			}
@@ -944,7 +961,7 @@ func (i *indexer) SetLocalDetails(id string, st *types.Struct, index bool) {
 		log.With("thread", id).Errorf("indexer getDoc error: %s", err.Error())
 
 		// still, lets save the local object details so we can inject them later
-		err = i.store.InjectObjectDetails(id, st)
+		_, err = i.store.InjectObjectDetails(id, st)
 		if err != nil {
 			log.Errorf("SetLocalDetails InjectObjectDetails error: %s", err.Error())
 		}
