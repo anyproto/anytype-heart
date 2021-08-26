@@ -69,6 +69,7 @@ func TestNewIndexer(t *testing.T) {
 
 		sb.EXPECT().GetLogs().Return(nil, nil)
 		fx.anytype.EXPECT().GetBlock(sbId).Return(sb, nil)
+		fx.objectStore.EXPECT().SaveLastIndexedHeadsHash(sbId, gomock.Any())
 		fx.objectStore.EXPECT().AddToIndexQueue(sbId)
 		fx.objectStore.EXPECT().GetDetails(sbId)
 
