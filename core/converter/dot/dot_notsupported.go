@@ -1,4 +1,4 @@
-// +build windows
+// +build gomobile windows
 
 package dot
 
