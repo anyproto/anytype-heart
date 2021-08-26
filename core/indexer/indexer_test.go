@@ -69,6 +69,7 @@ func TestNewIndexer(t *testing.T) {
 
 		sb.EXPECT().GetLogs().Return(nil, nil)
 		fx.anytype.EXPECT().GetBlock(sbId).Return(sb, nil)
+		fx.objectStore.EXPECT().SaveLastIndexedHeadsHash(sbId, gomock.Any())
 		fx.objectStore.EXPECT().AddToIndexQueue(sbId)
 		fx.objectStore.EXPECT().GetDetails(sbId)
 
@@ -115,6 +116,8 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.getSerach.EXPECT().GetFullIndexInfo(gomock.Any()).AnyTimes()
 	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
+	fx.anytype.EXPECT().PredefinedBlocks()
+
 	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
 	for _, rk := range bundle.ListRelationsKeys() {
