@@ -3,6 +3,8 @@ package block
 import (
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"sync"
 	"time"
 
@@ -245,6 +247,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Run() (err error) {
 	s.initPredefinedBlocks()
+	s.testArchiveInconsistency()
 	go s.cleanupTicker()
 	return
 }
@@ -268,6 +271,59 @@ func (s *service) initPredefinedBlocks() {
 			}
 		} else {
 			sb.Close()
+		}
+	}
+}
+
+func (s *service) testArchiveInconsistency() {
+	var (
+		archivedObjects = make(map[string]bool)
+		archivedObjectsSl []string
+	)
+
+	_ = s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		for _, b := range b.Blocks() {
+			if v := b.GetLink(); v != nil {
+				if _, exists := archivedObjects[v.TargetBlockId]; !exists {
+					archivedObjectsSl = append(archivedObjectsSl, v.TargetBlockId)
+					archivedObjects[v.TargetBlockId] = false
+				}
+			}
+		}
+		return nil
+	})
+	archiveLinks, err := s.anytype.ObjectStore().GetOutboundLinksById(s.anytype.PredefinedBlocks().Archive)
+	if err != nil {
+		log.Errorf("ARCHIVE INCONSISTENCY: failed to get archive outbound links from localstore")
+	}
+
+	removed, added := slice.DifferenceRemovedAdded(archivedObjectsSl, archiveLinks)
+	if len(added)+len(removed) > 0 {
+		log.Errorf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
+	}
+	records3, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
+		IncludeArchivedObjects: true,
+	})
+
+	for _, rec := range records3 {
+		id := pbtypes.GetString(rec.Details, "id")
+		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsArchived.String()) {
+			if _, exists := archivedObjects[id]; !exists {
+				log.Errorf("ARCHIVE INCONSISTENCY: object %s should not have archived flag", id)
+			} else {
+				archivedObjects[id] = true
+			}
+		} else {
+			if _, exists := archivedObjects[id]; exists {
+				log.Errorf("ARCHIVE INCONSISTENCY: object %s should have archived flag", id)
+				archivedObjects[id] = true
+			}
+		}
+	}
+
+	for id, proceed := range archivedObjects {
+		if !proceed {
+			log.Errorf("ARCHIVE INCONSISTENCY: object %s not found in objectsearch", id)
 		}
 	}
 }
