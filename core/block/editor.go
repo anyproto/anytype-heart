@@ -215,7 +215,7 @@ func (s *service) UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateCo
 			}
 			b.Model().Content = req.GetBlock().Content
 			return nil
-		})
+		}, req.BlockId)
 		if err != nil {
 			return err
 		} else if !found {
