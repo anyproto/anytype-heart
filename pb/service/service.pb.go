@@ -224,6 +224,7 @@ type ClientCommandsClient interface {
 	DownloadFile(ctx context.Context, in *pb.RpcDownloadFileRequest, opts ...grpc.CallOption) (*pb.RpcDownloadFileResponse, error)
 	BlockUpload(ctx context.Context, in *pb.RpcBlockUploadRequest, opts ...grpc.CallOption) (*pb.RpcBlockUploadResponse, error)
 	BlockReplace(ctx context.Context, in *pb.RpcBlockReplaceRequest, opts ...grpc.CallOption) (*pb.RpcBlockReplaceResponse, error)
+	// BlockUpdateContent allows to update any simple block content to the new value of the same type
 	BlockUpdateContent(ctx context.Context, in *pb.RpcBlockUpdateContentRequest, opts ...grpc.CallOption) (*pb.RpcBlockUpdateContentResponse, error)
 	BlockOpen(ctx context.Context, in *pb.RpcBlockOpenRequest, opts ...grpc.CallOption) (*pb.RpcBlockOpenResponse, error)
 	BlockShow(ctx context.Context, in *pb.RpcBlockShowRequest, opts ...grpc.CallOption) (*pb.RpcBlockShowResponse, error)
@@ -1533,6 +1534,7 @@ type ClientCommandsServer interface {
 	DownloadFile(*pb.RpcDownloadFileRequest) *pb.RpcDownloadFileResponse
 	BlockUpload(*pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
 	BlockReplace(*pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
+	// BlockUpdateContent allows to update any simple block content to the new value of the same type
 	BlockUpdateContent(*pb.RpcBlockUpdateContentRequest) *pb.RpcBlockUpdateContentResponse
 	BlockOpen(*pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse
 	BlockShow(*pb.RpcBlockShowRequest) *pb.RpcBlockShowResponse

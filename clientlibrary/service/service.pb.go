@@ -217,6 +217,7 @@ type ClientCommandsHandler interface {
 	DownloadFile(*pb.RpcDownloadFileRequest) *pb.RpcDownloadFileResponse
 	BlockUpload(*pb.RpcBlockUploadRequest) *pb.RpcBlockUploadResponse
 	BlockReplace(*pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse
+	// BlockUpdateContent allows to update any simple block content to the new value of the same type
 	BlockUpdateContent(*pb.RpcBlockUpdateContentRequest) *pb.RpcBlockUpdateContentResponse
 	BlockOpen(*pb.RpcBlockOpenRequest) *pb.RpcBlockOpenResponse
 	BlockShow(*pb.RpcBlockShowRequest) *pb.RpcBlockShowResponse
