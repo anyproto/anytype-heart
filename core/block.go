@@ -8,7 +8,7 @@ import (
 
 	"github.com/globalsign/mgo/bson"
 	"github.com/miolini/datacounter"
-	
+
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
@@ -594,6 +594,27 @@ func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockR
 		return response(pb.RpcBlockReplaceResponseError_UNKNOWN_ERROR, "", err)
 	}
 	return response(pb.RpcBlockReplaceResponseError_NULL, blockId, nil)
+}
+
+func (mw *Middleware) BlockUpdateContent(req *pb.RpcBlockUpdateContentRequest) *pb.RpcBlockUpdateContentResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockUpdateContentResponseErrorCode, blockId string, err error) *pb.RpcBlockUpdateContentResponse {
+		m := &pb.RpcBlockUpdateContentResponse{Error: &pb.RpcBlockUpdateContentResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var blockId string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.UpdateBlockContent(ctx, req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockUpdateContentResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockUpdateContentResponseError_NULL, blockId, nil)
 }
 
 func (mw *Middleware) BlockSetTextColor(req *pb.RpcBlockSetTextColorRequest) *pb.RpcBlockSetTextColorResponse {

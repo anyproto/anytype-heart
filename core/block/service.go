@@ -86,6 +86,7 @@ type Service interface {
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
+	UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error)
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
