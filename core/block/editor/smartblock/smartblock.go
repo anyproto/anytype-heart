@@ -60,8 +60,8 @@ var log = logging.Logger("anytype-mw-smartblock")
 // DepSmartblockEventsTimeout sets the timeout after which we will stop to synchronously wait dependent smart blocks and will send them as a separate events in the background
 var DepSmartblockSyncEventsTimeout = time.Second * 1
 
-func New(ms meta.Service) SmartBlock {
-	return &smartBlock{meta: ms}
+func New() SmartBlock {
+	return &smartBlock{}
 }
 
 type SmartblockOpenListner interface {
@@ -98,7 +98,7 @@ type SmartBlock interface {
 	AddHook(f func(), events ...Hook)
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() (doc.DocInfo, error)
-	MetaService() meta.Service
+	DocService() meta.Service
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
 	BlockClose()
@@ -129,9 +129,7 @@ type smartBlock struct {
 	sendEvent         func(e *pb.Event)
 	undo              undo.History
 	source            source.Source
-	meta              meta.Service
 	doc               doc.Service
-	metaSub           meta.Subscriber
 	metaData          *core.SmartBlockMeta
 	lastDepDetails    map[string]*pb.EventObjectDetailsSet
 	restrictions      restriction.Restrictions
@@ -323,128 +321,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 }
 
 func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*model.ObjectType, err error) {
-	if sb.metaSub != nil {
-		sb.metaSub.Close()
-	}
-	sb.metaSub = sb.meta.PubSub().NewSubscriber()
-	sb.depIds = sb.dependentSmartIds(true, true)
-	var ch = make(chan meta.Meta)
-	subscriber := sb.metaSub.Callback(func(d meta.Meta) {
-		start := time.Now()
-	repeat:
-		select {
-		case ch <- d:
-		case <-time.After(time.Second * 10):
-			// let's debug the timeouts here because not reading from ch can deadlock the pubsub's subscriber
-			log.With("thread", sb.Id()).Errorf("fetchMeta metasubCallback can't proceed meta for %s after %.0fs", d.BlockId, time.Since(start).Seconds())
-			goto repeat
-		}
 
-	}).Subscribe(sb.depIds...)
-	sb.meta.ReportChange(meta.Meta{
-		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.Meta(),
-	})
-
-	var uniqueObjTypes []string
-
-	if sb.Type() == model.SmartBlockType_Set {
-		// add the object type from the dataview source
-		if b := sb.Doc.Pick("dataview"); b != nil {
-			if dv := b.Model().GetDataview(); dv != nil {
-				if dv.Source == "" {
-					panic("empty dv source")
-				}
-				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
-				for _, rel := range dv.Relations {
-					if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
-						if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
-							continue
-						}
-						for _, ot := range rel.ObjectTypes {
-							if slice.FindPos(uniqueObjTypes, ot) == -1 {
-								if ot == "" {
-									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
-								} else {
-									if strings.HasPrefix(ot, "http") {
-										log.Errorf("dv rels has http source")
-									}
-									uniqueObjTypes = append(uniqueObjTypes, ot)
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// todo: should we use badger here?
-	timeout := time.After(DepSmartblockSyncEventsTimeout)
-
-	sb.lastDepDetails = make(map[string]*pb.EventObjectDetailsSet, len(sb.depIds))
-loop:
-	for len(sb.lastDepDetails) < len(sb.depIds) {
-		select {
-		case <-timeout:
-			var missingDeps []string
-			for _, dep := range sb.depIds {
-				if _, exists := sb.lastDepDetails[dep]; !exists {
-					missingDeps = append(missingDeps, dep)
-				}
-			}
-			log.Warnf("got %d out of %d dep objects after timeout: missing %v", len(sb.lastDepDetails), len(sb.depIds), missingDeps)
-			break loop
-		case d := <-ch:
-			if d.Details != nil {
-				sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
-					Id:      d.BlockId,
-					Details: d.Details,
-				}
-			}
-			if d.ObjectTypes != nil {
-				if len(d.SmartBlockMeta.ObjectTypes) > 0 {
-					for _, ot := range d.SmartBlockMeta.ObjectTypes {
-						if len(ot) == 0 {
-							log.Errorf("sb %s has empty objectType", sb.Id())
-						} else {
-							if slice.FindPos(uniqueObjTypes, ot) == -1 {
-								uniqueObjTypes = append(uniqueObjTypes, ot)
-							}
-						}
-					}
-				}
-			}
-		}
-	}
-
-	objectTypes = sb.meta.FetchObjectTypes(uniqueObjTypes)
-	if len(objectTypes) != len(uniqueObjTypes) {
-		var m = map[string]struct{}{}
-		for _, ot := range objectTypes {
-			m[ot.Url] = struct{}{}
-		}
-
-		for _, ot := range uniqueObjTypes {
-			if _, exists := m[ot]; !exists {
-				log.Errorf("failed to load object type '%s' for sb %s", ot, sb.Id())
-			}
-		}
-	}
-
-	for _, det := range sb.lastDepDetails {
-		details = append(details, det)
-	}
-
-	defer func() {
-		go func() {
-			for d := range ch {
-				sb.onMetaChange(d)
-			}
-		}()
-		subscriber.Callback(sb.onMetaChange)
-		close(ch)
-	}()
 	return
 }
 
@@ -1126,8 +1003,8 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	return nil
 }
 
-func (sb *smartBlock) MetaService() meta.Service {
-	return sb.meta
+func (sb *smartBlock) DocService() doc.Service {
+	return sb.doc
 }
 
 func (sb *smartBlock) BlockClose() {
@@ -1139,9 +1016,7 @@ func (sb *smartBlock) Close() (err error) {
 	sb.Lock()
 	sb.execHooks(HookOnClose)
 	sb.Unlock()
-	if sb.metaSub != nil {
-		sb.metaSub.Close()
-	}
+
 	sb.source.Close()
 	log.Debugf("close smartblock %v", sb.Id())
 	return
@@ -1333,7 +1208,7 @@ func (sb *smartBlock) ObjectTypeRelations() []*model.Relation {
 
 func (sb *smartBlock) objectTypeRelations(s *state.State) []*model.Relation {
 	var relations []*model.Relation
-	if sb.meta != nil {
+	if sb.metaSub != nil {
 		objectTypes := sb.meta.FetchObjectTypes(s.ObjectTypes())
 		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
 		// do not fetch objectTypes for object type type to avoid universe collapse

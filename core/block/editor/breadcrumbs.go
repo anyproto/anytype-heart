@@ -3,7 +3,6 @@ package editor
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -11,9 +10,9 @@ import (
 
 var log = logging.Logger("anytype-mw-editor")
 
-func NewBreadcrumbs(m meta.Service) *Breadcrumbs {
+func NewBreadcrumbs() *Breadcrumbs {
 	return &Breadcrumbs{
-		SmartBlock: smartblock.New(m),
+		SmartBlock: smartblock.New(),
 	}
 }
 

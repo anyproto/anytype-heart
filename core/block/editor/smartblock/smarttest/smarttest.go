@@ -302,7 +302,7 @@ func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 	return nil
 }
 
-func (st *SmartTest) MetaService() meta.Service {
+func (st *SmartTest) DocService() meta.Service {
 	return st.ms
 }
 

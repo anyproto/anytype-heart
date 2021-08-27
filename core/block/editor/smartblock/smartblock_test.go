@@ -1,22 +1,18 @@
 package smartblock
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -28,59 +24,6 @@ func TestSmartBlock_Init(t *testing.T) {
 	defer fx.tearDown()
 	fx.init([]*model.Block{{Id: "one"}})
 	assert.Equal(t, "one", fx.RootId())
-}
-
-func TestSmartBlock_Show(t *testing.T) {
-	fx := newFixture(t)
-	defer fx.tearDown()
-	fx.init([]*model.Block{
-		{Id: "1", ChildrenIds: []string{"2", "3"}},
-		{Id: "2", Content: &model.BlockContentOfLink{Link: &model.BlockContentLink{
-			TargetBlockId: "22",
-		}}},
-		{Id: "3", Content: &model.BlockContentOfText{Text: &model.BlockContentText{
-			Marks: &model.BlockContentTextMarks{
-				Marks: []*model.BlockContentTextMark{
-					{Type: model.BlockContentTextMark_Mention, Param: "33"},
-				},
-			},
-		}}},
-	})
-
-	fx.metaSubscriber.EXPECT().Callback(gomock.Any()).Return(fx.metaSubscriber).AnyTimes()
-	fx.metaSubscriber.EXPECT().Subscribe([]string{"1", "22", "33"}).Return(fx.metaSubscriber)
-	rel := bundle.MustGetRelation(bundle.RelationKeyId)
-	rel.Scope = 0
-	bm := meta.Meta{
-		BlockId: "1",
-		SmartBlockMeta: core.SmartBlockMeta{
-			Details: fx.CombinedDetails(),
-			Relations: []*model.Relation{rel},
-		},
-	}
-	fx.metaService.EXPECT().ReportChange(bm).Do(func(d meta.Meta) {
-		go func() {
-			fx.SmartBlock.(*smartBlock).onMetaChange(d)
-			for _, id := range []string{"22", "33"} {
-				fx.SmartBlock.(*smartBlock).onMetaChange(meta.Meta{
-					BlockId:        id,
-					SmartBlockMeta: core.SmartBlockMeta{},
-				})
-			}
-		}()
-	})
-	fx.metaService.EXPECT().FetchObjectTypes(gomock.Any()).AnyTimes()
-
-	ctx := state.NewContext(nil)
-	err := fx.Show(ctx)
-	require.NoError(t, err)
-
-	msgs := ctx.GetMessages()
-	require.Len(t, msgs, 1)
-	msg := msgs[0].GetObjectShow()
-	require.NotNil(t, msg)
-	assert.Len(t, msg.Blocks, 3)
-	assert.Equal(t, "1", msg.RootId)
 }
 
 func TestSmartBlock_Apply(t *testing.T) {
@@ -98,7 +41,6 @@ func TestSmartBlock_Apply(t *testing.T) {
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e
 		})
-		fx.metaService.EXPECT().IndexerIndexOutgoingLinks(gomock.Any(),gomock.Any()).MaxTimes(1)
 
 		err := fx.Apply(s)
 		require.NoError(t, err)
@@ -109,12 +51,10 @@ func TestSmartBlock_Apply(t *testing.T) {
 }
 
 type fixture struct {
-	t              *testing.T
-	ctrl           *gomock.Controller
-	source         *mockSource.MockSource
-	metaSubscriber *mockMeta.MockSubscriber
-	metaService    *mockMeta.MockService
-	snapshot       *testMock.MockSmartBlockSnapshot
+	t        *testing.T
+	ctrl     *gomock.Controller
+	source   *mockSource.MockSource
+	snapshot *testMock.MockSmartBlockSnapshot
 	SmartBlock
 }
 
@@ -125,20 +65,11 @@ func newFixture(t *testing.T) *fixture {
 	source.EXPECT().Anytype().AnyTimes().Return(nil)
 	source.EXPECT().Virtual().AnyTimes().Return(false)
 
-	metaSubscriber := mockMeta.NewMockSubscriber(ctrl)
-	metaPubSub := mockMeta.NewMockPubSub(ctrl)
-	metaService := mockMeta.NewMockService(ctrl)
-	metaService.EXPECT().PubSub().AnyTimes().Return(metaPubSub)
-	metaPubSub.EXPECT().NewSubscriber().AnyTimes().Return(metaSubscriber)
-	metaService.EXPECT().FetchObjectTypes(gomock.Any()).AnyTimes()
-
 	return &fixture{
-		SmartBlock:     New(metaService),
-		t:              t,
-		ctrl:           ctrl,
-		source:         source,
-		metaSubscriber: metaSubscriber,
-		metaService:    metaService,
+		SmartBlock: New(),
+		t:          t,
+		ctrl:       ctrl,
+		source:     source,
 	}
 }
 

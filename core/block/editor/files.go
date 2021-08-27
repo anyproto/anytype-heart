@@ -6,15 +6,14 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewFiles(m meta.Service) *Files {
+func NewFiles() *Files {
 	return &Files{
-		SmartBlock: smartblock.New(m),
+		SmartBlock: smartblock.New(),
 	}
 }
 
