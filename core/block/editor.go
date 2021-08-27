@@ -218,7 +218,7 @@ func (s *service) UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateCo
 		})
 		if err != nil {
 			return err
-		}else if !found {
+		} else if !found {
 			return smartblock.ErrSimpleBlockNotFound
 		}
 

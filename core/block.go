@@ -609,7 +609,7 @@ func (mw *Middleware) BlockUpdateContent(req *pb.RpcBlockUpdateContentRequest) *
 	}
 	var blockId string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateBlockContent(ctx, req)
+		return bs.UpdateBlockContent(ctx, *req)
 	})
 	if err != nil {
 		return response(pb.RpcBlockUpdateContentResponseError_UNKNOWN_ERROR, "", err)
