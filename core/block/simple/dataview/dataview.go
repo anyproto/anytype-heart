@@ -226,6 +226,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 			v.Filters = view.Filters
 			v.Name = view.Name
 			v.Type = view.Type
+			v.CoverRelationKey = view.CoverRelationKey
 
 			break
 		}
