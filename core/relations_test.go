@@ -308,6 +308,41 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, "new_changed", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
 	})
 
+	t.Run("update_relation_name_in_set_expect_change_in_object", func(t *testing.T) {
+		relKey, _ := addRelation(t, mw.GetAnytype().PredefinedBlocks().SetPages, mw)
+
+		recCreate := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{
+			ContextId:   mw.GetAnytype().PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			Record:     nil,
+			TemplateId: "",
+		})
+		respUpdate := mw.BlockDataviewRelationUpdate(&pb.RpcBlockDataviewRelationUpdateRequest{
+			ContextId:   mw.GetAnytype().PredefinedBlocks().SetPages,
+			BlockId:     "dataview",
+			RelationKey: relKey,
+			Relation: &model.Relation{
+				Key:      relKey,
+				Format:   0,
+				Name:     "new_changed",
+				ReadOnly: false,
+			},
+		})
+		require.Equal(t, pb.RpcBlockDataviewRelationUpdateResponseError_NULL, respUpdate.Error.Code, respUpdate.Error.Description)
+		respOpenNewPage = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
+		require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
+		require.Len(t, respOpenNewPage.Event.Messages, 2)
+		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
+
+		require.Equal(t, "new_changed", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
+		time.Sleep(time.Second*3)
+		respOpenNewRecord := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: pbtypes.GetString(recCreate.Record, "id")})
+		rel := pbtypes.GetRelation(getEventObjectShow(respOpenNewRecord.Event.Messages).Relations, relKey)
+		require.NotNil(t, rel)
+		require.Equal(t, "new_changed", rel.Name)
+	})
+
+
 	t.Run("delete_incorrect", func(t *testing.T) {
 		respDataviewRelationAdd := mw.BlockDataviewRelationDelete(&pb.RpcBlockDataviewRelationDeleteRequest{
 			ContextId:   mw.GetAnytype().PredefinedBlocks().SetPages,
