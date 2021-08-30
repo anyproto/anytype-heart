@@ -498,13 +498,19 @@ func SortedRange(s *types.Struct, f func(k string, v *types.Value)) {
 
 // RelationOptionsFilterScope returns only options with provided scope reusing underlying pb values pointers
 func RelationOptionsFilterScope(options []*model.RelationOption, scope model.RelationOptionScope) []*model.RelationOption {
+	return RelationOptionsFilter(options, func(option *model.RelationOption) bool {
+		return option.Scope == scope
+	})
+}
+
+func RelationOptionsFilter(options []*model.RelationOption, f func(option *model.RelationOption) bool) []*model.RelationOption {
 	if len(options) == 0 {
 		return nil
 	}
 
 	res := make([]*model.RelationOption, 0, len(options))
 	for i := range options {
-		if options[i].Scope == scope {
+		if f(options[i]) {
 			res = append(res, options[i])
 		}
 	}
