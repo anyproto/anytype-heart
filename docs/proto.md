@@ -5603,8 +5603,8 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | targetContextId | [string](#string) |  |  |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| dropTargetId | [string](#string) |  | id of the simple block to insert considering position |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  | position relatively to the dropTargetId simple block |
 
 
 
@@ -5664,8 +5664,8 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | page details |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| dropTargetId | [string](#string) |  | id of the simple block to insert considering position |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  | position relatively to the dropTargetId simple block |
 
 
 
@@ -6923,8 +6923,8 @@ commands acceptable only for text blocks, others will be ignored
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| dropTargetId | [string](#string) |  | id of the simple block to insert considering position |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  | position relatively to the dropTargetId simple block |
 | localFilePaths | [string](#string) | repeated |  |
 
 
