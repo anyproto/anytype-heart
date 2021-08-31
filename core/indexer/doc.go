@@ -2,7 +2,9 @@ package indexer
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -41,6 +43,7 @@ type doc struct {
 	id   string
 	tree *change.Tree
 	st   *state.State
+	logHeads map[string]*change.Change
 
 	changesBuf []*change.Change
 	store      detailsGetter
@@ -55,7 +58,7 @@ func (d *doc) buildMetaTree(profileId string) (err error) {
 	if d.tree != nil && d.st != nil {
 		return
 	}
-	d.tree, _, err = change.BuildMetaTree(d.sb)
+	d.tree, d.logHeads, err = change.BuildMetaTree(d.sb)
 	if err == change.ErrEmpty {
 		d.tree = change.NewMetaTree()
 		d.st = state.NewDoc(d.id, nil).(*state.State)
@@ -75,6 +78,7 @@ func (d *doc) buildMetaTree(profileId string) (err error) {
 }
 
 type detailsGetter interface {
+	GetOutboundLinksById(id string) ([]string, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 }
 
@@ -118,6 +122,7 @@ func (d *doc) addRecords(records ...core.SmartblockRecordEnvelope) (lastChangeTS
 		if c.HasMeta() {
 			changes = append(changes, c)
 		}
+		d.logHeads[rec.LogID] = c
 	}
 	if len(changes) == 0 {
 		return
@@ -180,6 +185,29 @@ func (s *doc) findFirstChange(ctx context.Context) (c *change.Change, err error)
 		}
 	}
 	return
+}
+
+// heads return sorted logs heads used to build the current state
+func (d *doc) heads() []string {
+	heads := make([]string, 0, len(d.logHeads))
+	for _, ch := range d.logHeads {
+		heads = append(heads, ch.Id)
+	}
+	sort.Strings(heads)
+	return heads
+}
+
+func headsHash(sortedHeads []string) string {
+	if len(sortedHeads) == 0 {
+		return ""
+	}
+
+	sum := sha256.Sum256([]byte(strings.Join(sortedHeads, ",")))
+	return fmt.Sprintf("%x", sum)
+}
+
+func (d *doc) headsHash() string {
+	return headsHash(d.heads())
 }
 
 func (d *doc) buildState() (doc *state.State, err error) {

@@ -86,20 +86,20 @@ build-js-addon:
 build-ios: setup-go
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	@GOPRIVATE=github.com/anytypeio gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 
 build-android: setup-go
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags nogrpcserver -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	@GOPRIVATE=github.com/anytypeio gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 
 setup-protoc-go:
 	@echo 'Setting up protobuf compiler...'
 	@rm -rf $(GOPATH)/src/github.com/gogo
 	@mkdir -p $(GOPATH)/src/github.com/gogo
-	@cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/gogo/protobuf
+	@cd $(GOPATH)/src/github.com/gogo; git clone https://github.com/anytypeio/protobuf
 	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofaster
 	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogofast
 	@cd $(GOPATH)/src/github.com/gogo/protobuf; go install github.com/gogo/protobuf/protoc-gen-gogo/gomobile
@@ -107,6 +107,7 @@ setup-protoc-go:
 
 setup-protoc-jsweb:
 	@echo 'Installing grpc-web plugin...'
+	@rm -rf grpc-web
 	@git clone https://github.com/grpc/grpc-web
 	@$(MAKE) -C grpc-web install-plugin
 	@rm -rf grpc-web

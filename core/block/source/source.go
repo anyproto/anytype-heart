@@ -47,6 +47,7 @@ type Source interface {
 
 type SourceType interface {
 	ListIds() ([]string, error)
+	Virtual() bool
 }
 
 type SourceWithType interface {
