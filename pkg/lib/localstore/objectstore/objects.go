@@ -14,7 +14,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	pb2 "github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -49,8 +48,7 @@ var (
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
 	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
-	clientConfig = ds.NewKey("/" + pagesPrefix + "/clientconfig")
-	cafeConfig   = ds.NewKey("/" + pagesPrefix + "/cafeconfig")
+	cafeConfig = ds.NewKey("/" + pagesPrefix + "/cafeconfig")
 
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
@@ -275,9 +273,6 @@ type ObjectStore interface {
 	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
 
-	GetClientConfig() (cfg *pb2.RpcAccountConfig, err error)
-	SaveClientConfig(cfg *pb2.RpcAccountConfig) (err error)
-
 	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
 	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
 }
@@ -343,42 +338,6 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
-}
-
-func (m *dsObjectStore) GetClientConfig() (cfg *pb2.RpcAccountConfig, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	var clientcfg pb2.RpcAccountConfig
-	if val, err := txn.Get(clientConfig); err != nil {
-		return nil, err
-	} else if err := proto.Unmarshal(val, &clientcfg); err != nil {
-		return nil, err
-	}
-
-	return &clientcfg, nil
-}
-
-func (m *dsObjectStore) SaveClientConfig(cfg *pb2.RpcAccountConfig) (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	b, err := cfg.Marshal()
-	if err != nil {
-		return err
-	}
-
-	if err := txn.Put(clientConfig, b); err != nil {
-		return fmt.Errorf("failed to put into ds: %w", err)
-	}
-
-	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error) {

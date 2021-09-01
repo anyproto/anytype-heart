@@ -14,12 +14,10 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	cafeClient "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
-	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -109,48 +107,20 @@ func checkInviteCode(code string, account string) error {
 	return nil
 }
 
-func (mw *Middleware) fetchAccountConfigUntilSuccess() {
-	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	cafe := mw.app.MustComponent(cafeClient.CName).(cafeClient.Client)
-	var attempt int
-	for {
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-		defer cancel()
-		resp, err := cafe.GetConfig(ctx, &pb2.GetConfigRequest{})
-		if err != nil {
-			log.Errorf("failed to request client config from cafe: %s", err.Error())
-		}
-		if resp != nil {
-			cfg := &pb.RpcAccountConfig{
-				EnableDataview:             resp.Config.EnableDataview,
-				EnableDebug:                resp.Config.EnableDebug,
-				EnableReleaseChannelSwitch: resp.Config.EnableReleaseChannelSwitch,
-				Extra:                      resp.Config.Extra,
-			}
-			err = store.SaveCafeConfig(resp.Config)
-			if err != nil {
-				log.Errorf("failed to save cafe config to objectstore: %s", err.Error())
-			}
-			err = store.SaveClientConfig(cfg)
-			if err != nil {
-				log.Errorf("failed to save client config to objectstore: %s", err.Error())
-			} else {
-				return
-			}
-		}
-		attempt++
-		time.Sleep(time.Second * 2 * time.Duration(attempt))
-	}
-}
-
 func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
 	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	cfg, err := store.GetClientConfig()
+	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+	cfg, err := store.GetCafeConfig()
 	if err != nil {
-		go mw.fetchAccountConfigUntilSuccess()
+		go fetcher.FetchCafeConfig(true)
 		log.Errorf("failed to load client config from objectstore: %s", err.Error())
 	} else {
-		return cfg
+		return &pb.RpcAccountConfig{
+			EnableDataview:             cfg.EnableDataview,
+			EnableDebug:                cfg.EnableDebug,
+			EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
+			Extra:                      cfg.Extra,
+		}
 	}
 
 	return &pb.RpcAccountConfig{}
@@ -218,7 +188,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	comps = append(comps, mw.EventSender)
-	if mw.app, err = anytype.StartNewApp(tryGetAccountConfigOnceAndSave, comps...); err != nil {
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
@@ -498,7 +468,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	}
 
 	comps = append(comps, mw.EventSender)
-	if mw.app, err = anytype.StartNewApp(tryGetAccountConfigOnceAndSave, comps...); err != nil {
+	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)
 		}
@@ -574,37 +544,4 @@ func keypairsToAddresses(keypairs []wallet.Keypair) []string {
 		addresses[i] = keypair.Address()
 	}
 	return addresses
-}
-
-func tryGetAccountConfigOnceAndSave(a *app.App) (*pb2.GetConfigResponseConfig, error) {
-	store := a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	cafe := a.MustComponent(cafeClient.CName).(cafeClient.Client)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	defer cancel()
-	resp, err := cafe.GetConfig(ctx, &pb2.GetConfigRequest{})
-	if err != nil {
-		log.Errorf("failed to request client config from cafe: %s", err.Error())
-		return nil, err
-	}
-	if resp != nil {
-		cfg := &pb.RpcAccountConfig{
-			EnableDataview:             resp.Config.EnableDataview,
-			EnableDebug:                resp.Config.EnableDebug,
-			EnableReleaseChannelSwitch: resp.Config.EnableReleaseChannelSwitch,
-			Extra:                      resp.Config.Extra,
-		}
-		err = store.SaveCafeConfig(resp.Config)
-		if err != nil {
-			log.Errorf("failed to save cafe config to objectstore: %s", err.Error())
-			return nil, err
-		}
-		err = store.SaveClientConfig(cfg)
-		if err != nil {
-			log.Errorf("failed to save client config to objectstore: %s", err.Error())
-			return nil, err
-		}
-		return resp.Config, nil
-	} else {
-		return nil, fmt.Errorf("got nil response from cafe")
-	}
 }

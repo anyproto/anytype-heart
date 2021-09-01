@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
@@ -71,6 +72,11 @@ func (s *service) threadsDbListen() error {
 		return err
 	}
 
+	timeStarted := time.Now()
+	threadsProcessed := 0
+	threadsTotal := 0
+	mx := sync.Mutex{}
+
 	processThreads := func(ids []db.InstanceID) {
 		for _, id := range ids {
 			instanceBytes, err := s.threadsCollection.FindByID(id)
@@ -107,6 +113,11 @@ func (s *service) threadsDbListen() error {
 					return
 				}
 				ch := s.getNewThreadChan()
+				mx.Lock()
+				threadsProcessed++
+				mx.Unlock()
+				timeNow := time.Now()
+				fmt.Printf("processed %d out of %d, time elapsed: %f seconds\n", threadsProcessed, threadsTotal, timeNow.Sub(timeStarted).Seconds())
 				if ch != nil && !s.stopped {
 					select {
 					case <-s.ctx.Done():
@@ -149,6 +160,7 @@ func (s *service) threadsDbListen() error {
 				// we don't have new messages for at least deadline and we have something to flush
 				processBuffer()
 			case c := <-l.Channel():
+				threadsTotal++
 				// as per docs the timer should be stopped or expired with drained channel
 				// to be reset
 				if !tmr.Stop() && !timerRead {
@@ -315,7 +327,6 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			s.newReplicatorProcessingLimiter <- struct{}{}
 		}()
 	}
-
 	_, err = s.pullThread(s.ctx, tid)
 	if err != nil {
 		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())

@@ -3,7 +3,6 @@ package threads
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
@@ -39,7 +38,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 )
 
-const simultaneousRequests = 50
+const simultaneousRequests = 20
 
 const CName = "threads"
 
@@ -79,13 +78,13 @@ type service struct {
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
 
-	configPullAction func() (*pb.GetConfigResponseConfig, error)
+	fetcher CafeConfigFetcher
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
 }
 
-func New(configPullAction func() (*pb.GetConfigResponseConfig, error)) Service {
+func New() Service {
 	/* adjust ThreadsDB parameters */
 
 	// thread pulling cycle
@@ -116,13 +115,13 @@ func New(configPullAction func() (*pb.GetConfigResponseConfig, error)) Service {
 		ctx:                  ctx,
 		ctxCancel:            cancel,
 		simultaneousRequests: simultaneousRequests,
-		configPullAction:     configPullAction,
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
+	s.fetcher = a.MustComponent("configfetcher").(CafeConfigFetcher)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
 
@@ -157,7 +156,7 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
-	cafeCfg, err := s.configPullAction()
+	cafeCfg, err := s.fetcher.FetchCafeConfig(false)
 	if err == nil && cafeCfg.SimultaneousRequests != 0 {
 		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
 	}
