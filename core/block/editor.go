@@ -204,6 +204,30 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 	return linkIds, err
 }
 
+func (s *service) UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error) {
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		var found bool
+		err = b.Update(ctx, func(b simple.Block) error {
+			found = true
+			expectedType := fmt.Sprintf("%T", b.Model().GetContent())
+			gotType := fmt.Sprintf("%T", req.GetBlock().Content)
+			if gotType != expectedType {
+				return fmt.Errorf("block content should have %s type, got %s instead", expectedType, gotType)
+			}
+			b.Model().Content = req.GetBlock().Content
+			return nil
+		}, req.BlockId)
+		if err != nil {
+			return err
+		} else if !found {
+			return smartblock.ErrSimpleBlockNotFound
+		}
+
+		return nil
+	})
+	return
+}
+
 func (s *service) ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		newId, err = b.Replace(ctx, req.BlockId, req.Block)

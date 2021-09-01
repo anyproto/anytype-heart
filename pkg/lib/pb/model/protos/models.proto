@@ -59,8 +59,8 @@ message Block {
         Content.Dataview dataview = 21;
         Content.Relation relation = 22;
         Content.FeaturedRelations featuredRelations = 23;
+        Content.Latex latex = 24;
     }
-
 
     message Restrictions {
         bool read = 1;
@@ -316,6 +316,10 @@ message Block {
 
         message Relation {
             string key = 1;
+        }
+
+        message Latex {
+            string text = 1;
         }
     }
 }
