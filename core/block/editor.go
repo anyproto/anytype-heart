@@ -212,7 +212,7 @@ func (s *service) UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateCo
 			expectedType := fmt.Sprintf("%T", b.Model().GetContent())
 			gotType := fmt.Sprintf("%T", req.GetBlock().Content)
 			if gotType != expectedType {
-				return fmt.Errorf("block content should have %s type, got %s instead ", expectedType, gotType)
+				return fmt.Errorf("block content should have %s type, got %s instead", expectedType, gotType)
 			}
 			b.Model().Content = req.GetBlock().Content
 			return nil

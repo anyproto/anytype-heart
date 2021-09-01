@@ -59,7 +59,7 @@ message Block {
         Content.Dataview dataview = 21;
         Content.Relation relation = 22;
         Content.FeaturedRelations featuredRelations = 23;
-		    Content.Latex latex = 24;
+        Content.Latex latex = 24;
     }
 
     message Restrictions {
