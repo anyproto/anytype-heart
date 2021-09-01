@@ -36,7 +36,7 @@ func (c *configFetcher) FetchCafeConfig(untilSuccess bool) (*pb.GetConfigRespons
 		resp, err := c.cafe.GetConfig(ctx, &pb.GetConfigRequest{})
 		cancel()
 		if err != nil {
-			log.Errorf("failed to request client config from cafe: %s", err.Error())
+			log.Errorf("failed to request cafe config: %s", err.Error())
 		}
 		if resp != nil {
 			err = c.store.SaveCafeConfig(resp.Config)
