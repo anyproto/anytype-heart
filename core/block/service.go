@@ -306,7 +306,7 @@ func (s *service) testArchiveInconsistency() {
 
 	removed, added := slice.DifferenceRemovedAdded(archivedObjectsSl, archiveLinks)
 	if len(added)+len(removed) > 0 {
-		log.Errorf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
+		log.Debugf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
 	}
 	records, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
 		IncludeArchivedObjects: true,

@@ -498,6 +498,12 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 				if aggregetedOptions != nil {
 					for _, rel := range append(added, updated...) {
 						if m, exists := aggregetedOptions[rel.Key]; exists {
+							addedOpts, updatedOpts, _ := pbtypes.RelationSelectDictDiff(pbtypes.GetRelation(prev, rel.Key).GetSelectDict(), rel.GetSelectDict())
+							// so here we need to filter out options that has been actually changed in this apply
+							// otherwise option names can be overwritten from the localstore with the old ones
+							m = pbtypes.RelationOptionsFilter(m, func(option *model.RelationOption) bool {
+								return pbtypes.GetOption(append(updatedOpts), option.Id) == nil && pbtypes.GetOption(append(addedOpts), option.Id) == nil
+							})
 							rel.SelectDict = pbtypes.MergeOptionsPreserveScope(rel.SelectDict, m)
 						}
 					}
