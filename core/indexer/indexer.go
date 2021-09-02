@@ -40,7 +40,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 2 // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2 // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 7 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 8 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 2 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -335,7 +335,10 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			indexesWereRemoved = true
 		}
 	}
-	var archivedMap = make(map[string]struct{}, 100)
+	var (
+		archivedMap = make(map[string]struct{}, 100)
+		favoriteMap = make(map[string]struct{}, 100)
+	)
 
 	if reindex > 0 {
 		d, _, err := i.openDoc(i.anytype.PredefinedBlocks().Archive)
@@ -348,6 +351,17 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 				}
 			}
 		}
+
+		d, _, err = i.openDoc(i.anytype.PredefinedBlocks().Home)
+		if err != nil {
+			log.Errorf("reindex failed to open archive: %s", err.Error())
+		} else {
+			for _, b := range d.Blocks() {
+				if v := b.GetLink(); v != nil {
+					favoriteMap[v.TargetBlockId] = struct{}{}
+				}
+			}
+		}
 	}
 
 	if reindex&reindexThreadObjects != 0 {
@@ -357,18 +371,18 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			smartblock.SmartBlockTypeSet,
 			smartblock.SmartBlockTypeObjectType,
 			smartblock.SmartBlockTypeProfilePage,
-			smartblock.SmartBlockTypeHome,
 			smartblock.SmartBlockTypeTemplate,
 			smartblock.SmartblockTypeMarketplaceType,
 			smartblock.SmartblockTypeMarketplaceTemplate,
 			smartblock.SmartblockTypeMarketplaceRelation,
 			smartblock.SmartBlockTypeArchive,
+			smartblock.SmartBlockTypeHome,
 		)
 		if err != nil {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, favoriteMap, ids...)
 		if metrics.Enabled {
 			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
 				ReindexType:    metrics.ReindexTypeThreads,
@@ -403,7 +417,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, favoriteMap, ids...)
 		msg := fmt.Sprintf("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -427,7 +441,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 		if err != nil {
 			return err
 		}
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, favoriteMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled relations have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -452,7 +466,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			return err
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, favoriteMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -472,7 +486,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 	if reindex&reindexBundledObjects != 0 {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId}
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, favoriteMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled objects have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -502,7 +516,7 @@ func (i *indexer) Reindex(reindex reindexFlags) (err error) {
 			}
 		}
 		start := time.Now()
-		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, ids...)
+		successfullyReindexed := i.reindexIdsIgnoreErr(indexesWereRemoved, archivedMap, favoriteMap, ids...)
 		msg := fmt.Sprintf("%d/%d bundled templates have been successfully reindexed; removed: %d", successfullyReindexed, len(ids), removed)
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -596,17 +610,17 @@ func (i *indexer) openDoc(id string) (doc state.Doc, headsHash string, err error
 	return st, "", nil
 }
 
-func (i *indexer) reindexDoc(id string, isArchived bool, indexesWereRemoved bool) error {
+func (i *indexer) reindexDoc(id string, isArchived bool, isFavorite bool, indexesWereRemoved bool) error {
 	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		return fmt.Errorf("incorrect sb type: %v", err)
 	}
 
-	if t == smartblock.SmartBlockTypeArchive {
+	if t == smartblock.SmartBlockTypeArchive || t == smartblock.SmartBlockTypeHome {
 		if err := i.store.AddToIndexQueue(id); err != nil {
-			log.With("thread", id).Errorf("can't add archive to index queue: %v", err)
+			log.With("thread", id).Errorf("can't add archive/home to index queue: %v", err)
 		} else {
-			log.With("thread", id).Debugf("archive added to index queue")
+			log.With("thread", id).Debugf("archive/home added to index queue")
 		}
 		return nil
 	}
@@ -621,6 +635,7 @@ func (i *indexer) reindexDoc(id string, isArchived bool, indexesWereRemoved bool
 	var curDetails *types.Struct
 	// reindex isarchived flag
 	details.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
+	details.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
 
 	curDetailsO, _ := i.store.GetDetails(id)
 	if curDetailsO != nil {
@@ -656,10 +671,12 @@ func (i *indexer) reindexDoc(id string, isArchived bool, indexesWereRemoved bool
 	return nil
 }
 
-func (i *indexer) reindexIdsIgnoreErr(indexRemoved bool, archivedMap map[string]struct{}, ids ...string) (successfullyReindexed int) {
+func (i *indexer) reindexIdsIgnoreErr(indexRemoved bool, archivedMap map[string]struct{}, favoriteMap map[string]struct{}, ids ...string) (successfullyReindexed int) {
 	for _, id := range ids {
 		_, isArchived := archivedMap[id]
-		err := i.reindexDoc(id, isArchived, indexRemoved)
+		_, isFavorite := favoriteMap[id]
+
+		err := i.reindexDoc(id, isArchived, isFavorite, indexRemoved)
 		if err != nil {
 			log.With("thread", id).Errorf("failed to reindex: %v", err)
 		} else {
@@ -747,12 +764,12 @@ func (i *indexer) index(id string, records []core.SmartblockRecordEnvelope, only
 	}
 
 	d.mu.Lock()
-	if d.sb.Type() == smartblock.SmartBlockTypeArchive {
+	if d.sb.Type() == smartblock.SmartBlockTypeArchive || d.sb.Type() == smartblock.SmartBlockTypeHome {
 		if err := i.store.AddToIndexQueue(id); err != nil {
-			log.With("thread", id).Errorf("can't add archive to index queue: %v", err)
+			log.With("thread", id).Errorf("can't add archive/home to index queue: %v", err)
 			return err
 		} else {
-			log.With("thread", id).Debugf("archive added to index queue")
+			log.With("thread", id).Debugf("archive/home added to index queue")
 		}
 		d.mu.Unlock()
 		return nil
@@ -868,7 +885,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 		newIds := slice.Difference(info.FileHashes, existingIDs)
 		for _, hash := range newIds {
 			// file's hash is id
-			err = i.reindexDoc(hash, false, false)
+			err = i.reindexDoc(hash, false, false, false)
 			if err != nil {
 				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
 			}

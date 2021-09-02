@@ -12,12 +12,12 @@ import (
 func TestArchive_Archive(t *testing.T) {
 	t.Run("archive", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c)
+		a := NewObjectLinksCollection(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
-		require.NoError(t, a.Archive("1"))
-		require.NoError(t, a.Archive("2"))
+		require.NoError(t, a.AddObject("1"))
+		require.NoError(t, a.AddObject("2"))
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
@@ -29,12 +29,12 @@ func TestArchive_Archive(t *testing.T) {
 	})
 	t.Run("archive archived", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c)
+		a := NewObjectLinksCollection(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
-		require.NoError(t, a.Archive("1"))
-		require.NoError(t, a.Archive("1"))
+		require.NoError(t, a.AddObject("1"))
+		require.NoError(t, a.AddObject("1"))
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
@@ -45,14 +45,14 @@ func TestArchive_Archive(t *testing.T) {
 func TestArchive_UnArchive(t *testing.T) {
 	t.Run("unarchive", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c)
+		a := NewObjectLinksCollection(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
-		require.NoError(t, a.Archive("1"))
-		require.NoError(t, a.Archive("2"))
+		require.NoError(t, a.AddObject("1"))
+		require.NoError(t, a.AddObject("2"))
 
-		require.NoError(t, a.UnArchive("2"))
+		require.NoError(t, a.RemoveObject("2"))
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
 		require.Len(t, chIds, 1)
@@ -61,13 +61,13 @@ func TestArchive_UnArchive(t *testing.T) {
 	})
 	t.Run("unarchived", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c)
+		a := NewObjectLinksCollection(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
-		require.NoError(t, a.Archive("1"))
+		require.NoError(t, a.AddObject("1"))
 
-		require.NoError(t, a.UnArchive("2"))
+		require.NoError(t, a.RemoveObject("2"))
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
@@ -78,12 +78,12 @@ func TestArchive_UnArchive(t *testing.T) {
 func TestArchive_Delete(t *testing.T) {
 	t.Run("delete", func(t *testing.T) {
 		c := newCtrl()
-		a := NewArchive(nil, c)
+		a := NewObjectLinksCollection(nil, c)
 		a.SmartBlock = smarttest.New("root")
 		require.NoError(t, a.Init(&smartblock.InitContext{}))
 
-		require.NoError(t, a.Archive("1"))
-		require.NoError(t, a.Archive("2"))
+		require.NoError(t, a.AddObject("1"))
+		require.NoError(t, a.AddObject("2"))
 
 		s := a.NewState()
 		chIds := s.Get(s.RootId()).Model().ChildrenIds
@@ -113,7 +113,7 @@ func (c *ctrl) MarkArchived(id string, archived bool) (err error) {
 	return nil
 }
 
-func (c *ctrl) DeletePage(id string) (err error) {
+func (c *ctrl) DeleteArchivedObject(id string) (err error) {
 	delete(c.values, id)
 	return nil
 }

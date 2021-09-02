@@ -1461,11 +1461,11 @@ func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) updateArchive(txn ds.Txn, exLinks, links []string) error {
+func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.RelationKey, exLinks, links []string) error {
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
 
-	setArchived := func(id string, val bool) error {
-		merged, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyIsArchived.String(): pbtypes.Bool(val)}})
+	setDetail := func(id string, val bool) error {
+		merged, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{key.String(): pbtypes.Bool(val)}})
 		if err != nil {
 			return err
 		}
@@ -1478,16 +1478,16 @@ func (m *dsObjectStore) updateArchive(txn ds.Txn, exLinks, links []string) error
 
 	var err error
 	for _, objId := range removedLinks {
-		err = setArchived(objId, false)
+		err = setDetail(objId, false)
 		if err != nil {
-			return fmt.Errorf("failed to setArchived: %s", err.Error())
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
 		}
 	}
 
 	for _, objId := range addedLinks {
-		err = setArchived(objId, true)
+		err = setDetail(objId, true)
 		if err != nil {
-			return fmt.Errorf("failed to setArchived: %s", err.Error())
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
 		}
 	}
 
@@ -1502,8 +1502,12 @@ func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string)
 
 	exLinks, _ := findOutboundLinks(txn, id)
 	if sbt == smartblock.SmartBlockTypeArchive {
-		// special case for Archive
-		err = m.updateArchive(txn, exLinks, links)
+		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsArchived, exLinks, links)
+		if err != nil {
+			return err
+		}
+	} else if sbt == smartblock.SmartBlockTypeHome {
+		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsFavorite, exLinks, links)
 		if err != nil {
 			return err
 		}
@@ -2106,7 +2110,8 @@ func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
 func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract smartblock type: %w", err)
+		log.With("thread", id).Errorf("failed to extract smartblock type %s", id)
+		return nil, ErrNotAnObject
 	}
 	if sbt == smartblock.SmartBlockTypeArchive {
 		return nil, ErrNotAnObject

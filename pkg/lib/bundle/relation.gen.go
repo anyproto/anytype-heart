@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "5e05ebd83863c0b1936ea7fc480c06e0877974e1aae7b3e61249e23209c8184a"
+const RelationChecksum = "3dae6b0c65999a337e1a4a71a5deae922c48fa283263aac144fd2ce6e89b2db3"
 
 type RelationKey string
 
@@ -106,6 +106,7 @@ const (
 	RelationKeyExposure                  RelationKey = "exposure"
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
+	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -999,6 +1000,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIsFavorite: {
+
+			DataSource:       model.Relation_account,
+			Description:      "Adds the object to the home fashboard",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isFavorite",
+			MaxCount:         1,
+			Name:             "Favorited",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIsHidden: {
 
 			DataSource:       model.Relation_details,
@@ -1486,11 +1500,12 @@ var (
 		RelationKeyRelationFormatObjectTypes: {
 
 			DataSource:       model.Relation_details,
-			Description:      "",
+			Description:      "Types that used for such relation",
 			Format:           model.RelationFormat_object,
+			Hidden:           true,
 			Key:              "relationFormatObjectTypes",
 			Name:             "Object type",
-			ReadOnly:         false,
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1770,7 +1785,7 @@ var (
 		RelationKeyTasks: {
 
 			DataSource:       model.Relation_details,
-			Description:      "",
+			Description:      "List of related tasks\n",
 			Format:           model.RelationFormat_object,
 			Key:              "tasks",
 			Name:             "Tasks",

@@ -348,6 +348,10 @@
     - [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request)
     - [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response)
     - [Rpc.BlockList.Set.Page.IsArchived.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error)
+    - [Rpc.BlockList.Set.Page.IsFavorite](#anytype.Rpc.BlockList.Set.Page.IsFavorite)
+    - [Rpc.BlockList.Set.Page.IsFavorite.Request](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Request)
+    - [Rpc.BlockList.Set.Page.IsFavorite.Response](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response)
+    - [Rpc.BlockList.Set.Page.IsFavorite.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
     - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
     - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
@@ -516,6 +520,14 @@
     - [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request)
     - [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response)
     - [Rpc.Object.Search.Response.Error](#anytype.Rpc.Object.Search.Response.Error)
+    - [Rpc.Object.SetIsArchived](#anytype.Rpc.Object.SetIsArchived)
+    - [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request)
+    - [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response)
+    - [Rpc.Object.SetIsArchived.Response.Error](#anytype.Rpc.Object.SetIsArchived.Response.Error)
+    - [Rpc.Object.SetIsFavorite](#anytype.Rpc.Object.SetIsFavorite)
+    - [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request)
+    - [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response)
+    - [Rpc.Object.SetIsFavorite.Response.Error](#anytype.Rpc.Object.SetIsFavorite.Response.Error)
     - [Rpc.Object.SetLayout](#anytype.Rpc.Object.SetLayout)
     - [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request)
     - [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response)
@@ -666,6 +678,7 @@
     - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
     - [Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code)
+    - [Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
@@ -708,6 +721,8 @@
     - [Rpc.Object.RelationOptionUpdate.Response.Error.Code](#anytype.Rpc.Object.RelationOptionUpdate.Response.Error.Code)
     - [Rpc.Object.RelationUpdate.Response.Error.Code](#anytype.Rpc.Object.RelationUpdate.Response.Error.Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code)
+    - [Rpc.Object.SetIsArchived.Response.Error.Code](#anytype.Rpc.Object.SetIsArchived.Response.Error.Code)
+    - [Rpc.Object.SetIsFavorite.Response.Error.Code](#anytype.Rpc.Object.SetIsFavorite.Response.Error.Code)
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
@@ -992,7 +1007,6 @@
 | BlockRedo | [Rpc.Block.Redo.Request](#anytype.Rpc.Block.Redo.Request) | [Rpc.Block.Redo.Response](#anytype.Rpc.Block.Redo.Response) |  |
 | BlockSetFields | [Rpc.Block.Set.Fields.Request](#anytype.Rpc.Block.Set.Fields.Request) | [Rpc.Block.Set.Fields.Response](#anytype.Rpc.Block.Set.Fields.Response) |  |
 | BlockSetRestrictions | [Rpc.Block.Set.Restrictions.Request](#anytype.Rpc.Block.Set.Restrictions.Request) | [Rpc.Block.Set.Restrictions.Response](#anytype.Rpc.Block.Set.Restrictions.Response) |  |
-| BlockSetPageIsArchived | [Rpc.Block.Set.Page.IsArchived.Request](#anytype.Rpc.Block.Set.Page.IsArchived.Request) | [Rpc.Block.Set.Page.IsArchived.Response](#anytype.Rpc.Block.Set.Page.IsArchived.Response) |  |
 | BlockListMove | [Rpc.BlockList.Move.Request](#anytype.Rpc.BlockList.Move.Request) | [Rpc.BlockList.Move.Response](#anytype.Rpc.BlockList.Move.Response) |  |
 | BlockListMoveToNewPage | [Rpc.BlockList.MoveToNewPage.Request](#anytype.Rpc.BlockList.MoveToNewPage.Request) | [Rpc.BlockList.MoveToNewPage.Response](#anytype.Rpc.BlockList.MoveToNewPage.Response) |  |
 | BlockListConvertChildrenToPages | [Rpc.BlockList.ConvertChildrenToPages.Request](#anytype.Rpc.BlockList.ConvertChildrenToPages.Request) | [Rpc.BlockList.ConvertChildrenToPages.Response](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response) |  |
@@ -1002,7 +1016,6 @@
 | BlockListSetBackgroundColor | [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request) | [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response) |  |
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
-| BlockListSetPageIsArchived | [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request) | [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response) |  |
 | BlockListDeletePage | [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request) | [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response) |  |
 | BlockListTurnInto | [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request) | [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
@@ -1011,6 +1024,7 @@
 | BlockListSetTextMark | [Rpc.BlockList.Set.Text.Mark.Request](#anytype.Rpc.BlockList.Set.Text.Mark.Request) | [Rpc.BlockList.Set.Text.Mark.Response](#anytype.Rpc.BlockList.Set.Text.Mark.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
+| BlockListSetPageIsArchived | [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request) | [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response) | deprecated |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
@@ -1055,6 +1069,11 @@
 | ObjectRelationOptionUpdate | [Rpc.Object.RelationOptionUpdate.Request](#anytype.Rpc.Object.RelationOptionUpdate.Request) | [Rpc.Object.RelationOptionUpdate.Response](#anytype.Rpc.Object.RelationOptionUpdate.Response) |  |
 | ObjectRelationOptionDelete | [Rpc.Object.RelationOptionDelete.Request](#anytype.Rpc.Object.RelationOptionDelete.Request) | [Rpc.Object.RelationOptionDelete.Response](#anytype.Rpc.Object.RelationOptionDelete.Response) |  |
 | ObjectRelationListAvailable | [Rpc.Object.RelationListAvailable.Request](#anytype.Rpc.Object.RelationListAvailable.Request) | [Rpc.Object.RelationListAvailable.Response](#anytype.Rpc.Object.RelationListAvailable.Response) |  |
+| ObjectSetLayout | [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request) | [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response) |  |
+| ObjectFeaturedRelationAdd | [Rpc.Object.FeaturedRelation.Add.Request](#anytype.Rpc.Object.FeaturedRelation.Add.Request) | [Rpc.Object.FeaturedRelation.Add.Response](#anytype.Rpc.Object.FeaturedRelation.Add.Response) |  |
+| ObjectFeaturedRelationRemove | [Rpc.Object.FeaturedRelation.Remove.Request](#anytype.Rpc.Object.FeaturedRelation.Remove.Request) | [Rpc.Object.FeaturedRelation.Remove.Response](#anytype.Rpc.Object.FeaturedRelation.Remove.Response) |  |
+| ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request) | [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response) |  |
+| ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
 | BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | TODO: rename BlockSetDetails -&gt; ObjectSetDetails |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page TODO: rename PageCreate -&gt; ObjectCreate |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) | SetCreate just creates the new set, without adding the link to it from some other page |
@@ -1064,9 +1083,6 @@
 | ObjectTypeRelationAdd | [Rpc.ObjectType.Relation.Add.Request](#anytype.Rpc.ObjectType.Relation.Add.Request) | [Rpc.ObjectType.Relation.Add.Response](#anytype.Rpc.ObjectType.Relation.Add.Response) |  |
 | ObjectTypeRelationUpdate | [Rpc.ObjectType.Relation.Update.Request](#anytype.Rpc.ObjectType.Relation.Update.Request) | [Rpc.ObjectType.Relation.Update.Response](#anytype.Rpc.ObjectType.Relation.Update.Response) |  |
 | ObjectTypeRelationRemove | [Rpc.ObjectType.Relation.Remove.Request](#anytype.Rpc.ObjectType.Relation.Remove.Request) | [Rpc.ObjectType.Relation.Remove.Response](#anytype.Rpc.ObjectType.Relation.Remove.Response) |  |
-| ObjectSetLayout | [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request) | [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response) |  |
-| ObjectFeaturedRelationAdd | [Rpc.Object.FeaturedRelation.Add.Request](#anytype.Rpc.Object.FeaturedRelation.Add.Request) | [Rpc.Object.FeaturedRelation.Add.Response](#anytype.Rpc.Object.FeaturedRelation.Add.Response) |  |
-| ObjectFeaturedRelationRemove | [Rpc.Object.FeaturedRelation.Remove.Request](#anytype.Rpc.Object.FeaturedRelation.Remove.Request) | [Rpc.Object.FeaturedRelation.Remove.Response](#anytype.Rpc.Object.FeaturedRelation.Remove.Response) |  |
 | Ping | [Rpc.Ping.Request](#anytype.Rpc.Ping.Request) | [Rpc.Ping.Response](#anytype.Rpc.Ping.Response) |  |
 | ProcessCancel | [Rpc.Process.Cancel.Request](#anytype.Rpc.Process.Cancel.Request) | [Rpc.Process.Cancel.Response](#anytype.Rpc.Process.Cancel.Response) |  |
 | HistoryShow | [Rpc.History.Show.Request](#anytype.Rpc.History.Show.Request) | [Rpc.History.Show.Response](#anytype.Rpc.History.Show.Response) |  |
@@ -6110,6 +6126,64 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite"></a>
+
+### Rpc.BlockList.Set.Page.IsFavorite
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Request"></a>
+
+### Rpc.BlockList.Set.Page.IsFavorite.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| isFavorite | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Response"></a>
+
+### Rpc.BlockList.Set.Page.IsFavorite.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Page.IsFavorite.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error"></a>
+
+### Rpc.BlockList.Set.Page.IsFavorite.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text"></a>
 
 ### Rpc.BlockList.Set.Text
@@ -8562,6 +8636,122 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 
 
+<a name="anytype.Rpc.Object.SetIsArchived"></a>
+
+### Rpc.Object.SetIsArchived
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetIsArchived.Request"></a>
+
+### Rpc.Object.SetIsArchived.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| isArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetIsArchived.Response"></a>
+
+### Rpc.Object.SetIsArchived.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SetIsArchived.Response.Error](#anytype.Rpc.Object.SetIsArchived.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetIsArchived.Response.Error"></a>
+
+### Rpc.Object.SetIsArchived.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SetIsArchived.Response.Error.Code](#anytype.Rpc.Object.SetIsArchived.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetIsFavorite"></a>
+
+### Rpc.Object.SetIsFavorite
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetIsFavorite.Request"></a>
+
+### Rpc.Object.SetIsFavorite.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| isFavorite | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetIsFavorite.Response"></a>
+
+### Rpc.Object.SetIsFavorite.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SetIsFavorite.Response.Error](#anytype.Rpc.Object.SetIsFavorite.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SetIsFavorite.Response.Error"></a>
+
+### Rpc.Object.SetIsFavorite.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SetIsFavorite.Response.Error.Code](#anytype.Rpc.Object.SetIsFavorite.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.SetLayout"></a>
 
 ### Rpc.Object.SetLayout
@@ -10595,6 +10785,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Text.Color.Response.Error.Code
@@ -11149,6 +11352,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.Search.Response.Error.Code"></a>
 
 ### Rpc.Object.Search.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.SetIsArchived.Response.Error.Code"></a>
+
+### Rpc.Object.SetIsArchived.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.SetIsFavorite.Response.Error.Code"></a>
+
+### Rpc.Object.SetIsFavorite.Response.Error.Code
 
 
 | Name | Number | Description |
