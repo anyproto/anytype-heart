@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"sync"
 	"time"
 	"unicode/utf8"
 
@@ -87,9 +86,7 @@ type State struct {
 
 	changesStructureIgnoreIds []string
 
-	stringBuf           []string
-	stringBufOccupied   bool
-	stringBufGetterLock sync.Mutex
+	stringBuf []string
 
 	groupId      string
 	noObjectType bool
@@ -262,38 +259,28 @@ func (s *State) PickOriginParentOf(id string) (res simple.Block) {
 	return
 }
 
-func (s *State) getStringBuf() (buf []string, release func(buf []string)) {
+func (s *State) getStringBuf() (buf []string) {
 	if s.parent != nil {
 		return s.parent.getStringBuf()
 	}
-	s.stringBufGetterLock.Lock()
-	if s.stringBufOccupied {
-		// prevent buff using race
-		return []string{}, func(buf []string) {}
-	}
-	s.stringBufOccupied = true
-	defer s.stringBufGetterLock.Unlock()
-	return s.stringBuf[:0], s.releaseStringBuf
+
+	return s.stringBuf[:0]
 }
 
-// do not call releaseStringBuf directly, use func returned by getStringBuf
 func (s *State) releaseStringBuf(buf []string) {
 	if s.parent != nil {
 		s.parent.releaseStringBuf(buf)
 		return
 	}
 
-	s.stringBufGetterLock.Lock()
-	s.stringBufOccupied = false
-	defer s.stringBufGetterLock.Unlock()
 	s.stringBuf = buf[:0]
 }
 
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	var iter func(id string) (isContinue bool, err error)
-	var parentIds, resetBuf = s.getStringBuf()
+	var parentIds = s.getStringBuf()
 	defer func() {
-		resetBuf(parentIds[:0])
+		s.releaseStringBuf(parentIds[:0])
 	}()
 
 	iter = func(id string) (isContinue bool, err error) {

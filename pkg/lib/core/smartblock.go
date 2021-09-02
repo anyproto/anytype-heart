@@ -315,7 +315,7 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 				}
 			case <-ctx.Done():
 				continue
-			case <-block.node.shutdownStartsCh:
+			case <-shutdownCh:
 				cancel()
 			}
 		}
