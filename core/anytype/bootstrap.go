@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
@@ -85,6 +86,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
+		Register(configfetcher.New()).
 		Register(threads.New()).
 		Register(source.New()).
 		Register(core.New()).

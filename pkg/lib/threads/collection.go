@@ -3,9 +3,9 @@ package threads
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -306,12 +306,15 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 
 	if s.replicatorAddr != nil {
 		// add replicator for own logs
-		_, err = s.t.AddReplicator(s.ctx, tid, s.replicatorAddr)
-		if err != nil {
-			log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
-		}
+		go func() {
+			<-s.newReplicatorProcessingLimiter
+			_, err = s.t.AddReplicator(s.ctx, tid, s.replicatorAddr)
+			if err != nil {
+				log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
+			}
+			s.newReplicatorProcessingLimiter <- struct{}{}
+		}()
 	}
-
 	_, err = s.pullThread(s.ctx, tid)
 	if err != nil {
 		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
