@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
@@ -52,6 +53,8 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 	if err = a.Start(); err != nil {
 		return
 	}
+	metrics.SharedClient.SetAppVersion(a.Version())
+	metrics.SharedClient.StartAggregating()
 	return a, nil
 }
 
@@ -70,6 +73,8 @@ func StartNewApp(components ...app.Component) (a *app.App, err error) {
 	if err = a.Start(); err != nil {
 		return
 	}
+	metrics.SharedClient.SetAppVersion(a.Version())
+	metrics.SharedClient.StartAggregating()
 	return
 }
 

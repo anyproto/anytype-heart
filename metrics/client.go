@@ -35,6 +35,7 @@ type Client interface {
 	InitWithKey(k string)
 
 	SetOSVersion(v string)
+	SetAppVersion(v string)
 	SetDeviceType(t string)
 	SetUserId(id string)
 
@@ -46,8 +47,9 @@ type Client interface {
 }
 
 type client struct {
-	lock             sync.Mutex
+	lock             sync.RWMutex
 	osVersion        string
+	appVersion       string
 	userId           string
 	deviceType       string
 	amplitude        *amplitude.Client
@@ -92,9 +94,15 @@ func (c *client) SetUserId(id string) {
 	c.userId = id
 }
 
-func (c *client) sendAggregatedData() {
+func (c *client) SetAppVersion(version string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
+	c.appVersion = version
+}
+
+func (c *client) sendAggregatedData() {
+	c.lock.RLock()
+	defer c.lock.RUnlock()
 	for k, ev := range c.aggregatableMap {
 		c.RecordEvent(ev)
 		delete(c.aggregatableMap, k)
@@ -102,12 +110,15 @@ func (c *client) sendAggregatedData() {
 }
 
 func (c *client) StartAggregating() {
+	if c.cancel != nil {
+		c.cancel()
+	}
 	go func() {
 		ticker := time.NewTicker(sendInterval)
 		for {
 			select {
 			case <-ticker.C:
-				go c.sendAggregatedData()
+				c.sendAggregatedData()
 			case ev := <-c.aggregatableChan:
 				c.lock.Lock()
 
@@ -122,7 +133,7 @@ func (c *client) StartAggregating() {
 
 				c.lock.Unlock()
 			case <-c.ctx.Done():
-				go c.sendAggregatedData()
+				c.sendAggregatedData()
 				return
 			}
 		}
@@ -137,15 +148,20 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 	if c.amplitude == nil || ev == nil {
 		return
 	}
+	e := ev.ToEvent()
+	c.lock.RLock()
+	ampEvent := amplitude.Event{
+		UserId:          c.userId,
+		OsVersion:       c.osVersion,
+		DeviceType:      c.deviceType,
+		EventType:       e.EventType,
+		EventProperties: e.EventData,
+		AppVersion:      c.appVersion,
+	}
+	c.lock.RUnlock()
+
 	go func(ev EventRepresentable) {
-		e := ev.ToEvent()
-		err := c.amplitude.Event(amplitude.Event{
-			UserId:          c.userId,
-			OsVersion:       c.osVersion,
-			DeviceType:      c.deviceType,
-			EventType:       e.EventType,
-			EventProperties: e.EventData,
-		})
+		err := c.amplitude.Event(ampEvent)
 		if err != nil {
 			clientMetricsLog.Errorf("error logging event %s", err)
 			return

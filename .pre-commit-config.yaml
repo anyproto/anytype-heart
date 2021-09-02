@@ -2,4 +2,3 @@
   rev: master
   hooks:
     - id: go-fmt
-    - id: go-imports
