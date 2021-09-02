@@ -159,9 +159,7 @@ func (s *service) Run() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	cafeCfg := s.fetcher.GetConfig(ctx)
 	cancel()
-	if err == nil && cafeCfg.SimultaneousRequests != 0 {
-		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
-	}
+	s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
 
 	s.newThreadProcessingLimiter = make(chan struct{}, s.simultaneousRequests)
 	for i := 0; i < cap(s.newThreadProcessingLimiter); i++ {
