@@ -47,6 +47,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 		template.WithNoRootLink(p.Anytype().PredefinedBlocks().Archive),
 		template.WithRootLink(p.Anytype().PredefinedBlocks().SetPages, model.BlockContentLink_Dataview),
 		template.WithRequiredRelations(),
+		template.WithNoDuplicateLinks(),
 	); err != nil {
 		return
 	}

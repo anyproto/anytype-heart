@@ -26,7 +26,7 @@ func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	p.SmartBlock.DisableLayouts()
-	return template.ApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoObjectTypes(), template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
+	return template.ApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoDuplicateLinks(), template.WithNoObjectTypes(), template.WithDetailName("Archive"), template.WithDetailIconEmoji("🗑"))
 }
 
 func (p *Archive) Relations() []*model.Relation {
