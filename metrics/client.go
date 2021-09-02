@@ -160,7 +160,7 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 	}
 	c.lock.RUnlock()
 
-	go func(ev EventRepresentable) {
+	go func() {
 		err := c.amplitude.Event(ampEvent)
 		if err != nil {
 			clientMetricsLog.Errorf("error logging event %s", err)
@@ -171,7 +171,7 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 			With("event-data", e.EventData).
 			With("user-id", c.userId).
 			Debugf("event sent")
-	}(ev)
+	}()
 }
 
 func (c *client) AggregateEvent(ev EventAggregatable) {
