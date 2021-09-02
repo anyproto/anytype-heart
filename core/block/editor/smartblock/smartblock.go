@@ -461,11 +461,19 @@ loop:
 func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	sb.Lock()
 	defer sb.Unlock()
-	if sb.sendEvent != nil && d.BlockId != sb.Id() {
+	if sb.sendEvent != nil {
 		msgs := []*pb.EventMessage{}
 		if d.Details != nil {
 			if v, exists := sb.lastDepDetails[d.BlockId]; exists {
 				diff := pbtypes.StructDiff(v.Details, d.Details)
+				if d.BlockId == sb.Id() {
+					// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
+					diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
+					if len(diff.GetFields()) > 0 {
+						log.With("thread", sb.Id()).Errorf("onMetaChange current object: %s", pbtypes.Sprint(diff))
+					}
+				}
+
 				msgs = append(msgs, state.StructDiffIntoEvents(d.BlockId, diff)...)
 			} else {
 				msgs = append(msgs, &pb.EventMessage{
@@ -496,7 +504,7 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 
 func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
-	if sb.Type() != model.SmartBlockType_Breadcrumbs && sb.Type() != model.SmartBlockType_Home {
+	if sb.Type() != model.SmartBlockType_Breadcrumbs {
 		ids = append(ids, sb.Id())
 
 		if includeObjTypes {
@@ -535,6 +543,7 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator boo
 	ids = util.UniqueStrings(ids)
 	sort.Strings(ids)
 
+	// todo: filter-out invalid ids
 	return
 }
 
