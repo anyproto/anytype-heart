@@ -17,7 +17,7 @@ var log = logging.Logger("anytype-mw-configfetcher")
 const CName = "configfetcher"
 
 var defaultConfigResponse = &pb.GetConfigResponseConfig{
-	EnableDataview:             true,
+	EnableDataview:             false,
 	EnableDebug:                false,
 	EnableReleaseChannelSwitch: false,
 	SimultaneousRequests:       20,
