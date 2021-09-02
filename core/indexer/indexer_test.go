@@ -98,7 +98,6 @@ func TestNewIndexer(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
-
 	ta := testapp.New()
 	rb := recordsbatcher.New()
 
@@ -116,7 +115,7 @@ func newFixture(t *testing.T) *fixture {
 
 	fx.getSerach.EXPECT().GetFullIndexInfo(gomock.Any()).AnyTimes()
 	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
-	fx.anytype.EXPECT().PredefinedBlocks()
+	fx.anytype.EXPECT().PredefinedBlocks().Times(2)
 
 	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 

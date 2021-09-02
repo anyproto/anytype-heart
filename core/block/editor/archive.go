@@ -8,24 +8,17 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func NewArchive(m meta.Service, ctrl ArchiveCtrl) *Archive {
+func NewArchive(m meta.Service) *Archive {
 	sb := smartblock.New(m)
 	return &Archive{
-		ctrl:       ctrl,
 		SmartBlock: sb,
 		Collection: collection.NewCollection(sb),
 	}
 }
 
-type ArchiveCtrl interface {
-	MarkArchived(id string, archived bool) (err error)
-	DeleteArchivedObject(id string) (err error)
-}
-
 type Archive struct {
-	ctrl ArchiveCtrl
-	collection.Collection
 	smartblock.SmartBlock
+	collection.Collection
 }
 
 func (p *Archive) Init(ctx *smartblock.InitContext) (err error) {
