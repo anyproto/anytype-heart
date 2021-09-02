@@ -92,7 +92,7 @@ func (c *configFetcher) Name() (name string) {
 }
 
 func (c *configFetcher) fetchConfig() (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	resp, err := c.cafe.GetConfig(ctx, &pb.GetConfigRequest{})
 	cancel()
 	if err != nil {
