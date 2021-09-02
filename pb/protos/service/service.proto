@@ -28,9 +28,12 @@ service ClientCommands {
     rpc LinkPreview (anytype.Rpc.LinkPreview.Request) returns (anytype.Rpc.LinkPreview.Response);
 
     rpc UploadFile (anytype.Rpc.UploadFile.Request) returns (anytype.Rpc.UploadFile.Response);
+    rpc DownloadFile (anytype.Rpc.DownloadFile.Request) returns (anytype.Rpc.DownloadFile.Response);
 
     rpc BlockUpload (anytype.Rpc.Block.Upload.Request) returns (anytype.Rpc.Block.Upload.Response);
     rpc BlockReplace (anytype.Rpc.Block.Replace.Request) returns (anytype.Rpc.Block.Replace.Response);
+    // BlockUpdateContent allows to update any simple block content to the new value of the same type
+    rpc BlockUpdateContent (anytype.Rpc.Block.UpdateContent.Request) returns (anytype.Rpc.Block.UpdateContent.Response);
     rpc BlockOpen (anytype.Rpc.Block.Open.Request) returns (anytype.Rpc.Block.Open.Response);
     rpc BlockShow (anytype.Rpc.Block.Show.Request) returns (anytype.Rpc.Block.Show.Response);
     rpc BlockGetPublicWebURL (anytype.Rpc.Block.GetPublicWebURL.Request) returns (anytype.Rpc.Block.GetPublicWebURL.Response);
@@ -125,6 +128,7 @@ service ClientCommands {
     rpc NavigationListObjects (anytype.Rpc.Navigation.ListObjects.Request) returns (anytype.Rpc.Navigation.ListObjects.Response);
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
 
+    rpc ObjectGraph (anytype.Rpc.Object.Graph.Request) returns (anytype.Rpc.Object.Graph.Response);
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
     rpc ObjectRelationAdd (anytype.Rpc.Object.RelationAdd.Request) returns (anytype.Rpc.Object.RelationAdd.Response);
     rpc ObjectRelationUpdate (anytype.Rpc.Object.RelationUpdate.Request) returns (anytype.Rpc.Object.RelationUpdate.Response);

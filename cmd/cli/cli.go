@@ -15,6 +15,8 @@ func init() {
 	// subcommands
 	CliCmd.AddCommand(migrateCmd)
 	CliCmd.AddCommand(cafeCmd)
+	CliCmd.AddCommand(debugCmd)
+
 	// local flags
 }
 

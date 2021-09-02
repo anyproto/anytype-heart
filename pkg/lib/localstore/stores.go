@@ -75,30 +75,30 @@ func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary
 	return txn.Commit()
 }
 
-func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
+func UpdateIndexWithTxn(index Index, txn ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
 	oldKeys := index.JoinedKeys(oldVal)
-	hasKey := func(key string) (exists bool, err error) {
-		return ds.Has(IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(key))
-	}
-
-	if len(oldKeys) > 0 {
-		exists, err := hasKey(oldKeys[0])
-		if err != nil {
-			return err
-		}
-
-		if !exists {
-			oldKeys = []string{}
-		}
+	getFullKey := func(key string) ds.Key {
+		return IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(key).ChildString(newValPrimary)
 	}
 
 	newKeys := index.JoinedKeys(newVal)
 
 	removed, added := slice.DifferenceRemovedAdded(oldKeys, newKeys)
+	if len(oldKeys) > 0 {
+		exists, err := txn.Has(getFullKey(oldKeys[0]))
+		if err != nil {
+			return err
+		}
+
+		if !exists {
+			// inconsistency – lets add all keys, not only the new ones
+			added = newKeys
+		}
+	}
 
 	for _, removedKey := range removed {
-		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(removedKey).ChildString(newValPrimary)
-		exists, err := ds.Has(key)
+		key := getFullKey(removedKey)
+		exists, err := txn.Has(key)
 		if err != nil {
 			return err
 		}
@@ -108,15 +108,15 @@ func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal inter
 		}
 		log.Debugf("update(remove) index at %s", key.String())
 
-		err = ds.Delete(key)
+		err = txn.Delete(key)
 		if err != nil {
 			return err
 		}
 	}
 
 	for _, addedKey := range added {
-		key := IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(addedKey).ChildString(newValPrimary)
-		exists, err := ds.Has(key)
+		key := getFullKey(addedKey)
+		exists, err := txn.Has(key)
 		if err != nil {
 			return err
 		}
@@ -126,7 +126,7 @@ func UpdateIndexWithTxn(index Index, ds ds.Txn, oldVal interface{}, newVal inter
 		}
 		log.Debugf("update(add) index at %s", key.String())
 
-		err = ds.Put(key, []byte{})
+		err = txn.Put(key, []byte{})
 		if err != nil {
 			return err
 		}

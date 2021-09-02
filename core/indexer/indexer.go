@@ -2,8 +2,13 @@ package indexer
 
 import (
 	"context"
+	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"math"
+	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -84,14 +89,16 @@ const (
 type indexer struct {
 	store objectstore.ObjectStore
 	// todo: move logstore to separate component?
-	anytype core.Service
-	source  source.Service
-	doc     doc.Service
-	quit    chan struct{}
-	mu      sync.Mutex
-	btHash  Hasher
-
-	newAccount bool
+	anytype       core.Service
+	source        source.Service
+	threadService threads.Service
+	doc           doc.Service
+	quit          chan struct{}
+	mu            sync.Mutex
+	btHash        Hasher
+	archivedMap   map[string]struct{}
+	favoriteMap   map[string]struct{}
+	newAccount    bool
 }
 
 func (i *indexer) IndexOutgoingLinks(id string, links []string) error {
@@ -102,10 +109,14 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	i.threadService = a.MustComponent(threads.CName).(threads.Service)
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.doc = a.MustComponent(doc.CName).(doc.Service)
 	i.quit = make(chan struct{})
+	i.archivedMap = make(map[string]struct{}, 100)
+	i.favoriteMap = make(map[string]struct{}, 100)
+
 	return
 }
 
@@ -212,6 +223,61 @@ func (i *indexer) reindexIfNeeded() error {
 	return i.Reindex(context.TODO(), reindex)
 }
 
+func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
+	tids, err := i.threadService.Logstore().Threads()
+	if err != nil {
+		return 0, 0, err
+	}
+
+	var idsToReindex []string
+	for _, tid := range tids {
+		lastHash, err := i.store.GetLastIndexedHeadsHash(tid.String())
+		if err != nil {
+			log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
+			continue
+		}
+
+		info, err := i.threadService.Logstore().GetThread(tid)
+		if err != nil {
+			log.With("thread", tid.String()).Errorf("reindexOutdatedThreads failed to get thread to reindex: %s", err.Error())
+			continue
+		}
+		var heads = make(map[string]string, len(info.Logs))
+		for _, li := range info.Logs {
+			head := li.Head.ID
+			if !head.Defined() {
+				continue
+			}
+
+			heads[li.ID.String()] = head.String()
+		}
+		hh := headsHash(heads)
+		if lastHash != hh {
+			log.With("thread", tid.String()).Warnf("not equal indexed heads hash: %s!=%s (%d logs)", lastHash, hh, len(heads))
+			idsToReindex = append(idsToReindex, tid.String())
+		}
+	}
+
+	if len(idsToReindex) > 0 {
+		for _, id := range idsToReindex {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+			cancel()
+			d, err := i.doc.GetDocInfo(ctx, id)
+			if err != nil {
+				log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
+				continue
+			}
+			err = i.index(context.TODO(), d)
+			if err == nil {
+				success++
+			} else {
+				log.With("thread", id).Errorf("reindexOutdatedThreads failed to index doc: %s", err.Error())
+			}
+		}
+	}
+	return len(idsToReindex), success, nil
+}
+
 func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error) {
 	if reindex != 0 {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0)
@@ -243,6 +309,17 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			indexesWereRemoved = true
 		}
 	}
+	if reindex > 0 {
+		d, err := i.doc.GetDocInfo(ctx, i.anytype.PredefinedBlocks().Archive)
+		if err != nil {
+			log.Errorf("reindex failed to open archive: %s", err.Error())
+		} else {
+			for _, target := range d.Links {
+				i.archivedMap[target] = struct{}{}
+			}
+		}
+	}
+
 	if reindex&reindexThreadObjects != 0 {
 		ids, err := getIdsForTypes(
 			smartblock.SmartBlockTypePage,
@@ -259,15 +336,53 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		if err != nil {
 			return err
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		if metrics.Enabled {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType:    metrics.ReindexTypeThreads,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
+	} else {
+		start := time.Now()
+		total, success, err := i.reindexOutdatedThreads()
+		if err != nil {
+			log.Infof("failed to reindex outdated objects: %s", err.Error())
+		} else {
+			log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
+		}
+		if metrics.Enabled && total > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType:    metrics.ReindexTypeOutdatedHeads,
+				Total:          total,
+				Success:        success,
+				SpentMs:        int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 	}
+
 	if reindex&reindexFileObjects != 0 {
 		ids, err := getIdsForTypes(smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType:    metrics.ReindexTypeFiles,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 		msg := fmt.Sprintf("%d/%d files have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -280,7 +395,17 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		if err != nil {
 			return err
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType:    metrics.ReindexTypeBundledRelations,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 		msg := fmt.Sprintf("%d/%d bundled relations have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -294,7 +419,17 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		if err != nil {
 			return err
 		}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType:    metrics.ReindexTypeBundledTypes,
+				Total:          len(ids),
+				Success:        successfullyReindexed,
+				SpentMs:        int(time.Since(start).Milliseconds()),
+				IndexesRemoved: indexesWereRemoved,
+			})
+		}
 		msg := fmt.Sprintf("%d/%d bundled types have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -305,7 +440,16 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	if reindex&reindexBundledObjects != 0 {
 		// hardcoded for now
 		ids := []string{addr.AnytypeProfileId}
+		start := time.Now()
 		successfullyReindexed := i.reindexIdsIgnoreErr(ctx, indexesWereRemoved, ids...)
+		if metrics.Enabled && len(ids) > 0 {
+			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+				ReindexType: metrics.ReindexTypeBundledTemplates,
+				Total:       len(ids),
+				Success:     successfullyReindexed,
+				SpentMs:     int(time.Since(start).Milliseconds()),
+			})
+		}
 		msg := fmt.Sprintf("%d/%d bundled objects have been successfully reindexed", successfullyReindexed, len(ids))
 		if len(ids)-successfullyReindexed != 0 {
 			log.Error(msg)
@@ -390,6 +534,9 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	}
 
 	details := d.State.CombinedDetails()
+	_, isArchived := i.archivedMap[id]
+	details.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
+
 	var curDetails *types.Struct
 	curDetailsO, _ := i.store.GetDetails(id)
 	if curDetailsO != nil {
@@ -406,6 +553,12 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		} else {
 			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.State.ExtraRelations()}, true); err != nil {
 				return fmt.Errorf("can't update object store: %v", err)
+			}
+		}
+		if headsHash := headsHash(d.LogHeads); headsHash != "" {
+			err = i.store.SaveLastIndexedHeadsHash(id, headsHash)
+			if err != nil {
+				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
 			}
 		}
 		if curDetails == nil || t == smartblock.SmartBlockTypeFile {
@@ -467,6 +620,12 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if err := i.store.UpdateObjectDetails(info.Id, details, &model.Relations{Relations: info.State.ExtraRelations()}, false); err != nil {
 		log.With("thread", info.Id).Errorf("can't update object store: %v", err)
 	} else {
+		if headsHash := headsHash(info.LogHeads); headsHash != "" {
+			err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
+			if err != nil {
+				log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
+			}
+		}
 		log.With("thread", info.Id).Infof("indexed: det: %v", pbtypes.GetString(details, bundle.RelationKeyName.String()))
 	}
 
@@ -578,4 +737,19 @@ func (i *indexer) Close() error {
 		i.mu.Unlock()
 	}
 	return nil
+}
+
+func headsHash(headByLogId map[string]string) string {
+	if len(headByLogId) == 0 {
+		return ""
+	}
+
+	var sortedHeads = make([]string, 0, len(headByLogId))
+	for _, head := range headByLogId {
+		sortedHeads = append(sortedHeads, head)
+	}
+	sort.Strings(sortedHeads)
+
+	sum := sha256.Sum256([]byte(strings.Join(sortedHeads, ",")))
+	return fmt.Sprintf("%x", sum)
 }

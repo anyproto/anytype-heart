@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -32,10 +28,6 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -302,6 +294,10 @@
     - [Rpc.Block.Unlink.Request](#anytype.Rpc.Block.Unlink.Request)
     - [Rpc.Block.Unlink.Response](#anytype.Rpc.Block.Unlink.Response)
     - [Rpc.Block.Unlink.Response.Error](#anytype.Rpc.Block.Unlink.Response.Error)
+    - [Rpc.Block.UpdateContent](#anytype.Rpc.Block.UpdateContent)
+    - [Rpc.Block.UpdateContent.Request](#anytype.Rpc.Block.UpdateContent.Request)
+    - [Rpc.Block.UpdateContent.Response](#anytype.Rpc.Block.UpdateContent.Response)
+    - [Rpc.Block.UpdateContent.Response.Error](#anytype.Rpc.Block.UpdateContent.Response.Error)
     - [Rpc.Block.Upload](#anytype.Rpc.Block.Upload)
     - [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request)
     - [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response)
@@ -393,6 +389,10 @@
     - [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error)
     - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
     - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
+    - [Rpc.DownloadFile](#anytype.Rpc.DownloadFile)
+    - [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request)
+    - [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response)
+    - [Rpc.DownloadFile.Response.Error](#anytype.Rpc.DownloadFile.Response.Error)
     - [Rpc.Export](#anytype.Rpc.Export)
     - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
     - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
@@ -478,6 +478,12 @@
     - [Rpc.Object.FeaturedRelation.Remove.Request](#anytype.Rpc.Object.FeaturedRelation.Remove.Request)
     - [Rpc.Object.FeaturedRelation.Remove.Response](#anytype.Rpc.Object.FeaturedRelation.Remove.Response)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error)
+    - [Rpc.Object.Graph](#anytype.Rpc.Object.Graph)
+    - [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge)
+    - [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node)
+    - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
+    - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
+    - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
     - [Rpc.Object.RelationAdd](#anytype.Rpc.Object.RelationAdd)
     - [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request)
     - [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response)
@@ -648,6 +654,7 @@
     - [Rpc.Block.Split.Response.Error.Code](#anytype.Rpc.Block.Split.Response.Error.Code)
     - [Rpc.Block.Undo.Response.Error.Code](#anytype.Rpc.Block.Undo.Response.Error.Code)
     - [Rpc.Block.Unlink.Response.Error.Code](#anytype.Rpc.Block.Unlink.Response.Error.Code)
+    - [Rpc.Block.UpdateContent.Response.Error.Code](#anytype.Rpc.Block.UpdateContent.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code)
     - [Rpc.BlockList.Delete.Page.Response.Error.Code](#anytype.Rpc.BlockList.Delete.Page.Response.Error.Code)
@@ -668,6 +675,7 @@
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code)
+    - [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
     - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
@@ -690,6 +698,8 @@
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Add.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
+    - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
+    - [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code)
     - [Rpc.Object.RelationAdd.Response.Error.Code](#anytype.Rpc.Object.RelationAdd.Response.Error.Code)
     - [Rpc.Object.RelationDelete.Response.Error.Code](#anytype.Rpc.Object.RelationDelete.Response.Error.Code)
     - [Rpc.Object.RelationListAvailable.Response.Error.Code](#anytype.Rpc.Object.RelationListAvailable.Response.Error.Code)
@@ -716,9 +726,6 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -852,9 +859,6 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -865,10 +869,6 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
-  
-  
-  
-
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -884,6 +884,7 @@
     - [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations)
     - [Block.Content.File](#anytype.model.Block.Content.File)
     - [Block.Content.Icon](#anytype.model.Block.Content.Icon)
+    - [Block.Content.Latex](#anytype.model.Block.Content.Latex)
     - [Block.Content.Layout](#anytype.model.Block.Content.Layout)
     - [Block.Content.Link](#anytype.model.Block.Content.Link)
     - [Block.Content.Relation](#anytype.model.Block.Content.Relation)
@@ -899,6 +900,7 @@
     - [Range](#anytype.model.Range)
     - [Relation](#anytype.model.Relation)
     - [Relation.Option](#anytype.model.Relation.Option)
+    - [RelationOptions](#anytype.model.RelationOptions)
     - [RelationWithValue](#anytype.model.RelationWithValue)
     - [Relations](#anytype.model.Relations)
     - [Restrictions](#anytype.model.Restrictions)
@@ -930,9 +932,6 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -973,8 +972,10 @@
 | ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype.Rpc.LinkPreview.Request) | [Rpc.LinkPreview.Response](#anytype.Rpc.LinkPreview.Response) |  |
 | UploadFile | [Rpc.UploadFile.Request](#anytype.Rpc.UploadFile.Request) | [Rpc.UploadFile.Response](#anytype.Rpc.UploadFile.Response) |  |
+| DownloadFile | [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request) | [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response) |  |
 | BlockUpload | [Rpc.Block.Upload.Request](#anytype.Rpc.Block.Upload.Request) | [Rpc.Block.Upload.Response](#anytype.Rpc.Block.Upload.Response) |  |
 | BlockReplace | [Rpc.Block.Replace.Request](#anytype.Rpc.Block.Replace.Request) | [Rpc.Block.Replace.Response](#anytype.Rpc.Block.Replace.Response) |  |
+| BlockUpdateContent | [Rpc.Block.UpdateContent.Request](#anytype.Rpc.Block.UpdateContent.Request) | [Rpc.Block.UpdateContent.Response](#anytype.Rpc.Block.UpdateContent.Response) | BlockUpdateContent allows to update any simple block content to the new value of the same type |
 | BlockOpen | [Rpc.Block.Open.Request](#anytype.Rpc.Block.Open.Request) | [Rpc.Block.Open.Response](#anytype.Rpc.Block.Open.Response) |  |
 | BlockShow | [Rpc.Block.Show.Request](#anytype.Rpc.Block.Show.Request) | [Rpc.Block.Show.Response](#anytype.Rpc.Block.Show.Response) |  |
 | BlockGetPublicWebURL | [Rpc.Block.GetPublicWebURL.Request](#anytype.Rpc.Block.GetPublicWebURL.Request) | [Rpc.Block.GetPublicWebURL.Response](#anytype.Rpc.Block.GetPublicWebURL.Response) |  |
@@ -1045,6 +1046,7 @@
 | BlockObjectTypeSet | [Rpc.Block.ObjectType.Set.Request](#anytype.Rpc.Block.ObjectType.Set.Request) | [Rpc.Block.ObjectType.Set.Response](#anytype.Rpc.Block.ObjectType.Set.Response) | ## Object&#39;s relations set an existing object type to the object so it will appear in sets and suggests relations from this type TODO: rename BlockObjectTypeSet -&gt; ObjectObjectTypeSet |
 | NavigationListObjects | [Rpc.Navigation.ListObjects.Request](#anytype.Rpc.Navigation.ListObjects.Request) | [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response) |  |
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
+| ObjectGraph | [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request) | [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
 | ObjectRelationAdd | [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request) | [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response) |  |
 | ObjectRelationUpdate | [Rpc.Object.RelationUpdate.Request](#anytype.Rpc.Object.RelationUpdate.Request) | [Rpc.Object.RelationUpdate.Response](#anytype.Rpc.Object.RelationUpdate.Response) |  |
@@ -5330,6 +5332,65 @@ Remove blocks from the childrenIds of its parents
 
 
 
+<a name="anytype.Rpc.Block.UpdateContent"></a>
+
+### Rpc.Block.UpdateContent
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.UpdateContent.Request"></a>
+
+### Rpc.Block.UpdateContent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| block | [model.Block](#anytype.model.Block) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.UpdateContent.Response"></a>
+
+### Rpc.Block.UpdateContent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.UpdateContent.Response.Error](#anytype.Rpc.Block.UpdateContent.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.UpdateContent.Response.Error"></a>
+
+### Rpc.Block.UpdateContent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.UpdateContent.Response.Error.Code](#anytype.Rpc.Block.UpdateContent.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Block.Upload"></a>
 
 ### Rpc.Block.Upload
@@ -5608,8 +5669,8 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | targetContextId | [string](#string) |  |  |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| dropTargetId | [string](#string) |  | id of the simple block to insert considering position |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  | position relatively to the dropTargetId simple block |
 
 
 
@@ -5669,8 +5730,8 @@ Makes blocks copy by given ids and paste it to shown place
 | contextId | [string](#string) |  |  |
 | blockIds | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | page details |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| dropTargetId | [string](#string) |  | id of the simple block to insert considering position |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  | position relatively to the dropTargetId simple block |
 
 
 
@@ -6664,6 +6725,64 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.DownloadFile"></a>
+
+### Rpc.DownloadFile
+
+
+
+
+
+
+
+<a name="anytype.Rpc.DownloadFile.Request"></a>
+
+### Rpc.DownloadFile.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| hash | [string](#string) |  |  |
+| path | [string](#string) |  | path to save file. Temp directory is used if empty |
+
+
+
+
+
+
+<a name="anytype.Rpc.DownloadFile.Response"></a>
+
+### Rpc.DownloadFile.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.DownloadFile.Response.Error](#anytype.Rpc.DownloadFile.Response.Error) |  |  |
+| localPath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.DownloadFile.Response.Error"></a>
+
+### Rpc.DownloadFile.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Export"></a>
 
 ### Rpc.Export
@@ -6870,8 +6989,8 @@ commands acceptable only for text blocks, others will be ignored
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| dropTargetId | [string](#string) |  | id of the simple block to insert considering position |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  | position relatively to the dropTargetId simple block |
 | localFilePaths | [string](#string) | repeated |  |
 
 
@@ -7858,6 +7977,108 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph"></a>
+
+### Rpc.Object.Graph
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Edge"></a>
+
+### Rpc.Object.Graph.Edge
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| source | [string](#string) |  |  |
+| target | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| type | [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type) |  |  |
+| description | [string](#string) |  |  |
+| iconImage | [string](#string) |  |  |
+| iconEmoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Node"></a>
+
+### Rpc.Object.Graph.Node
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| type | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| layout | [int32](#int32) |  |  |
+| description | [string](#string) |  |  |
+| iconImage | [string](#string) |  |  |
+| iconEmoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Request"></a>
+
+### Rpc.Object.Graph.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
+| limit | [int32](#int32) |  |  |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Response"></a>
+
+### Rpc.Object.Graph.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error) |  |  |
+| nodes | [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node) | repeated |  |
+| edges | [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.Graph.Response.Error"></a>
+
+### Rpc.Object.Graph.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10218,6 +10439,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.UpdateContent.Response.Error.Code"></a>
+
+### Rpc.Block.UpdateContent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Upload.Response.Error.Code"></a>
 
 ### Rpc.Block.Upload.Response.Error.Code
@@ -10479,6 +10713,20 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.DownloadFile.Response.Error.Code"></a>
+
+### Rpc.DownloadFile.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NOT_FOUND | 3 |  |
+
+
+
 <a name="anytype.Rpc.Export.Format"></a>
 
 ### Rpc.Export.Format
@@ -10489,6 +10737,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Markdown | 0 |  |
 | Protobuf | 1 |  |
 | JSON | 2 |  |
+| DOT | 3 |  |
+| SVG | 4 |  |
+| GRAPH_JSON | 5 |  |
 
 
 
@@ -10768,6 +11019,31 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code"></a>
 
 ### Rpc.Object.FeaturedRelation.Remove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.Graph.Edge.Type"></a>
+
+### Rpc.Object.Graph.Edge.Type
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Link | 0 |  |
+| Relation | 1 |  |
+
+
+
+<a name="anytype.Rpc.Object.Graph.Response.Error.Code"></a>
+
+### Rpc.Object.Graph.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -13198,6 +13474,7 @@ Precondition: user A and user B opened the same block
 | DropFiles | 0 |  |
 | Import | 1 |  |
 | Export | 2 |  |
+| SaveFile | 3 |  |
 
 
  
@@ -13431,6 +13708,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | dataview | [Block.Content.Dataview](#anytype.model.Block.Content.Dataview) |  |  |
 | relation | [Block.Content.Relation](#anytype.model.Block.Content.Relation) |  |  |
 | featuredRelations | [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations) |  |  |
+| latex | [Block.Content.Latex](#anytype.model.Block.Content.Latex) |  |  |
 
 
 
@@ -13554,6 +13832,7 @@ Bookmark is to keep a web-link and to preview a content.
 | sorts | [Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated |  |
 | filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | relations | [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation) | repeated | relations fields/columns options, also used to provide the order |
+| coverRelationKey | [string](#string) |  | Relation used for cover in gallery |
 
 
 
@@ -13615,6 +13894,21 @@ Divider: block, that contains only one horizontal thin line
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.Latex"></a>
+
+### Block.Content.Latex
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| text | [string](#string) |  |  |
 
 
 
@@ -13887,6 +14181,21 @@ scope from which this relation have been aggregated |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
 | scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+
+
+
+
+
+
+<a name="anytype.model.RelationOptions"></a>
+
+### RelationOptions
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| options | [Relation.Option](#anytype.model.Relation.Option) | repeated |  |
 
 
 

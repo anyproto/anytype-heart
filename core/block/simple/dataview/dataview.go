@@ -18,7 +18,10 @@ import (
 )
 
 var _ Block = (*Dataview)(nil)
-var ErrOptionNotExists = errors.New("option not exists")
+var (
+	ErrRelationNotFound = fmt.Errorf("relation not found")
+	ErrOptionNotExists  = errors.New("option not exists")
+)
 
 func init() {
 	simple.RegisterCreator(NewDataview)
@@ -42,6 +45,7 @@ type Block interface {
 	DeleteView(viewID string) error
 
 	AddRelation(relation model.Relation)
+	GetRelation(relationKey string) (*model.Relation, error)
 	UpdateRelation(relationKey string, relation model.Relation) error
 	DeleteRelation(relationKey string) error
 
@@ -222,6 +226,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 			v.Filters = view.Filters
 			v.Name = view.Name
 			v.Type = view.Type
+			v.CoverRelationKey = view.CoverRelationKey
 
 			break
 		}
@@ -234,6 +239,15 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	return nil
 }
 
+func (s *Dataview) GetRelation(relationKey string) (*model.Relation, error) {
+	for _, v := range s.content.Relations {
+		if v.Key == relationKey {
+			return v, nil
+		}
+	}
+	return nil, ErrRelationNotFound
+}
+
 func (s *Dataview) UpdateRelation(relationKey string, rel model.Relation) error {
 	var found bool
 	if relationKey != rel.Key {
@@ -244,36 +258,13 @@ func (s *Dataview) UpdateRelation(relationKey string, rel model.Relation) error 
 		if v.Key == relationKey {
 			found = true
 
-			if v.Format != rel.Format {
-				return fmt.Errorf("changing format of existing relation is retricted")
-			}
-
-			if v.DataSource != rel.DataSource {
-				return fmt.Errorf("changing data source of existing relation is retricted")
-			}
-
-			if v.Hidden != rel.Hidden {
-				return fmt.Errorf("changing hidden flag of existing relation is retricted")
-			}
-			rel.SelectDict = v.SelectDict
-
-			if rel.Format == model.RelationFormat_status || rel.Format == model.RelationFormat_tag {
-				rel.SelectDict = mergeSelectOptions(v.SelectDict, rel.SelectDict)
-				for i := range rel.SelectDict {
-					if rel.SelectDict[i].Id == "" {
-						rel.SelectDict[i].Id = bson.NewObjectId().Hex()
-					}
-				}
-			}
-
-			s.content.Relations[i] = &rel
-
+			s.content.Relations[i] = pbtypes.CopyRelation(&rel)
 			break
 		}
 	}
 
 	if !found {
-		return fmt.Errorf("relation not found")
+		return ErrRelationNotFound
 	}
 
 	return nil

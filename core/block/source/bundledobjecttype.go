@@ -124,3 +124,7 @@ func (v *bundledObjectType) ListIds() ([]string, error) {
 func (v *bundledObjectType) Close() (err error) {
 	return
 }
+
+func (v *bundledObjectType) LogHeads() map[string]string {
+	return nil
+}

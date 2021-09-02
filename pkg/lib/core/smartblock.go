@@ -257,7 +257,12 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 		return "", err
 	}
 
-	rec, err := block.node.threadService.Threads().CreateRecord(context.TODO(), block.thread.ID, body)
+	pk, err := block.node.wallet.GetDevicePrivkey()
+	if err != nil {
+		return "", err
+	}
+
+	rec, err := block.node.threadService.Threads().CreateRecord(context.TODO(), block.thread.ID, body, net.WithLogPrivateKey(pk))
 	if err != nil {
 		log.Errorf("failed to create record: %w", err)
 		return "", err

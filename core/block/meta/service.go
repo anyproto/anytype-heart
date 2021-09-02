@@ -49,19 +49,31 @@ func (s *service) IndexerIndexOutgoingLinks(id string, links []string) {
 	s.indexer.IndexOutgoingLinks(id, links)
 }
 
-
 // SetLocalDetails inject local details into the meta pubsub
 func (s *service) SetLocalDetails(id string, st *types.Struct) {
 	s.ps.m.Lock()
-	defer s.ps.m.Unlock()
-	if c, ok := s.ps.collectors[id]; ok {
-		m := copyMeta(c.GetMeta())
-		for k, v := range st.GetFields() {
-			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 {
-				m.Details.Fields[k] = v
-			}
+	c, ok := s.ps.collectors[id]
+	s.ps.m.Unlock()
+	if !ok {
+		return
+	}
+	c.m.Lock()
+	defer c.m.Unlock()
+	select {
+	case <-c.ready:
+	default:
+		log.With("thread", id).Errorf("meta service failed to set local details: not available")
+		return
+	}
+	m := copyMeta(c.lastMeta)
+	for k, v := range st.GetFields() {
+		if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 {
+			m.Details.Fields[k] = v
 		}
-		c.setMeta(m)
+	}
+	if !c.lastMeta.Details.Equal(m.Details) {
+		c.ps.call(m)
+		c.lastMeta = m
 	}
 }
 

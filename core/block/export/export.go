@@ -3,6 +3,8 @@ package export
 import (
 	"bytes"
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/dot"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/graphjson"
 	"math/rand"
 	"path/filepath"
 	"strconv"
@@ -88,18 +90,35 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
 	defer wr.Close()
 
 	queue.SetMessage("export docs")
-	for _, docId := range docIds {
-		did := docId
-		if err = queue.Wait(func() {
-			log.With("threadId", did).Debugf("write doc")
-			if werr := e.writeDoc(req.Format, wr, docIds, queue, did); werr != nil {
-				log.With("threadId", did).Warnf("can't export doc: %v", werr)
+	if req.Format == pb.RpcExport_DOT || req.Format == pb.RpcExport_SVG {
+		var format = dot.ExportFormatDOT
+		if req.Format == pb.RpcExport_SVG {
+			format = dot.ExportFormatSVG
+		}
+		mc := dot.NewMultiConverter(format)
+		mc.SetKnownLinks(docIds)
+		if werr := e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
+			log.Warnf("can't export docs: %v", werr)
+		}
+	} else if req.Format == pb.RpcExport_GRAPH_JSON {
+		mc := graphjson.NewMultiConverter()
+		mc.SetKnownLinks(docIds)
+		if werr := e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
+			log.Warnf("can't export docs: %v", werr)
+		}
+	} else {
+		for _, docId := range docIds {
+			did := docId
+			if err = queue.Wait(func() {
+				log.With("threadId", did).Debugf("write doc")
+				if werr := e.writeDoc(req.Format, wr, docIds, queue, did); werr != nil {
+					log.With("threadId", did).Warnf("can't export doc: %v", werr)
+				}
+			}); err != nil {
+				return
 			}
-		}); err != nil {
-			return
 		}
 	}
-
 	queue.SetMessage("export files")
 	if err = queue.Finalize(); err != nil {
 		return
@@ -121,6 +140,7 @@ func (e *export) idsForExport(reqIds []string) (ids []string, err error) {
 		},
 	}, []smartblock.SmartBlockType{
 		smartblock.SmartBlockTypeHome,
+		smartblock.SmartBlockTypeProfilePage,
 		smartblock.SmartBlockTypePage,
 	})
 	if err != nil {
@@ -132,7 +152,51 @@ func (e *export) idsForExport(reqIds []string) (ids []string, err error) {
 	return
 }
 
+func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []string, queue process.Queue) (err error) {
+	for _, did := range docIds {
+		if err = queue.Wait(func() {
+			log.With("threadId", did).Debugf("write doc")
+			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
+				return mw.Add(b.NewState())
+			})
+			if err != nil {
+				log.With("threadId", did).Warnf("can't export doc: %v", werr)
+			}
+
+		}); err != nil {
+			return
+		}
+	}
+
+	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert())); err != nil {
+		return err
+	}
+
+	for _, fh := range mw.FileHashes() {
+		fileHash := fh
+		if err = queue.Add(func() {
+			if werr := e.saveFile(wr, fileHash); werr != nil {
+				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
+			}
+		}); err != nil {
+			return err
+		}
+	}
+	for _, fh := range mw.ImageHashes() {
+		fileHash := fh
+		if err = queue.Add(func() {
+			if werr := e.saveImage(wr, fileHash); werr != nil {
+				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
+			}
+		}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string, queue process.Queue, docId string) (err error) {
+
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
 		var conv converter.Converter
 		switch format {
@@ -194,7 +258,7 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	orig, err := file.GetFileForLargestWidth(context.TODO())
+	orig, err := file.GetOriginalFile(context.TODO())
 	if err != nil {
 		return
 	}

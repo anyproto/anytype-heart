@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -122,10 +123,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewRelationSet:
 		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok && o.BlockDataviewRelationSet.Relation != nil {
-				if f.UpdateRelation(o.BlockDataviewRelationSet.RelationKey, *o.BlockDataviewRelationSet.Relation) != nil {
+				if er := f.UpdateRelation(o.BlockDataviewRelationSet.RelationKey, *o.BlockDataviewRelationSet.Relation); er == dataview.ErrRelationNotFound {
 					f.AddRelation(*o.BlockDataviewRelationSet.Relation)
+				} else {
+					return er
 				}
-				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {

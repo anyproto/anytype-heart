@@ -362,6 +362,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				var block *smartBlock
 				id := val.ThreadID().String()
 				if id == a.predefinedBlockIds.Account {
+					// todo: not working on the early start
 					continue
 				}
 				if block, ok = smartBlocksCache[id]; !ok {

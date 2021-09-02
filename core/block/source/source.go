@@ -37,6 +37,8 @@ type Source interface {
 	Anytype() core.Service
 	Type() model.SmartBlockType
 	Virtual() bool
+	LogHeads() map[string]string
+
 	ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
@@ -47,6 +49,7 @@ type Source interface {
 
 type SourceType interface {
 	ListIds() ([]string, error)
+	Virtual() bool
 }
 
 type SourceWithType interface {
@@ -300,6 +303,11 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+	if events := s.tree.GetDuplicateEvents(); events > 30 {
+		params.DoSnapshot = true
+		log.With("thread", s.id).Errorf("found %d duplicate events: do the snapshot", events)
+		s.tree.ResetDuplicateEvents()
+	}
 	var c = &pb.Change{
 		PreviousIds:     s.tree.Heads(),
 		LastSnapshotId:  s.lastSnapshotId,
@@ -308,7 +316,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
-			LogHeads: s.logHeadIDs(),
+			LogHeads: s.LogHeads(),
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:         params.State.BlocksToSave(),
 				Details:        params.State.Details(),
@@ -498,7 +506,7 @@ func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err err
 	return
 }
 
-func (s *source) logHeadIDs() map[string]string {
+func (s *source) LogHeads() map[string]string {
 	var hs = make(map[string]string)
 	for id, ch := range s.logHeads {
 		if ch != nil {

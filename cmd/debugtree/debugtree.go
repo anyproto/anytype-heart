@@ -40,10 +40,13 @@ func main() {
 	fmt.Println(dt.Stats().MlString())
 
 	fmt.Println("build tree...")
+	st := time.Now()
 	t, _, err := change.BuildTree(dt)
 	if err != nil {
 		log.Fatal("build tree error:", err)
 	}
+	fmt.Printf("build tree done in %.1fs\n", time.Since(st).Seconds())
+
 	if *changeIdx != -1 {
 		id := ""
 		i := 0
