@@ -5,30 +5,26 @@ import (
 	"io/ioutil"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/ftsearch"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockBuiltinTemplate"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockIndexer"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockDoc"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockStatus"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
-	"github.com/magiconair/properties/assert"
 	"github.com/stretchr/testify/require"
 )
 
@@ -39,61 +35,6 @@ func TestNewIndexer(t *testing.T) {
 		defer fx.Close()
 		defer fx.tearDown()
 
-	})
-	t.Run("indexMeta", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.Close()
-		defer fx.tearDown()
-
-		var (
-			sbId = "sbId"
-			sb   = testMock.NewMockSmartBlock(fx.ctrl)
-			det  = &types.Struct{
-				Fields: map[string]*types.Value{
-					"key": pbtypes.String("value"),
-				},
-			}
-			snaphot = &pb.Change{
-				Snapshot: &pb.ChangeSnapshot{
-					Data: &model.SmartBlockSnapshotBase{
-						Details: det,
-					},
-				},
-				Timestamp: time.Now().Unix(),
-			}
-			payload, _ = snaphot.Marshal()
-			updatedCh  = make(chan struct{})
-		)
-		sb.EXPECT().ID().Return(sbId).AnyTimes()
-		sb.EXPECT().Type().Return(smartblock.SmartBlockTypePage).AnyTimes()
-
-		sb.EXPECT().GetLogs().Return(nil, nil)
-		fx.anytype.EXPECT().GetBlock(sbId).Return(sb, nil)
-		fx.objectStore.EXPECT().SaveLastIndexedHeadsHash(sbId, gomock.Any())
-		fx.objectStore.EXPECT().AddToIndexQueue(sbId)
-		fx.objectStore.EXPECT().GetDetails(sbId)
-
-		fx.objectStore.EXPECT().UpdateObjectDetails(sbId, gomock.Any(), gomock.Any(), false).DoAndReturn(func(id string, details *types.Struct, relations *model.Relations, _ bool) (err error) {
-			assert.Equal(t, "value", pbtypes.GetString(det, "key"))
-			close(updatedCh)
-			return
-		})
-
-		fx.rb.Add(core.SmartblockRecordWithThreadID{
-			SmartblockRecordEnvelope: core.SmartblockRecordEnvelope{
-				SmartblockRecord: core.SmartblockRecord{
-					ID:      "snapshot",
-					Payload: payload,
-				},
-			},
-			ThreadID: sbId,
-		})
-
-		select {
-		case <-updatedCh:
-		case <-time.After(time.Second * 5):
-			t.Errorf("index timeout")
-		}
 	})
 }
 
@@ -109,15 +50,17 @@ func newFixture(t *testing.T) *fixture {
 	}
 
 	fx.anytype = testMock.RegisterMockAnytype(fx.ctrl, ta)
-	fx.getSerach = mockIndexer.NewMockGetFullIndexInfo(fx.ctrl)
-	fx.getSerach.EXPECT().Name().AnyTimes().Return("blockService")
-	fx.getSerach.EXPECT().Init(gomock.Any())
+	fx.docService = mockDoc.NewMockService(fx.ctrl)
+	fx.docService.EXPECT().Name().AnyTimes().Return(doc.CName)
+	fx.docService.EXPECT().Init(gomock.Any())
+	fx.docService.EXPECT().Run()
+	fx.anytype.EXPECT().PredefinedBlocks()
+	fx.docService.EXPECT().Close().AnyTimes()
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
 
-	fx.getSerach.EXPECT().GetFullIndexInfo(gomock.Any()).AnyTimes()
+	fx.docService.EXPECT().GetDocInfo(gomock.Any(), gomock.Any()).Return(doc.DocInfo{State: state.NewDoc("", nil).(*state.State)}, nil).AnyTimes()
+	fx.docService.EXPECT().OnWholeChange(gomock.Any())
 	fx.objectStore.EXPECT().GetDetails(addr.AnytypeProfileId)
-	fx.anytype.EXPECT().PredefinedBlocks()
-
 	fx.objectStore.EXPECT().AddToIndexQueue(addr.AnytypeProfileId)
 
 	for _, rk := range bundle.ListRelationsKeys() {
@@ -158,7 +101,7 @@ func newFixture(t *testing.T) *fixture {
 		With(ftsearch.New()).
 		With(fx.rb).
 		With(fx.Indexer).
-		With(fx.getSerach).
+		With(fx.docService).
 		With(source.New())
 	mockStatus.RegisterMockStatus(fx.ctrl, ta)
 	mockBuiltinTemplate.RegisterMockBuiltinTemplate(fx.ctrl, ta).EXPECT().Hash().AnyTimes()
@@ -171,7 +114,7 @@ type fixture struct {
 	ctrl        *gomock.Controller
 	anytype     *testMock.MockService
 	objectStore *testMock.MockObjectStore
-	getSerach   *mockIndexer.MockGetFullIndexInfo
+	docService  *mockDoc.MockService
 	ch          chan core.SmartblockRecordWithThreadID
 	rb          recordsbatcher.RecordsBatcher
 	ta          *testapp.TestApp

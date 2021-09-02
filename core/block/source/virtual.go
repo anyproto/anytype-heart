@@ -68,3 +68,7 @@ func (v *virtual) ListIds() ([]string, error) {
 func (v *virtual) Close() (err error) {
 	return
 }
+
+func (v *virtual) LogHeads() map[string]string {
+	return nil
+}

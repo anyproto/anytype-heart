@@ -1,14 +1,16 @@
 package block
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -28,7 +30,6 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -177,7 +178,8 @@ type Service interface {
 
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 
-	GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error)
+	GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, err error)
+	Wakeup(id string) (err error)
 
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
@@ -187,11 +189,8 @@ type Service interface {
 	app.ComponentRunnable
 }
 
-func newOpenedBlock(sb smartblock.SmartBlock, setLastUsage bool) *openedBlock {
+func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 	var ob = openedBlock{SmartBlock: sb}
-	if setLastUsage {
-		ob.lastUsage = time.Now()
-	}
 	if sb.Type() != model.SmartBlockType_Breadcrumbs {
 		// decode and store corresponding threadID for appropriate block
 		if tid, err := thread.Decode(sb.Id()); err != nil {
@@ -205,10 +204,7 @@ func newOpenedBlock(sb smartblock.SmartBlock, setLastUsage bool) *openedBlock {
 
 type openedBlock struct {
 	smartblock.SmartBlock
-	threadId  thread.ID
-	lastUsage time.Time
-	locked    bool
-	refs      int32
+	threadId thread.ID
 }
 
 func New() Service {
@@ -216,17 +212,17 @@ func New() Service {
 }
 
 type service struct {
-	anytype      core.Service
-	meta         meta.Service
-	status       status.Service
-	sendEvent    func(event *pb.Event)
-	openedBlocks map[string]*openedBlock
-	closed       bool
-	linkPreview  linkpreview.LinkPreview
-	process      process.Service
-	m            sync.Mutex
-	app          *app.App
-	source       source.Service
+	anytype     core.Service
+	meta        meta.Service
+	status      status.Service
+	sendEvent   func(event *pb.Event)
+	closed      bool
+	linkPreview linkpreview.LinkPreview
+	process     process.Service
+	doc         doc.Service
+	app         *app.App
+	source      source.Service
+	cache       ocache.OCache
 }
 
 func (s *service) Name() string {
@@ -239,17 +235,17 @@ func (s *service) Init(a *app.App) (err error) {
 	s.status = a.MustComponent(status.CName).(status.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)
-	s.openedBlocks = make(map[string]*openedBlock)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
+	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.app = a
+	s.cache = ocache.New(s.loadSmartblock)
 	return
 }
 
 func (s *service) Run() (err error) {
 	s.initPredefinedBlocks()
 	s.testArchiveInconsistency() //// TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
-	go s.cleanupTicker()
 	return
 }
 
@@ -279,7 +275,7 @@ func (s *service) initPredefinedBlocks() {
 // TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
 func (s *service) testArchiveInconsistency() {
 	var (
-		archivedObjects = make(map[string]bool)
+		archivedObjects   = make(map[string]bool)
 		archivedObjectsSl []string
 	)
 
@@ -345,22 +341,12 @@ func (s *service) Anytype() core.Service {
 }
 
 func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
-	s.m.Lock()
-	ob, ok := s.openedBlocks[id]
-	if !ok {
-		sb, e := s.newSmartBlock(id, nil)
-		if e != nil {
-			s.m.Unlock()
-			return e
-		}
-		ob = newOpenedBlock(sb, true)
-		s.openedBlocks[id] = ob
+	ob, err := s.getSmartblock(context.TODO(), id)
+	if err != nil {
+		return
 	}
-
 	ob.Lock()
 	defer ob.Unlock()
-	ob.locked = true
-	s.m.Unlock()
 	ob.SetEventFunc(s.sendEvent)
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
@@ -400,11 +386,10 @@ func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
 }
 
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
 	bs := editor.NewBreadcrumbs(s.meta)
 	if err = bs.Init(&smartblock.InitContext{
 		App:    s.app,
+		Doc:    s.doc,
 		Source: source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
@@ -412,9 +397,8 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	bs.Lock()
 	defer bs.Unlock()
 	bs.SetEventFunc(s.sendEvent)
-	ob := newOpenedBlock(bs, true)
-	ob.refs = 1
-	s.openedBlocks[bs.Id()] = ob
+	ob := newOpenedBlock(bs)
+	s.cache.Add(bs.Id(), ob)
 	if err = bs.Show(ctx); err != nil {
 		return
 	}
@@ -422,31 +406,26 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 }
 
 func (s *service) CloseBlock(id string) error {
-	s.m.Lock()
-	ob, ok := s.openedBlocks[id]
-	if !ok {
-		s.m.Unlock()
-		return ErrBlockNotFound
+	err := s.Do(id, func(b smartblock.SmartBlock) error {
+		b.BlockClose()
+		return nil
+	})
+	if err != nil {
+		return err
 	}
-	s.m.Unlock()
-	ob.Lock()
-	ob.locked = false
-
-	defer ob.Unlock()
-	ob.BlockClose()
+	s.cache.Release(id)
 	return nil
 }
 
 func (s *service) CloseBlocks() {
-	s.m.Lock()
-	defer s.m.Unlock()
-
-	for _, ob := range s.openedBlocks {
+	s.cache.ForEach(func(v ocache.Object) (isContinue bool) {
+		ob := v.(*openedBlock)
 		ob.Lock()
-		ob.locked = false
 		ob.BlockClose()
 		ob.Unlock()
-	}
+		s.cache.Reset(ob.Id())
+		return true
+	})
 }
 
 func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
@@ -659,53 +638,17 @@ func (s *service) ProcessCancel(id string) (err error) {
 }
 
 func (s *service) Close() error {
-	if err := s.process.Close(); err != nil {
-		log.Errorf("close error: %v", err)
-	}
-	s.m.Lock()
-	if s.closed {
-		s.m.Unlock()
-		return nil
-	}
-	s.closed = true
-	var blocks []*openedBlock
-	for _, sb := range s.openedBlocks {
-		blocks = append(blocks, sb)
-	}
-	s.m.Unlock()
-
-	for _, sb := range blocks {
-		if err := sb.Close(); err != nil {
-			log.Errorf("block[%s] close error: %v", sb.Id(), err)
-		}
-	}
-	log.Infof("block service closed")
-	return nil
+	return s.cache.Close()
 }
 
 // pickBlock returns opened smartBlock or opens smartBlock in silent mode
 func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func(), err error) {
-	s.m.Lock()
-	defer s.m.Unlock()
-	if s.closed {
-		err = fmt.Errorf("block service closed")
+	ob, err := s.getSmartblock(context.TODO(), id)
+	if err != nil {
 		return
 	}
-	ob, ok := s.openedBlocks[id]
-	if !ok {
-		sb, err = s.newSmartBlock(id, nil)
-		if err != nil {
-			return
-		}
-		ob = newOpenedBlock(sb, false)
-		s.openedBlocks[id] = ob
-	}
-	ob.refs++
-	ob.lastUsage = time.Now()
 	return ob.SmartBlock, func() {
-		s.m.Lock()
-		defer s.m.Unlock()
-		ob.refs--
+		s.cache.Release(id)
 	}, nil
 }
 
@@ -755,6 +698,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	if initCtx.App == nil {
 		initCtx.App = s.app
 	}
+	if initCtx.Doc == nil {
+		initCtx.Doc = s.doc
+	}
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
 	return
@@ -772,16 +718,6 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 		return nil, fmt.Errorf("can't apply template: %v", err)
 	}
 	return
-}
-
-func (s *service) cleanupTicker() {
-	ticker := time.NewTicker(blockCleanupTimeout)
-	defer ticker.Stop()
-	for _ = range ticker.C {
-		if s.cleanupBlocks() {
-			return
-		}
-	}
 }
 
 func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
@@ -988,24 +924,6 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 	})
 }
 
-func (s *service) cleanupBlocks() (closed bool) {
-	s.m.Lock()
-	defer s.m.Unlock()
-	var closedCount, total int
-	for id, ob := range s.openedBlocks {
-		if !ob.locked && ob.refs == 0 && time.Now().After(ob.lastUsage.Add(blockCacheTTL)) {
-			if err := ob.Close(); err != nil {
-				log.Warnf("error while close block[%s]: %v", id, err)
-			}
-			delete(s.openedBlocks, id)
-			closedCount++
-		}
-		total++
-	}
-	log.Infof("cleanup: block closed %d (total %v)", closedCount, total)
-	return s.closed
-}
-
 func (s *service) AllDescendantIds(rootBlockId string, allBlocks map[string]*model.Block) []string {
 	var (
 		// traversal queue
@@ -1030,4 +948,21 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
 		return sb.ResetToVersion(state)
 	})
+}
+
+func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
+	sb, err := s.newSmartBlock(id, nil)
+	if err != nil {
+		return
+	}
+	value = newOpenedBlock(sb)
+	return
+}
+
+func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock, err error) {
+	val, err := s.cache.Get(ctx, id)
+	if err != nil {
+		return
+	}
+	return val.(*openedBlock), nil
 }

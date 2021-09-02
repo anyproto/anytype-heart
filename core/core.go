@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"os"
 	"runtime/debug"
 	"sync"
 
@@ -100,6 +101,7 @@ func (mw *Middleware) GetApp() *app.App {
 
 func (mw *Middleware) OnPanic(v interface{}) {
 	stack := debug.Stack()
+	os.Stderr.Write(stack)
 	log.With("stack", stack).Errorf("panic recovered: %v", v)
 }
 

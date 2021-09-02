@@ -1,11 +1,12 @@
 package meta
 
 import (
+	"sync"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"sync"
-	"time"
 
 	"github.com/gogo/protobuf/types"
 
@@ -25,7 +26,6 @@ type Meta struct {
 
 type Service interface {
 	PubSub() PubSub
-	IndexerSetLocalDetails(id string, st *types.Struct, index bool)
 	IndexerIndexOutgoingLinks(id string, links []string)
 
 	ReportChange(m Meta)
@@ -49,10 +49,6 @@ func (s *service) IndexerIndexOutgoingLinks(id string, links []string) {
 	s.indexer.IndexOutgoingLinks(id, links)
 }
 
-func (s *service) IndexerSetLocalDetails(id string, st *types.Struct, index bool) {
-	s.indexer.SetLocalDetails(id, st, index)
-}
-
 // SetLocalDetails inject local details into the meta pubsub
 func (s *service) SetLocalDetails(id string, st *types.Struct) {
 	s.ps.m.Lock()
@@ -64,10 +60,10 @@ func (s *service) SetLocalDetails(id string, st *types.Struct) {
 	c.m.Lock()
 	defer c.m.Unlock()
 	select {
-		case <-c.ready:
-		default:
-			log.With("thread", id).Errorf("meta service failed to set local details: not available")
-			return
+	case <-c.ready:
+	default:
+		log.With("thread", id).Errorf("meta service failed to set local details: not available")
+		return
 	}
 	m := copyMeta(c.lastMeta)
 	for k, v := range st.GetFields() {
@@ -75,7 +71,7 @@ func (s *service) SetLocalDetails(id string, st *types.Struct) {
 			m.Details.Fields[k] = v
 		}
 	}
-	if !c.lastMeta.Details.Equal(m.Details)  {
+	if !c.lastMeta.Details.Equal(m.Details) {
 		c.ps.call(m)
 		c.lastMeta = m
 	}

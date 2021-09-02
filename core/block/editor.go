@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -18,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -658,14 +658,20 @@ func (s *service) AddRelationBlock(ctx *state.Context, req pb.RpcBlockRelationAd
 	})
 }
 
-func (s *service) GetFullIndexInfo(id string) (info indexer.FullIndexInfo, err error) {
+func (s *service) GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, err error) {
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
-		info, err = b.GetFullIndexInfo()
+		info, err = b.GetDocInfo()
 		return err
 	}); err != nil {
 		return
 	}
 	return
+}
+
+func (s *service) Wakeup(id string) (err error) {
+	return s.Do(id, func(b smartblock.SmartBlock) error {
+		return nil
+	})
 }
 
 func (s *service) GetRelations(objectId string) (relations []*model.Relation, err error) {
