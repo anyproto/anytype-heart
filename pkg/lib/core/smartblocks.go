@@ -11,13 +11,17 @@ import (
 var ErrBlockSnapshotNotFound = fmt.Errorf("block snapshot not found")
 
 func (a *Anytype) GetBlock(id string) (SmartBlock, error) {
+	return a.GetBlockCtx(context.Background(), id)
+}
+
+func (a *Anytype) GetBlockCtx(ctx context.Context, id string) (SmartBlock, error) {
 	parts := strings.Split(id, "/")
 
 	_, err := thread.Decode(parts[0])
 	if err != nil {
 		return nil, fmt.Errorf("incorrect block id: %w", err)
 	}
-	smartBlock, err := a.GetSmartBlock(parts[0])
+	smartBlock, err := a.GetSmartBlockCtx(ctx, parts[0])
 	if err != nil {
 		return nil, err
 	}
@@ -39,12 +43,16 @@ func (a *Anytype) DeleteBlock(id string) error {
 }
 
 func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
+	return a.GetSmartBlockCtx(context.Background(), id)
+}
+
+func (a *Anytype) GetSmartBlockCtx(ctx context.Context, id string) (*smartBlock, error) {
 	tid, err := thread.Decode(id)
 	if err != nil {
 		return nil, err
 	}
 
-	thrd, err := a.threadService.Threads().GetThread(context.TODO(), tid)
+	thrd, err := a.threadService.Threads().GetThread(ctx, tid)
 	if err != nil {
 		return nil, err
 	}

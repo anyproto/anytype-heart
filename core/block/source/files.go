@@ -121,3 +121,7 @@ func (v *files) ListIds() ([]string, error) {
 func (v *files) Close() (err error) {
 	return
 }
+
+func (v *files) LogHeads() map[string]string {
+	return nil
+}

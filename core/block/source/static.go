@@ -78,3 +78,7 @@ func (s *static) ListIds() (result []string, err error) {
 func (s *static) Close() (err error) {
 	return
 }
+
+func (v *static) LogHeads() map[string]string {
+	return nil
+}

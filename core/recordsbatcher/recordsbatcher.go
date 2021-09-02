@@ -1,12 +1,13 @@
 package recordsbatcher
 
 import (
+	"sync"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/cheggaaa/mb"
-	"sync"
-	"time"
 )
 
 const CName = "recordsbatcher"
@@ -47,12 +48,11 @@ func (r *recordsBatcher) Read(buffer []core.SmartblockRecordWithThreadID) int {
 	if len(msgs) == 0 {
 		return 0
 	}
-	var msgsCasted []core.SmartblockRecordWithThreadID
-	for _, msg := range msgs {
-		msgsCasted = append(msgsCasted[0:], msg.(core.SmartblockRecordWithThreadID))
+	for i, msg := range msgs {
+		buffer[i] = msg.(core.SmartblockRecordWithThreadID)
 	}
 
-	return copy(buffer, msgsCasted)
+	return len(msgs)
 }
 
 func (r *recordsBatcher) Close() (err error) {
