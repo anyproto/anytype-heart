@@ -110,9 +110,10 @@ func (c *client) sendAggregatedData() {
 }
 
 func (c *client) StartAggregating() {
-	if c.cancel != nil {
-		c.cancel()
-	}
+	c.lock.Lock()
+	c.StopAggregating()
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+	c.lock.Unlock()
 	go func() {
 		ticker := time.NewTicker(sendInterval)
 		for {
