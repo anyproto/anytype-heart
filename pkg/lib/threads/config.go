@@ -1,13 +1,17 @@
 package threads
 
-import cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+import (
+	"context"
+
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+)
 
 const (
 	defaultCafeNodeP2P = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
 )
 
 type CafeConfigFetcher interface {
-	FetchCafeConfig(untilSuccess bool) (cfg *cafePb.GetConfigResponseConfig, err error)
+	GetConfig(ctx context.Context) *cafePb.GetConfigResponseConfig
 }
 
 type Config struct {

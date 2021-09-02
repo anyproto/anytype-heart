@@ -156,7 +156,9 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
-	cafeCfg, err := s.fetcher.FetchCafeConfig(false)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	cafeCfg := s.fetcher.GetConfig(ctx)
+	cancel()
 	if err == nil && cafeCfg.SimultaneousRequests != 0 {
 		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
 	}
@@ -191,7 +193,7 @@ func (s *service) Run() (err error) {
 		syncBook = s.logstore
 	}
 
-	ctx := context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
+	ctx = context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
 
 	s.t, err = threadsNet.NewNetwork(ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
 		Debug:        s.Debug,

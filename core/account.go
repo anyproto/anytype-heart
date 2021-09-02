@@ -19,7 +19,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -108,22 +107,16 @@ func checkInviteCode(code string, account string) error {
 }
 
 func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
-	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	cfg, err := store.GetCafeConfig()
-	if err != nil {
-		go fetcher.FetchCafeConfig(true)
-		log.Errorf("failed to load client config from objectstore: %s", err.Error())
-	} else {
-		return &pb.RpcAccountConfig{
-			EnableDataview:             cfg.EnableDataview,
-			EnableDebug:                cfg.EnableDebug,
-			EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-			Extra:                      cfg.Extra,
-		}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	cfg := fetcher.GetConfig(ctx)
+	return &pb.RpcAccountConfig{
+		EnableDataview:             cfg.EnableDataview,
+		EnableDebug:                cfg.EnableDebug,
+		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
+		Extra:                      cfg.Extra,
 	}
-
-	return &pb.RpcAccountConfig{}
 }
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
