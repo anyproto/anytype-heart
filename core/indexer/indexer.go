@@ -109,7 +109,10 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
 	i.anytype = a.MustComponent(core.CName).(core.Service)
 	i.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
-	i.threadService = a.MustComponent(threads.CName).(threads.Service)
+	ts := a.Component(threads.CName)
+	if ts != nil {
+		i.threadService = ts.(threads.Service)
+	}
 	i.source = a.MustComponent(source.CName).(source.Service)
 	i.btHash = a.MustComponent("builtintemplate").(Hasher)
 	i.doc = a.MustComponent(doc.CName).(doc.Service)
@@ -224,6 +227,9 @@ func (i *indexer) reindexIfNeeded() error {
 }
 
 func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
+	if i.threadService == nil {
+		return 0, 0, nil
+	}
 	tids, err := i.threadService.Logstore().Threads()
 	if err != nil {
 		return 0, 0, err

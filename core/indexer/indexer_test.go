@@ -54,6 +54,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.docService.EXPECT().Name().AnyTimes().Return(doc.CName)
 	fx.docService.EXPECT().Init(gomock.Any())
 	fx.docService.EXPECT().Run()
+	fx.anytype.EXPECT().PredefinedBlocks()
 	fx.docService.EXPECT().Close().AnyTimes()
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
 

@@ -583,13 +583,13 @@ func TestRelationAdd(t *testing.T) {
 		require.Equal(t, 0, int(pageCreateResp.Error.Code), pageCreateResp.Error.Description)
 
 		pageOpenResp := mw.BlockOpen(&pb.RpcBlockOpenRequest{
-			BlockId:   pageCreateResp.PageId,
+			BlockId: pageCreateResp.PageId,
 		})
 
 		optCreateResp := mw.ObjectRelationOptionAdd(&pb.RpcObjectRelationOptionAddRequest{
 			ContextId:   pageCreateResp.PageId,
 			RelationKey: bundle.RelationKeyTag.String(),
-			Option:      &model.RelationOption{
+			Option: &model.RelationOption{
 				Id:    "",
 				Text:  "opt7",
 				Scope: 0,
@@ -597,7 +597,7 @@ func TestRelationAdd(t *testing.T) {
 		})
 
 		setDetailsResp := mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{
-			ContextId:   pageCreateResp.PageId,
+			ContextId: pageCreateResp.PageId,
 			Details: []*pb.RpcBlockSetDetailsDetail{{
 				Key:   bundle.RelationKeyTag.String(),
 				Value: pbtypes.StringList([]string{optCreateResp.Option.Id}),
@@ -621,7 +621,7 @@ func TestRelationAdd(t *testing.T) {
 		require.True(t, found, "option not found")*/
 
 		option := optCreateResp.Option
-		option.Text= "opt7_modified"
+		option.Text = "opt7_modified"
 
 		respOptUpdate := mw.ObjectRelationOptionUpdate(&pb.RpcObjectRelationOptionUpdateRequest{
 			ContextId:   pageCreateResp.PageId,
@@ -993,13 +993,12 @@ func TestRelationAdd(t *testing.T) {
 			ContextId:   respPage1Create.PageId,
 			RelationKey: rel1.Key,
 			Option: &model.RelationOption{
-				Id:    "ao_opt1_id",
-				Text:  "ao_opt1",
+				Id:    "ao_opt8_id",
+				Text:  "ao_opt8",
 				Color: "red",
 			},
 		})
 		require.Equal(t, 0, int(respOptionAdd1.Error.Code), respOptionAdd1.Error.Description)
-		time.Sleep(time.Second)
 
 		respSetDetails := mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{
 			ContextId: respPage2Create.PageId,
@@ -1021,7 +1020,7 @@ func TestRelationAdd(t *testing.T) {
 				}
 			}
 		}
-		require.True(t, found, "event not found")
+		require.True(t, found, "event not found", pbtypes.Sprint(respSetDetails.Event))
 
 	})
 
@@ -1080,12 +1079,12 @@ func TestRelationAdd(t *testing.T) {
 
 	})
 
-	t.Run("update_relation_name_in_set_expect_change_in_object", func(t *testing.T){
+	t.Run("update_relation_name_in_set_expect_change_in_object", func(t *testing.T) {
 		relKey, _ := addRelation(t, mw.GetAnytype().PredefinedBlocks().SetPages, mw)
 
 		recCreate := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{
-			ContextId:   mw.GetAnytype().PredefinedBlocks().SetPages,
-			BlockId:     "dataview",
+			ContextId:  mw.GetAnytype().PredefinedBlocks().SetPages,
+			BlockId:    "dataview",
 			Record:     nil,
 			TemplateId: "",
 		})
@@ -1106,7 +1105,7 @@ func TestRelationAdd(t *testing.T) {
 		block = getBlockById("dataview", getEventObjectShow(respOpenNewPage.Event.Messages).Blocks)
 
 		require.Equal(t, "new_changed", block.GetDataview().Relations[len(block.GetDataview().Relations)-1].Name)
-		time.Sleep(time.Second*3)
+		time.Sleep(time.Second * 3)
 		respOpenNewRecord := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: pbtypes.GetString(recCreate.Record, "id")})
 		rel := pbtypes.GetRelation(getEventObjectShow(respOpenNewRecord.Event.Messages).Relations, relKey)
 		require.NotNil(t, rel)
@@ -1355,4 +1354,3 @@ func getDetailsForContext(msgs []*pb.EventObjectDetailsSet, contextId string) *t
 	}
 	return nil
 }
-
