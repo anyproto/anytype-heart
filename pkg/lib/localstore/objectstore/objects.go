@@ -239,7 +239,7 @@ type ObjectStore interface {
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
 	InjectObjectDetails(id string, details *types.Struct) (mergedDetails *types.Struct, err error)
 	UpdateObjectLinks(id string, links []string) error
-	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
+	UpdateObjectSnippet(id string, snippet string) error
 
 	DeleteObject(id string) error
 	RemoveRelationFromCache(key string) error
@@ -1286,7 +1286,7 @@ func (m *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error {
+func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -1295,9 +1295,10 @@ func (m *dsObjectStore) UpdateObjectLinksAndSnippet(id string, links []string, s
 	}
 	defer txn.Discard()
 
-	err = m.updateObjectLinksAndSnippet(txn, id, links, snippet)
-	if err != nil {
-		return err
+	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
+		if err := m.updateSnippet(txn, id, snippet); err != nil {
+			return err
+		}
 	}
 	return txn.Commit()
 }

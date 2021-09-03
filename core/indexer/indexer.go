@@ -634,6 +634,10 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		log.With("thread", info.Id).Infof("indexed: det: %v", pbtypes.GetString(details, bundle.RelationKeyName.String()))
 	}
 
+	if err := i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
+		log.With("thread", info.Id).Errorf("failed to save object links: %v", err)
+	}
+
 	if err := i.store.AddToIndexQueue(info.Id); err != nil {
 		log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
 	} else {
@@ -667,7 +671,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if err != nil {
 		return
 	}
-	if err = i.store.UpdateObjectLinksAndSnippet(id, info.Links, info.State.Snippet()); err != nil {
+	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
 		return
 	}
 
