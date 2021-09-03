@@ -5,10 +5,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
@@ -85,6 +87,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
+		Register(configfetcher.New()).
 		Register(threads.New()).
 		Register(source.New()).
 		Register(core.New()).
@@ -100,6 +103,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(export.New()).
 		Register(linkpreview.New()).
 		Register(restriction.New()).
-		Register(debug.New())
+		Register(debug.New()).
+		Register(doc.New())
 	return
 }

@@ -1,6 +1,7 @@
 package smartblock
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sort"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -16,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -98,7 +99,7 @@ type SmartBlock interface {
 	DisableLayouts()
 	AddHook(f func(), events ...Hook)
 	CheckSubscriptions() (changed bool)
-	GetFullIndexInfo() (indexer.FullIndexInfo, error)
+	GetDocInfo() (doc.DocInfo, error)
 	MetaService() meta.Service
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
@@ -115,6 +116,7 @@ type InitContext struct {
 	State          *state.State
 	Relations      []*model.Relation
 	App            *app.App
+	Doc            doc.Service
 }
 
 type linkSource interface {
@@ -130,6 +132,7 @@ type smartBlock struct {
 	undo              undo.History
 	source            source.Source
 	meta              meta.Service
+	doc               doc.Service
 	metaSub           meta.Subscriber
 	metaData          *core.SmartBlockMeta
 	lastDepDetails    map[string]*pb.EventObjectDetailsSet
@@ -213,6 +216,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		return
 	}
 	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+	sb.doc = ctx.Doc
 	return
 }
 
@@ -633,43 +637,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	var hasMetaChange, hasNotLocalDetailsChange, hasLocalDetailChange, hasBlockChanges bool
-	for _, msg := range msgs {
-		switch msg.Msg.Value.(type) {
-		case *pb.EventMessageValueOfObjectDetailsSet,
-			*pb.EventMessageValueOfObjectDetailsUnset,
-			*pb.EventMessageValueOfObjectDetailsAmend:
-			hasMetaChange = true
-			if msg.Virtual {
-				hasLocalDetailChange = true
-			} else {
-				hasNotLocalDetailsChange = true
-			}
-		case *pb.EventMessageValueOfBlockAdd, *pb.EventMessageValueOfBlockSetText:
-			hasBlockChanges = true
-		case *pb.EventMessageValueOfObjectRelationsAmend,
-			*pb.EventMessageValueOfObjectRelationsSet,
-			*pb.EventMessageValueOfObjectRelationsRemove:
-			hasMetaChange = true
-		}
-	}
-	if hasMetaChange {
-		sb.meta.ReportChange(meta.Meta{
-			BlockId:        sb.Id(),
-			SmartBlockMeta: *sb.Meta(),
-		})
-	}
-
-	if sb.meta != nil && !sb.source.Virtual() && hasLocalDetailChange && sb.Type() != 0 {
-		// todo: allow to index virtual sources
-		// we should call reindex in case we don't have any real details changed
-		sb.meta.IndexerSetLocalDetails(sb.Id(), st.LocalDetails(), !hasNotLocalDetailsChange)
-	}
-
-	if sb.meta != nil && (hasBlockChanges || hasNotLocalDetailsChange) {
-		outLinks := sb.dependentSmartIds(false, false)
-		sb.meta.IndexerIndexOutgoingLinks(sb.Id(), outLinks)
-	}
+	sb.reportChange(st)
 
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
@@ -1184,6 +1152,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
+	sb.reportChange(s)
 	return nil
 }
 
@@ -1204,6 +1173,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	sb.storeFileKeys()
 	sb.CheckSubscriptions()
+	sb.reportChange(sb.Doc.(*state.State))
 	return nil
 }
 
@@ -1443,9 +1413,11 @@ func (sb *smartBlock) execHooks(event Hook) {
 	}
 }
 
-func (sb *smartBlock) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
-	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
-	st := sb.NewState()
+func (sb *smartBlock) GetDocInfo() (doc.DocInfo, error) {
+	return sb.getDocInfo(sb.NewState()), nil
+}
+
+func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
 	var setRelations []*model.Relation
 	var setSource string
@@ -1459,17 +1431,24 @@ func (sb *smartBlock) GetFullIndexInfo() (indexer.FullIndexInfo, error) {
 			setSource = b.Model().GetDataview().GetSource()
 		}
 	}
-	return indexer.FullIndexInfo{
+	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
+	return doc.DocInfo{
 		Id:           sb.Id(),
-		Title:        pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()),
-		Snippet:      st.Snippet(),
-		Text:         st.SearchText(),
 		Links:        depIds,
+		LogHeads:     sb.source.LogHeads(),
 		FileHashes:   fileHashes,
 		SetRelations: setRelations,
 		SetSource:    setSource,
 		Creator:      creator,
-	}, nil
+		State:        st,
+	}
+}
+
+func (sb *smartBlock) reportChange(s *state.State) {
+	if sb.doc == nil {
+		return
+	}
+	sb.doc.ReportChange(context.TODO(), sb.getDocInfo(s))
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
