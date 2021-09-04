@@ -602,6 +602,13 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 }
 
 func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
+	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
+	if err != nil {
+		sbType = smartblock.SmartBlockTypePage
+	}
+	if sbType == smartblock.SmartBlockTypeBreadcrumbs {
+		return nil
+	}
 	details := info.State.CombinedDetails()
 
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())

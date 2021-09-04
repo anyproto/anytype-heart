@@ -71,7 +71,7 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 
 	tid, err := thread.Decode(id)
 	if err != nil {
-		err = fmt.Errorf("can't restore thread ID: %w", err)
+		err = fmt.Errorf("can't restore thread ID %s: %w", id, err)
 		return
 	}
 	s.mu.Lock()
