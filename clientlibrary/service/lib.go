@@ -2,6 +2,7 @@ package service
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -20,7 +21,7 @@ var log = logging.Logger("anytype-mw")
 var mw = core.New()
 
 func init() {
-	fmt.Printf("mw jsaddon: %s\n", core.GetVersionDescription())
+	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
 	registerClientCommandsHandler(mw)
 	PanicHandler = mw.OnPanic
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)

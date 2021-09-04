@@ -14,8 +14,8 @@ import (
 
 var (
 	// values of this vars will be defined while compilation
-	version string
-	name    string
+	GitCommit, GitBranch, GitState, GitSummary, BuildDate string
+	name                                                  string
 )
 
 var log = logging.Logger("anytype-mw-app")
@@ -55,7 +55,20 @@ func (app *App) Name() string {
 
 // Version return app version
 func (app *App) Version() string {
-	return version
+	return GitSummary
+}
+
+// VersionDescription return the full info about the build
+func (app *App) VersionDescription() string {
+	return VersionDescription()
+}
+
+func Version() string {
+	return GitSummary
+}
+
+func VersionDescription() string {
+	return fmt.Sprintf("build on %s from %s at #%s(%s)", BuildDate, GitBranch, GitCommit, GitState)
 }
 
 // Register adds service to registry
@@ -127,6 +140,8 @@ func (app *App) Start() (err error) {
 			return fmt.Errorf("can't init service '%s': %v", s.Name(), err)
 		}
 	}
+
+	logging.RefreshSubsystemLevels() // to make sure we know about all logging subsystems that were externally-created, e.g. in the libp2p
 
 	for i, s := range app.components {
 		if serviceRun, ok := s.(ComponentRunnable); ok {

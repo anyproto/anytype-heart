@@ -190,9 +190,6 @@ func (a *Anytype) Run() (err error) {
 		return
 	}
 
-	metrics.SharedClient.SetUserId(a.Account())
-	metrics.SharedClient.StartAggregating()
-
 	return a.InitPredefinedBlocks(context.TODO(), a.config.NewAccount)
 }
 
@@ -398,12 +395,4 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	}()
 
 	return nil
-}
-
-func init() {
-
-	/* logs */
-
-	// apply log levels in go-threads and go-ipfs deps
-	logging.ApplyLevelsFromEnv()
 }
