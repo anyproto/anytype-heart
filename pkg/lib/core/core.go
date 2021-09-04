@@ -351,6 +351,9 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	}
 
 	go func() {
+		a.lock.Lock()
+		shutdownCh := a.shutdownStartsCh
+		a.lock.Unlock()
 		smartBlocksCache := make(map[string]*smartBlock)
 		defer a.recordsbatch.Close()
 		for {
@@ -388,7 +391,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				}
 			case <-ctx.Done():
 				return
-			case <-a.shutdownStartsCh:
+			case <-shutdownCh:
 				cancel()
 			}
 		}

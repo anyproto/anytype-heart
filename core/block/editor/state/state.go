@@ -86,7 +86,8 @@ type State struct {
 
 	changesStructureIgnoreIds []string
 
-	stringBuf    []string
+	stringBuf []string
+
 	groupId      string
 	noObjectType bool
 }
@@ -262,22 +263,24 @@ func (s *State) getStringBuf() []string {
 	if s.parent != nil {
 		return s.parent.getStringBuf()
 	}
+
 	return s.stringBuf[:0]
 }
 
-func (s *State) setStringBuf(buf []string) {
+func (s *State) releaseStringBuf(buf []string) {
 	if s.parent != nil {
-		s.parent.setStringBuf(buf)
-	} else {
-		s.stringBuf = buf[:0]
+		s.parent.releaseStringBuf(buf)
+		return
 	}
+
+	s.stringBuf = buf[:0]
 }
 
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	var iter func(id string) (isContinue bool, err error)
 	var parentIds = s.getStringBuf()
 	defer func() {
-		s.setStringBuf(parentIds[:0])
+		s.releaseStringBuf(parentIds[:0])
 	}()
 
 	iter = func(id string) (isContinue bool, err error) {
