@@ -106,5 +106,6 @@ func (mw *Middleware) OnPanic(v interface{}) {
 }
 
 func init() {
-	logging.SetVersion(GitSummary)
+	// let leave it here so it will work in all types of distribution and tests
+	logging.SetVersion(app.GitSummary)
 }

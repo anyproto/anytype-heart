@@ -63,10 +63,10 @@ const (
 )
 
 type ReindexEvent struct {
-	ReindexType ReindexType
-	Total   int
-	Success int
-	SpentMs int
+	ReindexType    ReindexType
+	Total          int
+	Success        int
+	SpentMs        int
 	IndexesRemoved bool
 }
 
@@ -74,12 +74,11 @@ func (c ReindexEvent) ToEvent() Event {
 	return Event{
 		EventType: "store_reindex",
 		EventData: map[string]interface{}{
-			"spent_ms": c.SpentMs,
-			"total": c.Total,
-			"failed": c.Total -c.Success,
-			"type": int(c.ReindexType),
+			"spent_ms":   c.SpentMs,
+			"total":      c.Total,
+			"failed":     c.Total - c.Success,
+			"type":       int(c.ReindexType),
 			"ix_removed": c.IndexesRemoved,
 		},
 	}
 }
-

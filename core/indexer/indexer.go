@@ -656,9 +656,13 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 func (i *indexer) ftLoop() {
 	ticker := time.NewTicker(ftIndexInterval)
 	i.ftIndex()
+
+	i.mu.Lock()
+	quit := i.quit
+	i.mu.Unlock()
 	for {
 		select {
-		case <-i.quit:
+		case <-quit:
 			return
 		case <-ticker.C:
 			i.ftIndex()

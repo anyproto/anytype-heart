@@ -1,3 +1,4 @@
+//go:build !nogrpcserver && !_test
 // +build !nogrpcserver,!_test
 
 package main
@@ -5,6 +6,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"net"
 	"net/http"
 	_ "net/http/pprof"
@@ -45,7 +47,7 @@ func main() {
 	var addr string
 	var webaddr string
 
-	fmt.Printf("mw grpc: %s\n", core.GetVersionDescription())
+	fmt.Printf("mw grpc: %s\n", app.VersionDescription())
 	if len(os.Args) > 1 {
 		addr = os.Args[1]
 		if len(os.Args) > 2 {

@@ -1440,7 +1440,7 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 		SetRelations: setRelations,
 		SetSource:    setSource,
 		Creator:      creator,
-		State:        st,
+		State:        st.Copy(),
 	}
 }
 

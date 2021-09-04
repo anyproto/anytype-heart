@@ -283,6 +283,9 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 	}
 
 	go func() {
+		block.node.lock.Lock()
+		shutdownCh := block.node.shutdownStartsCh
+		block.node.lock.Unlock()
 		defer close(ch)
 		for {
 			select {
@@ -306,13 +309,13 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 				case <-ctx.Done():
 					// no need to cancel, continue to read the rest msgs from the channel
 					continue
-				case <-block.node.shutdownStartsCh:
+				case <-shutdownCh:
 					// cancel first, then we should read ok == false from the threadsCh
 					cancel()
 				}
 			case <-ctx.Done():
 				continue
-			case <-block.node.shutdownStartsCh:
+			case <-shutdownCh:
 				cancel()
 			}
 		}

@@ -190,9 +190,6 @@ func (a *Anytype) Run() (err error) {
 		return
 	}
 
-	metrics.SharedClient.SetUserId(a.Account())
-	metrics.SharedClient.StartAggregating()
-
 	return a.InitPredefinedBlocks(context.TODO(), a.config.NewAccount)
 }
 
@@ -351,6 +348,9 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	}
 
 	go func() {
+		a.lock.Lock()
+		shutdownCh := a.shutdownStartsCh
+		a.lock.Unlock()
 		smartBlocksCache := make(map[string]*smartBlock)
 		defer a.recordsbatch.Close()
 		for {
@@ -388,19 +388,11 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				}
 			case <-ctx.Done():
 				return
-			case <-a.shutdownStartsCh:
+			case <-shutdownCh:
 				cancel()
 			}
 		}
 	}()
 
 	return nil
-}
-
-func init() {
-
-	/* logs */
-
-	// apply log levels in go-threads and go-ipfs deps
-	logging.ApplyLevelsFromEnv()
 }

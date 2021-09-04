@@ -1,17 +1,8 @@
 package core
 
 import (
-	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
-
-// Set by ldflags
-var GitCommit, GitBranch, GitState, GitSummary, BuildDate string
-
-func GetVersionDescription() string {
-	return fmt.Sprintf("build on %s from %s at #%s(%s)", BuildDate, GitBranch, GitCommit, GitState)
-}
 
 func (mw *Middleware) VersionGet(req *pb.RpcVersionGetRequest) *pb.RpcVersionGetResponse {
 	response := func(version, details string, code pb.RpcVersionGetResponseErrorCode, err error) *pb.RpcVersionGetResponse {
@@ -23,11 +14,5 @@ func (mw *Middleware) VersionGet(req *pb.RpcVersionGetRequest) *pb.RpcVersionGet
 		return m
 	}
 
-	if len(GitSummary) == 0 {
-		return response("", "", pb.RpcVersionGetResponseError_VERSION_IS_EMPTY, nil)
-	}
-
-	details := GetVersionDescription()
-
-	return response(GitSummary, details, pb.RpcVersionGetResponseError_NULL, nil)
+	return response(mw.app.Version(), mw.app.VersionDescription(), pb.RpcVersionGetResponseError_NULL, nil)
 }

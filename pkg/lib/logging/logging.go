@@ -97,8 +97,9 @@ func (l *LWrapper) Warningf(template string, args ...interface{}) {
 
 func Logger(system string) *LWrapper {
 	logger := logging.Logger(system)
+	m.Lock()
 	setSubsystemLevels()
-
+	m.Unlock()
 	return &LWrapper{logger.SugaredLogger}
 }
 
@@ -119,17 +120,23 @@ func SetLoggingFormat(format logging.LogFormat) {
 }
 
 func ApplyLevels(str string) {
+	m.Lock()
 	logLevelsStr = str
 	setSubsystemLevels()
+	m.Unlock()
 }
 
 func ApplyLevelsFromEnv() {
 	ApplyLevels(os.Getenv("ANYTYPE_LOG_LEVEL"))
 }
 
-func setSubsystemLevels() {
+func RefreshSubsystemLevels() {
 	m.Lock()
-	defer m.Unlock()
+	setSubsystemLevels()
+	m.Unlock()
+}
+
+func setSubsystemLevels() {
 	logLevels := make(map[string]string)
 	if logLevelsStr != "" {
 		for _, level := range strings.Split(logLevelsStr, ";") {
