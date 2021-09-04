@@ -81,7 +81,9 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	if err := SmartBlockType(blockType).Valid(); err != nil {
 		return 0, err
 	}
-
+	if blockType == 0 {
+		return 0, fmt.Errorf("unexpected sb type 0")
+	}
 	return SmartBlockType(blockType), nil
 }
 

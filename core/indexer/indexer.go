@@ -266,6 +266,9 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 
 	if len(idsToReindex) > 0 {
 		for _, id := range idsToReindex {
+			if id == i.anytype.PredefinedBlocks().Account {
+				continue
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			cancel()
 			d, err := i.doc.GetDocInfo(ctx, id)
