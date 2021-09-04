@@ -259,7 +259,7 @@ func (s *State) PickOriginParentOf(id string) (res simple.Block) {
 	return
 }
 
-func (s *State) getStringBuf() (buf []string) {
+func (s *State) getStringBuf() []string {
 	if s.parent != nil {
 		return s.parent.getStringBuf()
 	}
