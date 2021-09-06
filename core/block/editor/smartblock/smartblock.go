@@ -835,7 +835,7 @@ func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
 	}
 
 	source.InjectLocalDetails(s, localDetails)
-	return sb.Apply(s)
+	return sb.Apply(s, NoHistory)
 }
 
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
