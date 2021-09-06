@@ -48,25 +48,22 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, err error) {
-	st, err := smartblock.SmartBlockTypeFromID(id)
-
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(s.anytype, id), nil
 	}
 
-	if st == smartblock.SmartBlockTypeFile {
+	st, err := smartblock.SmartBlockTypeFromID(id)
+	switch st {
+	case smartblock.SmartBlockTypeFile:
 		return NewFiles(s.anytype, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledObjectType {
+	case smartblock.SmartBlockTypeBundledObjectType:
 		return NewBundledObjectType(s.anytype, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledRelation {
+	case smartblock.SmartBlockTypeBundledRelation:
 		return NewBundledRelation(s.anytype, id), nil
-	}
-	if st == smartblock.SmartBlockTypeIndexedRelation {
+	case smartblock.SmartBlockTypeIndexedRelation:
 		return NewIndexedRelation(s.anytype, id), nil
+	case smartblock.SmartBlockTypeBreadcrumbs:
+		return NewVirtual(s.anytype, st.ToProto()), nil
 	}
 
 	tid, err := thread.Decode(id)
