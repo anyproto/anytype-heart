@@ -335,6 +335,9 @@ func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
 	if strings.HasPrefix(mime, "video") {
 		return model.BlockContentFile_Video
 	}
+	if strings.HasPrefix(mime, "audio") {
+		return model.BlockContentFile_Audio
+	}
 	return model.BlockContentFile_File
 }
 
