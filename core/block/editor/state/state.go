@@ -554,7 +554,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {
 			if prevModifiedDate == nil {
-				delete(s.localDetails.Fields, bundle.RelationKeyLastModifiedDate.String())
+				//delete(s.localDetails.Fields, bundle.RelationKeyLastModifiedDate.String())
 			} else {
 				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
 			}

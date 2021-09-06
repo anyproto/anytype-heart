@@ -824,7 +824,17 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.R
 
 func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
 	s := sb.NewStateCtx(ctx)
-	source.InjectLocalDetails(sb.source, s)
+	storedDetails, err := sb.Anytype().ObjectStore().GetDetails(sb.Id())
+	if err != nil {
+		return err
+	}
+
+	localDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
+	if pbtypes.StructEqualIgnore(localDetails, s.LocalDetails(), nil) {
+		return nil
+	}
+
+	source.InjectLocalDetails(s, localDetails)
 	return sb.Apply(s)
 }
 

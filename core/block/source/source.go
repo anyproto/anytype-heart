@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/gogo/protobuf/types"
 	"math/rand"
 	"sync"
 	"time"
@@ -218,7 +219,9 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		}
 	}
 	st.BlocksInit(st)
-	InjectLocalDetails(s, st)
+	storedDetails, _ := s.Anytype().ObjectStore().GetDetails(s.Id())
+	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)))
+
 	InjectCreationInfo(s, st)
 	st.InjectDerivedDetails()
 	if err = st.Normalize(false); err != nil {
@@ -282,17 +285,11 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	return
 }
 
-func InjectLocalDetails(s Source, st *state.State) {
-	if details, err := s.Anytype().ObjectStore().GetDetails(s.Id()); err == nil {
-		if details != nil && details.Details != nil {
-			for key, v := range details.Details.Fields {
-				if slice.FindPos(append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...), key) != -1 {
-					st.SetLocalDetail(key, v)
-					if !pbtypes.HasRelation(st.ExtraRelations(), key) {
-						st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
-					}
-				}
-			}
+func InjectLocalDetails(st *state.State, localDetails *types.Struct) {
+	for key, v := range localDetails.GetFields() {
+		st.SetLocalDetail(key, v)
+		if !pbtypes.HasRelation(st.ExtraRelations(), key) {
+			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
 		}
 	}
 }
