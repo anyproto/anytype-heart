@@ -1013,8 +1013,10 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 		return
 	}
 	ob = val.(*openedBlock)
-	// I don't like this approach because it will call localstore every time, instead we should allow indexer to modify opened block...
+	ob.Lock()
+	// we should avoid this to be done in getSmartblock after metaSub refactor
 	err = ob.RefreshLocalDetails(nil)
+	ob.Unlock()
 	if err != nil {
 		return nil, err
 	}
