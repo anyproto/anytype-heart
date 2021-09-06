@@ -1211,6 +1211,11 @@ func (s *State) Validate() (err error) {
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
 func (s *State) IsEmpty() bool {
+	if pbtypes.GetString(s.details, bundle.RelationKeyName.String()) != "" {
+		return false
+	}
+	// todo: check other relations?
+
 	i := 0
 	blocksToTraverse := []string{"header"}
 	ignoredTemplateBlocksMap := map[string]struct{}{s.rootId: {}}

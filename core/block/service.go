@@ -264,7 +264,7 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 	}
 	for _, id := range ids {
-		sb, err := s.newSmartBlock(id, &smartblock.InitContext{})
+		sb, err := s.newSmartBlock(id, &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)})
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
 				log.Errorf("can't init predefined block: %v", err)
