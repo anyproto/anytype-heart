@@ -1901,6 +1901,14 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return nil
 	}
 
+	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
+	for k, v := range diff.GetFields() {
+		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
+				log.Errorf("updateDetails %s: localDetail nulled %s", id, pbtypes.Sprint(diff))
+			}
+		}
+	}
 	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {

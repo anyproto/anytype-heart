@@ -264,7 +264,7 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 	}
 	for _, id := range ids {
-		sb, err := s.newSmartBlock(id, &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)})
+		sb, err := s.newSmartBlock(id, &smartblock.InitContext{})
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
 				log.Errorf("can't init predefined block: %v", err)
@@ -1012,5 +1012,11 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 	if err != nil {
 		return
 	}
-	return val.(*openedBlock), nil
+	ob = val.(*openedBlock)
+	// I don't like this approach because it will call localstore every time, instead we should allow indexer to modify opened block...
+	err = ob.RefreshLocalDetails(nil)
+	if err != nil {
+		return nil, err
+	}
+	return ob, nil
 }

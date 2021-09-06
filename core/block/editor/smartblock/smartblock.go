@@ -86,6 +86,8 @@ type SmartBlock interface {
 	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
+	RefreshLocalDetails(ctx *state.Context) (err error)
+
 	UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
 	AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
@@ -818,6 +820,12 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.R
 	}
 
 	return
+}
+
+func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
+	s := sb.NewStateCtx(ctx)
+	source.InjectLocalDetails(sb.source, s)
+	return sb.Apply(s)
 }
 
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {

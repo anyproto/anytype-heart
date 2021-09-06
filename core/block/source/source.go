@@ -178,6 +178,8 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 		err = nil
 		s.tree = new(change.Tree)
 		doc = state.NewDoc(s.id, nil)
+		InjectCreationInfo(s, doc.(*state.State))
+		doc.(*state.State).InjectDerivedDetails()
 	} else if err != nil {
 		log.With("thread", s.id).Errorf("buildTree failed: %s", err.Error())
 		return
