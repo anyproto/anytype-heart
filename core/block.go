@@ -1121,6 +1121,8 @@ func (mw *Middleware) DownloadFile(req *pb.RpcDownloadFileRequest) *pb.RpcDownlo
 		return response("", pb.RpcDownloadFileResponseError_UNKNOWN_ERROR, err)
 	}
 
+	progress.SetDone(f.Meta().Size)
+
 	return response(path, pb.RpcDownloadFileResponseError_NULL, nil)
 }
 
