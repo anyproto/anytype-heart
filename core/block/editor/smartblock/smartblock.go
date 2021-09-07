@@ -543,7 +543,7 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 				rel.Key == bundle.RelationKeyType.String() ||
 				rel.Key == bundle.RelationKeyRecommendedRelations.String() ||
 				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
-				!includeCreator && rel.Key == bundle.RelationKeyCreator.String() {
+				!includeCreatorModifier && (rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String()) {
 				continue
 			}
 
