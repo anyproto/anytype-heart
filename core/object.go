@@ -2,7 +2,10 @@ package core
 
 import (
 	"fmt"
+	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
+	"github.com/tj/go-naturaldate"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -74,7 +77,26 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
+	t, err := naturaldate.Parse(req.FullText, time.Now())
+	if err == nil {
+		records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
+			"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
+			"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
+			"iconEmoji": pbtypes.String("📅"),
+		}}}}, records...)
+	} else {
+		t, err = dateparse.ParseAny(req.FullText)
+		if err == nil {
+			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
+				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
+				"iconEmoji": pbtypes.String("📅"),
+			}}}}, records...)
+		}
+	}
+
 	var records2 = make([]*types.Struct, 0, len(records))
+
 	for _, rec := range records {
 		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
 	}

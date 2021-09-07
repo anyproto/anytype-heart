@@ -249,6 +249,39 @@
     ]
   },
   {
+    "description": "Gregorian calendar date",
+    "emoji": "📅",
+    "id": "date",
+    "layout": "basic",
+    "name": "Date",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "isFavorite"
+    ]
+  },
+  {
     "description": "A list of goods sent or services provided, with a statement of the sum due for these; a bill",
     "emoji": "🧾",
     "id": "invoice",
@@ -1091,7 +1124,7 @@
     ]
   },
   {
-    "description": "A man, woman, or child of the species Homo sapiens",
+    "description": "Homo sapiens",
     "emoji": "🧍",
     "id": "profile",
     "layout": "profile",

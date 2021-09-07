@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "0cb4db33551373ebc1fc9d74b8f80057e6779fe77b5acf272dbb858dd661e52a"
+const TypeChecksum = "ee56b10e634e9155338c8a7e6cef8f65da75adb8ad339e22e1ff94a2231710c6"
 
 type TypeKey string
 
@@ -27,6 +27,7 @@ const (
 	TypeKeyResume          TypeKey = "resume"
 	TypeKeyContact         TypeKey = "contact"
 	TypeKeyWeeklyPlan      TypeKey = "weeklyPlan"
+	TypeKeyDate            TypeKey = "date"
 	TypeKeyInvoice         TypeKey = "invoice"
 	TypeKeyIdea            TypeKey = "idea"
 	TypeKeyTask            TypeKey = "task"
@@ -181,6 +182,16 @@ var (
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Home},
 			Url:         TypePrefix + "dashboard",
+		},
+		TypeKeyDate: {
+
+			Description: "Gregorian calendar date",
+			IconEmoji:   "📅",
+			Layout:      model.ObjectType_basic,
+			Name:        "Date",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite]},
+			Url:         TypePrefix + "date",
 		},
 		TypeKeyDiaryEntry: {
 
@@ -339,7 +350,7 @@ var (
 		},
 		TypeKeyProfile: {
 
-			Description: "A man, woman, or child of the species Homo sapiens",
+			Description: "Homo sapiens",
 			IconEmoji:   "🧍",
 			Layout:      model.ObjectType_profile,
 			Name:        "Human",

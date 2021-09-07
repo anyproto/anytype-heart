@@ -508,7 +508,7 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	}
 }
 
-func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 	if sb.Type() != model.SmartBlockType_Breadcrumbs {
 		ids = append(ids, sb.Id())
@@ -526,6 +526,15 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator boo
 		details := sb.CombinedDetails()
 
 		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
+			if rel.Format == model.RelationFormat_date {
+				relInt := pbtypes.GetInt64(details, rel.Key)
+				if relInt > 0 {
+					t := time.Unix(relInt, 0)
+					t = t.In(time.UTC)
+					ids = append(ids, source.TimeToId(t))
+				}
+				continue
+			}
 			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
 				continue
 			}

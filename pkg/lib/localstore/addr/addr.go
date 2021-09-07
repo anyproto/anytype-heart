@@ -11,9 +11,9 @@ const (
 	BundledObjectTypeURLPrefix = "_ot"
 	CustomRelationURLPrefix    = "_ir"
 
-	AnytypeProfileId = "_anytype_profile"
-	VirtualPrefix    = "_virtual"
-
+	AnytypeProfileId              = "_anytype_profile"
+	VirtualPrefix                 = "_virtual"
+	DatePrefix                    = "_date_"
 	OldCustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
 	OldBundledObjectTypeURLPrefix = "https://anytype.io/schemas/object/bundled/"
 )

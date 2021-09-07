@@ -48,6 +48,11 @@ type Source interface {
 	Close() (err error)
 }
 
+type SourceIdEndodedDetails interface {
+	Id() string
+	DetailsFromId() (*types.Struct, error)
+}
+
 type SourceType interface {
 	ListIds() ([]string, error)
 	Virtual() bool
@@ -70,6 +75,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 		return &bundledObjectType{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
 		return &bundledRelation{a: s.anytype}, nil
+
 	case smartblock.SmartBlockTypeBundledTemplate:
 		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
 	default:

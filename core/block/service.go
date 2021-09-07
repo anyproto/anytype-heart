@@ -690,7 +690,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		return
 	}
 	switch sc.Type() {
-	case model.SmartBlockType_Page:
+	case model.SmartBlockType_Page, model.SmartBlockType_Date:
 		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta)
