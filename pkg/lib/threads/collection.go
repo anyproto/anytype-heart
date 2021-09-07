@@ -118,8 +118,9 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 					if len(initialThreads) == 0 {
 						progress.Finish()
 						metrics.SharedClient.RecordEvent(metrics.AccountRecoverEvent{
-							SpentMs:      int(time.Now().Sub(startTime).Milliseconds()),
-							TotalThreads: threadsTotal,
+							SpentMs:              int(time.Now().Sub(startTime).Milliseconds()),
+							TotalThreads:         threadsTotal,
+							SimultaneousRequests: s.simultaneousRequests,
 						})
 					}
 

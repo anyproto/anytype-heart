@@ -171,7 +171,7 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 			With("event-type", e.EventType).
 			With("event-data", e.EventData).
 			With("user-id", c.userId).
-			Errorf("event sent")
+			Debugf("event sent")
 	}()
 }
 
