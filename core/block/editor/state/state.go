@@ -553,8 +553,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {
-			if prevModifiedDate == nil {
-				delete(s.localDetails.Fields, bundle.RelationKeyLastModifiedDate.String())
+			if prevModifiedDate != nil {
+				log.With("thread", s.rootId).Errorf("failed to revert prev modifed date: prev date is nil")
 			} else {
 				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
 			}
@@ -1211,6 +1211,11 @@ func (s *State) Validate() (err error) {
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
 func (s *State) IsEmpty() bool {
+	if pbtypes.GetString(s.details, bundle.RelationKeyName.String()) != "" {
+		return false
+	}
+	// todo: check other relations?
+
 	i := 0
 	blocksToTraverse := []string{"header"}
 	ignoredTemplateBlocksMap := map[string]struct{}{s.rootId: {}}

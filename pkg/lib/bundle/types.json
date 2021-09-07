@@ -29,6 +29,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "intentions",
       "happenings",
       "gratefulFor",
@@ -70,6 +71,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "time",
       "servings",
       "ingredients",
@@ -109,7 +111,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
@@ -145,6 +148,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "candidate",
       "job",
       "phone",
@@ -187,6 +191,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "phone",
       "email",
       "dateOfBirth",
@@ -234,6 +239,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "notes",
       "events",
       "tasks"
@@ -272,6 +278,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "company",
       "address",
       "billTo",
@@ -316,6 +323,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "problem",
       "solution",
       "alternative"
@@ -354,6 +362,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "assignee",
       "dueDate",
       "attachments",
@@ -424,6 +433,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "author",
       "category",
       "rating",
@@ -462,6 +472,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -509,6 +520,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "story",
       "founded",
       "ceo",
@@ -590,6 +602,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "notes",
       "tasks",
       "events"
@@ -628,6 +641,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "participants",
       "agenda",
       "tasks"
@@ -666,6 +680,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "director",
       "stars",
       "genre",
@@ -708,7 +723,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
@@ -744,6 +760,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary"
@@ -782,6 +799,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "targetObjectType",
       "templateIsBundled"
     ],
@@ -819,6 +837,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "running",
       "meditation",
       "7hourssleep",
@@ -859,6 +878,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "setOf"
     ],
     "types": [
@@ -895,6 +915,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "class",
       "classType",
       "records",
@@ -937,6 +958,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "mood"
     ],
     "types": [
@@ -972,7 +994,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
@@ -1007,6 +1030,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -1053,6 +1077,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "howToReproduce",
       "result",
       "additional",
@@ -1093,7 +1118,8 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "isFavorite"
     ],
     "types": [
       "Page",
@@ -1130,6 +1156,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -1177,6 +1204,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "tasks",
       "resources",
       "result",
@@ -1217,6 +1245,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "progress",
       "status",
       "dueDate",
@@ -1256,6 +1285,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "hypothesisAssumptions",
       "problem",
       "userStories",
@@ -1299,7 +1329,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
@@ -1334,6 +1365,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -1373,6 +1405,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "objectives",
       "scope",
       "timeframe",

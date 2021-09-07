@@ -26,7 +26,6 @@ type Meta struct {
 
 type Service interface {
 	PubSub() PubSub
-	IndexerIndexOutgoingLinks(id string, links []string)
 
 	ReportChange(m Meta)
 	FetchMeta(ids []string) (metas []Meta)
@@ -43,10 +42,6 @@ type service struct {
 	indexer indexer.Indexer
 	ps      *pubSub
 	m       sync.Mutex
-}
-
-func (s *service) IndexerIndexOutgoingLinks(id string, links []string) {
-	s.indexer.IndexOutgoingLinks(id, links)
 }
 
 // SetLocalDetails inject local details into the meta pubsub

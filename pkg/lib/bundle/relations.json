@@ -77,12 +77,13 @@
     "source": "account"
   },
   {
+    "description": "Types that used for such relation",
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "relationFormatObjectTypes",
     "maxCount": 0,
     "name": "Object type",
-    "readonly": false,
+    "readonly": true,
     "source": "details"
   },
   {
@@ -160,6 +161,7 @@
     "source": "details"
   },
   {
+    "description": "List of related tasks\n",
     "format": "object",
     "hidden": false,
     "key": "tasks",
@@ -874,6 +876,16 @@
     "name": "Materials",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Adds the object to the home fashboard",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isFavorite",
+    "maxCount": 1,
+    "name": "Favorited",
+    "readonly": false,
+    "source": "account"
   },
   {
     "format": "object",

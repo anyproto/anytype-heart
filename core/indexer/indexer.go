@@ -41,7 +41,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 0 // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 2 // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2 // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 5 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 9 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 2 // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -266,6 +266,9 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 
 	if len(idsToReindex) > 0 {
 		for _, id := range idsToReindex {
+			if id == i.anytype.PredefinedBlocks().Account {
+				continue
+			}
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 			cancel()
 			d, err := i.doc.GetDocInfo(ctx, id)
@@ -324,6 +327,15 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 				i.archivedMap[target] = struct{}{}
 			}
 		}
+
+		d, err = i.doc.GetDocInfo(ctx, i.anytype.PredefinedBlocks().Home)
+		if err != nil {
+			log.Errorf("reindex failed to open archive: %s", err.Error())
+		} else {
+			for _, b := range d.Links {
+				i.favoriteMap[b] = struct{}{}
+			}
+		}
 	}
 
 	if reindex&reindexThreadObjects != 0 {
@@ -332,12 +344,12 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			smartblock.SmartBlockTypeSet,
 			smartblock.SmartBlockTypeObjectType,
 			smartblock.SmartBlockTypeProfilePage,
-			smartblock.SmartBlockTypeArchive,
-			smartblock.SmartBlockTypeHome,
 			smartblock.SmartBlockTypeTemplate,
 			smartblock.SmartblockTypeMarketplaceType,
 			smartblock.SmartblockTypeMarketplaceTemplate,
 			smartblock.SmartblockTypeMarketplaceRelation,
+			smartblock.SmartBlockTypeArchive,
+			smartblock.SmartBlockTypeHome,
 		)
 		if err != nil {
 			return err
@@ -524,11 +536,11 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		return fmt.Errorf("incorrect sb type: %v", err)
 	}
 
-	if t == smartblock.SmartBlockTypeArchive {
+	if t == smartblock.SmartBlockTypeArchive || t == smartblock.SmartBlockTypeHome {
 		if err := i.store.AddToIndexQueue(id); err != nil {
-			log.With("thread", id).Errorf("can't add archive to index queue: %v", err)
+			log.With("thread", id).Errorf("can't add archive/home to index queue: %v", err)
 		} else {
-			log.With("thread", id).Debugf("archive added to index queue")
+			log.With("thread", id).Debugf("archive/home added to index queue")
 		}
 		return nil
 	}
@@ -541,7 +553,10 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 
 	details := d.State.CombinedDetails()
 	_, isArchived := i.archivedMap[id]
+	_, isFavorite := i.favoriteMap[id]
+
 	details.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
+	details.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
 
 	var curDetails *types.Struct
 	curDetailsO, _ := i.store.GetDetails(id)
@@ -594,15 +609,9 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-	if sbType == smartblock.SmartBlockTypeArchive {
-		if err := i.store.AddToIndexQueue(info.Id); err != nil {
-			log.With("thread", info.Id).Errorf("can't add archive to index queue: %v", err)
-		} else {
-			log.With("thread", info.Id).Debugf("archive added to index queue")
-		}
+	if sbType == smartblock.SmartBlockTypeBreadcrumbs {
 		return nil
 	}
-
 	details := info.State.CombinedDetails()
 
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
@@ -633,6 +642,10 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 			}
 		}
 		log.With("thread", info.Id).Infof("indexed: det: %v", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+	}
+
+	if err := i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
+		log.With("thread", info.Id).Errorf("failed to save object links: %v", err)
 	}
 
 	if err := i.store.AddToIndexQueue(info.Id); err != nil {
@@ -672,7 +685,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if err != nil {
 		return
 	}
-	if err = i.store.UpdateObjectLinksAndSnippet(id, info.Links, info.State.Snippet()); err != nil {
+	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
 		return
 	}
 
