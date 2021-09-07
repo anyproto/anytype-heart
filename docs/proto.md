@@ -13475,6 +13475,7 @@ Precondition: user A and user B opened the same block
 | Import | 1 |  |
 | Export | 2 |  |
 | SaveFile | 3 |  |
+| RecoverAccount | 4 |  |
 
 
  

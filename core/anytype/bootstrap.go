@@ -93,6 +93,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(files.New()).
 		Register(cafe.New()).
 		Register(configfetcher.New()).
+		Register(process.New()).
 		Register(threads.New()).
 		Register(source.New()).
 		Register(core.New()).
@@ -102,7 +103,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(indexer.New()).
 		Register(meta.New()).
 		Register(block.New()).
-		Register(process.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).

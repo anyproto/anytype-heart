@@ -6,7 +6,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -74,17 +76,14 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 	}
 
 	var initialThreads map[thread.ID]threadInfo
-	threadsDownloadStarted := 0
-	threadsDownloadFinished := 0
+	threadsTotal := 0
 	initialThreadsLock := sync.RWMutex{}
-	counterLock := sync.Mutex{}
+
+	startTime := time.Now()
+	progress := process.NewProgress(pb.ModelProcess_RecoverAccount)
+	s.process.Add(progress)
 
 	processThread := func(tid thread.ID, ti threadInfo) {
-		counterLock.Lock()
-		threadsDownloadStarted++
-		// TODO: Notify progress bar
-		counterLock.Unlock()
-
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		info, err := s.t.GetThread(ctx, tid)
 		cancel()
@@ -109,19 +108,24 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 			if len(initialThreads) == 0 {
 				initialThreadsLock.RUnlock()
 			} else {
+				_, isInitialThread := initialThreads[tid]
 				initialThreadsLock.RUnlock()
-				initialThreadsLock.Lock()
-				delete(initialThreads, tid)
-				l := len(initialThreads)
-				initialThreadsLock.Unlock()
-				if l == 0 {
-					// TODO: Add metrics here for account recovery time
+				if isInitialThread {
+					initialThreadsLock.Lock()
+
+					delete(initialThreads, tid)
+					progress.AddDone(1)
+					if len(initialThreads) == 0 {
+						progress.Finish()
+						metrics.SharedClient.RecordEvent(metrics.AccountRecoverEvent{
+							SpentMs:      int(time.Now().Sub(startTime).Milliseconds()),
+							TotalThreads: threadsTotal,
+						})
+					}
+
+					initialThreadsLock.Unlock()
 				}
 			}
-			counterLock.Lock()
-			threadsDownloadFinished++
-			// TODO: Notify progress bar
-			counterLock.Unlock()
 			if ch != nil && !s.stopped {
 				select {
 				case <-s.ctx.Done():
@@ -211,7 +215,11 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 			case m := <-initialThreadsCh:
 				initialThreadsLock.Lock()
 				initialThreads = m
+				threadsTotal = len(m)
 				initialThreadsLock.Unlock()
+
+				progress.SetProgressMessage("recovering account")
+				progress.SetTotal(int64(threadsTotal))
 
 				initialThreadsAcquired = true
 

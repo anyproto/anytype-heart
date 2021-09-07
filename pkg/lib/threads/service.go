@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
@@ -77,6 +78,7 @@ type service struct {
 	newThreadChan                  chan<- string
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
+	process                        process.Service
 
 	fetcher CafeConfigFetcher
 
@@ -122,6 +124,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	s.fetcher = a.MustComponent("configfetcher").(CafeConfigFetcher)
+	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
 
