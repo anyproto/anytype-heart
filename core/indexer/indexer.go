@@ -56,13 +56,7 @@ func New() Indexer {
 }
 
 type Indexer interface {
-	IndexOutgoingLinks(id string, links []string) error
-
 	app.ComponentRunnable
-}
-
-type batchReader interface {
-	Read(buffer []core.SmartblockRecordWithThreadID) int
 }
 
 type ThreadLister interface {
@@ -99,10 +93,6 @@ type indexer struct {
 	archivedMap   map[string]struct{}
 	favoriteMap   map[string]struct{}
 	newAccount    bool
-}
-
-func (i *indexer) IndexOutgoingLinks(id string, links []string) error {
-	return i.store.UpdateObjectLinks(id, links)
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -536,19 +526,21 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		return fmt.Errorf("incorrect sb type: %v", err)
 	}
 
-	if t == smartblock.SmartBlockTypeArchive || t == smartblock.SmartBlockTypeHome {
-		if err := i.store.AddToIndexQueue(id); err != nil {
-			log.With("thread", id).Errorf("can't add archive/home to index queue: %v", err)
-		} else {
-			log.With("thread", id).Debugf("archive/home added to index queue")
-		}
-		return nil
-	}
-
 	d, err := i.doc.GetDocInfo(ctx, id)
 	if err != nil {
 		log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
 		return fmt.Errorf("failed to open doc: %s", err.Error())
+	}
+
+	indexLinks, indexDetails := t.Indexable()
+	if indexLinks {
+		if err := i.store.UpdateObjectLinks(d.Id, d.Links); err != nil {
+			log.With("thread", d.Id).Errorf("failed to save object links: %v", err)
+		}
+	}
+
+	if !indexDetails {
+		return nil
 	}
 
 	details := d.State.CombinedDetails()
@@ -569,11 +561,11 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails == nil {
 			if err := i.store.CreateObject(id, details, &model.Relations{d.State.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
-				return fmt.Errorf("can't update object store: %v", err)
+				return fmt.Errorf("can't create object in ther store: %v", err)
 			}
 		} else {
 			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.State.ExtraRelations()}, true); err != nil {
-				return fmt.Errorf("can't update object store: %v", err)
+				return fmt.Errorf("can't update object in the store: %v", err)
 			}
 		}
 		if headsHash := headsHash(d.LogHeads); headsHash != "" {
@@ -609,9 +601,11 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-	if sbType == smartblock.SmartBlockTypeBreadcrumbs {
+	indexLinks, indexDetails := sbType.Indexable()
+	if !indexDetails && !indexLinks {
 		return nil
 	}
+
 	details := info.State.CombinedDetails()
 
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
@@ -632,27 +626,32 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		}
 	}
 
-	if err := i.store.UpdateObjectDetails(info.Id, details, &model.Relations{Relations: info.State.ExtraRelations()}, false); err != nil {
-		log.With("thread", info.Id).Errorf("can't update object store: %v", err)
-	} else {
-		if headsHash := headsHash(info.LogHeads); headsHash != "" {
-			err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
-			if err != nil {
-				log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
-			}
+	if indexLinks {
+		if err := i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
+			log.With("thread", info.Id).Errorf("failed to save object links: %v", err)
 		}
-		log.With("thread", info.Id).Infof("indexed: det: %v", pbtypes.GetString(details, bundle.RelationKeyName.String()))
 	}
 
-	if err := i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
-		log.With("thread", info.Id).Errorf("failed to save object links: %v", err)
+	if indexDetails {
+		if err := i.store.UpdateObjectDetails(info.Id, details, &model.Relations{Relations: info.State.ExtraRelations()}, false); err != nil {
+			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
+		} else {
+			if headsHash := headsHash(info.LogHeads); headsHash != "" {
+				err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
+				if err != nil {
+					log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
+				}
+			}
+			log.With("thread", info.Id).Infof("indexed: det: %v", pbtypes.GetString(details, bundle.RelationKeyName.String()))
+		}
+
+		if err := i.store.AddToIndexQueue(info.Id); err != nil {
+			log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
+		} else {
+			log.With("thread", info.Id).Debugf("to index queue")
+		}
 	}
 
-	if err := i.store.AddToIndexQueue(info.Id); err != nil {
-		log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
-	} else {
-		log.With("thread", info.Id).Debugf("to index queue")
-	}
 	return nil
 }
 
