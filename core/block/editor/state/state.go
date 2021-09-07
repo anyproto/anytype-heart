@@ -1032,7 +1032,7 @@ func (s *State) ObjectTypes() []string {
 // this method is useful because we have decided that currently objects can have only one object type, while preserving the ability to unlock this later
 func (s *State) ObjectType() string {
 	objTypes := s.ObjectTypes()
-	if len(objTypes) != 1 && !s.noObjectType {
+	if len(objTypes) == 0 && !s.noObjectType {
 		log.Debugf("obj %s(%s) has %d objectTypes instead of 1", s.RootId(), pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()), len(objTypes))
 	}
 
