@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -33,42 +34,101 @@ type threadInfo struct {
 	Addrs []string
 }
 
-func (s *service) threadsDbInit() error {
+func (s *service) threadsDbInit() (chan map[thread.ID]threadInfo, error) {
 	if s.db != nil {
-		return nil
+		return nil, nil
 	}
 
 	accountID, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	s.db, err = threadsDb.NewDB(context.Background(), s.threadsDbDS, s.t, accountID, threadsDb.WithNewCollections())
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	s.threadsCollection = s.db.GetCollection(ThreadInfoCollectionName)
-	err = s.threadsDbListen()
+	ch := make(chan map[thread.ID]threadInfo)
+	err = s.threadsDbListen(ch)
 	if err != nil {
-		return fmt.Errorf("failed to listen external new threads: %w", err)
+		return nil, fmt.Errorf("failed to listen external new threads: %w", err)
 	}
 
 	if s.threadsCollection == nil {
 		s.threadsCollection, err = s.db.NewCollection(threadInfoCollection)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
 
-	return nil
+	return ch, nil
 }
 
-func (s *service) threadsDbListen() error {
+func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo) error {
 	log.Infof("threadsDbListen")
 	l, err := s.db.Listen()
 	if err != nil {
 		return err
+	}
+
+	var initialThreads map[thread.ID]threadInfo
+	threadsDownloadStarted := 0
+	threadsDownloadFinished := 0
+	initialThreadsLock := sync.RWMutex{}
+	counterLock := sync.Mutex{}
+
+	processThread := func(tid thread.ID, ti threadInfo) {
+		counterLock.Lock()
+		threadsDownloadStarted++
+		// TODO: Notify progress bar
+		counterLock.Unlock()
+
+		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+		info, err := s.t.GetThread(ctx, tid)
+		cancel()
+		if err != logstore.ErrThreadNotFound {
+			log.With("thread", tid.String()).
+				Errorf("error getting thread while processing: %v", err)
+			return
+		}
+		if info.ID != thread.Undef {
+			// our own event
+			return
+		}
+
+		metrics.ExternalThreadReceivedCounter.Inc()
+		go func() {
+			if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
+				log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
+				return
+			}
+			ch := s.getNewThreadChan()
+			initialThreadsLock.RLock()
+			if len(initialThreads) == 0 {
+				initialThreadsLock.RUnlock()
+			} else {
+				initialThreadsLock.RUnlock()
+				initialThreadsLock.Lock()
+				delete(initialThreads, tid)
+				l := len(initialThreads)
+				initialThreadsLock.Unlock()
+				if l == 0 {
+					// TODO: Add metrics here for account recovery time
+				}
+			}
+			counterLock.Lock()
+			threadsDownloadFinished++
+			// TODO: Notify progress bar
+			counterLock.Unlock()
+			if ch != nil && !s.stopped {
+				select {
+				case <-s.ctx.Done():
+				case ch <- tid.String():
+				}
+			}
+		}()
 	}
 
 	processThreads := func(ids []db.InstanceID) {
@@ -86,34 +146,30 @@ func (s *service) threadsDbListen() error {
 				log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
 				continue
 			}
-
-			ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-			info, err := s.t.GetThread(ctx, tid)
-			cancel()
-			if err != logstore.ErrThreadNotFound {
-				log.With("thread", tid.String()).
-					Errorf("error getting thread while processing: %v", err)
-				continue
-			}
-			if info.ID != thread.Undef {
-				// our own event
-				continue
-			}
-
-			metrics.ExternalThreadReceivedCounter.Inc()
-			go func() {
-				if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
-					log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
-					return
+			initialThreadsLock.RLock()
+			if len(initialThreads) != 0 {
+				_, ok := initialThreads[tid]
+				// if we are already downloading this thread as initial one
+				if ok {
+					initialThreadsLock.RUnlock()
+					continue
 				}
-				ch := s.getNewThreadChan()
-				if ch != nil && !s.stopped {
-					select {
-					case <-s.ctx.Done():
-					case ch <- tid.String():
-					}
-				}
-			}()
+			}
+			initialThreadsLock.RUnlock()
+			processThread(tid, ti)
+		}
+	}
+
+	processInitialThreads := func() {
+		copyMap := make(map[thread.ID]threadInfo)
+		initialThreadsLock.RLock()
+		for tid, ti := range initialThreads {
+			copyMap[tid] = ti
+		}
+		initialThreadsLock.RUnlock()
+
+		for tid, ti := range copyMap {
+			processThread(tid, ti)
 		}
 	}
 
@@ -123,9 +179,13 @@ func (s *service) threadsDbListen() error {
 			s.closeThreadChan()
 		}()
 		deadline := 1 * time.Second
-		tmr := time.NewTimer(deadline)
+		// initially setting long duration (we can't set nil), because we want to be sure that the download starts
+		// only when we get initial entries from db, so the logic with initial threads map
+		// is clearer
+		tmr := time.NewTimer(1 * time.Hour)
 		flushBuffer := make([]db.InstanceID, 0, 100)
 		timerRead := false
+		initialThreadsAcquired := false
 
 		processBuffer := func() {
 			if len(flushBuffer) == 0 {
@@ -148,14 +208,27 @@ func (s *service) threadsDbListen() error {
 				timerRead = true
 				// we don't have new messages for at least deadline and we have something to flush
 				processBuffer()
-			case c := <-l.Channel():
-				// as per docs the timer should be stopped or expired with drained channel
-				// to be reset
-				if !tmr.Stop() && !timerRead {
-					<-tmr.C
-				}
+			case m := <-initialThreadsCh:
+				initialThreadsLock.Lock()
+				initialThreads = m
+				initialThreadsLock.Unlock()
+
+				initialThreadsAcquired = true
+
+				// only starting processing when first batch is read
+				tmr.Stop()
 				tmr.Reset(deadline)
-				timerRead = false
+				processInitialThreads()
+			case c := <-l.Channel():
+				if initialThreadsAcquired {
+					// as per docs the timer should be stopped or expired with drained channel
+					// to be reset
+					if !tmr.Stop() && !timerRead {
+						<-tmr.C
+					}
+					tmr.Reset(deadline)
+					timerRead = false
+				}
 				switch c.Type {
 				case threadsDb.ActionCreate:
 					flushBuffer = append(flushBuffer, c.ID)
