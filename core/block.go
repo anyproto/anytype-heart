@@ -523,23 +523,6 @@ func (mw *Middleware) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsReques
 	return response(pb.RpcBlockSetRestrictionsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetPageIsArchived(req *pb.RpcBlockSetPageIsArchivedRequest) *pb.RpcBlockSetPageIsArchivedResponse {
-	response := func(code pb.RpcBlockSetPageIsArchivedResponseErrorCode, err error) *pb.RpcBlockSetPageIsArchivedResponse {
-		m := &pb.RpcBlockSetPageIsArchivedResponse{Error: &pb.RpcBlockSetPageIsArchivedResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetPageIsArchived(*req)
-	})
-	if err != nil {
-		return response(pb.RpcBlockSetPageIsArchivedResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(pb.RpcBlockSetPageIsArchivedResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockListDeletePage(req *pb.RpcBlockListDeletePageRequest) *pb.RpcBlockListDeletePageResponse {
 	response := func(code pb.RpcBlockListDeletePageResponseErrorCode, err error) *pb.RpcBlockListDeletePageResponse {
 		m := &pb.RpcBlockListDeletePageResponse{Error: &pb.RpcBlockListDeletePageResponseError{Code: code}}
@@ -549,7 +532,7 @@ func (mw *Middleware) BlockListDeletePage(req *pb.RpcBlockListDeletePageRequest)
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DeletePages(*req)
+		return bs.DeleteArchivedObjects(*req)
 	})
 	if err != nil {
 		return response(pb.RpcBlockListDeletePageResponseError_UNKNOWN_ERROR, err)
@@ -1137,6 +1120,8 @@ func (mw *Middleware) DownloadFile(req *pb.RpcDownloadFileRequest) *pb.RpcDownlo
 	if err != nil {
 		return response("", pb.RpcDownloadFileResponseError_UNKNOWN_ERROR, err)
 	}
+
+	progress.SetDone(f.Meta().Size)
 
 	return response(path, pb.RpcDownloadFileResponseError_NULL, nil)
 }

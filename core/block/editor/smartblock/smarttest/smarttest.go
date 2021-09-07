@@ -102,6 +102,10 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 	return false
 }
 
+func (st *SmartTest) RefreshLocalDetails(ctx *state.Context) error {
+	return nil
+}
+
 func (st *SmartTest) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error {
 	for _, rel := range st.ExtraRelations() {
 		if rel.Key != relationKey {

@@ -31,6 +31,7 @@ const (
 	SmartBlockTypeIndexedRelation     = SmartBlockType(model.SmartBlockType_IndexedRelation)
 	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)
 	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
+	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -45,6 +46,13 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 	}
 	if strings.HasPrefix(id, addr.AnytypeProfileId) {
 		return SmartBlockTypeProfilePage, nil
+	}
+	if strings.HasPrefix(id, addr.VirtualPrefix) {
+		sbt, err := addr.ExtractVirtualSourceType(id)
+		if err != nil {
+			return 0, err
+		}
+		return SmartBlockType(sbt), nil
 	}
 
 	c, err := cid.Decode(id)
@@ -73,7 +81,9 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	if err := SmartBlockType(blockType).Valid(); err != nil {
 		return 0, err
 	}
-
+	if blockType == 0 {
+		return 0, fmt.Errorf("unexpected sb type 0")
+	}
 	return SmartBlockType(blockType), nil
 }
 

@@ -52,8 +52,6 @@ service ClientCommands {
     rpc BlockSetFields (anytype.Rpc.Block.Set.Fields.Request) returns (anytype.Rpc.Block.Set.Fields.Response);
     rpc BlockSetRestrictions (anytype.Rpc.Block.Set.Restrictions.Request) returns (anytype.Rpc.Block.Set.Restrictions.Response);
 
-    rpc BlockSetPageIsArchived (anytype.Rpc.Block.Set.Page.IsArchived.Request) returns (anytype.Rpc.Block.Set.Page.IsArchived.Response);
-
     rpc BlockListMove (anytype.Rpc.BlockList.Move.Request) returns (anytype.Rpc.BlockList.Move.Response);
     rpc BlockListMoveToNewPage (anytype.Rpc.BlockList.MoveToNewPage.Request) returns (anytype.Rpc.BlockList.MoveToNewPage.Response);
     rpc BlockListConvertChildrenToPages (anytype.Rpc.BlockList.ConvertChildrenToPages.Request) returns (anytype.Rpc.BlockList.ConvertChildrenToPages.Response);
@@ -64,7 +62,7 @@ service ClientCommands {
     rpc BlockListSetBackgroundColor (anytype.Rpc.BlockList.Set.BackgroundColor.Request) returns (anytype.Rpc.BlockList.Set.BackgroundColor.Response);
     rpc BlockListSetAlign (anytype.Rpc.BlockList.Set.Align.Request) returns (anytype.Rpc.BlockList.Set.Align.Response);
     rpc BlockListSetDivStyle (anytype.Rpc.BlockList.Set.Div.Style.Request) returns (anytype.Rpc.BlockList.Set.Div.Style.Response);
-    rpc BlockListSetPageIsArchived (anytype.Rpc.BlockList.Set.Page.IsArchived.Request) returns (anytype.Rpc.BlockList.Set.Page.IsArchived.Response);
+
     rpc BlockListDeletePage (anytype.Rpc.BlockList.Delete.Page.Request) returns (anytype.Rpc.BlockList.Delete.Page.Response);
     rpc BlockListTurnInto (anytype.Rpc.BlockList.TurnInto.Request) returns (anytype.Rpc.BlockList.TurnInto.Response);
 
@@ -74,6 +72,7 @@ service ClientCommands {
     rpc BlockListSetTextMark (anytype.Rpc.BlockList.Set.Text.Mark.Request) returns (anytype.Rpc.BlockList.Set.Text.Mark.Response);
     rpc BlockSetTextStyle (anytype.Rpc.Block.Set.Text.Style.Request) returns (anytype.Rpc.Block.Set.Text.Style.Response);
     rpc BlockSetTextChecked (anytype.Rpc.Block.Set.Text.Checked.Request) returns (anytype.Rpc.Block.Set.Text.Checked.Response);
+    rpc BlockListSetPageIsArchived (anytype.Rpc.BlockList.Set.Page.IsArchived.Request) returns (anytype.Rpc.BlockList.Set.Page.IsArchived.Response); // deprecated
 
     rpc BlockSplit (anytype.Rpc.Block.Split.Request) returns (anytype.Rpc.Block.Split.Response);
     rpc BlockMerge (anytype.Rpc.Block.Merge.Request) returns (anytype.Rpc.Block.Merge.Response);
@@ -137,6 +136,11 @@ service ClientCommands {
     rpc ObjectRelationOptionUpdate (anytype.Rpc.Object.RelationOptionUpdate.Request) returns (anytype.Rpc.Object.RelationOptionUpdate.Response);
     rpc ObjectRelationOptionDelete (anytype.Rpc.Object.RelationOptionDelete.Request) returns (anytype.Rpc.Object.RelationOptionDelete.Response);
     rpc ObjectRelationListAvailable (anytype.Rpc.Object.RelationListAvailable.Request) returns (anytype.Rpc.Object.RelationListAvailable.Response);
+    rpc ObjectSetLayout (anytype.Rpc.Object.SetLayout.Request) returns (anytype.Rpc.Object.SetLayout.Response);
+    rpc ObjectFeaturedRelationAdd (anytype.Rpc.Object.FeaturedRelation.Add.Request) returns (anytype.Rpc.Object.FeaturedRelation.Add.Response);
+    rpc ObjectFeaturedRelationRemove (anytype.Rpc.Object.FeaturedRelation.Remove.Request) returns (anytype.Rpc.Object.FeaturedRelation.Remove.Response);
+    rpc ObjectSetIsFavorite (anytype.Rpc.Object.SetIsFavorite.Request) returns (anytype.Rpc.Object.SetIsFavorite.Response);
+    rpc ObjectSetIsArchived (anytype.Rpc.Object.SetIsArchived.Request) returns (anytype.Rpc.Object.SetIsArchived.Response);
 
     // TODO: rename BlockSetDetails -> ObjectSetDetails
     rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);
@@ -155,9 +159,6 @@ service ClientCommands {
     rpc ObjectTypeRelationAdd (anytype.Rpc.ObjectType.Relation.Add.Request) returns (anytype.Rpc.ObjectType.Relation.Add.Response);
     rpc ObjectTypeRelationUpdate (anytype.Rpc.ObjectType.Relation.Update.Request) returns (anytype.Rpc.ObjectType.Relation.Update.Response);
     rpc ObjectTypeRelationRemove (anytype.Rpc.ObjectType.Relation.Remove.Request) returns (anytype.Rpc.ObjectType.Relation.Remove.Response);
-    rpc ObjectSetLayout (anytype.Rpc.Object.SetLayout.Request) returns (anytype.Rpc.Object.SetLayout.Response);
-    rpc ObjectFeaturedRelationAdd (anytype.Rpc.Object.FeaturedRelation.Add.Request) returns (anytype.Rpc.Object.FeaturedRelation.Add.Response);
-    rpc ObjectFeaturedRelationRemove (anytype.Rpc.Object.FeaturedRelation.Remove.Request) returns (anytype.Rpc.Object.FeaturedRelation.Remove.Response);
 
     rpc Ping (anytype.Rpc.Ping.Request) returns (anytype.Rpc.Ping.Response);
 

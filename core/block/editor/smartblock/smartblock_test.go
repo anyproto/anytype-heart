@@ -54,7 +54,7 @@ func TestSmartBlock_Show(t *testing.T) {
 	bm := meta.Meta{
 		BlockId: "1",
 		SmartBlockMeta: core.SmartBlockMeta{
-			Details: fx.CombinedDetails(),
+			Details:   fx.CombinedDetails(),
 			Relations: []*model.Relation{rel},
 		},
 	}
@@ -98,7 +98,6 @@ func TestSmartBlock_Apply(t *testing.T) {
 		fx.SetEventFunc(func(e *pb.Event) {
 			event = e
 		})
-		fx.metaService.EXPECT().IndexerIndexOutgoingLinks(gomock.Any(),gomock.Any()).MaxTimes(1)
 
 		err := fx.Apply(s)
 		require.NoError(t, err)

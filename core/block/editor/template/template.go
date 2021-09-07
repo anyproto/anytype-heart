@@ -57,6 +57,23 @@ var WithNoObjectTypes = func() StateTransformer {
 	}
 }
 
+var WithNoDuplicateLinks = func() StateTransformer {
+	return func(s *state.State) {
+		var m = make(map[string]struct{})
+		var l *model.BlockContentLink
+		for _, b := range s.Blocks() {
+			if l = b.GetLink(); l == nil {
+				continue
+			}
+			if _, exists := m[l.TargetBlockId]; exists {
+				s.Unlink(b.Id)
+				continue
+			}
+			m[l.TargetBlockId] = struct{}{}
+		}
+	}
+}
+
 var WithObjectTypeLayoutMigration = func() StateTransformer {
 	return func(s *state.State) {
 		layout := pbtypes.GetFloat64(s.Details(), bundle.RelationKeyLayout.String())

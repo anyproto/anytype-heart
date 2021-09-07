@@ -23,6 +23,7 @@ var mw = core.New()
 func init() {
 	fmt.Printf("mw jsaddon: %s\n", app.GitSummary)
 	registerClientCommandsHandler(mw)
+	logging.ApplyLevelsFromEnv()
 	PanicHandler = mw.OnPanic
 	metrics.SharedClient.InitWithKey(metrics.DefaultAmplitudeKey)
 	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {

@@ -131,8 +131,8 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 	if _, exists := nodeExists[homeId]; !exists {
 		records = append(records, database.Record{&types.Struct{
 			Fields: map[string]*types.Value{
-				"id": pbtypes.String(homeId),
-				"name": pbtypes.String("Home"),
+				"id":        pbtypes.String(homeId),
+				"name":      pbtypes.String("Home"),
 				"iconEmoji": pbtypes.String("🏠"),
 			},
 		}})
@@ -171,7 +171,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 						continue
 					}
 
-					if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String()  || rel.Key == bundle.RelationKeyCreator.String()  || rel.Key == bundle.RelationKeyLastModifiedBy.String()  {
+					if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 						outgoingRelationLink[l] = struct{}{}
 						continue
 					}
@@ -383,6 +383,46 @@ func (mw *Middleware) ObjectSetLayout(req *pb.RpcObjectSetLayoutRequest) *pb.Rpc
 		return response(pb.RpcObjectSetLayoutResponseError_UNKNOWN_ERROR, err)
 	}
 	return response(pb.RpcObjectSetLayoutResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectSetIsArchived(req *pb.RpcObjectSetIsArchivedRequest) *pb.RpcObjectSetIsArchivedResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcObjectSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectSetIsArchivedResponse {
+		m := &pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetPageIsArchived(*req)
+	})
+	if err != nil {
+		return response(pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectSetIsArchivedResponseError_NULL, nil)
+}
+
+func (mw *Middleware) ObjectSetIsFavorite(req *pb.RpcObjectSetIsFavoriteRequest) *pb.RpcObjectSetIsFavoriteResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcObjectSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectSetIsFavoriteResponse {
+		m := &pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetPageIsFavorite(*req)
+	})
+	if err != nil {
+		return response(pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectSetIsFavoriteResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectFeaturedRelationAdd(req *pb.RpcObjectFeaturedRelationAddRequest) *pb.RpcObjectFeaturedRelationAddResponse {
