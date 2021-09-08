@@ -2052,6 +2052,11 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	}
 	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
+	for k, v := range details.GetDetails().GetFields() {
+		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+			delete(details.Details.Fields, k)
+		}
+	}
 	return &details, nil
 }
 
