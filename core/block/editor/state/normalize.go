@@ -362,51 +362,37 @@ func (s *State) MigrateObjectTypes() {
 	}
 }
 
+// normalizeRelation checks rel and returns a copy in case it was normalized, otherwise returns nil
+func normalizeRelation(rel *model.Relation, creator string) (normalized *model.Relation, wasNormalized bool) {
+	equal, exists := bundle.EqualWithRelation(rel.Key, rel)
+	if exists && !equal {
+		// reset bundle relation in case the bundle has it updated
+		normalized = bundle.MustGetRelation(bundle.RelationKey(rel.Key))
+		normalized.SelectDict = rel.SelectDict
+		wasNormalized = true
+	} else if !exists && rel.Creator == "" {
+		normalized = pbtypes.CopyRelation(rel)
+		normalized.Creator = creator
+		wasNormalized = true
+	}
+
+	if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
+		normalized = pbtypes.CopyRelation(rel)
+		normalized.MaxCount = 1
+		wasNormalized = true
+	}
+	return
+}
+
 func (s *State) NormalizeRelations() {
+	creator := pbtypes.GetString(s.Details(), bundle.RelationKeyCreator.String())
 	for _, r := range s.ExtraRelations() {
-		var updateRelation *model.Relation
-
-		equal, exists := bundle.EqualWithRelation(r.Key, r)
-		if exists && !equal {
-			// reset bundle relation in case the bundle has it updated
-			updateRelation = bundle.MustGetRelation(bundle.RelationKey(r.Key))
-			updateRelation.SelectDict = r.SelectDict
-		} else if !exists && r.Creator == "" {
-			r.Creator = pbtypes.GetString(s.Details(), bundle.RelationKeyCreator.String())
+		normalized, changed := normalizeRelation(r, creator)
+		if !changed {
+			continue
 		}
+		s.SetExtraRelation(normalized)
 
-		/*if r.Format == relation.RelationFormat_status || r.Format == relation.RelationFormat_tag {
-			// remove options that doesn't have a value
-			values := pbtypes.GetStringList(s.Details(), r.Key)
-			var optsFiltered []*relation.RelationOption
-			var hasChanges bool
-			for i, opt := range r.SelectDict {
-				if slice.FindPos(values, opt.Id) >= 0 {
-					optsFiltered = append(optsFiltered, r.SelectDict[i])
-				} else {
-					log.With("thread",s.rootId).Errorf("NormalizeRelations: remove option %s", opt.Id)
-					hasChanges = true
-				}
-			}
-
-			if hasChanges {
-				if updateRelation == nil {
-					updateRelation = pbtypes.CopyRelation(r)
-				}
-				updateRelation.SelectDict = optsFiltered
-			}
-		}*/
-
-		if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
-			if updateRelation == nil {
-				updateRelation = pbtypes.CopyRelation(r)
-			}
-			updateRelation.MaxCount = 1
-		}
-
-		if updateRelation != nil {
-			s.SetExtraRelation(updateRelation)
-		}
 	}
 }
 
@@ -416,25 +402,18 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 		return
 	}
 
+	creator := pbtypes.GetString(s.Details(), bundle.RelationKeyCreator.String())
+
 	var relationsFiltered = make(map[string]int, len(b.Model().GetDataview().Relations))
 	for i, r := range b.Model().GetDataview().Relations {
-		if _, exists := relationsFiltered[r.Key]; exists{
+		if _, exists := relationsFiltered[r.Key]; exists {
 			continue
 		}
 		relationsFiltered[r.Key] = i
-		equal, exists := bundle.EqualWithRelation(r.Key, r)
-		if exists && !equal {
-			rc := bundle.MustGetRelation(bundle.RelationKey(r.Key))
-			rc.SelectDict = r.SelectDict
-			dv.UpdateRelation(r.Key, *rc)
+		normalizedRelation, wasNormalized := normalizeRelation(r, creator)
+		if wasNormalized {
+			dv.UpdateRelation(r.Key, *normalizedRelation)
 			continue
-		}
-
-		if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
-			rc := pbtypes.CopyRelation(r)
-			rc.MaxCount = 1
-
-			dv.UpdateRelation(r.Key, *rc)
 		}
 	}
 
@@ -446,15 +425,5 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 			i++
 		}
 		b.Model().GetDataview().Relations = filtered
-	}
-}
-
-func (s *State) normalizeDvRelation(r *model.Relation) {
-	if exists, equal := bundle.EqualWithRelation(r.Key, r); exists && !equal {
-		*r = *bundle.MustGetRelation(bundle.RelationKey(r.Key))
-	}
-
-	if !pbtypes.RelationFormatCanHaveListValue(r.Format) && r.MaxCount != 1 {
-		r.MaxCount = 1
 	}
 }

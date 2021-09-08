@@ -331,6 +331,13 @@ func TestState_Normalize(t *testing.T) {
 		assert.Equal(t, int32(1), pbtypes.GetRelation(s.ExtraRelations(), "a1").MaxCount)
 	})
 
+	t.Run("normalize relation: bundled relations should be normalized", func(t *testing.T) {
+		creator := "_anytype_profile"
+		for _, rel := range bundle.ListRelations() {
+			_, wasNormalized := normalizeRelation(rel, creator)
+			require.False(t, wasNormalized, "bundled relation %s is not normalized", rel.Key)
+		}
+	})
 
 	t.Run("normalize relation: revert bundle relation", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
@@ -410,7 +417,6 @@ func TestState_Normalize(t *testing.T) {
 
 		assert.Len(t, r.Pick("dataview").Model().GetDataview().Relations, 1)
 	})
-
 
 }
 
