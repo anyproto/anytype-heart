@@ -402,6 +402,11 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	bs.SetEventFunc(s.sendEvent)
 	ob := newOpenedBlock(bs)
 	s.cache.Add(bs.Id(), ob)
+
+	// workaround to increase ref counter
+	if _, err = s.cache.Get(context.Background(), bs.Id()); err != nil {
+		return
+	}
 	if err = bs.Show(ctx); err != nil {
 		return
 	}
