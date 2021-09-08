@@ -838,12 +838,13 @@ func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
 		return err
 	}
 
-	localDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-	if pbtypes.StructEqualIgnore(localDetails, s.LocalDetails(), nil) {
+	storedLocalScopeDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), bundle.LocalRelationsKeys)
+	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), bundle.LocalRelationsKeys)
+	if pbtypes.StructEqualIgnore(sbLocalScopeDetails, storedLocalScopeDetails, nil) {
 		return nil
 	}
 
-	source.InjectLocalDetails(s, localDetails)
+	source.InjectLocalDetails(s, storedLocalScopeDetails)
 	return sb.Apply(s, NoHistory)
 }
 

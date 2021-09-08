@@ -226,8 +226,8 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 	storedDetails, _ := s.Anytype().ObjectStore().GetDetails(s.Id())
-	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)))
 
+	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), bundle.LocalRelationsKeys))
 	InjectCreationInfo(s, st)
 	st.InjectDerivedDetails()
 	if err = st.Normalize(false); err != nil {

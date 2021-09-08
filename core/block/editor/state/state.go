@@ -553,8 +553,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {
-			if prevModifiedDate != nil {
-				log.With("thread", s.rootId).Errorf("failed to revert prev modifed date: prev date is nil")
+			if _, isNull := prevModifiedDate.GetKind().(*types.Value_NullValue); prevModifiedDate == nil || isNull {
+				log.With("thread", s.rootId).Debugf("failed to revert prev modifed date: prev date is nil")
 			} else {
 				s.localDetails.Fields[bundle.RelationKeyLastModifiedDate.String()] = prevModifiedDate
 			}
@@ -771,11 +771,26 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 		s.localDetails = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 
+	if _, isNull := value.GetKind().(*types.Value_NullValue); value == nil || isNull {
+		delete(s.localDetails.Fields, key)
+		return
+	}
+
+	if key == bundle.RelationKeyLastModifiedDate.String() {
+		if _, ok := value.GetKind().(*types.Value_NumberValue); !ok {
+			fmt.Println("set incorrect")
+		}
+	}
 	s.localDetails.Fields[key] = value
 	return
 }
 
 func (s *State) SetLocalDetails(d *types.Struct) {
+	for k, v := range d.GetFields() {
+		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+			delete(d.Fields, k)
+		}
+	}
 	s.localDetails = d
 }
 
