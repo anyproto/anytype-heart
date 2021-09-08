@@ -510,9 +510,9 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 
 func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
-	if sb.Type() != model.SmartBlockType_Breadcrumbs {
-		ids = append(ids, sb.Id())
+	ids = append(ids, sb.Id())
 
+	if sb.Type() != model.SmartBlockType_Breadcrumbs {
 		if includeObjTypes {
 			for _, ot := range sb.ObjectTypes() {
 				if ot == "" {
