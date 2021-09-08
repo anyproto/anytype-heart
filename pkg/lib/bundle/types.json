@@ -279,6 +279,9 @@
       "isArchived",
       "tag",
       "isFavorite"
+    ],
+    "types": [
+      "Date"
     ]
   },
   {
@@ -477,7 +480,7 @@
     ]
   },
   {
-    "description": "Auto-generated object from .MPEG-4 files added to Anytype. The recording of moving visual images",
+    "description": "Auto-generated object from .mpeg-4 files added to Anytype. The recording of moving visual images",
     "emoji": "📽",
     "id": "video",
     "layout": "file",
@@ -1035,7 +1038,7 @@
     ]
   },
   {
-    "description": "Auto-generated object from .JPG & .PNG files added to Anytype. A representation of the external form of a person or thing in art",
+    "description": "Auto-generated object from .jpg & .png files added to Anytype. A representation of the external form of a person or thing in art",
     "emoji": "🏞",
     "id": "image",
     "layout": "image",
@@ -1160,9 +1163,8 @@
     ]
   },
   {
-    "description": "Sound when recorded, with ability to reproduce",
-    "emoji": "🎸",
-    "hidden": true,
+    "description": "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce",
+    "emoji": "🎵",
     "id": "audio",
     "layout": "file",
     "name": "Audio",

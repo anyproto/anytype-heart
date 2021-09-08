@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "ee56b10e634e9155338c8a7e6cef8f65da75adb8ad339e22e1ff94a2231710c6"
+const TypeChecksum = "617b136ace297b0242c4bee92362326f95c33fd49d197fa307feab7a158a96ce"
 
 type TypeKey string
 
@@ -85,9 +85,8 @@ var (
 		},
 		TypeKeyAudio: {
 
-			Description: "Sound when recorded, with ability to reproduce",
-			Hidden:      true,
-			IconEmoji:   "🎸",
+			Description: "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce",
+			IconEmoji:   "🎵",
 			Layout:      model.ObjectType_file,
 			Name:        "Audio",
 			Readonly:    true,
@@ -191,6 +190,7 @@ var (
 			Name:        "Date",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Date},
 			Url:         TypePrefix + "date",
 		},
 		TypeKeyDiaryEntry: {
@@ -272,7 +272,7 @@ var (
 		},
 		TypeKeyImage: {
 
-			Description: "Auto-generated object from .JPG & .PNG files added to Anytype. A representation of the external form of a person or thing in art",
+			Description: "Auto-generated object from .jpg & .png files added to Anytype. A representation of the external form of a person or thing in art",
 			IconEmoji:   "🏞",
 			Layout:      model.ObjectType_image,
 			Name:        "Image",
@@ -439,7 +439,7 @@ var (
 		},
 		TypeKeyVideo: {
 
-			Description: "Auto-generated object from .MPEG-4 files added to Anytype. The recording of moving visual images",
+			Description: "Auto-generated object from .mpeg-4 files added to Anytype. The recording of moving visual images",
 			IconEmoji:   "📽",
 			Layout:      model.ObjectType_file,
 			Name:        "Video",
