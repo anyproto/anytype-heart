@@ -217,7 +217,10 @@ func (ls *dsObjectStore) Init(a *app.App) (err error) {
 	if meta != nil {
 		ls.meta = meta.(DetailInjector)
 	}
-	ls.sourceService = a.MustComponent("source").(SourceIdEncodedDetails)
+	s := a.Component("source")
+	if s != nil {
+		ls.sourceService = a.MustComponent("source").(SourceIdEncodedDetails)
+	}
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
@@ -2130,9 +2133,11 @@ func (m *dsObjectStore) getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo,
 
 	var details *types.Struct
 	if indexDetails, _ := sbt.Indexable(); !indexDetails {
-		details, err = m.sourceService.GetDetailsFromIdBasedSource(id)
-		if err != nil {
-			return nil, err
+		if m.sourceService != nil {
+			details, err = m.sourceService.GetDetailsFromIdBasedSource(id)
+			if err != nil {
+				return nil, err
+			}
 		}
 	} else {
 		detailsWrapped, err := getObjectDetails(txn, id)
