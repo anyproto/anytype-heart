@@ -10,7 +10,7 @@
   },
   {
     "description": "Strict dictionary to select relation values from",
-    "format": "status",
+    "format": "tag",
     "hidden": false,
     "key": "relationDict",
     "maxCount": 0,
