@@ -39,7 +39,7 @@ const (
 
 	// increasing counters below will trigger existing account to reindex their data
 	ForceThreadsObjectsReindexCounter int32 = 0  // reindex thread-based objects
-	ForceFilesReindexCounter          int32 = 3  // reindex ipfs-file-based objects
+	ForceFilesReindexCounter          int32 = 4  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2  // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 10 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 2  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
@@ -561,7 +561,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails == nil {
 			if err := i.store.CreateObject(id, details, &model.Relations{d.State.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
-				return fmt.Errorf("can't create object in ther store: %v", err)
+				return fmt.Errorf("can't create object in the store: %v", err)
 			}
 		} else {
 			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.State.ExtraRelations()}, true); err != nil {

@@ -776,11 +776,6 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 		return
 	}
 
-	if key == bundle.RelationKeyLastModifiedDate.String() {
-		if _, ok := value.GetKind().(*types.Value_NumberValue); !ok {
-			fmt.Println("set incorrect")
-		}
-	}
 	s.localDetails.Fields[key] = value
 	return
 }

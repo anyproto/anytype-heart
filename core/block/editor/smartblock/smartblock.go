@@ -526,7 +526,8 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 		details := sb.CombinedDetails()
 
 		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
-			if rel.Format == model.RelationFormat_date {
+			// do not index local dates such as lastOpened/lastModified
+			if rel.Format == model.RelationFormat_date && (slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
 				relInt := pbtypes.GetInt64(details, rel.Key)
 				if relInt > 0 {
 					t := time.Unix(relInt, 0)
