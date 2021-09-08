@@ -8,6 +8,7 @@ require (
 	github.com/PuerkitoBio/goquery v1.6.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
+	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve v1.0.14
 	github.com/cheggaaa/mb v1.0.3
 	github.com/dave/jennifer v1.4.1
@@ -69,6 +70,7 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/textileio/go-ds-badger v0.2.7-0.20201204225019-4ee78c4a40e2
 	github.com/textileio/go-threads v1.0.2-0.20210304072541-d0f91da84404
+	github.com/tj/go-naturaldate v1.3.0
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect

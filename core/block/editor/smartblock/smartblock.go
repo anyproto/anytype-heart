@@ -508,11 +508,11 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 	}
 }
 
-func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
-	if sb.Type() != model.SmartBlockType_Breadcrumbs {
-		ids = append(ids, sb.Id())
+	ids = append(ids, sb.Id())
 
+	if sb.Type() != model.SmartBlockType_Breadcrumbs {
 		if includeObjTypes {
 			for _, ot := range sb.ObjectTypes() {
 				if ot == "" {
@@ -526,6 +526,16 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator boo
 		details := sb.CombinedDetails()
 
 		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
+			// do not index local dates such as lastOpened/lastModified
+			if rel.Format == model.RelationFormat_date && (slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+				relInt := pbtypes.GetInt64(details, rel.Key)
+				if relInt > 0 {
+					t := time.Unix(relInt, 0)
+					t = t.In(time.UTC)
+					ids = append(ids, source.TimeToId(t))
+				}
+				continue
+			}
 			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
 				continue
 			}
@@ -534,7 +544,7 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreator boo
 				rel.Key == bundle.RelationKeyType.String() ||
 				rel.Key == bundle.RelationKeyRecommendedRelations.String() ||
 				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
-				!includeCreator && rel.Key == bundle.RelationKeyCreator.String() {
+				!includeCreatorModifier && (rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String()) {
 				continue
 			}
 
@@ -829,12 +839,13 @@ func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
 		return err
 	}
 
-	localDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...))
-	if pbtypes.StructEqualIgnore(localDetails, s.LocalDetails(), nil) {
+	storedLocalScopeDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), bundle.LocalRelationsKeys)
+	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), bundle.LocalRelationsKeys)
+	if pbtypes.StructEqualIgnore(sbLocalScopeDetails, storedLocalScopeDetails, nil) {
 		return nil
 	}
 
-	source.InjectLocalDetails(s, localDetails)
+	source.InjectLocalDetails(s, storedLocalScopeDetails)
 	return sb.Apply(s, NoHistory)
 }
 

@@ -76,6 +76,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
+	fx.objectStore.EXPECT().UpdateObjectLinks(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{

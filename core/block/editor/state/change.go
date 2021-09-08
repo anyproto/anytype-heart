@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -315,9 +316,19 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
 	var delIds []string
 	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
-	for _, msg := range msgs {
+	var b1, b2 []byte
+	for i, msg := range msgs {
 		if msg.Virtual {
 			continue
+		}
+		if i > 0 {
+			if msg.Msg.Size() == msgs[i-1].Msg.Size() {
+				b1, _ = msg.Msg.Marshal()
+				b2, _ = msgs[i-1].Msg.Marshal()
+				if bytes.Equal(b1, b2) {
+					log.With("thread", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
+				}
+			}
 		}
 		switch o := msg.Msg.Value.(type) {
 		case *pb.EventMessageValueOfBlockSetChildrenIds:

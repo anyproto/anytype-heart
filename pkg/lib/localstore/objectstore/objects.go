@@ -207,13 +207,20 @@ type DetailInjector interface {
 	SetLocalDetails(id string, st *types.Struct)
 }
 
+type SourceIdEncodedDetails interface {
+	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
+}
+
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
 	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
 	meta := a.Component("meta")
 	if meta != nil {
 		ls.meta = meta.(DetailInjector)
 	}
-
+	s := a.Component("source")
+	if s != nil {
+		ls.sourceService = a.MustComponent("source").(SourceIdEncodedDetails)
+	}
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
@@ -327,9 +334,11 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 
 type dsObjectStore struct {
 	// underlying storage
-	ds      ds.TxnDatastore
-	dsIface datastore.Datastore
-	meta    DetailInjector // TODO: remove after we will migrate to the objectStore subscriptions
+	ds            ds.TxnDatastore
+	dsIface       datastore.Datastore
+	sourceService SourceIdEncodedDetails
+
+	meta DetailInjector // TODO: remove after we will migrate to the objectStore subscriptions
 
 	fts ftsearch.FTSearch
 
@@ -826,7 +835,7 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 		key := ds.NewKey(rec.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
-		oi, err := getObjectInfo(txn, id)
+		oi, err := m.getObjectInfo(txn, id)
 		if err != nil {
 			// probably details are not yet indexed, let's skip it
 			log.Errorf("QueryObjectInfo getObjectInfo error: %s", err.Error())
@@ -1110,7 +1119,7 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 	}
 	defer txn.Discard()
 
-	pages, err := getObjectsInfo(txn, []string{id})
+	pages, err := m.getObjectsInfo(txn, []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -1130,12 +1139,12 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 		return nil, err
 	}
 
-	inbound, err := getObjectsInfo(txn, inboundIds)
+	inbound, err := m.getObjectsInfo(txn, inboundIds)
 	if err != nil {
 		return nil, err
 	}
 
-	outbound, err := getObjectsInfo(txn, outboundsIds)
+	outbound, err := m.getObjectsInfo(txn, outboundsIds)
 	if err != nil {
 		return nil, err
 	}
@@ -1167,7 +1176,7 @@ func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectIn
 	}
 	defer txn.Discard()
 
-	pages, err := getObjectsInfo(txn, []string{id})
+	pages, err := m.getObjectsInfo(txn, []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -1182,7 +1191,7 @@ func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectIn
 		return nil, err
 	}
 
-	outbound, err := getObjectsInfo(txn, outboundsIds)
+	outbound, err := m.getObjectsInfo(txn, outboundsIds)
 	if err != nil {
 		return nil, err
 	}
@@ -1215,7 +1224,7 @@ func (m *dsObjectStore) List() ([]*model.ObjectInfo, error) {
 		return nil, err
 	}
 
-	return getObjectsInfo(txn, ids)
+	return m.getObjectsInfo(txn, ids)
 }
 
 func (m *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
@@ -1241,7 +1250,7 @@ func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	}
 	defer txn.Discard()
 
-	return getObjectsInfo(txn, ids)
+	return m.getObjectsInfo(txn, ids)
 }
 
 func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations *model.Relations, links []string, snippet string) error {
@@ -1316,7 +1325,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 	)
 
 	if details != nil || relations != nil {
-		exInfo, err := getObjectInfo(txn, id)
+		exInfo, err := m.getObjectInfo(txn, id)
 		if err != nil {
 			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
 		}
@@ -1552,27 +1561,18 @@ func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links
 }
 
 func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *model.Relations) error {
-	sbt, err := smartblock.SmartBlockTypeFromID(id)
-	if err != nil {
-		return fmt.Errorf("failed to extract smartblock type: %w", err)
-	}
-
-	if sbt == smartblock.SmartBlockTypeArchive {
-		return ErrNotAnObject
-	}
-
 	objTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 
 	creatorId := pbtypes.GetString(details, bundle.RelationKeyCreator.String())
 	if relations != nil && relations.Relations != nil {
 		// intentionally do not pass txn, as this tx may be huge
-		if err = m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, creatorId, before.Relations, relations.Relations); err != nil {
+		if err := m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, creatorId, before.Relations, relations.Relations); err != nil {
 			return err
 		}
 	}
 
 	if details != nil {
-		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
+		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
 	}
@@ -2055,6 +2055,11 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	}
 	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
+	for k, v := range details.GetDetails().GetFields() {
+		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+			delete(details.Details.Fields, k)
+		}
+	}
 	return &details, nil
 }
 
@@ -2116,7 +2121,7 @@ func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
 	return pbtypes.GetStringList(det, bundle.RelationKeyType.String()), nil
 }
 
-func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
+func (m *dsObjectStore) getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		log.With("thread", id).Errorf("failed to extract smartblock type %s", id)
@@ -2126,12 +2131,23 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 		return nil, ErrNotAnObject
 	}
 
-	details, err := getObjectDetails(txn, id)
-	if err != nil {
-		return nil, err
+	var details *types.Struct
+	if indexDetails, _ := sbt.Indexable(); !indexDetails {
+		if m.sourceService != nil {
+			details, err = m.sourceService.GetDetailsFromIdBasedSource(id)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		detailsWrapped, err := getObjectDetails(txn, id)
+		if err != nil {
+			return nil, err
+		}
+		details = detailsWrapped.GetDetails()
 	}
 
-	objectTypes, err := getObjectTypeFromDetails(details.Details)
+	objectTypes, err := getObjectTypeFromDetails(details)
 	if err != nil {
 		return nil, err
 	}
@@ -2157,7 +2173,7 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	return &model.ObjectInfo{
 		Id:              id,
 		ObjectType:      sbt.ToProto(),
-		Details:         details.Details,
+		Details:         details,
 		Relations:       relations,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
@@ -2165,10 +2181,10 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	}, nil
 }
 
-func getObjectsInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
+func (m *dsObjectStore) getObjectsInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
 	var objects []*model.ObjectInfo
 	for _, id := range ids {
-		info, err := getObjectInfo(txn, id)
+		info, err := m.getObjectInfo(txn, id)
 		if err != nil {
 			if strings.HasSuffix(err.Error(), "key not found") || err == ErrNotAnObject {
 				continue

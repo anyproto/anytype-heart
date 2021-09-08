@@ -36,6 +36,8 @@ enum SmartBlockType {
     IndexedRelation = 0x201;
     BundledObjectType = 0x202;
     AnytypeProfile = 0x203;
+    Date = 0x204;
+
 }
 
 message Block {

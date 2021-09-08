@@ -31,6 +31,7 @@ const (
 	SmartBlockTypeIndexedRelation     = SmartBlockType(model.SmartBlockType_IndexedRelation)
 	SmartBlockTypeBundledObjectType   = SmartBlockType(model.SmartBlockType_BundledObjectType)
 	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
+	SmartBlockTypeDate                = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
 )
 
@@ -53,6 +54,9 @@ func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
 			return 0, err
 		}
 		return SmartBlockType(sbt), nil
+	}
+	if strings.HasPrefix(id, addr.DatePrefix) {
+		return SmartBlockTypeDate, nil
 	}
 
 	c, err := cid.Decode(id)
@@ -97,6 +101,19 @@ func (sbt SmartBlockType) Valid() (err error) {
 		return nil
 	}
 	return fmt.Errorf("unknown smartblock type")
+}
+
+// Indexable determines if the object of specific type need to be proceeded by the indexer in order to appear in sets
+func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
+	switch sbt {
+	case SmartblockTypeMarketplaceType, SmartblockTypeMarketplaceRelation,
+		SmartblockTypeMarketplaceTemplate, SmartBlockTypeDate, SmartBlockTypeBreadcrumbs:
+		return false, false
+	case SmartBlockTypeArchive:
+		return false, true
+	default:
+		return true, true
+	}
 }
 
 // Snapshot of varint function that work with a string rather than

@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "3dae6b0c65999a337e1a4a71a5deae922c48fa283263aac144fd2ce6e89b2db3"
+const RelationChecksum = "140bf11cb51838ffa8027416c08bc0dcdae337f9b65686577a1e4982b743eeee"
 
 type RelationKey string
 
@@ -1477,7 +1477,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Strict dictionary to select relation values from",
-			Format:           model.RelationFormat_status,
+			Format:           model.RelationFormat_tag,
 			Key:              "relationDict",
 			Name:             "Dictionary",
 			ReadOnly:         false,

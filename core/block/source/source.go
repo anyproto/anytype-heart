@@ -48,6 +48,11 @@ type Source interface {
 	Close() (err error)
 }
 
+type SourceIdEndodedDetails interface {
+	Id() string
+	DetailsFromId() (*types.Struct, error)
+}
+
 type SourceType interface {
 	ListIds() ([]string, error)
 	Virtual() bool
@@ -70,6 +75,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 		return &bundledObjectType{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
 		return &bundledRelation{a: s.anytype}, nil
+
 	case smartblock.SmartBlockTypeBundledTemplate:
 		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
 	default:
@@ -220,8 +226,9 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 	storedDetails, _ := s.Anytype().ObjectStore().GetDetails(s.Id())
-	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)))
 
+	// inject also derived keys, because it may be a good idea to have created date and creator cached so we don't need to traverse changes every time
+	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)))
 	InjectCreationInfo(s, st)
 	st.InjectDerivedDetails()
 	if err = st.Normalize(false); err != nil {
@@ -287,6 +294,12 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 
 func InjectLocalDetails(st *state.State, localDetails *types.Struct) {
 	for key, v := range localDetails.GetFields() {
+		if v == nil {
+			continue
+		}
+		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
+			continue
+		}
 		st.SetLocalDetail(key, v)
 		if !pbtypes.HasRelation(st.ExtraRelations(), key) {
 			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))

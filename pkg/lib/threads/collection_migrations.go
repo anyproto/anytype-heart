@@ -173,7 +173,7 @@ func (s *service) handleAllMissingDbRecords(threadId string) error {
 	}
 
 	for _, logInfo := range thrd.Logs {
-		log.Debugf("traversing %s log from head %s", logInfo.ID, logInfo.Head)
+		log.Debugf("traversing %s log from head %s(%d)", logInfo.ID, logInfo.Head.ID, logInfo.Head.Counter)
 		handleAllRecordsInLog(s.db, s.t, thrd, logInfo)
 	}
 	return nil

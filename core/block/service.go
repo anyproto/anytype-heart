@@ -402,6 +402,11 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	bs.SetEventFunc(s.sendEvent)
 	ob := newOpenedBlock(bs)
 	s.cache.Add(bs.Id(), ob)
+
+	// workaround to increase ref counter
+	if _, err = s.cache.Get(context.Background(), bs.Id()); err != nil {
+		return
+	}
 	if err = bs.Show(ctx); err != nil {
 		return
 	}
@@ -690,7 +695,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		return
 	}
 	switch sc.Type() {
-	case model.SmartBlockType_Page:
+	case model.SmartBlockType_Page, model.SmartBlockType_Date:
 		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s.meta)
