@@ -699,7 +699,7 @@ func (imp *importImpl) convertTextToFile(block *model.Block) {
 
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
 	videoFormats := []string{"mp4", "m4v"}
-	audioFormats := []string{"mp3", "ogg", "wav"}
+	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
 
 	fileType := model.BlockContentFile_File
 	fileExt := filepath.Ext(block.GetText().Marks.Marks[0].Param)

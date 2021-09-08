@@ -57,6 +57,10 @@ func (i *file) Details() (*types.Struct, error) {
 		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyVideo.URL())
 	}
 
+	if strings.HasPrefix(meta.Media, "audio") {
+		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyAudio.URL())
+	}
+
 	return t, nil
 }
 
