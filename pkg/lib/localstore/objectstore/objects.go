@@ -1910,7 +1910,6 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 			} else {
 				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
 			}
-			delete(diff.Fields, k)
 		}
 	}
 	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())))
