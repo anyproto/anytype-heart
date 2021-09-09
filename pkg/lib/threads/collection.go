@@ -81,7 +81,19 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 
 	startTime := time.Now()
 	progress := process.NewProgress(pb.ModelProcess_RecoverAccount)
-	s.process.Add(progress)
+
+	removeElement := func(tid thread.ID) {
+		initialThreadsLock.RLock()
+		_, isInitialThread := initialThreads[tid]
+		initialThreadsLock.RUnlock()
+		if isInitialThread {
+			initialThreadsLock.Lock()
+			delete(initialThreads, tid)
+			threadsTotal--
+			progress.SetTotal(int64(threadsTotal))
+			initialThreadsLock.Unlock()
+		}
+	}
 
 	processThread := func(tid thread.ID, ti threadInfo) {
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
@@ -90,10 +102,12 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 		if err != nil && err != logstore.ErrThreadNotFound {
 			log.With("thread", tid.String()).
 				Errorf("error getting thread while processing: %v", err)
+			removeElement(tid)
 			return
 		}
 		if info.ID != thread.Undef {
 			// our own event
+			removeElement(tid)
 			return
 		}
 
@@ -219,15 +233,20 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 				threadsTotal = len(m)
 				initialThreadsLock.Unlock()
 
-				progress.SetProgressMessage("recovering account")
-				progress.SetTotal(int64(threadsTotal))
-
 				initialThreadsAcquired = true
 
 				// only starting processing when first batch is read
 				tmr.Stop()
 				tmr.Reset(deadline)
-				processInitialThreads()
+
+				// this is an account recovery
+				if threadsTotal != 0 {
+					s.process.Add(progress)
+					progress.SetProgressMessage("recovering account")
+					progress.SetTotal(int64(threadsTotal))
+					processInitialThreads()
+				}
+
 			case c := <-l.Channel():
 				if initialThreadsAcquired {
 					// as per docs the timer should be stopped or expired with drained channel
