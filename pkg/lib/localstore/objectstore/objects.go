@@ -1903,6 +1903,7 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 
 	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
 	for k, v := range diff.GetFields() {
+		// todo: remove null cleanup(should be done when receiving from client)
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
 				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
@@ -2059,6 +2060,7 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	for k, v := range details.GetDetails().GetFields() {
+		// todo: remove null cleanup(should be done when receiving from client)
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			delete(details.Details.Fields, k)
 		}

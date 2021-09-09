@@ -321,6 +321,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 
 		for _, det := range details {
 			for k, v := range det.Details.GetFields() {
+				// todo: remove null cleanup(should be done when receiving from client)
 				if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 					log.With("thread", det.Id).Errorf("object has nil struct val for key %s", k)
 					delete(det.Details.Fields, k)
