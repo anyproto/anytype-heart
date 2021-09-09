@@ -1905,8 +1905,11 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 	for k, v := range diff.GetFields() {
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
-				log.Errorf("updateDetails %s: localDetail nulled %s", id, pbtypes.Sprint(diff))
+				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
+			} else {
+				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
 			}
+			delete(diff.Fields, k)
 		}
 	}
 	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())))
