@@ -1296,7 +1296,7 @@ func TestArchiveIndex(t *testing.T) {
 
 	d, err := mw.GetAnytype().ObjectStore().GetDetails(resp.TargetId)
 	require.NoError(t, err)
-	pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(true))
+	require.True(t, pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(true)))
 
 	respArchive = mw.BlockListSetPageIsArchived(&pb.RpcBlockListSetPageIsArchivedRequest{
 		ContextId:  "",
@@ -1307,7 +1307,7 @@ func TestArchiveIndex(t *testing.T) {
 
 	d, err = mw.GetAnytype().ObjectStore().GetDetails(resp.TargetId)
 	require.NoError(t, err)
-	pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(false))
+	require.True(t, pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(false)))
 }
 
 func hasRecordWithKeyAndVal(recs []*types2.Struct, key string, val string) bool {

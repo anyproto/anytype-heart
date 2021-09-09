@@ -41,7 +41,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 0  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 4  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 10 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 11 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 2  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -532,7 +532,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 		return fmt.Errorf("failed to open doc: %s", err.Error())
 	}
 
-	indexLinks, indexDetails := t.Indexable()
+	indexDetails, indexLinks := t.Indexable()
 	if indexLinks {
 		if err := i.store.UpdateObjectLinks(d.Id, d.Links); err != nil {
 			log.With("thread", d.Id).Errorf("failed to save object links: %v", err)
@@ -601,7 +601,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-	indexLinks, indexDetails := sbType.Indexable()
+	indexDetails, indexLinks := sbType.Indexable()
 	if !indexDetails && !indexLinks {
 		return nil
 	}
