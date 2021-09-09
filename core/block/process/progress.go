@@ -25,6 +25,8 @@ type Progress struct {
 	pType    pb.ModelProcessType
 	pMessage string
 	m        sync.Mutex
+
+	isCancelled bool
 }
 
 func (p *Progress) SetTotal(total int64) {
@@ -58,7 +60,13 @@ func (p *Progress) Id() string {
 }
 
 func (p *Progress) Cancel() (err error) {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if p.isCancelled {
+		return
+	}
 	close(p.cancel)
+	p.isCancelled = true
 	return
 }
 

@@ -117,13 +117,16 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 				log.Errorf("account pull failed: %s", err.Error())
 				return
 			}
-			m, err := s.createThreadsDbMap()
+
 			if ch != nil {
-				if err != nil {
-					ch <- make(map[thread.ID]threadInfo)
-				} else {
-					ch <- m
+				m := make(map[thread.ID]threadInfo)
+				if justCreated {
+					m, err = s.createThreadsDbMap()
+					if err != nil {
+						m = make(map[thread.ID]threadInfo)
+					}
 				}
+				ch <- m
 			}
 			log.Infof("account pull done")
 
@@ -225,6 +228,9 @@ func (s *service) createThreadsDbMap() (map[thread.ID]threadInfo, error) {
 		tid, err := thread.Decode(ti.ID.String())
 		if err != nil {
 			log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+			continue
+		}
+		if tid == thread.Undef {
 			continue
 		}
 		m[tid] = ti
