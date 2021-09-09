@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"time"
 
@@ -241,7 +242,9 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 
 				// this is an account recovery
 				if threadsTotal != 0 {
-					s.process.Add(progress)
+					if os.Getenv("ANYTYPE_RECOVERY_PROGRESS") == "1" {
+						s.process.Add(progress)
+					}
 					progress.SetProgressMessage("recovering account")
 					progress.SetTotal(int64(threadsTotal))
 					processInitialThreads()
