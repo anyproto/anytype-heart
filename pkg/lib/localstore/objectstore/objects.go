@@ -1901,8 +1901,7 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return nil
 	}
 
-	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
-	for k, v := range diff.GetFields() {
+	for k, v := range newDetails.GetDetails().GetFields() {
 		// todo: remove null cleanup(should be done when receiving from client)
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
@@ -1912,7 +1911,9 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 			}
 		}
 	}
-	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())))
+
+	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
+	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(diff))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
