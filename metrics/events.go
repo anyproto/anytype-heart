@@ -82,3 +82,20 @@ func (c ReindexEvent) ToEvent() Event {
 		},
 	}
 }
+
+type AccountRecoverEvent struct {
+	SpentMs              int
+	TotalThreads         int
+	SimultaneousRequests int
+}
+
+func (c AccountRecoverEvent) ToEvent() Event {
+	return Event{
+		EventType: "account_recover",
+		EventData: map[string]interface{}{
+			"spent_ms":              c.SpentMs,
+			"total_threads":         c.TotalThreads,
+			"simultaneous_requests": c.SimultaneousRequests,
+		},
+	}
+}
