@@ -651,6 +651,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 						Style:         model.BlockContentLink_Page,
 					},
 				},
+				Fields: req.Fields,
 			},
 			Position: req.Position,
 		})
