@@ -818,6 +818,8 @@
     - [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
     - [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type)
     - [Event.Block.Set.File.Width](#anytype.Event.Block.Set.File.Width)
+    - [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex)
+    - [Event.Block.Set.Latex.Text](#anytype.Event.Block.Set.Latex.Text)
     - [Event.Block.Set.Link](#anytype.Event.Block.Set.Link)
     - [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields)
     - [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style)
@@ -2149,10 +2151,13 @@ common simple block command
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
-| targetId | [string](#string) |  | id of the closest block |
-| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | page details |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | new page details |
 | templateId | [string](#string) |  | optional template id for creating from template |
+| targetId | [string](#string) |  | link block params
+
+id of the closest simple block |
+| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
+| fields | [google.protobuf.Struct](#google.protobuf.Struct) |  | link block fields |
 
 
 
@@ -12834,6 +12839,37 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype.Event.Block.Set.Latex"></a>
+
+### Event.Block.Set.Latex
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| text | [Event.Block.Set.Latex.Text](#anytype.Event.Block.Set.Latex.Text) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Latex.Text"></a>
+
+### Event.Block.Set.Latex.Text
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Set.Link"></a>
 
 ### Event.Block.Set.Link
@@ -13070,6 +13106,8 @@ Precondition: user A opened a block
 | blockSetBookmark | [Event.Block.Set.Bookmark](#anytype.Event.Block.Set.Bookmark) |  |  |
 | blockSetAlign | [Event.Block.Set.Align](#anytype.Event.Block.Set.Align) |  |  |
 | blockSetDiv | [Event.Block.Set.Div](#anytype.Event.Block.Set.Div) |  |  |
+| blockSetRelation | [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation) |  |  |
+| blockSetLatex | [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex) |  |  |
 | blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype.Event.Block.Dataview.RecordsSet) |  |  |
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype.Event.Block.Dataview.RecordsUpdate) |  |  |
 | blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype.Event.Block.Dataview.RecordsInsert) |  |  |
@@ -13079,7 +13117,6 @@ Precondition: user A opened a block
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet) |  |  |
-| blockSetRelation | [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype.Event.User.Block.Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype.Event.User.Block.SelectRange) |  |  |
