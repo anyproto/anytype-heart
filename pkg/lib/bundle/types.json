@@ -1203,7 +1203,9 @@
       "sizeInBytes",
       "fileMimeType",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "audioArtist",
+      "audioLyrics"
     ],
     "types": [
       "File"

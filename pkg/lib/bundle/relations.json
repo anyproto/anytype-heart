@@ -161,6 +161,16 @@
     "source": "details"
   },
   {
+    "description": "The artist that performed this album or recording",
+    "format": "shorttext",
+    "hidden": false,
+    "key": "audioArtist",
+    "maxCount": 0,
+    "name": "Artist",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "List of related tasks\n",
     "format": "object",
     "hidden": false,
@@ -991,6 +1001,16 @@
     "key": "number",
     "maxCount": 1,
     "name": "Number",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "The text lyrics of the music record",
+    "format": "number",
+    "hidden": false,
+    "key": "audioLyrics",
+    "maxCount": 0,
+    "name": "Lyrics",
     "readonly": false,
     "source": "details"
   },
