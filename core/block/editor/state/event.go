@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 
 	"github.com/gogo/protobuf/types"
 
@@ -152,7 +153,17 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+	case *pb.EventMessageValueOfBlockSetLatex:
+		if err = apply(o.BlockSetLatex.Id, func(b simple.Block) error {
+			if f, ok := b.(latex.Block); ok {
+				return f.ApplyEvent(o.BlockSetLatex)
+			}
+			return fmt.Errorf("not a latex block")
+		}); err != nil {
+			return
+		}
 	}
+
 	return nil
 }
 
