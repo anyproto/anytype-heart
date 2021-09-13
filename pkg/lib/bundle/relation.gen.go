@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "140bf11cb51838ffa8027416c08bc0dcdae337f9b65686577a1e4982b743eeee"
+const RelationChecksum = "011738d4891586946307035e3f05a70c1a4685237d6aa08b7694d2ba491f5a60"
 
 type RelationKey string
 
@@ -31,6 +31,7 @@ const (
 	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
 	RelationKeyThumbnailImage            RelationKey = "thumbnailImage"
 	RelationKeyAttachments               RelationKey = "attachments"
+	RelationKeyAudioArtist               RelationKey = "audioArtist"
 	RelationKeyTasks                     RelationKey = "tasks"
 	RelationKeyHypothesisAssumptions     RelationKey = "hypothesisAssumptions"
 	RelationKeyGratefulFor               RelationKey = "gratefulFor"
@@ -118,6 +119,7 @@ const (
 	RelationKeyMood                      RelationKey = "mood"
 	RelationKeyAgenda                    RelationKey = "agenda"
 	RelationKeyNumber                    RelationKey = "number"
+	RelationKeyAudioLyrics               RelationKey = "audioLyrics"
 	RelationKeyInstagram                 RelationKey = "instagram"
 	RelationKeyClassType                 RelationKey = "classType"
 	RelationKeyHowToReproduce            RelationKey = "howToReproduce"
@@ -312,6 +314,18 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyAudioArtist: {
+
+			DataSource:       model.Relation_details,
+			Description:      "The artist that performed this album or recording",
+			Format:           model.RelationFormat_shorttext,
+			Key:              "audioArtist",
+			MaxCount:         1,
+			Name:             "Artist",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyAudioGenre: {
 
 			DataSource:       model.Relation_details,
@@ -320,6 +334,18 @@ var (
 			Key:              "audioGenre",
 			MaxCount:         1,
 			Name:             "Genre",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAudioLyrics: {
+
+			DataSource:       model.Relation_details,
+			Description:      "The text lyrics of the music record",
+			Format:           model.RelationFormat_longtext,
+			Key:              "audioLyrics",
+			MaxCount:         1,
+			Name:             "Lyrics",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
