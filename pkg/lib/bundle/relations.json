@@ -1006,7 +1006,7 @@
   },
   {
     "description": "The text lyrics of the music record",
-    "format": "number",
+    "format": "longtext",
     "hidden": false,
     "key": "audioLyrics",
     "maxCount": 0,

@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "384d62b99ed7dc3d4f42c15ee4e9a77be18ab03855d969f1bca785378ab2461a"
+const RelationChecksum = "66e205b071ddfc14b119ac19356b9d43a8cca45bf5e9fe850e9e5778e1081f21"
 
 type RelationKey string
 
@@ -341,7 +341,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "The text lyrics of the music record",
-			Format:           model.RelationFormat_number,
+			Format:           model.RelationFormat_longtext,
 			Key:              "audioLyrics",
 			Name:             "Lyrics",
 			ReadOnly:         false,
