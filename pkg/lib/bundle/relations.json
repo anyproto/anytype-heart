@@ -165,7 +165,7 @@
     "format": "shorttext",
     "hidden": false,
     "key": "audioArtist",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Artist",
     "readonly": false,
     "source": "details"
@@ -1009,7 +1009,7 @@
     "format": "longtext",
     "hidden": false,
     "key": "audioLyrics",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Lyrics",
     "readonly": false,
     "source": "details"
