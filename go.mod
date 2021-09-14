@@ -13,7 +13,7 @@ require (
 	github.com/cheggaaa/mb v1.0.3
 	github.com/dave/jennifer v1.4.1
 	github.com/dgtony/collections v0.1.6
-	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63 // indirect
+	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
 	github.com/disintegration/imaging v1.6.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gobwas/glob v0.2.3
