@@ -178,6 +178,14 @@ func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error
 	if threadsTotal != 0 {
 		if os.Getenv("ANYTYPE_RECOVERY_PROGRESS") == "1" {
 			s.process.Add(progress)
+			go func() {
+				select {
+				case <-progress.Canceled():
+					progress.Finish()
+				case <-progress.Done():
+					return
+				}
+			}()
 		}
 		progress.SetProgressMessage("recovering account")
 		progress.SetTotal(int64(threadsTotal))
