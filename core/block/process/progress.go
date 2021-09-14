@@ -74,6 +74,7 @@ func (p *Progress) Cancel() (err error) {
 	}
 	close(p.cancel)
 	p.isCancelled = true
+	return
 }
 
 func (p *Progress) Info() pb.ModelProcess {

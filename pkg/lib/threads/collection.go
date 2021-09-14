@@ -78,6 +78,8 @@ func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error
 	progress := process.NewProgress(pb.ModelProcess_RecoverAccount)
 
 	removeElement := func(tid thread.ID) {
+		log.With("thread id", tid.String()).
+			Debug("removing thread from processing")
 		initialThreadsLock.RLock()
 		_, isInitialThread := initialThreads[tid]
 		initialThreadsLock.RUnlock()
@@ -92,6 +94,8 @@ func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error
 	}
 
 	processThread := func(tid thread.ID, ti threadInfo) {
+		log.With("thread id", tid.String()).
+			Debugf("trying to process new thread")
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		info, err := s.t.GetThread(ctx, tid)
 		cancel()
@@ -127,6 +131,7 @@ func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error
 					progress.AddDone(1)
 					if len(initialThreads) == 0 {
 						progress.Finish()
+						log.Info("finished recovering account")
 						metrics.SharedClient.RecordEvent(metrics.AccountRecoverEvent{
 							SpentMs:              int(time.Now().Sub(startTime).Milliseconds()),
 							TotalThreads:         threadsTotal,
@@ -176,7 +181,11 @@ func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error
 	}
 
 	if threadsTotal != 0 {
+		log.With("thread count", threadsTotal).
+			Info("pulling initial threads")
+
 		if os.Getenv("ANYTYPE_RECOVERY_PROGRESS") == "1" {
+			log.Info("adding progress bar")
 			s.process.Add(progress)
 			go func() {
 				select {
@@ -198,6 +207,8 @@ func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error
 		// processing all initial threads if any
 		go func() {
 			for tid, ti := range initialMapCopy {
+				log.With("thread id", tid.String()).
+					Debugf("going to process initial thread")
 				processThread(tid, ti)
 			}
 		}()
@@ -236,6 +247,8 @@ func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error
 				processBuffer()
 
 			case c := <-l.Channel():
+				log.With("thread id", c.ID.String()).
+					Debugf("received new thread through channel")
 				// as per docs the timer should be stopped or expired with drained channel
 				// to be reset
 				if !tmr.Stop() && !timerRead {
