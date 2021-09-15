@@ -188,7 +188,7 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 
 	if relation.Format == model.RelationFormat_status || relation.Format == model.RelationFormat_tag {
 		// reinject relation options
-		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(relationKey, relation.Format, tb.GetSource())
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(relationKey, tb.GetSource())
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
 		} else {
@@ -238,7 +238,7 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 	}
 
 	if option.Id == "" {
-		existingOptions, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+		existingOptions, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 		if err != nil {
 			log.Errorf("failed to get existing aggregated options: %s", err.Error())
 		} else {
@@ -784,7 +784,7 @@ func (d *dataviewCollectionImpl) fillAggregatedOptions(b dataview.Block) {
 			continue
 		}
 
-		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvc.Source)
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, dvc.Source)
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
 			continue
@@ -817,7 +817,7 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 }
 
 func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.State, dvBlock dataview.Block, rel *model.Relation) error {
-	options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvBlock.GetSource())
+	options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, dvBlock.GetSource())
 	if err != nil {
 		return fmt.Errorf("failed to aggregate: %s", err.Error())
 	}

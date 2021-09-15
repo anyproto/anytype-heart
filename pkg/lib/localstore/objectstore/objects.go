@@ -146,31 +146,6 @@ var (
 		Unique: false,
 	}
 
-	// /pages/format_relkey_optid/<relFormat>/<relKey>/<optId>/<objId>
-	indexFormatOptionObject = localstore.Index{
-		Prefix: pagesPrefix,
-		Name:   "format_relkey_optid",
-		Keys: func(val interface{}) []localstore.IndexKeyParts {
-			if v, ok := val.(*model.Relation); ok {
-				if v.Format != model.RelationFormat_tag && v.Format != model.RelationFormat_status {
-					return nil
-				}
-				if len(v.SelectDict) == 0 {
-					return nil
-				}
-
-				var indexes []localstore.IndexKeyParts
-				for _, opt := range v.SelectDict {
-					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Format.String(), v.Key, opt.Id}))
-				}
-				return indexes
-			}
-			return nil
-		},
-		Unique:             false,
-		SplitIndexKeyParts: true,
-	}
-
 	// /pages/type/<objType>/<objId>
 	indexObjectTypeObject = localstore.Index{
 		Prefix: pagesPrefix,
@@ -257,7 +232,7 @@ type ObjectStore interface {
 	GetOutboundLinksById(id string) ([]string, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
-	GetAggregatedOptions(relationKey string, relationFormat model.RelationFormat, objectType string) (options []*model.RelationOption, err error)
+	GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error)
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
@@ -509,59 +484,13 @@ func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string
 	return
 }
 
-func (m *dsObjectStore) getAggregatedOptionsForFormat(format model.RelationFormat) (options []relationOption, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	defer txn.Discard()
-
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	keys, err := localstore.ExtractKeysFromResults(res)
-	if err != nil {
-		return nil, err
-	}
-
-	var ex = make(map[string]struct{})
-	for _, key := range keys {
-		optionId, err := localstore.CarveKeyParts(key, -2, -1)
-		if err != nil {
-			return nil, err
-		}
-		relKey, err := localstore.CarveKeyParts(key, -3, -2)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, exists := ex[optionId]; exists {
-			continue
-		}
-
-		ex[optionId] = struct{}{}
-		options = append(options, relationOption{
-			relationKey: relKey,
-			optionId:    optionId,
-		})
-	}
-	return
-}
-
-// GetAggregatedOptions returns aggregated options for specific relation and format. Options have a specific scope
-func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat model.RelationFormat, objectType string) (options []*model.RelationOption, err error) {
+// GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
+func (m *dsObjectStore) GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error) {
 	objectsByOptionId, err := m.AggregateObjectIdsByOptionForRelation(relationKey)
 	if err != nil {
 		return nil, err
 	}
 
-	findOptionPos := func(opts []*model.RelationOption, id string) int {
-		for i := range opts {
-			if opts[i].Id == id {
-				return i
-			}
-		}
-		return -1
-	}
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, err
@@ -588,45 +517,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 		options = append(options, opt)
 	}
 
-	relationOption, err := m.getAggregatedOptionsForFormat(relationFormat)
-	for _, opt := range relationOption {
-		if findOptionPos(options, opt.optionId) > -1 {
-			continue
-		}
-
-		opt2, err := getOption(txn, opt.optionId)
-		if err != nil {
-			return nil, err
-		}
-		opt2.Scope = model.RelationOption_format
-		options = append(options, opt2)
-	}
-
 	return
-}
-
-func (m *dsObjectStore) GetAggregatedOptionsForFormat(format model.RelationFormat) ([]*model.RelationOption, error) {
-	ros, err := m.getAggregatedOptionsForFormat(format)
-	if err != nil {
-		return nil, err
-	}
-
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, err
-	}
-
-	var options []*model.RelationOption
-	for _, ro := range ros {
-		opt, err := getOption(txn, ro.optionId)
-		if err != nil {
-			return nil, err
-		}
-
-		options = append(options, opt)
-	}
-
-	return options, nil
 }
 
 func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
@@ -1952,7 +1843,7 @@ func (m *dsObjectStore) Prefix() string {
 }
 
 func (m *dsObjectStore) Indexes() []localstore.Index {
-	return []localstore.Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexFormatOptionObject, indexObjectTypeObject}
+	return []localstore.Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexObjectTypeObject}
 }
 
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {
