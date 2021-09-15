@@ -193,7 +193,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			continue
 		}
 
-		opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, ctx.State.ObjectType())
+		opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, ctx.State.ObjectType())
 		if err != nil {
 			log.Errorf("GetAggregatedOptions error: %s", err.Error())
 		} else {
@@ -752,7 +752,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 				}
 
 				if len(missingOptsIds) > 0 {
-					opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+					opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 					if err != nil {
 						return err
 					}
@@ -873,7 +873,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 		}
 
 		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 			if err != nil {
 				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
 			} else {
@@ -999,7 +999,7 @@ mainLoop:
 	st.SetExtraRelations(append(extraRelations, newRelations...))
 	for _, rel := range newRelations {
 		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, st.ObjectType())
+			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, st.ObjectType())
 			if err != nil {
 				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
 			} else {
@@ -1081,7 +1081,7 @@ func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey str
 	}
 
 	if option.Id == "" {
-		existingOptions, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+		existingOptions, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 		if err != nil {
 			log.Errorf("failed to get existing aggregated options: %s", err.Error())
 		} else {
@@ -1407,7 +1407,7 @@ func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation, objType st
 			continue
 		}
 
-		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
+		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, objType)
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
 			continue

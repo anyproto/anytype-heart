@@ -321,9 +321,9 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	}}, nil, "s2"))
 	require.NoError(t, ds.CreateObject(id3, newDet("three", "_ota2"), nil, nil, "s3"))
 
-	restOpts, err := ds.GetAggregatedOptions("rel1", model.RelationFormat_status, "_otffff")
+	restOpts, err := ds.GetAggregatedOptions("rel1", "_otffff")
 	require.NoError(t, err)
-	require.Len(t, restOpts, 6)
+	require.Len(t, restOpts, 5)
 
 	time.Sleep(time.Millisecond * 50)
 	rels, err := ds.AggregateRelationsFromObjectsOfType("_ota1")
