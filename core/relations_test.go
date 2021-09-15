@@ -448,7 +448,7 @@ func TestRelationAdd(t *testing.T) {
 
 		relOnPage = getRelationByKey(getEventObjectShow(respOpenNewPage.Event.Messages).Relations, foundRel.Key)
 		require.Equal(t, foundRel.Key, relOnPage.Key)
-		require.Len(t, relOnPage.SelectDict, 3)
+		require.Len(t, relOnPage.SelectDict, 2)
 	})
 
 	t.Run("relation_dataview_change_option_name", func(t *testing.T) {
@@ -871,8 +871,6 @@ func TestRelationAdd(t *testing.T) {
 				map[string]model.RelationOptionScope{
 					"ao_opt1_id": model.RelationOption_local,
 					"ao_opt3_id": model.RelationOption_local,
-					"ao_opt4_id": model.RelationOption_format,
-					"ao_opt2_id": model.RelationOption_format,
 				},
 				[]string{"ao_opt5_id"},
 			},
@@ -880,9 +878,7 @@ func TestRelationAdd(t *testing.T) {
 				rel2.Key,
 				map[string]model.RelationOptionScope{
 					"ao_opt4_id": model.RelationOption_local,
-					"ao_opt1_id": model.RelationOption_format,
 					"ao_opt2_id": model.RelationOption_relation,
-					"ao_opt3_id": model.RelationOption_format,
 				},
 				[]string{"ao_opt5_id"},
 			},
