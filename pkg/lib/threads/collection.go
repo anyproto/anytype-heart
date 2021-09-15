@@ -37,56 +37,53 @@ type threadInfo struct {
 	Addrs []string
 }
 
-func (s *service) threadsDbInit() (chan map[thread.ID]threadInfo, error) {
+func (s *service) threadsDbInit() error {
 	if s.db != nil {
-		return nil, nil
+		return nil
 	}
 
 	accountID, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	s.db, err = threadsDb.NewDB(context.Background(), s.threadsDbDS, s.t, accountID, threadsDb.WithNewCollections())
 	if err != nil {
-		return nil, err
+		return err
 	}
 
 	s.threadsCollection = s.db.GetCollection(ThreadInfoCollectionName)
-	ch := make(chan map[thread.ID]threadInfo)
-	err = s.threadsDbListen(ch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen external new threads: %w", err)
-	}
 
 	if s.threadsCollection == nil {
 		s.threadsCollection, err = s.db.NewCollection(threadInfoCollection)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
 
-	return ch, nil
+	return nil
 }
 
-func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo) error {
+func (s *service) threadsDbListen(initialThreads map[thread.ID]threadInfo) error {
 	log.Infof("threadsDbListen")
 	l, err := s.db.Listen()
 	if err != nil {
 		return err
 	}
 
-	var initialThreads map[thread.ID]threadInfo
-	threadsTotal := 0
+	threadsTotal := len(initialThreads)
 	initialThreadsLock := sync.RWMutex{}
 
 	startTime := time.Now()
 	progress := process.NewProgress(pb.ModelProcess_RecoverAccount)
 
 	removeElement := func(tid thread.ID) {
+		log.With("thread id", tid.String()).
+			Debug("removing thread from processing")
 		initialThreadsLock.RLock()
 		_, isInitialThread := initialThreads[tid]
 		initialThreadsLock.RUnlock()
+
 		if isInitialThread {
 			initialThreadsLock.Lock()
 			delete(initialThreads, tid)
@@ -97,6 +94,8 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 	}
 
 	processThread := func(tid thread.ID, ti threadInfo) {
+		log.With("thread id", tid.String()).
+			Debugf("trying to process new thread")
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		info, err := s.t.GetThread(ctx, tid)
 		cancel()
@@ -132,6 +131,7 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 					progress.AddDone(1)
 					if len(initialThreads) == 0 {
 						progress.Finish()
+						log.Info("finished recovering account")
 						metrics.SharedClient.RecordEvent(metrics.AccountRecoverEvent{
 							SpentMs:              int(time.Now().Sub(startTime).Milliseconds()),
 							TotalThreads:         threadsTotal,
@@ -180,17 +180,38 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 		}
 	}
 
-	processInitialThreads := func() {
-		copyMap := make(map[thread.ID]threadInfo)
-		initialThreadsLock.RLock()
-		for tid, ti := range initialThreads {
-			copyMap[tid] = ti
-		}
-		initialThreadsLock.RUnlock()
+	if threadsTotal != 0 {
+		log.With("thread count", threadsTotal).
+			Info("pulling initial threads")
 
-		for tid, ti := range copyMap {
-			processThread(tid, ti)
+		if os.Getenv("ANYTYPE_RECOVERY_PROGRESS") == "1" {
+			log.Info("adding progress bar")
+			s.process.Add(progress)
+			go func() {
+				select {
+				case <-progress.Canceled():
+					progress.Finish()
+				case <-progress.Done():
+					return
+				}
+			}()
 		}
+		progress.SetProgressMessage("recovering account")
+		progress.SetTotal(int64(threadsTotal))
+
+		initialMapCopy := make(map[thread.ID]threadInfo)
+		for tid, ti := range initialThreads {
+			initialMapCopy[tid] = ti
+		}
+
+		// processing all initial threads if any
+		go func() {
+			for tid, ti := range initialMapCopy {
+				log.With("thread id", tid.String()).
+					Debugf("going to process initial thread")
+				processThread(tid, ti)
+			}
+		}()
 	}
 
 	go func() {
@@ -199,13 +220,9 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 			s.closeThreadChan()
 		}()
 		deadline := 1 * time.Second
-		// initially setting long duration (we can't set nil), because we want to be sure that the download starts
-		// only when we get initial entries from db, so the logic with initial threads map
-		// is clearer
-		tmr := time.NewTimer(1 * time.Hour)
+		tmr := time.NewTimer(deadline)
 		flushBuffer := make([]db.InstanceID, 0, 100)
 		timerRead := false
-		initialThreadsAcquired := false
 
 		processBuffer := func() {
 			if len(flushBuffer) == 0 {
@@ -228,38 +245,17 @@ func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo
 				timerRead = true
 				// we don't have new messages for at least deadline and we have something to flush
 				processBuffer()
-			case m := <-initialThreadsCh:
-				initialThreadsLock.Lock()
-				initialThreads = m
-				threadsTotal = len(m)
-				initialThreadsLock.Unlock()
-
-				initialThreadsAcquired = true
-
-				// only starting processing when first batch is read
-				tmr.Stop()
-				tmr.Reset(deadline)
-
-				// this is an account recovery
-				if threadsTotal != 0 {
-					if os.Getenv("ANYTYPE_RECOVERY_PROGRESS") == "1" {
-						s.process.Add(progress)
-					}
-					progress.SetProgressMessage("recovering account")
-					progress.SetTotal(int64(threadsTotal))
-					processInitialThreads()
-				}
 
 			case c := <-l.Channel():
-				if initialThreadsAcquired {
-					// as per docs the timer should be stopped or expired with drained channel
-					// to be reset
-					if !tmr.Stop() && !timerRead {
-						<-tmr.C
-					}
-					tmr.Reset(deadline)
-					timerRead = false
+				log.With("thread id", c.ID.String()).
+					Debugf("received new thread through channel")
+				// as per docs the timer should be stopped or expired with drained channel
+				// to be reset
+				if !tmr.Stop() && !timerRead {
+					<-tmr.C
 				}
+				tmr.Reset(deadline)
+				timerRead = false
 				switch c.Type {
 				case threadsDb.ActionCreate:
 					flushBuffer = append(flushBuffer, c.ID)

@@ -99,10 +99,11 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 
 	ids.Account = account.ID.String()
 
-	ch, err := s.threadsDbInit()
+	err = s.threadsDbInit()
 	if err != nil {
 		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 	}
+	var accountPullErr error
 
 	if !newAccount {
 		log.Infof("start account pull")
@@ -110,15 +111,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		ctxPull, pullCancel := context.WithCancel(context.Background())
 		// accountSelect common case
 		go func() {
-			defer close(accountThreadPullDone)
-			// pull only after threadsDbInit to handle all events
-			_, err = s.pullThread(ctxPull, account.ID)
-			if err != nil {
-				log.Errorf("account pull failed: %s", err.Error())
-				return
-			}
-
-			if ch != nil {
+			defer func() {
 				m := make(map[thread.ID]threadInfo)
 				if justCreated {
 					m, err = s.createThreadsDbMap()
@@ -126,7 +119,19 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 						m = make(map[thread.ID]threadInfo)
 					}
 				}
-				ch <- m
+				err = s.threadsDbListen(m)
+				if err != nil {
+					// that can happen if we already closed the db, so no need to do anything specific
+					log.Errorf("listening to threads db failed: %v", err.Error())
+				}
+				close(accountThreadPullDone)
+			}()
+
+			// pull only after threadsDbInit to handle all events
+			_, accountPullErr = s.pullThread(ctxPull, account.ID)
+			if accountPullErr != nil {
+				log.Errorf("account pull failed: %s", accountPullErr.Error())
+				return
 			}
 			log.Infof("account pull done")
 
@@ -146,10 +151,10 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			for {
 				select {
 				case <-accountThreadPullDone:
-					if err != nil {
-						err2 := s.t.DeleteThread(context.Background(), account.ID)
-						if err2 != nil {
-							log.Errorf("failed to delete account thread: %s", err2.Error())
+					if accountPullErr != nil {
+						err := s.t.DeleteThread(context.Background(), account.ID)
+						if err != nil {
+							log.Errorf("failed to delete account thread: %s", err.Error())
 						}
 						return ids, err
 					}
@@ -159,6 +164,11 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 					pullCancel()
 				}
 			}
+		}
+	} else {
+		err = s.threadsDbListen(make(map[thread.ID]threadInfo))
+		if err != nil {
+			return ids, err
 		}
 	}
 
