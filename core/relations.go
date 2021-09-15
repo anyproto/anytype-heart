@@ -86,9 +86,9 @@ func (mw *Middleware) ObjectTypeRelationAdd(req *pb.RpcObjectTypeRelationAddRequ
 			for _, rel := range relations {
 				var relId string
 				if bundle.HasRelation(rel.Key) {
-					relId = addr.BundledRelationURLPrefix+rel.Key
+					relId = addr.BundledRelationURLPrefix + rel.Key
 				} else {
-					relId = addr.CustomRelationURLPrefix+rel.Key
+					relId = addr.CustomRelationURLPrefix + rel.Key
 				}
 
 				if slice.FindPos(list, relId) == -1 {
@@ -182,6 +182,23 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 	}
 
 	err = mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.ModifyDetails(objType.Url, func(current *types.Struct) (*types.Struct, error) {
+			list := pbtypes.GetStringList(current, bundle.RelationKeyRecommendedRelations.String())
+			var relId string
+			if bundle.HasRelation(req.RelationKey) {
+				relId = addr.BundledRelationURLPrefix + req.RelationKey
+			} else {
+				relId = addr.CustomRelationURLPrefix + req.RelationKey
+			}
+
+			slice.Remove(list, relId)
+			detCopy := pbtypes.CopyStruct(current)
+			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
+			return detCopy, nil
+		})
+		if err != nil {
+			return err
+		}
 		err = bs.RemoveExtraRelations(nil, objType.Url, []string{req.RelationKey})
 		if err != nil {
 			return err
@@ -254,7 +271,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 				bundle.RelationKeyLayout.String():               pbtypes.Float64(float64(model.ObjectType_objectType)),
 				bundle.RelationKeyRecommendedLayout.String():    pbtypes.Float64(float64(req.ObjectType.Layout)),
 				bundle.RelationKeyRecommendedRelations.String(): pbtypes.StringList(recommendedRelationKeys),
-				bundle.RelationKeyIsArchived.String(): 			 pbtypes.Bool(req.ObjectType.IsArchived),
+				bundle.RelationKeyIsArchived.String():           pbtypes.Bool(req.ObjectType.IsArchived),
 			},
 		}, req.ObjectType.Relations)
 		if err != nil {
