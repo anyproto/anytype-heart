@@ -86,7 +86,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
 				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-				"type":      pbtypes.String(bundle.TypeKeyDate.String()),
+				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
 				"iconEmoji": pbtypes.String("📅"),
 			}}}}, records...)
 		}
@@ -96,7 +96,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
 				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-				"type":      pbtypes.String(bundle.TypeKeyDate.String()),
+				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
 				"iconEmoji": pbtypes.String("📅"),
 			}}}}, records...)
 		}
