@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
@@ -102,7 +101,7 @@ type SmartBlock interface {
 	AddHook(f func(), events ...Hook)
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() (doc.DocInfo, error)
-	DocService() meta.Service
+	DocService() doc.Service
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
 	BlockClose()
@@ -351,15 +350,15 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 	return
 }
 
-func (sb *smartBlock) onMetaChange(d meta.Meta) {
+func (sb *smartBlock) onMetaChange(d doc.DocInfo) {
 	sb.Lock()
 	defer sb.Unlock()
 	if sb.sendEvent != nil {
 		msgs := []*pb.EventMessage{}
-		if d.Details != nil {
-			if v, exists := sb.lastDepDetails[d.BlockId]; exists {
-				diff := pbtypes.StructDiff(v.Details, d.Details)
-				if d.BlockId == sb.Id() {
+		if d.State.CombinedDetails() != nil {
+			if v, exists := sb.lastDepDetails[d.Id]; exists {
+				diff := pbtypes.StructDiff(v.Details, d.State.CombinedDetails())
+				if d.Id == sb.Id() {
 					// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 					diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
 					if len(diff.GetFields()) > 0 {
@@ -367,20 +366,20 @@ func (sb *smartBlock) onMetaChange(d meta.Meta) {
 					}
 				}
 
-				msgs = append(msgs, state.StructDiffIntoEvents(d.BlockId, diff)...)
+				msgs = append(msgs, state.StructDiffIntoEvents(d.Id, diff)...)
 			} else {
 				msgs = append(msgs, &pb.EventMessage{
 					Value: &pb.EventMessageValueOfObjectDetailsSet{
 						ObjectDetailsSet: &pb.EventObjectDetailsSet{
-							Id:      d.BlockId,
-							Details: d.Details,
+							Id:      d.Id,
+							Details: d.State.Details(),
 						},
 					},
 				})
 			}
-			sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
-				Id:      d.BlockId,
-				Details: d.Details,
+			sb.lastDepDetails[d.Id] = &pb.EventObjectDetailsSet{
+				Id:      d.Id,
+				Details: d.State.CombinedDetails(),
 			}
 		}
 
@@ -559,8 +558,8 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	depIds := sb.dependentSmartIds(true, true)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
-		if sb.metaSub != nil {
-			sb.metaSub.ReSubscribe(depIds...)
+		if sb.doc != nil {
+			sb.doc.ReSubscribe(depIds...)
 		}
 		return true
 	}

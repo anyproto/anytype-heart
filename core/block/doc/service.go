@@ -114,8 +114,8 @@ func (l *listener) wakeupLoop() {
 	}
 }
 
-func (l *listener) GetByIdsAndSubscribe(id ...string) (records []database.Reader, err error) {
-	l.objectStore.GetByIDs()
+func (l *listener) GetByIdsAndSubscribe(ids ...string) (records []database.Reader, err error) {
+	l.objectStore.QueryByIdAndSubscribeForChanges(ids, )
 }
 
 func (l *listener) GetByIds(id ...string) (records []database.Reader, err error) {
