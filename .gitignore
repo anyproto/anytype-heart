@@ -9,3 +9,4 @@ package-lock.json
 *_mock.go
 lib-server/service.pb.go
 dist/cli
+grpc-web

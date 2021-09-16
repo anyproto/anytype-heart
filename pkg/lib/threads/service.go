@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
@@ -55,24 +56,31 @@ type service struct {
 	GRPCServerOptions []grpc.ServerOption
 	GRPCDialOptions   []grpc.DialOption
 
+	// the number of simultaneous requests when processing threads or adding replicator
+	simultaneousRequests int
+
 	logstore    tlcore.Logstore
 	ds          datastore.Datastore
 	logstoreDS  datastore.DSTxnBatching
 	threadsDbDS keytransform.TxnDatastoreExtended
 	stopped     bool
 
-	ctxCancel                  context.CancelFunc
-	ctx                        context.Context
-	presubscribedChangesChan   <-chan net.ThreadRecord
-	t                          threadsApp.Net
-	db                         *threadsDb.DB
-	threadsCollection          *threadsDb.Collection
-	device                     walletUtil.Keypair
-	account                    walletUtil.Keypair
-	ipfsNode                   ipfs.Node
-	repoRootPath               string
-	newThreadChan              chan<- string
-	newThreadProcessingLimiter chan struct{}
+	ctxCancel                      context.CancelFunc
+	ctx                            context.Context
+	presubscribedChangesChan       <-chan net.ThreadRecord
+	t                              threadsApp.Net
+	db                             *threadsDb.DB
+	threadsCollection              *threadsDb.Collection
+	device                         walletUtil.Keypair
+	account                        walletUtil.Keypair
+	ipfsNode                       ipfs.Node
+	repoRootPath                   string
+	newThreadChan                  chan<- string
+	newThreadProcessingLimiter     chan struct{}
+	newReplicatorProcessingLimiter chan struct{}
+	process                        process.Service
+
+	fetcher CafeConfigFetcher
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -104,21 +112,19 @@ func New() Service {
 	threadsQueue.InBufSize = 5
 	threadsQueue.OutBufSize = 2
 	ctx, cancel := context.WithCancel(context.Background())
-	limiter := make(chan struct{}, simultaneousRequests)
-	for i := 0; i < cap(limiter); i++ {
-		limiter <- struct{}{}
-	}
 
 	return &service{
-		newThreadProcessingLimiter: limiter,
-		ctx:                        ctx,
-		ctxCancel:                  cancel,
+		ctx:                  ctx,
+		ctxCancel:            cancel,
+		simultaneousRequests: simultaneousRequests,
 	}
 }
 
 func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
+	s.fetcher = a.MustComponent("configfetcher").(CafeConfigFetcher)
+	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
 
@@ -153,6 +159,24 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	cafeCfg := s.fetcher.GetConfig(ctx)
+	cancel()
+	if cafeCfg.SimultaneousRequests != 0 {
+		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
+	} else {
+		s.simultaneousRequests = simultaneousRequests
+	}
+
+	s.newThreadProcessingLimiter = make(chan struct{}, s.simultaneousRequests)
+	for i := 0; i < cap(s.newThreadProcessingLimiter); i++ {
+		s.newThreadProcessingLimiter <- struct{}{}
+	}
+	s.newReplicatorProcessingLimiter = make(chan struct{}, s.simultaneousRequests)
+	for i := 0; i < cap(s.newReplicatorProcessingLimiter); i++ {
+		s.newReplicatorProcessingLimiter <- struct{}{}
+	}
+
 	s.logstoreDS, err = s.ds.LogstoreDS()
 	if err != nil {
 		return err
@@ -174,7 +198,7 @@ func (s *service) Run() (err error) {
 		syncBook = s.logstore
 	}
 
-	ctx := context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
+	ctx = context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
 
 	s.t, err = threadsNet.NewNetwork(ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
 		Debug:        s.Debug,

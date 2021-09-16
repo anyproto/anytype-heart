@@ -29,6 +29,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "intentions",
       "happenings",
       "gratefulFor",
@@ -70,6 +71,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "time",
       "servings",
       "ingredients",
@@ -109,7 +111,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
@@ -145,6 +148,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "candidate",
       "job",
       "phone",
@@ -187,6 +191,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "phone",
       "email",
       "dateOfBirth",
@@ -234,12 +239,49 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "notes",
       "events",
       "tasks"
     ],
     "types": [
       "Page"
+    ]
+  },
+  {
+    "description": "Gregorian calendar date",
+    "emoji": "📅",
+    "id": "date",
+    "layout": "basic",
+    "name": "Date",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "isFavorite"
+    ],
+    "types": [
+      "Date"
     ]
   },
   {
@@ -272,6 +314,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "company",
       "address",
       "billTo",
@@ -316,6 +359,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "problem",
       "solution",
       "alternative"
@@ -354,6 +398,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "assignee",
       "dueDate",
       "attachments",
@@ -424,6 +469,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "author",
       "category",
       "rating",
@@ -434,7 +480,7 @@
     ]
   },
   {
-    "description": "Auto-generated object from .MPEG-4 files added to Anytype. The recording of moving visual images",
+    "description": "Auto-generated object from .mpeg-4 files added to Anytype. The recording of moving visual images",
     "emoji": "📽",
     "id": "video",
     "layout": "file",
@@ -462,6 +508,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -509,6 +556,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "story",
       "founded",
       "ceo",
@@ -590,6 +638,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "notes",
       "tasks",
       "events"
@@ -628,6 +677,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "participants",
       "agenda",
       "tasks"
@@ -666,6 +716,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "director",
       "stars",
       "genre",
@@ -708,7 +759,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
@@ -744,6 +796,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary"
@@ -782,6 +835,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "targetObjectType",
       "templateIsBundled"
     ],
@@ -819,6 +873,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "running",
       "meditation",
       "7hourssleep",
@@ -859,6 +914,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "setOf"
     ],
     "types": [
@@ -895,6 +951,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "class",
       "classType",
       "records",
@@ -937,6 +994,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "mood"
     ],
     "types": [
@@ -972,14 +1030,15 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
     ]
   },
   {
-    "description": "Auto-generated object from .JPG & .PNG files added to Anytype. A representation of the external form of a person or thing in art",
+    "description": "Auto-generated object from .jpg & .png files added to Anytype. A representation of the external form of a person or thing in art",
     "emoji": "🏞",
     "id": "image",
     "layout": "image",
@@ -1007,6 +1066,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -1053,6 +1113,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "howToReproduce",
       "result",
       "additional",
@@ -1066,7 +1127,7 @@
     ]
   },
   {
-    "description": "A man, woman, or child of the species Homo sapiens",
+    "description": "Homo sapiens",
     "emoji": "🧍",
     "id": "profile",
     "layout": "profile",
@@ -1093,7 +1154,8 @@
       "coverType",
       "layoutAlign",
       "isHidden",
-      "isArchived"
+      "isArchived",
+      "isFavorite"
     ],
     "types": [
       "Page",
@@ -1101,9 +1163,8 @@
     ]
   },
   {
-    "description": "Sound when recorded, with ability to reproduce",
-    "emoji": "🎸",
-    "hidden": true,
+    "description": "Auto-generated object from .wav, .mp3, .ogg files added to Anytype. Sound when recorded, with ability to reproduce",
+    "emoji": "🎵",
     "id": "audio",
     "layout": "file",
     "name": "Audio",
@@ -1130,6 +1191,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -1141,7 +1203,9 @@
       "sizeInBytes",
       "fileMimeType",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "audioArtist",
+      "audioLyrics"
     ],
     "types": [
       "File"
@@ -1177,6 +1241,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "tasks",
       "resources",
       "result",
@@ -1217,6 +1282,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "progress",
       "status",
       "dueDate",
@@ -1256,6 +1322,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "hypothesisAssumptions",
       "problem",
       "userStories",
@@ -1299,7 +1366,8 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "tag"
+      "tag",
+      "isFavorite"
     ],
     "types": [
       "Page"
@@ -1334,6 +1402,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "isFavorite",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -1373,6 +1442,7 @@
       "isHidden",
       "isArchived",
       "tag",
+      "isFavorite",
       "objectives",
       "scope",
       "timeframe",

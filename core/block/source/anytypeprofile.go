@@ -93,3 +93,7 @@ func (v *anytypeProfile) FindFirstChange(ctx context.Context) (c *change.Change,
 func (v *anytypeProfile) Close() (err error) {
 	return
 }
+
+func (v *anytypeProfile) LogHeads() map[string]string {
+	return nil
+}

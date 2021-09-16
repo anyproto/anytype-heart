@@ -36,6 +36,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyFeaturedRelations,
 	RelationKeyIsHidden,
 	RelationKeyIsArchived,
+	RelationKeyIsFavorite,
 }
 
 var FormatFilePossibleTargetObjectTypes = []string{

@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/gogo/protobuf/types"
 	"math/rand"
 	"sync"
 	"time"
@@ -37,6 +38,8 @@ type Source interface {
 	Anytype() core.Service
 	Type() model.SmartBlockType
 	Virtual() bool
+	LogHeads() map[string]string
+
 	ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
@@ -45,8 +48,14 @@ type Source interface {
 	Close() (err error)
 }
 
+type SourceIdEndodedDetails interface {
+	Id() string
+	DetailsFromId() (*types.Struct, error)
+}
+
 type SourceType interface {
 	ListIds() ([]string, error)
+	Virtual() bool
 }
 
 type SourceWithType interface {
@@ -66,6 +75,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 		return &bundledObjectType{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
 		return &bundledRelation{a: s.anytype}, nil
+
 	case smartblock.SmartBlockTypeBundledTemplate:
 		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
 	default:
@@ -175,6 +185,8 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 		err = nil
 		s.tree = new(change.Tree)
 		doc = state.NewDoc(s.id, nil)
+		InjectCreationInfo(s, doc.(*state.State))
+		doc.(*state.State).InjectDerivedDetails()
 	} else if err != nil {
 		log.With("thread", s.id).Errorf("buildTree failed: %s", err.Error())
 		return
@@ -213,7 +225,10 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		}
 	}
 	st.BlocksInit(st)
-	InjectLocalDetails(s, st)
+	storedDetails, _ := s.Anytype().ObjectStore().GetDetails(s.Id())
+
+	// inject also derived keys, because it may be a good idea to have created date and creator cached so we don't need to traverse changes every time
+	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)))
 	InjectCreationInfo(s, st)
 	st.InjectDerivedDetails()
 	if err = st.Normalize(false); err != nil {
@@ -277,17 +292,17 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 	return
 }
 
-func InjectLocalDetails(s Source, st *state.State) {
-	if details, err := s.Anytype().ObjectStore().GetDetails(s.Id()); err == nil {
-		if details != nil && details.Details != nil {
-			for key, v := range details.Details.Fields {
-				if slice.FindPos(append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...), key) != -1 {
-					st.SetLocalDetail(key, v)
-					if !pbtypes.HasRelation(st.ExtraRelations(), key) {
-						st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
-					}
-				}
-			}
+func InjectLocalDetails(st *state.State, localDetails *types.Struct) {
+	for key, v := range localDetails.GetFields() {
+		if v == nil {
+			continue
+		}
+		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
+			continue
+		}
+		st.SetLocalDetail(key, v)
+		if !pbtypes.HasRelation(st.ExtraRelations(), key) {
+			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
 		}
 	}
 }
@@ -300,6 +315,11 @@ type PushChangeParams struct {
 }
 
 func (s *source) PushChange(params PushChangeParams) (id string, err error) {
+	if events := s.tree.GetDuplicateEvents(); events > 30 {
+		params.DoSnapshot = true
+		log.With("thread", s.id).Errorf("found %d duplicate events: do the snapshot", events)
+		s.tree.ResetDuplicateEvents()
+	}
 	var c = &pb.Change{
 		PreviousIds:     s.tree.Heads(),
 		LastSnapshotId:  s.lastSnapshotId,
@@ -308,7 +328,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 	}
 	if params.DoSnapshot || s.needSnapshot() || len(params.Changes) == 0 {
 		c.Snapshot = &pb.ChangeSnapshot{
-			LogHeads: s.logHeadIDs(),
+			LogHeads: s.LogHeads(),
 			Data: &model.SmartBlockSnapshotBase{
 				Blocks:         params.State.BlocksToSave(),
 				Details:        params.State.Details(),
@@ -498,7 +518,7 @@ func (s *source) FindFirstChange(ctx context.Context) (c *change.Change, err err
 	return
 }
 
-func (s *source) logHeadIDs() map[string]string {
+func (s *source) LogHeads() map[string]string {
 	var hs = make(map[string]string)
 	for id, ch := range s.logHeads {
 		if ch != nil {

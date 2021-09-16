@@ -149,6 +149,7 @@ func (p *Set) applyRestrictions(s *state.State) {
 		bundle.TypeKeyFile.URL(),
 		bundle.TypeKeyImage.URL(),
 		bundle.TypeKeyVideo.URL(),
+		bundle.TypeKeyAudio.URL(),
 		bundle.TypeKeyObjectType.URL(),
 		bundle.TypeKeySet.URL(),
 		bundle.TypeKeyRelation.URL(),

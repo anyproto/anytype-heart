@@ -107,3 +107,7 @@ func (v *indexedRelation) ListIds() ([]string, error) {
 func (v *indexedRelation) Close() (err error) {
 	return
 }
+
+func (v *indexedRelation) LogHeads() map[string]string {
+	return nil
+}

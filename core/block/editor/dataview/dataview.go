@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
@@ -72,8 +73,7 @@ type dataviewImpl struct {
 	defaultRecordFields        *types.Struct // will be always set to the new record
 	recordsUpdatesSubscription database.Subscription
 	depsUpdatesSubscription    database.Subscription
-	depIds []string
-
+	depIds                     []string
 
 	recordsUpdatesCancel context.CancelFunc
 }
@@ -170,6 +170,30 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 
 	if relation.Format == model.RelationFormat_file && relation.ObjectTypes == nil {
 		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
+	}
+
+	ex, _ := tb.GetRelation(relationKey)
+	if ex != nil {
+		if ex.Format != relation.Format {
+			return fmt.Errorf("changing format of existing relation is retricted")
+		}
+		if ex.DataSource != relation.DataSource {
+			return fmt.Errorf("changing data source of existing relation is retricted")
+		}
+
+		if ex.Hidden != relation.Hidden {
+			return fmt.Errorf("changing hidden flag of existing relation is retricted")
+		}
+	}
+
+	if relation.Format == model.RelationFormat_status || relation.Format == model.RelationFormat_tag {
+		// reinject relation options
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(relationKey, relation.Format, tb.GetSource())
+		if err != nil {
+			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
+		} else {
+			relation.SelectDict = options
+		}
 	}
 
 	if err = tb.UpdateRelation(relationKey, relation); err != nil {
@@ -333,10 +357,10 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 	}
 
 	for _, objId := range objIds {
-		err = db.Update(objId, []*model.Relation{rel}, database.Record{})
+		err = db.DeleteRelationOption(objId, relationKey, optionId)
 		if err != nil {
 			if objId != recordId {
-				// not sure it is a right approach here, but we may face some ACL problems later otherwise
+				// not sure if it is a right approach here, but we may face some ACL problems later otherwise
 				log.Errorf("DeleteRelationOption failed to multiupdate %s: %s", objId, err.Error())
 			} else {
 				return err
@@ -344,6 +368,8 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 		}
 		log.Debugf("DeleteRelationOption updated %s", objId)
 	}
+	// todo: remove after source refactoring
+	time.Sleep(time.Second * 1)
 
 	if showEvent {
 		err = d.Apply(s)
@@ -438,7 +464,7 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 	if len(tb.Model().GetDataview().Views) == 0 {
 		return fmt.Errorf("cannot remove the last view")
 	}
-	
+
 	dv := d.getDataviewImpl(tb)
 	if dv.activeViewId == viewId {
 		views := tb.Model().GetDataview().Views
@@ -798,14 +824,7 @@ func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.St
 
 	rel.SelectDict = options
 	dvBlock.UpdateRelation(rel.Key, *rel)
-	// we need to send event manually because selectDict is trimmed from the pb changes
-	d.SendEvent([]*pb.EventMessage{
-		{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
-			&pb.EventBlockDataviewRelationSet{
-				Id:          dvBlock.Model().Id,
-				RelationKey: rel.Key,
-				Relation:    rel,
-			}}}})
+
 	st.Set(dvBlock)
 	return d.Apply(st)
 }
@@ -980,7 +999,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 						d.Unlock()
 						continue
 					}
-					rels :=  tb.Model().GetDataview().GetRelations()
+					rels := tb.Model().GetDataview().GetRelations()
 					if rec != nil && rels != nil {
 						for k, v := range rec.Fields {
 							rel := pbtypes.GetRelation(rels, k)

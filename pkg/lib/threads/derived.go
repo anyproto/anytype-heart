@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	threadsDb "github.com/textileio/go-threads/db"
+	threadsUtil "github.com/textileio/go-threads/util"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 
@@ -97,7 +99,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 
 	ids.Account = account.ID.String()
 
-	err = s.threadsDbInit()
+	ch, err := s.threadsDbInit()
 	if err != nil {
 		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 	}
@@ -114,9 +116,19 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			if err != nil {
 				log.Errorf("account pull failed: %s", err.Error())
 				return
-			} else {
-				log.Infof("account pull done")
 			}
+
+			if ch != nil {
+				m := make(map[thread.ID]threadInfo)
+				if justCreated {
+					m, err = s.createThreadsDbMap()
+					if err != nil {
+						m = make(map[thread.ID]threadInfo)
+					}
+				}
+				ch <- m
+			}
+			log.Infof("account pull done")
 
 			if !justCreated {
 				ids, _ := s.Logstore().Threads()
@@ -200,6 +212,30 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	ids.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
 	return ids, nil
+}
+
+func (s *service) createThreadsDbMap() (map[thread.ID]threadInfo, error) {
+	instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
+	if err != nil {
+		return nil, err
+	}
+
+	m := make(map[thread.ID]threadInfo)
+	for _, instanceBytes := range instancesBytes {
+		ti := threadInfo{}
+		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
+
+		tid, err := thread.Decode(ti.ID.String())
+		if err != nil {
+			log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
+			continue
+		}
+		if tid == thread.Undef {
+			continue
+		}
+		m[tid] = ti
+	}
+	return m, nil
 }
 
 func ProfileThreadIDFromAccountPublicKey(pubk crypto.PubKey) (thread.ID, error) {

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/dhowden/tag"
 	"io"
 	"path/filepath"
 	"strings"
@@ -36,6 +37,43 @@ type FileMeta struct {
 	Added time.Time
 }
 
+func (i *file) audioDetails() (*types.Struct, error) {
+	r, err := i.Reader()
+	if err != nil {
+		return nil, err
+	}
+
+	t, err := tag.ReadFrom(r)
+	if err != nil {
+		return nil, err
+	}
+
+	d := &types.Struct{
+		Fields: map[string]*types.Value{},
+	}
+
+	if t.Album() != "" {
+		d.Fields[bundle.RelationKeyAudioAlbum.String()] = pbtypes.String(t.Album())
+	}
+	if t.Artist() != "" {
+		d.Fields[bundle.RelationKeyAudioArtist.String()] = pbtypes.String(t.Artist())
+	}
+	if t.Genre() != "" {
+		d.Fields[bundle.RelationKeyAudioGenre.String()] = pbtypes.String(t.Genre())
+	}
+	if t.Lyrics() != "" {
+		d.Fields[bundle.RelationKeyAudioLyrics.String()] = pbtypes.String(t.Lyrics())
+	}
+	if n, _ := t.Track(); n != 0 {
+		d.Fields[bundle.RelationKeyAudioAlbumTrackNumber.String()] = pbtypes.Int64(int64(n))
+	}
+	if t.Year() != 0 {
+		d.Fields[bundle.RelationKeyReleasedYear.String()] = pbtypes.Int64(int64(t.Year()))
+	}
+
+	return d, nil
+}
+
 func (i *file) Details() (*types.Struct, error) {
 	meta := i.Meta()
 
@@ -55,6 +93,13 @@ func (i *file) Details() (*types.Struct, error) {
 
 	if strings.HasPrefix(meta.Media, "video") {
 		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyVideo.URL())
+	}
+
+	if strings.HasPrefix(meta.Media, "audio") {
+		if audioDetails, err := i.audioDetails(); err == nil {
+			t = pbtypes.StructMerge(t, audioDetails)
+		}
+		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyAudio.URL())
 	}
 
 	return t, nil

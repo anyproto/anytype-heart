@@ -14,8 +14,8 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	pb2 "github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -46,7 +46,9 @@ var (
 	pagesOutboundLinksBase = ds.NewKey("/" + pagesPrefix + "/outbound")
 	indexQueueBase         = ds.NewKey("/" + pagesPrefix + "/index")
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
-	clientConfig           = ds.NewKey("/" + pagesPrefix + "/clientconfig")
+	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
+
+	cafeConfig = ds.NewKey("/" + pagesPrefix + "/cafeconfig")
 
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
@@ -205,13 +207,20 @@ type DetailInjector interface {
 	SetLocalDetails(id string, st *types.Struct)
 }
 
+type SourceIdEncodedDetails interface {
+	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
+}
+
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
 	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
 	meta := a.Component("meta")
 	if meta != nil {
 		ls.meta = meta.(DetailInjector)
 	}
-
+	s := a.Component("source")
+	if s != nil {
+		ls.sourceService = a.MustComponent("source").(SourceIdEncodedDetails)
+	}
 	fts := a.Component(ftsearch.CName)
 	if fts == nil {
 		log.Warnf("init objectstore without fulltext")
@@ -235,9 +244,9 @@ type ObjectStore interface {
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
-	InjectObjectDetails(id string, details *types.Struct) error
+	InjectObjectDetails(id string, details *types.Struct) (mergedDetails *types.Struct, err error)
 	UpdateObjectLinks(id string, links []string) error
-	UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error
+	UpdateObjectSnippet(id string, snippet string) error
 
 	DeleteObject(id string) error
 	RemoveRelationFromCache(key string) error
@@ -245,6 +254,7 @@ type ObjectStore interface {
 	UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
+	GetOutboundLinksById(id string) ([]string, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, relationFormat model.RelationFormat, objectType string) (options []*model.RelationOption, err error)
@@ -267,8 +277,11 @@ type ObjectStore interface {
 	// SaveChecksums Used to save checksums and force reindex counter
 	SaveChecksums(checksums *model.ObjectStoreChecksums) (err error)
 
-	GetClientConfig() (cfg *pb2.RpcAccountConfig, err error)
-	SaveClientConfig(cfg *pb2.RpcAccountConfig) (err error)
+	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
+	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
+
+	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
+	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
 }
 
 type relationOption struct {
@@ -321,9 +334,11 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 
 type dsObjectStore struct {
 	// underlying storage
-	ds      ds.TxnDatastore
-	dsIface datastore.Datastore
-	meta    DetailInjector // TODO: remove after we will migrate to the objectStore subscriptions
+	ds            ds.TxnDatastore
+	dsIface       datastore.Datastore
+	sourceService SourceIdEncodedDetails
+
+	meta DetailInjector // TODO: remove after we will migrate to the objectStore subscriptions
 
 	fts ftsearch.FTSearch
 
@@ -334,24 +349,24 @@ type dsObjectStore struct {
 	depSubscriptions []database.Subscription
 }
 
-func (m *dsObjectStore) GetClientConfig() (cfg *pb2.RpcAccountConfig, err error) {
+func (m *dsObjectStore) GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	var clientcfg pb2.RpcAccountConfig
-	if val, err := txn.Get(clientConfig); err != nil && err != ds.ErrNotFound {
-		return nil, fmt.Errorf("failed to get details: %w", err)
-	} else if err := proto.Unmarshal(val, &clientcfg); err != nil {
+	var cafecfg cafePb.GetConfigResponseConfig
+	if val, err := txn.Get(cafeConfig); err != nil {
+		return nil, err
+	} else if err := proto.Unmarshal(val, &cafecfg); err != nil {
 		return nil, err
 	}
 
-	return &clientcfg, nil
+	return &cafecfg, nil
 }
 
-func (m *dsObjectStore) SaveClientConfig(cfg *pb2.RpcAccountConfig) (err error) {
+func (m *dsObjectStore) SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error) {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -363,7 +378,7 @@ func (m *dsObjectStore) SaveClientConfig(cfg *pb2.RpcAccountConfig) (err error) 
 		return err
 	}
 
-	if err := txn.Put(clientConfig, b); err != nil {
+	if err := txn.Put(cafeConfig, b); err != nil {
 		return fmt.Errorf("failed to put into ds: %w", err)
 	}
 
@@ -381,6 +396,12 @@ func (m *dsObjectStore) EraseIndexes() (err error) {
 	if err != nil {
 		log.Errorf("eraseStoredRelations failed: %s", err.Error())
 	}
+
+	err = m.eraseLinks()
+	if err != nil {
+		log.Errorf("eraseLinks failed: %s", err.Error())
+	}
+
 	return
 }
 
@@ -410,6 +431,28 @@ func (m *dsObjectStore) eraseStoredRelations() (err error) {
 	return txn.Commit()
 }
 
+func (m *dsObjectStore) eraseLinks() (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return err
+	}
+	defer txn.Discard()
+	n, err := removeByPrefix(txn, pagesOutboundLinksBase.String())
+	if err != nil {
+		return err
+	}
+
+	log.Infof("eraseLinks: removed %d outbound links", n)
+	n, err = removeByPrefix(txn, pagesInboundLinksBase.String())
+	if err != nil {
+		return err
+	}
+
+	log.Infof("eraseLinks: removed %d inbound links", n)
+
+	return txn.Commit()
+}
+
 func (m *dsObjectStore) Run() (err error) {
 	m.ds, err = m.dsIface.LocalstoreDS()
 	return
@@ -435,7 +478,7 @@ func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string
 	txn, err := m.ds.NewTransaction(true)
 	defer txn.Discard()
 
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, "/", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexRelationOptionObject.Name, []string{relationKey}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -470,7 +513,7 @@ func (m *dsObjectStore) getAggregatedOptionsForFormat(format model.RelationForma
 	txn, err := m.ds.NewTransaction(true)
 	defer txn.Discard()
 
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -494,6 +537,7 @@ func (m *dsObjectStore) getAggregatedOptionsForFormat(format model.RelationForma
 		if _, exists := ex[optionId]; exists {
 			continue
 		}
+
 		ex[optionId] = struct{}{}
 		options = append(options, relationOption{
 			relationKey: relKey,
@@ -791,7 +835,7 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 		key := ds.NewKey(rec.Key)
 		keyList := key.List()
 		id := keyList[len(keyList)-1]
-		oi, err := getObjectInfo(txn, id)
+		oi, err := m.getObjectInfo(txn, id)
 		if err != nil {
 			// probably details are not yet indexed, let's skip it
 			log.Errorf("QueryObjectInfo getObjectInfo error: %s", err.Error())
@@ -1075,7 +1119,7 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 	}
 	defer txn.Discard()
 
-	pages, err := getObjectsInfo(txn, []string{id})
+	pages, err := m.getObjectsInfo(txn, []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -1095,12 +1139,12 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 		return nil, err
 	}
 
-	inbound, err := getObjectsInfo(txn, inboundIds)
+	inbound, err := m.getObjectsInfo(txn, inboundIds)
 	if err != nil {
 		return nil, err
 	}
 
-	outbound, err := getObjectsInfo(txn, outboundsIds)
+	outbound, err := m.getObjectsInfo(txn, outboundsIds)
 	if err != nil {
 		return nil, err
 	}
@@ -1115,6 +1159,16 @@ func (m *dsObjectStore) GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLi
 	}, nil
 }
 
+func (m *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return findOutboundLinks(txn, id)
+}
+
 func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -1122,7 +1176,7 @@ func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectIn
 	}
 	defer txn.Discard()
 
-	pages, err := getObjectsInfo(txn, []string{id})
+	pages, err := m.getObjectsInfo(txn, []string{id})
 	if err != nil {
 		return nil, err
 	}
@@ -1137,7 +1191,7 @@ func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectIn
 		return nil, err
 	}
 
-	outbound, err := getObjectsInfo(txn, outboundsIds)
+	outbound, err := m.getObjectsInfo(txn, outboundsIds)
 	if err != nil {
 		return nil, err
 	}
@@ -1170,7 +1224,7 @@ func (m *dsObjectStore) List() ([]*model.ObjectInfo, error) {
 		return nil, err
 	}
 
-	return getObjectsInfo(txn, ids)
+	return m.getObjectsInfo(txn, ids)
 }
 
 func (m *dsObjectStore) HasIDs(ids ...string) (exists []string, err error) {
@@ -1196,7 +1250,7 @@ func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	}
 	defer txn.Discard()
 
-	return getObjectsInfo(txn, ids)
+	return m.getObjectsInfo(txn, ids)
 }
 
 func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations *model.Relations, links []string, snippet string) error {
@@ -1241,7 +1295,7 @@ func (m *dsObjectStore) UpdateObjectLinks(id string, links []string) error {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdateObjectLinksAndSnippet(id string, links []string, snippet string) error {
+func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -1250,9 +1304,10 @@ func (m *dsObjectStore) UpdateObjectLinksAndSnippet(id string, links []string, s
 	}
 	defer txn.Discard()
 
-	err = m.updateObjectLinksAndSnippet(txn, id, links, snippet)
-	if err != nil {
-		return err
+	if val, err := txn.Get(pagesSnippetBase.ChildString(id)); err == ds.ErrNotFound || string(val) != snippet {
+		if err := m.updateSnippet(txn, id, snippet); err != nil {
+			return err
+		}
 	}
 	return txn.Commit()
 }
@@ -1270,7 +1325,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 	)
 
 	if details != nil || relations != nil {
-		exInfo, err := getObjectInfo(txn, id)
+		exInfo, err := m.getObjectInfo(txn, id)
 		if err != nil {
 			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
 		}
@@ -1304,39 +1359,80 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 	return nil
 }
 
-func (m *dsObjectStore) InjectObjectDetails(id string, details *types.Struct) error {
-	if details == nil {
-		return nil
-	}
-
+func (m *dsObjectStore) InjectObjectDetails(id string, details *types.Struct) (mergedDetails *types.Struct, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	mergedDetails, err = m.injectObjectDetails(txn, id, details)
+	if err != nil {
+		return mergedDetails, err
+	}
+
+	err = txn.Commit()
+	if err != nil {
+		return mergedDetails, err
+	}
+
+	return mergedDetails, nil
+}
+
+func (m *dsObjectStore) injectObjectDetails(txn ds.Txn, id string, details *types.Struct) (mergedDetails *types.Struct, err error) {
+	detailsBefore, err := getObjectDetails(txn, id)
+	if err != nil {
+		return nil, err
+	}
+
+	if details == nil {
+		return detailsBefore.GetDetails(), nil
+	}
+
+	mergedDetails = pbtypes.CopyStruct(detailsBefore.GetDetails())
+	for k, v := range details.Fields {
+		mergedDetails.Fields[k] = v
+	}
+
+	err = m.updateDetails(txn, id, detailsBefore, &model.ObjectDetails{Details: mergedDetails})
+	if err != nil {
+		return mergedDetails, err
+	}
+
+	return mergedDetails, nil
+}
+
+// GetLastIndexedHeadsHash return empty hash without error if record was not found
+func (m *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return "", fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if val, err := txn.Get(indexedHeadsState.ChildString(id)); err != nil && err != ds.ErrNotFound {
+		return "", fmt.Errorf("failed to get heads hash: %w", err)
+	} else if val == nil {
+		return "", nil
+	} else {
+		return string(val), nil
+	}
+}
+
+func (m *dsObjectStore) SaveLastIndexedHeadsHash(id string, headsHash string) (err error) {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	detailsBefore, err := getObjectDetails(txn, id)
-	if err != nil {
-		return err
+	if err := txn.Put(indexedHeadsState.ChildString(id), []byte(headsHash)); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
 	}
 
-	result := pbtypes.CopyStruct(detailsBefore.GetDetails())
-	for k, v := range details.Fields {
-		result.Fields[k] = v
-	}
-
-	err = m.updateDetails(txn, id, detailsBefore, &model.ObjectDetails{Details: result})
-	if err != nil {
-		return err
-	}
-	err = txn.Commit()
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetChecksums() (checksums *model.ObjectStoreChecksums, err error) {
@@ -1375,54 +1471,33 @@ func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) updateArchive(txn ds.Txn, id string, links []string) error {
-	exLinks, _ := findOutboundLinks(txn, id)
+func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.RelationKey, exLinks, links []string) error {
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
-	getCurrentDetails := func(id string) (*types.Struct, error) {
-		det, err := getObjectDetails(txn, id)
-		if err != nil {
-			return nil, err
-		}
-		if det == nil || det.Details == nil || det.Details.Fields == nil {
-			return &types.Struct{
-				Fields: map[string]*types.Value{},
-			}, nil
-		}
 
-		return det.Details, nil
-	}
-
-	setArchived := func(id string, val bool) error {
-		det, err := getCurrentDetails(id)
-		if err != nil {
-			return fmt.Errorf("failed to get current details: %s", err.Error())
-		}
-		newDet := pbtypes.CopyStruct(det)
-		newDet.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(val)
-
-		err = m.updateDetails(txn, id, &model.ObjectDetails{det}, &model.ObjectDetails{newDet})
+	setDetail := func(id string, val bool) error {
+		merged, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{key.String(): pbtypes.Bool(val)}})
 		if err != nil {
 			return err
 		}
-		
+
 		// inject localDetails into the meta pubsub
-		m.meta.SetLocalDetails(id, newDet)
+		m.meta.SetLocalDetails(id, merged)
 
 		return nil
 	}
 
 	var err error
 	for _, objId := range removedLinks {
-		err = setArchived(objId, false)
+		err = setDetail(objId, false)
 		if err != nil {
-			log.Errorf("setArchived failed: %s", err.Error())
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
 		}
 	}
 
 	for _, objId := range addedLinks {
-		err = setArchived(objId, true)
+		err = setDetail(objId, true)
 		if err != nil {
-			log.Errorf("setArchived failed: %s", err.Error())
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
 		}
 	}
 
@@ -1435,14 +1510,21 @@ func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string)
 		return fmt.Errorf("failed to extract smartblock type: %w", err)
 	}
 
+	exLinks, _ := findOutboundLinks(txn, id)
 	if sbt == smartblock.SmartBlockTypeArchive {
-		// special case for Archive. We don't need to index the outgoing links for the navigation, instead we should use it to set archived flag on objects
-		return m.updateArchive(txn, id, links)
+		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsArchived, exLinks, links)
+		if err != nil {
+			return err
+		}
+	} else if sbt == smartblock.SmartBlockTypeHome {
+		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsFavorite, exLinks, links)
+		if err != nil {
+			return err
+		}
 	}
 
 	var addedLinks, removedLinks []string
 
-	exLinks, _ := findOutboundLinks(txn, id)
 	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
 	if len(addedLinks) > 0 {
 		for _, k := range pageLinkKeys(id, nil, addedLinks) {
@@ -1479,27 +1561,18 @@ func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links
 }
 
 func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *model.Relations) error {
-	sbt, err := smartblock.SmartBlockTypeFromID(id)
-	if err != nil {
-		return fmt.Errorf("failed to extract smartblock type: %w", err)
-	}
-
-	if sbt == smartblock.SmartBlockTypeArchive {
-		return ErrNotAnObject
-	}
-
 	objTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 
 	creatorId := pbtypes.GetString(details, bundle.RelationKeyCreator.String())
 	if relations != nil && relations.Relations != nil {
 		// intentionally do not pass txn, as this tx may be huge
-		if err = m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, creatorId, before.Relations, relations.Relations); err != nil {
+		if err := m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, creatorId, before.Relations, relations.Relations); err != nil {
 			return err
 		}
 	}
 
 	if details != nil {
-		if err = m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
+		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
 	}
@@ -1670,7 +1743,7 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 				if relBefore == nil {
 					updatedOptions = append(updatedOptions, relAfter.SelectDict...)
 				} else {
-					added, updated, _ := pbtypes.RelationSelectDictDiff(relBefore.SelectDict, relAfter.SelectDict)
+					added, updated, _ := pbtypes.RelationSelectDictDiffOmitScope(relBefore.SelectDict, relAfter.SelectDict)
 					updatedOptions = append(updatedOptions, append(added, updated...)...)
 				}
 			}
@@ -1761,7 +1834,7 @@ func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []strin
 				if relBefore == nil {
 					updatedOptions = append(updatedOptions, relAfter.SelectDict...)
 				} else {
-					added, updated, _ := pbtypes.RelationSelectDictDiff(relBefore.SelectDict, relAfter.SelectDict)
+					added, updated, _ := pbtypes.RelationSelectDictDiffOmitScope(relBefore.SelectDict, relAfter.SelectDict)
 					updatedOptions = append(updatedOptions, append(added, updated...)...)
 				}
 			}
@@ -1828,7 +1901,19 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		return nil
 	}
 
-	log.Debugf("updateDetails %s: %s", id, pbtypes.Sprint(newDetails.GetDetails()))
+	for k, v := range newDetails.GetDetails().GetFields() {
+		// todo: remove null cleanup(should be done when receiving from client)
+		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
+				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
+			} else {
+				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
+			}
+		}
+	}
+
+	diff := pbtypes.StructDiff(oldDetails.GetDetails(), newDetails.GetDetails())
+	log.Debugf("updateDetails %s: diff %s", id, pbtypes.Sprint(diff))
 	err = localstore.UpdateIndexesWithTxn(m, txn, oldDetails, newDetails, id)
 	if err != nil {
 		return err
@@ -1889,7 +1974,7 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 }
 
 func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 100)
+	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -1974,6 +2059,12 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	}
 	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
+	for k, v := range details.GetDetails().GetFields() {
+		// todo: remove null cleanup(should be done when receiving from client)
+		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+			delete(details.Details.Fields, k)
+		}
+	}
 	return &details, nil
 }
 
@@ -2035,21 +2126,33 @@ func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
 	return pbtypes.GetStringList(det, bundle.RelationKeyType.String()), nil
 }
 
-func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
+func (m *dsObjectStore) getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
-		return nil, fmt.Errorf("failed to extract smartblock type: %w", err)
+		log.With("thread", id).Errorf("failed to extract smartblock type %s", id)
+		return nil, ErrNotAnObject
 	}
 	if sbt == smartblock.SmartBlockTypeArchive {
 		return nil, ErrNotAnObject
 	}
 
-	details, err := getObjectDetails(txn, id)
-	if err != nil {
-		return nil, err
+	var details *types.Struct
+	if indexDetails, _ := sbt.Indexable(); !indexDetails {
+		if m.sourceService != nil {
+			details, err = m.sourceService.GetDetailsFromIdBasedSource(id)
+			if err != nil {
+				return nil, err
+			}
+		}
+	} else {
+		detailsWrapped, err := getObjectDetails(txn, id)
+		if err != nil {
+			return nil, err
+		}
+		details = detailsWrapped.GetDetails()
 	}
 
-	objectTypes, err := getObjectTypeFromDetails(details.Details)
+	objectTypes, err := getObjectTypeFromDetails(details)
 	if err != nil {
 		return nil, err
 	}
@@ -2075,7 +2178,7 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	return &model.ObjectInfo{
 		Id:              id,
 		ObjectType:      sbt.ToProto(),
-		Details:         details.Details,
+		Details:         details,
 		Relations:       relations,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
@@ -2083,10 +2186,10 @@ func getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
 	}, nil
 }
 
-func getObjectsInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
+func (m *dsObjectStore) getObjectsInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
 	var objects []*model.ObjectInfo
 	for _, id := range ids {
-		info, err := getObjectInfo(txn, id)
+		info, err := m.getObjectInfo(txn, id)
 		if err != nil {
 			if strings.HasSuffix(err.Error(), "key not found") || err == ErrNotAnObject {
 				continue
@@ -2135,6 +2238,26 @@ func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
 	}
 
 	return localstore.GetLeavesFromResults(results)
+}
+
+func removeByPrefix(txn ds.Txn, prefix string) (int, error) {
+	results, err := txn.Query(query.Query{
+		Prefix:   prefix,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+
+	var removed int
+	for res := range results.Next() {
+		err := txn.Delete(ds.NewKey(res.Key))
+		if err != nil {
+			return removed, err
+		}
+		removed++
+	}
+	return removed, nil
 }
 
 func pageLinkKeys(id string, in []string, out []string) []ds.Key {

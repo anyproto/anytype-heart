@@ -50,6 +50,9 @@ type Writer interface {
 	Create(relations []*model.Relation, rec Record, sub Subscription, templateId string) (Record, error)
 
 	Update(id string, relations []*model.Relation, rec Record) error
+	DeleteRelationOption(id string, relKey string, optionId string) error
+
+	ModifyExtraRelations(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error
 	UpdateRelationOption(id string, relKey string, option model.RelationOption) (optionId string, err error)
 
 	Delete(id string) error

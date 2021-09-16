@@ -2,17 +2,17 @@ package source
 
 import (
 	"context"
-
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/google/uuid"
 )
 
 func NewVirtual(a core.Service, t model.SmartBlockType) (s Source) {
 	return &virtual{
-		id:     uuid.New().String(),
+		id:     addr.VirtualPrefix + t.String() + "_" + uuid.New().String(),
 		a:      a,
 		sbType: t,
 	}
@@ -67,4 +67,8 @@ func (v *virtual) ListIds() ([]string, error) {
 
 func (v *virtual) Close() (err error) {
 	return
+}
+
+func (v *virtual) LogHeads() map[string]string {
+	return nil
 }

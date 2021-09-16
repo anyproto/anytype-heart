@@ -6,6 +6,10 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
@@ -21,7 +25,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -85,6 +88,7 @@ type Service interface {
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
+	UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error)
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error)
@@ -142,9 +146,11 @@ type Service interface {
 	Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (pb.RpcBlockUndoRedoCounter, error)
 	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (pb.RpcBlockUndoRedoCounter, error)
 
-	SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) error
 	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
-	DeletePages(req pb.RpcBlockListDeletePageRequest) error
+	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) error
+	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) error
+
+	DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) error
 
 	GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error
@@ -210,7 +216,6 @@ func New() Service {
 
 type service struct {
 	anytype     core.Service
-	meta        meta.Service
 	status      status.Service
 	sendEvent   func(event *pb.Event)
 	closed      bool
@@ -228,7 +233,6 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
-	s.meta = a.MustComponent(meta.CName).(meta.Service)
 	s.status = a.MustComponent(status.CName).(status.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)
@@ -242,6 +246,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Run() (err error) {
 	s.initPredefinedBlocks()
+	s.testArchiveInconsistency() //// TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
 	return
 }
 
@@ -268,6 +273,70 @@ func (s *service) initPredefinedBlocks() {
 	}
 }
 
+// TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
+func (s *service) testArchiveInconsistency() {
+	var (
+		archivedObjects   = make(map[string]bool)
+		archivedObjectsSl []string
+	)
+
+	err := s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		for _, b := range b.Blocks() {
+			if v := b.GetLink(); v != nil {
+				if _, exists := archivedObjects[v.TargetBlockId]; !exists {
+					archivedObjectsSl = append(archivedObjectsSl, v.TargetBlockId)
+					archivedObjects[v.TargetBlockId] = false
+				}
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		log.Errorf("ARCHIVE INCONSISTENCY: failed to open archive sb")
+		return
+	}
+
+	archiveLinks, err := s.anytype.ObjectStore().GetOutboundLinksById(s.anytype.PredefinedBlocks().Archive)
+	if err != nil {
+		log.Errorf("ARCHIVE INCONSISTENCY: failed to get archive outbound links from localstore")
+	}
+
+	removed, added := slice.DifferenceRemovedAdded(archivedObjectsSl, archiveLinks)
+	if len(added)+len(removed) > 0 {
+		log.Debugf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
+	}
+	records, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
+		IncludeArchivedObjects: true,
+	})
+	if err != nil {
+		log.Errorf("ARCHIVE INCONSISTENCY: failed to query objectstore")
+		return
+	}
+
+	for _, rec := range records {
+		id := pbtypes.GetString(rec.Details, "id")
+		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsArchived.String()) {
+			if _, exists := archivedObjects[id]; !exists {
+				log.Errorf("ARCHIVE INCONSISTENCY: object %s should not have archived flag", id)
+			} else {
+				archivedObjects[id] = true
+			}
+		} else {
+			if _, exists := archivedObjects[id]; exists {
+				log.Errorf("ARCHIVE INCONSISTENCY: object %s should have archived flag", id)
+				archivedObjects[id] = true
+			}
+		}
+	}
+
+	for id, proceed := range archivedObjects {
+		if !proceed {
+			// this may be ok in case of recovery, so keep it debug
+			log.Debugf("ARCHIVE INCONSISTENCY: object %s not found in objectsearch", id)
+		}
+	}
+}
+
 func (s *service) Anytype() core.Service {
 	return s.anytype
 }
@@ -286,7 +355,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 
 	st := ob.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
-	if err = ob.Apply(st); err != nil {
+	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
 
@@ -318,7 +387,7 @@ func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
 }
 
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
-	bs := editor.NewBreadcrumbs(s.meta)
+	bs := editor.NewBreadcrumbs()
 	if err = bs.Init(&smartblock.InitContext{
 		App:    s.app,
 		Doc:    s.doc,
@@ -331,6 +400,11 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 	bs.SetEventFunc(s.sendEvent)
 	ob := newOpenedBlock(bs)
 	s.cache.Add(bs.Id(), ob)
+
+	// workaround to increase ref counter
+	if _, err = s.cache.Get(context.Background(), bs.Id()); err != nil {
+		return
+	}
 	if err = bs.Show(ctx); err != nil {
 		return
 	}
@@ -360,9 +434,10 @@ func (s *service) CloseBlocks() {
 	})
 }
 
+// SetPagesIsArchived is deprecated
 func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(*editor.Archive)
+		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
@@ -370,9 +445,9 @@ func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest
 		anySucceed := false
 		for _, blockId := range req.BlockIds {
 			if req.IsArchived {
-				err = archive.Archive(blockId)
+				err = archive.AddObject(blockId)
 			} else {
-				err = archive.UnArchive(blockId)
+				err = archive.RemoveObject(blockId)
 			}
 			if err != nil {
 				log.Errorf("failed to archive %s: %s", blockId, err.Error())
@@ -389,34 +464,42 @@ func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest
 	})
 }
 
-func (s *service) SetPageIsArchived(req pb.RpcBlockSetPageIsArchivedRequest) (err error) {
-	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(*editor.Archive)
+func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
+	return s.Do(collectionId, func(b smartblock.SmartBlock) error {
+		coll, ok := b.(collection.Collection)
 		if !ok {
-			return fmt.Errorf("unexpected archive block type: %T", b)
+			return fmt.Errorf("unsupported sb block type: %T", b)
 		}
-		if req.IsArchived {
-			return archive.Archive(req.BlockId)
+		if value {
+			return coll.AddObject(objectId)
 		} else {
-			return archive.UnArchive(req.BlockId)
+			return coll.RemoveObject(objectId)
 		}
 	})
 }
 
-func (s *service) DeletePages(req pb.RpcBlockListDeletePageRequest) (err error) {
+func (s *service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err error) {
+	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Home, req.ContextId, req.IsFavorite)
+}
+
+func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
+	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
+}
+
+func (s *service) DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
-		archive, ok := b.(*editor.Archive)
+		archive, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unexpected archive block type: %T", b)
 		}
 
 		anySucceed := false
 		for _, blockId := range req.BlockIds {
-			err = archive.Delete(blockId)
-			if err != nil {
-				log.Errorf("failed to delete page %s: %s", blockId, err.Error())
-			} else {
-				anySucceed = true
+			if exists, _ := archive.HasObject(blockId); exists {
+				if err = s.deleteObject(blockId); err == nil {
+					archive.RemoveObject(blockId)
+					anySucceed = true
+				}
 			}
 		}
 
@@ -428,7 +511,27 @@ func (s *service) DeletePages(req pb.RpcBlockListDeletePageRequest) (err error) 
 	})
 }
 
-func (s *service) DeletePage(id string) (err error) {
+func (s *service) DeleteArchivedObject(id string) (err error) {
+	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
+		archive, ok := b.(collection.Collection)
+		if !ok {
+			return fmt.Errorf("unexpected archive block type: %T", b)
+		}
+
+		if exists, _ := archive.HasObject(id); exists {
+			if err = s.deleteObject(id); err == nil {
+				err = archive.RemoveObject(id)
+				if err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
+	})
+}
+
+func (s *service) deleteObject(id string) (err error) {
 	err = s.CloseBlock(id)
 	if err != nil && err != ErrBlockNotFound {
 		return err
@@ -546,6 +649,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 						Style:         model.BlockContentLink_Page,
 					},
 				},
+				Fields: req.Fields,
 			},
 			Position: req.Position,
 		})
@@ -590,34 +694,36 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		return
 	}
 	switch sc.Type() {
-	case model.SmartBlockType_Page:
-		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
-	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard(s.meta, s)
+	case model.SmartBlockType_Page, model.SmartBlockType_Date:
+		sb = editor.NewPage(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Archive:
-		sb = editor.NewArchive(s.meta, s)
+		sb = editor.NewArchive()
+	case model.SmartBlockType_Home:
+		sb = editor.NewDashboard(s)
 	case model.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta, s)
+		sb = editor.NewSet(s)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
-		sb = editor.NewObjectType(s.meta, s)
+		sb = editor.NewObjectType(s)
 	case model.SmartBlockType_BundledRelation,
 		model.SmartBlockType_IndexedRelation:
-		sb = editor.NewRelation(s.meta, s)
+		sb = editor.NewRelation(s)
 	case model.SmartBlockType_File:
-		sb = editor.NewFiles(s.meta)
+		sb = editor.NewFiles()
 	case model.SmartBlockType_MarketplaceType:
-		sb = editor.NewMarketplaceType(s.meta, s)
+		sb = editor.NewMarketplaceType(s)
 	case model.SmartBlockType_MarketplaceRelation:
-		sb = editor.NewMarketplaceRelation(s.meta, s)
+		sb = editor.NewMarketplaceRelation(s)
 	case model.SmartBlockType_MarketplaceTemplate:
-		sb = editor.NewMarketplaceTemplate(s.meta, s)
+		sb = editor.NewMarketplaceTemplate(s)
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.linkPreview)
+	case model.SmartBlockType_Breadcrumbs:
+		sb = editor.NewBreadcrumbs()
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -653,6 +759,20 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 }
 
 func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
+	sb, release, err := s.pickBlock(id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(basic.Basic); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("basic operation not available for this block type: %T", sb)
+}
+
+func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {
 	sb, release, err := s.pickBlock(id)
 	if err != nil {
 		return err
@@ -896,5 +1016,13 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 	if err != nil {
 		return
 	}
-	return val.(*openedBlock), nil
+	ob = val.(*openedBlock)
+	ob.Lock()
+	// we should avoid this to be done in getSmartblock after metaSub refactor
+	err = ob.RefreshLocalDetails(nil)
+	ob.Unlock()
+	if err != nil {
+		return nil, err
+	}
+	return ob, nil
 }

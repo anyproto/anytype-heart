@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -42,13 +41,11 @@ type BlockService interface {
 type history struct {
 	a    core.Service
 	bs   BlockService
-	meta meta.Service
 }
 
 func (h *history) Init(a *app.App) (err error) {
 	h.a = a.MustComponent(core.CName).(core.Service)
 	h.bs = a.MustComponent(block.CName).(BlockService)
-	h.meta = a.MustComponent(meta.CName).(meta.Service)
 	return
 }
 
@@ -62,7 +59,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 		return
 	}
 
-	metaD := h.meta.FetchMeta(s.DepSmartIds())
+	metaD := h.FetchMeta(s.DepSmartIds())
 	details := make([]*pb.EventObjectDetailsSet, 0, len(metaD))
 	var uniqueObjTypes []string
 	sbType, err := smartblock.SmartBlockTypeFromID(pageId)

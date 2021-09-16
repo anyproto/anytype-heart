@@ -331,6 +331,14 @@ func TestState_Normalize(t *testing.T) {
 		assert.Equal(t, int32(1), pbtypes.GetRelation(s.ExtraRelations(), "a1").MaxCount)
 	})
 
+	t.Run("normalize relation: bundled relations should be normalized", func(t *testing.T) {
+		creator := "_anytype_profile"
+		for _, rel := range bundle.ListRelations() {
+			_, wasNormalized := normalizeRelation(rel, creator)
+			require.False(t, wasNormalized, "bundled relation %s is not normalized", rel.Key)
+		}
+	})
+
 	t.Run("normalize relation: revert bundle relation", func(t *testing.T) {
 		r := NewDoc("root", nil).(*State)
 		r1 := bundle.MustGetRelation(bundle.RelationKeyDone)
@@ -388,6 +396,26 @@ func TestState_Normalize(t *testing.T) {
 		ApplyState(s, true)
 
 		assert.Equal(t, "Done", pbtypes.GetRelation(r.Pick("dataview").Model().GetDataview().Relations, bundle.RelationKeyDone.String()).Name)
+	})
+
+	t.Run("normalize dv: remove duplicate relations", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		r1 := &model.Relation{Name: "rel1", Key: "123", Format: model.RelationFormat_longtext}
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"dataview"}}))
+
+		r.Add(simple.New(&model.Block{
+			Id: "dataview",
+			Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{
+				Relations: []*model.Relation{pbtypes.CopyRelation(r1), pbtypes.CopyRelation(r1), pbtypes.CopyRelation(r1)},
+			}},
+		}))
+
+		s := r.NewState()
+		d := s.Pick("dataview")
+		s.normalizeDvRelations(d)
+		ApplyState(s, true)
+
+		assert.Len(t, r.Pick("dataview").Model().GetDataview().Relations, 1)
 	})
 
 }

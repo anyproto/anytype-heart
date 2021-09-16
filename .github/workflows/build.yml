@@ -37,7 +37,7 @@ jobs:
           export GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
           export DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
           export GIT_BRANCH=$(git branch --show-current)
-          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           echo SDKROOT=$(xcrun --sdk macosx --show-sdk-path) >> $GITHUB_ENV
       - name: install protoc
@@ -143,7 +143,7 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile ios lib
         run: |
-          gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+          gomobile bind -tags "nogrpcserver gomobile" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
           sudo /usr/sbin/purge
           gtar -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf
           mv ios_framework_${VERSION}.tar.gz .release/
@@ -158,7 +158,7 @@ jobs:
           cp pkg/lib/pb/model/protos/*.proto ./protobuf/protos
       - name: Compile android lib
         run: |
-          gomobile bind -tags nogrpcserver -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+          gomobile bind -tags "nogrpcserver gomobile" -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
           sudo /usr/sbin/purge
           gtar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
           mv android_lib_${VERSION}.tar.gz .release/
@@ -187,7 +187,7 @@ jobs:
           export GIT_SUMMARY=$(git describe --tags --dirty --always) >> $GITHUB_ENV
           export DATE=$(date -u +"%Y-%m-%dT%H:%M:%SZ") >> $GITHUB_ENV
           export GIT_BRANCH=$(git branch --show-current)
-          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/core.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/core.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/core.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/core.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/core.GitState=clean" >> $GITHUB_ENV
+          echo "FLAGS=-X github.com/anytypeio/go-anytype-middleware/app.GitSummary=${GIT_SUMMARY} -X github.com/anytypeio/go-anytype-middleware/app.BuildDate=${DATE} -X github.com/anytypeio/go-anytype-middleware/app.GitCommit=${COMMIT} -X github.com/anytypeio/go-anytype-middleware/app.GitBranch=${GIT_BRANCH} -X github.com/anytypeio/go-anytype-middleware/app.GitState=clean" >> $GITHUB_ENV
           echo VERSION=${GITHUB_REF##*/} >> $GITHUB_ENV
           mkdir protobuf
       - name: Cache dependencies
@@ -219,7 +219,7 @@ jobs:
           tar -czvf js_${VERSION}_linux-amd64.tar.gz protobuf addon
           mv js_${VERSION}_linux-amd64.tar.gz .release/
       - name: Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
         if: startsWith(github.ref, 'refs/tags/')
         with:
           prerelease: ${{ contains(github.ref, '-rc') }}

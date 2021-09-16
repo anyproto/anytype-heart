@@ -10,7 +10,7 @@
   },
   {
     "description": "Strict dictionary to select relation values from",
-    "format": "status",
+    "format": "tag",
     "hidden": false,
     "key": "relationDict",
     "maxCount": 0,
@@ -77,12 +77,13 @@
     "source": "account"
   },
   {
+    "description": "Types that used for such relation",
     "format": "object",
-    "hidden": false,
+    "hidden": true,
     "key": "relationFormatObjectTypes",
     "maxCount": 0,
     "name": "Object type",
-    "readonly": false,
+    "readonly": true,
     "source": "details"
   },
   {
@@ -160,6 +161,17 @@
     "source": "details"
   },
   {
+    "description": "The artist that performed this album or recording",
+    "format": "shorttext",
+    "hidden": false,
+    "key": "audioArtist",
+    "maxCount": 1,
+    "name": "Artist",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "List of related tasks\n",
     "format": "object",
     "hidden": false,
     "key": "tasks",
@@ -876,6 +888,16 @@
     "source": "details"
   },
   {
+    "description": "Adds the object to the home fashboard",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isFavorite",
+    "maxCount": 1,
+    "name": "Favorited",
+    "readonly": false,
+    "source": "account"
+  },
+  {
     "format": "object",
     "hidden": false,
     "key": "stars",
@@ -979,6 +1001,16 @@
     "key": "number",
     "maxCount": 1,
     "name": "Number",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "The text lyrics of the music record",
+    "format": "longtext",
+    "hidden": false,
+    "key": "audioLyrics",
+    "maxCount": 1,
+    "name": "Lyrics",
     "readonly": false,
     "source": "details"
   },

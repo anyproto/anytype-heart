@@ -104,3 +104,7 @@ func (v *bundledRelation) ListIds() ([]string, error) {
 func (v *bundledRelation) Close() (err error) {
 	return
 }
+
+func (v *bundledRelation) LogHeads() map[string]string {
+	return nil
+}

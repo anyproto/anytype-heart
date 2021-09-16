@@ -1,9 +1,11 @@
 package change
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
+	"runtime"
 	"sort"
 	"time"
 
@@ -47,6 +49,7 @@ type stateBuilder struct {
 	onlyMeta        bool
 	beforeId        string
 	includeBeforeId bool
+	duplicateEvents int
 }
 
 func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
@@ -60,6 +63,11 @@ func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
 	if err != nil {
 		return fmt.Errorf("getActualHeads error: %v", err)
 	}
+	if sb.duplicateEvents > 0 {
+		log.With("thread", sb.smartblock.ID()).Errorf("found %d duplicate events after actualHeads", sb.duplicateEvents)
+		sb.duplicateEvents = 0
+	}
+
 	breakpoint, err := sb.findBreakpoint(heads)
 	if err != nil {
 		return fmt.Errorf("findBreakpoint error: %v", err)
@@ -142,6 +150,10 @@ func (sb *stateBuilder) buildTree(heads []string, breakpoint string) (err error)
 		changes = filteredChanges
 	}
 	sb.tree.AddFast(changes...)
+	if sb.duplicateEvents > 0 {
+		log.With("thread", sb.smartblock.ID()).Errorf("found %d duplicate events", sb.duplicateEvents)
+	}
+	sb.tree.duplicateEvents = sb.duplicateEvents
 	return
 }
 
@@ -372,6 +384,28 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		Account: sr.AccountID,
 		Device:  sr.LogID,
 		Change:  chp,
+	}
+
+	// filter blockUpdate duplicate events
+	for _, c := range ch.Content {
+		if bu := c.GetBlockUpdate(); bu != nil {
+			var prev []byte
+			var filtered = bu.Events[:0]
+			for i, bue := range bu.Events {
+				curr, _ := bue.Marshal()
+				if bytes.Equal(prev, curr) {
+					bu.Events[i] = nil
+					continue
+				}
+				prev = curr
+				filtered = append(filtered, bue)
+			}
+			if len(filtered) != len(bu.Events) {
+				sb.duplicateEvents += len(bu.Events)-len(filtered)
+				bu.Events = filtered
+				runtime.GC()
+			}
+		}
 	}
 
 	if sb.onlyMeta {

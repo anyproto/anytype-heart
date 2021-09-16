@@ -1,6 +1,7 @@
 package state
 
 import (
+	"bytes"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -315,9 +316,19 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
 	var delIds []string
 	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
-	for _, msg := range msgs {
+	var b1, b2 []byte
+	for i, msg := range msgs {
 		if msg.Virtual {
 			continue
+		}
+		if i > 0 {
+			if msg.Msg.Size() == msgs[i-1].Msg.Size() {
+				b1, _ = msg.Msg.Marshal()
+				b2, _ = msgs[i-1].Msg.Marshal()
+				if bytes.Equal(b1, b2) {
+					log.With("thread", s.rootId).Errorf("duplicate change: " + pbtypes.Sprint(msg.Msg))
+				}
+			}
 		}
 		switch o := msg.Msg.Value.(type) {
 		case *pb.EventMessageValueOfBlockSetChildrenIds:
@@ -339,6 +350,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockSetLink:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetRelation:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockSetLatex:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDelete:
 			delIds = append(delIds, o.BlockDelete.BlockIds...)
@@ -533,12 +546,15 @@ func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.Ch
 		})
 	}
 
-	if !pbtypes.RelationSelectDictEqual(prev.SelectDict, new.SelectDict) {
-		// todo: CRDT SelectDict patches
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: new.SelectDict}},
-		})
+	if new.Format == model.RelationFormat_tag || new.Format == model.RelationFormat_status {
+		newDict := pbtypes.RelationOptionsFilterScope(new.SelectDict, model.RelationOption_local)
+		if !pbtypes.RelationSelectDictEqual(pbtypes.RelationOptionsFilterScope(prev.SelectDict, model.RelationOption_local), newDict) {
+			// todo: CRDT SelectDict patches
+			updates = append(updates, &pb.ChangeRelationUpdate{
+				Key:   prev.Key,
+				Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: newDict}},
+			})
+		}
 	}
 
 	return updates, nil
@@ -557,6 +573,15 @@ func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
 	var curMap = pbtypes.CopyRelationsToMap(s.extraRelations)
 
 	for _, v := range s.extraRelations {
+		var rel *model.Relation
+		if v.Format == model.RelationFormat_tag || v.Format == model.RelationFormat_status {
+			rel = pbtypes.CopyRelation(v)
+			// filter-out non-local scope options which we can have in the state to receive events
+			rel.SelectDict = pbtypes.RelationOptionsFilterScope(rel.SelectDict, model.RelationOption_local)
+		} else {
+			rel = v
+		}
+
 		pv, ok := prevMap[v.Key]
 		if !ok {
 			ch = append(ch, &pb.ChangeContent{

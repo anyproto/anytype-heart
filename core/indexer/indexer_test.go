@@ -39,7 +39,6 @@ func TestNewIndexer(t *testing.T) {
 }
 
 func newFixture(t *testing.T) *fixture {
-
 	ta := testapp.New()
 	rb := recordsbatcher.New()
 
@@ -54,6 +53,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.docService.EXPECT().Name().AnyTimes().Return(doc.CName)
 	fx.docService.EXPECT().Init(gomock.Any())
 	fx.docService.EXPECT().Run()
+	fx.anytype.EXPECT().PredefinedBlocks().Times(2)
 	fx.docService.EXPECT().Close().AnyTimes()
 	fx.objectStore = testMock.RegisterMockObjectStore(fx.ctrl, ta)
 
@@ -76,6 +76,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
+	fx.objectStore.EXPECT().UpdateObjectLinks(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().CreateObject(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil).AnyTimes()
 	fx.anytype.EXPECT().ObjectStore().Return(fx.objectStore).AnyTimes()
 	fx.objectStore.EXPECT().SaveChecksums(&model.ObjectStoreChecksums{

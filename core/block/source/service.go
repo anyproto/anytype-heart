@@ -2,6 +2,7 @@ package source
 
 import (
 	"fmt"
+	"github.com/gogo/protobuf/types"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -24,6 +25,7 @@ type Service interface {
 	NewSource(id string, listenToOwnChanges bool) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
 	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State) SourceWithType
+	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
 }
@@ -48,30 +50,29 @@ func (s *service) Name() (name string) {
 }
 
 func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, err error) {
-	st, err := smartblock.SmartBlockTypeFromID(id)
-
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(s.anytype, id), nil
 	}
 
-	if st == smartblock.SmartBlockTypeFile {
+	st, err := smartblock.SmartBlockTypeFromID(id)
+	switch st {
+	case smartblock.SmartBlockTypeFile:
 		return NewFiles(s.anytype, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledObjectType {
+	case smartblock.SmartBlockTypeDate:
+		return NewDate(s.anytype, id), nil
+	case smartblock.SmartBlockTypeBundledObjectType:
 		return NewBundledObjectType(s.anytype, id), nil
-	}
-
-	if st == smartblock.SmartBlockTypeBundledRelation {
+	case smartblock.SmartBlockTypeBundledRelation:
 		return NewBundledRelation(s.anytype, id), nil
-	}
-	if st == smartblock.SmartBlockTypeIndexedRelation {
+	case smartblock.SmartBlockTypeIndexedRelation:
 		return NewIndexedRelation(s.anytype, id), nil
+	case smartblock.SmartBlockTypeBreadcrumbs:
+		return NewVirtual(s.anytype, st.ToProto()), nil
 	}
 
 	tid, err := thread.Decode(id)
 	if err != nil {
-		err = fmt.Errorf("can't restore thread ID: %w", err)
+		err = fmt.Errorf("can't restore thread ID %s: %w", id, err)
 		return
 	}
 	s.mu.Lock()
@@ -80,6 +81,19 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return newStatic(), nil
 	}
 	return newSource(s.anytype, s.statusService, tid, listenToOwnChanges)
+}
+
+func (s *service) GetDetailsFromIdBasedSource(id string) (*types.Struct, error) {
+	ss, err := s.NewSource(id, false)
+	if err != nil {
+		return nil, err
+	}
+	defer ss.Close()
+	if v, ok := ss.(SourceIdEndodedDetails); ok {
+		return v.DetailsFromId()
+	}
+	_ = ss.Close()
+	return nil, fmt.Errorf("id unsupported")
 }
 
 func (s *service) RegisterStaticSource(id string, new func() Source) {

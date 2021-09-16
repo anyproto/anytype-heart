@@ -257,7 +257,12 @@ func (block *smartBlock) PushRecord(payload proto.Marshaler) (id string, err err
 		return "", err
 	}
 
-	rec, err := block.node.threadService.Threads().CreateRecord(context.TODO(), block.thread.ID, body)
+	pk, err := block.node.wallet.GetDevicePrivkey()
+	if err != nil {
+		return "", err
+	}
+
+	rec, err := block.node.threadService.Threads().CreateRecord(context.TODO(), block.thread.ID, body, net.WithLogPrivateKey(pk))
 	if err != nil {
 		log.Errorf("failed to create record: %w", err)
 		return "", err
@@ -278,6 +283,9 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 	}
 
 	go func() {
+		block.node.lock.Lock()
+		shutdownCh := block.node.shutdownStartsCh
+		block.node.lock.Unlock()
 		defer close(ch)
 		for {
 			select {
@@ -301,13 +309,13 @@ func (block *smartBlock) SubscribeForRecords(ch chan SmartblockRecordEnvelope) (
 				case <-ctx.Done():
 					// no need to cancel, continue to read the rest msgs from the channel
 					continue
-				case <-block.node.shutdownStartsCh:
+				case <-shutdownCh:
 					// cancel first, then we should read ok == false from the threadsCh
 					cancel()
 				}
 			case <-ctx.Done():
 				continue
-			case <-block.node.shutdownStartsCh:
+			case <-shutdownCh:
 				cancel()
 			}
 		}

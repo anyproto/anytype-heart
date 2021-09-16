@@ -9,7 +9,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/ipfs/go-cid"
 	format "github.com/ipfs/go-ipld-format"
@@ -123,14 +122,14 @@ func (s *service) addMissingThreadsToCollection() error {
 		return err
 	}
 
+	accountId, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
+	if err != nil {
+		return err
+	}
+
 	var missingThreads int
 	for _, threadId := range threadsIds {
-		t, err := smartblock.SmartBlockTypeFromThreadID(threadId)
-		if err != nil {
-			log.Errorf("smartblock has incorrect id(%s), failed to decode type: %v", threadId.String(), err)
-		}
-
-		if t != smartblock.SmartBlockTypePage {
+		if threadId.Equals(accountId) {
 			continue
 		}
 
@@ -174,7 +173,7 @@ func (s *service) handleAllMissingDbRecords(threadId string) error {
 	}
 
 	for _, logInfo := range thrd.Logs {
-		log.Debugf("traversing %s log from head %s", logInfo.ID, logInfo.Head)
+		log.Debugf("traversing %s log from head %s(%d)", logInfo.ID, logInfo.Head.ID, logInfo.Head.Counter)
 		handleAllRecordsInLog(s.db, s.t, thrd, logInfo)
 	}
 	return nil

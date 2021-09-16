@@ -4,12 +4,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
-	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
+	"github.com/anytypeio/go-anytype-middleware/core/block/export"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/history"
@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
@@ -53,6 +54,8 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 	if err = a.Start(); err != nil {
 		return
 	}
+	metrics.SharedClient.SetAppVersion(a.Version())
+	metrics.SharedClient.StartAggregating()
 	return a, nil
 }
 
@@ -71,6 +74,8 @@ func StartNewApp(components ...app.Component) (a *app.App, err error) {
 	if err = a.Start(); err != nil {
 		return
 	}
+	metrics.SharedClient.SetAppVersion(a.Version())
+	metrics.SharedClient.StartAggregating()
 	return
 }
 
@@ -86,6 +91,8 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(ipfslite.New()).
 		Register(files.New()).
 		Register(cafe.New()).
+		Register(configfetcher.New()).
+		Register(process.New()).
 		Register(threads.New()).
 		Register(source.New()).
 		Register(core.New()).
@@ -93,9 +100,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pin.New()).
 		Register(status.New()).
 		Register(indexer.New()).
-		Register(meta.New()).
 		Register(block.New()).
-		Register(process.New()).
 		Register(history.New()).
 		Register(gateway.New()).
 		Register(export.New()).

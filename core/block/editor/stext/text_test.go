@@ -5,16 +5,12 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
-	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -360,7 +356,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 				},
 			}))
 		tb := NewText(sb)
-
+		/*
 		ms.EXPECT().FetchMeta([]string{"targetId"}).Return([]meta.Meta{
 			{
 				BlockId: "targetId",
@@ -372,7 +368,7 @@ func TestTextImpl_TurnInto(t *testing.T) {
 					},
 				},
 			},
-		})
+		})*/
 
 		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Paragraph, "2"))
 		secondBlockId := sb.Doc.Pick("test").Model().ChildrenIds[1]

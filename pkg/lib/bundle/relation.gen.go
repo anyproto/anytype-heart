@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "5e05ebd83863c0b1936ea7fc480c06e0877974e1aae7b3e61249e23209c8184a"
+const RelationChecksum = "011738d4891586946307035e3f05a70c1a4685237d6aa08b7694d2ba491f5a60"
 
 type RelationKey string
 
@@ -31,6 +31,7 @@ const (
 	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
 	RelationKeyThumbnailImage            RelationKey = "thumbnailImage"
 	RelationKeyAttachments               RelationKey = "attachments"
+	RelationKeyAudioArtist               RelationKey = "audioArtist"
 	RelationKeyTasks                     RelationKey = "tasks"
 	RelationKeyHypothesisAssumptions     RelationKey = "hypothesisAssumptions"
 	RelationKeyGratefulFor               RelationKey = "gratefulFor"
@@ -106,6 +107,7 @@ const (
 	RelationKeyExposure                  RelationKey = "exposure"
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
+	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -117,6 +119,7 @@ const (
 	RelationKeyMood                      RelationKey = "mood"
 	RelationKeyAgenda                    RelationKey = "agenda"
 	RelationKeyNumber                    RelationKey = "number"
+	RelationKeyAudioLyrics               RelationKey = "audioLyrics"
 	RelationKeyInstagram                 RelationKey = "instagram"
 	RelationKeyClassType                 RelationKey = "classType"
 	RelationKeyHowToReproduce            RelationKey = "howToReproduce"
@@ -311,6 +314,18 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyAudioArtist: {
+
+			DataSource:       model.Relation_details,
+			Description:      "The artist that performed this album or recording",
+			Format:           model.RelationFormat_shorttext,
+			Key:              "audioArtist",
+			MaxCount:         1,
+			Name:             "Artist",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyAudioGenre: {
 
 			DataSource:       model.Relation_details,
@@ -319,6 +334,18 @@ var (
 			Key:              "audioGenre",
 			MaxCount:         1,
 			Name:             "Genre",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyAudioLyrics: {
+
+			DataSource:       model.Relation_details,
+			Description:      "The text lyrics of the music record",
+			Format:           model.RelationFormat_longtext,
+			Key:              "audioLyrics",
+			MaxCount:         1,
+			Name:             "Lyrics",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -999,6 +1026,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIsFavorite: {
+
+			DataSource:       model.Relation_account,
+			Description:      "Adds the object to the home fashboard",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isFavorite",
+			MaxCount:         1,
+			Name:             "Favorited",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIsHidden: {
 
 			DataSource:       model.Relation_details,
@@ -1463,7 +1503,7 @@ var (
 
 			DataSource:       model.Relation_details,
 			Description:      "Strict dictionary to select relation values from",
-			Format:           model.RelationFormat_status,
+			Format:           model.RelationFormat_tag,
 			Key:              "relationDict",
 			Name:             "Dictionary",
 			ReadOnly:         false,
@@ -1486,11 +1526,12 @@ var (
 		RelationKeyRelationFormatObjectTypes: {
 
 			DataSource:       model.Relation_details,
-			Description:      "",
+			Description:      "Types that used for such relation",
 			Format:           model.RelationFormat_object,
+			Hidden:           true,
 			Key:              "relationFormatObjectTypes",
 			Name:             "Object type",
-			ReadOnly:         false,
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1770,7 +1811,7 @@ var (
 		RelationKeyTasks: {
 
 			DataSource:       model.Relation_details,
-			Description:      "",
+			Description:      "List of related tasks\n",
 			Format:           model.RelationFormat_object,
 			Key:              "tasks",
 			Name:             "Tasks",
