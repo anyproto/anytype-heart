@@ -15,9 +15,6 @@ func (mw *Middleware) WorkspaceCreate(req *pb.RpcWorkspaceCreateRequest) *pb.Rpc
 		return m
 	}
 
-	mw.m.Lock()
-	defer mw.m.Unlock()
-
 	var workspaceId string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
 		workspaceId, err = bs.CreateWorkspace(req)
