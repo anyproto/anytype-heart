@@ -603,6 +603,15 @@
     - [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request)
     - [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response)
     - [Rpc.Wallet.Recover.Response.Error](#anytype.Rpc.Wallet.Recover.Response.Error)
+    - [Rpc.Workspace](#anytype.Rpc.Workspace)
+    - [Rpc.Workspace.Create](#anytype.Rpc.Workspace.Create)
+    - [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request)
+    - [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response)
+    - [Rpc.Workspace.Create.Response.Error](#anytype.Rpc.Workspace.Create.Response.Error)
+    - [Rpc.Workspace.Select](#anytype.Rpc.Workspace.Select)
+    - [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request)
+    - [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response)
+    - [Rpc.Workspace.Select.Response.Error](#anytype.Rpc.Workspace.Select.Response.Error)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
@@ -740,6 +749,8 @@
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
+    - [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code)
+    - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
   
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
@@ -9793,6 +9804,124 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+
+<a name="anytype.Rpc.Workspace"></a>
+
+### Rpc.Workspace
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create"></a>
+
+### Rpc.Workspace.Create
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create.Request"></a>
+
+### Rpc.Workspace.Create.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create.Response"></a>
+
+### Rpc.Workspace.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Create.Response.Error](#anytype.Rpc.Workspace.Create.Response.Error) |  |  |
+| workspaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create.Response.Error"></a>
+
+### Rpc.Workspace.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select"></a>
+
+### Rpc.Workspace.Select
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Request"></a>
+
+### Rpc.Workspace.Select.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| workspaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Response"></a>
+
+### Rpc.Workspace.Select.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Select.Response.Error](#anytype.Rpc.Workspace.Select.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Response.Error"></a>
+
+### Rpc.Workspace.Select.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
  
 
 
@@ -11626,6 +11755,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 | Any other errors |
 | BAD_INPUT | 2 | Root path or mnemonic is wrong |
 | FAILED_TO_CREATE_LOCAL_REPO | 101 |  |
+
+
+
+<a name="anytype.Rpc.Workspace.Create.Response.Error.Code"></a>
+
+### Rpc.Workspace.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Response.Error.Code"></a>
+
+### Rpc.Workspace.Select.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
 
 
  
