@@ -101,7 +101,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 
 	accountNotifier := NewAccountNotifier(s.simultaneousRequests)
 	processor := NewThreadProcessor(s, accountNotifier)
-	s.threadProcessors = append(s.threadProcessors, processor)
+	s.threadProcessors[account.ID] = processor
 	err = processor.Init(account.ID)
 	if err != nil {
 		return ids, fmt.Errorf("threadsDbInit failed: %w", err)

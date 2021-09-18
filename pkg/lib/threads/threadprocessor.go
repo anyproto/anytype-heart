@@ -266,12 +266,8 @@ func (t *threadProcessor) addNewProcessor(threadId thread.ID) error {
 	if err != nil {
 		return fmt.Errorf("could not initialize new thread processor %w", err)
 	}
-	err = newProcessor.Listen(make(map[thread.ID]threadInfo))
-	if err != nil {
-		return fmt.Errorf("could not listen to new thread processor %w", err)
-	}
 	t.threadsService.processorMutex.Lock()
 	defer t.threadsService.processorMutex.Unlock()
-	t.threadsService.threadProcessors = append(t.threadsService.threadProcessors, newProcessor)
+	t.threadsService.threadProcessors[threadId] = newProcessor
 	return nil
 }

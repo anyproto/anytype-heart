@@ -182,6 +182,16 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			s.newReplicatorProcessingLimiter <- struct{}{}
 		}()
 	}
+	s.processorMutex.RLock()
+	p, exists := s.threadProcessors[tid]
+	s.processorMutex.RUnlock()
+
+	if exists {
+		err = p.Listen(make(map[thread.ID]threadInfo))
+		if err != nil {
+			log.Errorf("cannot listen to thread processor %v", err)
+		}
+	}
 	_, err = s.pullThread(s.ctx, tid)
 	if err != nil {
 		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
