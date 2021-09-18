@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/textileio/go-threads/core/thread"
 	"io"
 	"os"
 	"path/filepath"
@@ -75,6 +76,9 @@ type Service interface {
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
+
+	CreateWorkspace() (string, error)
+	SelectWorkspace(workspaceId string) error
 
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
@@ -211,6 +215,33 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 			close(ch)
 		}
 	}
+}
+
+func (a *Anytype) CreateWorkspace() (string, error) {
+	info, err := a.threadService.CreateWorkspace()
+	if err != nil {
+		return "", fmt.Errorf("error creating workspace: %w", err)
+	}
+	return info.ID.String(), nil
+}
+
+func (a *Anytype) SelectWorkspace(workspaceId string) error {
+	threadId, err := thread.Decode(workspaceId)
+	if err != nil {
+		return err
+	}
+
+	_, err = a.threadService.Threads().GetThread(context.Background(), threadId)
+	if err != nil {
+		return fmt.Errorf("could not find workspace thread: %w", err)
+	}
+
+	err = a.objectStore.SetCurrentWorkspaceThread(workspaceId)
+	if err != nil {
+		return fmt.Errorf("error setting workspace thread: %w", err)
+	}
+
+	return nil
 }
 
 func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {

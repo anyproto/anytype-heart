@@ -189,6 +189,9 @@ type Service interface {
 	CloneTemplate(id string) (templateId string, err error)
 	ApplyTemplate(contextId, templateId string) error
 
+	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
+	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
+
 	app.ComponentRunnable
 }
 
@@ -434,6 +437,14 @@ func (s *service) CloseBlocks() {
 		s.cache.Reset(ob.Id())
 		return true
 	})
+}
+
+func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
+	return s.anytype.CreateWorkspace()
+}
+
+func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
+	return s.anytype.SelectWorkspace(req.WorkspaceId)
 }
 
 // SetPagesIsArchived is deprecated
