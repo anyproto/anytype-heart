@@ -37,9 +37,6 @@ func (mw *Middleware) WorkspaceSelect(req *pb.RpcWorkspaceSelectRequest) *pb.Rpc
 		return m
 	}
 
-	mw.m.Lock()
-	defer mw.m.Unlock()
-
 	err := mw.doBlockService(func(bs block.Service) error {
 		return bs.SelectWorkspace(req)
 	})
