@@ -302,6 +302,7 @@ type Service interface {
 	Threads() threadsApp.Net
 	CafePeer() ma.Multiaddr
 
+	CreateWorkspace() (thread.Info, error)
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
@@ -352,16 +353,51 @@ func (s *service) Threads() threadsApp.Net {
 	return s.t
 }
 
-func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
-	if s.threadsCollection == nil {
-		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
+func (s *service) CreateWorkspace() (thread.Info, error) {
+	// create new workspace thread
+	id := thread.NewIDV1(thread.Raw, 32)
+	workspaceThread, err := s.createThreadWithThreadCollection(s.threadsCollection, id)
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
 	}
 
-	// todo: we have a possible trouble here, using thread.AccessControlled uvariant without actually storing the cid with access control
+	processor, err := s.startWorkspaceThreadProcessor(workspaceThread.ID.String())
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("could not start thread processor: %w", err)
+	}
+
+	// creating home thread
+	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeHome)
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("could not create home thread: %w", err)
+	}
+
+	// creating archive thread
+	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeArchive)
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("could not create archive thread: %w", err)
+	}
+
+	return workspaceThread, nil
+}
+
+func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
+	return s.createThreadWithThreadCollectionAndBlockType(s.threadsCollection, blockType)
+}
+
+func (s *service) createThreadWithThreadCollectionAndBlockType(collection *threadsDb.Collection, blockType smartblock.SmartBlockType) (thread.Info, error) {
 	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
 	}
+	return s.createThreadWithThreadCollection(collection, thrdId)
+}
+
+func (s *service) createThreadWithThreadCollection(collection *threadsDb.Collection, thrdId thread.ID) (thread.Info, error) {
+	if collection == nil {
+		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
+	}
+
 	followKey, err := symmetric.NewRandom()
 	if err != nil {
 		return thread.Info{}, err
@@ -400,7 +436,7 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	}
 
 	// todo: wait for threadsCollection to push?
-	_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
+	_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
 	if err != nil {
 		log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
 	}

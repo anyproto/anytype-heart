@@ -108,15 +108,15 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	}
 	threadId, err := s.workspaceThreadGetter.GetCurrentWorkspaceThread()
 	if err != nil {
-		s.db = processor.(*threadProcessor).db
-		s.threadsCollection = processor.(*threadProcessor).threadsCollection
+		s.db = processor.GetDB()
+		s.threadsCollection = processor.GetCollection()
 	} else {
 		processor, err = s.startWorkspaceThreadProcessor(threadId)
 		if err != nil {
 			return ids, fmt.Errorf("could not start workspace: %w", err)
 		}
-		s.db = processor.(*threadProcessor).db
-		s.threadsCollection = processor.(*threadProcessor).threadsCollection
+		s.db = processor.GetDB()
+		s.threadsCollection = processor.GetCollection()
 	}
 
 	var accountPullErr error
@@ -319,7 +319,10 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 	if err != nil {
 		return nil, fmt.Errorf("error listening to processor: %w", err)
 	}
+	s.processorMutex.Lock()
+	defer s.processorMutex.Unlock()
 	s.threadProcessors[threadId] = workspaceProcessor
+
 	return workspaceProcessor, nil
 }
 

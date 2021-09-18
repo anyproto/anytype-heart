@@ -18,6 +18,8 @@ import (
 type ThreadProcessor interface {
 	Init(thread.ID) error
 	Listen(map[thread.ID]threadInfo) error
+	GetCollection() *threadsDb.Collection
+	GetDB() *threadsDb.DB
 }
 
 type threadProcessor struct {
@@ -28,6 +30,14 @@ type threadProcessor struct {
 	threadsCollection *threadsDb.Collection
 
 	threadId thread.ID
+}
+
+func (t *threadProcessor) GetCollection() *threadsDb.Collection {
+	return t.threadsCollection
+}
+
+func (t *threadProcessor) GetDB() *threadsDb.DB {
+	return t.db
 }
 
 func NewThreadProcessor(s *service, notifier ThreadDownloadNotifier) ThreadProcessor {
