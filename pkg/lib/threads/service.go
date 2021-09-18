@@ -120,6 +120,7 @@ func New() Service {
 		ctx:                  ctx,
 		ctxCancel:            cancel,
 		simultaneousRequests: simultaneousRequests,
+		threadProcessors:     make(map[thread.ID]ThreadProcessor),
 	}
 }
 
