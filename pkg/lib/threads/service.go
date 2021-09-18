@@ -82,7 +82,8 @@ type service struct {
 	threadProcessors               map[thread.ID]ThreadProcessor
 	processorMutex                 sync.RWMutex
 
-	fetcher CafeConfigFetcher
+	fetcher               CafeConfigFetcher
+	workspaceThreadGetter CurrentWorkspaceThreadGetter
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -126,6 +127,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	s.fetcher = a.MustComponent("configfetcher").(CafeConfigFetcher)
+	s.workspaceThreadGetter = a.MustComponent("objectstore").(CurrentWorkspaceThreadGetter)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)

@@ -261,6 +261,13 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 }
 
 func (t *threadProcessor) addNewProcessor(threadId thread.ID) error {
+	t.threadsService.processorMutex.RLock()
+	_, exists := t.threadsService.threadProcessors[threadId]
+	t.threadsService.processorMutex.RUnlock()
+	if exists {
+		return fmt.Errorf("thread processor with id %s already exists", threadId.String())
+	}
+
 	newProcessor := NewThreadProcessor(t.threadsService, NewNoOpNotifier())
 	err := newProcessor.Init(threadId)
 	if err != nil {

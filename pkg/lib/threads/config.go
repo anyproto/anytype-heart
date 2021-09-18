@@ -14,6 +14,10 @@ type CafeConfigFetcher interface {
 	GetConfig(ctx context.Context) *cafePb.GetConfigResponseConfig
 }
 
+type CurrentWorkspaceThreadGetter interface {
+	GetCurrentWorkspaceThread() (string, error)
+}
+
 type Config struct {
 	SyncTracking bool
 	Debug        bool

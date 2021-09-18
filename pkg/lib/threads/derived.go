@@ -106,8 +106,18 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	if err != nil {
 		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 	}
-	s.db = processor.(*threadProcessor).db
-	s.threadsCollection = processor.(*threadProcessor).threadsCollection
+	threadId, err := s.workspaceThreadGetter.GetCurrentWorkspaceThread()
+	if err != nil {
+		s.db = processor.(*threadProcessor).db
+		s.threadsCollection = processor.(*threadProcessor).threadsCollection
+	} else {
+		processor, err = s.startWorkspaceThreadProcessor(threadId)
+		if err != nil {
+			return ids, fmt.Errorf("could not start workspace: %w", err)
+		}
+		s.db = processor.(*threadProcessor).db
+		s.threadsCollection = processor.(*threadProcessor).threadsCollection
+	}
 
 	var accountPullErr error
 
@@ -293,6 +303,24 @@ func ProfileThreadIDFromAccountAddress(address string) (thread.ID, error) {
 		return thread.Undef, err
 	}
 	return ProfileThreadIDFromAccountPublicKey(pubk)
+}
+
+func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, error) {
+	threadId, err := thread.Decode(id)
+	if err != nil {
+		return nil, fmt.Errorf("error decoding string %w", err)
+	}
+	workspaceProcessor := NewThreadProcessor(s, NewNoOpNotifier())
+	err = workspaceProcessor.Init(threadId)
+	if err != nil {
+		return nil, fmt.Errorf("error initializing processor: %w", err)
+	}
+	err = workspaceProcessor.Listen(make(map[thread.ID]threadInfo))
+	if err != nil {
+		return nil, fmt.Errorf("error listening to processor: %w", err)
+	}
+	s.threadProcessors[threadId] = workspaceProcessor
+	return workspaceProcessor, nil
 }
 
 func (s *service) derivedThreadKeyByIndex(index threadDerivedIndex) (service *symmetric.Key, read *symmetric.Key, err error) {

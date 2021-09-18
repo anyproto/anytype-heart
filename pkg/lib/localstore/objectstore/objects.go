@@ -50,6 +50,9 @@ var (
 
 	cafeConfig = ds.NewKey("/" + pagesPrefix + "/cafeconfig")
 
+	workspacesPrefix = "workspaces"
+	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
+
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
 	relationsOptionsBase = ds.NewKey("/" + relationsPrefix + "/options")
@@ -257,6 +260,9 @@ type ObjectStore interface {
 
 	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
 	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
+
+	GetCurrentWorkspaceThread() (string, error)
+	SetCurrentWorkspaceThread(threadId string) (err error)
 }
 
 type relationOption struct {
@@ -322,6 +328,34 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) GetCurrentWorkspaceThread() (string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return "", fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	val, err := txn.Get(currentWorkspace)
+	if err != nil {
+		return "", err
+	}
+	return string(val), nil
+}
+
+func (m *dsObjectStore) SetCurrentWorkspaceThread(threadId string) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Put(currentWorkspace, []byte(threadId)); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error) {
