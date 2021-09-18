@@ -35,6 +35,7 @@ type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
+	IsDb  bool
 }
 
 func (s *service) threadsDbInit() error {
