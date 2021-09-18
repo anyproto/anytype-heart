@@ -15,7 +15,7 @@ type ThreadDownloadNotifier interface {
 	Finish()
 }
 
-type noOpThreadNotifier struct {}
+type noOpThreadNotifier struct{}
 
 func (n *noOpThreadNotifier) Start(p process.Service) {}
 
@@ -75,4 +75,3 @@ func (a *accountRecoveryThreadNotifier) Finish() {
 	})
 	a.progress.Finish()
 }
-

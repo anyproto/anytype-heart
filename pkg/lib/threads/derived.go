@@ -99,10 +99,16 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 
 	ids.Account = account.ID.String()
 
-	err = s.threadsDbInit()
+	accountNotifier := NewAccountNotifier(s.simultaneousRequests)
+	processor := NewThreadProcessor(s, accountNotifier)
+	s.threadProcessors = append(s.threadProcessors, processor)
+	err = processor.Init(account.ID)
 	if err != nil {
 		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 	}
+	s.db = processor.(*threadProcessor).db
+	s.threadsCollection = processor.(*threadProcessor).threadsCollection
+
 	var accountPullErr error
 
 	if !newAccount {
@@ -119,7 +125,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 						m = make(map[thread.ID]threadInfo)
 					}
 				}
-				err = s.threadsDbListen(m)
+				err = processor.Listen(m)
 				if err != nil {
 					// that can happen if we already closed the db, so no need to do anything specific
 					log.Errorf("listening to threads db failed: %v", err.Error())
@@ -166,7 +172,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			}
 		}
 	} else {
-		err = s.threadsDbListen(make(map[thread.ID]threadInfo))
+		err = processor.Listen(make(map[thread.ID]threadInfo))
 		if err != nil {
 			return ids, err
 		}
