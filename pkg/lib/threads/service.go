@@ -79,6 +79,8 @@ type service struct {
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
 	process                        process.Service
+	threadProcessors               []ThreadProcessor
+	processorMutex                 sync.Mutex
 
 	fetcher CafeConfigFetcher
 

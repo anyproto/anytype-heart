@@ -7,9 +7,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/thread"
@@ -24,6 +22,7 @@ type ThreadProcessor interface {
 
 type threadProcessor struct {
 	threadsService *service
+	threadNotifier ThreadDownloadNotifier
 
 	db                *threadsDb.DB
 	threadsCollection *threadsDb.Collection
@@ -31,9 +30,10 @@ type threadProcessor struct {
 	threadId thread.ID
 }
 
-func NewThreadProcessor(s *service) ThreadProcessor {
+func NewThreadProcessor(s *service, notifier ThreadDownloadNotifier) ThreadProcessor {
 	return &threadProcessor{
 		threadsService: s,
+		threadNotifier: notifier,
 	}
 }
 
@@ -81,9 +81,6 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 	threadsTotal := len(initialThreads)
 	initialThreadsLock := sync.RWMutex{}
 
-	startTime := time.Now()
-	progress := process.NewProgress(pb.ModelProcess_RecoverAccount)
-
 	removeElement := func(tid thread.ID) {
 		log.With("thread id", tid.String()).
 			Debug("removing thread from processing")
@@ -95,7 +92,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 			initialThreadsLock.Lock()
 			delete(initialThreads, tid)
 			threadsTotal--
-			progress.SetTotal(int64(threadsTotal))
+			t.threadNotifier.SetTotalThreads(threadsTotal)
 			initialThreadsLock.Unlock()
 		}
 	}
@@ -124,6 +121,13 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %t", err.Error())
 				return
 			}
+			if ti.IsDb {
+				err = t.addNewProcessor(tid)
+				if err != nil {
+					log.Errorf("could not add new processor: %v", err)
+				}
+			}
+
 			ch := t.threadsService.getNewThreadChan()
 			initialThreadsLock.RLock()
 			if len(initialThreads) == 0 {
@@ -135,15 +139,9 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 					initialThreadsLock.Lock()
 
 					delete(initialThreads, tid)
-					progress.AddDone(1)
+					t.threadNotifier.AddThread()
 					if len(initialThreads) == 0 {
-						progress.Finish()
-						log.Info("finished recovering account")
-						metrics.SharedClient.RecordEvent(metrics.AccountRecoverEvent{
-							SpentMs:              int(time.Now().Sub(startTime).Milliseconds()),
-							TotalThreads:         threadsTotal,
-							SimultaneousRequests: t.threadsService.simultaneousRequests,
-						})
+						t.threadNotifier.Finish()
 					}
 
 					initialThreadsLock.Unlock()
@@ -193,18 +191,9 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 
 		if os.Getenv("ANYTYPE_RECOVERY_PROGRESS") == "1" {
 			log.Info("adding progress bar")
-			t.threadsService.process.Add(progress)
-			go func() {
-				select {
-				case <-progress.Canceled():
-					progress.Finish()
-				case <-progress.Done():
-					return
-				}
-			}()
+			t.threadNotifier.Start(t.threadsService.process)
 		}
-		progress.SetProgressMessage("recovering account")
-		progress.SetTotal(int64(threadsTotal))
+		t.threadNotifier.SetTotalThreads(threadsTotal)
 
 		initialMapCopy := make(map[thread.ID]threadInfo)
 		for tid, ti := range initialThreads {
@@ -268,5 +257,21 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 		}
 	}()
 
+	return nil
+}
+
+func (t *threadProcessor) addNewProcessor(threadId thread.ID) error {
+	newProcessor := NewThreadProcessor(t.threadsService, NewNoOpNotifier())
+	err := newProcessor.Init(threadId)
+	if err != nil {
+		return fmt.Errorf("could not initialize new thread processor %w", err)
+	}
+	err = newProcessor.Listen(make(map[thread.ID]threadInfo))
+	if err != nil {
+		return fmt.Errorf("could not listen to new thread processor %w", err)
+	}
+	t.threadsService.processorMutex.Lock()
+	defer t.threadsService.processorMutex.Unlock()
+	t.threadsService.threadProcessors = append(t.threadsService.threadProcessors, newProcessor)
 	return nil
 }
