@@ -41,6 +41,7 @@ type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
+	// TODO: remove this, I did it only for testing, so this should not be here when we merge to master
 	IsDb  bool // Deprecated
 	Type  ThreadType `json:"type,omitempty"`
 }
