@@ -131,7 +131,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %t", err.Error())
 				return
 			}
-			if ti.IsDb {
+			if ti.Type == ThreadTypeDb {
 				err = t.addNewProcessor(tid)
 				if err != nil {
 					log.Errorf("could not add new processor: %v", err)
