@@ -5,9 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	threadsDb "github.com/textileio/go-threads/db"
 	threadsUtil "github.com/textileio/go-threads/util"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
@@ -70,10 +71,6 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 	threadDerivedIndexMarketplaceRelation: smartblock.SmartblockTypeMarketplaceRelation,
 	threadDerivedIndexMarketplaceTemplate: smartblock.SmartblockTypeMarketplaceTemplate,
 }
-var threadDerivedIndexToThreadType = map[threadDerivedIndex]ThreadType{
-	threadDerivedIndexHome:    ThreadTypeHome,
-	threadDerivedIndexArchive: ThreadTypeArchive,
-}
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
@@ -109,7 +106,6 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	if err != nil {
 		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 	}
-	isWorkspace := false
 	threadId, err := s.workspaceThreadGetter.GetCurrentWorkspaceThread()
 	if err != nil {
 		s.db = processor.GetDB()
@@ -121,7 +117,6 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		}
 		s.db = processor.GetDB()
 		s.threadsCollection = processor.GetCollection()
-		isWorkspace = true
 	}
 
 	var accountPullErr error
@@ -201,14 +196,14 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	ids.Profile = profile.ID.String()
 
 	// home
-	home, _, err := s.derivedOrWorkspaceThreadEnsure(cctx, threadDerivedIndexHome, newAccount, isWorkspace, true)
+	home, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexHome, newAccount, true)
 	if err != nil {
 		return ids, err
 	}
 	ids.Home = home.ID.String()
 
 	// archive
-	archive, _, err := s.derivedOrWorkspaceThreadEnsure(cctx, threadDerivedIndexArchive, newAccount, isWorkspace, true)
+	archive, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexArchive, newAccount, true)
 	if err != nil {
 		return ids, err
 	}
@@ -243,22 +238,6 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	ids.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
 	return ids, nil
-}
-
-func (s *service) findThreadInCurrentCollection(threadType ThreadType) (threadInfo, error) {
-	instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
-	if err != nil {
-		return threadInfo{}, err
-	}
-
-	for _, instanceBytes := range instancesBytes {
-		ti := threadInfo{}
-		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
-		if ti.Type == threadType {
-			return ti, nil
-		}
-	}
-	return threadInfo{}, fmt.Errorf("couldn't find thread with type %d", threadType)
 }
 
 func (s *service) createThreadsDbMap() (map[thread.ID]threadInfo, error) {
@@ -411,36 +390,6 @@ func (s *service) derivedThreadWithIndex(index threadDerivedIndex) (thread.Info,
 	}
 
 	return s.t.GetThread(context.TODO(), id)
-}
-
-func (s *service) derivedOrWorkspaceThreadEnsure(
-	ctx context.Context,
-	index threadDerivedIndex,
-	newAccount bool,
-	isWorkspace bool,
-	pull bool) (thrd thread.Info, justCreated bool, err error) {
-	if !isWorkspace {
-		return s.derivedThreadEnsure(ctx, index, newAccount, pull)
-	}
-
-	threadType, ok := threadDerivedIndexToThreadType[index]
-	if !ok {
-		threadType = ThreadTypeDefault
-	}
-
-	info, err := s.findThreadInCurrentCollection(threadType)
-	if err != nil {
-		return thread.Info{}, false, err
-	}
-
-	threadId, err := thread.Decode(info.ID.String())
-	if err != nil {
-		return thread.Info{}, false, err
-	}
-
-	netThreadInfo, err := s.t.GetThread(context.Background(), threadId)
-	// TODO: add pulling logic
-	return netThreadInfo, false, err
 }
 
 func (s *service) derivedThreadEnsure(ctx context.Context, index threadDerivedIndex, newAccount bool, pull bool) (thrd thread.Info, justCreated bool, err error) {

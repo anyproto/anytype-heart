@@ -27,23 +27,11 @@ var (
 	}
 )
 
-type ThreadType int
-
-const (
-	ThreadTypeDefault ThreadType = 0
-	ThreadTypeHome    ThreadType = 1
-	ThreadTypeArchive ThreadType = 2
-
-	ThreadTypeDb ThreadType = 64
-)
-
 type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
-	// TODO: remove this, I did it only for testing, so this should not be here when we merge to master
-	IsDb  bool // Deprecated
-	Type  ThreadType `json:"type,omitempty"`
+	IsDb  bool
 }
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success

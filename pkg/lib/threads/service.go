@@ -357,7 +357,7 @@ func (s *service) Threads() threadsApp.Net {
 func (s *service) CreateWorkspace() (thread.Info, error) {
 	// create new workspace thread
 	id := thread.NewIDV1(thread.Raw, 32)
-	workspaceThread, err := s.createThreadWithThreadCollection(s.threadsCollection, id, ThreadTypeDb)
+	workspaceThread, err := s.createThreadWithThreadCollection(s.threadsCollection, id)
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
 	}
@@ -368,13 +368,13 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 	}
 
 	// creating home thread
-	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeHome, ThreadTypeHome)
+	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeHome)
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create home thread: %w", err)
 	}
 
 	// creating archive thread
-	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeArchive, ThreadTypeArchive)
+	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeArchive)
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create archive thread: %w", err)
 	}
@@ -383,24 +383,18 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
-	return s.createThreadWithThreadCollectionAndBlockType(s.threadsCollection, blockType, ThreadTypeDefault)
+	return s.createThreadWithThreadCollectionAndBlockType(s.threadsCollection, blockType)
 }
 
-func (s *service) createThreadWithThreadCollectionAndBlockType(
-	collection *threadsDb.Collection,
-	blockType smartblock.SmartBlockType,
-	threadType ThreadType) (thread.Info, error) {
+func (s *service) createThreadWithThreadCollectionAndBlockType(collection *threadsDb.Collection, blockType smartblock.SmartBlockType) (thread.Info, error) {
 	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
 	}
-	return s.createThreadWithThreadCollection(collection, thrdId, threadType)
+	return s.createThreadWithThreadCollection(collection, thrdId)
 }
 
-func (s *service) createThreadWithThreadCollection(
-	collection *threadsDb.Collection,
-	thrdId thread.ID,
-	threadType ThreadType) (thread.Info, error) {
+func (s *service) createThreadWithThreadCollection(collection *threadsDb.Collection, thrdId thread.ID) (thread.Info, error) {
 	if collection == nil {
 		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
 	}
@@ -440,7 +434,6 @@ func (s *service) createThreadWithThreadCollection(
 		ID:    db.InstanceID(thrd.ID.String()),
 		Key:   thrd.Key.String(),
 		Addrs: util.MultiAddressesToStrings(thrd.Addrs),
-		Type:  threadType,
 	}
 
 	// todo: wait for threadsCollection to push?
