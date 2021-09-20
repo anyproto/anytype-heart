@@ -132,6 +132,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %t", err.Error())
 				return
 			}
+
 			smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(tid)
 			if err == nil && smartBlockType == smartblock.SmartBlockTypeWorkspace {
 				err = t.addNewProcessor(tid)

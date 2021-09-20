@@ -22,13 +22,13 @@ import (
 )
 
 // threadsDbMigration called on every except the first run of the account
-func (s *service) threadsDbMigration(accountThreadId string) error {
-	err := s.handleAllMissingDbRecords(accountThreadId)
+func (s *service) threadsDbMigration(accountThreadId string, db *threadsDb.DB, collection *threadsDb.Collection) error {
+	err := s.handleAllMissingDbRecords(accountThreadId, db)
 	if err != nil {
 		return fmt.Errorf("handleAllMissingDbRecords failed: %w", err)
 	}
 
-	err = s.addMissingThreadsFromCollection()
+	err = s.addMissingThreadsFromCollection(collection)
 	if err != nil {
 		return fmt.Errorf("addMissingThreadsFromCollection failed: %w", err)
 	}
@@ -41,7 +41,7 @@ func (s *service) threadsDbMigration(accountThreadId string) error {
 	}()
 
 	go func() {
-		err := s.addMissingThreadsToCollection()
+		err := s.addMissingThreadsToCollection(collection)
 		if err != nil {
 			log.Errorf("addMissingThreadsToCollection: %s", err.Error())
 		}
@@ -50,8 +50,8 @@ func (s *service) threadsDbMigration(accountThreadId string) error {
 	return nil
 }
 
-func (s *service) addMissingThreadsFromCollection() error {
-	instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
+func (s *service) addMissingThreadsFromCollection(collection *threadsDb.Collection) error {
+	instancesBytes, err := collection.Find(&threadsDb.Query{})
 	if err != nil {
 		return err
 	}
@@ -96,8 +96,8 @@ func (s *service) addMissingThreadsFromCollection() error {
 	return nil
 }
 
-func (s *service) addMissingThreadsToCollection() error {
-	instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
+func (s *service) addMissingThreadsToCollection(collection *threadsDb.Collection) error {
+	instancesBytes, err := collection.Find(&threadsDb.Query{})
 	if err != nil {
 		return err
 	}
@@ -145,7 +145,7 @@ func (s *service) addMissingThreadsToCollection() error {
 				Addrs: util.MultiAddressesToStrings(thrd.Addrs),
 			}
 
-			_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
+			_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
 			if err != nil {
 				log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
 			} else {
@@ -161,7 +161,7 @@ func (s *service) addMissingThreadsToCollection() error {
 	return nil
 }
 
-func (s *service) handleAllMissingDbRecords(threadId string) error {
+func (s *service) handleAllMissingDbRecords(threadId string, db *threadsDb.DB) error {
 	tid, err := thread.Decode(threadId)
 	if err != nil {
 		return fmt.Errorf("failed to parse thread id %s: %s", threadId, err.Error())
@@ -174,7 +174,7 @@ func (s *service) handleAllMissingDbRecords(threadId string) error {
 
 	for _, logInfo := range thrd.Logs {
 		log.Debugf("traversing %s log from head %s(%d)", logInfo.ID, logInfo.Head.ID, logInfo.Head.Counter)
-		handleAllRecordsInLog(s.db, s.t, thrd, logInfo)
+		handleAllRecordsInLog(db, s.t, thrd, logInfo)
 	}
 	return nil
 }

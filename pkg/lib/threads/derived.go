@@ -156,7 +156,8 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			if !justCreated {
 				ids, _ := s.Logstore().Threads()
 				metrics.ServedThreads.Set(float64(len(ids)))
-				err = s.threadsDbMigration(account.ID.String())
+				// TODO: find a better way to use active db and collection
+				err = s.threadsDbMigration(account.ID.String(), accountProcessor.GetDB(), accountProcessor.GetCollection())
 			} else {
 				metrics.ServedThreads.Set(0)
 			}
@@ -255,6 +256,12 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 
 		s.db = workspaceProcessor.GetDB()
 		s.threadsCollection = workspaceProcessor.GetCollection()
+
+		go func() {
+			_ = s.threadsDbMigration(workspaceThreadIdString,
+				workspaceProcessor.GetDB(),
+				workspaceProcessor.GetCollection())
+		}()
 
 		return updatedIds, nil
 	}
