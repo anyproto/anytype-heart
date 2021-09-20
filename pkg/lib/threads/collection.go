@@ -31,7 +31,6 @@ type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
-	IsDb  bool
 }
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success

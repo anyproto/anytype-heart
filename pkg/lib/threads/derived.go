@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	"github.com/textileio/go-threads/core/db"
+	"github.com/textileio/go-threads/core/logstore"
 	threadsDb "github.com/textileio/go-threads/db"
 	threadsUtil "github.com/textileio/go-threads/util"
 
@@ -100,23 +102,23 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	ids.Account = account.ID.String()
 
 	accountNotifier := NewAccountNotifier(s.simultaneousRequests)
-	processor := NewThreadProcessor(s, accountNotifier)
-	s.threadProcessors[account.ID] = processor
-	err = processor.Init(account.ID)
+	accountProcessor := NewThreadProcessor(s, accountNotifier)
+	s.threadProcessors[account.ID] = accountProcessor
+	err = accountProcessor.Init(account.ID)
 	if err != nil {
 		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
 	}
-	threadId, err := s.workspaceThreadGetter.GetCurrentWorkspaceThread()
+
+	var workspaceProcessor ThreadProcessor
+	workspaceThreadIdString, err := s.workspaceThreadGetter.GetCurrentWorkspaceThread()
 	if err != nil {
-		s.db = processor.GetDB()
-		s.threadsCollection = processor.GetCollection()
+		s.db = accountProcessor.GetDB()
+		s.threadsCollection = accountProcessor.GetCollection()
 	} else {
-		processor, err = s.startWorkspaceThreadProcessor(threadId)
+		workspaceProcessor, err = s.startWorkspaceThreadProcessor(workspaceThreadIdString)
 		if err != nil {
-			return ids, fmt.Errorf("could not start workspace: %w", err)
+			log.Errorf("could not start workspace: %v", err)
 		}
-		s.db = processor.GetDB()
-		s.threadsCollection = processor.GetCollection()
 	}
 
 	var accountPullErr error
@@ -135,7 +137,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 						m = make(map[thread.ID]threadInfo)
 					}
 				}
-				err = processor.Listen(m)
+				err = accountProcessor.Listen(m)
 				if err != nil {
 					// that can happen if we already closed the db, so no need to do anything specific
 					log.Errorf("listening to threads db failed: %v", err.Error())
@@ -182,7 +184,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			}
 		}
 	} else {
-		err = processor.Listen(make(map[thread.ID]threadInfo))
+		err = accountProcessor.Listen(make(map[thread.ID]threadInfo))
 		if err != nil {
 			return ids, err
 		}
@@ -236,6 +238,26 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return ids, err
 	}
 	ids.MarketplaceTemplate = marketplaceTemplate.ID.String()
+
+	// trying to set up the workspace if errors occur then bail out
+	if workspaceProcessor != nil {
+		workspaceId, err := thread.Decode(workspaceThreadIdString)
+		if err != nil {
+			log.Errorf("failed to start the workspace: %v", err)
+			return ids, nil
+		}
+
+		updatedIds, err := s.ensureWorkspace(ctx, ids, workspaceId)
+		if err != nil {
+			log.Errorf("failed to start the workspace: %v", err)
+			return ids, nil
+		}
+
+		s.db = workspaceProcessor.GetDB()
+		s.threadsCollection = workspaceProcessor.GetCollection()
+
+		return updatedIds, nil
+	}
 
 	return ids, nil
 }
@@ -442,6 +464,77 @@ func (s *service) derivedThreadCreate(index threadDerivedIndex) (thread.Info, er
 	}()
 
 	return thrd, nil
+}
+
+func (s *service) ensureWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error) {
+	// workspace here must be added at the time of switch
+	thrdInfo, err := s.t.GetThread(ctx, workspaceId)
+	if err != nil {
+		return ids, err
+	}
+
+	var addrs []string
+	for _, addr := range thrdInfo.Addrs {
+		addrs = append(addrs, addr.String())
+	}
+	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs)
+	if err != nil {
+		return ids, err
+	}
+
+	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs)
+	if err != nil {
+		return ids, err
+	}
+	ids.Home = home.ID.String()
+	ids.Archive = archive.ID.String()
+
+	return ids, nil
+}
+
+func (s *service) workspaceThreadEnsure(
+	ctx context.Context,
+	index threadDerivedIndex,
+	key thread.Key,
+	addrs []string) (thrd thread.Info, err error) {
+	id, err := threadDeriveId(index, key.Read().Bytes())
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	sk, rk, err := threadDeriveKeys(index, key.Read().Bytes())
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	thrd, err = s.t.GetThread(ctx, id)
+	if err == nil {
+		err = s.t.PullThread(ctx, thrd.ID)
+		return
+	}
+	if err != logstore.ErrThreadNotFound {
+		return
+	}
+
+	newKey := thread.NewKey(sk, rk)
+	tInfo := threadInfo{
+		ID:    db.InstanceID(id.String()),
+		Key:   newKey.String(),
+		Addrs: addrs,
+	}
+
+	for i := 0; i < 3; i++ {
+		err = s.processNewExternalThread(id, tInfo)
+		if err == nil {
+			break
+		}
+	}
+	if err != nil {
+		return
+	}
+
+	thrd, err = s.t.GetThread(ctx, id)
+	return
 }
 
 func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context, index threadDerivedIndex, pull bool) (thrd thread.Info, justCreated bool, err error) {

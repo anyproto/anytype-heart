@@ -3,6 +3,7 @@ package threads
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"os"
 	"sync"
 	"time"
@@ -131,7 +132,8 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %t", err.Error())
 				return
 			}
-			if ti.IsDb {
+			smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(tid)
+			if err == nil && smartBlockType == smartblock.SmartBlockTypeWorkspace {
 				err = t.addNewProcessor(tid)
 				if err != nil {
 					log.Errorf("could not add new processor: %v", err)

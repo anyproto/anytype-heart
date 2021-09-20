@@ -356,8 +356,7 @@ func (s *service) Threads() threadsApp.Net {
 
 func (s *service) CreateWorkspace() (thread.Info, error) {
 	// create new workspace thread
-	id := thread.NewIDV1(thread.Raw, 32)
-	workspaceThread, err := s.createThreadWithThreadCollection(s.threadsCollection, id)
+	workspaceThread, err := s.CreateThread(smartblock.SmartBlockTypeWorkspace)
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
 	}
@@ -367,14 +366,33 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 		return thread.Info{}, fmt.Errorf("could not start thread processor: %w", err)
 	}
 
+	workspaceReadKeyBytes := workspaceThread.Key.Read().Bytes()
+
 	// creating home thread
-	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeHome)
+
+	homeId, err := threadDeriveId(threadDerivedIndexHome, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	homeSk, homeRk, err := threadDeriveKeys(threadDerivedIndexHome, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	_, err = s.createThreadWithThreadCollection(processor.GetCollection(), homeId, thread.NewKey(homeSk, homeRk))
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create home thread: %w", err)
 	}
 
 	// creating archive thread
-	_, err = s.createThreadWithThreadCollectionAndBlockType(processor.GetCollection(), smartblock.SmartBlockTypeArchive)
+	archiveId, err := threadDeriveId(threadDerivedIndexArchive, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	archiveSk, archiveRk, err := threadDeriveKeys(threadDerivedIndexArchive, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	_, err = s.createThreadWithThreadCollection(processor.GetCollection(), archiveId, thread.NewKey(archiveSk, archiveRk))
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create archive thread: %w", err)
 	}
@@ -383,22 +401,10 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
-	return s.createThreadWithThreadCollectionAndBlockType(s.threadsCollection, blockType)
-}
-
-func (s *service) createThreadWithThreadCollectionAndBlockType(collection *threadsDb.Collection, blockType smartblock.SmartBlockType) (thread.Info, error) {
 	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
 	}
-	return s.createThreadWithThreadCollection(collection, thrdId)
-}
-
-func (s *service) createThreadWithThreadCollection(collection *threadsDb.Collection, thrdId thread.ID) (thread.Info, error) {
-	if collection == nil {
-		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
-	}
-
 	followKey, err := symmetric.NewRandom()
 	if err != nil {
 		return thread.Info{}, err
@@ -409,7 +415,20 @@ func (s *service) createThreadWithThreadCollection(collection *threadsDb.Collect
 		return thread.Info{}, err
 	}
 
-	thrd, err := s.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(thread.NewKey(followKey, readKey)), net.WithLogKey(s.device))
+	key := thread.NewKey(followKey, readKey)
+
+	return s.createThreadWithThreadCollection(s.threadsCollection, thrdId, key)
+}
+
+func (s *service) createThreadWithThreadCollection(
+	collection *threadsDb.Collection,
+	thrdId thread.ID,
+	key thread.Key) (thread.Info, error) {
+	if collection == nil {
+		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
+	}
+
+	thrd, err := s.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(key), net.WithLogKey(s.device))
 	if err != nil {
 		return thread.Info{}, err
 	}

@@ -231,6 +231,14 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 		return err
 	}
 
+	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(threadId)
+	if err != nil {
+		return err
+	}
+	if smartBlockType != smartblock.SmartBlockTypeWorkspace {
+		return fmt.Errorf("can't select non-workspace smartblock")
+	}
+
 	_, err = a.threadService.Threads().GetThread(context.Background(), threadId)
 	if err != nil {
 		return fmt.Errorf("could not find workspace thread: %w", err)
