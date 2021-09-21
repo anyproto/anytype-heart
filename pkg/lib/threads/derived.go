@@ -342,6 +342,14 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 	if err != nil {
 		return nil, fmt.Errorf("error decoding string %w", err)
 	}
+
+	s.processorMutex.RLock()
+	_, exists := s.threadProcessors[threadId]
+	s.processorMutex.Unlock()
+	if exists {
+		return nil, fmt.Errorf("thread processor already exists: %w", err)
+	}
+
 	workspaceProcessor := NewThreadProcessor(s, NewNoOpNotifier())
 	err = workspaceProcessor.Init(threadId)
 	if err != nil {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -181,16 +182,12 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			s.newReplicatorProcessingLimiter <- struct{}{}
 		}()
 	}
-	s.processorMutex.RLock()
-	p, exists := s.threadProcessors[tid]
-	s.processorMutex.RUnlock()
 
-	if exists {
-		err = p.Listen(make(map[thread.ID]threadInfo))
-		if err != nil {
-			log.Errorf("cannot listen to thread processor %v", err)
-		}
+	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(tid)
+	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
+		_, err = s.startWorkspaceThreadProcessor(tid.String())
 	}
+
 	_, err = s.pullThread(s.ctx, tid)
 	if err != nil {
 		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())

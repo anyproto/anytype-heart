@@ -3,7 +3,6 @@ package threads
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"os"
 	"sync"
 	"time"
@@ -131,14 +130,6 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 			if err := t.threadsService.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
 				log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %t", err.Error())
 				return
-			}
-
-			smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(tid)
-			if err == nil && smartBlockType == smartblock.SmartBlockTypeWorkspace {
-				err = t.addNewProcessor(tid)
-				if err != nil {
-					log.Errorf("could not add new processor: %v", err)
-				}
 			}
 
 			ch := t.threadsService.getNewThreadChan()
@@ -270,24 +261,5 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 		}
 	}()
 
-	return nil
-}
-
-func (t *threadProcessor) addNewProcessor(threadId thread.ID) error {
-	t.threadsService.processorMutex.RLock()
-	_, exists := t.threadsService.threadProcessors[threadId]
-	t.threadsService.processorMutex.RUnlock()
-	if exists {
-		return fmt.Errorf("thread processor with id %s already exists", threadId.String())
-	}
-
-	newProcessor := NewThreadProcessor(t.threadsService, NewNoOpNotifier())
-	err := newProcessor.Init(threadId)
-	if err != nil {
-		return fmt.Errorf("could not initialize new thread processor %w", err)
-	}
-	t.threadsService.processorMutex.Lock()
-	defer t.threadsService.processorMutex.Unlock()
-	t.threadsService.threadProcessors[threadId] = newProcessor
 	return nil
 }
