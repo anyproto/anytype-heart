@@ -347,7 +347,7 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 
 	s.processorMutex.RLock()
 	_, exists := s.threadProcessors[threadId]
-	s.processorMutex.Unlock()
+	s.processorMutex.RUnlock()
 	if exists {
 		return nil, fmt.Errorf("thread processor already exists: %w", err)
 	}
