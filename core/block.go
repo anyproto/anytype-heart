@@ -855,6 +855,26 @@ func (mw *Middleware) BlockSetTextText(req *pb.RpcBlockSetTextTextRequest) *pb.R
 	return response(pb.RpcBlockSetTextTextResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockSetLatexText(req *pb.RpcBlockSetLatexTextRequest) *pb.RpcBlockSetLatexTextResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockSetLatexTextResponseErrorCode, err error) *pb.RpcBlockSetLatexTextResponse {
+		m := &pb.RpcBlockSetLatexTextResponse{Error: &pb.RpcBlockSetLatexTextResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetLatexText(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockSetLatexTextResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockSetLatexTextResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb.RpcBlockSetTextStyleResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockSetTextStyleResponseErrorCode, err error) *pb.RpcBlockSetTextStyleResponse {

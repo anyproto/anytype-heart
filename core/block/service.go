@@ -121,6 +121,7 @@ type Service interface {
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) error
+	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
 	SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error
