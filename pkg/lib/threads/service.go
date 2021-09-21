@@ -308,6 +308,9 @@ type Service interface {
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
+	GetThreadInfo(id thread.ID) (thread.Info, error)
+	AddThread(threadId string, key string, addrs []string) error
+	
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
 	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
 }
@@ -398,6 +401,26 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 	}
 
 	return workspaceThread, nil
+}
+
+func (s *service) AddThread(threadId string, key string, addrs []string) error {
+	threadInfo := threadInfo{
+		ID:    db.InstanceID(threadId),
+		Key:   key,
+		Addrs: addrs,
+	}
+	_, err := s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
+	if err != nil {
+		return fmt.Errorf("failed to add thread %s to collection: %w", threadId, err)
+	}
+
+	return nil
+}
+
+func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	return s.t.GetThread(ctx, id)
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {

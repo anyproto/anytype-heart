@@ -3,15 +3,18 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/textileio/go-threads/core/thread"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
+	"github.com/golang/protobuf/proto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -80,6 +83,9 @@ type Service interface {
 	CreateWorkspace() (string, error)
 	SelectWorkspace(workspaceId string) error
 
+	OpenDeeplink(deeplink string) error
+	CreateDeeplinkFromBlock(blockId string) (string, error)
+
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
 	ThreadsIds() ([]string, error)        // deprecated
@@ -129,6 +135,65 @@ type Anytype struct {
 	wallet              wallet.Wallet
 	tmpFolderAutocreate sync.Once
 	tempDir             string
+}
+
+func (a *Anytype) OpenDeeplink(deeplink string) error {
+	query := deeplink[strings.LastIndex(deeplink, "anytype://block/add?")+1:]
+	decoded, err := url.ParseQuery(query)
+	if err != nil {
+		return fmt.Errorf("error decoding deeplink: %w", err)
+	}
+
+	threadId := decoded.Get("id")
+	if threadId == "" {
+		return fmt.Errorf("error decoding deeplink: no id present")
+	}
+
+	payload := decoded.Get("payload")
+	if threadId == "" {
+		return fmt.Errorf("error decoding deeplink: no key present")
+	}
+
+	var protoPayload model.ThreadDeeplinkPayload
+	err = proto.Unmarshal([]byte(payload), &protoPayload)
+	if err != nil {
+		return fmt.Errorf("failed decoding the payload: %w", err)
+	}
+
+	return a.threadService.AddThread(threadId, protoPayload.Key, protoPayload.Addrs)
+}
+
+func (a *Anytype) CreateDeeplinkFromBlock(blockId string) (string, error) {
+	threadId, err := thread.Decode(blockId)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode the block: %w", err)
+	}
+
+	threadInfo, err := a.threadService.GetThreadInfo(threadId)
+	if err != nil {
+		return "", fmt.Errorf("failed to get info on the thread: %w", err)
+	}
+
+	var addrs []string
+	for _, addr := range threadInfo.Addrs {
+		addrs = append(addrs, addr.String())
+	}
+
+	payload := &model.ThreadDeeplinkPayload{
+		Key:   threadInfo.Key.String(),
+		Addrs: addrs,
+	}
+	marshalledPayload, err := proto.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
+	}
+
+	params := url.Values{}
+	params.Add("id", blockId)
+	params.Add("payload", string(marshalledPayload))
+	encoded := params.Encode()
+
+	return fmt.Sprintf("anytype://block/add?%s", encoded), nil
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {

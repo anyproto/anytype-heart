@@ -192,6 +192,9 @@ type Service interface {
 	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
 	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
 
+	OpenDeeplink(req *pb.RpcDeeplinkOpenRequest) error
+	CreateDeeplinkFromBlock(req *pb.RpcDeeplinkCreateFromBlockRequest) (string, error)
+
 	app.ComponentRunnable
 }
 
@@ -445,6 +448,14 @@ func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, er
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	return s.anytype.SelectWorkspace(req.WorkspaceId)
+}
+
+func (s *service) OpenDeeplink(req *pb.RpcDeeplinkOpenRequest) error {
+	return s.anytype.OpenDeeplink(req.Deeplink)
+}
+
+func (s *service) CreateDeeplinkFromBlock(req *pb.RpcDeeplinkCreateFromBlockRequest) (string, error) {
+	return s.anytype.CreateDeeplinkFromBlock(req.BlockId)
 }
 
 // SetPagesIsArchived is deprecated

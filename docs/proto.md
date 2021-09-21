@@ -393,6 +393,15 @@
     - [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error)
     - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
     - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
+    - [Rpc.Deeplink](#anytype.Rpc.Deeplink)
+    - [Rpc.Deeplink.CreateFromBlock](#anytype.Rpc.Deeplink.CreateFromBlock)
+    - [Rpc.Deeplink.CreateFromBlock.Request](#anytype.Rpc.Deeplink.CreateFromBlock.Request)
+    - [Rpc.Deeplink.CreateFromBlock.Response](#anytype.Rpc.Deeplink.CreateFromBlock.Response)
+    - [Rpc.Deeplink.CreateFromBlock.Response.Error](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error)
+    - [Rpc.Deeplink.Open](#anytype.Rpc.Deeplink.Open)
+    - [Rpc.Deeplink.Open.Request](#anytype.Rpc.Deeplink.Open.Request)
+    - [Rpc.Deeplink.Open.Response](#anytype.Rpc.Deeplink.Open.Response)
+    - [Rpc.Deeplink.Open.Response.Error](#anytype.Rpc.Deeplink.Open.Response.Error)
     - [Rpc.DownloadFile](#anytype.Rpc.DownloadFile)
     - [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request)
     - [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response)
@@ -697,6 +706,8 @@
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code)
+    - [Rpc.Deeplink.CreateFromBlock.Response.Error.Code](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error.Code)
+    - [Rpc.Deeplink.Open.Response.Error.Code](#anytype.Rpc.Deeplink.Open.Response.Error.Code)
     - [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
@@ -934,6 +945,7 @@
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
+    - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
@@ -984,6 +996,8 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| DeeplinkOpen | [Rpc.Deeplink.Open.Request](#anytype.Rpc.Deeplink.Open.Request) | [Rpc.Deeplink.Open.Response](#anytype.Rpc.Deeplink.Open.Response) |  |
+| DeeplinkCreateFromBlock | [Rpc.Deeplink.CreateFromBlock.Request](#anytype.Rpc.Deeplink.CreateFromBlock.Request) | [Rpc.Deeplink.CreateFromBlock.Response](#anytype.Rpc.Deeplink.CreateFromBlock.Response) |  |
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) |  |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request) | [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response) |  |
@@ -6817,6 +6831,129 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.Deeplink"></a>
+
+### Rpc.Deeplink
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.CreateFromBlock"></a>
+
+### Rpc.Deeplink.CreateFromBlock
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.CreateFromBlock.Request"></a>
+
+### Rpc.Deeplink.CreateFromBlock.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| blockId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.CreateFromBlock.Response"></a>
+
+### Rpc.Deeplink.CreateFromBlock.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deeplink | [string](#string) |  |  |
+| error | [Rpc.Deeplink.CreateFromBlock.Response.Error](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.CreateFromBlock.Response.Error"></a>
+
+### Rpc.Deeplink.CreateFromBlock.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Deeplink.CreateFromBlock.Response.Error.Code](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.Open"></a>
+
+### Rpc.Deeplink.Open
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.Open.Request"></a>
+
+### Rpc.Deeplink.Open.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deeplink | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.Open.Response"></a>
+
+### Rpc.Deeplink.Open.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Deeplink.Open.Response.Error](#anytype.Rpc.Deeplink.Open.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Deeplink.Open.Response.Error"></a>
+
+### Rpc.Deeplink.Open.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Deeplink.Open.Response.Error.Code](#anytype.Rpc.Deeplink.Open.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.DownloadFile"></a>
 
 ### Rpc.DownloadFile
@@ -11052,6 +11189,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Deeplink.CreateFromBlock.Response.Error.Code"></a>
+
+### Rpc.Deeplink.CreateFromBlock.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Deeplink.Open.Response.Error.Code"></a>
+
+### Rpc.Deeplink.Open.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.DownloadFile.Response.Error.Code"></a>
 
 ### Rpc.DownloadFile.Response.Error.Code
@@ -14702,6 +14865,22 @@ scope from which this relation have been aggregated |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | extraRelations | [Relation](#anytype.model.Relation) | repeated |  |
 | objectTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.ThreadDeeplinkPayload"></a>
+
+### ThreadDeeplinkPayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| addrs | [string](#string) | repeated |  |
 
 
 

@@ -411,6 +411,10 @@ message Restrictions {
     }
 }
 
+message ThreadDeeplinkPayload {
+    string key = 1;
+    repeated string addrs = 2;
+}
 
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one

@@ -157,7 +157,10 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 				ids, _ := s.Logstore().Threads()
 				metrics.ServedThreads.Set(float64(len(ids)))
 				// TODO: find a better way to use active db and collection
-				err = s.threadsDbMigration(account.ID.String(), accountProcessor.GetDB(), accountProcessor.GetCollection())
+				err = s.threadsDbMigration(
+					account.ID.String(),
+					accountProcessor.GetDB(),
+					accountProcessor.GetCollection())
 			} else {
 				metrics.ServedThreads.Set(0)
 			}
