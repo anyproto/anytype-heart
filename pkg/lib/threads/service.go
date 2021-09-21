@@ -71,6 +71,7 @@ type service struct {
 	t                              threadsApp.Net
 	db                             *threadsDb.DB
 	threadsCollection              *threadsDb.Collection
+	currentWorkspaceId             thread.ID
 	device                         walletUtil.Keypair
 	account                        walletUtil.Keypair
 	ipfsNode                       ipfs.Node
@@ -310,7 +311,7 @@ type Service interface {
 
 	GetThreadInfo(id thread.ID) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string) error
-	
+
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
 	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
 }
@@ -404,17 +405,64 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 }
 
 func (s *service) AddThread(threadId string, key string, addrs []string) error {
-	threadInfo := threadInfo{
+	addedInfo := threadInfo{
 		ID:    db.InstanceID(threadId),
 		Key:   key,
 		Addrs: addrs,
 	}
-	_, err := s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
+	var err error
+	id, err := thread.Decode(threadId)
 	if err != nil {
-		return fmt.Errorf("failed to add thread %s to collection: %w", threadId, err)
+		return fmt.Errorf("failed to add thread: %w", err)
 	}
 
-	return nil
+	defer func() {
+		// if we successfully downloaded the thread, or we already have it
+		// we still may need to check that it is added to current collection
+		if err != nil {
+			return
+		}
+		// we shouldn't add references to self
+		if s.currentWorkspaceId == id {
+			return
+		}
+
+		// TODO: check if we can optimize it by changing the query
+		instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
+		if err != nil {
+			log.With("thread id", threadId).
+				Errorf("failed to add thread to collection: %v", err)
+			return
+		}
+
+		for _, instanceBytes := range instancesBytes {
+			ti := threadInfo{}
+			threadsUtil.InstanceFromJSON(instanceBytes, &ti)
+
+			if string(ti.ID) == threadId {
+				return
+			}
+		}
+		_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(addedInfo))
+		if err != nil {
+			log.With("thread id", threadId).
+				Errorf("failed to add thread to collection: %v", err)
+		}
+	}()
+
+	_, err = s.GetThreadInfo(id)
+	if err == nil {
+		log.With("thread id", threadId).
+			Info("thread was already added")
+		return nil
+	}
+
+	if err != nil && err != tlcore.ErrThreadNotFound {
+		return fmt.Errorf("failed to add thread: %w", err)
+	}
+	err = s.processNewExternalThread(id, addedInfo)
+
+	return err
 }
 
 func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {

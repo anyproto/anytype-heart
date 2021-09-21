@@ -188,6 +188,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 		_, err = s.startWorkspaceThreadProcessor(tid.String())
 	}
 
+	// TODO: should we add timeout here?
 	_, err = s.pullThread(s.ctx, tid)
 	if err != nil {
 		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())

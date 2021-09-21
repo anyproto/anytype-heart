@@ -120,6 +120,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			log.Errorf("could not start workspace: %v", err)
 		}
 	}
+	s.currentWorkspaceId = account.ID
 
 	var accountPullErr error
 
@@ -259,6 +260,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 
 		s.db = workspaceProcessor.GetDB()
 		s.threadsCollection = workspaceProcessor.GetCollection()
+		s.currentWorkspaceId = workspaceId
 
 		go func() {
 			_ = s.threadsDbMigration(workspaceThreadIdString,
