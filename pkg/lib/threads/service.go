@@ -468,7 +468,17 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	return s.t.GetThread(ctx, id)
+	ti, err := s.t.GetThread(ctx, id)
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	// TODO: consider also getting addresses of logs from thread
+	// default thread implementation only returns the addresses of current host
+	if s.replicatorAddr != nil {
+		ti.Addrs = append(ti.Addrs, s.replicatorAddr)
+	}
+	return ti, nil
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
