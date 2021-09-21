@@ -53,16 +53,24 @@ func (t *threadProcessor) Init(id thread.ID) error {
 	}
 
 	if id == thread.Undef {
-		return fmt.Errorf("cannot start db with undefined thread")
+		return fmt.Errorf("cannot start processor with undefined thread")
 	}
 	t.threadId = id
 
-	var err error
+	tInfo, err := t.threadsService.t.GetThread(context.Background(), id)
+	if err != nil {
+		return fmt.Errorf("cannot start thread processor, because thread is not downloaded: %w", err)
+	}
+
 	t.db, err = threadsDb.NewDB(
 		context.Background(),
 		t.threadsService.threadsDbDS,
 		t.threadsService.t,
 		t.threadId,
+		// We need to provide the key beforehand
+		// otherwise there can be problems if the log is not created (and therefore the keys are not matched)
+		// this happens with workspaces, because we are adding threads but not creating them
+		threadsDb.WithNewKey(tInfo.Key),
 		threadsDb.WithNewCollections())
 	if err != nil {
 		return err

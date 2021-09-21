@@ -244,6 +244,13 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	}
 	ids.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
+	defer func() {
+		if s.threadsCollection == nil || s.db == nil {
+			s.db = accountProcessor.GetDB()
+			s.threadsCollection = accountProcessor.GetCollection()
+		}
+	}()
+
 	// trying to set up the workspace if errors occur then bail out
 	if workspaceProcessor != nil {
 		workspaceId, err := thread.Decode(workspaceThreadIdString)

@@ -39,6 +39,8 @@ var log = logging.Logger("anytype-core")
 const (
 	CName  = "anytype"
 	tmpDir = "tmp"
+
+	deeplinkBlockAdd = "anytype://block/add?"
 )
 
 type PredefinedBlockIds struct {
@@ -138,7 +140,7 @@ type Anytype struct {
 }
 
 func (a *Anytype) OpenDeeplink(deeplink string) error {
-	query := deeplink[strings.LastIndex(deeplink, "anytype://block/add?")+1:]
+	query := deeplink[strings.LastIndex(deeplink, deeplinkBlockAdd)+len(deeplinkBlockAdd):]
 	decoded, err := url.ParseQuery(query)
 	if err != nil {
 		return fmt.Errorf("error decoding deeplink: %w", err)
@@ -193,7 +195,7 @@ func (a *Anytype) CreateDeeplinkFromBlock(blockId string) (string, error) {
 	params.Add("payload", string(marshalledPayload))
 	encoded := params.Encode()
 
-	return fmt.Sprintf("anytype://block/add?%s", encoded), nil
+	return fmt.Sprintf("%s%s", deeplinkBlockAdd, encoded), nil
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {
