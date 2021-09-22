@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -348,6 +349,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
+	defer s.cache.Release(id)
 	ob.Lock()
 	defer ob.Unlock()
 	ob.SetEventFunc(s.sendEvent)
@@ -364,7 +366,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
-
+	s.cache.Lock(id)
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
 			fList = func() []string {
@@ -414,14 +416,22 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 }
 
 func (s *service) CloseBlock(id string) error {
+	var isDraft bool
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.BlockClose()
+		isDraft = pbtypes.GetBool(b.NewState().LocalDetails(), bundle.RelationKeyIsDraft.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	s.cache.Release(id)
+	s.cache.Unlock(id)
+	if isDraft {
+		_, _ = s.cache.Remove(id)
+		if err = s.anytype.DeleteBlock(id); err != nil {
+			log.Errorf("error while block delete: %v", err)
+		}
+	}
 	return nil
 }
 
@@ -538,7 +548,7 @@ func (s *service) deleteObject(id string) (err error) {
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
-
+	s.cache.Reset(id)
 	return s.anytype.DeleteBlock(id)
 }
 
