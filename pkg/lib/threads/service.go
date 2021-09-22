@@ -373,7 +373,6 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 	workspaceReadKeyBytes := workspaceThread.Key.Read().Bytes()
 
 	// creating home thread
-
 	homeId, err := threadDeriveId(threadDerivedIndexHome, workspaceReadKeyBytes)
 	if err != nil {
 		return thread.Info{}, err
@@ -382,8 +381,7 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 	if err != nil {
 		return thread.Info{}, err
 	}
-	_, err = s.createThreadWithThreadCollection(processor.GetCollection(), homeId, thread.NewKey(homeSk, homeRk))
-	// TODO: change logic so that we will not add these threads to workspace thread
+	_, err = s.threadCreate(homeId, thread.NewKey(homeSk, homeRk))
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create home thread: %w", err)
 	}
@@ -397,7 +395,7 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 	if err != nil {
 		return thread.Info{}, err
 	}
-	_, err = s.createThreadWithThreadCollection(processor.GetCollection(), archiveId, thread.NewKey(archiveSk, archiveRk))
+	_, err = s.threadCreate(archiveId, thread.NewKey(archiveSk, archiveRk))
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create archive thread: %w", err)
 	}

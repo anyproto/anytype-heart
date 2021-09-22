@@ -106,7 +106,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	s.threadProcessors[account.ID] = accountProcessor
 	err = accountProcessor.Init(account.ID)
 	if err != nil {
-		return ids, fmt.Errorf("threadsDbInit failed: %w", err)
+		return ids, fmt.Errorf("account proccessor init failed: %w", err)
 	}
 
 	var workspaceProcessor ThreadProcessor
@@ -455,22 +455,23 @@ func (s *service) derivedThreadCreate(index threadDerivedIndex) (thread.Info, er
 	if err != nil {
 		return thread.Info{}, err
 	}
-
-	thrd, err := s.t.GetThread(context.Background(), id)
-	if err == nil && thrd.Key.Service() != nil {
-		// we already have the thread locally, we can safely pull it in background
-		return thrd, nil
-	}
-
 	serviceKey, readKey, err := s.derivedThreadKeyByIndex(index)
 	if err != nil {
 		return thread.Info{}, err
 	}
 
-	// intentionally do not pass the original ctx, because we don't want to stuck in the middle of thread creation
+	return s.threadCreate(id, thread.NewKey(serviceKey, readKey))
+}
+
+func (s *service) threadCreate(threadId thread.ID, key thread.Key) (thread.Info, error) {
+	thrd, err := s.t.GetThread(context.Background(), threadId)
+	if err == nil && thrd.Key.Service() != nil {
+		return thrd, nil
+	}
+
 	thrd, err = s.t.CreateThread(context.Background(),
-		id,
-		corenet.WithThreadKey(thread.NewKey(serviceKey, readKey)),
+		threadId,
+		corenet.WithThreadKey(key),
 		corenet.WithLogKey(s.device))
 	if err != nil {
 		return thread.Info{}, err

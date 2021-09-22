@@ -176,14 +176,9 @@ func (a *Anytype) CreateDeeplinkFromBlock(blockId string) (string, error) {
 		return "", fmt.Errorf("failed to get info on the thread: %w", err)
 	}
 
-	var addrs []string
-	for _, addr := range threadInfo.Addrs {
-		addrs = append(addrs, addr.String())
-	}
-
 	payload := &model.ThreadDeeplinkPayload{
 		Key:   threadInfo.Key.String(),
-		Addrs: addrs,
+		Addrs: util.MultiAddressesToStrings(threadInfo.Addrs),
 	}
 	marshalledPayload, err := proto.Marshal(payload)
 	if err != nil {
