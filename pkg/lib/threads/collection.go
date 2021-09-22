@@ -14,19 +14,10 @@ import (
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
-	threadsDb "github.com/textileio/go-threads/db"
-	threadsUtil "github.com/textileio/go-threads/util"
 )
 
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
-
-var (
-	threadInfoCollection = threadsDb.CollectionConfig{
-		Name:   ThreadInfoCollectionName,
-		Schema: threadsUtil.SchemaFromInstance(threadInfo{}, false),
-	}
-)
 
 type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`

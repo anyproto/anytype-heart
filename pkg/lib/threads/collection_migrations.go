@@ -40,12 +40,12 @@ func (s *service) threadsDbMigration(accountThreadId string, db *threadsDb.DB, c
 		}
 	}()
 
-	go func() {
-		err := s.addMissingThreadsToCollection(collection)
-		if err != nil {
-			log.Errorf("addMissingThreadsToCollection: %s", err.Error())
-		}
-	}()
+	//go func() {
+	//	err := s.addMissingThreadsToCollection(collection)
+	//	if err != nil {
+	//		log.Errorf("addMissingThreadsToCollection: %s", err.Error())
+	//	}
+	//}()
 
 	return nil
 }

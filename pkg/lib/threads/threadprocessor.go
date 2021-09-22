@@ -76,10 +76,15 @@ func (t *threadProcessor) Init(id thread.ID) error {
 		return err
 	}
 
-	t.threadsCollection = t.db.GetCollection(ThreadInfoCollectionName)
+	collectionName := fmt.Sprintf("%s%s", ThreadInfoCollectionName, t.threadId.String())
+	t.threadsCollection = t.db.GetCollection(collectionName)
 
 	if t.threadsCollection == nil {
-		t.threadsCollection, err = t.db.NewCollection(threadInfoCollection)
+		collectionConfig := threadsDb.CollectionConfig{
+			Name:   collectionName,
+			Schema: threadsUtil.SchemaFromInstance(threadInfo{}, false),
+		}
+		t.threadsCollection, err = t.db.NewCollection(collectionConfig)
 		if err != nil {
 			return err
 		}

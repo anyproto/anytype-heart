@@ -383,6 +383,7 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 		return thread.Info{}, err
 	}
 	_, err = s.createThreadWithThreadCollection(processor.GetCollection(), homeId, thread.NewKey(homeSk, homeRk))
+	// TODO: change logic so that we will not add these threads to workspace thread
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create home thread: %w", err)
 	}
