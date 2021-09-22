@@ -478,6 +478,12 @@ func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequ
 	})
 }
 
+func (s *service) SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		return b.(basic.Basic).SetLatexText(ctx, req)
+	})
+}
+
 func (s *service) SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
