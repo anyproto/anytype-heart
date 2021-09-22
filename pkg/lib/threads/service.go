@@ -365,7 +365,7 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
 	}
 
-	processor, err := s.startWorkspaceThreadProcessor(workspaceThread.ID.String())
+	_, err = s.startWorkspaceThreadProcessor(workspaceThread.ID.String())
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not start thread processor: %w", err)
 	}
