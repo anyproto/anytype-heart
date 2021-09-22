@@ -261,9 +261,9 @@ type ObjectStore interface {
 	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
 	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
 
-	GetCurrentWorkspaceThread() (string, error)
-	SetCurrentWorkspaceThread(threadId string) (err error)
-	RemoveCurrentWorkspaceThread() (err error)
+	GetCurrentWorkspaceId() (string, error)
+	SetCurrentWorkspaceId(threadId string) (err error)
+	RemoveCurrentWorkspaceId() (err error)
 }
 
 type relationOption struct {
@@ -331,7 +331,7 @@ type dsObjectStore struct {
 	depSubscriptions []database.Subscription
 }
 
-func (m *dsObjectStore) GetCurrentWorkspaceThread() (string, error) {
+func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return "", fmt.Errorf("error creating txn in datastore: %w", err)
@@ -345,7 +345,7 @@ func (m *dsObjectStore) GetCurrentWorkspaceThread() (string, error) {
 	return string(val), nil
 }
 
-func (m *dsObjectStore) SetCurrentWorkspaceThread(threadId string) (err error) {
+func (m *dsObjectStore) SetCurrentWorkspaceId(threadId string) (err error) {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -359,7 +359,7 @@ func (m *dsObjectStore) SetCurrentWorkspaceThread(threadId string) (err error) {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) RemoveCurrentWorkspaceThread() (err error) {
+func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -631,6 +631,11 @@ func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub databa
 }
 
 func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []database.Record, total int, err error) {
+	workspaceId, err := m.GetCurrentWorkspaceId()
+	if err == nil {
+		q.WorkspaceId = workspaceId
+	}
+
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)

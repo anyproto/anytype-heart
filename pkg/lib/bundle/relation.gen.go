@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "011738d4891586946307035e3f05a70c1a4685237d6aa08b7694d2ba491f5a60"
+const RelationChecksum = "2b30347dbc3feaf8fcc7eb79ea3630ffd01eb2f0225c9e1133b7b528ab5a0baa"
 
 type RelationKey string
 
@@ -108,6 +108,7 @@ const (
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
+	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -1988,6 +1989,19 @@ var (
 			Key:              "widthInPixels",
 			MaxCount:         1,
 			Name:             "Width",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWorkspaceId: {
+
+			DataSource:       model.Relation_account,
+			Description:      "Workspace id",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "workspaceId",
+			MaxCount:         1,
+			Name:             "WorkspaceId",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

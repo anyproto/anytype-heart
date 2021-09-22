@@ -110,7 +110,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	}
 
 	var workspaceProcessor ThreadProcessor
-	workspaceThreadIdString, err := s.workspaceThreadGetter.GetCurrentWorkspaceThread()
+	workspaceThreadIdString, err := s.workspaceThreadGetter.GetCurrentWorkspaceId()
 	if err != nil {
 		s.db = accountProcessor.GetDB()
 		s.threadsCollection = accountProcessor.GetCollection()

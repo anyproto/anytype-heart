@@ -15,7 +15,7 @@ type CafeConfigFetcher interface {
 }
 
 type CurrentWorkspaceThreadGetter interface {
-	GetCurrentWorkspaceThread() (string, error)
+	GetCurrentWorkspaceId() (string, error)
 }
 
 type Config struct {

@@ -75,6 +75,7 @@ type Query struct {
 	WithSystemObjects      bool
 	IncludeArchivedObjects bool
 	ObjectTypeFilter       []string
+	WorkspaceId            string
 }
 
 func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
@@ -159,6 +160,13 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
+	}
+	if q.WorkspaceId != "" {
+		mainFilter = append(mainFilter, filter.Eq{
+			Key:   bundle.RelationKeyWorkspaceId.String(),
+			Cond:  model.BlockContentDataviewFilter_Equal,
+			Value: pbtypes.String(q.WorkspaceId),
+		})
 	}
 	f.filter = mainFilter
 	if len(q.Sorts) > 0 {
