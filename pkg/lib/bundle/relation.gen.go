@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "011738d4891586946307035e3f05a70c1a4685237d6aa08b7694d2ba491f5a60"
+const RelationChecksum = "947b9e13b3769ead1ad858a39047dc6404e432edeeda79f081542936856497b5"
 
 type RelationKey string
 
@@ -127,6 +127,7 @@ const (
 	RelationKeyPriority                  RelationKey = "priority"
 	RelationKeyFileMimeType              RelationKey = "fileMimeType"
 	RelationKeyType                      RelationKey = "type"
+	RelationKeyIsDraft                   RelationKey = "isDraft"
 	RelationKeyNumberOfEmployees         RelationKey = "numberOfEmployees"
 	RelationKeyLayout                    RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
@@ -1023,6 +1024,19 @@ var (
 			MaxCount:         1,
 			Name:             "Archived",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsDraft: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates document in draft state",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isDraft",
+			MaxCount:         1,
+			Name:             "Is draft",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
