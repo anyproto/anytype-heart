@@ -263,6 +263,7 @@ type ObjectStore interface {
 
 	GetCurrentWorkspaceThread() (string, error)
 	SetCurrentWorkspaceThread(threadId string) (err error)
+	RemoveCurrentWorkspaceThread() (err error)
 }
 
 type relationOption struct {
@@ -353,6 +354,20 @@ func (m *dsObjectStore) SetCurrentWorkspaceThread(threadId string) (err error) {
 
 	if err := txn.Put(currentWorkspace, []byte(threadId)); err != nil {
 		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) RemoveCurrentWorkspaceThread() (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Delete(currentWorkspace); err != nil {
+		return fmt.Errorf("failed to delete from ds: %w", err)
 	}
 
 	return txn.Commit()

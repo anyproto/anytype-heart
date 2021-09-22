@@ -288,6 +288,9 @@ func (a *Anytype) CreateWorkspace() (string, error) {
 }
 
 func (a *Anytype) SelectWorkspace(workspaceId string) error {
+	if workspaceId == "" {
+		return a.objectStore.RemoveCurrentWorkspaceThread()
+	}
 	threadId, err := thread.Decode(workspaceId)
 	if err != nil {
 		return err
