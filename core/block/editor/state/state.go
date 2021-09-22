@@ -1222,30 +1222,22 @@ func (s *State) Validate() (err error) {
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
 func (s *State) IsEmpty() bool {
-	if pbtypes.GetString(s.details, bundle.RelationKeyName.String()) != "" {
+	if pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
 		return false
 	}
-	// todo: check other relations?
+	if pbtypes.GetString(s.Details(), bundle.RelationKeyDescription.String()) != "" {
+		return false
+	}
 
-	i := 0
-	blocksToTraverse := []string{"header"}
-	ignoredTemplateBlocksMap := map[string]struct{}{s.rootId: {}}
-	for i < len(blocksToTraverse) {
-		id := blocksToTraverse[i]
-		i++
-		b := s.Pick(id)
-		if b == nil {
-			continue
+	if root := s.Pick(s.RootId()); root != nil {
+		for _, chId := range root.Model().ChildrenIds {
+			if chId != "header" {
+				return false
+			}
 		}
-		blocksToTraverse = append(blocksToTraverse, b.Model().ChildrenIds...)
-		ignoredTemplateBlocksMap[id] = struct{}{}
 	}
 
-	if len(s.blocks) <= len(ignoredTemplateBlocksMap) {
-		return true
-	}
-
-	return false
+	return true
 }
 
 func (s *State) Copy() *State {
