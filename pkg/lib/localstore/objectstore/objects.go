@@ -631,11 +631,6 @@ func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub databa
 }
 
 func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []database.Record, total int, err error) {
-	workspaceId, err := m.GetCurrentWorkspaceId()
-	if err == nil {
-		q.WorkspaceId = workspaceId
-	}
-
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)

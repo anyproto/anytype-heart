@@ -8753,6 +8753,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
+| ignoreWorkspace | [bool](#bool) |  |  |
 
 
 

@@ -65,6 +65,11 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 			includeArchived = true
 		}
 	}
+	var workspaceId string
+	if !req.IgnoreWorkspace {
+		workspaceId, _ = at.ObjectStore().GetCurrentWorkspaceId()
+	}
+
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:                req.Filters,
 		Sorts:                  req.Sorts,
@@ -73,6 +78,8 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		FullText:               req.FullText,
 		ObjectTypeFilter:       req.ObjectTypeFilter,
 		IncludeArchivedObjects: includeArchived,
+		WorkspaceId:            workspaceId,
+		SearchInWorkspace:      !req.IgnoreWorkspace,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)

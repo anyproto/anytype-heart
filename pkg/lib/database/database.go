@@ -76,6 +76,7 @@ type Query struct {
 	IncludeArchivedObjects bool
 	ObjectTypeFilter       []string
 	WorkspaceId            string
+	SearchInWorkspace      bool
 }
 
 func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
@@ -161,12 +162,21 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
 	}
-	if q.WorkspaceId != "" {
-		mainFilter = append(mainFilter, filter.Eq{
-			Key:   bundle.RelationKeyWorkspaceId.String(),
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.String(q.WorkspaceId),
-		})
+	if q.SearchInWorkspace {
+		if q.WorkspaceId != "" {
+			// TODO: we should still show base relationships here
+			mainFilter = append(mainFilter, filter.Eq{
+				Key:   bundle.RelationKeyWorkspaceId.String(),
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: pbtypes.String(q.WorkspaceId),
+			})
+		} else {
+			// it can also be the case that we want to search in current account
+			// which is also kinda workspace
+			mainFilter = append(mainFilter, filter.Empty{
+				Key: bundle.RelationKeyWorkspaceId.String(),
+			})
+		}
 	}
 	f.filter = mainFilter
 	if len(q.Sorts) > 0 {
