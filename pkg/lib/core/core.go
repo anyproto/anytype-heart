@@ -152,8 +152,8 @@ func (a *Anytype) OpenDeeplink(deeplink string) error {
 	}
 
 	payload := decoded.Get("payload")
-	if threadId == "" {
-		return fmt.Errorf("error decoding deeplink: no key present")
+	if payload == "" {
+		return fmt.Errorf("error decoding deeplink: no payload present")
 	}
 
 	var protoPayload model.ThreadDeeplinkPayload

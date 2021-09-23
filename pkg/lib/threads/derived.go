@@ -5,6 +5,8 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
+	
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/logstore"
 	threadsDb "github.com/textileio/go-threads/db"
@@ -501,10 +503,7 @@ func (s *service) ensureWorkspace(ctx context.Context, ids DerivedSmartblockIds,
 		return ids, err
 	}
 
-	var addrs []string
-	for _, addr := range thrdInfo.Addrs {
-		addrs = append(addrs, addr.String())
-	}
+	addrs := util.MultiAddressesToStrings(thrdInfo.Addrs)
 	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs)
 	if err != nil {
 		return ids, err
