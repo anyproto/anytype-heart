@@ -227,6 +227,7 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 			v.Name = view.Name
 			v.Type = view.Type
 			v.CoverRelationKey = view.CoverRelationKey
+			v.ShowIcon = view.ShowIcon
 
 			break
 		}
