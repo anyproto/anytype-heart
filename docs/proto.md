@@ -14189,6 +14189,7 @@ Bookmark is to keep a web-link and to preview a content.
 | filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | relations | [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation) | repeated | relations fields/columns options, also used to provide the order |
 | coverRelationKey | [string](#string) |  | Relation used for cover in gallery |
+| hideIcon | [bool](#bool) |  | Hide icon near name |
 
 
 

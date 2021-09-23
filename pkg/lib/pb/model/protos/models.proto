@@ -242,7 +242,7 @@ message Block {
                 repeated Filter filters = 5;
                 repeated Relation relations = 6; // relations fields/columns options, also used to provide the order
 				string coverRelationKey = 7; // Relation used for cover in gallery
-                bool showIcon = 8; // Show icon near name 
+                bool hideIcon = 8; // Hide icon near name 
 
                 enum Type {
                     Table = 0;
