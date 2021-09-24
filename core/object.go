@@ -493,3 +493,30 @@ func (mw *Middleware) ObjectFeaturedRelationRemove(req *pb.RpcObjectFeaturedRela
 	}
 	return response(pb.RpcObjectFeaturedRelationRemoveResponseError_NULL, nil)
 }
+
+func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {
+	response := func(setId string, err error) *pb.RpcObjectToSetResponse {
+		resp := &pb.RpcObjectToSetResponse{
+			SetId: setId,
+			Error: &pb.RpcObjectToSetResponseError{
+				Code: pb.RpcObjectToSetResponseError_NULL,
+			},
+		}
+		if err != nil {
+			resp.Error.Code = pb.RpcObjectToSetResponseError_UNKNOWN_ERROR
+			resp.Error.Description = err.Error()
+		}
+		return resp
+	}
+	var (
+		setId string
+		err error
+	)
+	err = mw.doBlockService(func(bs block.Service) error {
+		if setId, err = bs.ObjectToSet(req.ContextId, req.ObjectTypeUrl); err != nil {
+			return err
+		}
+		return nil
+	})
+	return response(setId, err)
+}
