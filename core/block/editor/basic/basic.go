@@ -2,15 +2,16 @@ package basic
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -31,6 +32,7 @@ type Basic interface {
 	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
+	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
@@ -276,6 +278,21 @@ func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKe
 		return fmt.Errorf("unexpected block type: %T (want relation)", b)
 	}
 	return bs.Apply(s)
+}
+
+func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) (err error) {
+	s := bs.NewStateCtx(ctx)
+	b := s.Get(req.BlockId)
+	if b == nil {
+		return smartblock.ErrSimpleBlockNotFound
+	}
+
+	if rel, ok := b.(latex.Block); ok {
+		rel.SetText(req.Text)
+	} else {
+		return fmt.Errorf("unexpected block type: %T (want latex)", b)
+	}
+	return bs.Apply(s, smartblock.NoEvent)
 }
 
 func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) (err error) {
