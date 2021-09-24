@@ -394,7 +394,7 @@ func (mw *Middleware) BlockUpload(req *pb.RpcBlockUploadRequest) *pb.RpcBlockUpl
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UploadBlockFile(ctx, *req, "")
+		return bs.UploadBlockFile(nil, *req, "")
 	})
 	if err != nil {
 		return response(pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, err)
