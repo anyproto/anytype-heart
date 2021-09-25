@@ -29,6 +29,8 @@ type threadProcessor struct {
 	db                *threadsDb.DB
 	threadsCollection *threadsDb.Collection
 
+	isAccountProcessor bool
+
 	threadId thread.ID
 }
 
@@ -44,6 +46,14 @@ func NewThreadProcessor(s *service, notifier ThreadDownloadNotifier) ThreadProce
 	return &threadProcessor{
 		threadsService: s,
 		threadNotifier: notifier,
+	}
+}
+
+func NewAccountThreadProcessor(s *service, simultaneousRequests int) ThreadProcessor {
+	return &threadProcessor{
+		threadsService:     s,
+		isAccountProcessor: true,
+		threadNotifier:     NewAccountNotifier(simultaneousRequests),
 	}
 }
 
@@ -76,8 +86,12 @@ func (t *threadProcessor) Init(id thread.ID) error {
 		return err
 	}
 
-	// TODO: account thread collection should have the same name as it previously had?
-	collectionName := fmt.Sprintf("%s%s", ThreadInfoCollectionName, t.threadId.String())
+	// To not break the old behaviour we name account thread collection with the same name
+	threadIdString := t.threadId.String()
+	if t.isAccountProcessor {
+		threadIdString = ""
+	}
+	collectionName := fmt.Sprintf("%s%s", ThreadInfoCollectionName, threadIdString)
 	t.threadsCollection = t.db.GetCollection(collectionName)
 
 	if t.threadsCollection == nil {

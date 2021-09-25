@@ -6,6 +6,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
@@ -164,12 +165,18 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 	}
 	if q.SearchInWorkspace {
 		if q.WorkspaceId != "" {
-			mainFilter = append(mainFilter, filter.Eq{
-				Key:   bundle.RelationKeyWorkspaceId.String(),
-				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: pbtypes.String(q.WorkspaceId),
-			})
-			// TODO: we should still show bundled relationships here
+			filterOr := filter.OrFilters{
+				filter.Eq{
+					Key:   bundle.RelationKeyWorkspaceId.String(),
+					Cond:  model.BlockContentDataviewFilter_Equal,
+					Value: pbtypes.String(q.WorkspaceId),
+				},
+				filter.Like{
+					Key:   bundle.RelationKeyOwner.String(),
+					Value: pbtypes.String(addr.AnytypeProfileId),
+				},
+			}
+			mainFilter = append(mainFilter, filterOr)
 		} else {
 			// it can also be the case that we want to search in current account
 			// which is also kinda workspace

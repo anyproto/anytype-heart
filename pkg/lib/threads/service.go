@@ -308,6 +308,7 @@ type Service interface {
 	CafePeer() ma.Multiaddr
 
 	CreateWorkspace() (thread.Info, error)
+	SelectWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error)
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
@@ -316,7 +317,7 @@ type Service interface {
 	AddThread(threadId string, key string, addrs []string) error
 
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
-	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
+	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, *DerivedSmartblockIds, error)
 }
 
 type ThreadsGetter interface {
@@ -404,6 +405,13 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 	}
 
 	return workspaceThread, nil
+}
+
+func (s *service) SelectWorkspace(
+	ctx context.Context,
+	ids DerivedSmartblockIds,
+	workspaceId thread.ID) (DerivedSmartblockIds, error) {
+	return s.ensureWorkspace(ctx, ids, workspaceId, true)
 }
 
 func (s *service) AddThread(threadId string, key string, addrs []string) error {
@@ -499,7 +507,6 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	}
 
 	key := thread.NewKey(followKey, readKey)
-
 
 	if s.threadsCollection == nil {
 		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")

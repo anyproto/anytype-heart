@@ -78,7 +78,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 var ErrThreadProcessorExists = fmt.Errorf("thread processor already exists")
 
-func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
+func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, *DerivedSmartblockIds, error) {
 	// FIXME: method refactoring required, racy vars (err)
 
 	s.Lock()
@@ -95,34 +95,26 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		}
 	}()
 
-	ids := DerivedSmartblockIds{}
+	accountIds := DerivedSmartblockIds{}
 	// account
 	account, justCreated, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccount, newAccount, false)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
 
-	ids.Account = account.ID.String()
+	accountIds.Account = account.ID.String()
 
-	accountNotifier := NewAccountNotifier(s.simultaneousRequests)
-	accountProcessor := NewThreadProcessor(s, accountNotifier)
+	accountProcessor := NewAccountThreadProcessor(s, s.simultaneousRequests)
 	s.threadProcessors[account.ID] = accountProcessor
 	err = accountProcessor.Init(account.ID)
 	if err != nil {
-		return ids, fmt.Errorf("account proccessor init failed: %w", err)
+		return accountIds, nil, fmt.Errorf("account proccessor init failed: %w", err)
 	}
 
-	var workspaceProcessor ThreadProcessor
-	workspaceThreadIdString, err := s.workspaceThreadGetter.GetCurrentWorkspaceId()
-	if err != nil {
-		s.db = accountProcessor.GetDB()
-		s.threadsCollection = accountProcessor.GetCollection()
-	} else {
-		workspaceProcessor, err = s.startWorkspaceThreadProcessor(workspaceThreadIdString)
-		if err != nil {
-			log.Errorf("could not start workspace: %v", err)
-		}
-	}
+	// by default setting collection to account
+	// we will change it later if needed
+	s.db = accountProcessor.GetDB()
+	s.threadsCollection = accountProcessor.GetCollection()
 	s.currentWorkspaceId = account.ID
 
 	var accountPullErr error
@@ -183,7 +175,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 						if err != nil {
 							log.Errorf("failed to delete account thread: %s", err.Error())
 						}
-						return ids, err
+						return accountIds, nil, err
 					}
 					break loop
 				case <-cctx.Done():
@@ -195,79 +187,77 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	} else {
 		err = accountProcessor.Listen(make(map[thread.ID]threadInfo))
 		if err != nil {
-			return ids, err
+			return accountIds, nil, err
 		}
 	}
 
 	// profile
 	profile, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexProfilePage, newAccount, true)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
-	ids.Profile = profile.ID.String()
+	accountIds.Profile = profile.ID.String()
 
 	// home
 	home, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexHome, newAccount, true)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
-	ids.Home = home.ID.String()
+	accountIds.Home = home.ID.String()
 
 	// archive
 	archive, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexArchive, newAccount, true)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
-	ids.Archive = archive.ID.String()
+	accountIds.Archive = archive.ID.String()
 
 	// set pages
 	setPages, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexSetPages, newAccount, true)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
-	ids.SetPages = setPages.ID.String()
+	accountIds.SetPages = setPages.ID.String()
 
 	// marketplace
 	marketplace, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceType, newAccount, true)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
-	ids.MarketplaceType = marketplace.ID.String()
+	accountIds.MarketplaceType = marketplace.ID.String()
 
 	// marketplace library
 	marketplaceLib, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceRelation, newAccount, true)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
-	ids.MarketplaceRelation = marketplaceLib.ID.String()
+	accountIds.MarketplaceRelation = marketplaceLib.ID.String()
 
 	// marketplace template
 	marketplaceTemplate, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceTemplate, newAccount, true)
 	if err != nil {
-		return ids, err
+		return accountIds, nil, err
 	}
-	ids.MarketplaceTemplate = marketplaceTemplate.ID.String()
-
-	defer func() {
-		if s.threadsCollection == nil || s.db == nil {
-			s.db = accountProcessor.GetDB()
-			s.threadsCollection = accountProcessor.GetCollection()
-		}
-	}()
+	accountIds.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
 	// trying to set up the workspace if errors occur then bail out
-	if workspaceProcessor != nil {
+	workspaceThreadIdString, err := s.workspaceThreadGetter.GetCurrentWorkspaceId()
+	if err == nil {
 		workspaceId, err := thread.Decode(workspaceThreadIdString)
 		if err != nil {
 			log.Errorf("failed to start the workspace: %v", err)
-			return ids, nil
+			return accountIds, nil, nil
 		}
 
-		updatedIds, err := s.ensureWorkspace(ctx, ids, workspaceId)
+		workspaceIds, err := s.ensureWorkspace(ctx, accountIds, workspaceId, false)
 		if err != nil {
 			log.Errorf("failed to start the workspace: %v", err)
-			return ids, nil
+			return accountIds, nil, nil
 		}
+
+		s.processorMutex.RLock()
+		workspaceProcessor := s.threadProcessors[workspaceId]
+		s.processorMutex.RUnlock()
 
 		s.db = workspaceProcessor.GetDB()
 		s.threadsCollection = workspaceProcessor.GetCollection()
@@ -279,10 +269,10 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 				workspaceProcessor.GetCollection())
 		}()
 
-		return updatedIds, nil
+		return accountIds, &workspaceIds, nil
 	}
 
-	return ids, nil
+	return accountIds, nil, nil
 }
 
 func (s *service) createThreadsDbMap() (map[thread.ID]threadInfo, error) {
@@ -499,20 +489,29 @@ func (s *service) threadCreate(threadId thread.ID, key thread.Key) (thread.Info,
 	return thrd, nil
 }
 
-func (s *service) ensureWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error) {
+func (s *service) ensureWorkspace(
+	ctx context.Context,
+	ids DerivedSmartblockIds,
+	workspaceId thread.ID,
+	isSelectMode bool) (DerivedSmartblockIds, error) {
 	// workspace here must be added at the time of switch
 	thrdInfo, err := s.t.GetThread(ctx, workspaceId)
 	if err != nil {
 		return ids, err
 	}
 
+	_, err = s.startWorkspaceThreadProcessor(workspaceId.String())
+	if err != nil && err != ErrThreadProcessorExists {
+		return ids, fmt.Errorf("could not start workspace: %w", err)
+	}
+
 	addrs := util.MultiAddressesToStrings(thrdInfo.Addrs)
-	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs)
+	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs, isSelectMode)
 	if err != nil {
 		return ids, err
 	}
 
-	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs)
+	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, isSelectMode)
 	if err != nil {
 		return ids, err
 	}
@@ -526,7 +525,8 @@ func (s *service) workspaceThreadEnsure(
 	ctx context.Context,
 	index threadDerivedIndex,
 	key thread.Key,
-	addrs []string) (thrd thread.Info, err error) {
+	addrs []string,
+	isSelectMode bool) (thrd thread.Info, err error) {
 	id, err := threadDeriveId(index, key.Read().Bytes())
 	if err != nil {
 		return thread.Info{}, err
@@ -539,7 +539,22 @@ func (s *service) workspaceThreadEnsure(
 
 	thrd, err = s.t.GetThread(ctx, id)
 	if err == nil {
-		err = s.t.PullThread(ctx, thrd.ID)
+		if isSelectMode {
+			// in case of select pulling all in background
+			go func() {
+				pullErr := s.t.PullThread(ctx, thrd.ID)
+				if pullErr != nil {
+					log.Errorf("failed to pull workspace thread: %v", pullErr)
+				}
+			}()
+		} else {
+			err = s.t.PullThread(ctx, thrd.ID)
+		}
+		return
+	}
+	if isSelectMode {
+		// we should not force pull anything in select mode due to time constraints
+		err = fmt.Errorf("could not select thread because it is not fetched")
 		return
 	}
 	if err != logstore.ErrThreadNotFound {

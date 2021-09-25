@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"net/url"
@@ -115,6 +116,8 @@ type Anytype struct {
 	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
+	accountBlockIds    threads.DerivedSmartblockIds
+	workspaceBlockIds  *threads.DerivedSmartblockIds
 	threadService      threads.Service
 	pinService         pin.FilePinService
 	ipfs               ipfs.Node
@@ -156,8 +159,13 @@ func (a *Anytype) OpenDeeplink(deeplink string) error {
 		return fmt.Errorf("error decoding deeplink: no payload present")
 	}
 
+	decodedPayload, err := base64.RawStdEncoding.DecodeString(payload)
+	if err != nil {
+		return fmt.Errorf("error decoding deeplink: cannot decode base64 payload")
+	}
+
 	var protoPayload model.ThreadDeeplinkPayload
-	err = proto.Unmarshal([]byte(payload), &protoPayload)
+	err = proto.Unmarshal(decodedPayload, &protoPayload)
 	if err != nil {
 		return fmt.Errorf("failed decoding the payload: %w", err)
 	}
@@ -184,10 +192,11 @@ func (a *Anytype) CreateDeeplinkFromBlock(blockId string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
 	}
+	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
 
 	params := url.Values{}
 	params.Add("id", blockId)
-	params.Add("payload", string(marshalledPayload))
+	params.Add("payload", encodedPayload)
 	encoded := params.Encode()
 
 	return fmt.Sprintf("%s%s", deeplinkBlockAdd, encoded), nil
@@ -289,8 +298,12 @@ func (a *Anytype) CreateWorkspace() (string, error) {
 
 func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	if workspaceId == "" {
+		// selecting account
+		a.predefinedBlockIds = a.accountBlockIds
+		a.workspaceBlockIds = nil
 		return a.objectStore.RemoveCurrentWorkspaceId()
 	}
+
 	threadId, err := thread.Decode(workspaceId)
 	if err != nil {
 		return err
@@ -304,10 +317,11 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 		return fmt.Errorf("can't select non-workspace smartblock")
 	}
 
-	_, err = a.threadService.Threads().GetThread(context.Background(), threadId)
+	workspaceIds, err := a.threadService.SelectWorkspace(context.Background(), a.accountBlockIds, threadId)
 	if err != nil {
-		return fmt.Errorf("could not find workspace thread: %w", err)
+		return fmt.Errorf("could not select workspace: %w", err)
 	}
+	a.workspaceBlockIds = &workspaceIds
 
 	err = a.objectStore.SetCurrentWorkspaceId(workspaceId)
 	if err != nil {
@@ -374,12 +388,18 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) err
 		}
 	}()
 
-	ids, err := a.threadService.EnsurePredefinedThreads(cctx, newAccount)
+	accountIds, workspaceIds, err := a.threadService.EnsurePredefinedThreads(cctx, newAccount)
 	if err != nil {
 		return err
 	}
 
-	a.predefinedBlockIds = ids
+	a.accountBlockIds = accountIds
+	a.workspaceBlockIds = workspaceIds
+	if a.workspaceBlockIds != nil {
+		a.predefinedBlockIds = *a.workspaceBlockIds
+	} else {
+		a.predefinedBlockIds = accountIds
+	}
 
 	return nil
 }
