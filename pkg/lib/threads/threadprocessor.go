@@ -86,8 +86,8 @@ func (t *threadProcessor) Init(id thread.ID) error {
 		return err
 	}
 
-	// To not break the old behaviour we name account thread collection with the same name
 	threadIdString := t.threadId.String()
+	// To not break the old behaviour we call account thread collection with the same name we used before
 	if t.isAccountProcessor {
 		threadIdString = ""
 	}

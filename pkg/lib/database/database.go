@@ -172,8 +172,12 @@ func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
 					Value: pbtypes.String(q.WorkspaceId),
 				},
 				filter.Like{
-					Key:   bundle.RelationKeyOwner.String(),
-					Value: pbtypes.String(addr.AnytypeProfileId),
+					Key:   bundle.RelationKeyType.String(),
+					Value: pbtypes.String(bundle.TypeKeyObjectType.String()),
+				},
+				filter.Like{
+					Key:   bundle.RelationKeyId.String(),
+					Value: pbtypes.String(addr.BundledRelationURLPrefix),
 				},
 			}
 			mainFilter = append(mainFilter, filterOr)
