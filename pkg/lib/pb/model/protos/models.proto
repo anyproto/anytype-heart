@@ -416,6 +416,11 @@ message ThreadDeeplinkPayload {
     repeated string addrs = 2;
 }
 
+message ThreadCreateQueueEntry {
+    string collectionThread = 1;
+    string threadId = 2;
+}
+
 message ObjectType {
     string url = 1; // leave empty in case you want to create the new one
     string name = 2; // name of objectType (can be localized for bundled types)

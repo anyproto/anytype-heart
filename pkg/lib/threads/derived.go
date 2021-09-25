@@ -5,7 +5,7 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-	
+
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/logstore"
@@ -76,6 +76,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 	threadDerivedIndexMarketplaceTemplate: smartblock.SmartblockTypeMarketplaceTemplate,
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
+var ErrThreadProcessorExists = fmt.Errorf("thread processor already exists")
 
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
 	// FIXME: method refactoring required, racy vars (err)
@@ -159,8 +160,9 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			if !justCreated {
 				ids, _ := s.Logstore().Threads()
 				metrics.ServedThreads.Set(float64(len(ids)))
-				// TODO: find a better way to use active db and collection
-				err = s.threadsDbMigration(
+
+				s.handleMissingReplicatorsAndThreadsInQueue()
+				err = s.handleMissingRecordsForCollection(
 					account.ID.String(),
 					accountProcessor.GetDB(),
 					accountProcessor.GetCollection())
@@ -272,7 +274,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		s.currentWorkspaceId = workspaceId
 
 		go func() {
-			_ = s.threadsDbMigration(workspaceThreadIdString,
+			_ = s.handleMissingRecordsForCollection(workspaceThreadIdString,
 				workspaceProcessor.GetDB(),
 				workspaceProcessor.GetCollection())
 		}()
@@ -349,16 +351,17 @@ func ProfileThreadIDFromAccountAddress(address string) (thread.ID, error) {
 }
 
 func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, error) {
+	s.processorMutex.Lock()
+	defer s.processorMutex.Unlock()
+
 	threadId, err := thread.Decode(id)
 	if err != nil {
 		return nil, fmt.Errorf("error decoding string %w", err)
 	}
 
-	s.processorMutex.RLock()
 	_, exists := s.threadProcessors[threadId]
-	s.processorMutex.RUnlock()
 	if exists {
-		return nil, fmt.Errorf("thread processor already exists: %w", err)
+		return nil, ErrThreadProcessorExists
 	}
 
 	workspaceProcessor := NewThreadProcessor(s, NewNoOpNotifier())
@@ -366,12 +369,12 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 	if err != nil {
 		return nil, fmt.Errorf("error initializing processor: %w", err)
 	}
+
 	err = workspaceProcessor.Listen(make(map[thread.ID]threadInfo))
 	if err != nil {
 		return nil, fmt.Errorf("error listening to processor: %w", err)
 	}
-	s.processorMutex.Lock()
-	defer s.processorMutex.Unlock()
+
 	s.threadProcessors[threadId] = workspaceProcessor
 
 	return workspaceProcessor, nil

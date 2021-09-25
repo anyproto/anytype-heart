@@ -76,6 +76,7 @@ func (t *threadProcessor) Init(id thread.ID) error {
 		return err
 	}
 
+	// TODO: account thread collection should have the same name as it previously had?
 	collectionName := fmt.Sprintf("%s%s", ThreadInfoCollectionName, t.threadId.String())
 	t.threadsCollection = t.db.GetCollection(collectionName)
 

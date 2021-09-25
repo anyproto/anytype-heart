@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -85,6 +86,7 @@ type service struct {
 
 	fetcher               CafeConfigFetcher
 	workspaceThreadGetter CurrentWorkspaceThreadGetter
+	threadCreateQueue     ThreadCreateQueue
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -130,6 +132,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	s.fetcher = a.MustComponent("configfetcher").(CafeConfigFetcher)
 	s.workspaceThreadGetter = a.MustComponent("objectstore").(CurrentWorkspaceThreadGetter)
+	s.threadCreateQueue = a.MustComponent("objectstore").(ThreadCreateQueue)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
@@ -497,15 +500,20 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 
 	key := thread.NewKey(followKey, readKey)
 
-	return s.createThreadWithThreadCollection(s.threadsCollection, thrdId, key)
-}
 
-func (s *service) createThreadWithThreadCollection(
-	collection *threadsDb.Collection,
-	thrdId thread.ID,
-	key thread.Key) (thread.Info, error) {
-	if collection == nil {
+	if s.threadsCollection == nil {
 		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
+	}
+
+	// this logic is needed to prevent cases when the tread is created
+	// but the app is shut down, so we don't know in which collection should we add this thread
+	err = s.threadCreateQueue.AddThreadQueueEntry(&model.ThreadCreateQueueEntry{
+		CollectionThread: s.currentWorkspaceId.String(),
+		ThreadId:         thrdId.String(),
+	})
+	if err != nil {
+		log.With("thread id", thrdId.String()).
+			Errorf("failed to add thread id to queue: %v", err)
 	}
 
 	thrd, err := s.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(key), net.WithLogKey(s.device))
@@ -536,9 +544,15 @@ func (s *service) createThreadWithThreadCollection(
 	}
 
 	// todo: wait for threadsCollection to push?
-	_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
+	_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
 	if err != nil {
 		log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+	} else {
+		err = s.threadCreateQueue.RemoveThreadQueueEntry(thrdId.String())
+		if err != nil {
+			log.With("thread id", thrdId.String()).
+				Errorf("failed to remove thread id to queue: %v", err)
+		}
 	}
 
 	if replAddrWithThread != nil {

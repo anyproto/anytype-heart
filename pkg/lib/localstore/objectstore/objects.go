@@ -53,6 +53,9 @@ var (
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
 
+	threadCreateQueuePrefix = "threadcreatequeue"
+	threadCreateQueueBase   = ds.NewKey("/" + threadCreateQueuePrefix)
+
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
 	relationsOptionsBase = ds.NewKey("/" + relationsPrefix + "/options")
@@ -264,6 +267,10 @@ type ObjectStore interface {
 	GetCurrentWorkspaceId() (string, error)
 	SetCurrentWorkspaceId(threadId string) (err error)
 	RemoveCurrentWorkspaceId() (err error)
+
+	AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error)
+	RemoveThreadQueueEntry(threadId string) (err error)
+	GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error)
 }
 
 type relationOption struct {
@@ -329,6 +336,68 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	b, err := entry.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal entry into binary: %w", err)
+	}
+
+	key := threadCreateQueueBase.Child(ds.NewKey(entry.ThreadId))
+	if err := txn.Put(key, b); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) RemoveThreadQueueEntry(threadId string) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	key := threadCreateQueueBase.Child(ds.NewKey(threadId))
+	if err = txn.Delete(key); err != nil {
+		return fmt.Errorf("failed to delete entry from ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	res, err := txn.Query(query.Query{
+		Prefix: threadCreateQueueBase.String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error query txn in datastore: %w", err)
+	}
+	var models []*model.ThreadCreateQueueEntry
+	for entry := range res.Next() {
+		var qEntry model.ThreadCreateQueueEntry
+		err = proto.Unmarshal(entry.Value, &qEntry)
+		if err != nil {
+			log.Errorf("failed to unmarshal thread create entry")
+			continue
+		}
+		models = append(models, &qEntry)
+	}
+
+	return models, nil
 }
 
 func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {

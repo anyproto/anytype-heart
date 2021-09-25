@@ -945,6 +945,7 @@
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
+    - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
     - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
     - [Block.Align](#anytype.model.Block.Align)
@@ -14866,6 +14867,22 @@ scope from which this relation have been aggregated |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | extraRelations | [Relation](#anytype.model.Relation) | repeated |  |
 | objectTypes | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.ThreadCreateQueueEntry"></a>
+
+### ThreadCreateQueueEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collectionThread | [string](#string) |  |  |
+| threadId | [string](#string) |  |  |
 
 
 

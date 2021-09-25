@@ -21,9 +21,9 @@ import (
 	threadsUtil "github.com/textileio/go-threads/util"
 )
 
-// threadsDbMigration called on every except the first run of the account
-func (s *service) threadsDbMigration(accountThreadId string, db *threadsDb.DB, collection *threadsDb.Collection) error {
-	err := s.handleAllMissingDbRecords(accountThreadId, db)
+// handleMissingRecordsForCollection called on every except the first run of the account
+func (s *service) handleMissingRecordsForCollection(threadId string, db *threadsDb.DB, collection *threadsDb.Collection) error {
+	err := s.handleAllMissingDbRecords(threadId, db)
 	if err != nil {
 		return fmt.Errorf("handleAllMissingDbRecords failed: %w", err)
 	}
@@ -33,6 +33,10 @@ func (s *service) threadsDbMigration(accountThreadId string, db *threadsDb.DB, c
 		return fmt.Errorf("addMissingThreadsFromCollection failed: %w", err)
 	}
 
+	return nil
+}
+
+func (s *service) handleMissingReplicatorsAndThreadsInQueue() {
 	go func() {
 		err := s.addMissingReplicators()
 		if err != nil {
@@ -40,14 +44,12 @@ func (s *service) threadsDbMigration(accountThreadId string, db *threadsDb.DB, c
 		}
 	}()
 
-	//go func() {
-	//	err := s.addMissingThreadsToCollection(collection)
-	//	if err != nil {
-	//		log.Errorf("addMissingThreadsToCollection: %s", err.Error())
-	//	}
-	//}()
-
-	return nil
+	go func() {
+		err := s.addMissingThreadsToCollection()
+		if err != nil {
+			log.Errorf("addMissingThreadsToCollection: %s", err.Error())
+		}
+	}()
 }
 
 func (s *service) addMissingThreadsFromCollection(collection *threadsDb.Collection) error {
@@ -96,66 +98,81 @@ func (s *service) addMissingThreadsFromCollection(collection *threadsDb.Collecti
 	return nil
 }
 
-func (s *service) addMissingThreadsToCollection(collection *threadsDb.Collection) error {
-	instancesBytes, err := collection.Find(&threadsDb.Query{})
+func (s *service) addMissingThreadsToCollection() error {
+	unprocessedEntries, err := s.threadCreateQueue.GetAllQueueEntries()
 	if err != nil {
-		return err
+		return fmt.Errorf("could not get entries from queue: %w", err)
 	}
 
-	var threadsInCollection = make(map[string]struct{})
-	for _, instanceBytes := range instancesBytes {
-		ti := threadInfo{}
-		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
-
-		tid, err := thread.Decode(ti.ID.String())
+	for _, entry := range unprocessedEntries {
+		threadId, err := thread.Decode(entry.ThreadId)
 		if err != nil {
-			log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
-			continue
-		}
-		threadsInCollection[tid.String()] = struct{}{}
-	}
-
-	log.Debugf("%d threads in collection", len(threadsInCollection))
-
-	threadsIds, err := s.logstore.Threads()
-	if err != nil {
-		return err
-	}
-
-	accountId, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
-	if err != nil {
-		return err
-	}
-
-	var missingThreads int
-	for _, threadId := range threadsIds {
-		if threadId.Equals(accountId) {
+			log.With("thread id", entry.ThreadId).
+				Errorf("add missing threads to collection: could not decode thread with err: %v", err)
 			continue
 		}
 
-		if _, exists := threadsInCollection[threadId.String()]; !exists {
-			thrd, err := s.t.GetThread(context.Background(), threadId)
-			if err != nil {
-				log.Errorf("addMissingThreadsToCollection migration: error getting info: %s\n", err.Error())
-				continue
-			}
-			threadInfo := threadInfo{
-				ID:    db.InstanceID(thrd.ID.String()),
-				Key:   thrd.Key.String(),
-				Addrs: util.MultiAddressesToStrings(thrd.Addrs),
-			}
+		ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+		thrdInfo, err := s.t.GetThread(ctx, threadId)
+		cancel()
 
-			_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
-			if err != nil {
-				log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+		if err != nil {
+			// The thread was not created so there is no point in creating it and adding to collection
+			if err == logstore.ErrThreadNotFound {
+				_ = s.threadCreateQueue.RemoveThreadQueueEntry(entry.ThreadId)
 			} else {
-				missingThreads++
+				log.With("thread id", entry.ThreadId).
+					Errorf("add missing threads to collection: could not get thread with err: %v", err)
+			}
+			continue
+		}
+		threadInfo := threadInfo{
+			ID:    db.InstanceID(thrdInfo.ID.String()),
+			Key:   thrdInfo.Key.String(),
+			Addrs: util.MultiAddressesToStrings(thrdInfo.Addrs),
+		}
+		collectionThreadId, err := thread.Decode(entry.CollectionThread)
+		if err != nil {
+			log.With("thread id", entry.ThreadId).
+				With("collection thread", entry.CollectionThread).
+				Errorf("add missing threads to collection: could not decode collection thread: %v", err)
+			continue
+		}
+
+		s.processorMutex.RLock()
+		processor, exists := s.threadProcessors[collectionThreadId]
+		s.processorMutex.RUnlock()
+
+		// we didn't spin the collection so far
+		if !exists {
+			// trying to spin the collection
+			processor, err = s.startWorkspaceThreadProcessor(collectionThreadId.String())
+			if err != nil {
+				// it was created in parallel, so we can then use it
+				if err == ErrThreadProcessorExists {
+					s.processorMutex.RLock()
+					processor = s.threadProcessors[collectionThreadId]
+					s.processorMutex.RUnlock()
+				} else {
+					log.With("thread id", entry.ThreadId).
+						With("collection thread", entry.CollectionThread).
+						Errorf("add missing threads to collection: could not start thread processor: %v", err)
+					continue
+				}
 			}
 		}
-	}
+		collection := processor.GetCollection()
 
-	if missingThreads > 0 {
-		log.Warnf("addMissingThreadsToCollection migration: added %d missing threads", missingThreads)
+		_, err = collection.FindByID(threadInfo.ID)
+		if err == nil {
+			_ = s.threadCreateQueue.RemoveThreadQueueEntry(threadInfo.ID.String())
+			continue
+		}
+
+		_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
+		if err == nil {
+			_ = s.threadCreateQueue.RemoveThreadQueueEntry(threadInfo.ID.String())
+		}
 	}
 
 	return nil
