@@ -36,7 +36,7 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 		metrics.ExternalThreadHandlingAttempts.Inc()
 		attempt++
 		<-s.newThreadProcessingLimiter
-		err := s.processNewExternalThread(tid, ti)
+		err := s.processNewExternalThread(tid, ti, false)
 		if err != nil {
 			s.newThreadProcessingLimiter <- struct{}{}
 			log.Errorf("processNewExternalThread failed after %d attempt: %s", attempt, err.Error())
@@ -56,7 +56,7 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 	}
 }
 
-func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
+func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo, pullAsync bool) error {
 	log := log.With("thread", tid.String())
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
@@ -180,10 +180,18 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 	}
 
 	// TODO: should we add timeout here?
-	_, err = s.pullThread(s.ctx, tid)
-	if err != nil {
-		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
-		return fmt.Errorf("failed to pull thread: %w", err)
+	pullFunc := func() error {
+		_, err = s.pullThread(s.ctx, tid)
+		if err != nil {
+			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
+			return fmt.Errorf("failed to pull thread: %w", err)
+		}
+		return nil
+	}
+	if pullAsync {
+		go pullFunc()
+	} else {
+		return pullFunc()
 	}
 
 	return nil

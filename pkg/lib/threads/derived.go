@@ -272,6 +272,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return accountIds, &workspaceIds, nil
 	}
 
+	fmt.Println("[observing]: not starting workspace")
 	return accountIds, nil, nil
 }
 
@@ -493,7 +494,7 @@ func (s *service) ensureWorkspace(
 	ctx context.Context,
 	ids DerivedSmartblockIds,
 	workspaceId thread.ID,
-	isSelectMode bool) (DerivedSmartblockIds, error) {
+	pullAsync bool) (DerivedSmartblockIds, error) {
 	// workspace here must be added at the time of switch
 	thrdInfo, err := s.t.GetThread(ctx, workspaceId)
 	if err != nil {
@@ -506,12 +507,12 @@ func (s *service) ensureWorkspace(
 	}
 
 	addrs := util.MultiAddressesToStrings(thrdInfo.Addrs)
-	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs, isSelectMode)
+	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs, pullAsync)
 	if err != nil {
 		return ids, err
 	}
 
-	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, isSelectMode)
+	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, pullAsync)
 	if err != nil {
 		return ids, err
 	}
@@ -526,7 +527,7 @@ func (s *service) workspaceThreadEnsure(
 	index threadDerivedIndex,
 	key thread.Key,
 	addrs []string,
-	isSelectMode bool) (thrd thread.Info, err error) {
+	pullAsync bool) (thrd thread.Info, err error) {
 	id, err := threadDeriveId(index, key.Read().Bytes())
 	if err != nil {
 		return thread.Info{}, err
@@ -539,7 +540,7 @@ func (s *service) workspaceThreadEnsure(
 
 	thrd, err = s.t.GetThread(ctx, id)
 	if err == nil {
-		if isSelectMode {
+		if pullAsync {
 			// in case of select pulling all in background
 			go func() {
 				pullErr := s.t.PullThread(ctx, thrd.ID)
@@ -552,11 +553,6 @@ func (s *service) workspaceThreadEnsure(
 		}
 		return
 	}
-	if isSelectMode {
-		// we should not force pull anything in select mode due to time constraints
-		err = fmt.Errorf("could not select thread because it is not fetched")
-		return
-	}
 	if err != logstore.ErrThreadNotFound {
 		return
 	}
@@ -567,9 +563,8 @@ func (s *service) workspaceThreadEnsure(
 		Key:   newKey.String(),
 		Addrs: addrs,
 	}
-
 	for i := 0; i < 3; i++ {
-		err = s.processNewExternalThread(id, tInfo)
+		err = s.processNewExternalThread(id, tInfo, pullAsync)
 		if err == nil {
 			break
 		}

@@ -460,7 +460,7 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 		}
 	}()
 
-	_, err = s.GetThreadInfo(id)
+	_, err = s.t.GetThread(context.Background(), id)
 	if err == nil {
 		log.With("thread id", threadId).
 			Info("thread was already added")
@@ -470,7 +470,13 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 	if err != nil && err != tlcore.ErrThreadNotFound {
 		return fmt.Errorf("failed to add thread: %w", err)
 	}
-	err = s.processNewExternalThread(id, addedInfo)
+
+	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(id)
+	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
+		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true)
+	} else {
+		err = s.processNewExternalThread(id, addedInfo, true)
+	}
 
 	return err
 }
