@@ -471,11 +471,14 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 		return fmt.Errorf("failed to add thread: %w", err)
 	}
 
+	err = s.processNewExternalThread(id, addedInfo, true)
+	if err != nil {
+		return err
+	}
+
 	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(id)
 	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
 		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true)
-	} else {
-		err = s.processNewExternalThread(id, addedInfo, true)
 	}
 
 	return err
