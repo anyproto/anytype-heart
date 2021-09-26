@@ -76,7 +76,6 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 	threadDerivedIndexMarketplaceTemplate: smartblock.SmartblockTypeMarketplaceTemplate,
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
-var ErrThreadProcessorExists = fmt.Errorf("thread processor already exists")
 
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, *DerivedSmartblockIds, error) {
 	// FIXME: method refactoring required, racy vars (err)
@@ -259,10 +258,6 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		workspaceProcessor := s.threadProcessors[workspaceId]
 		s.processorMutex.RUnlock()
 
-		s.db = workspaceProcessor.GetDB()
-		s.threadsCollection = workspaceProcessor.GetCollection()
-		s.currentWorkspaceId = workspaceId
-
 		go func() {
 			_ = s.handleMissingRecordsForCollection(workspaceThreadIdString,
 				workspaceProcessor.GetDB(),
@@ -350,12 +345,12 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 		return nil, fmt.Errorf("error decoding string %w", err)
 	}
 
-	_, exists := s.threadProcessors[threadId]
+	workspaceProcessor, exists := s.threadProcessors[threadId]
 	if exists {
-		return nil, ErrThreadProcessorExists
+		return workspaceProcessor, nil
 	}
 
-	workspaceProcessor := NewThreadProcessor(s, NewNoOpNotifier())
+	workspaceProcessor = NewThreadProcessor(s, NewNoOpNotifier())
 	err = workspaceProcessor.Init(threadId)
 	if err != nil {
 		return nil, fmt.Errorf("error initializing processor: %w", err)
@@ -501,8 +496,8 @@ func (s *service) ensureWorkspace(
 		return ids, err
 	}
 
-	_, err = s.startWorkspaceThreadProcessor(workspaceId.String())
-	if err != nil && err != ErrThreadProcessorExists {
+	workspaceProcessor, err := s.startWorkspaceThreadProcessor(workspaceId.String())
+	if err != nil {
 		return ids, fmt.Errorf("could not start workspace: %w", err)
 	}
 
@@ -518,6 +513,10 @@ func (s *service) ensureWorkspace(
 	}
 	ids.Home = home.ID.String()
 	ids.Archive = archive.ID.String()
+
+	s.db = workspaceProcessor.GetDB()
+	s.threadsCollection = workspaceProcessor.GetCollection()
+	s.currentWorkspaceId = workspaceId
 
 	return ids, nil
 }

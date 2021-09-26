@@ -148,17 +148,10 @@ func (s *service) addMissingThreadsToCollection() error {
 			// trying to spin the collection
 			processor, err = s.startWorkspaceThreadProcessor(collectionThreadId.String())
 			if err != nil {
-				// it was created in parallel, so we can then use it
-				if err == ErrThreadProcessorExists {
-					s.processorMutex.RLock()
-					processor = s.threadProcessors[collectionThreadId]
-					s.processorMutex.RUnlock()
-				} else {
-					log.With("thread id", entry.ThreadId).
-						With("collection thread", entry.CollectionThread).
-						Errorf("add missing threads to collection: could not start thread processor: %v", err)
-					continue
-				}
+				log.With("thread id", entry.ThreadId).
+					With("collection thread", entry.CollectionThread).
+					Errorf("add missing threads to collection: could not start thread processor: %v", err)
+				continue
 			}
 		}
 		collection := processor.GetCollection()
