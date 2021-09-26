@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "2b30347dbc3feaf8fcc7eb79ea3630ffd01eb2f0225c9e1133b7b528ab5a0baa"
+const RelationChecksum = "07f55325b3825b7359f18978141202b8e076b62ea0021b5a84ae49f1dfeec598"
 
 type RelationKey string
 
@@ -1995,7 +1995,7 @@ var (
 		},
 		RelationKeyWorkspaceId: {
 
-			DataSource:       model.Relation_account,
+			DataSource:       model.Relation_details,
 			Description:      "Workspace id",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,

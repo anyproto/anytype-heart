@@ -905,7 +905,7 @@
     "maxCount": 1,
     "name": "WorkspaceId",
     "readonly": false,
-    "source": "account"
+    "source": "details"
   },
   {
     "format": "object",
