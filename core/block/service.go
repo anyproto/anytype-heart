@@ -592,6 +592,9 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	}
 
 	if details != nil && details.Fields != nil {
+		var isDraft = pbtypes.GetBool(details, bundle.RelationKeyIsDraft.String())
+		delete(details.Fields, bundle.RelationKeyIsDraft.String())
+
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
 			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
@@ -603,6 +606,10 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 				relCopy.Scope = model.Relation_object
 				relations = append(relations, relCopy)
 			}
+		}
+
+		if isDraft {
+			createState.SetDetailAndBundledRelation(bundle.RelationKeyIsDraft, pbtypes.Bool(true))
 		}
 	}
 
