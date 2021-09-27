@@ -432,6 +432,8 @@ func (s *service) CloseBlock(id string) error {
 		_, _ = s.cache.Remove(id)
 		if err = s.anytype.DeleteBlock(id); err != nil {
 			log.Errorf("error while block delete: %v", err)
+		} else {
+			s.sendOnRemoveEvent(id)
 		}
 	}
 	return nil
@@ -551,7 +553,27 @@ func (s *service) deleteObject(id string) (err error) {
 		return err
 	}
 	s.cache.Reset(id)
-	return s.anytype.DeleteBlock(id)
+	if err = s.anytype.DeleteBlock(id); err != nil {
+		return
+	}
+	s.sendOnRemoveEvent(id)
+	return
+}
+
+func (s *service) sendOnRemoveEvent(ids ... string) {
+	if s.sendEvent != nil {
+		s.sendEvent(&pb.Event{
+			Messages:  []*pb.EventMessage{
+				&pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectRemove{
+						ObjectRemove: &pb.EventObjectRemove{
+							Ids: ids,
+						},
+					},
+				},
+			},
+		})
+	}
 }
 
 func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {

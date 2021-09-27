@@ -858,6 +858,7 @@
     - [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend)
     - [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove)
     - [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set)
+    - [Event.Object.Remove](#anytype.Event.Object.Remove)
     - [Event.Object.Show](#anytype.Event.Object.Show)
     - [Event.Object.Show.RelationWithValuePerObject](#anytype.Event.Object.Show.RelationWithValuePerObject)
     - [Event.Ping](#anytype.Event.Ping)
@@ -13258,6 +13259,7 @@ Precondition: user A opened a block
 | objectRelationsSet | [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set) |  |  |
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
+| objectRemove | [Event.Object.Remove](#anytype.Event.Object.Remove) |  |  |
 | objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
@@ -13478,6 +13480,21 @@ Unset existing detail keys
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
 | relations | [model.Relation](#anytype.model.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Remove"></a>
+
+### Event.Object.Remove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated | notifies that objects were removed |
 
 
 
