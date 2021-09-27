@@ -941,6 +941,7 @@
     - [Block.Content.Dataview.Relation.DateFormat](#anytype.model.Block.Content.Dataview.Relation.DateFormat)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype.model.Block.Content.Dataview.Relation.TimeFormat)
     - [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type)
+    - [Block.Content.Dataview.View.Size](#anytype.model.Block.Content.Dataview.View.Size)
     - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
@@ -14266,6 +14267,9 @@ Bookmark is to keep a web-link and to preview a content.
 | filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | relations | [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation) | repeated | relations fields/columns options, also used to provide the order |
 | coverRelationKey | [string](#string) |  | Relation used for cover in gallery |
+| hideIcon | [bool](#bool) |  | Hide icon near name |
+| cardSize | [Block.Content.Dataview.View.Size](#anytype.model.Block.Content.Dataview.View.Size) |  | Gallery card size |
+| coverFit | [bool](#bool) |  | Image fits container |
 
 
 
@@ -14805,6 +14809,19 @@ scope from which this relation have been aggregated |
 | ---- | ------ | ----------- |
 | Asc | 0 |  |
 | Desc | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.View.Size"></a>
+
+### Block.Content.Dataview.View.Size
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Small | 0 |  |
+| Medium | 1 |  |
+| Large | 2 |  |
 
 
 

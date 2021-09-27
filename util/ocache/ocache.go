@@ -124,6 +124,7 @@ func (c *oCache) Get(ctx context.Context, id string) (value Object, err error) {
 	)
 	c.mu.Lock()
 	if c.closed {
+		c.mu.Unlock()
 		return nil, ErrClosed
 	}
 	if e, ok = c.data[id]; !ok {
@@ -277,6 +278,7 @@ func (c *oCache) ticker() {
 func (c *oCache) GC() {
 	c.mu.Lock()
 	if c.closed {
+		c.mu.Unlock()
 		return
 	}
 	deadline := c.timeNow().Add(-c.ttl)

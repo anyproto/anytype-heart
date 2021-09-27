@@ -227,6 +227,9 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 			v.Name = view.Name
 			v.Type = view.Type
 			v.CoverRelationKey = view.CoverRelationKey
+			v.HideIcon = view.HideIcon
+			v.CoverFit = view.CoverFit;
+			v.CardSize = view.CardSize;
 
 			break
 		}
