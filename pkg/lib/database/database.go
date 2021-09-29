@@ -165,7 +165,6 @@ func (f *filters) Filter(e query.Entry) bool {
 		return false
 	}
 	res := f.filter.FilterObject(g)
-	fmt.Printf("filter %s: %v -> %v\n", f.String(), g.Get("type"), res)
 	return res
 }
 
