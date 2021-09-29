@@ -569,7 +569,7 @@ message Event {
 
             message SourceSet {
                 string id = 1; // dataview block's id
-                string source = 2;
+                repeated string source = 2;
             }
 
             message RelationDelete {

@@ -309,7 +309,12 @@ func (s *service) testArchiveInconsistency() {
 		log.Debugf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
 	}
 	records, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
-		IncludeArchivedObjects: true,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_None,
+			},
+		},
 	})
 	if err != nil {
 		log.Errorf("ARCHIVE INCONSISTENCY: failed to query objectstore")

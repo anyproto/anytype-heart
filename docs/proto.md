@@ -11948,7 +11948,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| source | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 
 
 
@@ -14110,7 +14110,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
 | relations | [Relation](#anytype.model.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |

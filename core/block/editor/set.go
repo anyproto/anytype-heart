@@ -77,7 +77,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				Source:    "_otpage",
+				Source:    []string{"_otpage"},
 				Relations: bundle.MustGetType(bundle.TypeKeyPage).Relations,
 				Views: []*model.BlockContentDataviewView{
 					{
@@ -115,7 +115,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{"_otpage"})),
 			template.WithDetailIconEmoji(newIcon))
 	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
-		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{dvBlock.Model().GetDataview().Source})))
+		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(dvBlock.Model().GetDataview().Source)))
 	}
 	templates = append(templates, template.WithTitle)
 	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
@@ -137,7 +137,7 @@ func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name, icon
 	if err := template.ApplyTemplate(p, s,
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
-		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{blockContent.Dataview.Source})),
+		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
 		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),
 		template.WithMaxCountMigration,
@@ -159,8 +159,8 @@ func (p *Set) applyRestrictions(s *state.State) {
 		bundle.TypeKeyRelation.URL(),
 	}
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if dv := b.Model().GetDataview(); dv != nil {
-			if slice.FindPos(restrictedSources, dv.Source) != -1 {
+		if dv := b.Model().GetDataview(); dv != nil && len(dv.Source) == 1 {
+			if slice.FindPos(restrictedSources, dv.Source[0]) != -1 {
 				br := model.RestrictionsDataviewRestrictions{
 					BlockId: b.Model().Id,
 					Restrictions: []model.RestrictionsDataviewRestriction{

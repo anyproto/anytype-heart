@@ -3,10 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -796,9 +793,9 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), req.ObjectTypeUrl)
+	schema, err := dataview.SchemaBySources([]string{req.ObjectTypeUrl}, s.anytype.ObjectStore(), nil)
 	if err != nil {
-		return "", "", err
+		return
 	}
 
 	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet)
@@ -819,8 +816,13 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		return "", setId, fmt.Errorf("unexpected set block type: %T", sb)
 	}
 
+	schemaRelations := schema.ListRelations()
+	if !pbtypes.HasRelation(schemaRelations, bundle.RelationKeyName.String()) {
+		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
+	}
+
 	var relations []*model.BlockContentDataviewRelation
-	for _, rel := range objType.Relations {
+	for _, rel := range schemaRelations {
 		visible := !rel.Hidden
 		if rel.Key == bundle.RelationKeyType.String() {
 			visible = false
@@ -828,10 +830,17 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
 	}
 
+	for _, rel := range bundle.RequiredInternalRelations {
+		if !pbtypes.HasRelation(schemaRelations, rel.String()) {
+			schemaRelations = append(schemaRelations, bundle.MustGetRelation(rel))
+			relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
+		}
+	}
+
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Relations: objType.Relations,
-			Source:    objType.Url,
+			Relations: schemaRelations,
+			Source:    []string{req.ObjectTypeUrl},
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   bson.NewObjectId().Hex(),
@@ -843,7 +852,8 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Filters: nil,
+					Filters:   nil,
+					Relations: relations,
 				},
 			},
 		},
@@ -852,7 +862,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
 
 	if name == "" {
-		name = objType.Name + " set"
+		name = schema.Description() + " set"
 	}
 
 	err = set.InitDataview(dataview, name, icon)
