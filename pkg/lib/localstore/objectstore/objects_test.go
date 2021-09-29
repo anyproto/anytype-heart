@@ -48,7 +48,8 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	}, nil, nil, "")
 	require.NoError(t, err)
 
-	recs, _, err := ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
+	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
+	recs, _, err := ds.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -58,7 +59,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	}, nil, true)
 	require.NoError(t, err)
 
-	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
+	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -69,7 +70,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	}, nil, false)
 	require.NoError(t, err)
 
-	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
+	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
