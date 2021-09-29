@@ -35,7 +35,7 @@ var log = logging.Logger("anytype-mw-editor")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
-	SetSource(ctx *state.Context, blockId, objType string) (err error)
+	SetSource(ctx *state.Context, blockId string, source []string) (err error)
 
 	GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
@@ -87,15 +87,15 @@ type dataviewCollectionImpl struct {
 	withSystemObjects bool
 }
 
-func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId, objTypeUrl string) (err error) {
+func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, source []string) (err error) {
 	s := d.NewStateCtx(ctx)
-	if err = d.setSource(s, objTypeUrl); err != nil {
+	if err = d.setSource(s, source); err != nil {
 		return
 	}
 	return d.Apply(s)
 }
 
-func (d *dataviewCollectionImpl) setSource(s *state.State, objTypeUrl string) (err error) {
+func (d *dataviewCollectionImpl) setSource(s *state.State, source []string) (err error) {
 	return
 }
 

@@ -2974,7 +2974,7 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| source | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 
 
 

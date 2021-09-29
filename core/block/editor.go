@@ -397,7 +397,7 @@ func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.
 	return err
 }
 
-func (s *service) SetDataviewSource(ctx *state.Context, contextId, blockId, source string) (err error) {
+func (s *service) SetDataviewSource(ctx *state.Context, contextId, blockId string, source []string) (err error) {
 	return s.DoDataview(contextId, func(b dataview.Dataview) error {
 		return b.SetSource(ctx, blockId, source)
 	})
