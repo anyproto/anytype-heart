@@ -897,6 +897,37 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	return linkId, setId, nil
 }
 
+func (s *service) ObjectToSet(id string, objectTypeUrl string) (newId string, err error) {
+	var details *types.Struct
+	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		details = pbtypes.CopyStruct(b.Details())
+		return nil
+	}); err != nil {
+		return
+	}
+
+	_, newId, err = s.CreateSet(nil, pb.RpcBlockCreateSetRequest{
+		ObjectTypeUrl: objectTypeUrl,
+		Details:       details,
+	})
+	if err != nil {
+		return
+	}
+
+	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	res, err := oStore.GetWithLinksInfoByID(id)
+	if err != nil {
+		return
+	}
+	for _, il := range res.Links.Inbound {
+		if err = s.replaceLink(il.Id, id, newId); err != nil {
+			return
+		}
+	}
+	s.deleteObject(id)
+	return
+}
+
 func (s *service) RemoveExtraRelations(ctx *state.Context, objectTypeId string, relationKeys []string) (err error) {
 	return s.Do(objectTypeId, func(b smartblock.SmartBlock) error {
 		return b.RemoveExtraRelations(ctx, relationKeys)

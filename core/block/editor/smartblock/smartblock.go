@@ -603,7 +603,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
-
+	if err = sb.onApply(s); err != nil {
+		return
+	}
 	if sb.Anytype() != nil {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
@@ -1487,6 +1489,15 @@ func (sb *smartBlock) reportChange(s *state.State) {
 		return
 	}
 	sb.doc.ReportChange(context.TODO(), sb.getDocInfo(s))
+}
+
+func (sb *smartBlock) onApply(s *state.State) (err error) {
+	if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String()) {
+		if !s.IsEmpty() {
+			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+		}
+	}
+	return
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
