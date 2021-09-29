@@ -81,7 +81,9 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 	if targetType := pbtypes.GetString(rec.Details, bundle.RelationKeyTargetObjectType.String()); targetType != "" {
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl, targetType})
 	} else if sp.objectTypeUrl == "" {
-		return database.Record{}, fmt.Errorf("object type not explitly set for the set and the record")
+		if ot := pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()); ot == "" {
+			return database.Record{}, fmt.Errorf("object type not explitly set for the set and the record")
+		}
 	} else {
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
 	}
