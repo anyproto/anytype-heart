@@ -313,6 +313,9 @@ type Service interface {
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
+	GetAllWorkspaces() ([]string, error)
+	GetAllThreadsInWorkspace(id string) ([]string, error)
+
 	GetThreadInfo(id thread.ID) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string) error
 
@@ -333,6 +336,59 @@ func (s *service) InitNewThreadsChan(ch chan<- string) error {
 
 	s.newThreadChan = ch
 	return nil
+}
+
+func (s *service) GetAllWorkspaces() ([]string, error) {
+	threads, err := s.logstore.Threads()
+	if err != nil {
+		return nil, fmt.Errorf("could not get all workspace threads: %w", err)
+	}
+
+	var workspaceThreads []string
+	for _, th := range threads {
+		if tp, err := smartblock.SmartBlockTypeFromThreadID(th); err == nil && tp == smartblock.SmartBlockTypeWorkspace {
+			workspaceThreads = append(workspaceThreads, th.String())
+		}
+	}
+	return workspaceThreads, nil
+}
+
+func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
+	threadId, err := thread.Decode(id)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		processor, err = s.startWorkspaceThreadProcessor(id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	collection := processor.GetCollection()
+	instancesBytes, err := collection.Find(&threadsDb.Query{})
+	if err != nil {
+		return nil, err
+	}
+
+	var threadsInWorkspace []string
+	for _, instanceBytes := range instancesBytes {
+		ti := threadInfo{}
+		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
+
+		tid, err := thread.Decode(ti.ID.String())
+		if err != nil {
+			continue
+		}
+		threadsInWorkspace = append(threadsInWorkspace, tid.String())
+	}
+
+	return threadsInWorkspace, nil
 }
 
 func (s *service) getNewThreadChan() chan<- string {

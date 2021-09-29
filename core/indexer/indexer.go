@@ -340,6 +340,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			smartblock.SmartblockTypeMarketplaceRelation,
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeWorkspace,
 		)
 		if err != nil {
 			return err

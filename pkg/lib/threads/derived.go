@@ -267,7 +267,6 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return accountIds, &workspaceIds, nil
 	}
 
-	fmt.Println("[observing]: not starting workspace")
 	return accountIds, nil, nil
 }
 

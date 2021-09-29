@@ -1513,6 +1513,46 @@ func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.Rel
 	return nil
 }
 
+func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, links []string) error {
+	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
+	setDetail := func(memberId string, isRemoved bool) error {
+		tp := pbtypes.String(id)
+		if isRemoved {
+			tp = pbtypes.Null()
+		}
+		merged, err := m.injectObjectDetails(txn, memberId, &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyWorkspaceId.String(): tp,
+			},
+		})
+		if err != nil {
+			return err
+		}
+
+		// inject localDetails into the meta pubsub
+		m.meta.SetLocalDetails(id, merged)
+
+		return nil
+	}
+
+	var err error
+	for _, objId := range removedLinks {
+		err = setDetail(objId, true)
+		if err != nil {
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
+		}
+	}
+
+	for _, objId := range addedLinks {
+		err = setDetail(objId, false)
+		if err != nil {
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
 func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string) error {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
@@ -1527,6 +1567,11 @@ func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string)
 		}
 	} else if sbt == smartblock.SmartBlockTypeHome {
 		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsFavorite, exLinks, links)
+		if err != nil {
+			return err
+		}
+	} else if sbt == smartblock.SmartBlockTypeWorkspace {
+		err = m.updateWorkspaceLinks(txn, id, exLinks, links)
 		if err != nil {
 			return err
 		}

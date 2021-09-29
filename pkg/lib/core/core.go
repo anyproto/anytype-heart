@@ -86,6 +86,9 @@ type Service interface {
 	CreateWorkspace() (string, error)
 	SelectWorkspace(workspaceId string) error
 
+	GetAllWorkspaces() ([]string, error)
+	GetAllObjectsInWorkspace(id string) ([]string, error)
+
 	OpenDeeplink(deeplink string) error
 	CreateDeeplinkFromBlock(blockId string) (string, error)
 
@@ -329,6 +332,14 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	}
 
 	return nil
+}
+
+func (a *Anytype) GetAllWorkspaces() ([]string, error) {
+	return a.threadService.GetAllWorkspaces()
+}
+
+func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {
+	return a.threadService.GetAllThreadsInWorkspace(id)
 }
 
 func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
