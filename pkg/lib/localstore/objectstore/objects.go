@@ -1343,9 +1343,16 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 		if exInfo != nil {
 			before = *exInfo
 		} else {
+			var details *types.Struct
+			objDetails, err := getObjectDetails(txn, id)
+			if err != nil {
+				details = &types.Struct{Fields: map[string]*types.Value{}}
+			} else {
+				details = objDetails.Details
+			}
 			// init an empty state to skip nil checks later
 			before = model.ObjectInfo{
-				Details: &types.Struct{Fields: map[string]*types.Value{}},
+				Details: details,
 			}
 		}
 
@@ -1632,8 +1639,13 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 		}
 	}
 
+	mergedDetails := pbtypes.CopyStruct(before.GetDetails())
+	for k, v := range details.Fields {
+		mergedDetails.Fields[k] = v
+	}
+
 	if details != nil {
-		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
+		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: mergedDetails}); err != nil {
 			return err
 		}
 	}
