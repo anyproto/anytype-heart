@@ -511,7 +511,9 @@ func (s *service) ensureWorkspace(
 	if err != nil {
 		return ids, err
 	}
-	WorkspaceLogger.With("workspace id", workspaceId.String()).
+	WorkspaceLogger.
+		With("workspace id", workspaceId.String()).
+		With("home id", home.ID.String()).
 		Info("workspace home thread exists")
 
 	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, pullAsync)
@@ -519,6 +521,7 @@ func (s *service) ensureWorkspace(
 		return ids, err
 	}
 	WorkspaceLogger.With("workspace id", workspaceId.String()).
+		With("archive id", archive.ID.String()).
 		Info("workspace archive thread exists")
 
 	ids.Home = home.ID.String()

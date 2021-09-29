@@ -57,31 +57,11 @@ func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		Info("reading document for workspace")
-	objects, err := v.a.GetAllObjectsInWorkspace(v.id)
+	s, err := v.createState()
 	if err != nil {
 		return nil, err
 	}
 
-	var blocks []*model.Block
-
-	for _, objId := range objects {
-		link := &model.Block{
-			Id: bson.NewObjectId().Hex(),
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: objId,
-					Style:         model.BlockContentLink_Page,
-				},
-			},
-		}
-		threads.WorkspaceLogger.
-			With("workspace id", v.id).
-			With("thread id", objId).
-			Info("adding initial link")
-		blocks = append(blocks, link)
-	}
-	s := state.NewDoc(v.id, nil).(*state.State)
-	initBlocksAndAddToRoot(s, blocks)
 	v.receiver = receiver
 
 	go v.listenToChanges()
@@ -90,7 +70,7 @@ func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc
 }
 
 func (v *workspaces) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
-	return nil, nil
+	return v.createState()
 }
 
 func (v *workspaces) PushChange(params PushChangeParams) (id string, err error) {
@@ -182,6 +162,36 @@ func (v *workspaces) processThreadAction(action threadsDb.Action) {
 	if err != nil {
 		log.Errorf("failed to append state with new workspace thread: %v", err)
 	}
+}
+
+func (v *workspaces) createState() (*state.State, error) {
+	objects, err := v.a.GetAllObjectsInWorkspace(v.id)
+	if err != nil {
+		return nil, err
+	}
+
+	var blocks []*model.Block
+
+	for _, objId := range objects {
+		link := &model.Block{
+			Id: bson.NewObjectId().Hex(),
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: objId,
+					Style:         model.BlockContentLink_Page,
+				},
+			},
+		}
+		threads.WorkspaceLogger.
+			With("workspace id", v.id).
+			With("thread id", objId).
+			Info("adding initial link")
+		blocks = append(blocks, link)
+	}
+	s := state.NewDoc(v.id, nil).(*state.State)
+	initBlocksAndAddToRoot(s, blocks)
+
+	return s, nil
 }
 
 func initBlocksAndAddToRoot(s *state.State, blocks []*model.Block) {
