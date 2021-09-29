@@ -2233,7 +2233,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
 | targetId | [string](#string) |  | id of the closest block |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | details |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
@@ -8918,7 +8918,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 
 
 
@@ -9536,7 +9536,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | if omitted the name of page will be the same with object type |
 | templateId | [string](#string) |  | optional template id for creating from template |
 
@@ -12026,7 +12026,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| source | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 
 
 
@@ -14204,7 +14204,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
 | relations | [Relation](#anytype.model.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |

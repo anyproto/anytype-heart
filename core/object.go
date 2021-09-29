@@ -39,6 +39,50 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
 }
 
+func handleDateSearch(query string, records []database.Record) []database.Record {
+	n := time.Now()
+	t, err := naturaldate.Parse(query, n)
+	if err == nil {
+		if !t.Equal(n) || strings.EqualFold(query, "now") {
+			// naturaldate pkg returns NOW by default, but we don't need it
+			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
+				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
+				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
+				"iconEmoji": pbtypes.String("📅"),
+			}}}}, records...)
+		}
+	} else {
+		t, err = dateparse.ParseAny(query)
+		if err == nil {
+			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
+				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
+				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
+				"iconEmoji": pbtypes.String("📅"),
+			}}}}, records...)
+		}
+	}
+
+	return records
+}
+
+func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+	var hasArchivedFilter bool
+	for _, filter := range filters {
+		// include archived objects if we have explicit filter about it
+		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+			hasArchivedFilter = true
+			break
+		}
+	}
+
+	if !hasArchivedFilter {
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
+	return filters
+}
+
 func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
 	response := func(code pb.RpcObjectSearchResponseErrorCode, records []*types.Struct, err error) *pb.RpcObjectSearchResponse {
 		m := &pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: code}, Records: records}
@@ -57,50 +101,21 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
+	req.Filters = injectDefaultFilters(req.Filters)
 
-	var includeArchived bool
-	for _, filter := range req.Filters {
-		// include archived objects if we have explicit filter about it
-		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
-			includeArchived = true
-		}
-	}
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:                req.Filters,
-		Sorts:                  req.Sorts,
-		Offset:                 int(req.Offset),
-		Limit:                  int(req.Limit),
-		FullText:               req.FullText,
-		ObjectTypeFilter:       req.ObjectTypeFilter,
-		IncludeArchivedObjects: includeArchived,
+		Filters:          req.Filters,
+		Sorts:            req.Sorts,
+		Offset:           int(req.Offset),
+		Limit:            int(req.Limit),
+		FullText:         req.FullText,
+		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	n := time.Now()
-	t, err := naturaldate.Parse(req.FullText, n)
-	if err == nil {
-		if !t.Equal(n) || strings.EqualFold(req.FullText, "now") {
-			// naturaldate pkg returns NOW by default, but we don't need it
-			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
-				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
-				"iconEmoji": pbtypes.String("📅"),
-			}}}}, records...)
-		}
-	} else {
-		t, err = dateparse.ParseAny(req.FullText)
-		if err == nil {
-			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
-				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
-				"iconEmoji": pbtypes.String("📅"),
-			}}}}, records...)
-		}
-	}
+	records = handleDateSearch(req.FullText, records)
 
 	var records2 = make([]*types.Struct, 0, len(records))
 
@@ -130,18 +145,11 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 
-	var includeArchived bool
-	for _, filter := range req.Filters {
-		// include archived objects if we have explicit filter about it
-		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
-			includeArchived = true
-		}
-	}
+	req.Filters = injectDefaultFilters(req.Filters)
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:                req.Filters,
-		Limit:                  int(req.Limit),
-		ObjectTypeFilter:       req.ObjectTypeFilter,
-		IncludeArchivedObjects: includeArchived,
+		Filters:          req.Filters,
+		Limit:            int(req.Limit),
+		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
 	if err != nil {
 		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
@@ -510,10 +518,10 @@ func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectTo
 	}
 	var (
 		setId string
-		err error
+		err   error
 	)
 	err = mw.doBlockService(func(bs block.Service) error {
-		if setId, err = bs.ObjectToSet(req.ContextId, req.ObjectTypeUrl); err != nil {
+		if setId, err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
 			return err
 		}
 		return nil

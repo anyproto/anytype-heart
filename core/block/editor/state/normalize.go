@@ -305,6 +305,15 @@ func (s *State) MigrateObjectTypes() {
 		return
 	}
 
+	migrateMultiple := func(old []string) (new []string, hasChanges bool) {
+		for _, o := range old {
+			el, hasChanges2 := migrate(o)
+			new = append(new, el)
+			hasChanges = hasChanges || hasChanges2
+		}
+		return
+	}
+
 	newObjObjType, hasChanges1 := migrate(s.ObjectType())
 	if hasChanges1 {
 		s.SetObjectType(newObjObjType)
@@ -315,7 +324,7 @@ func (s *State) MigrateObjectTypes() {
 		dv := b.Model().GetDataview()
 		dvBlock, ok := b.(dataview.Block)
 		if dv != nil && ok {
-			newDvSource, hasChanges1 := migrate(dv.Source)
+			newDvSource, hasChanges1 := migrateMultiple(dv.Source)
 			if hasChanges1 {
 				dvBlock.SetSource(newDvSource)
 				s.Set(dvBlock)

@@ -237,7 +237,7 @@ func (e Eq) String() string {
 	case model.BlockContentDataviewFilter_LessOrEqual:
 		eq = "<="
 	}
-	return fmt.Sprintf("%s %s '%s'", e.Key, eq, e.Value)
+	return fmt.Sprintf("%s %s '%s'", e.Key, eq, pbtypes.Sprint(e.Value))
 }
 
 type In struct {
@@ -257,7 +257,7 @@ func (i In) FilterObject(g Getter) bool {
 }
 
 func (i In) String() string {
-	return fmt.Sprintf("%v IN(%v)", i.Key, i.Value)
+	return fmt.Sprintf("%v IN(%v)", i.Key, pbtypes.Sprint(i.Value))
 }
 
 type Like struct {
@@ -278,7 +278,7 @@ func (l Like) FilterObject(g Getter) bool {
 }
 
 func (l Like) String() string {
-	return fmt.Sprintf("%v LIKE '%v'", l.Key, l.Value)
+	return fmt.Sprintf("%v LIKE '%s'", l.Key, pbtypes.Sprint(l.Value))
 }
 
 type Empty struct {

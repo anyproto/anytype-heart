@@ -27,7 +27,7 @@ type DocInfo struct {
 	FileHashes   []string
 	LogHeads     map[string]string
 	SetRelations []*model.Relation
-	SetSource    string
+	SetSource    []string
 	Creator      string
 	State        *state.State
 }

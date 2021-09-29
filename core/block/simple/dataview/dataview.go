@@ -3,9 +3,7 @@ package dataview
 import (
 	"errors"
 	"fmt"
-	"strings"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -53,8 +51,8 @@ type Block interface {
 	UpdateRelationOption(relationKey string, opt model.RelationOption) error
 	DeleteRelationOption(relationKey string, optId string) error
 
-	GetSource() string
-	SetSource(source string) error
+	GetSource() []string
+	SetSource(source []string) error
 	SetActiveView(activeView string)
 
 	FillSmartIds(ids []string) []string
@@ -168,7 +166,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		}
 	}
 
-	if dv.content.Source != d.content.Source {
+	if !slice.UnsortedEquals(dv.content.Source, d.content.Source) {
 		msgs = append(msgs,
 			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewSourceSet{
 				&pb.EventBlockDataviewSourceSet{
@@ -228,8 +226,8 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 			v.Type = view.Type
 			v.CoverRelationKey = view.CoverRelationKey
 			v.HideIcon = view.HideIcon
-			v.CoverFit = view.CoverFit;
-			v.CardSize = view.CardSize;
+			v.CoverFit = view.CoverFit
+			v.CardSize = view.CardSize
 
 			break
 		}
@@ -343,16 +341,12 @@ func (td *Dataview) ModelToSave() *model.Block {
 	return b
 }
 
-func (d *Dataview) SetSource(source string) error {
-	if !strings.HasPrefix(source, objects.BundledObjectTypeURLPrefix) && !strings.HasPrefix(source, "b") {
-		return fmt.Errorf("invalid source URL")
-	}
-
+func (d *Dataview) SetSource(source []string) error {
 	d.content.Source = source
 	return nil
 }
 
-func (d *Dataview) GetSource() string {
+func (d *Dataview) GetSource() []string {
 	return d.content.Source
 }
 

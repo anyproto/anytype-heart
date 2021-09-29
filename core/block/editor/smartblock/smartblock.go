@@ -378,10 +378,10 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		// add the object type from the dataview source
 		if b := sb.Doc.Pick("dataview"); b != nil {
 			if dv := b.Model().GetDataview(); dv != nil {
-				if dv.Source == "" {
+				if len(dv.Source) == 0 || dv.Source[0] == "" {
 					panic("empty dv source")
 				}
-				uniqueObjTypes = append(uniqueObjTypes, dv.Source)
+				uniqueObjTypes = append(uniqueObjTypes, dv.Source...)
 				for _, rel := range dv.Relations {
 					if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
 						if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
@@ -552,7 +552,6 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 
 			if rel.Key == bundle.RelationKeyId.String() ||
 				rel.Key == bundle.RelationKeyType.String() ||
-				rel.Key == bundle.RelationKeyRecommendedRelations.String() ||
 				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
 				!includeCreatorModifier && (rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String()) {
 				continue
@@ -1461,7 +1460,7 @@ func (sb *smartBlock) GetDocInfo() (doc.DocInfo, error) {
 func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
 	var setRelations []*model.Relation
-	var setSource string
+	var setSource []string
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
 		creator = sb.Anytype().ProfileID()

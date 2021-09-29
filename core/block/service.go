@@ -89,7 +89,7 @@ type Service interface {
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
-	ObjectToSet(id string, objectTypeUrl string) (newId string, err error)
+	ObjectToSet(id string, source []string) (newId string, err error)
 	UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error)
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
@@ -311,7 +311,12 @@ func (s *service) testArchiveInconsistency() {
 		log.Debugf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
 	}
 	records, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
-		IncludeArchivedObjects: true,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_None,
+			},
+		},
 	})
 	if err != nil {
 		log.Errorf("ARCHIVE INCONSISTENCY: failed to query objectstore")
@@ -560,10 +565,10 @@ func (s *service) deleteObject(id string) (err error) {
 	return
 }
 
-func (s *service) sendOnRemoveEvent(ids ... string) {
+func (s *service) sendOnRemoveEvent(ids ...string) {
 	if s.sendEvent != nil {
 		s.sendEvent(&pb.Event{
-			Messages:  []*pb.EventMessage{
+			Messages: []*pb.EventMessage{
 				&pb.EventMessage{
 					Value: &pb.EventMessageValueOfObjectRemove{
 						ObjectRemove: &pb.EventObjectRemove{
