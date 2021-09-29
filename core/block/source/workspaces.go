@@ -2,11 +2,16 @@ package source
 
 import (
 	"context"
+	"fmt"
+	"sync"
+
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/globalsign/mgo/bson"
+	threadsDb "github.com/textileio/go-threads/db"
 )
 
 func NewWorkspaces(a core.Service, id string) (s Source) {
@@ -19,6 +24,12 @@ func NewWorkspaces(a core.Service, id string) (s Source) {
 type workspaces struct {
 	id string
 	a  core.Service
+	m  sync.Mutex
+
+	receiver ChangeReceiver
+	listener threadsDb.Listener
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func (v *workspaces) ReadOnly() bool {
@@ -42,41 +53,36 @@ func (v *workspaces) Virtual() bool {
 }
 
 func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
-	// should we use id here?
-	s := state.NewDoc(v.id, nil).(*state.State)
-
 	objects, err := v.a.GetAllObjectsInWorkspace(v.id)
 	if err != nil {
 		return nil, err
 	}
 
-	var lastTarget string
+	var blocks []*model.Block
+
 	for _, objId := range objects {
-		link := simple.New(&model.Block{
+		link := &model.Block{
+			Id: bson.NewObjectId().Hex(),
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
 					TargetBlockId: objId,
 					Style:         model.BlockContentLink_Page,
 				},
 			},
-		})
-		s.Add(link)
-		if s.Get(s.RootId()) != nil {
-			if chIds := s.Get(s.RootId()).Model().ChildrenIds; len(chIds) > 0 {
-				lastTarget = chIds[0]
-			}
 		}
-		if err = s.InsertTo(lastTarget, model.Block_Inner, link.Model().Id); err != nil {
-			return
-		}
+		blocks = append(blocks, link)
 	}
-	// TODO: save changeReceiver to react to new threads being added, we must add this to threadNotifier
+	s := state.NewDoc(v.id, nil).(*state.State)
+	initBlocksAndAddToRoot(s, blocks)
+	v.receiver = receiver
+
+	go v.listenToChanges()
+
 	return s, nil
 }
 
 func (v *workspaces) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
-	// TODO: should this be exactly like copy
-	return v.ReadDoc(nil, false)
+	return nil, nil
 }
 
 func (v *workspaces) PushChange(params PushChangeParams) (id string, err error) {
@@ -92,9 +98,92 @@ func (v *workspaces) ListIds() ([]string, error) {
 }
 
 func (v *workspaces) Close() (err error) {
+	v.m.Lock()
+	defer v.m.Unlock()
+	v.cancel()
+	v.listener.Close()
+
 	return
 }
 
 func (v *workspaces) LogHeads() map[string]string {
 	return nil
+}
+
+func (v *workspaces) listenToChanges() (err error) {
+	v.m.Lock()
+	defer v.m.Unlock()
+
+	if v.listener != nil {
+		return
+	}
+
+	v.listener, err = v.a.GetThreadActionsListenerForWorkspace(v.id)
+	if err != nil {
+		return
+	}
+
+	v.ctx, v.cancel = context.WithCancel(context.Background())
+
+	go func() {
+		for {
+			select {
+			case action := <-v.listener.Channel():
+				go v.processThreadAction(action)
+			case <-v.ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return nil
+}
+
+func (v *workspaces) processThreadAction(action threadsDb.Action) {
+	if action.Type != threadsDb.ActionCreate {
+		return
+	}
+	link := simple.New(&model.Block{
+		Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: action.ID.String(),
+				Style:         model.BlockContentLink_Page,
+			},
+		},
+	})
+	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
+		s, ok := d.(*state.State)
+		if !ok {
+			err = fmt.Errorf("doc is not state")
+			return
+		}
+
+		s.Add(link)
+		err = s.InsertTo("", model.Block_Inner, link.Model().Id)
+		return
+	})
+	if err != nil {
+		log.Errorf("failed to append state with new workspace thread: %v", err)
+	}
+}
+
+func initBlocksAndAddToRoot(s *state.State, blocks []*model.Block) {
+	// we could have used template.WithRootBlocks, but these causes circular references
+	s.Add(simple.New(&model.Block{
+		Id: s.RootId(),
+		Content: &model.BlockContentOfSmartblock{
+			Smartblock: &model.BlockContentSmartblock{},
+		},
+	}))
+
+	for _, block := range blocks {
+		if block.Id == "" {
+			panic("blocks must contains exact ids")
+		}
+		s.Add(simple.New(block))
+		err := s.InsertTo(s.RootId(), model.Block_Inner, block.Id)
+		if err != nil {
+			log.Errorf("template WithDataview failed to insert: %w", err)
+		}
+	}
 }

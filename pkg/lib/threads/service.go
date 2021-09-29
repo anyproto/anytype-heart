@@ -316,6 +316,8 @@ type Service interface {
 	GetAllWorkspaces() ([]string, error)
 	GetAllThreadsInWorkspace(id string) ([]string, error)
 
+	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
+
 	GetThreadInfo(id thread.ID) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string) error
 
@@ -389,6 +391,31 @@ func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
 	}
 
 	return threadsInWorkspace, nil
+}
+
+func (s *service) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
+	threadId, err := thread.Decode(id)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		processor, err = s.startWorkspaceThreadProcessor(id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	listener, err := processor.GetDB().Listen()
+	if err != nil {
+		return nil, err
+	}
+
+	return listener, nil
 }
 
 func (s *service) getNewThreadChan() chan<- string {

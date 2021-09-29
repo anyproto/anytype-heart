@@ -16,6 +16,7 @@ import (
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/textileio/go-threads/core/thread"
+	threadsDb "github.com/textileio/go-threads/db"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -88,6 +89,8 @@ type Service interface {
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
+
+	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
 	OpenDeeplink(deeplink string) error
 	CreateDeeplinkFromBlock(blockId string) (string, error)
@@ -340,6 +343,10 @@ func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 
 func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {
 	return a.threadService.GetAllThreadsInWorkspace(id)
+}
+
+func (a *Anytype) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
+	return a.threadService.GetThreadActionsListenerForWorkspace(id)
 }
 
 func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
