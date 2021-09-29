@@ -335,3 +335,41 @@ func TestBasic_FeaturedRelationRemove(t *testing.T) {
 	assert.Equal(t, []string{bundle.RelationKeyName.String()}, pbtypes.GetStringList(res.Details(), bundle.RelationKeyFeaturedRelations.String()))
 	assert.Nil(t, res.PickParentOf(template.DescriptionBlockId))
 }
+
+func TestBasic_ReplaceLink(t *testing.T) {
+	var newId, oldId = "newId", "oldId"
+
+	sb := smarttest.New("test")
+	s := sb.NewState()
+	s.SetDetail("link", pbtypes.String(oldId))
+	s.AddRelation(&model.Relation{Key: "link", Format: model.RelationFormat_object})
+	template.WithDescription(s)
+	newBlocks := []simple.Block{
+		simple.New(&model.Block{Content: &model.BlockContentOfLink{
+			Link: &model.BlockContentLink{
+				TargetBlockId: oldId,
+			},
+		}}),
+		simple.New(&model.Block{Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "123",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{&model.BlockContentTextMark{Type: model.BlockContentTextMark_Mention, Param: oldId}},
+				},
+			},
+		}}),
+	}
+	for _, nb := range newBlocks {
+		s.Add(nb)
+		require.NoError(t, s.InsertTo(s.RootId(), model.Block_Inner, nb.Model().Id))
+	}
+	require.NoError(t, sb.Apply(s))
+
+	b := NewBasic(sb)
+	require.NoError(t, b.ReplaceLink(oldId, newId))
+
+	res := sb.NewState()
+	assert.Equal(t, pbtypes.GetString(res.Details(), "link"), newId)
+	assert.Equal(t, res.Pick(newBlocks[0].Model().Id).Model().GetLink().TargetBlockId, newId)
+	assert.Equal(t, res.Pick(newBlocks[1].Model().Id).Model().GetText().GetMarks().Marks[0].Param, newId)
+}

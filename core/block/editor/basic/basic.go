@@ -2,14 +2,16 @@ package basic
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -36,6 +38,7 @@ type Basic interface {
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	FeaturedRelationAdd(ctx *state.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
+	ReplaceLink(oldId, newId string) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -390,4 +393,34 @@ func (bs *basic) FeaturedRelationRemove(ctx *state.Context, relations ...string)
 		template.WithDescription(s)
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
+}
+
+func (bs *basic) ReplaceLink(oldId, newId string) error {
+	s := bs.NewState()
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if l, ok := b.(link.Block); ok {
+			if l.Model().GetLink().TargetBlockId == oldId {
+				s.Get(b.Model().Id).Model().GetLink().TargetBlockId = newId
+			}
+		} else if t, ok := b.(text.Block); ok {
+			if marks := t.Model().GetText().Marks; marks != nil {
+				for i, m := range marks.Marks {
+					if m.Param == oldId {
+						s.Get(b.Model().Id).Model().GetText().Marks.Marks[i].Param = newId
+					}
+				}
+			}
+		}
+		return true
+	})
+	rels := bs.RelationsState(s, true)
+	details := s.Details()
+	for _, rel := range rels {
+		if rel.Format == model.RelationFormat_object {
+			if pbtypes.GetString(details, rel.Key) == oldId {
+				s.SetDetail(rel.Key, pbtypes.String(newId))
+			}
+		}
+	}
+	return bs.Apply(s)
 }

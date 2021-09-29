@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -88,6 +89,7 @@ type Service interface {
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
+	ObjectToSet(id string, objectTypeUrl string) (newId string, err error)
 	UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error)
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
@@ -349,6 +351,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
+	defer s.cache.Release(id)
 	ob.Lock()
 	defer ob.Unlock()
 	ob.SetEventFunc(s.sendEvent)
@@ -365,7 +368,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
-
+	s.cache.Lock(id)
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
 			fList = func() []string {
@@ -415,14 +418,24 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 }
 
 func (s *service) CloseBlock(id string) error {
+	var isDraft bool
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.BlockClose()
+		isDraft = pbtypes.GetBool(b.NewState().LocalDetails(), bundle.RelationKeyIsDraft.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	s.cache.Release(id)
+	s.cache.Unlock(id)
+	if isDraft {
+		_, _ = s.cache.Remove(id)
+		if err = s.anytype.DeleteBlock(id); err != nil {
+			log.Errorf("error while block delete: %v", err)
+		} else {
+			s.sendOnRemoveEvent(id)
+		}
+	}
 	return nil
 }
 
@@ -539,8 +552,28 @@ func (s *service) deleteObject(id string) (err error) {
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
+	s.cache.Reset(id)
+	if err = s.anytype.DeleteBlock(id); err != nil {
+		return
+	}
+	s.sendOnRemoveEvent(id)
+	return
+}
 
-	return s.anytype.DeleteBlock(id)
+func (s *service) sendOnRemoveEvent(ids ... string) {
+	if s.sendEvent != nil {
+		s.sendEvent(&pb.Event{
+			Messages:  []*pb.EventMessage{
+				&pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectRemove{
+						ObjectRemove: &pb.EventObjectRemove{
+							Ids: ids,
+						},
+					},
+				},
+			},
+		})
+	}
 }
 
 func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {
@@ -581,6 +614,9 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	}
 
 	if details != nil && details.Fields != nil {
+		var isDraft = pbtypes.GetBool(details, bundle.RelationKeyIsDraft.String())
+		delete(details.Fields, bundle.RelationKeyIsDraft.String())
+
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
 			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
@@ -592,6 +628,10 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 				relCopy.Scope = model.Relation_object
 				relations = append(relations, relCopy)
 			}
+		}
+
+		if isDraft {
+			createState.SetDetailAndBundledRelation(bundle.RelationKeyIsDraft, pbtypes.Bool(true))
 		}
 	}
 
@@ -1028,4 +1068,10 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 		return nil, err
 	}
 	return ob, nil
+}
+
+func (s *service) replaceLink(id, oldId, newId string) error {
+	return s.DoBasic(id, func(b basic.Basic) error {
+		return b.ReplaceLink(oldId, newId)
+	})
 }
