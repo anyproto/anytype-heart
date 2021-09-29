@@ -2,7 +2,7 @@ package objects
 
 import (
 	"errors"
-
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -69,6 +69,7 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 		}
 	}
 
+	// todo: remove this? As we can only create SmartBlockTypePage via sets now
 	var sbType = coresb.SmartBlockTypePage
 	for sbT, objType := range bundle.DefaultObjectTypePerSmartblockType {
 		if objType.URL() == sp.objectTypeUrl {
@@ -79,6 +80,10 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 
 	if targetType := pbtypes.GetString(rec.Details, bundle.RelationKeyTargetObjectType.String()); targetType != "" {
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl, targetType})
+	} else if sp.objectTypeUrl == "" {
+		if ot := pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()); ot == "" {
+			return database.Record{}, fmt.Errorf("object type not explitly set for the set and the record")
+		}
 	} else {
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
 	}

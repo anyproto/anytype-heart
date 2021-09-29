@@ -2,6 +2,8 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"io/ioutil"
 	"os"
 	"strings"
@@ -143,14 +145,14 @@ func TestRelationAdd(t *testing.T) {
 
 	t.Run("relation_aggregate_scope", func(t *testing.T) {
 		respSet1 := mw.SetCreate(&pb.RpcSetCreateRequest{
-			ObjectTypeUrl: bundle.TypeKeyIdea.URL(),
-			Details:       nil,
+			Source:  []string{bundle.TypeKeyIdea.URL()},
+			Details: nil,
 		})
 		require.Equal(t, 0, int(respSet1.Error.Code), respSet1.Error.Description)
 
 		respSet2 := mw.SetCreate(&pb.RpcSetCreateRequest{
-			ObjectTypeUrl: bundle.TypeKeyIdea.URL(),
-			Details:       nil,
+			Source:  []string{bundle.TypeKeyIdea.URL()},
+			Details: nil,
 		})
 		require.Equal(t, 0, int(respSet2.Error.Code), respSet2.Error.Description)
 
@@ -1160,7 +1162,7 @@ func TestCustomType(t *testing.T) {
 	require.True(t, found2, "new object type not found in search")
 
 	respCreateCustomTypeSet := mw.SetCreate(&pb.RpcSetCreateRequest{
-		ObjectTypeUrl: respObjectTypeCreate.ObjectType.Url,
+		Source: []string{respObjectTypeCreate.ObjectType.Url},
 	})
 	require.Equal(t, 0, int(respCreateCustomTypeSet.Error.Code), respCreateCustomTypeSet.Error.Description)
 	require.NotEmpty(t, respCreateCustomTypeSet.Id)
@@ -1229,6 +1231,125 @@ func TestCustomType(t *testing.T) {
 	}}})
 	require.Equal(t, 0, int(respSearch2.Error.Code), respSearch2.Error.Description)
 	require.Len(t, respSearch2.Records, 1)
+}
+
+func TestRelationSet(t *testing.T) {
+	_, mw := start(t, nil)
+	respObjectTypeCreate := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
+		ObjectType: &model.ObjectType{
+			Name:   "2",
+			Layout: model.ObjectType_todo,
+			Relations: []*model.Relation{
+				{Format: model.RelationFormat_date, Name: "date of birth", MaxCount: 1},
+				bundle.MustGetRelation(bundle.RelationKeyAssignee),
+				{Format: model.RelationFormat_object, Name: "bio", MaxCount: 0},
+			},
+		},
+	})
+
+	require.Equal(t, 0, int(respObjectTypeCreate.Error.Code), respObjectTypeCreate.Error.Description)
+	require.Len(t, respObjectTypeCreate.ObjectType.Relations, len(bundle.RequiredInternalRelations)+3+1) // including relation.RequiredInternalRelations and done from the to-do layout
+	require.True(t, strings.HasPrefix(respObjectTypeCreate.ObjectType.Url, "b"))
+	var newRelation *model.Relation
+	for _, rel := range respObjectTypeCreate.ObjectType.Relations {
+		if rel.Name == "bio" {
+			newRelation = rel
+			break
+		}
+	}
+	rels := map[string]*model.Relation{
+		addr.BundledRelationURLPrefix + bundle.RelationKeyAssignee.String(): bundle.MustGetRelation(bundle.RelationKeyAssignee),
+		addr.CustomRelationURLPrefix + newRelation.Key:                      newRelation,
+	}
+
+	time.Sleep(time.Second)
+	for relUrl, relToCreate := range rels {
+		customTypeObject := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
+			bundle.RelationKeyType.String(): pbtypes.String(respObjectTypeCreate.ObjectType.Url),
+			bundle.RelationKeyName.String(): pbtypes.String("custom1"),
+		}}})
+
+		require.Equal(t, 0, int(customTypeObject.Error.Code), customTypeObject.Error.Description)
+
+		taskTypeObject := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
+			bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyTask.URL()),
+			bundle.RelationKeyName.String(): pbtypes.String("task1"),
+		}}})
+		require.Equal(t, 0, int(taskTypeObject.Error.Code), taskTypeObject.Error.Description)
+
+		respCreateRelationSet := mw.SetCreate(&pb.RpcSetCreateRequest{
+			Source: []string{relUrl},
+		})
+
+		require.Equal(t, 0, int(respCreateRelationSet.Error.Code), respCreateRelationSet.Error.Description)
+		require.NotEmpty(t, respCreateRelationSet.Id)
+
+		respOpenRelationSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateRelationSet.Id})
+		require.Equal(t, 0, int(respOpenRelationSet.Error.Code), respOpenRelationSet.Error.Description)
+
+		respCreateRecordInRelationSetWithoutType := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{ContextId: respCreateRelationSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom2"), newRelation.Key: pbtypes.String("newRelationVal")}}})
+		require.Equal(t, 1, int(respCreateRecordInRelationSetWithoutType.Error.Code), respCreateRecordInRelationSetWithoutType.Error.Description)
+
+		respCreateRecordInRelationSetWithType := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{ContextId: respCreateRelationSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom2"), newRelation.Key: pbtypes.String("newRelationVal"), bundle.RelationKeyType.String(): pbtypes.String(respObjectTypeCreate.ObjectType.Url)}}})
+		require.Equal(t, 0, int(respCreateRecordInRelationSetWithType.Error.Code), respCreateRecordInRelationSetWithType.Error.Description)
+
+		customObjectId := respCreateRecordInRelationSetWithType.Record.Fields["id"].GetStringValue()
+		respOpenCustomTypeObject := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: customObjectId})
+		require.Equal(t, 0, int(respOpenCustomTypeObject.Error.Code), respOpenCustomTypeObject.Error.Description)
+
+		pageTypeObject := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{
+			bundle.RelationKeyName.String(): pbtypes.String("page1"),
+			bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyPage.URL()),
+		}}})
+		require.Equal(t, 0, int(pageTypeObject.Error.Code), pageTypeObject.Error.Description)
+
+		r1 := mw.ObjectRelationAdd(&pb.RpcObjectRelationAddRequest{
+			ContextId: pageTypeObject.PageId,
+			Relation:  relToCreate,
+		})
+		require.Equal(t, 0, int(r1.Error.Code), r1.Error.Description)
+
+		r2 := mw.BlockSetDetails(&pb.RpcBlockSetDetailsRequest{
+			ContextId: pageTypeObject.PageId,
+			Details: []*pb.RpcBlockSetDetailsDetail{{
+				Key:   relToCreate.Key,
+				Value: pbtypes.StringList([]string{"_anytype_profile"}),
+			}},
+		})
+		require.Equal(t, 0, int(r2.Error.Code), r2.Error.Description)
+
+		for i := 0; i <= 20; i++ {
+			respOpenRelationSet = mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateRelationSet.Id})
+			require.Equal(t, 0, int(respOpenRelationSet.Error.Code), respOpenRelationSet.Error.Description)
+
+			recordsSet := getEventRecordsSet(respOpenRelationSet.Event.Messages)
+			require.NotNil(t, recordsSet)
+			if len(recordsSet.Records) == 0 {
+				if i < 20 {
+					time.Sleep(time.Millisecond * 200)
+					continue
+				}
+			}
+
+			var ids []string
+			recs := getEventRecordsSet(respOpenRelationSet.Event.Messages).Records
+			for _, rec := range recs {
+				ids = append(ids, rec.Fields["id"].GetStringValue())
+			}
+
+			if relUrl == addr.CustomRelationURLPrefix+newRelation.Key {
+				// task don't have a custom relation
+				added := slice.Difference([]string{pageTypeObject.PageId, respCreateRecordInRelationSetWithType.Record.Fields["id"].GetStringValue(), customTypeObject.PageId}, ids)
+				require.Len(t, added, 0)
+			} else if relUrl == addr.BundledRelationURLPrefix+bundle.RelationKeyAssignee.String() {
+				added := slice.Difference([]string{pageTypeObject.PageId, taskTypeObject.PageId, respCreateRecordInRelationSetWithType.Record.Fields["id"].GetStringValue(), customTypeObject.PageId}, ids)
+				require.Len(t, added, 0)
+			}
+
+			break
+		}
+
+	}
 }
 
 func TestBundledType(t *testing.T) {

@@ -30,7 +30,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source: p.Id(),
+			Source: []string{p.Id()},
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   uuid.New().String(),
@@ -51,7 +51,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 
 	templatesDataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Source: bundle.TypeKeyTemplate.URL(),
+			Source: []string{bundle.TypeKeyTemplate.URL()},
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   uuid.New().String(),
