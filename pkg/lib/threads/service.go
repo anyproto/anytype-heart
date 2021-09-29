@@ -499,7 +499,7 @@ func (s *service) SelectWorkspace(
 	ctx context.Context,
 	ids DerivedSmartblockIds,
 	workspaceId thread.ID) (DerivedSmartblockIds, error) {
-	return s.ensureWorkspace(ctx, ids, workspaceId, true)
+	return s.ensureWorkspace(ctx, ids, workspaceId, true, true)
 }
 
 func (s *service) AddThread(threadId string, key string, addrs []string) error {
@@ -566,7 +566,7 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 
 	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(id)
 	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
-		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true)
+		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true, false)
 	}
 
 	return err

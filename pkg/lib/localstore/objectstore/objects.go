@@ -1534,12 +1534,22 @@ func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, lin
 		if isRemoved {
 			tp = pbtypes.Null()
 		}
+		threads.WorkspaceLogger.
+			With("isRemoved", isRemoved).
+			With("thread id", memberId).
+			With("workspace id", id).
+			Info("trying to inject object details")
 		merged, err := m.injectObjectDetails(txn, memberId, &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyWorkspaceId.String(): tp,
 			},
 		})
 		if err != nil {
+			threads.WorkspaceLogger.
+				With("isRemoved", isRemoved).
+				With("thread id", memberId).
+				With("workspace id", id).
+				Info("details injected with error: %v", err)
 			return err
 		}
 

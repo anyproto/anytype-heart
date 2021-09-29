@@ -248,7 +248,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 			return accountIds, nil, nil
 		}
 
-		workspaceIds, err := s.ensureWorkspace(ctx, accountIds, workspaceId, false)
+		workspaceIds, err := s.ensureWorkspace(ctx, accountIds, workspaceId, false, true)
 		if err != nil {
 			log.Errorf("failed to start the workspace: %v", err)
 			return accountIds, nil, nil
@@ -491,7 +491,8 @@ func (s *service) ensureWorkspace(
 	ctx context.Context,
 	ids DerivedSmartblockIds,
 	workspaceId thread.ID,
-	pullAsync bool) (DerivedSmartblockIds, error) {
+	pullAsync bool,
+	changeCollection bool) (DerivedSmartblockIds, error) {
 	// workspace here must be added at the time of switch
 	thrdInfo, err := s.t.GetThread(ctx, workspaceId)
 	if err != nil {
@@ -523,13 +524,15 @@ func (s *service) ensureWorkspace(
 	ids.Home = home.ID.String()
 	ids.Archive = archive.ID.String()
 
-	s.db = workspaceProcessor.GetDB()
-	s.threadsCollection = workspaceProcessor.GetCollection()
-	s.currentWorkspaceId = workspaceId
+	if changeCollection {
+		s.db = workspaceProcessor.GetDB()
+		s.threadsCollection = workspaceProcessor.GetCollection()
+		s.currentWorkspaceId = workspaceId
 
-	WorkspaceLogger.With("workspace id", workspaceId.String()).
-		With("collection name", s.threadsCollection.GetName()).
-		Info("setting new collection as current")
+		WorkspaceLogger.With("workspace id", workspaceId.String()).
+			With("collection name", s.threadsCollection.GetName()).
+			Info("setting new collection as current")
+	}
 
 	return ids, nil
 }

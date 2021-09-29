@@ -108,8 +108,13 @@ func (t *threadProcessor) Init(id thread.ID) error {
 }
 
 func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error {
+	WorkspaceLogger.
+		With("is account", t.isAccountProcessor).
+		With("workspace id", t.threadId).
+		Info("started listening for workspace")
+
 	log.With("thread id", t.threadId).
-		Info("threadsDbListen for workspace")
+		Info("listen for workspace")
 	l, err := t.db.Listen()
 	if err != nil {
 		return err
