@@ -399,6 +399,12 @@ func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.
 	return err
 }
 
+func (s *service) SetDataviewSource(ctx *state.Context, contextId, blockId, source string) (err error) {
+	return s.DoDataview(contextId, func(b dataview.Dataview) error {
+		return b.SetSource(ctx, blockId, source)
+	})
+}
+
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
 		textSlot, htmlSlot, anySlot, err = cb.Copy(req)
@@ -809,7 +815,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	setId = csm.ID()
 
 	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
-		State: state.NewDoc(req.ObjectTypeUrl, nil).NewState(),
+		State:          state.NewDoc(setId, nil).NewState(),
 	})
 	if err != nil {
 		return "", "", err

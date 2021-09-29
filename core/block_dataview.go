@@ -312,3 +312,27 @@ func (mw *Middleware) BlockDataviewRecordRelationOptionDelete(req *pb.RpcBlockDa
 
 	return response(pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError_NULL, nil)
 }
+
+func (mw *Middleware) BlockDataviewSetSource(req *pb.RpcBlockDataviewSetSourceRequest) *pb.RpcBlockDataviewSetSourceResponse {
+	ctx := state.NewContext(nil)
+	resp := func(err error) *pb.RpcBlockDataviewSetSourceResponse {
+		r := &pb.RpcBlockDataviewSetSourceResponse{
+			Error: &pb.RpcBlockDataviewSetSourceResponseError{
+				Code:        pb.RpcBlockDataviewSetSourceResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcBlockDataviewSetSourceResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		} else {
+			r.Event = ctx.GetResponseEvent()
+		}
+		return r
+	}
+
+	err := mw.doBlockService(func(bs block.Service) error {
+		return bs.SetDataviewSource(ctx, req.ContextId, req.BlockId, req.Source)
+	})
+
+	return resp(err)
+}

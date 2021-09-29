@@ -10,7 +10,6 @@ import (
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -34,7 +33,6 @@ func NewSet(
 	sb.IHistory = basic.NewHistory(sb)
 	sb.Dataview = dataview.NewDataview(sb)
 	sb.Router = database.New(dbCtrl)
-	sb.Text = stext.NewText(sb.SmartBlock)
 	return sb
 }
 
@@ -44,7 +42,6 @@ type Set struct {
 	basic.IHistory
 	dataview.Dataview
 	database.Router
-	stext.Text
 }
 
 func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {

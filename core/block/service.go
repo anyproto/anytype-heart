@@ -105,6 +105,7 @@ type Service interface {
 	AddExtraRelations(ctx *state.Context, id string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
 	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
+	SetDataviewSource(ctx *state.Context, contextId, blockId, source string) error
 
 	ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error)
 	SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error)
