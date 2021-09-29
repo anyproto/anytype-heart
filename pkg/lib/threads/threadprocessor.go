@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/thread"
 	threadsDb "github.com/textileio/go-threads/db"
@@ -188,11 +187,15 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 		}()
 	}
 
-	processThreads := func(ids []db.InstanceID) {
-		for _, id := range ids {
-			instanceBytes, err := t.threadsCollection.FindByID(id)
+	processThreadActions := func(actions []threadsDb.Action) {
+		for _, action := range actions {
+			// TODO: add thread delete actions, consider moving create logic to another function
+			if action.Type != threadsDb.ActionCreate {
+				continue
+			}
+			instanceBytes, err := t.threadsCollection.FindByID(action.ID)
 			if err != nil {
-				log.Errorf("failed to find thread info for id %t: %w", id.String(), err)
+				log.Errorf("failed to find thread info for id %s: %v", action.ID.String(), err)
 				continue
 			}
 
@@ -200,7 +203,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 			threadsUtil.InstanceFromJSON(instanceBytes, &ti)
 			tid, err := thread.Decode(ti.ID.String())
 			if err != nil {
-				log.Errorf("failed to parse thread id %t: %t", ti.ID, err.Error())
+				log.Errorf("failed to parse thread id %s: %v", ti.ID.String(), err)
 				continue
 			}
 			initialThreadsLock.RLock()
@@ -249,19 +252,19 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 		}()
 		deadline := 1 * time.Second
 		tmr := time.NewTimer(deadline)
-		flushBuffer := make([]db.InstanceID, 0, 100)
+		flushBuffer := make([]threadsDb.Action, 0, 100)
 		timerRead := false
 
 		processBuffer := func() {
 			if len(flushBuffer) == 0 {
 				return
 			}
-			buffCopy := make([]db.InstanceID, len(flushBuffer))
-			for index, id := range flushBuffer {
-				buffCopy[index] = id
+			buffCopy := make([]threadsDb.Action, len(flushBuffer))
+			for index, action := range flushBuffer {
+				buffCopy[index] = action
 			}
 			flushBuffer = flushBuffer[:0]
-			go processThreads(buffCopy)
+			go processThreadActions(buffCopy)
 		}
 
 		for {
@@ -284,7 +287,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				}
 				tmr.Reset(deadline)
 				timerRead = false
-				flushBuffer = append(flushBuffer, c.ID)
+				flushBuffer = append(flushBuffer, c)
 			}
 		}
 	}()
