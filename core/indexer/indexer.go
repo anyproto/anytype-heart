@@ -38,7 +38,7 @@ const (
 	CName = "indexer"
 
 	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 0  // reindex thread-based objects
+	ForceThreadsObjectsReindexCounter int32 = 1  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 4  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2  // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 11 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)

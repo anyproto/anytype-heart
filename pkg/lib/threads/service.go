@@ -45,6 +45,8 @@ const simultaneousRequests = 20
 const CName = "threads"
 
 var log = logging.Logger("anytype-threads")
+// TODO: remove when workspace debugging ends
+var WorkspaceLogger = logging.Logger("anytype-workspace-debug")
 
 var (
 	permanentConnectionRetryDelay = time.Second * 5
@@ -487,6 +489,9 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 		return thread.Info{}, fmt.Errorf("could not create archive thread: %w", err)
 	}
 
+	WorkspaceLogger.
+		With("workspace id", workspaceThread.ID.String()).
+		Debug("created workspace")
 	return workspaceThread, nil
 }
 
@@ -641,6 +646,11 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		Key:   thrd.Key.String(),
 		Addrs: util.MultiAddressesToStrings(thrd.Addrs),
 	}
+
+	WorkspaceLogger.
+		With("collection name", s.threadsCollection.GetName()).
+		With("thread id", thrd.ID.String()).
+		Info("pushing thread to thread collection")
 
 	// todo: wait for threadsCollection to push?
 	_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))

@@ -263,10 +263,13 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 				workspaceProcessor.GetDB(),
 				workspaceProcessor.GetCollection())
 		}()
-
+		WorkspaceLogger.
+			With("workspace id", workspaceId).
+			Info("starting with workspace")
 		return accountIds, &workspaceIds, nil
 	}
-
+	WorkspaceLogger.
+		Info("starting with account")
 	return accountIds, nil, nil
 }
 
@@ -494,6 +497,8 @@ func (s *service) ensureWorkspace(
 	if err != nil {
 		return ids, err
 	}
+	WorkspaceLogger.With("workspace id", workspaceId.String()).
+		Info("workspace thread exists")
 
 	workspaceProcessor, err := s.startWorkspaceThreadProcessor(workspaceId.String())
 	if err != nil {
@@ -505,17 +510,26 @@ func (s *service) ensureWorkspace(
 	if err != nil {
 		return ids, err
 	}
+	WorkspaceLogger.With("workspace id", workspaceId.String()).
+		Info("workspace home thread exists")
 
 	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, pullAsync)
 	if err != nil {
 		return ids, err
 	}
+	WorkspaceLogger.With("workspace id", workspaceId.String()).
+		Info("workspace archive thread exists")
+
 	ids.Home = home.ID.String()
 	ids.Archive = archive.ID.String()
 
 	s.db = workspaceProcessor.GetDB()
 	s.threadsCollection = workspaceProcessor.GetCollection()
 	s.currentWorkspaceId = workspaceId
+
+	WorkspaceLogger.With("workspace id", workspaceId.String()).
+		With("collection name", s.threadsCollection.GetName()).
+		Info("setting new collection as current")
 
 	return ids, nil
 }

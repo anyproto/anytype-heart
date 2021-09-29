@@ -305,6 +305,8 @@ func (a *Anytype) CreateWorkspace() (string, error) {
 func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	if workspaceId == "" {
 		// selecting account
+		threads.WorkspaceLogger.
+			Debug("selecting account")
 		a.predefinedBlockIds = a.accountBlockIds
 		a.workspaceBlockIds = nil
 		return a.objectStore.RemoveCurrentWorkspaceId()

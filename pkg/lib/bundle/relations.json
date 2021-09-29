@@ -899,7 +899,7 @@
   },
   {
     "description": "Workspace id",
-    "format": "checkbox",
+    "format": "object",
     "hidden": true,
     "key": "workspaceId",
     "maxCount": 1,

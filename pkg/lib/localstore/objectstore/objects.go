@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -1514,6 +1515,12 @@ func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.Rel
 }
 
 func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, links []string) error {
+	threads.WorkspaceLogger.
+		With("existing links", exLinks).
+		With("new links", links).
+		With("workspace id", id).
+		Info("updating workspace links")
+
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
 	setDetail := func(memberId string, isRemoved bool) error {
 		tp := pbtypes.String(id)

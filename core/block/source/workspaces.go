@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
@@ -53,6 +54,9 @@ func (v *workspaces) Virtual() bool {
 }
 
 func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		Info("reading document for workspace")
 	objects, err := v.a.GetAllObjectsInWorkspace(v.id)
 	if err != nil {
 		return nil, err
@@ -70,6 +74,10 @@ func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc
 				},
 			},
 		}
+		threads.WorkspaceLogger.
+			With("workspace id", v.id).
+			With("thread id", objId).
+			Info("adding initial link")
 		blocks = append(blocks, link)
 	}
 	s := state.NewDoc(v.id, nil).(*state.State)
@@ -100,6 +108,9 @@ func (v *workspaces) ListIds() ([]string, error) {
 func (v *workspaces) Close() (err error) {
 	v.m.Lock()
 	defer v.m.Unlock()
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		Info("closing listener channel")
 	v.cancel()
 	v.listener.Close()
 
@@ -135,7 +146,9 @@ func (v *workspaces) listenToChanges() (err error) {
 			}
 		}
 	}()
-
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		Info("started listening to db changes")
 	return nil
 }
 
@@ -143,6 +156,10 @@ func (v *workspaces) processThreadAction(action threadsDb.Action) {
 	if action.Type != threadsDb.ActionCreate {
 		return
 	}
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		With("thread id", action.ID).
+		Info("processing new thread to link")
 	link := simple.New(&model.Block{
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
