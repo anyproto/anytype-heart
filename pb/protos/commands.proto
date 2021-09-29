@@ -1983,7 +1983,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context block
                 string targetId = 2; // id of the closest block
-                string objectTypeUrl = 3;
+                repeated string source = 3;
                 google.protobuf.Struct details = 4; // details
 
                 anytype.model.Block.Position position = 5;
@@ -2826,7 +2826,7 @@ message Rpc {
     message Set {
         message Create {
             message Request {
-                string objectTypeUrl = 1;
+                repeated string source = 1;
                 google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
                 string templateId = 3; // optional template id for creating from template
             }

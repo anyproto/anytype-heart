@@ -2226,7 +2226,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
 | targetId | [string](#string) |  | id of the closest block |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | details |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
@@ -9471,7 +9471,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | if omitted the name of page will be the same with object type |
 | templateId | [string](#string) |  | optional template id for creating from template |
 

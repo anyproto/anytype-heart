@@ -793,7 +793,7 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	schema, err := dataview.SchemaBySources([]string{req.ObjectTypeUrl}, s.anytype.ObjectStore(), nil)
+	schema, err := dataview.SchemaBySources(req.Source, s.anytype.ObjectStore(), nil)
 	if err != nil {
 		return
 	}
@@ -806,7 +806,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	setId = csm.ID()
 
 	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
-		State: state.NewDoc(req.ObjectTypeUrl, nil).NewState(),
+		State: state.NewDoc(csm.ID(), nil).NewState(),
 	})
 	if err != nil {
 		return "", "", err
@@ -840,7 +840,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Relations: schemaRelations,
-			Source:    []string{req.ObjectTypeUrl},
+			Source:    req.Source,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   bson.NewObjectId().Hex(),
