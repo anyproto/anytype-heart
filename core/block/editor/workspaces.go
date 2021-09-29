@@ -30,3 +30,6 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	return nil
 }
 
+func (p *Workspaces) ShouldClose() bool {
+	return false
+}

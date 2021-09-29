@@ -108,6 +108,7 @@ type SmartBlock interface {
 	BlockClose()
 
 	Close() (err error)
+	ShouldClose() bool
 	state.Doc
 	sync.Locker
 }
@@ -1454,6 +1455,10 @@ func (sb *smartBlock) execHooks(event Hook) {
 
 func (sb *smartBlock) GetDocInfo() (doc.DocInfo, error) {
 	return sb.getDocInfo(sb.NewState()), nil
+}
+
+func (sb *smartBlock) ShouldClose() bool {
+	return true
 }
 
 func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
