@@ -616,8 +616,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 			}
 		}
 	}
-
-	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
