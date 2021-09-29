@@ -20,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
@@ -897,7 +898,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	return linkId, setId, nil
 }
 
-func (s *service) ObjectToSet(id string, objectTypeUrl string) (newId string, err error) {
+func (s *service) ObjectToSet(id string, source []string) (newId string, err error) {
 	var details *types.Struct
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
@@ -907,8 +908,8 @@ func (s *service) ObjectToSet(id string, objectTypeUrl string) (newId string, er
 	}
 
 	_, newId, err = s.CreateSet(nil, pb.RpcBlockCreateSetRequest{
-		ObjectTypeUrl: objectTypeUrl,
-		Details:       details,
+		Source:  source,
+		Details: details,
 	})
 	if err != nil {
 		return

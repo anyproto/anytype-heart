@@ -3370,7 +3370,7 @@ message Rpc {
         message ToSet {
             message Request {
                 string contextId = 1;
-                string objectTypeUrl = 2;
+                repeated string source = 2;
             }
 
             message Response {

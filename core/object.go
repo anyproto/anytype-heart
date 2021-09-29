@@ -521,7 +521,7 @@ func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectTo
 		err   error
 	)
 	err = mw.doBlockService(func(bs block.Service) error {
-		if setId, err = bs.ObjectToSet(req.ContextId, req.ObjectTypeUrl); err != nil {
+		if setId, err = bs.ObjectToSet(req.ContextId, req.Source); err != nil {
 			return err
 		}
 		return nil

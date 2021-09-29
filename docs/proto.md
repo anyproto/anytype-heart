@@ -8918,7 +8918,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 
 
 

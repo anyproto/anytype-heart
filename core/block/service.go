@@ -89,7 +89,7 @@ type Service interface {
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
-	ObjectToSet(id string, objectTypeUrl string) (newId string, err error)
+	ObjectToSet(id string, source []string) (newId string, err error)
 	UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error)
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
