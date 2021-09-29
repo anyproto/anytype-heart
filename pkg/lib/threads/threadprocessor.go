@@ -157,6 +157,11 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 			return
 		}
 
+		WorkspaceLogger.
+			With("is account", t.isAccountProcessor).
+			With("workspace id", t.threadId).
+			With("thread id", tid.String()).
+			Info("processing thread")
 		metrics.ExternalThreadReceivedCounter.Inc()
 		go func() {
 			if err := t.threadsService.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
