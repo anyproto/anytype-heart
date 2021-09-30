@@ -45,6 +45,7 @@ const simultaneousRequests = 20
 const CName = "threads"
 
 var log = logging.Logger("anytype-threads")
+
 // TODO: remove when workspace debugging ends
 var WorkspaceLogger = logging.Logger("anytype-workspace-debug")
 
@@ -449,8 +450,16 @@ func (s *service) Threads() threadsApp.Net {
 }
 
 func (s *service) CreateWorkspace() (thread.Info, error) {
+	accountProcessor, err := s.getAccountProcessor()
+	if err != nil {
+		return thread.Info{}, err
+	}
+
 	// create new workspace thread
-	workspaceThread, err := s.CreateThread(smartblock.SmartBlockTypeWorkspace)
+	workspaceThread, err := s.createThreadWithCollection(
+		smartblock.SmartBlockTypeWorkspace,
+		accountProcessor.GetCollection(),
+		accountProcessor.GetThreadId())
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
 	}
@@ -504,27 +513,19 @@ func (s *service) SelectWorkspace(
 }
 
 func (s *service) SelectAccount() error {
-	id, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
+	accountProcessor, err := s.getAccountProcessor()
 	if err != nil {
 		return err
 	}
 
-	s.processorMutex.RLock()
-	processor, exists := s.threadProcessors[id]
-	s.processorMutex.RUnlock()
-
-	if !exists {
-		return fmt.Errorf("account thread processor does not exist")
-	}
-
 	// TODO: we should probably add some mutex here to prevent concurrent changes
-	s.threadsCollection = processor.GetCollection()
-	s.db = processor.GetDB()
-	s.currentWorkspaceId = id
+	s.threadsCollection = accountProcessor.GetCollection()
+	s.db = accountProcessor.GetDB()
+	s.currentWorkspaceId = accountProcessor.GetThreadId()
 
 	WorkspaceLogger.
 		With("collection name", s.threadsCollection.GetName()).
-		With("account id", id.String()).
+		With("account id", s.currentWorkspaceId).
 		Info("switching to account")
 
 	return nil
@@ -542,19 +543,17 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 		return fmt.Errorf("failed to add thread: %w", err)
 	}
 
+	collectionToAdd := s.threadsCollection
+
 	defer func() {
 		// if we successfully downloaded the thread, or we already have it
 		// we still may need to check that it is added to current collection
 		if err != nil {
 			return
 		}
-		// we shouldn't add references to self
-		if s.currentWorkspaceId == id {
-			return
-		}
 
 		// TODO: check if we can optimize it by changing the query
-		instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
+		instancesBytes, err := collectionToAdd.Find(&threadsDb.Query{})
 		if err != nil {
 			log.With("thread id", threadId).
 				Errorf("failed to add thread to collection: %v", err)
@@ -569,11 +568,16 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 				return
 			}
 		}
-		_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(addedInfo))
+		_, err = collectionToAdd.Create(threadsUtil.JSONFromInstance(addedInfo))
 		if err != nil {
 			log.With("thread id", threadId).
 				Errorf("failed to add thread to collection: %v", err)
 		}
+
+		WorkspaceLogger.
+			With("thread id", threadId).
+			With("collection name", collectionToAdd.GetName()).
+			Info("adding thread to collection")
 	}()
 
 	_, err = s.t.GetThread(context.Background(), id)
@@ -594,6 +598,13 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 
 	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(id)
 	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
+		accountProcessor, err := s.getAccountProcessor()
+		if err != nil {
+			return err
+		}
+
+		collectionToAdd = accountProcessor.GetCollection()
+
 		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true, false)
 	}
 
@@ -617,6 +628,17 @@ func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {
 }
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
+	return s.createThreadWithCollection(blockType, s.threadsCollection, s.currentWorkspaceId)
+}
+
+func (s *service) createThreadWithCollection(
+	blockType smartblock.SmartBlockType,
+	collection *threadsDb.Collection,
+	workspaceId thread.ID) (thread.Info, error) {
+	if collection == nil {
+		return thread.Info{}, fmt.Errorf("collection not initialized")
+	}
+
 	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
@@ -633,14 +655,10 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 
 	key := thread.NewKey(followKey, readKey)
 
-	if s.threadsCollection == nil {
-		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
-	}
-
 	// this logic is needed to prevent cases when the tread is created
 	// but the app is shut down, so we don't know in which collection should we add this thread
 	err = s.threadCreateQueue.AddThreadQueueEntry(&model.ThreadCreateQueueEntry{
-		CollectionThread: s.currentWorkspaceId.String(),
+		CollectionThread: workspaceId.String(),
 		ThreadId:         thrdId.String(),
 	})
 	if err != nil {
@@ -676,12 +694,12 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 	}
 
 	WorkspaceLogger.
-		With("collection name", s.threadsCollection.GetName()).
+		With("collection name", collection.GetName()).
 		With("thread id", thrd.ID.String()).
 		Info("pushing thread to thread collection")
 
 	// todo: wait for threadsCollection to push?
-	_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
+	_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
 	if err != nil {
 		log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
 	} else {
@@ -742,4 +760,21 @@ func (s *service) DeleteThread(id string) error {
 		log.With("thread", id).Error("DeleteThread failed to remove thread from collection: %s", err.Error())
 	}
 	return nil
+}
+
+func (s *service) getAccountProcessor() (ThreadProcessor, error) {
+	id, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[id]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("account thread processor does not exist")
+	}
+
+	return processor, nil
 }

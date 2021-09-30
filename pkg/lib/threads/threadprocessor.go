@@ -17,6 +17,7 @@ import (
 type ThreadProcessor interface {
 	Init(thread.ID) error
 	Listen(map[thread.ID]threadInfo) error
+	GetThreadId() thread.ID
 	GetCollection() *threadsDb.Collection
 	GetDB() *threadsDb.DB
 }
@@ -39,6 +40,10 @@ func (t *threadProcessor) GetCollection() *threadsDb.Collection {
 
 func (t *threadProcessor) GetDB() *threadsDb.DB {
 	return t.db
+}
+
+func (t *threadProcessor) GetThreadId() thread.ID {
+	return t.threadId
 }
 
 func NewThreadProcessor(s *service, notifier ThreadDownloadNotifier) ThreadProcessor {
