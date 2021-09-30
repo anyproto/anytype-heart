@@ -311,6 +311,7 @@ type Service interface {
 
 	CreateWorkspace() (thread.Info, error)
 	SelectWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error)
+	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
@@ -500,6 +501,33 @@ func (s *service) SelectWorkspace(
 	ids DerivedSmartblockIds,
 	workspaceId thread.ID) (DerivedSmartblockIds, error) {
 	return s.ensureWorkspace(ctx, ids, workspaceId, true, true)
+}
+
+func (s *service) SelectAccount() error {
+	id, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
+	if err != nil {
+		return err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[id]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		return fmt.Errorf("account thread processor does not exist")
+	}
+
+	// TODO: we should probably add some mutex here to prevent concurrent changes
+	s.threadsCollection = processor.GetCollection()
+	s.db = processor.GetDB()
+	s.currentWorkspaceId = id
+
+	WorkspaceLogger.
+		With("collection name", s.threadsCollection.GetName()).
+		With("account id", id.String()).
+		Info("switching to account")
+
+	return nil
 }
 
 func (s *service) AddThread(threadId string, key string, addrs []string) error {

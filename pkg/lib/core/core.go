@@ -309,6 +309,11 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 			Debug("selecting account")
 		a.predefinedBlockIds = a.accountBlockIds
 		a.workspaceBlockIds = nil
+		err := a.threadService.SelectAccount()
+		if err != nil {
+			return err
+		}
+
 		return a.objectStore.RemoveCurrentWorkspaceId()
 	}
 
