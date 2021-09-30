@@ -994,6 +994,7 @@ func (s *State) InjectDerivedDetails() {
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
 	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(s.Snippet()))
 }
 
 func (s *State) LocalDetails() *types.Struct {
@@ -1057,10 +1058,11 @@ func (s *State) ObjectType() string {
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title {
-			if snippet != "" {
-				snippet += " "
+			nextText := strings.TrimSpace(text.Text)
+			if snippet != "" && nextText != "" {
+				snippet += "\n"
 			}
-			snippet += text.Text
+			snippet += nextText
 			if utf8.RuneCountInString(snippet) >= snippetMinSize {
 				return false
 			}
