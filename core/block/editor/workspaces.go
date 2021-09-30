@@ -27,5 +27,5 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	return nil
+	return p.SmartBlock.Apply(ctx.State)
 }

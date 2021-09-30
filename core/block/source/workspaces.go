@@ -36,7 +36,7 @@ type workspaces struct {
 }
 
 func (v *workspaces) ReadOnly() bool {
-	return true
+	return false
 }
 
 func (v *workspaces) Id() string {
