@@ -1386,16 +1386,9 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 		if exInfo != nil {
 			before = *exInfo
 		} else {
-			var details *types.Struct
-			objDetails, err := getObjectDetails(txn, id)
-			if err != nil {
-				details = &types.Struct{Fields: map[string]*types.Value{}}
-			} else {
-				details = objDetails.Details
-			}
 			// init an empty state to skip nil checks later
 			before = model.ObjectInfo{
-				Details: details,
+				Details: &types.Struct{Fields: map[string]*types.Value{}},
 			}
 		}
 
@@ -1597,7 +1590,7 @@ func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, lin
 		}
 
 		// inject localDetails into the meta pubsub
-		m.meta.SetLocalDetails(id, merged)
+		m.meta.SetLocalDetails(memberId, merged)
 
 		return nil
 	}
