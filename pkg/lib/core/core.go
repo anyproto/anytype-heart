@@ -217,7 +217,7 @@ func (a *Anytype) ThreadsIds() ([]string, error) {
 }
 
 type batchAdder interface {
-	Add(msgs ...SmartblockRecordWithThreadID) error
+	Add(msgs ...interface{}) error
 	Close() error
 }
 
@@ -500,7 +500,6 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 		a.lock.Lock()
 		shutdownCh := a.shutdownStartsCh
 		a.lock.Unlock()
-		smartBlocksCache := make(map[string]*smartBlock)
 		defer a.recordsbatch.Close()
 		for {
 			select {
@@ -508,29 +507,18 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				if !ok {
 					return
 				}
-				var block *smartBlock
+
 				id := val.ThreadID().String()
 				if id == a.predefinedBlockIds.Account {
 					// todo: not working on the early start
 					continue
 				}
-				if block, ok = smartBlocksCache[id]; !ok {
-					if block, err = a.GetSmartBlock(id); err != nil {
-						log.Errorf("failed to open smartblock %s: %v", id, err)
-						continue
-					} else {
-						smartBlocksCache[id] = block
-					}
-				}
-				rec, err := block.decodeRecord(ctx, val.Value(), true)
-				if err != nil {
-					log.Errorf("failed to decode thread record: %s", err.Error())
-					continue
-				}
-				err = a.recordsbatch.Add(SmartblockRecordWithThreadID{
-					SmartblockRecordEnvelope: *rec,
-					ThreadID:                 id,
+
+				err = a.recordsbatch.Add(ThreadRecordInfo{
+					LogId:    val.LogID().String(),
+					ThreadID: id,
 				})
+
 				if err != nil {
 					log.Errorf("failed to add thread record to batcher: %s", err.Error())
 					continue
