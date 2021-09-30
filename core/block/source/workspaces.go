@@ -88,11 +88,16 @@ func (v *workspaces) ListIds() ([]string, error) {
 func (v *workspaces) Close() (err error) {
 	v.m.Lock()
 	defer v.m.Unlock()
+	if v.listener == nil {
+		return
+	}
+
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		Info("closing listener channel")
 	v.cancel()
 	v.listener.Close()
+	v.listener = nil
 
 	return
 }
