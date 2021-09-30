@@ -1094,6 +1094,16 @@
     "source": "derived"
   },
   {
+    "description": "Relation that indicates document in draft state",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isDraft",
+    "maxCount": 1,
+    "name": "Is draft",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "numberOfEmployees",

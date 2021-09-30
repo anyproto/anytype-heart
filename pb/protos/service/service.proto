@@ -72,6 +72,7 @@ service ClientCommands {
     rpc BlockListDeletePage (anytype.Rpc.BlockList.Delete.Page.Request) returns (anytype.Rpc.BlockList.Delete.Page.Response);
     rpc BlockListTurnInto (anytype.Rpc.BlockList.TurnInto.Request) returns (anytype.Rpc.BlockList.TurnInto.Response);
 
+    rpc BlockSetLatexText (anytype.Rpc.Block.Set.Latex.Text.Request) returns (anytype.Rpc.Block.Set.Latex.Text.Response);
     rpc BlockSetTextText (anytype.Rpc.Block.Set.Text.Text.Request) returns (anytype.Rpc.Block.Set.Text.Text.Response);
     rpc BlockSetTextColor (anytype.Rpc.Block.Set.Text.Color.Request) returns (anytype.Rpc.Block.Set.Text.Color.Response);
     rpc BlockListSetTextColor (anytype.Rpc.BlockList.Set.Text.Color.Request) returns (anytype.Rpc.BlockList.Set.Text.Color.Response);
@@ -147,6 +148,8 @@ service ClientCommands {
     rpc ObjectFeaturedRelationRemove (anytype.Rpc.Object.FeaturedRelation.Remove.Request) returns (anytype.Rpc.Object.FeaturedRelation.Remove.Response);
     rpc ObjectSetIsFavorite (anytype.Rpc.Object.SetIsFavorite.Request) returns (anytype.Rpc.Object.SetIsFavorite.Response);
     rpc ObjectSetIsArchived (anytype.Rpc.Object.SetIsArchived.Request) returns (anytype.Rpc.Object.SetIsArchived.Response);
+    // ObjectToSet creates new set from given object and removes object
+    rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
 
     // TODO: rename BlockSetDetails -> ObjectSetDetails
     rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);

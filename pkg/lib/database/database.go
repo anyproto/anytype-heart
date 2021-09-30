@@ -27,8 +27,8 @@ type Record struct {
 }
 
 type Reader interface {
-	Query(schema *schema.Schema, q Query) (records []Record, total int, err error)
-	QueryAndSubscribeForChanges(schema *schema.Schema, q Query, subscription Subscription) (records []Record, close func(), total int, err error)
+	Query(schema schema.Schema, q Query) (records []Record, total int, err error)
+	QueryAndSubscribeForChanges(schema schema.Schema, q Query, subscription Subscription) (records []Record, close func(), total int, err error)
 
 	QueryById(ids []string) (records []Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
@@ -68,20 +68,19 @@ type Database interface {
 }
 
 type Query struct {
-	FullText               string
-	Relations              []*model.BlockContentDataviewRelation // relations used to provide relations options
-	Filters                []*model.BlockContentDataviewFilter   // filters results. apply sequentially
-	Sorts                  []*model.BlockContentDataviewSort     // order results. apply hierarchically
-	Limit                  int                                   // maximum number of results
-	Offset                 int                                   // skip given number of results
-	WithSystemObjects      bool
-	IncludeArchivedObjects bool
-	ObjectTypeFilter       []string
-	WorkspaceId            string
-	SearchInWorkspace      bool
+	FullText          string
+	Relations         []*model.BlockContentDataviewRelation // relations used to provide relations options
+	Filters           []*model.BlockContentDataviewFilter   // filters results. apply sequentially
+	Sorts             []*model.BlockContentDataviewSort     // order results. apply hierarchically
+	Limit             int                                   // maximum number of results
+	Offset            int                                   // skip given number of results
+	WithSystemObjects bool
+	ObjectTypeFilter  []string
+	WorkspaceId       string
+	SearchInWorkspace bool
 }
 
-func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
+func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	qq.Limit = q.Limit
 	qq.Offset = q.Offset
 	f, err := newFilters(q, sch)
@@ -96,64 +95,26 @@ func (q Query) DSQuery(sch *schema.Schema) (qq query.Query, err error) {
 	return
 }
 
-func PreFilters(includeArchived bool, sch *schema.Schema) filter.Filter {
-	var preFilter filter.AndFilters
-	if sch.ObjType != nil {
-		relTypeFilter := filter.OrFilters{
-			filter.Eq{
-				Key:   bundle.RelationKeyType.String(),
-				Cond:  model.BlockContentDataviewFilter_Equal,
-				Value: pbtypes.String(sch.ObjType.Url),
-			},
-		}
-		if sch.ObjType.Url == bundle.TypeKeyPage.URL() {
-			relTypeFilter = append(relTypeFilter, filter.Empty{
-				Key: bundle.RelationKeyType.String(),
-			})
-		}
-		preFilter = append(preFilter, relTypeFilter)
-	}
-
-	if !includeArchived {
-		preFilter = append(preFilter, filter.Not{Filter: filter.Eq{
-			Key:   bundle.RelationKeyIsArchived.String(),
-			Cond:  model.BlockContentDataviewFilter_Equal,
-			Value: pbtypes.Bool(true),
-		}})
-	}
-
-	return preFilter
-}
-
-func newFilters(q Query, sch *schema.Schema) (f *filters, err error) {
+func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
 	f = new(filters)
 	mainFilter := filter.AndFilters{}
 	if sch != nil {
-		for _, rel := range sch.Relations {
+		for _, rel := range sch.ListRelations() {
 			if rel.Format == model.RelationFormat_date {
 				if relation := getRelationByKey(q.Relations, rel.Key); relation == nil || !relation.DateIncludeTime {
 					f.dateKeys = append(f.dateKeys, rel.Key)
 				}
 			}
 		}
-		if sch.ObjType != nil {
-			for _, rel := range sch.ObjType.Relations {
-				if rel.Format == model.RelationFormat_date {
-					if relation := getRelationByKey(q.Relations, rel.Key); relation == nil || !relation.DateIncludeTime {
-						f.dateKeys = append(f.dateKeys, rel.Key)
-					}
-				}
-			}
-		}
+
 		for _, qf := range q.Filters {
 			if slice.FindPos(f.dateKeys, qf.RelationKey) != -1 {
 				qf.Value = dateOnly(qf.Value)
 			}
 		}
 
-		preFilter := PreFilters(q.IncludeArchivedObjects, sch)
-		if preFilter != nil {
-			mainFilter = append(mainFilter, preFilter)
+		if schFilters := sch.Filters(); schFilters != nil {
+			mainFilter = append(mainFilter, schFilters)
 		}
 	}
 	qFilter, err := filter.MakeAndFilter(q.Filters)
@@ -244,7 +205,8 @@ func (f *filters) Filter(e query.Entry) bool {
 	if g == nil {
 		return false
 	}
-	return f.filter.FilterObject(g)
+	res := f.filter.FilterObject(g)
+	return res
 }
 
 func (f *filters) Compare(a, b query.Entry) int {

@@ -347,7 +347,7 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		_, id, err = bs.CreateSet(ctx, pb.RpcBlockCreateSetRequest{ObjectTypeUrl: req.ObjectTypeUrl, Details: req.Details})
+		_, id, err = bs.CreateSet(ctx, pb.RpcBlockCreateSetRequest{Source: req.Source, Details: req.Details})
 		return err
 	})
 

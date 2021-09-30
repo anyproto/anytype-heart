@@ -73,11 +73,11 @@ func (st *SmartTest) HasRelation(relationKey string) bool {
 }
 
 func (st *SmartTest) Relations() []*model.Relation {
-	return nil
+	return st.Doc.ExtraRelations()
 }
 
 func (st *SmartTest) RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation {
-	return nil
+	return st.Doc.ExtraRelations()
 }
 
 func (st *SmartTest) DefaultObjectTypeUrl() string {

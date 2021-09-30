@@ -70,6 +70,7 @@ type entry struct {
 	id        string
 	lastUsage time.Time
 	refCount  uint32
+	locked    bool
 	load      chan struct{}
 	loadErr   error
 	value     Object
@@ -85,8 +86,14 @@ type OCache interface {
 	Add(id string, value Object) (err error)
 	// Release decreases the refs counter
 	Release(id string) bool
+	// Lock locks object in cache
+	Lock(id string) bool
+	// Unlock unlocks object in cache
+	Unlock(id string) bool
 	// Reset sets refs counter to 0
 	Reset(id string) bool
+	// Remove closes and removes object
+	Remove(id string) (ok bool, err error)
 	// ForEach iterates over all loaded objects, breaks when callback returns false
 	ForEach(f func(v Object) (isContinue bool))
 	// GC frees not used and expired objects
@@ -118,6 +125,7 @@ func (c *oCache) Get(ctx context.Context, id string) (value Object, err error) {
 	)
 	c.mu.Lock()
 	if c.closed {
+		c.mu.Unlock()
 		return nil, ErrClosed
 	}
 	if e, ok = c.data[id]; !ok {
@@ -181,6 +189,42 @@ func (c *oCache) Reset(id string) bool {
 	return false
 }
 
+func (c *oCache) Remove(id string) (ok bool, err error) {
+	c.mu.Lock()
+	e, ok := c.data[id]
+	if ok {
+		delete(c.data, id)
+	}
+	c.mu.Unlock()
+	if ok {
+		<-e.load
+		if e.value != nil {
+			err = e.value.Close()
+		}
+	}
+	return
+}
+
+func (c *oCache) Lock(id string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if e, ok := c.data[id]; ok {
+		e.locked = true
+		return true
+	}
+	return false
+}
+
+func (c *oCache) Unlock(id string) bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if e, ok := c.data[id]; ok {
+		e.locked = false
+		return true
+	}
+	return false
+}
+
 func (c *oCache) Add(id string, value Object) (err error) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -235,12 +279,13 @@ func (c *oCache) ticker() {
 func (c *oCache) GC() {
 	c.mu.Lock()
 	if c.closed {
+		c.mu.Unlock()
 		return
 	}
 	deadline := c.timeNow().Add(-c.ttl)
 	var toClose []*entry
 	for k, e := range c.data {
-		if e.refCount <= 0 && e.lastUsage.Before(deadline) && e.value.ShouldClose() {
+		if !e.locked && e.refCount <= 0 && e.lastUsage.Before(deadline) && e.value.ShouldClose() {
 			delete(c.data, k)
 			toClose = append(toClose, e)
 		}

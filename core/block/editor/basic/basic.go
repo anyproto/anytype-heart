@@ -8,7 +8,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -29,11 +32,13 @@ type Basic interface {
 	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
+	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	FeaturedRelationAdd(ctx *state.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
+	ReplaceLink(oldId, newId string) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -275,6 +280,21 @@ func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKe
 	return bs.Apply(s)
 }
 
+func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) (err error) {
+	s := bs.NewStateCtx(ctx)
+	b := s.Get(req.BlockId)
+	if b == nil {
+		return smartblock.ErrSimpleBlockNotFound
+	}
+
+	if rel, ok := b.(latex.Block); ok {
+		rel.SetText(req.Text)
+	} else {
+		return fmt.Errorf("unexpected block type: %T (want latex)", b)
+	}
+	return bs.Apply(s, smartblock.NoEvent)
+}
+
 func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
@@ -373,4 +393,34 @@ func (bs *basic) FeaturedRelationRemove(ctx *state.Context, relations ...string)
 		template.WithDescription(s)
 	}
 	return bs.Apply(s, smartblock.NoRestrictions)
+}
+
+func (bs *basic) ReplaceLink(oldId, newId string) error {
+	s := bs.NewState()
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if l, ok := b.(link.Block); ok {
+			if l.Model().GetLink().TargetBlockId == oldId {
+				s.Get(b.Model().Id).Model().GetLink().TargetBlockId = newId
+			}
+		} else if t, ok := b.(text.Block); ok {
+			if marks := t.Model().GetText().Marks; marks != nil {
+				for i, m := range marks.Marks {
+					if m.Param == oldId {
+						s.Get(b.Model().Id).Model().GetText().Marks.Marks[i].Param = newId
+					}
+				}
+			}
+		}
+		return true
+	})
+	rels := bs.RelationsState(s, true)
+	details := s.Details()
+	for _, rel := range rels {
+		if rel.Format == model.RelationFormat_object {
+			if pbtypes.GetString(details, rel.Key) == oldId {
+				s.SetDetail(rel.Key, pbtypes.String(newId))
+			}
+		}
+	}
+	return bs.Apply(s)
 }

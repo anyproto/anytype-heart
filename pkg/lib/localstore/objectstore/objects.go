@@ -233,7 +233,7 @@ type ObjectStore interface {
 	DeleteObject(id string) error
 	RemoveRelationFromCache(key string) error
 
-	UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error
+	UpdateRelationsInSetByObjectType(setId, objType, creatorId string, relations []*model.Relation) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetOutboundLinksById(id string) ([]string, error)
@@ -247,6 +247,8 @@ type ObjectStore interface {
 	ListIds() ([]string, error)
 
 	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
+	QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
+
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
 	FTSearch() ftsearch.FTSearch
@@ -617,15 +619,17 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, objectType stri
 
 	for optId, objIds := range objectsByOptionId {
 		var scope = model.RelationOption_relation
-		for _, objId := range objIds {
-			exists, err := isObjectBelongToType(txn, objId, objectType)
-			if err != nil {
-				return nil, err
-			}
+		if objectType != "" {
+			for _, objId := range objIds {
+				exists, err := isObjectBelongToType(txn, objId, objectType)
+				if err != nil {
+					return nil, err
+				}
 
-			if exists {
-				scope = model.RelationOption_local
-				break
+				if exists {
+					scope = model.RelationOption_local
+					break
+				}
 			}
 		}
 		opt, err := getOption(txn, optId)
@@ -639,7 +643,7 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, objectType stri
 	return
 }
 
-func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
+func (m *dsObjectStore) QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
 
@@ -700,7 +704,7 @@ func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub databa
 	return
 }
 
-func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []database.Record, total int, err error) {
+func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []database.Record, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -717,9 +721,7 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	if !q.WithSystemObjects {
 		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 	}
-	if len(q.ObjectTypeFilter) > 0 {
-		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
-	}
+
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
 			return
@@ -775,22 +777,6 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	}
 
 	return results, total, nil
-}
-
-func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
-	var filter filterSmartblockTypes
-	for _, otUrl := range ots {
-		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
-			for _, sbt := range ot.Types {
-				filter.smartBlockTypes = append(filter.smartBlockTypes, smartblock.SmartBlockType(sbt))
-			}
-			continue
-		}
-		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
-			filter.smartBlockTypes = append(filter.smartBlockTypes, sbt)
-		}
-	}
-	return &filter
 }
 
 func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {
@@ -855,6 +841,63 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 		results = append(results, oi)
 	}
 	return results, total, nil
+}
+
+func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	dsq, err := q.DSQuery(nil)
+	if err != nil {
+		return
+	}
+	dsq.Offset = 0
+	dsq.Limit = 0
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+	if len(objectTypes) > 0 {
+		dsq.Filters = append([]query.Filter{&filterSmartblockTypes{smartBlockTypes: objectTypes}}, dsq.Filters...)
+	}
+	if q.FullText != "" {
+		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
+			return
+		}
+	}
+	res, err := txn.Query(dsq)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	var (
+		offset = q.Offset
+	)
+
+	// We use own limit/offset implementation in order to find out
+	// total number of records matching specified filters. Query
+	// returns this number for handy pagination on clients.
+	for rec := range res.Next() {
+		if rec.Error != nil {
+			return nil, 0, rec.Error
+		}
+		total++
+
+		if offset > 0 {
+			offset--
+			continue
+		}
+
+		if q.Limit > 0 && len(ids) >= q.Limit {
+			continue
+		}
+
+		key := ds.NewKey(rec.Key)
+		keyList := key.List()
+		id := keyList[len(keyList)-1]
+		ids = append(ids, id)
+	}
+	return ids, total, nil
 }
 
 func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
@@ -1747,7 +1790,7 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
 }
 
-func (m *dsObjectStore) UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error {
+func (m *dsObjectStore) UpdateRelationsInSetByObjectType(setId, objType, creatorId string, relations []*model.Relation) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
