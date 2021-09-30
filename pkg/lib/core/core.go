@@ -42,7 +42,7 @@ const (
 	CName  = "anytype"
 	tmpDir = "tmp"
 
-	deeplinkBlockAdd = "anytype://block/add?"
+	linkObjectShare = "anytype://object/share?"
 )
 
 type PredefinedBlockIds struct {
@@ -92,8 +92,8 @@ type Service interface {
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
-	OpenDeeplink(deeplink string) error
-	CreateDeeplinkFromBlock(blockId string) (string, error)
+	ObjectAddWithShareLink(link string) error
+	ObjectShareByLink(objectId string) (string, error)
 
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
@@ -148,26 +148,26 @@ type Anytype struct {
 	tempDir             string
 }
 
-func (a *Anytype) OpenDeeplink(deeplink string) error {
-	query := deeplink[strings.LastIndex(deeplink, deeplinkBlockAdd)+len(deeplinkBlockAdd):]
+func (a *Anytype) ObjectAddWithShareLink(link string) error {
+	query := link[strings.LastIndex(link, linkObjectShare)+len(linkObjectShare):]
 	decoded, err := url.ParseQuery(query)
 	if err != nil {
-		return fmt.Errorf("error decoding deeplink: %w", err)
+		return fmt.Errorf("error decoding link: %w", err)
 	}
 
 	threadId := decoded.Get("id")
 	if threadId == "" {
-		return fmt.Errorf("error decoding deeplink: no id present")
+		return fmt.Errorf("error decoding link: no id present")
 	}
 
 	payload := decoded.Get("payload")
 	if payload == "" {
-		return fmt.Errorf("error decoding deeplink: no payload present")
+		return fmt.Errorf("error decoding link: no payload present")
 	}
 
 	decodedPayload, err := base64.RawStdEncoding.DecodeString(payload)
 	if err != nil {
-		return fmt.Errorf("error decoding deeplink: cannot decode base64 payload")
+		return fmt.Errorf("error decoding link: cannot decode base64 payload")
 	}
 
 	var protoPayload model.ThreadDeeplinkPayload
@@ -179,8 +179,8 @@ func (a *Anytype) OpenDeeplink(deeplink string) error {
 	return a.threadService.AddThread(threadId, protoPayload.Key, protoPayload.Addrs)
 }
 
-func (a *Anytype) CreateDeeplinkFromBlock(blockId string) (string, error) {
-	threadId, err := thread.Decode(blockId)
+func (a *Anytype) ObjectShareByLink(objectId string) (string, error) {
+	threadId, err := thread.Decode(objectId)
 	if err != nil {
 		return "", fmt.Errorf("failed to decode the block: %w", err)
 	}
@@ -201,11 +201,11 @@ func (a *Anytype) CreateDeeplinkFromBlock(blockId string) (string, error) {
 	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
 
 	params := url.Values{}
-	params.Add("id", blockId)
+	params.Add("id", objectId)
 	params.Add("payload", encodedPayload)
 	encoded := params.Encode()
 
-	return fmt.Sprintf("%s%s", deeplinkBlockAdd, encoded), nil
+	return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {

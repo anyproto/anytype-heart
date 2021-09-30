@@ -16,53 +16,6 @@ import "google/protobuf/struct.proto";
 */
 message Rpc {
 
-    message Deeplink {
-        message Open {
-            message Request {
-                string deeplink = 1;
-            }
-
-            message Response {
-                Error error = 1;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-
-        message CreateFromBlock {
-            message Request {
-                string blockId = 1;
-            }
-
-            message Response {
-                string deeplink = 1;
-                Error error = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-    }
-
     message ExternalDrop {
         message Files {
             message Request {
@@ -3092,6 +3045,51 @@ message Rpc {
     }
 
     message Object {
+        message ShareByLink {
+            message Request {
+                string objectId = 1;
+            }
+
+            message Response {
+                string link = 1;
+                Error error = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message AddWithShareLink {
+            message Request {
+                string link = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
         message RelationAdd {
             message Request {
                 string contextId = 1;

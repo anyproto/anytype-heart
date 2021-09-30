@@ -6,8 +6,8 @@ import "pb/protos/commands.proto";
 import "pb/protos/events.proto";
 
 service ClientCommands {
-    rpc DeeplinkOpen (anytype.Rpc.Deeplink.Open.Request) returns (anytype.Rpc.Deeplink.Open.Response);
-    rpc DeeplinkCreateFromBlock (anytype.Rpc.Deeplink.CreateFromBlock.Request) returns (anytype.Rpc.Deeplink.CreateFromBlock.Response);
+    rpc ObjectAddWithShareLink (anytype.Rpc.Object.AddWithShareLink.Request) returns (anytype.Rpc.Object.AddWithShareLink.Response);
+    rpc ObjectShareByLink (anytype.Rpc.Object.ShareByLink.Request) returns (anytype.Rpc.Object.ShareByLink.Response);
 
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
     rpc WalletRecover (anytype.Rpc.Wallet.Recover.Request) returns (anytype.Rpc.Wallet.Recover.Response);

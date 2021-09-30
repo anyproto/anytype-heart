@@ -398,15 +398,6 @@
     - [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error)
     - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
     - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
-    - [Rpc.Deeplink](#anytype.Rpc.Deeplink)
-    - [Rpc.Deeplink.CreateFromBlock](#anytype.Rpc.Deeplink.CreateFromBlock)
-    - [Rpc.Deeplink.CreateFromBlock.Request](#anytype.Rpc.Deeplink.CreateFromBlock.Request)
-    - [Rpc.Deeplink.CreateFromBlock.Response](#anytype.Rpc.Deeplink.CreateFromBlock.Response)
-    - [Rpc.Deeplink.CreateFromBlock.Response.Error](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error)
-    - [Rpc.Deeplink.Open](#anytype.Rpc.Deeplink.Open)
-    - [Rpc.Deeplink.Open.Request](#anytype.Rpc.Deeplink.Open.Request)
-    - [Rpc.Deeplink.Open.Response](#anytype.Rpc.Deeplink.Open.Response)
-    - [Rpc.Deeplink.Open.Response.Error](#anytype.Rpc.Deeplink.Open.Response.Error)
     - [Rpc.DownloadFile](#anytype.Rpc.DownloadFile)
     - [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request)
     - [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response)
@@ -487,6 +478,10 @@
     - [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype.Rpc.Navigation.ListObjects.Response.Error)
     - [Rpc.Object](#anytype.Rpc.Object)
+    - [Rpc.Object.AddWithShareLink](#anytype.Rpc.Object.AddWithShareLink)
+    - [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request)
+    - [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response)
+    - [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error)
     - [Rpc.Object.FeaturedRelation](#anytype.Rpc.Object.FeaturedRelation)
     - [Rpc.Object.FeaturedRelation.Add](#anytype.Rpc.Object.FeaturedRelation.Add)
     - [Rpc.Object.FeaturedRelation.Add.Request](#anytype.Rpc.Object.FeaturedRelation.Add.Request)
@@ -546,6 +541,10 @@
     - [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request)
     - [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response)
     - [Rpc.Object.SetLayout.Response.Error](#anytype.Rpc.Object.SetLayout.Response.Error)
+    - [Rpc.Object.ShareByLink](#anytype.Rpc.Object.ShareByLink)
+    - [Rpc.Object.ShareByLink.Request](#anytype.Rpc.Object.ShareByLink.Request)
+    - [Rpc.Object.ShareByLink.Response](#anytype.Rpc.Object.ShareByLink.Response)
+    - [Rpc.Object.ShareByLink.Response.Error](#anytype.Rpc.Object.ShareByLink.Response.Error)
     - [Rpc.Object.ToSet](#anytype.Rpc.Object.ToSet)
     - [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request)
     - [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response)
@@ -716,8 +715,6 @@
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code)
-    - [Rpc.Deeplink.CreateFromBlock.Response.Error.Code](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error.Code)
-    - [Rpc.Deeplink.Open.Response.Error.Code](#anytype.Rpc.Deeplink.Open.Response.Error.Code)
     - [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
@@ -739,6 +736,7 @@
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
+    - [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Add.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
@@ -754,6 +752,7 @@
     - [Rpc.Object.SetIsArchived.Response.Error.Code](#anytype.Rpc.Object.SetIsArchived.Response.Error.Code)
     - [Rpc.Object.SetIsFavorite.Response.Error.Code](#anytype.Rpc.Object.SetIsFavorite.Response.Error.Code)
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
+    - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype.Rpc.Object.ShareByLink.Response.Error.Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
@@ -1010,8 +1009,8 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| DeeplinkOpen | [Rpc.Deeplink.Open.Request](#anytype.Rpc.Deeplink.Open.Request) | [Rpc.Deeplink.Open.Response](#anytype.Rpc.Deeplink.Open.Response) |  |
-| DeeplinkCreateFromBlock | [Rpc.Deeplink.CreateFromBlock.Request](#anytype.Rpc.Deeplink.CreateFromBlock.Request) | [Rpc.Deeplink.CreateFromBlock.Response](#anytype.Rpc.Deeplink.CreateFromBlock.Response) |  |
+| ObjectAddWithShareLink | [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request) | [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response) |  |
+| ObjectShareByLink | [Rpc.Object.ShareByLink.Request](#anytype.Rpc.Object.ShareByLink.Request) | [Rpc.Object.ShareByLink.Response](#anytype.Rpc.Object.ShareByLink.Response) |  |
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) |  |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request) | [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response) |  |
@@ -6916,129 +6915,6 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
-<a name="anytype.Rpc.Deeplink"></a>
-
-### Rpc.Deeplink
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.CreateFromBlock"></a>
-
-### Rpc.Deeplink.CreateFromBlock
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.CreateFromBlock.Request"></a>
-
-### Rpc.Deeplink.CreateFromBlock.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.CreateFromBlock.Response"></a>
-
-### Rpc.Deeplink.CreateFromBlock.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| deeplink | [string](#string) |  |  |
-| error | [Rpc.Deeplink.CreateFromBlock.Response.Error](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.CreateFromBlock.Response.Error"></a>
-
-### Rpc.Deeplink.CreateFromBlock.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Deeplink.CreateFromBlock.Response.Error.Code](#anytype.Rpc.Deeplink.CreateFromBlock.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.Open"></a>
-
-### Rpc.Deeplink.Open
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.Open.Request"></a>
-
-### Rpc.Deeplink.Open.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| deeplink | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.Open.Response"></a>
-
-### Rpc.Deeplink.Open.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Deeplink.Open.Response.Error](#anytype.Rpc.Deeplink.Open.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Deeplink.Open.Response.Error"></a>
-
-### Rpc.Deeplink.Open.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Deeplink.Open.Response.Error.Code](#anytype.Rpc.Deeplink.Open.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.DownloadFile"></a>
 
 ### Rpc.DownloadFile
@@ -8172,6 +8048,62 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object.AddWithShareLink"></a>
+
+### Rpc.Object.AddWithShareLink
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithShareLink.Request"></a>
+
+### Rpc.Object.AddWithShareLink.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| link | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithShareLink.Response"></a>
+
+### Rpc.Object.AddWithShareLink.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error"></a>
+
+### Rpc.Object.AddWithShareLink.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.FeaturedRelation"></a>
 
 ### Rpc.Object.FeaturedRelation
@@ -9044,6 +8976,63 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink"></a>
+
+### Rpc.Object.ShareByLink
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Request"></a>
+
+### Rpc.Object.ShareByLink.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Response"></a>
+
+### Rpc.Object.ShareByLink.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| link | [string](#string) |  |  |
+| error | [Rpc.Object.ShareByLink.Response.Error](#anytype.Rpc.Object.ShareByLink.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Response.Error"></a>
+
+### Rpc.Object.ShareByLink.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ShareByLink.Response.Error.Code](#anytype.Rpc.Object.ShareByLink.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11346,32 +11335,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Deeplink.CreateFromBlock.Response.Error.Code"></a>
-
-### Rpc.Deeplink.CreateFromBlock.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.Deeplink.Open.Response.Error.Code"></a>
-
-### Rpc.Deeplink.Open.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.DownloadFile.Response.Error.Code"></a>
 
 ### Rpc.DownloadFile.Response.Error.Code
@@ -11662,6 +11625,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error.Code"></a>
+
+### Rpc.Object.AddWithShareLink.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code"></a>
 
 ### Rpc.Object.FeaturedRelation.Add.Response.Error.Code
@@ -11847,6 +11823,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.SetLayout.Response.Error.Code"></a>
 
 ### Rpc.Object.SetLayout.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Response.Error.Code"></a>
+
+### Rpc.Object.ShareByLink.Response.Error.Code
 
 
 | Name | Number | Description |
