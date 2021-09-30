@@ -3,6 +3,7 @@ package dataview
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
@@ -89,14 +90,31 @@ type dataviewCollectionImpl struct {
 
 func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, source []string) (err error) {
 	s := d.NewStateCtx(ctx)
-	if err = d.setSource(s, source); err != nil {
+	if blockId == "" {
+		blockId = template.DataviewBlockId
+	}
+
+	block, e := getDataviewBlock(s, blockId)
+	if e != nil && blockId != template.DataviewBlockId {
+		return e
+	}
+	if block != nil && slice.UnsortedEquals(block.GetSource(), source) {
 		return
 	}
-	return d.Apply(s)
-}
 
-func (d *dataviewCollectionImpl) setSource(s *state.State, source []string) (err error) {
-	return
+	dvContent, _, err := DataviewBlockBySource(d.Anytype().ObjectStore(), source)
+	if err != nil {
+		return
+	}
+
+	if block != nil {
+		block.Model().Content = &dvContent
+	} else {
+		block = simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
+		s.Set(block)
+		s.InsertTo("", 0, blockId)
+	}
+	return d.Apply(s)
 }
 
 func (d *dataviewCollectionImpl) SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error {
@@ -1232,5 +1250,55 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 		insertedGroupedByPosition = append(insertedGroupedByPosition, insertedToTheLastPosition)
 	}
 
+	return
+}
+
+func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
+	if schema, err = SchemaBySources(source, store, nil); err != nil {
+		return
+	}
+
+	schemaRelations := schema.ListRelations()
+	if !pbtypes.HasRelation(schemaRelations, bundle.RelationKeyName.String()) {
+		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
+	}
+
+	var relations []*model.BlockContentDataviewRelation
+	for _, rel := range schemaRelations {
+		visible := !rel.Hidden
+		if rel.Key == bundle.RelationKeyType.String() {
+			visible = false
+		}
+		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
+	}
+
+	for _, rel := range bundle.RequiredInternalRelations {
+		if !pbtypes.HasRelation(schemaRelations, rel.String()) {
+			schemaRelations = append(schemaRelations, bundle.MustGetRelation(rel))
+			relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
+		}
+	}
+
+	res = model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Relations: schemaRelations,
+			Source:    source,
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   bson.NewObjectId().Hex(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Filters:   nil,
+					Relations: relations,
+				},
+			},
+		},
+	}
 	return
 }

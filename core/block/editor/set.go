@@ -122,23 +122,27 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	return p.FillAggregatedOptions(nil)
 }
 
-func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name, icon string) error {
+func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, icon string) error {
 	s := p.NewState()
 
-	for i, view := range blockContent.Dataview.Views {
-		if view.Relations == nil {
-			blockContent.Dataview.Views[i].Relations = getDefaultViewRelations(blockContent.Dataview.Relations)
-		}
-	}
-
-	if err := template.ApplyTemplate(p, s,
+	tmpls := []template.StateTransformer{
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
-		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
-		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),
 		template.WithMaxCountMigration,
-	); err != nil {
+	}
+	if blockContent != nil {
+		for i, view := range blockContent.Dataview.Views {
+			if view.Relations == nil {
+				blockContent.Dataview.Views[i].Relations = getDefaultViewRelations(blockContent.Dataview.Relations)
+			}
+		}
+		tmpls = append(tmpls,
+			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
+			template.WithDataview(*blockContent, false),
+		)
+	}
+	if err := template.ApplyTemplate(p, s, tmpls...); err != nil {
 		return err
 	}
 	p.applyRestrictions(s)

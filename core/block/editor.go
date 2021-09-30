@@ -22,8 +22,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -800,9 +800,12 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	schema, err := dataview.SchemaBySources(req.Source, s.anytype.ObjectStore(), nil)
-	if err != nil {
-		return
+	var dvContent model.BlockContentOfDataview
+	var dvSchema schema.Schema
+	if len(req.Source) != 0 {
+		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(s.anytype.ObjectStore(), req.Source); err != nil {
+			return
+		}
 	}
 
 	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet)
@@ -813,7 +816,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	setId = csm.ID()
 
 	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
-		State:          state.NewDoc(setId, nil).NewState(),
+		State: state.NewDoc(setId, nil).NewState(),
 	})
 	if err != nil {
 		return "", "", err
@@ -823,56 +826,17 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		return "", setId, fmt.Errorf("unexpected set block type: %T", sb)
 	}
 
-	schemaRelations := schema.ListRelations()
-	if !pbtypes.HasRelation(schemaRelations, bundle.RelationKeyName.String()) {
-		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
-	}
-
-	var relations []*model.BlockContentDataviewRelation
-	for _, rel := range schemaRelations {
-		visible := !rel.Hidden
-		if rel.Key == bundle.RelationKeyType.String() {
-			visible = false
-		}
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
-	}
-
-	for _, rel := range bundle.RequiredInternalRelations {
-		if !pbtypes.HasRelation(schemaRelations, rel.String()) {
-			schemaRelations = append(schemaRelations, bundle.MustGetRelation(rel))
-			relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
-		}
-	}
-
-	dataview := model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			Relations: schemaRelations,
-			Source:    req.Source,
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:   bson.NewObjectId().Hex(),
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
-					Filters:   nil,
-					Relations: relations,
-				},
-			},
-		},
-	}
 	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
 	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
 
-	if name == "" {
-		name = schema.Description() + " set"
+	if name == "" && dvSchema != nil {
+		name = dvSchema.Description() + " set"
 	}
-
-	err = set.InitDataview(dataview, name, icon)
+	if dvSchema != nil {
+		err = set.InitDataview(&dvContent, name, icon)
+	} else {
+		err = set.InitDataview(nil, name, icon)
+	}
 	if err != nil {
 		return "", setId, err
 	}
