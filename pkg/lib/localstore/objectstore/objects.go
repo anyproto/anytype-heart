@@ -1685,13 +1685,8 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 		}
 	}
 
-	mergedDetails := pbtypes.CopyStruct(before.GetDetails())
-	for k, v := range details.Fields {
-		mergedDetails.Fields[k] = v
-	}
-
 	if details != nil {
-		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: mergedDetails}); err != nil {
+		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
 		}
 	}
