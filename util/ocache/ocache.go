@@ -62,7 +62,6 @@ func New(loadFunc LoadFunc, opts ...Option) OCache {
 }
 
 type Object interface {
-	ShouldClose() bool
 	Close() (err error)
 }
 
@@ -285,7 +284,7 @@ func (c *oCache) GC() {
 	deadline := c.timeNow().Add(-c.ttl)
 	var toClose []*entry
 	for k, e := range c.data {
-		if !e.locked && e.refCount <= 0 && e.lastUsage.Before(deadline) && e.value.ShouldClose() {
+		if !e.locked && e.refCount <= 0 && e.lastUsage.Before(deadline) {
 			delete(c.data, k)
 			toClose = append(toClose, e)
 		}

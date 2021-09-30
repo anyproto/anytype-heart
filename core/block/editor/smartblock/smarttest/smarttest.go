@@ -46,10 +46,6 @@ type SmartTest struct {
 	state.Doc
 }
 
-func (st *SmartTest) ShouldClose() bool {
-	return true
-}
-
 func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
 	st.TestRestrictions = r
 }
