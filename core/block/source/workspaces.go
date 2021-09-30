@@ -3,14 +3,16 @@ package source
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 	threadsDb "github.com/textileio/go-threads/db"
 )
@@ -195,6 +197,9 @@ func (v *workspaces) createState() (*state.State, error) {
 	}
 	s := state.NewDoc(v.id, nil).(*state.State)
 	initBlocksAndAddToRoot(s, blocks)
+
+	lastSymbols := v.id[len(v.id)-4 : len(v.id)]
+	s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("Workspace_"+lastSymbols))
 
 	return s, nil
 }
