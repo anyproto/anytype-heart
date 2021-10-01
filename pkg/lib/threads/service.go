@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
@@ -45,6 +46,9 @@ const CName = "threads"
 
 var log = logging.Logger("anytype-threads")
 
+// TODO: remove when workspace debugging ends
+var WorkspaceLogger = logging.Logger("anytype-workspace-debug")
+
 var (
 	permanentConnectionRetryDelay = time.Second * 5
 )
@@ -71,6 +75,7 @@ type service struct {
 	t                              threadsApp.Net
 	db                             *threadsDb.DB
 	threadsCollection              *threadsDb.Collection
+	currentWorkspaceId             thread.ID
 	device                         walletUtil.Keypair
 	account                        walletUtil.Keypair
 	ipfsNode                       ipfs.Node
@@ -79,8 +84,12 @@ type service struct {
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
 	process                        process.Service
+	threadProcessors               map[thread.ID]ThreadProcessor
+	processorMutex                 sync.RWMutex
 
-	fetcher CafeConfigFetcher
+	fetcher               CafeConfigFetcher
+	workspaceThreadGetter CurrentWorkspaceThreadGetter
+	threadCreateQueue     ThreadCreateQueue
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -117,6 +126,7 @@ func New() Service {
 		ctx:                  ctx,
 		ctxCancel:            cancel,
 		simultaneousRequests: simultaneousRequests,
+		threadProcessors:     make(map[thread.ID]ThreadProcessor),
 	}
 }
 
@@ -124,6 +134,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.Config = a.Component("config").(ThreadsConfigGetter).ThreadsConfig()
 	s.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	s.fetcher = a.MustComponent("configfetcher").(CafeConfigFetcher)
+	s.workspaceThreadGetter = a.MustComponent("objectstore").(CurrentWorkspaceThreadGetter)
+	s.threadCreateQueue = a.MustComponent("objectstore").(ThreadCreateQueue)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
@@ -298,12 +310,23 @@ type Service interface {
 	Threads() threadsApp.Net
 	CafePeer() ma.Multiaddr
 
+	CreateWorkspace() (thread.Info, error)
+	SelectWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error)
+	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
+	GetAllWorkspaces() ([]string, error)
+	GetAllThreadsInWorkspace(id string) ([]string, error)
+
+	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
+
+	GetThreadInfo(id thread.ID) (thread.Info, error)
+	AddThread(threadId string, key string, addrs []string) error
+
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
-	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
+	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, *DerivedSmartblockIds, error)
 }
 
 type ThreadsGetter interface {
@@ -319,6 +342,84 @@ func (s *service) InitNewThreadsChan(ch chan<- string) error {
 
 	s.newThreadChan = ch
 	return nil
+}
+
+func (s *service) GetAllWorkspaces() ([]string, error) {
+	threads, err := s.logstore.Threads()
+	if err != nil {
+		return nil, fmt.Errorf("could not get all workspace threads: %w", err)
+	}
+
+	var workspaceThreads []string
+	for _, th := range threads {
+		if tp, err := smartblock.SmartBlockTypeFromThreadID(th); err == nil && tp == smartblock.SmartBlockTypeWorkspace {
+			workspaceThreads = append(workspaceThreads, th.String())
+		}
+	}
+	return workspaceThreads, nil
+}
+
+func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
+	threadId, err := thread.Decode(id)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		processor, err = s.startWorkspaceThreadProcessor(id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	collection := processor.GetCollection()
+	instancesBytes, err := collection.Find(&threadsDb.Query{})
+	if err != nil {
+		return nil, err
+	}
+
+	var threadsInWorkspace []string
+	for _, instanceBytes := range instancesBytes {
+		ti := threadInfo{}
+		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
+
+		tid, err := thread.Decode(ti.ID.String())
+		if err != nil {
+			continue
+		}
+		threadsInWorkspace = append(threadsInWorkspace, tid.String())
+	}
+
+	return threadsInWorkspace, nil
+}
+
+func (s *service) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
+	threadId, err := thread.Decode(id)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		processor, err = s.startWorkspaceThreadProcessor(id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	listener, err := processor.GetDB().Listen()
+	if err != nil {
+		return nil, err
+	}
+
+	return listener, nil
 }
 
 func (s *service) getNewThreadChan() chan<- string {
@@ -348,12 +449,196 @@ func (s *service) Threads() threadsApp.Net {
 	return s.t
 }
 
-func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
-	if s.threadsCollection == nil {
-		return thread.Info{}, fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
+func (s *service) CreateWorkspace() (thread.Info, error) {
+	accountProcessor, err := s.getAccountProcessor()
+	if err != nil {
+		return thread.Info{}, err
 	}
 
-	// todo: we have a possible trouble here, using thread.AccessControlled uvariant without actually storing the cid with access control
+	// create new workspace thread
+	workspaceThread, err := s.createThreadWithCollection(
+		smartblock.SmartBlockTypeWorkspace,
+		accountProcessor.GetCollection(),
+		accountProcessor.GetThreadId())
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
+	}
+
+	_, err = s.startWorkspaceThreadProcessor(workspaceThread.ID.String())
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("could not start thread processor: %w", err)
+	}
+
+	workspaceReadKeyBytes := workspaceThread.Key.Read().Bytes()
+
+	// creating home thread
+	homeId, err := threadDeriveId(threadDerivedIndexHome, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	homeSk, homeRk, err := threadDeriveKeys(threadDerivedIndexHome, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	_, err = s.threadCreate(homeId, thread.NewKey(homeSk, homeRk))
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("could not create home thread: %w", err)
+	}
+
+	// creating archive thread
+	archiveId, err := threadDeriveId(threadDerivedIndexArchive, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	archiveSk, archiveRk, err := threadDeriveKeys(threadDerivedIndexArchive, workspaceReadKeyBytes)
+	if err != nil {
+		return thread.Info{}, err
+	}
+	_, err = s.threadCreate(archiveId, thread.NewKey(archiveSk, archiveRk))
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("could not create archive thread: %w", err)
+	}
+
+	WorkspaceLogger.
+		With("workspace id", workspaceThread.ID.String()).
+		Debug("created workspace")
+	return workspaceThread, nil
+}
+
+func (s *service) SelectWorkspace(
+	ctx context.Context,
+	ids DerivedSmartblockIds,
+	workspaceId thread.ID) (DerivedSmartblockIds, error) {
+	return s.ensureWorkspace(ctx, ids, workspaceId, true, true)
+}
+
+func (s *service) SelectAccount() error {
+	accountProcessor, err := s.getAccountProcessor()
+	if err != nil {
+		return err
+	}
+
+	// TODO: we should probably add some mutex here to prevent concurrent changes
+	s.threadsCollection = accountProcessor.GetCollection()
+	s.db = accountProcessor.GetDB()
+	s.currentWorkspaceId = accountProcessor.GetThreadId()
+
+	WorkspaceLogger.
+		With("collection name", s.threadsCollection.GetName()).
+		With("account id", s.currentWorkspaceId).
+		Info("switching to account")
+
+	return nil
+}
+
+func (s *service) AddThread(threadId string, key string, addrs []string) error {
+	addedInfo := threadInfo{
+		ID:    db.InstanceID(threadId),
+		Key:   key,
+		Addrs: addrs,
+	}
+	var err error
+	id, err := thread.Decode(threadId)
+	if err != nil {
+		return fmt.Errorf("failed to add thread: %w", err)
+	}
+
+	collectionToAdd := s.threadsCollection
+
+	defer func() {
+		// if we successfully downloaded the thread, or we already have it
+		// we still may need to check that it is added to current collection
+		if err != nil {
+			return
+		}
+
+		// TODO: check if we can optimize it by changing the query
+		instancesBytes, err := collectionToAdd.Find(&threadsDb.Query{})
+		if err != nil {
+			log.With("thread id", threadId).
+				Errorf("failed to add thread to collection: %v", err)
+			return
+		}
+
+		for _, instanceBytes := range instancesBytes {
+			ti := threadInfo{}
+			threadsUtil.InstanceFromJSON(instanceBytes, &ti)
+
+			if string(ti.ID) == threadId {
+				return
+			}
+		}
+		_, err = collectionToAdd.Create(threadsUtil.JSONFromInstance(addedInfo))
+		if err != nil {
+			log.With("thread id", threadId).
+				Errorf("failed to add thread to collection: %v", err)
+		}
+
+		WorkspaceLogger.
+			With("thread id", threadId).
+			With("collection name", collectionToAdd.GetName()).
+			Info("adding thread to collection")
+	}()
+
+	_, err = s.t.GetThread(context.Background(), id)
+	if err == nil {
+		log.With("thread id", threadId).
+			Info("thread was already added")
+		return nil
+	}
+
+	if err != nil && err != tlcore.ErrThreadNotFound {
+		return fmt.Errorf("failed to add thread: %w", err)
+	}
+
+	err = s.processNewExternalThread(id, addedInfo, true)
+	if err != nil {
+		return err
+	}
+
+	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(id)
+	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
+		accountProcessor, err := s.getAccountProcessor()
+		if err != nil {
+			return err
+		}
+
+		collectionToAdd = accountProcessor.GetCollection()
+
+		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true, false)
+	}
+
+	return err
+}
+
+func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	ti, err := s.t.GetThread(ctx, id)
+	if err != nil {
+		return thread.Info{}, err
+	}
+
+	// TODO: consider also getting addresses of logs from thread
+	// default thread implementation only returns the addresses of current host
+	if s.replicatorAddr != nil {
+		ti.Addrs = append(ti.Addrs, s.replicatorAddr)
+	}
+	return ti, nil
+}
+
+func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
+	return s.createThreadWithCollection(blockType, s.threadsCollection, s.currentWorkspaceId)
+}
+
+func (s *service) createThreadWithCollection(
+	blockType smartblock.SmartBlockType,
+	collection *threadsDb.Collection,
+	workspaceId thread.ID) (thread.Info, error) {
+	if collection == nil {
+		return thread.Info{}, fmt.Errorf("collection not initialized")
+	}
+
 	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
 	if err != nil {
 		return thread.Info{}, err
@@ -368,7 +653,20 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		return thread.Info{}, err
 	}
 
-	thrd, err := s.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(thread.NewKey(followKey, readKey)), net.WithLogKey(s.device))
+	key := thread.NewKey(followKey, readKey)
+
+	// this logic is needed to prevent cases when the tread is created
+	// but the app is shut down, so we don't know in which collection should we add this thread
+	err = s.threadCreateQueue.AddThreadQueueEntry(&model.ThreadCreateQueueEntry{
+		CollectionThread: workspaceId.String(),
+		ThreadId:         thrdId.String(),
+	})
+	if err != nil {
+		log.With("thread id", thrdId.String()).
+			Errorf("failed to add thread id to queue: %v", err)
+	}
+
+	thrd, err := s.t.CreateThread(context.TODO(), thrdId, net.WithThreadKey(key), net.WithLogKey(s.device))
 	if err != nil {
 		return thread.Info{}, err
 	}
@@ -395,10 +693,21 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info
 		Addrs: util.MultiAddressesToStrings(thrd.Addrs),
 	}
 
+	WorkspaceLogger.
+		With("collection name", collection.GetName()).
+		With("thread id", thrd.ID.String()).
+		Info("pushing thread to thread collection")
+
 	// todo: wait for threadsCollection to push?
-	_, err = s.threadsCollection.Create(threadsUtil.JSONFromInstance(threadInfo))
+	_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
 	if err != nil {
 		log.With("thread", thrd.ID.String()).Errorf("failed to create thread at collection: %s: ", err.Error())
+	} else {
+		err = s.threadCreateQueue.RemoveThreadQueueEntry(thrdId.String())
+		if err != nil {
+			log.With("thread id", thrdId.String()).
+				Errorf("failed to remove thread id to queue: %v", err)
+		}
 	}
 
 	if replAddrWithThread != nil {
@@ -451,4 +760,21 @@ func (s *service) DeleteThread(id string) error {
 		log.With("thread", id).Error("DeleteThread failed to remove thread from collection: %s", err.Error())
 	}
 	return nil
+}
+
+func (s *service) getAccountProcessor() (ThreadProcessor, error) {
+	id, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[id]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		return nil, fmt.Errorf("account thread processor does not exist")
+	}
+
+	return processor, nil
 }

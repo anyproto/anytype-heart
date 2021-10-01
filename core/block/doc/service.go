@@ -2,12 +2,12 @@ package doc
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -91,7 +91,7 @@ func (l *listener) GetDocInfo(ctx context.Context, id string) (info DocInfo, err
 }
 
 func (l *listener) wakeupLoop() {
-	var buf = make([]core.SmartblockRecordWithThreadID, 50)
+	var buf = make([]interface{}, 50)
 	var idsToWakeup []string
 	for {
 		n := l.records.Read(buf)
@@ -100,10 +100,14 @@ func (l *listener) wakeupLoop() {
 		}
 		idsToWakeup = idsToWakeup[:0]
 		for _, rec := range buf[:n] {
-			if slice.FindPos(idsToWakeup, rec.ThreadID) == -1 {
-				idsToWakeup = append(idsToWakeup, rec.ThreadID)
-				if err := l.docInfoHandler.Wakeup(rec.ThreadID); err != nil {
-					log.With("thread", rec.ThreadID).Errorf("can't wakeup thread")
+			if val, ok := rec.(core.ThreadRecordInfo); !ok {
+				log.Errorf("doc listner got unknown type %t", rec)
+			} else {
+				if slice.FindPos(idsToWakeup, val.ThreadID) == -1 {
+					idsToWakeup = append(idsToWakeup, val.ThreadID)
+					if err := l.docInfoHandler.Wakeup(val.ThreadID); err != nil {
+						log.With("thread", val.ThreadID).Errorf("can't wakeup thread")
+					}
 				}
 			}
 		}

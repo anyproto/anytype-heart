@@ -898,6 +898,16 @@
     "source": "account"
   },
   {
+    "description": "Workspace id",
+    "format": "object",
+    "hidden": true,
+    "key": "workspaceId",
+    "maxCount": 1,
+    "name": "WorkspaceId",
+    "readonly": false,
+    "source": "account"
+  },
+  {
     "format": "object",
     "hidden": false,
     "key": "stars",
