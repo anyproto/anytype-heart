@@ -39,11 +39,11 @@ type accountRecoveryThreadNotifier struct {
 func NewAccountNotifier(simultaneousRequests int) ThreadDownloadNotifier {
 	return &accountRecoveryThreadNotifier{
 		simultaneousRequests: simultaneousRequests,
+		progress:             process.NewProgress(pb.ModelProcess_RecoverAccount),
 	}
 }
 
 func (a *accountRecoveryThreadNotifier) Start(p process.Service) {
-	a.progress = process.NewProgress(pb.ModelProcess_RecoverAccount)
 	p.Add(a.progress)
 	go func() {
 		select {
