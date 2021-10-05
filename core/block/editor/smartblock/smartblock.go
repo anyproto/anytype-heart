@@ -905,7 +905,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			relationsWithKeys = append(relationsWithKeys, c)
 			copy = append(copy, c)
 		}
-		if !pbtypes.HasField(s.Details(), rel.Key) {
+		if !pbtypes.HasField(s.CombinedDetails(), rel.Key) {
 			s.SetDetail(rel.Key, pbtypes.Null())
 		}
 	}
