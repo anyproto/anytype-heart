@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "a9017bb710d57e572d2078b020bf144b24cd0cdb3310c79a6166833c10719c42"
+const RelationChecksum = "164b8f896bbee46214fe3a9e21e0abcf32b760fab7ade9224a7a415398ba4b6a"
 
 type RelationKey string
 
@@ -129,6 +129,7 @@ const (
 	RelationKeyFileMimeType              RelationKey = "fileMimeType"
 	RelationKeyType                      RelationKey = "type"
 	RelationKeyIsDraft                   RelationKey = "isDraft"
+	RelationKeyIsDeleted                 RelationKey = "isDeleted"
 	RelationKeyNumberOfEmployees         RelationKey = "numberOfEmployees"
 	RelationKeyLayout                    RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
@@ -1025,6 +1026,19 @@ var (
 			MaxCount:         1,
 			Name:             "Archived",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsDeleted: {
+
+			DataSource:       model.Relation_account,
+			Description:      "Relation that indicates document has been deleted",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isDeleted",
+			MaxCount:         1,
+			Name:             "Is deleted",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

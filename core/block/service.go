@@ -154,6 +154,7 @@ type Service interface {
 	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) error
 
 	DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) error
+	DeleteObject(id string) error
 
 	GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error
@@ -539,7 +540,7 @@ func (s *service) DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) (e
 		anySucceed := false
 		for _, blockId := range req.BlockIds {
 			if exists, _ := archive.HasObject(blockId); exists {
-				if err = s.deleteObject(blockId); err == nil {
+				if err = s.DeleteObject(blockId); err == nil {
 					archive.RemoveObject(blockId)
 					anySucceed = true
 				}
@@ -562,7 +563,7 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 		}
 
 		if exists, _ := archive.HasObject(id); exists {
-			if err = s.deleteObject(id); err == nil {
+			if err = s.DeleteObject(id); err == nil {
 				err = archive.RemoveObject(id)
 				if err != nil {
 					return err
@@ -574,7 +575,7 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *service) deleteObject(id string) (err error) {
+func (s *service) DeleteObject(id string) (err error) {
 	err = s.CloseBlock(id)
 	if err != nil && err != ErrBlockNotFound {
 		return err
@@ -634,7 +635,6 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 			objectTypes = []string{bundle.TypeKeyPage.URL()}
 		}
 	}
-
 
 	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
 	if err != nil {

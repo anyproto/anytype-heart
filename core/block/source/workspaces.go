@@ -139,18 +139,35 @@ func (v *workspaces) listenToChanges() (err error) {
 	return nil
 }
 
-func (v *workspaces) processThreadAction(action threadsDb.Action) {
-	if action.Type != threadsDb.ActionCreate {
-		return
-	}
+func (v *workspaces) removeLink(id string) {
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
-		With("thread id", action.ID).
+		With("thread id", id).
+		Info("processing new thread to link")
+	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
+		s, ok := d.(*state.State)
+		if !ok {
+			err = fmt.Errorf("doc is not state")
+			return
+		}
+
+		s.Unlink(id)
+		return
+	})
+	if err != nil {
+		log.Errorf("failed to append state with removed workspace thread: %v", err)
+	}
+}
+
+func (v *workspaces) addLink(id string) {
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		With("thread id", id).
 		Info("processing new thread to link")
 	link := simple.New(&model.Block{
 		Content: &model.BlockContentOfLink{
 			Link: &model.BlockContentLink{
-				TargetBlockId: action.ID.String(),
+				TargetBlockId: id,
 				Style:         model.BlockContentLink_Page,
 			},
 		},
@@ -168,6 +185,21 @@ func (v *workspaces) processThreadAction(action threadsDb.Action) {
 	})
 	if err != nil {
 		log.Errorf("failed to append state with new workspace thread: %v", err)
+	}
+}
+
+func (v *workspaces) processThreadAction(action threadsDb.Action) {
+	switch action.Type {
+	case threadsDb.ActionCreate:
+		v.addLink(action.ID.String())
+		return
+	case threadsDb.ActionDelete:
+		v.removeLink(action.ID.String())
+	default:
+		threads.WorkspaceLogger.
+			With("workspace id", v.id).
+			With("thread id", action.ID.String()).
+			Infof("action %d is not supported", action.Type)
 	}
 }
 

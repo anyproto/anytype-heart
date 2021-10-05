@@ -89,6 +89,7 @@ type service struct {
 
 	fetcher               CafeConfigFetcher
 	workspaceThreadGetter CurrentWorkspaceThreadGetter
+	objectDeleter         ObjectDeleter
 	threadCreateQueue     ThreadCreateQueue
 
 	replicatorAddr ma.Multiaddr
@@ -139,6 +140,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
+	s.objectDeleter = a.MustComponent("blockService").(ObjectDeleter)
 
 	s.device, err = wl.GetDevicePrivkey()
 	if err != nil {

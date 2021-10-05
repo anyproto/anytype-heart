@@ -22,6 +22,10 @@ type ThreadProcessor interface {
 	GetDB() *threadsDb.DB
 }
 
+type ObjectDeleter interface {
+	DeleteObject(id string) error
+}
+
 type threadProcessor struct {
 	threadsService *service
 	threadNotifier ThreadDownloadNotifier
@@ -144,6 +148,14 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 		}
 	}
 
+	removeThread := func(tid string) {
+		err := t.threadsService.objectDeleter.DeleteObject(tid)
+		if err != nil && err != logstore.ErrThreadNotFound {
+			log.With("thread id", tid).
+				Debugf("failed to delete thread")
+		}
+	}
+
 	processThread := func(tid thread.ID, ti threadInfo) {
 		log.With("thread id", tid.String()).
 			Debugf("trying to process new thread")
@@ -204,8 +216,8 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 
 	processThreadActions := func(actions []threadsDb.Action) {
 		for _, action := range actions {
-			// TODO: add thread delete actions, consider moving create logic to another function
-			if action.Type != threadsDb.ActionCreate {
+			if action.Type == threadsDb.ActionDelete {
+				removeThread(action.ID.String())
 				continue
 			}
 			instanceBytes, err := t.threadsCollection.FindByID(action.ID)

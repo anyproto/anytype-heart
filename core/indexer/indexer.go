@@ -692,8 +692,18 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if err != nil {
 		return
 	}
-	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
-		return
+	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
+	if err != nil {
+		sbType = smartblock.SmartBlockTypePage
+	}
+	indexDetails, indexLinks := sbType.Indexable()
+	if !indexDetails && !indexLinks {
+		return nil
+	}
+	if indexDetails {
+		if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
+			return
+		}
 	}
 
 	if len(info.FileHashes) > 0 {
@@ -717,12 +727,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	}
 
 	if len(info.SetRelations) > 1 && len(info.SetSource) == 1 {
-		sbt, err := smartblock.SmartBlockTypeFromID(info.SetSource[0])
-		if err != nil {
-			return err
-		}
-
-		if sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType {
+		if sbType == smartblock.SmartBlockTypeObjectType || sbType == smartblock.SmartBlockTypeBundledObjectType {
 			if err := i.store.UpdateRelationsInSetByObjectType(id, info.SetSource[0], info.Creator, info.SetRelations); err != nil {
 				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
 			}

@@ -1104,6 +1104,16 @@
     "source": "derived"
   },
   {
+    "description": "Relation that indicates document has been deleted",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isDeleted",
+    "maxCount": 1,
+    "name": "Is deleted",
+    "readonly": true,
+    "source": "account"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "numberOfEmployees",

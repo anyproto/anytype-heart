@@ -1105,6 +1105,17 @@ func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*mod
 }
 
 func (m *dsObjectStore) DeleteObject(id string) error {
+	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
+	err := m.UpdateObjectDetails(id, &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyId.String():        pbtypes.String(id),
+			bundle.RelationKeyIsHidden.String():  pbtypes.Bool(true),
+			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
+		},
+	}, &model.Relations{Relations: []*model.Relation{}}, false)
+	if err != nil {
+		return fmt.Errorf("failed to overwrite details and relations: %w", err)
+	}
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -1113,31 +1124,26 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 
 	// todo: remove all indexes with this object
 	for _, k := range []ds.Key{
-		pagesDetailsBase.ChildString(id),
 		pagesSnippetBase.ChildString(id),
-		pagesRelationsBase.ChildString(id),
 		indexQueueBase.ChildString(id),
+		setRelationsBase.ChildString(id),
+		indexedHeadsState.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
 			return err
 		}
 	}
 
-	inLinks, err := findInboundLinks(txn, id)
+	_, err = removeByPrefix(txn, pagesInboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
 
-	outLinks, err := findOutboundLinks(txn, id)
+	_, err = removeByPrefix(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
 
-	for _, k := range pageLinkKeys(id, inLinks, outLinks) {
-		if err := txn.Delete(k); err != nil {
-			return err
-		}
-	}
 	if m.fts != nil {
 		if err := m.fts.Delete(id); err != nil {
 			return err
