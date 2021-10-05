@@ -118,7 +118,7 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 	return diff
 }
 
-func StructMerge(st1, st2 *types.Struct) *types.Struct {
+func StructMerge(st1, st2 *types.Struct, copyVals bool) *types.Struct {
 	var res *types.Struct
 	if st1 == nil || st1.Fields == nil {
 		return st2
