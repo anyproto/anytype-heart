@@ -97,7 +97,7 @@ func (i *file) Details() (*types.Struct, error) {
 
 	if strings.HasPrefix(meta.Media, "audio") {
 		if audioDetails, err := i.audioDetails(); err == nil {
-			t = pbtypes.StructMerge(t, audioDetails)
+			t = pbtypes.StructMerge(t, audioDetails, false)
 		}
 		t.Fields[bundle.RelationKeyType.String()] = pbtypes.String(bundle.TypeKeyAudio.URL())
 	}

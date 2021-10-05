@@ -660,7 +660,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	sb.reportChange(st)
+	if !act.IsEmpty() {
+		sb.reportChange(st)
+	}
 
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
@@ -905,7 +907,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			relationsWithKeys = append(relationsWithKeys, c)
 			copy = append(copy, c)
 		}
-		if !pbtypes.HasField(s.Details(), rel.Key) {
+		if !s.HasCombinedDetailsKey(rel.Key) {
 			s.SetDetail(rel.Key, pbtypes.Null())
 		}
 	}
