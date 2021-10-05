@@ -216,6 +216,11 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				removeThread(action.ID.String())
 				continue
 			}
+			if action.Type != threadsDb.ActionCreate {
+				log.Errorf("failed to process workspace thread db %s(type %d)", action.ID.String(), action.Type)
+				continue
+			}
+
 			instanceBytes, err := t.threadsCollection.FindByID(action.ID)
 			if err != nil {
 				log.Errorf("failed to find thread info for id %s: %v", action.ID.String(), err)
