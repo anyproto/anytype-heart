@@ -22,10 +22,6 @@ type ThreadProcessor interface {
 	GetDB() *threadsDb.DB
 }
 
-type ObjectDeleter interface {
-	DeleteObject(id string) error
-}
-
 type threadProcessor struct {
 	threadsService *service
 	threadNotifier ThreadDownloadNotifier

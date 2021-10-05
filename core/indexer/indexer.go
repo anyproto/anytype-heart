@@ -696,8 +696,8 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
-	indexDetails, indexLinks := sbType.Indexable()
-	if !indexDetails && !indexLinks {
+	indexDetails, _ := sbType.Indexable()
+	if !indexDetails {
 		return nil
 	}
 	if indexDetails {

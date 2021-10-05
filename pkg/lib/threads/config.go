@@ -25,6 +25,10 @@ type ThreadCreateQueue interface {
 	GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error)
 }
 
+type ObjectDeleter interface {
+	DeleteObject(id string) error
+}
+
 type Config struct {
 	SyncTracking bool
 	Debug        bool
