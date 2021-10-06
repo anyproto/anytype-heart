@@ -95,7 +95,24 @@ func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	return
 }
 
+func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+	var hasArchivedFilter bool
+	for _, filter := range filters {
+		// include archived objects if we have explicit filter about it
+		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+			hasArchivedFilter = true
+			break
+		}
+	}
+
+	if !hasArchivedFilter {
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
+	return filters
+}
+
 func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
+	q.Filters = injectDefaultFilters(q.Filters)
 	f = new(filters)
 	mainFilter := filter.AndFilters{}
 	if sch != nil {
