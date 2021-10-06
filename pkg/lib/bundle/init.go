@@ -18,6 +18,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyId,
 	RelationKeyName,
 	RelationKeyDescription,
+	RelationKeySnippet,
 	RelationKeyIconEmoji,
 	RelationKeyIconImage,
 	RelationKeyType,
@@ -46,7 +47,7 @@ var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyAudio.URL()}
 
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
-	coresb.SmartBlockTypePage:        TypeKeyPage,
+	coresb.SmartBlockTypePage:        TypeKeyNote,
 	coresb.SmartBlockTypeProfilePage: TypeKeyPage,
 	coresb.SmartBlockTypeSet:         TypeKeySet,
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,

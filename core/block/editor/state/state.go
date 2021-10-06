@@ -1346,6 +1346,15 @@ func (s *State) RemoveLocalDetail(keys ...string) (ok bool) {
 	return
 }
 
+func (s *State) Layout() (model.ObjectTypeLayout, bool) {
+	if det := s.Details(); det != nil && det.Fields != nil {
+		if _, ok := det.Fields[bundle.RelationKeyLayout.String()]; ok {
+			return model.ObjectTypeLayout(pbtypes.GetInt64(det, bundle.RelationKeyLayout.String())), true
+		}
+	}
+	return 0, false
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool

@@ -314,11 +314,12 @@ var WithTitle = StateTransformer(func(s *state.State) {
 
 // WithDefaultFeaturedRelations **MUST** be called before WithDescription
 var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
-	var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
-	if s.ObjectType() == bundle.TypeKeyPage.URL() {
-		fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
-	}
 	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
+		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+		layout, _ := s.Layout()
+		if layout == model.ObjectType_basic || layout == model.ObjectType_note {
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
 })
@@ -374,6 +375,14 @@ var WithDescription = StateTransformer(func(s *state.State) {
 			}
 		}
 	}
+})
+
+var WithNoTitle = StateTransformer(func(s *state.State) {
+	s.Unlink(TitleBlockId)
+})
+
+var WithNoDescription = StateTransformer(func(s *state.State) {
+	s.Unlink(DescriptionBlockId)
 })
 
 var WithFeaturedRelations = StateTransformer(func(s *state.State) {
