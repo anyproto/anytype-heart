@@ -5,9 +5,6 @@ on:
 name: Build
 jobs:
   build-mac-win-android-ios:
-    permissions:
-      contents: read
-      packages: write
     runs-on: macos-11
     steps:
       - name: Install Go
