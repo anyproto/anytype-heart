@@ -2,15 +2,21 @@ package core
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
+	"github.com/gogo/protobuf/proto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/textileio/go-threads/core/thread"
+	threadsDb "github.com/textileio/go-threads/db"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
@@ -35,6 +41,8 @@ var log = logging.Logger("anytype-core")
 const (
 	CName  = "anytype"
 	tmpDir = "tmp"
+
+	linkObjectShare = "anytype://object/share?"
 )
 
 type PredefinedBlockIds struct {
@@ -76,6 +84,17 @@ type Service interface {
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
+	CreateWorkspace() (string, error)
+	SelectWorkspace(workspaceId string) error
+
+	GetAllWorkspaces() ([]string, error)
+	GetAllObjectsInWorkspace(id string) ([]string, error)
+
+	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
+
+	ObjectAddWithShareLink(link string) error
+	ObjectShareByLink(objectId string) (string, error)
+
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
 	ThreadsIds() ([]string, error)        // deprecated
@@ -103,6 +122,8 @@ type Anytype struct {
 	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
+	accountBlockIds    threads.DerivedSmartblockIds
+	workspaceBlockIds  *threads.DerivedSmartblockIds
 	threadService      threads.Service
 	pinService         pin.FilePinService
 	ipfs               ipfs.Node
@@ -127,6 +148,66 @@ type Anytype struct {
 	tempDir             string
 }
 
+func (a *Anytype) ObjectAddWithShareLink(link string) error {
+	query := link[strings.LastIndex(link, linkObjectShare)+len(linkObjectShare):]
+	decoded, err := url.ParseQuery(query)
+	if err != nil {
+		return fmt.Errorf("error decoding link: %w", err)
+	}
+
+	threadId := decoded.Get("id")
+	if threadId == "" {
+		return fmt.Errorf("error decoding link: no id present")
+	}
+
+	payload := decoded.Get("payload")
+	if payload == "" {
+		return fmt.Errorf("error decoding link: no payload present")
+	}
+
+	decodedPayload, err := base64.RawStdEncoding.DecodeString(payload)
+	if err != nil {
+		return fmt.Errorf("error decoding link: cannot decode base64 payload")
+	}
+
+	var protoPayload model.ThreadDeeplinkPayload
+	err = proto.Unmarshal(decodedPayload, &protoPayload)
+	if err != nil {
+		return fmt.Errorf("failed decoding the payload: %w", err)
+	}
+
+	return a.threadService.AddThread(threadId, protoPayload.Key, protoPayload.Addrs)
+}
+
+func (a *Anytype) ObjectShareByLink(objectId string) (string, error) {
+	threadId, err := thread.Decode(objectId)
+	if err != nil {
+		return "", fmt.Errorf("failed to decode the block: %w", err)
+	}
+
+	threadInfo, err := a.threadService.GetThreadInfo(threadId)
+	if err != nil {
+		return "", fmt.Errorf("failed to get info on the thread: %w", err)
+	}
+
+	payload := &model.ThreadDeeplinkPayload{
+		Key:   threadInfo.Key.String(),
+		Addrs: util.MultiAddressesToStrings(threadInfo.Addrs),
+	}
+	marshalledPayload, err := proto.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
+	}
+	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
+
+	params := url.Values{}
+	params.Add("id", objectId)
+	params.Add("payload", encodedPayload)
+	encoded := params.Encode()
+
+	return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
+}
+
 func (a *Anytype) ThreadsIds() ([]string, error) {
 	tids, err := a.ThreadService().Logstore().Threads()
 	if err != nil {
@@ -136,7 +217,7 @@ func (a *Anytype) ThreadsIds() ([]string, error) {
 }
 
 type batchAdder interface {
-	Add(msgs ...SmartblockRecordWithThreadID) error
+	Add(msgs ...interface{}) error
 	Close() error
 }
 
@@ -213,6 +294,68 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 	}
 }
 
+func (a *Anytype) CreateWorkspace() (string, error) {
+	info, err := a.threadService.CreateWorkspace()
+	if err != nil {
+		return "", fmt.Errorf("error creating workspace: %w", err)
+	}
+	return info.ID.String(), nil
+}
+
+func (a *Anytype) SelectWorkspace(workspaceId string) error {
+	if workspaceId == "" {
+		// selecting account
+		threads.WorkspaceLogger.
+			Debug("selecting account")
+		a.predefinedBlockIds = a.accountBlockIds
+		a.workspaceBlockIds = nil
+		err := a.threadService.SelectAccount()
+		if err != nil {
+			return err
+		}
+
+		return a.objectStore.RemoveCurrentWorkspaceId()
+	}
+
+	threadId, err := thread.Decode(workspaceId)
+	if err != nil {
+		return err
+	}
+
+	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(threadId)
+	if err != nil {
+		return err
+	}
+	if smartBlockType != smartblock.SmartBlockTypeWorkspace {
+		return fmt.Errorf("can't select non-workspace smartblock")
+	}
+
+	workspaceIds, err := a.threadService.SelectWorkspace(context.Background(), a.accountBlockIds, threadId)
+	if err != nil {
+		return fmt.Errorf("could not select workspace: %w", err)
+	}
+	a.workspaceBlockIds = &workspaceIds
+
+	err = a.objectStore.SetCurrentWorkspaceId(workspaceId)
+	if err != nil {
+		return fmt.Errorf("error setting workspace thread: %w", err)
+	}
+
+	return nil
+}
+
+func (a *Anytype) GetAllWorkspaces() ([]string, error) {
+	return a.threadService.GetAllWorkspaces()
+}
+
+func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {
+	return a.threadService.GetAllThreadsInWorkspace(id)
+}
+
+func (a *Anytype) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
+	return a.threadService.GetThreadActionsListenerForWorkspace(id)
+}
+
 func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
 	thrd, err := a.threadService.CreateThread(t)
 	if err != nil {
@@ -270,12 +413,18 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) err
 		}
 	}()
 
-	ids, err := a.threadService.EnsurePredefinedThreads(cctx, newAccount)
+	accountIds, workspaceIds, err := a.threadService.EnsurePredefinedThreads(cctx, newAccount)
 	if err != nil {
 		return err
 	}
 
-	a.predefinedBlockIds = ids
+	a.accountBlockIds = accountIds
+	a.workspaceBlockIds = workspaceIds
+	if a.workspaceBlockIds != nil {
+		a.predefinedBlockIds = *a.workspaceBlockIds
+	} else {
+		a.predefinedBlockIds = accountIds
+	}
 
 	return nil
 }
@@ -351,7 +500,6 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 		a.lock.Lock()
 		shutdownCh := a.shutdownStartsCh
 		a.lock.Unlock()
-		smartBlocksCache := make(map[string]*smartBlock)
 		defer a.recordsbatch.Close()
 		for {
 			select {
@@ -359,29 +507,18 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				if !ok {
 					return
 				}
-				var block *smartBlock
+
 				id := val.ThreadID().String()
 				if id == a.predefinedBlockIds.Account {
 					// todo: not working on the early start
 					continue
 				}
-				if block, ok = smartBlocksCache[id]; !ok {
-					if block, err = a.GetSmartBlock(id); err != nil {
-						log.Errorf("failed to open smartblock %s: %v", id, err)
-						continue
-					} else {
-						smartBlocksCache[id] = block
-					}
-				}
-				rec, err := block.decodeRecord(ctx, val.Value(), true)
-				if err != nil {
-					log.Errorf("failed to decode thread record: %s", err.Error())
-					continue
-				}
-				err = a.recordsbatch.Add(SmartblockRecordWithThreadID{
-					SmartblockRecordEnvelope: *rec,
-					ThreadID:                 id,
+
+				err = a.recordsbatch.Add(ThreadRecordInfo{
+					LogId:    val.LogID().String(),
+					ThreadID: id,
 				})
+
 				if err != nil {
 					log.Errorf("failed to add thread record to batcher: %s", err.Error())
 					continue

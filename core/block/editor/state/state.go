@@ -1014,9 +1014,17 @@ func (s *State) AggregatedOptionsByRelation() map[string][]*model.RelationOption
 }
 
 func (s *State) CombinedDetails() *types.Struct {
-	persisted := s.Details()
-	local := s.LocalDetails()
-	return pbtypes.StructMerge(persisted, local)
+	return pbtypes.StructMerge(s.Details(), s.LocalDetails(), false)
+}
+
+func (s *State) HasCombinedDetailsKey(key string) bool {
+	if pbtypes.HasField(s.Details(), key) {
+		return true
+	}
+	if pbtypes.HasField(s.LocalDetails(), key) {
+		return true
+	}
+	return false
 }
 
 func (s *State) Details() *types.Struct {

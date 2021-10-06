@@ -103,13 +103,20 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	req.Filters = injectDefaultFilters(req.Filters)
 
+	var workspaceId string
+	if !req.IgnoreWorkspace {
+		workspaceId, _ = at.ObjectStore().GetCurrentWorkspaceId()
+	}
+
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:          req.Filters,
-		Sorts:            req.Sorts,
-		Offset:           int(req.Offset),
-		Limit:            int(req.Limit),
-		FullText:         req.FullText,
-		ObjectTypeFilter: req.ObjectTypeFilter,
+		Filters:           req.Filters,
+		Sorts:             req.Sorts,
+		Offset:            int(req.Offset),
+		Limit:             int(req.Limit),
+		FullText:          req.FullText,
+		ObjectTypeFilter:  req.ObjectTypeFilter,
+		WorkspaceId:       workspaceId,
+		SearchInWorkspace: !req.IgnoreWorkspace,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)

@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -49,6 +50,12 @@ var (
 	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
 	cafeConfig = ds.NewKey("/" + pagesPrefix + "/cafeconfig")
+
+	workspacesPrefix = "workspaces"
+	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
+
+	threadCreateQueuePrefix = "threadcreatequeue"
+	threadCreateQueueBase   = ds.NewKey("/" + threadCreateQueuePrefix)
 
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
@@ -259,6 +266,14 @@ type ObjectStore interface {
 
 	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
 	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
+
+	GetCurrentWorkspaceId() (string, error)
+	SetCurrentWorkspaceId(threadId string) (err error)
+	RemoveCurrentWorkspaceId() (err error)
+
+	AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error)
+	RemoveThreadQueueEntry(threadId string) (err error)
+	GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error)
 }
 
 type relationOption struct {
@@ -324,6 +339,110 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	b, err := entry.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal entry into binary: %w", err)
+	}
+
+	key := threadCreateQueueBase.Child(ds.NewKey(entry.ThreadId))
+	if err := txn.Put(key, b); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) RemoveThreadQueueEntry(threadId string) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	key := threadCreateQueueBase.Child(ds.NewKey(threadId))
+	if err = txn.Delete(key); err != nil {
+		return fmt.Errorf("failed to delete entry from ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	res, err := txn.Query(query.Query{
+		Prefix: threadCreateQueueBase.String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error query txn in datastore: %w", err)
+	}
+	var models []*model.ThreadCreateQueueEntry
+	for entry := range res.Next() {
+		var qEntry model.ThreadCreateQueueEntry
+		err = proto.Unmarshal(entry.Value, &qEntry)
+		if err != nil {
+			log.Errorf("failed to unmarshal thread create entry")
+			continue
+		}
+		models = append(models, &qEntry)
+	}
+
+	return models, nil
+}
+
+func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return "", fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	val, err := txn.Get(currentWorkspace)
+	if err != nil {
+		return "", err
+	}
+	return string(val), nil
+}
+
+func (m *dsObjectStore) SetCurrentWorkspaceId(threadId string) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Put(currentWorkspace, []byte(threadId)); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Delete(currentWorkspace); err != nil {
+		return fmt.Errorf("failed to delete from ds: %w", err)
+	}
+
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error) {
@@ -1438,6 +1557,62 @@ func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.Rel
 	return nil
 }
 
+func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, links []string) error {
+	threads.WorkspaceLogger.
+		With("existing links", exLinks).
+		With("new links", links).
+		With("workspace id", id).
+		Info("updating workspace links")
+
+	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
+	setDetail := func(memberId string, isRemoved bool) error {
+		tp := pbtypes.String(id)
+		if isRemoved {
+			tp = pbtypes.Null()
+		}
+		threads.WorkspaceLogger.
+			With("isRemoved", isRemoved).
+			With("thread id", memberId).
+			With("workspace id", id).
+			Info("trying to inject object details")
+		merged, err := m.injectObjectDetails(txn, memberId, &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyWorkspaceId.String(): tp,
+			},
+		})
+		if err != nil {
+			threads.WorkspaceLogger.
+				With("isRemoved", isRemoved).
+				With("thread id", memberId).
+				With("workspace id", id).
+				Info("details injected with error: %v", err)
+			return err
+		}
+
+		// inject localDetails into the meta pubsub
+		m.meta.SetLocalDetails(memberId, merged)
+
+		return nil
+	}
+
+	var err error
+	for _, objId := range removedLinks {
+		err = setDetail(objId, true)
+		if err != nil {
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
+		}
+	}
+
+	for _, objId := range addedLinks {
+		err = setDetail(objId, false)
+		if err != nil {
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
 func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string) error {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
@@ -1452,6 +1627,11 @@ func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string)
 		}
 	} else if sbt == smartblock.SmartBlockTypeHome {
 		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsFavorite, exLinks, links)
+		if err != nil {
+			return err
+		}
+	} else if sbt == smartblock.SmartBlockTypeWorkspace {
+		err = m.updateWorkspaceLinks(txn, id, exLinks, links)
 		if err != nil {
 			return err
 		}

@@ -33,6 +33,7 @@ const (
 	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate                = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
+	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
