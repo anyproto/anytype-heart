@@ -959,7 +959,6 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	depRecordsCh := make(chan *types.Struct)
 	recordsSub := database.NewSubscription(nil, recordsCh)
 	depRecordsSub := database.NewSubscription(nil, depRecordsCh)
-
 	q := database.Query{
 		Relations:         activeView.Relations,
 		Filters:           activeView.Filters,

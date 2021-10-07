@@ -193,6 +193,12 @@ type Service interface {
 	CloneTemplate(id string) (templateId string, err error)
 	ApplyTemplate(contextId, templateId string) error
 
+	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
+	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
+
+	ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error
+	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
+
 	app.ComponentRunnable
 }
 
@@ -456,6 +462,22 @@ func (s *service) CloseBlocks() {
 	})
 }
 
+func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
+	return s.anytype.CreateWorkspace()
+}
+
+func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
+	return s.anytype.SelectWorkspace(req.WorkspaceId)
+}
+
+func (s *service) ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error {
+	return s.anytype.ObjectAddWithShareLink(req.Link)
+}
+
+func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error) {
+	return s.anytype.ObjectShareByLink(req.ObjectId)
+}
+
 // SetPagesIsArchived is deprecated
 func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
@@ -614,6 +636,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		}
 	}
 
+
 	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
 	if err != nil {
 		return "", nil, fmt.Errorf("object type not found")
@@ -641,6 +664,10 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		}
 	}
 
+	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	if err == nil {
+		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
@@ -773,6 +800,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs(s.meta)
+	case model.SmartBlockType_Workspace:
+		sb = editor.NewWorkspaces(s.meta)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}

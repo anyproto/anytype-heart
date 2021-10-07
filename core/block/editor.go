@@ -815,8 +815,14 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	}
 	setId = csm.ID()
 
+	state := state.NewDoc(csm.ID(), nil).NewState()
+	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	if err == nil {
+		state.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	}
+
 	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
-		State: state.NewDoc(setId, nil).NewState(),
+		State: state,
 	})
 	if err != nil {
 		return "", "", err

@@ -6,9 +6,11 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/proto"
@@ -74,6 +76,8 @@ type Query struct {
 	Offset            int                                   // skip given number of results
 	WithSystemObjects bool
 	ObjectTypeFilter  []string
+	WorkspaceId       string
+	SearchInWorkspace bool
 }
 
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
@@ -91,7 +95,24 @@ func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	return
 }
 
+func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
+	var hasArchivedFilter bool
+	for _, filter := range filters {
+		// include archived objects if we have explicit filter about it
+		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
+			hasArchivedFilter = true
+			break
+		}
+	}
+
+	if !hasArchivedFilter {
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
+	return filters
+}
+
 func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
+	q.Filters = injectDefaultFilters(q.Filters)
 	f = new(filters)
 	mainFilter := filter.AndFilters{}
 	if sch != nil {
@@ -120,6 +141,43 @@ func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
 
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
+	}
+	if q.SearchInWorkspace {
+		if q.WorkspaceId != "" {
+			threads.WorkspaceLogger.
+				With("workspace id", q.WorkspaceId).
+				With("text", q.FullText).
+				Info("searching for text in workspace")
+			filterOr := filter.OrFilters{
+				filter.Eq{
+					Key:   bundle.RelationKeyWorkspaceId.String(),
+					Cond:  model.BlockContentDataviewFilter_Equal,
+					Value: pbtypes.String(q.WorkspaceId),
+				},
+				filter.Like{
+					Key:   bundle.RelationKeyType.String(),
+					Value: pbtypes.String(bundle.TypeKeyObjectType.String()),
+				},
+				filter.Like{
+					Key:   bundle.RelationKeyId.String(),
+					Value: pbtypes.String(addr.BundledRelationURLPrefix),
+				},
+			}
+			mainFilter = append(mainFilter, filterOr)
+		} else {
+			threads.WorkspaceLogger.
+				With("workspace id", q.WorkspaceId).
+				With("text", q.FullText).
+				Info("searching for text in account")
+			// it can also be the case that we want to search in current account
+			// which is also kinda workspace
+			mainFilter = append(mainFilter, filter.Empty{
+				Key: bundle.RelationKeyWorkspaceId.String(),
+			})
+		}
+	} else {
+		threads.WorkspaceLogger.
+			Info("searching in all workspaces and account")
 	}
 	f.filter = mainFilter
 	if len(q.Sorts) > 0 {

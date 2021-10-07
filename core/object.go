@@ -67,22 +67,6 @@ func handleDateSearch(query string, records []database.Record) []database.Record
 	return records
 }
 
-func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
-	var hasArchivedFilter bool
-	for _, filter := range filters {
-		// include archived objects if we have explicit filter about it
-		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
-			hasArchivedFilter = true
-			break
-		}
-	}
-
-	if !hasArchivedFilter {
-		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
-	}
-	return filters
-}
-
 func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
 	response := func(code pb.RpcObjectSearchResponseErrorCode, records []*types.Struct, err error) *pb.RpcObjectSearchResponse {
 		m := &pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: code}, Records: records}
@@ -101,15 +85,21 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
-	req.Filters = injectDefaultFilters(req.Filters)
+
+	var workspaceId string
+	if !req.IgnoreWorkspace {
+		workspaceId, _ = at.ObjectStore().GetCurrentWorkspaceId()
+	}
 
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:          req.Filters,
-		Sorts:            req.Sorts,
-		Offset:           int(req.Offset),
-		Limit:            int(req.Limit),
-		FullText:         req.FullText,
-		ObjectTypeFilter: req.ObjectTypeFilter,
+		Filters:           req.Filters,
+		Sorts:             req.Sorts,
+		Offset:            int(req.Offset),
+		Limit:             int(req.Limit),
+		FullText:          req.FullText,
+		ObjectTypeFilter:  req.ObjectTypeFilter,
+		WorkspaceId:       workspaceId,
+		SearchInWorkspace: !req.IgnoreWorkspace,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
@@ -145,7 +135,6 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 
-	req.Filters = injectDefaultFilters(req.Filters)
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:          req.Filters,
 		Limit:            int(req.Limit),

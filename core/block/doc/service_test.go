@@ -50,8 +50,8 @@ func TestService_WakeupLoop(t *testing.T) {
 	require.NoError(t, a.Start())
 	defer a.Close()
 
-	recId := func(id string) core.SmartblockRecordWithThreadID {
-		return core.SmartblockRecordWithThreadID{ThreadID: id}
+	recId := func(id string) core.ThreadRecordInfo {
+		return core.ThreadRecordInfo{ThreadID: id}
 	}
 
 	require.NoError(t, rb.Add(recId("1"), recId("2"), recId("2"), recId("1"), recId("3")))
