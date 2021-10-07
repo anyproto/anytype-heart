@@ -2,7 +2,6 @@ package objects
 
 import (
 	"errors"
-	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -17,6 +16,7 @@ import (
 const (
 	//CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
 	BundledObjectTypeURLPrefix = "_ot"
+	defaultObjectType          = bundle.TypeKeyPage
 )
 
 var log = logging.Logger("anytype-core-db")
@@ -82,7 +82,7 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl, targetType})
 	} else if sp.objectTypeUrl == "" {
 		if ot := pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()); ot == "" {
-			return database.Record{}, fmt.Errorf("object type not explitly set for the set and the record")
+			rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(defaultObjectType.URL())
 		}
 	} else {
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
