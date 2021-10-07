@@ -643,6 +643,22 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, objectType stri
 	return
 }
 
+func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
+	var filter filterSmartblockTypes
+	for _, otUrl := range ots {
+		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
+			for _, sbt := range ot.Types {
+				filter.smartBlockTypes = append(filter.smartBlockTypes, smartblock.SmartBlockType(sbt))
+			}
+			continue
+		}
+		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
+			filter.smartBlockTypes = append(filter.smartBlockTypes, sbt)
+		}
+	}
+	return &filter
+}
+
 func (m *dsObjectStore) QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -720,6 +736,10 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	dsq.Prefix = pagesDetailsBase.String() + "/"
 	if !q.WithSystemObjects {
 		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
+	}
+
+	if len(q.ObjectTypeFilter) > 0 {
+		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
 	}
 
 	if q.FullText != "" {
