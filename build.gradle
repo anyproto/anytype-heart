@@ -1,0 +1,51 @@
+apply plugin: 'maven-publish' // Apply this plugin at the top of your library build.gradle
+apply plugin: "io.freefair.git-version"
+
+def githubProperties = new Properties()
+//githubProperties.load(new FileInputStream(rootProject.file("github.properties"))) //Set env variable GPR_USER & GPR_API_KEY if not adding a properties file
+
+
+def getArtificatId = { ->
+ return "android-mw" // Replace with library name ID
+}
+
+buildscript {
+  repositories {
+    maven {
+      url "https://plugins.gradle.org/m2/"
+    }
+  }
+  dependencies {
+    classpath "io.freefair.gradle:git-plugin:6.2.0"
+  }
+}
+
+
+publishing {
+ publications {
+   bar(MavenPublication) {
+      groupId 'io.anytype' // Replace with group ID
+      artifactId getArtificatId()
+      artifact("lib.aar")
+    }
+ }
+
+repositories {
+        maven {
+               name = "GitHubPackages"
+        /** Configure path of your package repository on Github
+         ** Replace GITHUB_USERID with your/organisation Github userID
+         ** and REPOSITORY with the repository name on GitHub
+        */
+ url = uri("https://maven.pkg.github.com/anytypeio/go-anytype-middleware")
+credentials {
+        /** Create github.properties in root project folder file with
+         ** gpr.usr=GITHUB_USER_ID & gpr.key=PERSONAL_ACCESS_TOKEN
+         ** Set env variable GPR_USER & GPR_API_KEY if not adding a properties file**/
+
+         username = githubProperties['gpr.usr'] ?: System.getenv("GITHUB_USER")
+         password = githubProperties['gpr.key'] ?: System.getenv("GITHUB_TOKEN")
+      }
+    }
+  }
+}
