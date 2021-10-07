@@ -805,6 +805,7 @@
     - [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet)
     - [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet)
     - [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete)
+    - [Event.Block.Dataview.ViewOrder](#anytype.Event.Block.Dataview.ViewOrder)
     - [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
@@ -12460,6 +12461,22 @@ sent when the dataview relation has been changed or added
 
 
 
+<a name="anytype.Event.Block.Dataview.ViewOrder"></a>
+
+### Event.Block.Dataview.ViewOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewIds | [string](#string) | repeated | view ids in new order |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Dataview.ViewSet"></a>
 
 ### Event.Block.Dataview.ViewSet
@@ -13695,6 +13712,7 @@ Precondition: user A opened a block
 | blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
+| blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype.Event.Block.Dataview.ViewOrder) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |

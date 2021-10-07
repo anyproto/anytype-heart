@@ -174,6 +174,22 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 					Source: dv.content.Source,
 				}}}})
 	}
+
+	var viewIds1, viewIds2 []string
+	for _, v := range d.content.Views {
+		viewIds1 = append(viewIds1, v.Id)
+	}
+	for _, v := range dv.content.Views {
+		viewIds2 = append(viewIds2, v.Id)
+	}
+	if !slice.SortedEquals(viewIds1, viewIds2) {
+		msgs = append(msgs,
+			simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewViewOrder{
+				&pb.EventBlockDataviewViewOrder{
+					Id:      dv.Id,
+					ViewIds: viewIds2,
+				}}}})
+	}
 	return
 }
 
