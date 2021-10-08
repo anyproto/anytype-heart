@@ -64,7 +64,7 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 
 	var relsToSet []*model.Relation
 	for _, rel := range relations {
-		if pbtypes.HasField(rec.Details, rel.Key) {
+		if sp.objectTypeUrl == "" || pbtypes.HasField(rec.Details, rel.Key) {
 			relsToSet = append(relsToSet, rel)
 		}
 	}
