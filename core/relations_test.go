@@ -1288,10 +1288,10 @@ func TestRelationSet(t *testing.T) {
 		respOpenRelationSet := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreateRelationSet.Id})
 		require.Equal(t, 0, int(respOpenRelationSet.Error.Code), respOpenRelationSet.Error.Description)
 
-		respCreateRecordInRelationSetWithoutType := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{ContextId: respCreateRelationSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom2"), newRelation.Key: pbtypes.String("newRelationVal")}}})
-		require.Equal(t, 1, int(respCreateRecordInRelationSetWithoutType.Error.Code), respCreateRecordInRelationSetWithoutType.Error.Description)
+		respCreateRecordInRelationSetWithoutType := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{ContextId: respCreateRelationSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom2"), relToCreate.Key: pbtypes.String("newRelationVal")}}})
+		require.Equal(t, 0, int(respCreateRecordInRelationSetWithoutType.Error.Code), respCreateRecordInRelationSetWithoutType.Error.Description) //
 
-		respCreateRecordInRelationSetWithType := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{ContextId: respCreateRelationSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom2"), newRelation.Key: pbtypes.String("newRelationVal"), bundle.RelationKeyType.String(): pbtypes.String(respObjectTypeCreate.ObjectType.Url)}}})
+		respCreateRecordInRelationSetWithType := mw.BlockDataviewRecordCreate(&pb.RpcBlockDataviewRecordCreateRequest{ContextId: respCreateRelationSet.Id, BlockId: "dataview", Record: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("custom2"), relToCreate.Key: pbtypes.String("newRelationVal"), bundle.RelationKeyType.String(): pbtypes.String(respObjectTypeCreate.ObjectType.Url)}}})
 		require.Equal(t, 0, int(respCreateRecordInRelationSetWithType.Error.Code), respCreateRecordInRelationSetWithType.Error.Description)
 
 		customObjectId := respCreateRecordInRelationSetWithType.Record.Fields["id"].GetStringValue()

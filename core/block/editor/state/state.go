@@ -771,8 +771,8 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 		s.localDetails = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 
-	if _, isNull := value.GetKind().(*types.Value_NullValue); value == nil || isNull {
-		delete(s.localDetails.Fields, key)
+	if value == nil {
+		delete(s.details.Fields, key)
 		return
 	}
 
@@ -782,8 +782,7 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 
 func (s *State) SetLocalDetails(d *types.Struct) {
 	for k, v := range d.GetFields() {
-		// todo: remove null cleanup(should be done when receiving from client)
-		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+		if v == nil {
 			delete(d.Fields, k)
 		}
 	}
@@ -803,7 +802,7 @@ func (s *State) SetDetail(key string, value *types.Value) {
 		s.details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 
-	if _, isNull := value.GetKind().(*types.Value_NullValue); value == nil || isNull {
+	if value == nil {
 		delete(s.details.Fields, key)
 		return
 	}

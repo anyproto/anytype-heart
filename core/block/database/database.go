@@ -32,7 +32,7 @@ type Ctrl interface {
 }
 
 type Router interface {
-	Get(objectType string) (database.Database, error) // objectType can be empty, means it is not explicitly set
+	Get(objectType *model.ObjectType) (database.Database, error) // objectType can be empty, means it is not explicitly set
 }
 
 func New(s Ctrl) Router {
@@ -41,7 +41,7 @@ func New(s Ctrl) Router {
 
 type router struct{ s Ctrl }
 
-func (r router) Get(objectType string) (database.Database, error) {
+func (r router) Get(objectType *model.ObjectType) (database.Database, error) {
 	// todo: wrap into iface
 	setDetailsNoContext := func(req pb.RpcBlockSetDetailsRequest) error {
 		return r.s.SetDetails(nil, req)
