@@ -865,9 +865,9 @@ func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	copy := pbtypes.CopyRelations(s.ExtraRelations())
 
-	var existsMap = map[string]*model.Relation{}
-	for _, rel := range copy {
-		existsMap[rel.Key] = rel
+	var existsMap = map[string]int{}
+	for i, rel := range copy {
+		existsMap[rel.Key] = i
 	}
 	for _, rel := range relations {
 		if rel.Key == "" {
@@ -885,13 +885,9 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 		}
 
 		if relEx, exists := existsMap[rel.Key]; exists {
-			c := pbtypes.CopyRelation(rel)
-			if !pbtypes.RelationEqualOmitDictionary(relEx, rel) {
-				c = relEx
+			if !pbtypes.RelationEqualOmitDictionary(copy[relEx], rel) {
 				log.Warnf("failed to AddExtraRelations: provided relation %s not equal to existing aggregated one", rel.Key)
 			}
-			relationsWithKeys = append(relationsWithKeys, c)
-			copy = append(copy, c)
 		} else {
 			existingRelation, err := sb.Anytype().ObjectStore().GetRelation(rel.Key)
 			if err != nil {
