@@ -162,6 +162,12 @@ jobs:
           sudo /usr/sbin/purge
           gtar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
           mv android_lib_${VERSION}.tar.gz .release/
+      - name: Publish android lib to maven
+        run: |
+          gradle publish
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_USER: ${{ github.actor }}
       - name: Release
         uses: softprops/action-gh-release@v1
         with:
