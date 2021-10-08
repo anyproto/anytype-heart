@@ -829,11 +829,13 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	)
 
 	for _, rel := range schema.RequiredRelations() {
+		// required relations (e.g. in the set by relation) should be visible by default. RequiredRelations includes name
 		relations = append(relations, rel)
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
 	}
 
 	for _, rel := range schema.ListRelations() {
+		// other relations should be added with
 		if pbtypes.HasRelation(relations, rel.Key) {
 			continue
 		}
@@ -843,14 +845,17 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	}
 
 	for _, relKey := range bundle.RequiredInternalRelations {
-		if !pbtypes.HasRelation(relations, relKey.String()) {
-			rel := bundle.MustGetRelation(relKey)
-			if rel.Hidden {
-				continue
-			}
-			relations = append(relations, rel)
-			viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
+		// add all non-hidden system-wide internal relations just in case
+		if pbtypes.HasRelation(relations, relKey.String()) {
+			continue
 		}
+		rel := bundle.MustGetRelation(relKey)
+		if rel.Hidden {
+			continue
+		}
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
+
 	}
 
 	dataview := model.BlockContentOfDataview{
