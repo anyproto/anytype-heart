@@ -174,6 +174,8 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 			Description: pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
 			IconImage:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
 			IconEmoji:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
+			Done: 	     pbtypes.GetBool(rec.Details, bundle.RelationKeyDone.String()),
+			RelationFormat: int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyRelationFormat.String())),
 		})
 
 		var outgoingRelationLink = make(map[string]struct{}, 10)
