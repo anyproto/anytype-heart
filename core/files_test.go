@@ -1,11 +1,14 @@
 package core
 
 import (
-	"testing"
-
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/stretchr/testify/require"
+	"os"
+	"testing"
 )
 
 func TestFile(t *testing.T) {
@@ -43,6 +46,18 @@ func TestFile(t *testing.T) {
 		respUploadFile2 := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
 		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
 		require.Equal(t, respUploadFile1.Hash, respUploadFile2.Hash)
+	})
+	t.Run("image_offload", func(t *testing.T) {
+		coreService := mw.app.MustComponent(core.CName).(core.Service)
+		f, err := os.OpenFile("../pkg/lib/mill/testdata/image.jpeg", os.O_RDONLY, 0600)
+		require.NoError(t, err)
+
+		i, err := coreService.ImageAdd(context.Background(), files.WithReader(f))
+		require.NoError(t, err)
+
+		bytesRemoved, err := coreService.FileOffload(i.Hash())
+		require.NoError(t, err)
+		require.Equal(t, uint64(503908), bytesRemoved)
 	})
 
 }

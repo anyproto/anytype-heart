@@ -2464,6 +2464,57 @@ message Rpc {
                     }
                 }
             }
+
+            message Offload {
+                message Request {
+                    string id = 1;
+                    bool includeNotPinned = 2;
+                }
+                message Response {
+                    Error error = 1;
+                    uint64 bytesOffloaded = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                            NODE_NOT_STARTED = 103;
+                            FILE_NOT_YET_PINNED = 104;
+
+                        }
+                    }
+                }
+            }
+            message OffloadAll {
+                message Request {
+                    bool includeNotPinned = 1;
+                }
+
+                message Response {
+                    Error error = 1;
+                    int32 offloadedFiles = 2;
+                    uint64 bytesOffloaded = 3;
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                            NODE_NOT_STARTED = 103;
+
+                        }
+                    }
+                }
+            }
+
         }
 
         message Image {

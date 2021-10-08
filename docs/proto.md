@@ -441,6 +441,14 @@
     - [Rpc.Ipfs.File.Get.Request](#anytype.Rpc.Ipfs.File.Get.Request)
     - [Rpc.Ipfs.File.Get.Response](#anytype.Rpc.Ipfs.File.Get.Response)
     - [Rpc.Ipfs.File.Get.Response.Error](#anytype.Rpc.Ipfs.File.Get.Response.Error)
+    - [Rpc.Ipfs.File.Offload](#anytype.Rpc.Ipfs.File.Offload)
+    - [Rpc.Ipfs.File.Offload.Request](#anytype.Rpc.Ipfs.File.Offload.Request)
+    - [Rpc.Ipfs.File.Offload.Response](#anytype.Rpc.Ipfs.File.Offload.Response)
+    - [Rpc.Ipfs.File.Offload.Response.Error](#anytype.Rpc.Ipfs.File.Offload.Response.Error)
+    - [Rpc.Ipfs.File.OffloadAll](#anytype.Rpc.Ipfs.File.OffloadAll)
+    - [Rpc.Ipfs.File.OffloadAll.Request](#anytype.Rpc.Ipfs.File.OffloadAll.Request)
+    - [Rpc.Ipfs.File.OffloadAll.Response](#anytype.Rpc.Ipfs.File.OffloadAll.Response)
+    - [Rpc.Ipfs.File.OffloadAll.Response.Error](#anytype.Rpc.Ipfs.File.OffloadAll.Response.Error)
     - [Rpc.Ipfs.Image](#anytype.Rpc.Ipfs.Image)
     - [Rpc.Ipfs.Image.Get](#anytype.Rpc.Ipfs.Image.Get)
     - [Rpc.Ipfs.Image.Get.Blob](#anytype.Rpc.Ipfs.Image.Get.Blob)
@@ -726,6 +734,8 @@
     - [Rpc.History.Show.Response.Error.Code](#anytype.Rpc.History.Show.Response.Error.Code)
     - [Rpc.History.Versions.Response.Error.Code](#anytype.Rpc.History.Versions.Response.Error.Code)
     - [Rpc.Ipfs.File.Get.Response.Error.Code](#anytype.Rpc.Ipfs.File.Get.Response.Error.Code)
+    - [Rpc.Ipfs.File.Offload.Response.Error.Code](#anytype.Rpc.Ipfs.File.Offload.Response.Error.Code)
+    - [Rpc.Ipfs.File.OffloadAll.Response.Error.Code](#anytype.Rpc.Ipfs.File.OffloadAll.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.Blob.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.Blob.Response.Error.Code)
     - [Rpc.Ipfs.Image.Get.File.Response.Error.Code](#anytype.Rpc.Ipfs.Image.Get.File.Response.Error.Code)
     - [Rpc.LinkPreview.Response.Error.Code](#anytype.Rpc.LinkPreview.Response.Error.Code)
@@ -1021,6 +1031,8 @@
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request) | [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response) |  |
 | ImageGetBlob | [Rpc.Ipfs.Image.Get.Blob.Request](#anytype.Rpc.Ipfs.Image.Get.Blob.Request) | [Rpc.Ipfs.Image.Get.Blob.Response](#anytype.Rpc.Ipfs.Image.Get.Blob.Response) |  |
+| FileOffload | [Rpc.Ipfs.File.Offload.Request](#anytype.Rpc.Ipfs.File.Offload.Request) | [Rpc.Ipfs.File.Offload.Response](#anytype.Rpc.Ipfs.File.Offload.Response) |  |
+| FilesOffloadAll | [Rpc.Ipfs.File.OffloadAll.Request](#anytype.Rpc.Ipfs.File.OffloadAll.Request) | [Rpc.Ipfs.File.OffloadAll.Response](#anytype.Rpc.Ipfs.File.OffloadAll.Response) |  |
 | VersionGet | [Rpc.Version.Get.Request](#anytype.Rpc.Version.Get.Request) | [Rpc.Version.Get.Response](#anytype.Rpc.Version.Get.Response) |  |
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
@@ -7535,6 +7547,122 @@ Namespace, that agregates subtopics and actions to work with IPFS directly (get 
 
 
 
+<a name="anytype.Rpc.Ipfs.File.Offload"></a>
+
+### Rpc.Ipfs.File.Offload
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File.Offload.Request"></a>
+
+### Rpc.Ipfs.File.Offload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| includeNotPinned | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File.Offload.Response"></a>
+
+### Rpc.Ipfs.File.Offload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Ipfs.File.Offload.Response.Error](#anytype.Rpc.Ipfs.File.Offload.Response.Error) |  |  |
+| bytesOffloaded | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File.Offload.Response.Error"></a>
+
+### Rpc.Ipfs.File.Offload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Ipfs.File.Offload.Response.Error.Code](#anytype.Rpc.Ipfs.File.Offload.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File.OffloadAll"></a>
+
+### Rpc.Ipfs.File.OffloadAll
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File.OffloadAll.Request"></a>
+
+### Rpc.Ipfs.File.OffloadAll.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| includeNotPinned | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File.OffloadAll.Response"></a>
+
+### Rpc.Ipfs.File.OffloadAll.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Ipfs.File.OffloadAll.Response.Error](#anytype.Rpc.Ipfs.File.OffloadAll.Response.Error) |  |  |
+| offloadedFiles | [int32](#int32) |  |  |
+| bytesOffloaded | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Ipfs.File.OffloadAll.Response.Error"></a>
+
+### Rpc.Ipfs.File.OffloadAll.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Ipfs.File.OffloadAll.Response.Error.Code](#anytype.Rpc.Ipfs.File.OffloadAll.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Ipfs.Image"></a>
 
 ### Rpc.Ipfs.Image
@@ -8768,7 +8896,9 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+deprecated, to be removed |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 | ignoreWorkspace | [bool](#bool) |  |  |
 
@@ -11481,6 +11611,35 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 | ... |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.Ipfs.File.Offload.Response.Error.Code"></a>
+
+### Rpc.Ipfs.File.Offload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 103 | ... |
+| FILE_NOT_YET_PINNED | 104 |  |
+
+
+
+<a name="anytype.Rpc.Ipfs.File.OffloadAll.Response.Error.Code"></a>
+
+### Rpc.Ipfs.File.OffloadAll.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 103 | ... |
 
 
 

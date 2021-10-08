@@ -22,6 +22,8 @@ service ClientCommands {
     rpc AccountStop (anytype.Rpc.Account.Stop.Request) returns (anytype.Rpc.Account.Stop.Response);
 
     rpc ImageGetBlob (anytype.Rpc.Ipfs.Image.Get.Blob.Request) returns (anytype.Rpc.Ipfs.Image.Get.Blob.Response);
+    rpc FileOffload (anytype.Rpc.Ipfs.File.Offload.Request) returns (anytype.Rpc.Ipfs.File.Offload.Response);
+    rpc FilesOffloadAll (anytype.Rpc.Ipfs.File.OffloadAll.Request) returns (anytype.Rpc.Ipfs.File.OffloadAll.Response);
 
     rpc VersionGet (anytype.Rpc.Version.Get.Request) returns (anytype.Rpc.Version.Get.Response);
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);

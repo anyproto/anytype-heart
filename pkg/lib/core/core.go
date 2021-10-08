@@ -72,6 +72,9 @@ type Service interface {
 	DeleteBlock(blockId string) error
 	CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error)
 
+	// FileOffload removes file blocks ercursively, but leave details
+	FileOffload(id string) (bytesRemoved uint64, err error)
+
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
 	FileAddWithBytes(ctx context.Context, content []byte, filename string) (File, error)         // deprecated

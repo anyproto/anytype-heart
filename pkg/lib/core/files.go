@@ -3,7 +3,10 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/ipfs/go-cid"
+	format "github.com/ipfs/go-ipld-format"
 	"io"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
@@ -28,6 +31,80 @@ func (a *Anytype) FileStoreKeys(fileKeys ...files.FileKeys) error {
 	}
 
 	return a.fileStore.AddFileKeys(fks...)
+}
+
+func (a *Anytype) GetAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
+	//fileList, err := a.fileStore.ListByTarget(hash)
+	var getCidsLinksRecursively func(visitedMap map[string]struct{}, c cid.Cid) (totalSize uint64, cids []cid.Cid, err error)
+
+	getCidsLinksRecursively = func(visitedMap map[string]struct{}, c cid.Cid) (totalSize uint64, cids []cid.Cid, err error) {
+		if exists, err := a.ipfs.BlockStore().Has(c); err != nil {
+			return 0, nil, err
+		} else if !exists {
+			// double-check the blockstore, if we don't have the block - we have not yet downloaded it
+			// otherwise format.GetLinks will do bitswap
+			return 0, nil, nil
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		links, err := format.GetLinks(ctx, a.ipfs, c)
+		if err != nil {
+			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
+		}
+		cancel()
+		if len(links) == 0 {
+			return 0, nil, nil
+		}
+		for _, link := range links {
+			if _, visited := visitedMap[link.Cid.String()]; visited {
+				continue
+			}
+			visitedMap[link.Cid.String()] = struct{}{}
+			nestedLinksSize, nestedLinks, err := getCidsLinksRecursively(visitedMap, link.Cid)
+			if err != nil {
+				return 0, nil, err
+			}
+			totalSize += link.Size + nestedLinksSize
+			cids = append(cids, append(nestedLinks, link.Cid)...)
+		}
+
+		return
+	}
+
+	c, err := cid.Parse(hash)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	totalSize, links, err := getCidsLinksRecursively(map[string]struct{}{}, c)
+	if err != nil {
+		return 0, nil, err
+	}
+
+	cids = append(cids, append(links, c)...)
+
+	return totalSize, cids, nil
+}
+
+func (a *Anytype) FileOffload(hash string) (totalSize uint64, err error) {
+	totalSize, cids, err := a.GetAllExistingFileBlocksCids(hash)
+	if err != nil {
+		return 0, err
+	}
+
+	for _, c := range cids {
+		c, err := cid.Parse(c)
+		if err != nil {
+			return 0, err
+		}
+
+		err = a.ipfs.Remove(context.Background(), c)
+		if err != nil {
+			// no need to check for cid not exists
+			return 0, err
+		}
+	}
+
+	return totalSize, nil
 }
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
