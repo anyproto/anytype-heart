@@ -8276,6 +8276,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | description | [string](#string) |  |  |
 | iconImage | [string](#string) |  |  |
 | iconEmoji | [string](#string) |  |  |
+| done | [bool](#bool) |  |  |
+| relationFormat | [int32](#int32) |  |  |
 
 
 
@@ -8768,7 +8770,9 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+deprecated, to be removed |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
 | ignoreWorkspace | [bool](#bool) |  |  |
 
