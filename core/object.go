@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 	"github.com/tj/go-naturaldate"
@@ -215,6 +216,11 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 		}
 		links, _ := at.ObjectStore().GetOutboundLinksById(id)
 		for _, link := range links {
+			sbType, _ := smartblock.SmartBlockTypeFromID(link)
+			// ignore files because we index all file blocks as outgoing links
+			if sbType == smartblock.SmartBlockTypeFile {
+				continue
+			}
 			if _, exists := outgoingRelationLink[link]; !exists {
 				if _, exists := nodeExists[link]; !exists {
 					continue

@@ -576,6 +576,16 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 }
 
 func (s *service) DeleteObject(id string) (err error) {
+	var fileHashes []string
+	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		st := b.NewState()
+		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
+		return nil
+	})
+	if err != nil && err != ErrBlockNotFound {
+		return err
+	}
+
 	err = s.CloseBlock(id)
 	if err != nil && err != ErrBlockNotFound {
 		return err
@@ -584,6 +594,25 @@ func (s *service) DeleteObject(id string) (err error) {
 	if err = s.anytype.DeleteBlock(id); err != nil {
 		return
 	}
+	for _, fileHash := range fileHashes {
+		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
+		if err != nil {
+			log.Errorf("failed to get inbound links for file %s: %s", fileHash, err.Error())
+			continue
+		}
+		if len(inboundLinks) == 0 {
+			_, err = s.Anytype().FileOffload(fileHash)
+			if err != nil {
+				log.Errorf("failed to offload file %s: %s", fileHash, err.Error())
+				continue
+			}
+			if err = s.Anytype().ObjectStore().DeleteObject(fileHash); err != nil {
+				return err
+			}
+
+		}
+	}
+
 	s.sendOnRemoveEvent(id)
 	return
 }

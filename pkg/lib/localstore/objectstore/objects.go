@@ -237,6 +237,8 @@ type ObjectStore interface {
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetOutboundLinksById(id string) ([]string, error)
+	GetInboundLinksById(id string) ([]string, error)
+
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error)
@@ -1248,6 +1250,16 @@ func (m *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
 	return findOutboundLinks(txn, id)
 }
 
+func (m *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return findInboundLinks(txn, id)
+}
+
 func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
@@ -2045,9 +2057,9 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		// todo: remove null cleanup(should be done when receiving from client)
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
-				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
-			} else {
 				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
+			} else {
+				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
 			}
 		}
 	}

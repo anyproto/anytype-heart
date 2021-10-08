@@ -1079,7 +1079,8 @@ func (s *State) Snippet() (snippet string) {
 
 func (s *State) FileRelationKeys() (fileKeys []string) {
 	for _, rel := range s.ExtraRelations() {
-		if rel.Format == model.RelationFormat_file {
+		// coverId can contains both hash or predefined cover id
+		if rel.Format == model.RelationFormat_file || rel.Key == bundle.RelationKeyCoverId.String() {
 			if slice.FindPos(fileKeys, rel.Key) == -1 {
 				fileKeys = append(fileKeys, rel.Key)
 			}
