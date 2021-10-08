@@ -41,6 +41,7 @@ type Block interface {
 	SetView(viewID string, view model.BlockContentDataviewView) error
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
+	SetViewOrder(ids []string)
 
 	AddRelation(relation model.Relation)
 	GetRelation(relationKey string) (*model.Relation, error)
@@ -532,6 +533,22 @@ func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error 
 	}
 
 	return fmt.Errorf("relation not found")
+}
+
+func (d *Dataview) SetViewOrder(viewIds []string) {
+	var newViews = make([]*model.BlockContentDataviewView, 0, len(viewIds))
+	for _, viewId := range viewIds {
+		if view, err := d.GetView(viewId); err == nil {
+			newViews = append(newViews, view)
+		}
+	}
+	// if some view not exists in viewIds - add it to end
+	for _, view := range d.content.Views {
+		if slice.FindPos(viewIds, view.Id) == -1 {
+			newViews = append(newViews, view)
+		}
+	}
+	d.content.Views = newViews
 }
 
 func mergeSelectOptions(opts1, opts2 []*model.RelationOption) []*model.RelationOption {
