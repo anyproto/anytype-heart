@@ -830,30 +830,44 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		return "", setId, fmt.Errorf("unexpected set block type: %T", sb)
 	}
 
-	schemaRelations := schema.ListRelations()
-	if !pbtypes.HasRelation(schemaRelations, bundle.RelationKeyName.String()) {
-		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
+	var (
+		relations     []*model.Relation
+		viewRelations []*model.BlockContentDataviewRelation
+	)
+
+	for _, rel := range schema.RequiredRelations() {
+		// required relations (e.g. in the set by relation) should be visible by default. RequiredRelations includes name
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
 	}
 
-	var relations []*model.BlockContentDataviewRelation
-	for _, rel := range schemaRelations {
-		visible := !rel.Hidden
-		if rel.Key == bundle.RelationKeyType.String() {
-			visible = false
+	for _, rel := range schema.ListRelations() {
+		// other relations should be added with
+		if pbtypes.HasRelation(relations, rel.Key) {
+			continue
 		}
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
+
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 	}
 
-	for _, rel := range bundle.RequiredInternalRelations {
-		if !pbtypes.HasRelation(schemaRelations, rel.String()) {
-			schemaRelations = append(schemaRelations, bundle.MustGetRelation(rel))
-			relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
+	for _, relKey := range bundle.RequiredInternalRelations {
+		// add all non-hidden system-wide internal relations just in case
+		if pbtypes.HasRelation(relations, relKey.String()) {
+			continue
 		}
+		rel := bundle.MustGetRelation(relKey)
+		if rel.Hidden {
+			continue
+		}
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+
 	}
 
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Relations: schemaRelations,
+			Relations: relations,
 			Source:    req.Source,
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -867,7 +881,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 						},
 					},
 					Filters:   nil,
-					Relations: relations,
+					Relations: viewRelations,
 				},
 			},
 		},

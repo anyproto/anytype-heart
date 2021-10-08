@@ -281,6 +281,23 @@ func (l Like) String() string {
 	return fmt.Sprintf("%v LIKE '%s'", l.Key, pbtypes.Sprint(l.Value))
 }
 
+type Exists struct {
+	Key string
+}
+
+func (e Exists) FilterObject(g Getter) bool {
+	val := g.Get(e.Key)
+	if val == nil {
+		return false
+	}
+
+	return true
+}
+
+func (e Exists) String() string {
+	return fmt.Sprintf("%v EXISTS", e.Key)
+}
+
 type Empty struct {
 	Key string
 }
