@@ -15,11 +15,12 @@ var log = logging.Logger("anytype-core-schema")
 // Schema used to subset compatible objects by some common relations
 type Schema interface {
 	Filters() filter.Filter
-	ObjectType() string
+	ObjectType() *model.ObjectType
 	String() string      // describes the schema
 	Description() string // describes the schema
 
 	ListRelations() []*model.Relation
+	RequiredRelations() []*model.Relation
 }
 
 type schemaByType struct {
@@ -57,8 +58,12 @@ func (sch *schemaByType) ListRelations() []*model.Relation {
 	return rels
 }
 
-func (sch *schemaByType) ObjectType() string {
-	return sch.ObjType.Url
+func (sch *schemaByType) RequiredRelations() []*model.Relation {
+	return []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}
+}
+
+func (sch *schemaByType) ObjectType() *model.ObjectType {
+	return sch.ObjType
 }
 
 func (sch *schemaByType) Filters() filter.Filter {
@@ -79,6 +84,14 @@ func (sch *schemaByType) String() string {
 
 func (sch *schemaByType) Description() string {
 	return fmt.Sprintf("%s", sch.ObjType.Name)
+}
+
+func (sch *schemaByRelations) RequiredRelations() []*model.Relation {
+	rels := sch.CommonRelations
+	if !pbtypes.HasRelation(rels, bundle.RelationKeyName.String()) {
+		rels = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, rels...)
+	}
+	return rels
 }
 
 func (sch *schemaByRelations) ListRelations() []*model.Relation {
@@ -106,15 +119,15 @@ func (sch *schemaByRelations) Filters() filter.Filter {
 	}
 
 	for _, rel := range sch.CommonRelations {
-		relTypeFilter = append(relTypeFilter, filter.Not{filter.Empty{
+		relTypeFilter = append(relTypeFilter, filter.Exists{
 			Key: rel.Key,
-		}})
+		})
 	}
 
 	return relTypeFilter
 }
-func (sch *schemaByRelations) ObjectType() string {
-	return ""
+func (sch *schemaByRelations) ObjectType() *model.ObjectType {
+	return nil
 }
 
 func (sch *schemaByRelations) String() string {

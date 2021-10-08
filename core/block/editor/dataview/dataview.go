@@ -224,7 +224,7 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return nil, err
 	} else {
 		db = target
@@ -284,7 +284,7 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return err
 	} else {
 		db = target
@@ -324,7 +324,7 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return err
 	} else {
 		db = target
@@ -411,7 +411,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*mode
 		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
-	agRels, err := d.Anytype().ObjectStore().ListRelations(sch.ObjectType())
+	agRels, err := d.Anytype().ObjectStore().ListRelations(sch.ObjectType().GetUrl())
 	if err != nil {
 		return nil, err
 	}
@@ -704,12 +704,15 @@ func (d *dataviewCollectionImpl) getDatabase(blockId string) (dataview.Block, da
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
 		return nil, nil, fmt.Errorf("not a dataview block")
 	} else {
-		ot := d.getObjectTypeSource(dvBlock)
+		sch, err := d.getSchema(dvBlock)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		var db database.Database
 		if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 			return nil, nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-		} else if target, err := dbRouter.Get(ot); err != nil {
+		} else if target, err := dbRouter.Get(sch.ObjectType()); err != nil {
 			return nil, nil, err
 		} else {
 			db = target
