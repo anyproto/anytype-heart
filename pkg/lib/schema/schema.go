@@ -20,6 +20,7 @@ type Schema interface {
 	Description() string // describes the schema
 
 	ListRelations() []*model.Relation
+	RequiredRelations() []*model.Relation
 }
 
 type schemaByType struct {
@@ -57,6 +58,10 @@ func (sch *schemaByType) ListRelations() []*model.Relation {
 	return rels
 }
 
+func (sch *schemaByType) RequiredRelations() []*model.Relation {
+	return []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}
+}
+
 func (sch *schemaByType) ObjectType() *model.ObjectType {
 	return sch.ObjType
 }
@@ -79,6 +84,14 @@ func (sch *schemaByType) String() string {
 
 func (sch *schemaByType) Description() string {
 	return fmt.Sprintf("%s", sch.ObjType.Name)
+}
+
+func (sch *schemaByRelations) RequiredRelations() []*model.Relation {
+	rels := sch.CommonRelations
+	if !pbtypes.HasRelation(rels, bundle.RelationKeyName.String()) {
+		rels = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, rels...)
+	}
+	return rels
 }
 
 func (sch *schemaByRelations) ListRelations() []*model.Relation {
