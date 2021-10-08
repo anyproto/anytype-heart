@@ -854,7 +854,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 			continue
 		}
 		relations = append(relations, rel)
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 
 	}
 

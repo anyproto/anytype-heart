@@ -1322,11 +1322,11 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 }
 
 func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []*model.Relation, aggregatedRelations []*model.Relation, details *types.Struct) []*model.Relation {
-	var m = make(map[string]struct{}, len(extraRelations))
+	var m = make(map[string]int, len(extraRelations))
 	var rels = make([]*model.Relation, 0, len(objTypeRelations)+len(extraRelations))
 
-	for _, rel := range extraRelations {
-		m[rel.Key] = struct{}{}
+	for i, rel := range extraRelations {
+		m[rel.Key] = i
 		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
@@ -1335,15 +1335,19 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 			continue
 		}
 		rels = append(rels, pbtypes.CopyRelation(rel))
-		m[rel.Key] = struct{}{}
+		m[rel.Key] = len(rels) - 1
 	}
 
 	for _, rel := range aggregatedRelations {
-		if _, exists := m[rel.Key]; exists {
+		if i, exists := m[rel.Key]; exists {
+			// overwrite name that we've got from DS
+			if rels[i].Name != rel.Name {
+				rels[i].Name = rel.Name
+			}
 			continue
 		}
-		m[rel.Key] = struct{}{}
 		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = len(rels) - 1
 	}
 
 	if details == nil || details.Fields == nil {
