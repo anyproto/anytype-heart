@@ -507,14 +507,6 @@ func (s *service) ensureWorkspace(
 	}
 
 	addrs := util.MultiAddressesToStrings(thrdInfo.Addrs)
-	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs, pullAsync)
-	if err != nil {
-		return ids, err
-	}
-	WorkspaceLogger.
-		With("workspace id", workspaceId.String()).
-		With("home id", home.ID.String()).
-		Info("workspace home thread exists")
 
 	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, pullAsync)
 	if err != nil {
@@ -524,7 +516,6 @@ func (s *service) ensureWorkspace(
 		With("archive id", archive.ID.String()).
 		Info("workspace archive thread exists")
 
-	ids.Home = home.ID.String()
 	ids.Archive = archive.ID.String()
 
 	if changeCollection {
