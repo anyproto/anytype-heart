@@ -22,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -70,7 +71,7 @@ type Service interface {
 	GetBlock(blockId string) (SmartBlock, error)
 	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
 	DeleteBlock(blockId string) error
-	CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error)
+	CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error)
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
@@ -90,6 +91,7 @@ type Service interface {
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
 	GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error)
+	GetWorkspaceIdForObject(objectId string) (string, error)
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
@@ -358,12 +360,25 @@ func (a *Anytype) GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceM
 	return a.threadService.GetLatestWorkspaceMeta(workspaceId)
 }
 
+func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
+	details, err := a.objectStore.GetDetails(objectId)
+	if err != nil {
+		return "", err
+	}
+	s := details.Details.Fields[bundle.RelationKeyWorkspaceId.String()]
+	if s == nil {
+		return "", fmt.Errorf("workspace id is empty")
+	}
+
+	return s.GetStringValue(), nil
+}
+
 func (a *Anytype) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
 	return a.threadService.GetThreadActionsListenerForWorkspace(id)
 }
 
-func (a *Anytype) CreateBlock(t smartblock.SmartBlockType) (SmartBlock, error) {
-	thrd, err := a.threadService.CreateThread(t)
+func (a *Anytype) CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error) {
+	thrd, err := a.threadService.CreateThread(t, workspaceId)
 	if err != nil {
 		return nil, err
 	}

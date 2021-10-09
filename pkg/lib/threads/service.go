@@ -313,7 +313,7 @@ type Service interface {
 	CreateWorkspace(string) (thread.Info, error)
 	SelectWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error)
 	SelectAccount() error
-	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
+	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
 	DeleteThread(id string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
@@ -663,8 +663,20 @@ func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {
 	return ti, nil
 }
 
-func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
-	return s.createThreadWithCollection(blockType, s.threadsCollection, s.currentWorkspaceId)
+func (s *service) CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error) {
+	var err error
+	threadId := s.currentWorkspaceId
+	if workspaceId != "" {
+		threadId, err = thread.Decode(workspaceId)
+		if err != nil {
+			return thread.Info{}, fmt.Errorf("could not create thread, because workspace id could not be decoded: %w", err)
+		}
+	}
+	WorkspaceLogger.
+		With("workspace id", workspaceId).
+		Info("creating new thread with workspace")
+
+	return s.createThreadWithCollection(blockType, s.threadsCollection, threadId)
 }
 
 func (s *service) createThreadWithCollection(

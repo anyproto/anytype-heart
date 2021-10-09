@@ -92,6 +92,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 	progress.SetTotal(int64(filesCount) * 8) // 8 loops
 	var pagesCreated int
 
+	// TODO: add workspace id here?
 	progress.SetProgressMessage("process links (1)")
 	for name, file := range files {
 		select {

@@ -35,7 +35,8 @@
       "gratefulFor",
       "mood",
       "worriedAbout",
-      "tasks"
+      "tasks",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -76,7 +77,8 @@
       "servings",
       "ingredients",
       "instructions",
-      "difficulty"
+      "difficulty",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -112,7 +114,8 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -155,7 +158,8 @@
       "email",
       "location",
       "website",
-      "socialProfile"
+      "socialProfile",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -203,7 +207,8 @@
       "occupation",
       "instagram",
       "gender",
-      "facebook"
+      "facebook",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -242,7 +247,8 @@
       "isFavorite",
       "notes",
       "events",
-      "tasks"
+      "tasks",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -323,7 +329,8 @@
       "shipToAddress",
       "dueDate",
       "total",
-      "number"
+      "number",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -362,7 +369,8 @@
       "isFavorite",
       "problem",
       "solution",
-      "alternative"
+      "alternative",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -406,7 +414,8 @@
       "done",
       "priority",
       "tasks",
-      "linkedProjects"
+      "linkedProjects",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -473,7 +482,8 @@
       "author",
       "category",
       "rating",
-      "status"
+      "status",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -520,7 +530,8 @@
       "aperture",
       "exposure",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "workspaceId"
     ],
     "types": [
       "File"
@@ -569,7 +580,8 @@
       "stockprice",
       "tickerSymbol",
       "address",
-      "subsidiaries"
+      "subsidiaries",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -641,7 +653,8 @@
       "isFavorite",
       "notes",
       "tasks",
-      "events"
+      "events",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -680,7 +693,8 @@
       "isFavorite",
       "participants",
       "agenda",
-      "tasks"
+      "tasks",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -724,7 +738,8 @@
       "rating",
       "imdbRating",
       "rottenTomatoesRating",
-      "status"
+      "status",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -760,7 +775,8 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -837,7 +853,8 @@
       "isArchived",
       "isFavorite",
       "targetObjectType",
-      "templateIsBundled"
+      "templateIsBundled",
+      "workspaceId"
     ],
     "types": [
       "Template"
@@ -878,7 +895,8 @@
       "meditation",
       "7hourssleep",
       "journaling",
-      "healthyEating"
+      "healthyEating",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -915,7 +933,8 @@
       "isArchived",
       "tag",
       "isFavorite",
-      "setOf"
+      "setOf",
+      "workspaceId"
     ],
     "types": [
       "Set"
@@ -958,7 +977,8 @@
       "questions",
       "materials",
       "tasks",
-      "reflection"
+      "reflection",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -995,7 +1015,8 @@
       "isArchived",
       "tag",
       "isFavorite",
-      "mood"
+      "mood",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1031,7 +1052,8 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1077,7 +1099,8 @@
       "exposure",
       "addedDate",
       "focalRatio",
-      "fileExt"
+      "fileExt",
+      "workspaceId"
     ],
     "types": [
       "File"
@@ -1120,7 +1143,8 @@
       "attachments",
       "assignee",
       "dueDate",
-      "priority"
+      "priority",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1205,7 +1229,8 @@
       "addedDate",
       "fileExt",
       "audioArtist",
-      "audioLyrics"
+      "audioLyrics",
+      "workspaceId"
     ],
     "types": [
       "File"
@@ -1246,7 +1271,8 @@
       "resources",
       "result",
       "dueDate",
-      "responsible"
+      "responsible",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1286,7 +1312,8 @@
       "progress",
       "status",
       "dueDate",
-      "tasks"
+      "tasks",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1331,7 +1358,8 @@
       "attachments",
       "assignee",
       "dueDate",
-      "priority"
+      "priority",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1367,7 +1395,8 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1406,7 +1435,8 @@
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
-      "fileExt"
+      "fileExt",
+      "workspaceId"
     ],
     "types": [
       "File"
@@ -1448,7 +1478,8 @@
       "timeframe",
       "budget",
       "stakeholders",
-      "tasks"
+      "tasks",
+      "workspaceId"
     ],
     "types": [
       "Page"

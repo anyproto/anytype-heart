@@ -799,7 +799,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		return
 	}
 
-	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet)
+	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet, "")
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return

@@ -627,6 +627,7 @@ func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string
 			}
 		}
 	}
+	// TODO: do we need workspace id here
 	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
 	if err != nil {
 		return nil, err
