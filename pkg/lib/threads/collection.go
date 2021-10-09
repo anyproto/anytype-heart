@@ -18,11 +18,31 @@ import (
 
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
+const MetaCollectionName = "meta"
 
 type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
+}
+
+type WorkspaceMeta interface {
+	WorkspaceName() string
+	TitleWorkspaceId() string
+}
+
+type metaInfo struct {
+	ID            db.InstanceID `json:"_id"`
+	Name          string
+	TitleThreadId string
+}
+
+func (m *metaInfo) WorkspaceName() string {
+	return m.Name
+}
+
+func (m *metaInfo) TitleWorkspaceId() string {
+	return m.TitleThreadId
 }
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success

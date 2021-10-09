@@ -319,6 +319,7 @@ type Service interface {
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllThreadsInWorkspace(id string) ([]string, error)
+	GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, error)
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
@@ -376,7 +377,7 @@ func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
 		}
 	}
 
-	collection := processor.GetCollection()
+	collection := processor.GetThreadCollection()
 	instancesBytes, err := collection.Find(&threadsDb.Query{})
 	if err != nil {
 		return nil, err
@@ -395,6 +396,39 @@ func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
 	}
 
 	return threadsInWorkspace, nil
+}
+
+func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, error) {
+	threadId, err := thread.Decode(workspaceId)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		processor, err = s.startWorkspaceThreadProcessor(workspaceId)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	metaCollection := processor.GetMetaCollection()
+
+	results, err := metaCollection.Find(&threadsDb.Query{})
+	if err != nil {
+		return nil, fmt.Errorf("could not get meta for workspace: %w", err)
+	}
+	if len(results) == 0 {
+		return nil, fmt.Errorf("no meta entries found in workspace")
+	}
+
+	mInfo := metaInfo{}
+	threadsUtil.InstanceFromJSON(results[0], &mInfo)
+
+	return &metaInfo{}, nil
 }
 
 func (s *service) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
@@ -458,7 +492,7 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 	// create new workspace thread
 	workspaceThread, err := s.createThreadWithCollection(
 		smartblock.SmartBlockTypeWorkspace,
-		accountProcessor.GetCollection(),
+		accountProcessor.GetThreadCollection(),
 		accountProcessor.GetThreadId())
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
@@ -519,7 +553,7 @@ func (s *service) SelectAccount() error {
 	}
 
 	// TODO: we should probably add some mutex here to prevent concurrent changes
-	s.threadsCollection = accountProcessor.GetCollection()
+	s.threadsCollection = accountProcessor.GetThreadCollection()
 	s.db = accountProcessor.GetDB()
 	s.currentWorkspaceId = accountProcessor.GetThreadId()
 
@@ -603,7 +637,7 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 			return err
 		}
 
-		collectionToAdd = accountProcessor.GetCollection()
+		collectionToAdd = accountProcessor.GetThreadCollection()
 
 		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true, false)
 	}

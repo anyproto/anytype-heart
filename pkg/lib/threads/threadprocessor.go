@@ -18,7 +18,8 @@ type ThreadProcessor interface {
 	Init(thread.ID) error
 	Listen(map[thread.ID]threadInfo) error
 	GetThreadId() thread.ID
-	GetCollection() *threadsDb.Collection
+	GetThreadCollection() *threadsDb.Collection
+	GetMetaCollection() *threadsDb.Collection
 	GetDB() *threadsDb.DB
 }
 
@@ -28,14 +29,22 @@ type threadProcessor struct {
 
 	db                *threadsDb.DB
 	threadsCollection *threadsDb.Collection
+	metaCollection    *threadsDb.Collection
 
 	isAccountProcessor bool
 
 	threadId thread.ID
 }
 
-func (t *threadProcessor) GetCollection() *threadsDb.Collection {
+func (t *threadProcessor) GetThreadCollection() *threadsDb.Collection {
 	return t.threadsCollection
+}
+
+func (t *threadProcessor) GetMetaCollection() *threadsDb.Collection {
+	if t.isAccountProcessor {
+		log.Errorf("should not request meta collection from account processor")
+	}
+	return t.metaCollection
 }
 
 func (t *threadProcessor) GetDB() *threadsDb.DB {
@@ -95,16 +104,15 @@ func (t *threadProcessor) Init(id thread.ID) error {
 	if t.isAccountProcessor {
 		threadIdString = ""
 	}
-	collectionName := fmt.Sprintf("%s%s", ThreadInfoCollectionName, threadIdString)
-	t.threadsCollection = t.db.GetCollection(collectionName)
+	threadsCollectionName := GetThreadCollectionName(threadIdString)
+	metaCollectionName := GetMetaCollectionName(threadIdString)
 
-	if t.threadsCollection == nil {
-		collectionConfig := threadsDb.CollectionConfig{
-			Name:   collectionName,
-			Schema: threadsUtil.SchemaFromInstance(threadInfo{}, false),
-		}
-		t.threadsCollection, err = t.db.NewCollection(collectionConfig)
-		if err != nil {
+	if err = t.initCollection(t.threadsCollection, threadsCollectionName, threadInfo{}); err != nil {
+		return err
+	}
+
+	if t.isAccountProcessor {
+		if err = t.initCollection(t.metaCollection, metaCollectionName, metaInfo{}); err != nil {
 			return err
 		}
 	}
@@ -308,4 +316,34 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 	}()
 
 	return nil
+}
+
+func (t *threadProcessor) initCollection(
+	collection *threadsDb.Collection,
+	collectionName string,
+	schema interface{}) error {
+	collection = t.db.GetCollection(collectionName)
+
+	if collection != nil {
+		return nil
+	}
+
+	collectionConfig := threadsDb.CollectionConfig{
+		Name:   collectionName,
+		Schema: threadsUtil.SchemaFromInstance(schema, false),
+	}
+	collection, err := t.db.NewCollection(collectionConfig)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func GetThreadCollectionName(threadId string) string {
+	return fmt.Sprintf("%s%s", ThreadInfoCollectionName, threadId)
+}
+
+func GetMetaCollectionName(threadId string) string {
+	return fmt.Sprintf("%s%s", MetaCollectionName, threadId)
 }

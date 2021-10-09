@@ -113,7 +113,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	// by default setting collection to account
 	// we will change it later if needed
 	s.db = accountProcessor.GetDB()
-	s.threadsCollection = accountProcessor.GetCollection()
+	s.threadsCollection = accountProcessor.GetThreadCollection()
 	s.currentWorkspaceId = account.ID
 
 	var accountPullErr error
@@ -156,7 +156,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 				err = s.handleMissingRecordsForCollection(
 					account.ID.String(),
 					accountProcessor.GetDB(),
-					accountProcessor.GetCollection())
+					accountProcessor.GetThreadCollection())
 			} else {
 				metrics.ServedThreads.Set(0)
 			}
@@ -261,7 +261,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		go func() {
 			_ = s.handleMissingRecordsForCollection(workspaceThreadIdString,
 				workspaceProcessor.GetDB(),
-				workspaceProcessor.GetCollection())
+				workspaceProcessor.GetThreadCollection())
 		}()
 		WorkspaceLogger.
 			With("workspace id", workspaceId).
@@ -520,7 +520,7 @@ func (s *service) ensureWorkspace(
 
 	if changeCollection {
 		s.db = workspaceProcessor.GetDB()
-		s.threadsCollection = workspaceProcessor.GetCollection()
+		s.threadsCollection = workspaceProcessor.GetThreadCollection()
 		s.currentWorkspaceId = workspaceId
 
 		WorkspaceLogger.With("workspace id", workspaceId.String()).

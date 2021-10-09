@@ -89,6 +89,7 @@ type Service interface {
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
+	GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error)
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
@@ -350,6 +351,10 @@ func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 
 func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {
 	return a.threadService.GetAllThreadsInWorkspace(id)
+}
+
+func (a *Anytype) GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error) {
+	return a.threadService.GetLatestWorkspaceMeta(workspaceId)
 }
 
 func (a *Anytype) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {

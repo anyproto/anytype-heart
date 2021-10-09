@@ -154,7 +154,7 @@ func (s *service) addMissingThreadsToCollection() error {
 				continue
 			}
 		}
-		collection := processor.GetCollection()
+		collection := processor.GetThreadCollection()
 
 		_, err = collection.FindByID(threadInfo.ID)
 		if err == nil {

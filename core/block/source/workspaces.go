@@ -127,6 +127,7 @@ func (v *workspaces) listenToChanges() (err error) {
 		for {
 			select {
 			case action := <-v.listener.Channel():
+				// TODO: listen for workspace meta changes
 				go v.processThreadAction(action)
 			case <-v.ctx.Done():
 				return
@@ -198,8 +199,17 @@ func (v *workspaces) createState() (*state.State, error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 	initBlocksAndAddToRoot(s, blocks)
 
-	lastSymbols := v.id[len(v.id)-4 : len(v.id)]
-	s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("Workspace_"+lastSymbols))
+	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
+	if err != nil {
+		lastSymbols := v.id[len(v.id)-4 : len(v.id)]
+		threads.WorkspaceLogger.
+			With("workspace id", v.id).
+			Errorf("could not get latest meta: %v", err)
+		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("Workspace_"+lastSymbols))
+	} else {
+		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(meta.WorkspaceName()))
+	}
+
 
 	return s, nil
 }
