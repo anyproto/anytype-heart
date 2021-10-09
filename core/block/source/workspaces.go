@@ -210,7 +210,6 @@ func (v *workspaces) createState() (*state.State, error) {
 		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(meta.WorkspaceName()))
 	}
 
-
 	return s, nil
 }
 

@@ -84,7 +84,7 @@ type Service interface {
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
-	CreateWorkspace() (string, error)
+	CreateWorkspace(string) (string, error)
 	SelectWorkspace(workspaceId string) error
 
 	GetAllWorkspaces() ([]string, error)
@@ -295,8 +295,8 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 	}
 }
 
-func (a *Anytype) CreateWorkspace() (string, error) {
-	info, err := a.threadService.CreateWorkspace()
+func (a *Anytype) CreateWorkspace(name string) (string, error) {
+	info, err := a.threadService.CreateWorkspace(name)
 	if err != nil {
 		return "", fmt.Errorf("error creating workspace: %w", err)
 	}
@@ -335,6 +335,7 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	if err != nil {
 		return fmt.Errorf("could not select workspace: %w", err)
 	}
+	// TODO: check if we need to do this
 	a.workspaceBlockIds = &workspaceIds
 
 	err = a.objectStore.SetCurrentWorkspaceId(workspaceId)

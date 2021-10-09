@@ -164,16 +164,6 @@ func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
 				},
 			}
 			mainFilter = append(mainFilter, filterOr)
-		} else {
-			threads.WorkspaceLogger.
-				With("workspace id", q.WorkspaceId).
-				With("text", q.FullText).
-				Info("searching for text in account")
-			// it can also be the case that we want to search in current account
-			// which is also kinda workspace
-			mainFilter = append(mainFilter, filter.Empty{
-				Key: bundle.RelationKeyWorkspaceId.String(),
-			})
 		}
 	} else {
 		threads.WorkspaceLogger.

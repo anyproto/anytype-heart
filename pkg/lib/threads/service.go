@@ -310,7 +310,7 @@ type Service interface {
 	Threads() threadsApp.Net
 	CafePeer() ma.Multiaddr
 
-	CreateWorkspace() (thread.Info, error)
+	CreateWorkspace(string) (thread.Info, error)
 	SelectWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error)
 	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
@@ -428,7 +428,7 @@ func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, err
 	mInfo := metaInfo{}
 	threadsUtil.InstanceFromJSON(results[0], &mInfo)
 
-	return &metaInfo{}, nil
+	return &mInfo, nil
 }
 
 func (s *service) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
@@ -483,7 +483,7 @@ func (s *service) Threads() threadsApp.Net {
 	return s.t
 }
 
-func (s *service) CreateWorkspace() (thread.Info, error) {
+func (s *service) CreateWorkspace(name string) (thread.Info, error) {
 	accountProcessor, err := s.getAccountProcessor()
 	if err != nil {
 		return thread.Info{}, err
@@ -498,26 +498,27 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 		return thread.Info{}, fmt.Errorf("failed to create new workspace thread: %w", err)
 	}
 
-	_, err = s.startWorkspaceThreadProcessor(workspaceThread.ID.String())
+	WorkspaceLogger.
+		With("workspace id", workspaceThread.ID.String()).
+		With("name", name).
+		Debug("trying to create workspace")
+
+	processor, err := s.startWorkspaceThreadProcessor(workspaceThread.ID.String())
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not start thread processor: %w", err)
 	}
 
-	workspaceReadKeyBytes := workspaceThread.Key.Read().Bytes()
+	mInfo := metaInfo{
+		ID:   db.NewInstanceID(),
+		Name: name,
+	}
+	metaCollection := processor.GetMetaCollection()
+	_, err = metaCollection.Create(threadsUtil.JSONFromInstance(mInfo))
+	if err != nil {
+		return thread.Info{}, fmt.Errorf("could not create workspace: %w", err)
+	}
 
-	// creating home thread
-	homeId, err := threadDeriveId(threadDerivedIndexHome, workspaceReadKeyBytes)
-	if err != nil {
-		return thread.Info{}, err
-	}
-	homeSk, homeRk, err := threadDeriveKeys(threadDerivedIndexHome, workspaceReadKeyBytes)
-	if err != nil {
-		return thread.Info{}, err
-	}
-	_, err = s.threadCreate(homeId, thread.NewKey(homeSk, homeRk))
-	if err != nil {
-		return thread.Info{}, fmt.Errorf("could not create home thread: %w", err)
-	}
+	workspaceReadKeyBytes := workspaceThread.Key.Read().Bytes()
 
 	// creating archive thread
 	archiveId, err := threadDeriveId(threadDerivedIndexArchive, workspaceReadKeyBytes)
@@ -535,6 +536,7 @@ func (s *service) CreateWorkspace() (thread.Info, error) {
 
 	WorkspaceLogger.
 		With("workspace id", workspaceThread.ID.String()).
+		With("name", name).
 		Debug("created workspace")
 	return workspaceThread, nil
 }

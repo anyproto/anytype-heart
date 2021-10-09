@@ -462,7 +462,7 @@ func (s *service) CloseBlocks() {
 }
 
 func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
-	return s.anytype.CreateWorkspace()
+	return s.anytype.CreateWorkspace(req.Name)
 }
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {

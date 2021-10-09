@@ -107,12 +107,12 @@ func (t *threadProcessor) Init(id thread.ID) error {
 	threadsCollectionName := GetThreadCollectionName(threadIdString)
 	metaCollectionName := GetMetaCollectionName(threadIdString)
 
-	if err = t.initCollection(t.threadsCollection, threadsCollectionName, threadInfo{}); err != nil {
+	if err = t.initCollection(&t.threadsCollection, threadsCollectionName, threadInfo{}); err != nil {
 		return err
 	}
 
-	if t.isAccountProcessor {
-		if err = t.initCollection(t.metaCollection, metaCollectionName, metaInfo{}); err != nil {
+	if !t.isAccountProcessor {
+		if err = t.initCollection(&t.metaCollection, metaCollectionName, metaInfo{}); err != nil {
 			return err
 		}
 	}
@@ -319,12 +319,12 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 }
 
 func (t *threadProcessor) initCollection(
-	collection *threadsDb.Collection,
+	collection **threadsDb.Collection,
 	collectionName string,
-	schema interface{}) error {
-	collection = t.db.GetCollection(collectionName)
+	schema interface{}) (err error) {
+	*collection = t.db.GetCollection(collectionName)
 
-	if collection != nil {
+	if *collection != nil {
 		return nil
 	}
 
@@ -332,12 +332,12 @@ func (t *threadProcessor) initCollection(
 		Name:   collectionName,
 		Schema: threadsUtil.SchemaFromInstance(schema, false),
 	}
-	collection, err := t.db.NewCollection(collectionConfig)
+	*collection, err = t.db.NewCollection(collectionConfig)
 	if err != nil {
-		return err
+		return
 	}
 
-	return nil
+	return
 }
 
 func GetThreadCollectionName(threadId string) string {

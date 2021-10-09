@@ -2068,6 +2068,7 @@ message Rpc {
     message Workspace {
         message Create {
             message Request {
+                string name = 1;
             }
 
             message Response {
