@@ -195,6 +195,7 @@ type Service interface {
 
 	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
 	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
+	SetWorkspaceTitleObject(req *pb.RpcWorkspaceSetTitleObjectRequest) error
 	// TODO: remove if it is not used
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
@@ -470,6 +471,10 @@ func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, er
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	return s.anytype.SelectWorkspace(req.WorkspaceId)
+}
+
+func (s *service) SetWorkspaceTitleObject(req *pb.RpcWorkspaceSetTitleObjectRequest) error {
+	return s.anytype.SetWorkspaceTitleObject(req.WorkspaceId, req.ObjectId)
 }
 
 func (s *service) GetWorkspaceIdForObject(objectId string) (string, error) {

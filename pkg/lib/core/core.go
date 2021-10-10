@@ -86,6 +86,7 @@ type Service interface {
 
 	CreateWorkspace(string) (string, error)
 	SelectWorkspace(workspaceId string) error
+	SetWorkspaceTitleObject(workspaceId string, objectId string) error
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
@@ -332,6 +333,10 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	}
 
 	return nil
+}
+
+func (a *Anytype) SetWorkspaceTitleObject(workspaceId string, objectId string) error {
+	return a.threadService.SetWorkspaceTitleObject(workspaceId, objectId)
 }
 
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {

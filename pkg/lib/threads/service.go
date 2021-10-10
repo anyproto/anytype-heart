@@ -312,6 +312,7 @@ type Service interface {
 
 	CreateWorkspace(string) (thread.Info, error)
 	SelectWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error)
+	SetWorkspaceTitleObject(workspaceId string, objectId string) error
 	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
 	DeleteThread(id string) error
@@ -429,6 +430,46 @@ func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, err
 	threadsUtil.InstanceFromJSON(results[0], &mInfo)
 
 	return &mInfo, nil
+}
+
+func (s *service) SetWorkspaceTitleObject(workspaceId string, objectId string) error {
+	meta, err := s.GetLatestWorkspaceMeta(workspaceId)
+	if err != nil {
+		return err
+	}
+
+	threadId, err := thread.Decode(workspaceId)
+	if err != nil {
+		return err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		processor, err = s.startWorkspaceThreadProcessor(workspaceId)
+		if err != nil {
+			return err
+		}
+	}
+	mInfo := meta.(*metaInfo)
+	mInfo.TitleThreadId = objectId
+	metaCollection := processor.GetMetaCollection()
+
+	err = metaCollection.Save(threadsUtil.JSONFromInstance(mInfo))
+	if err != nil {
+		WorkspaceLogger.
+			With("title object", objectId).
+			With("workspace id", workspaceId).
+			Errorf("failed to set title object: %v", err)
+	} else {
+		WorkspaceLogger.
+			With("title object", objectId).
+			With("workspace id", workspaceId).
+			Info("setting title object succeeded")
+	}
+	return err
 }
 
 func (s *service) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
@@ -672,11 +713,20 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType, workspaceId 
 			return thread.Info{}, fmt.Errorf("could not create thread, because workspace id could not be decoded: %w", err)
 		}
 	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		return thread.Info{}, fmt.Errorf("account thread processor does not exist")
+	}
+
 	WorkspaceLogger.
-		With("workspace id", workspaceId).
+		With("workspace id", threadId.String()).
 		Info("creating new thread with workspace")
 
-	return s.createThreadWithCollection(blockType, s.threadsCollection, threadId)
+	return s.createThreadWithCollection(blockType, processor.GetThreadCollection(), threadId)
 }
 
 func (s *service) createThreadWithCollection(

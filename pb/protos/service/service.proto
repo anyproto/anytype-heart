@@ -15,6 +15,7 @@ service ClientCommands {
 
     rpc WorkspaceCreate (anytype.Rpc.Workspace.Create.Request) returns (anytype.Rpc.Workspace.Create.Response);
     rpc WorkspaceSelect (anytype.Rpc.Workspace.Select.Request) returns (anytype.Rpc.Workspace.Select.Response);
+    rpc WorkspaceSetTitleObject (anytype.Rpc.Workspace.SetTitleObject.Request) returns (anytype.Rpc.Workspace.SetTitleObject.Response);
 
     rpc AccountRecover (anytype.Rpc.Account.Recover.Request) returns (anytype.Rpc.Account.Recover.Response);
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);

@@ -17,6 +17,8 @@ import (
 	threadsDb "github.com/textileio/go-threads/db"
 )
 
+const workspaceTitlePageKey = "_workspace_title_page"
+
 func NewWorkspaces(a core.Service, id string) (s Source) {
 	return &workspaces{
 		id: id,
@@ -127,8 +129,11 @@ func (v *workspaces) listenToChanges() (err error) {
 		for {
 			select {
 			case action := <-v.listener.Channel():
-				// TODO: listen for workspace meta changes
-				go v.processThreadAction(action)
+				if action.Collection == threads.GetThreadCollectionName(v.id) {
+					go v.processThreadAction(action)
+				} else {
+					go v.processMetaAction(action)
+				}
 			case <-v.ctx.Done():
 				return
 			}
@@ -172,7 +177,73 @@ func (v *workspaces) processThreadAction(action threadsDb.Action) {
 	}
 }
 
+func (v *workspaces) processMetaAction(action threadsDb.Action) {
+	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
+	if err != nil {
+		log.Errorf("failed to get workspace meta: %v", err)
+		return
+	}
+	mention := WorkspaceTitleMention(workspaceTitlePageKey, meta.TitleWorkspaceId())
+	err = v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
+		s, ok := d.(*state.State)
+		if !ok {
+			err = fmt.Errorf("doc is not state")
+			return
+		}
+		b := s.Get(workspaceTitlePageKey)
+		if b == nil {
+			err = fmt.Errorf("workspace title should not be empty")
+			return
+		}
+		_, empty := b.Model().Content.(*model.BlockContentOfSmartblock)
+		if !empty {
+			// converting previous mention to link
+			previousObjectId := b.Model().Content.(*model.BlockContentOfText).Text.Marks.Marks[0].Param
+			if previousObjectId == meta.TitleWorkspaceId() {
+				return
+			}
+			link := simple.New(&model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: previousObjectId,
+						Style:         model.BlockContentLink_Page,
+					},
+				},
+			})
+			s.Add(link)
+			err = s.InsertTo("", model.Block_Inner, link.Model().Id)
+			if err != nil {
+				return
+			}
+
+			// removing current mention as link
+			s.Iterate(func(b simple.Block) (isContinue bool) {
+				if link := b.Model().GetLink(); link != nil && link.TargetBlockId == meta.TitleWorkspaceId() {
+					s.Unlink(b.Model().Id)
+					return false
+				}
+				return true
+			})
+		}
+
+		s.Set(simple.New(mention))
+		return
+	})
+	if err != nil {
+		log.Errorf("failed to append state with new workspace thread: %v", err)
+	}
+
+}
+
 func (v *workspaces) createState() (*state.State, error) {
+	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
+	if err != nil {
+		threads.WorkspaceLogger.
+			With("workspace id", v.id).
+			Errorf("could not get latest meta: %v", err)
+		meta = nil
+	}
+
 	objects, err := v.a.GetAllObjectsInWorkspace(v.id)
 	if err != nil {
 		return nil, err
@@ -181,6 +252,9 @@ func (v *workspaces) createState() (*state.State, error) {
 	var blocks []*model.Block
 
 	for _, objId := range objects {
+		if meta != nil && meta.TitleWorkspaceId() == objId {
+			continue
+		}
 		link := &model.Block{
 			Id: bson.NewObjectId().Hex(),
 			Content: &model.BlockContentOfLink{
@@ -196,15 +270,23 @@ func (v *workspaces) createState() (*state.State, error) {
 			Info("adding initial link")
 		blocks = append(blocks, link)
 	}
+	if meta != nil && meta.TitleWorkspaceId() != "" {
+		mention := WorkspaceTitleMention(workspaceTitlePageKey, meta.TitleWorkspaceId())
+		blocks = append([]*model.Block{mention}, blocks...)
+	} else {
+		emptyMention := &model.Block{
+			Id: workspaceTitlePageKey,
+			Content: &model.BlockContentOfSmartblock{
+				Smartblock: &model.BlockContentSmartblock{},
+			},
+		}
+		blocks = append([]*model.Block{emptyMention}, blocks...)
+	}
 	s := state.NewDoc(v.id, nil).(*state.State)
 	initBlocksAndAddToRoot(s, blocks)
 
-	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
-	if err != nil {
+	if meta == nil {
 		lastSymbols := v.id[len(v.id)-4 : len(v.id)]
-		threads.WorkspaceLogger.
-			With("workspace id", v.id).
-			Errorf("could not get latest meta: %v", err)
 		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("Workspace_"+lastSymbols))
 	} else {
 		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(meta.WorkspaceName()))
@@ -231,5 +313,26 @@ func initBlocksAndAddToRoot(s *state.State, blocks []*model.Block) {
 		if err != nil {
 			log.Errorf("template WithDataview failed to insert: %w", err)
 		}
+	}
+}
+
+func WorkspaceTitleMention(objectId string, targetId string) *model.Block {
+	return &model.Block{
+		Id: objectId,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "",
+				Marks: &model.BlockContentTextMarks{
+					Marks: []*model.BlockContentTextMark{
+						{
+							Range: &model.Range{0, 0},
+							Type:  model.BlockContentTextMark_Mention,
+							Param: targetId,
+						},
+					},
+				},
+				Style: model.BlockContentText_Header1,
+			},
+		},
 	}
 }
