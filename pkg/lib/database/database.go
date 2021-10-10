@@ -6,11 +6,9 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/proto"
@@ -142,33 +140,34 @@ func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
 	}
-	if q.SearchInWorkspace {
-		if q.WorkspaceId != "" {
-			threads.WorkspaceLogger.
-				With("workspace id", q.WorkspaceId).
-				With("text", q.FullText).
-				Info("searching for text in workspace")
-			filterOr := filter.OrFilters{
-				filter.Eq{
-					Key:   bundle.RelationKeyWorkspaceId.String(),
-					Cond:  model.BlockContentDataviewFilter_Equal,
-					Value: pbtypes.String(q.WorkspaceId),
-				},
-				filter.Like{
-					Key:   bundle.RelationKeyType.String(),
-					Value: pbtypes.String(bundle.TypeKeyObjectType.String()),
-				},
-				filter.Like{
-					Key:   bundle.RelationKeyId.String(),
-					Value: pbtypes.String(addr.BundledRelationURLPrefix),
-				},
-			}
-			mainFilter = append(mainFilter, filterOr)
-		}
-	} else {
-		threads.WorkspaceLogger.
-			Info("searching in all workspaces and account")
-	}
+	// TODO: check if this logic should be finally removed
+	//if q.SearchInWorkspace {
+	//	if q.WorkspaceId != "" {
+	//		threads.WorkspaceLogger.
+	//			With("workspace id", q.WorkspaceId).
+	//			With("text", q.FullText).
+	//			Info("searching for text in workspace")
+	//		filterOr := filter.OrFilters{
+	//			filter.Eq{
+	//				Key:   bundle.RelationKeyWorkspaceId.String(),
+	//				Cond:  model.BlockContentDataviewFilter_Equal,
+	//				Value: pbtypes.String(q.WorkspaceId),
+	//			},
+	//			filter.Like{
+	//				Key:   bundle.RelationKeyType.String(),
+	//				Value: pbtypes.String(bundle.TypeKeyObjectType.String()),
+	//			},
+	//			filter.Like{
+	//				Key:   bundle.RelationKeyId.String(),
+	//				Value: pbtypes.String(addr.BundledRelationURLPrefix),
+	//			},
+	//		}
+	//		mainFilter = append(mainFilter, filterOr)
+	//	}
+	//} else {
+	//	threads.WorkspaceLogger.
+	//		Info("searching in all workspaces and account")
+	//}
 	f.filter = mainFilter
 	if len(q.Sorts) > 0 {
 		ord := filter.SetOrder{}
