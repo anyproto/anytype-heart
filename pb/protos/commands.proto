@@ -3069,9 +3069,10 @@ message Rpc {
             }
         }
 
-        message AddWithShareLink {
+        message AddWithObjectId {
             message Request {
-                string link = 1;
+                string objectId = 1;
+                string payload = 2;
             }
 
             message Response {

@@ -198,7 +198,7 @@ type Service interface {
 	// TODO: remove if it is not used
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
-	ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error
+	ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
 
 	app.ComponentRunnable
@@ -476,8 +476,8 @@ func (s *service) GetWorkspaceIdForObject(objectId string) (string, error) {
 	return s.anytype.GetWorkspaceIdForObject(objectId)
 }
 
-func (s *service) ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error {
-	return s.anytype.ObjectAddWithShareLink(req.Link)
+func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
+	return s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
 }
 
 func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error) {

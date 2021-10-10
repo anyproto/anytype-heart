@@ -8,7 +8,6 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 
 	"github.com/gogo/protobuf/proto"
@@ -95,7 +94,7 @@ type Service interface {
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
-	ObjectAddWithShareLink(link string) error
+	ObjectAddWithObjectId(objectId string, payload string) error
 	ObjectShareByLink(objectId string) (string, error)
 
 	ObjectStore() objectstore.ObjectStore // deprecated
@@ -151,35 +150,22 @@ type Anytype struct {
 	tempDir             string
 }
 
-func (a *Anytype) ObjectAddWithShareLink(link string) error {
-	query := link[strings.LastIndex(link, linkObjectShare)+len(linkObjectShare):]
-	decoded, err := url.ParseQuery(query)
-	if err != nil {
-		return fmt.Errorf("error decoding link: %w", err)
+func (a *Anytype) ObjectAddWithObjectId(objectId string, payload string) error {
+	if objectId == "" || payload == "" {
+		return fmt.Errorf("cannot add object with empty objectId or payload")
 	}
-
-	threadId := decoded.Get("id")
-	if threadId == "" {
-		return fmt.Errorf("error decoding link: no id present")
-	}
-
-	payload := decoded.Get("payload")
-	if payload == "" {
-		return fmt.Errorf("error decoding link: no payload present")
-	}
-
 	decodedPayload, err := base64.RawStdEncoding.DecodeString(payload)
 	if err != nil {
-		return fmt.Errorf("error decoding link: cannot decode base64 payload")
+		return fmt.Errorf("error adding object: cannot decode base64 payload")
 	}
 
 	var protoPayload model.ThreadDeeplinkPayload
 	err = proto.Unmarshal(decodedPayload, &protoPayload)
 	if err != nil {
-		return fmt.Errorf("failed decoding the payload: %w", err)
+		return fmt.Errorf("failed unmarshalling the payload: %w", err)
 	}
 
-	return a.threadService.AddThread(threadId, protoPayload.Key, protoPayload.Addrs)
+	return a.threadService.AddThread(objectId, protoPayload.Key, protoPayload.Addrs)
 }
 
 func (a *Anytype) ObjectShareByLink(objectId string) (string, error) {

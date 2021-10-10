@@ -478,10 +478,10 @@
     - [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype.Rpc.Navigation.ListObjects.Response.Error)
     - [Rpc.Object](#anytype.Rpc.Object)
-    - [Rpc.Object.AddWithShareLink](#anytype.Rpc.Object.AddWithShareLink)
-    - [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request)
-    - [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response)
-    - [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error)
+    - [Rpc.Object.AddWithObjectId](#anytype.Rpc.Object.AddWithObjectId)
+    - [Rpc.Object.AddWithObjectId.Request](#anytype.Rpc.Object.AddWithObjectId.Request)
+    - [Rpc.Object.AddWithObjectId.Response](#anytype.Rpc.Object.AddWithObjectId.Response)
+    - [Rpc.Object.AddWithObjectId.Response.Error](#anytype.Rpc.Object.AddWithObjectId.Response.Error)
     - [Rpc.Object.FeaturedRelation](#anytype.Rpc.Object.FeaturedRelation)
     - [Rpc.Object.FeaturedRelation.Add](#anytype.Rpc.Object.FeaturedRelation.Add)
     - [Rpc.Object.FeaturedRelation.Add.Request](#anytype.Rpc.Object.FeaturedRelation.Add.Request)
@@ -736,7 +736,7 @@
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
-    - [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code)
+    - [Rpc.Object.AddWithObjectId.Response.Error.Code](#anytype.Rpc.Object.AddWithObjectId.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Add.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
@@ -1009,7 +1009,7 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| ObjectAddWithShareLink | [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request) | [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response) |  |
+| ObjectAddWithObjectId | [Rpc.Object.AddWithObjectId.Request](#anytype.Rpc.Object.AddWithObjectId.Request) | [Rpc.Object.AddWithObjectId.Response](#anytype.Rpc.Object.AddWithObjectId.Response) |  |
 | ObjectShareByLink | [Rpc.Object.ShareByLink.Request](#anytype.Rpc.Object.ShareByLink.Request) | [Rpc.Object.ShareByLink.Response](#anytype.Rpc.Object.ShareByLink.Response) |  |
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) |  |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
@@ -8048,55 +8048,56 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink"></a>
+<a name="anytype.Rpc.Object.AddWithObjectId"></a>
 
-### Rpc.Object.AddWithShareLink
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.AddWithShareLink.Request"></a>
-
-### Rpc.Object.AddWithShareLink.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| link | [string](#string) |  |  |
+### Rpc.Object.AddWithObjectId
 
 
 
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink.Response"></a>
 
-### Rpc.Object.AddWithShareLink.Response
+<a name="anytype.Rpc.Object.AddWithObjectId.Request"></a>
+
+### Rpc.Object.AddWithObjectId.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error) |  |  |
+| objectId | [string](#string) |  |  |
+| payload | [string](#string) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error"></a>
+<a name="anytype.Rpc.Object.AddWithObjectId.Response"></a>
 
-### Rpc.Object.AddWithShareLink.Response.Error
+### Rpc.Object.AddWithObjectId.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code) |  |  |
+| error | [Rpc.Object.AddWithObjectId.Response.Error](#anytype.Rpc.Object.AddWithObjectId.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithObjectId.Response.Error"></a>
+
+### Rpc.Object.AddWithObjectId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.AddWithObjectId.Response.Error.Code](#anytype.Rpc.Object.AddWithObjectId.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11634,9 +11635,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error.Code"></a>
+<a name="anytype.Rpc.Object.AddWithObjectId.Response.Error.Code"></a>
 
-### Rpc.Object.AddWithShareLink.Response.Error.Code
+### Rpc.Object.AddWithObjectId.Response.Error.Code
 
 
 | Name | Number | Description |
