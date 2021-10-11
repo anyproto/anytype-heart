@@ -312,11 +312,6 @@
     - [Rpc.BlockList.ConvertChildrenToPages.Request](#anytype.Rpc.BlockList.ConvertChildrenToPages.Request)
     - [Rpc.BlockList.ConvertChildrenToPages.Response](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response)
     - [Rpc.BlockList.ConvertChildrenToPages.Response.Error](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error)
-    - [Rpc.BlockList.Delete](#anytype.Rpc.BlockList.Delete)
-    - [Rpc.BlockList.Delete.Page](#anytype.Rpc.BlockList.Delete.Page)
-    - [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request)
-    - [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response)
-    - [Rpc.BlockList.Delete.Page.Response.Error](#anytype.Rpc.BlockList.Delete.Page.Response.Error)
     - [Rpc.BlockList.Duplicate](#anytype.Rpc.BlockList.Duplicate)
     - [Rpc.BlockList.Duplicate.Request](#anytype.Rpc.BlockList.Duplicate.Request)
     - [Rpc.BlockList.Duplicate.Response](#anytype.Rpc.BlockList.Duplicate.Response)
@@ -348,15 +343,6 @@
     - [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField)
     - [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response)
     - [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error)
-    - [Rpc.BlockList.Set.Page](#anytype.Rpc.BlockList.Set.Page)
-    - [Rpc.BlockList.Set.Page.IsArchived](#anytype.Rpc.BlockList.Set.Page.IsArchived)
-    - [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request)
-    - [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response)
-    - [Rpc.BlockList.Set.Page.IsArchived.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error)
-    - [Rpc.BlockList.Set.Page.IsFavorite](#anytype.Rpc.BlockList.Set.Page.IsFavorite)
-    - [Rpc.BlockList.Set.Page.IsFavorite.Request](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Request)
-    - [Rpc.BlockList.Set.Page.IsFavorite.Response](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response)
-    - [Rpc.BlockList.Set.Page.IsFavorite.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
     - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
     - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
@@ -557,6 +543,20 @@
     - [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request)
     - [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response)
     - [Rpc.Object.ToSet.Response.Error](#anytype.Rpc.Object.ToSet.Response.Error)
+    - [Rpc.ObjectList](#anytype.Rpc.ObjectList)
+    - [Rpc.ObjectList.Delete](#anytype.Rpc.ObjectList.Delete)
+    - [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request)
+    - [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response)
+    - [Rpc.ObjectList.Delete.Response.Error](#anytype.Rpc.ObjectList.Delete.Response.Error)
+    - [Rpc.ObjectList.Set](#anytype.Rpc.ObjectList.Set)
+    - [Rpc.ObjectList.Set.IsArchived](#anytype.Rpc.ObjectList.Set.IsArchived)
+    - [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request)
+    - [Rpc.ObjectList.Set.IsArchived.Response](#anytype.Rpc.ObjectList.Set.IsArchived.Response)
+    - [Rpc.ObjectList.Set.IsArchived.Response.Error](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error)
+    - [Rpc.ObjectList.Set.IsFavorite](#anytype.Rpc.ObjectList.Set.IsFavorite)
+    - [Rpc.ObjectList.Set.IsFavorite.Request](#anytype.Rpc.ObjectList.Set.IsFavorite.Request)
+    - [Rpc.ObjectList.Set.IsFavorite.Response](#anytype.Rpc.ObjectList.Set.IsFavorite.Response)
+    - [Rpc.ObjectList.Set.IsFavorite.Response.Error](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error)
     - [Rpc.ObjectType](#anytype.Rpc.ObjectType)
     - [Rpc.ObjectType.Create](#anytype.Rpc.ObjectType.Create)
     - [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request)
@@ -704,7 +704,6 @@
     - [Rpc.Block.UpdateContent.Response.Error.Code](#anytype.Rpc.Block.UpdateContent.Response.Error.Code)
     - [Rpc.Block.Upload.Response.Error.Code](#anytype.Rpc.Block.Upload.Response.Error.Code)
     - [Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code](#anytype.Rpc.BlockList.ConvertChildrenToPages.Response.Error.Code)
-    - [Rpc.BlockList.Delete.Page.Response.Error.Code](#anytype.Rpc.BlockList.Delete.Page.Response.Error.Code)
     - [Rpc.BlockList.Duplicate.Response.Error.Code](#anytype.Rpc.BlockList.Duplicate.Response.Error.Code)
     - [Rpc.BlockList.Move.Response.Error.Code](#anytype.Rpc.BlockList.Move.Response.Error.Code)
     - [Rpc.BlockList.MoveToNewPage.Response.Error.Code](#anytype.Rpc.BlockList.MoveToNewPage.Response.Error.Code)
@@ -712,8 +711,6 @@
     - [Rpc.BlockList.Set.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code)
     - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
-    - [Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code)
-    - [Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
@@ -764,6 +761,9 @@
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype.Rpc.Object.ShareByLink.Response.Error.Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
+    - [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code)
+    - [Rpc.ObjectList.Set.IsArchived.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code)
+    - [Rpc.ObjectList.Set.IsFavorite.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code)
@@ -1070,7 +1070,6 @@
 | BlockListSetBackgroundColor | [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request) | [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response) |  |
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
-| BlockListDeletePage | [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request) | [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response) |  |
 | BlockListTurnInto | [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request) | [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response) |  |
 | BlockSetLatexText | [Rpc.Block.Set.Latex.Text.Request](#anytype.Rpc.Block.Set.Latex.Text.Request) | [Rpc.Block.Set.Latex.Text.Response](#anytype.Rpc.Block.Set.Latex.Text.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
@@ -1079,7 +1078,6 @@
 | BlockListSetTextMark | [Rpc.BlockList.Set.Text.Mark.Request](#anytype.Rpc.BlockList.Set.Text.Mark.Request) | [Rpc.BlockList.Set.Text.Mark.Response](#anytype.Rpc.BlockList.Set.Text.Mark.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
-| BlockListSetPageIsArchived | [Rpc.BlockList.Set.Page.IsArchived.Request](#anytype.Rpc.BlockList.Set.Page.IsArchived.Request) | [Rpc.BlockList.Set.Page.IsArchived.Response](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response) | deprecated |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
@@ -1130,6 +1128,8 @@
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request) | [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request) | [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response) | ObjectToSet creates new set from given object and removes object |
+| ObjectListDelete | [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request) | [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response) |  |
+| ObjectListSetIsArchived | [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request) | [Rpc.ObjectList.Set.IsArchived.Response](#anytype.Rpc.ObjectList.Set.IsArchived.Response) | deprecated |
 | BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | TODO: rename BlockSetDetails -&gt; ObjectSetDetails |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page TODO: rename PageCreate -&gt; ObjectCreate |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) | SetCreate just creates the new set, without adding the link to it from some other page |
@@ -5664,73 +5664,6 @@ Remove blocks from the childrenIds of its parents
 
 
 
-<a name="anytype.Rpc.BlockList.Delete"></a>
-
-### Rpc.BlockList.Delete
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Delete.Page"></a>
-
-### Rpc.BlockList.Delete.Page
-Deletes the page, keys and all records from the local store and unsubscribe from remote changes
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Delete.Page.Request"></a>
-
-### Rpc.BlockList.Delete.Page.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| blockIds | [string](#string) | repeated | pages to remove |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Delete.Page.Response"></a>
-
-### Rpc.BlockList.Delete.Page.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockList.Delete.Page.Response.Error](#anytype.Rpc.BlockList.Delete.Page.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Delete.Page.Response.Error"></a>
-
-### Rpc.BlockList.Delete.Page.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockList.Delete.Page.Response.Error.Code](#anytype.Rpc.BlockList.Delete.Page.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.BlockList.Duplicate"></a>
 
 ### Rpc.BlockList.Duplicate
@@ -6179,132 +6112,6 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page"></a>
-
-### Rpc.BlockList.Set.Page
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsArchived"></a>
-
-### Rpc.BlockList.Set.Page.IsArchived
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Request"></a>
-
-### Rpc.BlockList.Set.Page.IsArchived.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
-| isArchived | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Response"></a>
-
-### Rpc.BlockList.Set.Page.IsArchived.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockList.Set.Page.IsArchived.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error"></a>
-
-### Rpc.BlockList.Set.Page.IsArchived.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite"></a>
-
-### Rpc.BlockList.Set.Page.IsFavorite
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Request"></a>
-
-### Rpc.BlockList.Set.Page.IsFavorite.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockIds | [string](#string) | repeated |  |
-| isFavorite | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Response"></a>
-
-### Rpc.BlockList.Set.Page.IsFavorite.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockList.Set.Page.IsFavorite.Response.Error](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error"></a>
-
-### Rpc.BlockList.Set.Page.IsFavorite.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code](#anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9228,6 +9035,199 @@ deprecated, to be removed |
 
 
 
+<a name="anytype.Rpc.ObjectList"></a>
+
+### Rpc.ObjectList
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Delete"></a>
+
+### Rpc.ObjectList.Delete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Delete.Request"></a>
+
+### Rpc.ObjectList.Delete.Request
+Deletes the object, keys from the local store and unsubscribe from remote changes. Also offloads all orphan files
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated | objects to remove |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Delete.Response"></a>
+
+### Rpc.ObjectList.Delete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectList.Delete.Response.Error](#anytype.Rpc.ObjectList.Delete.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Delete.Response.Error"></a>
+
+### Rpc.ObjectList.Delete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set"></a>
+
+### Rpc.ObjectList.Set
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsArchived"></a>
+
+### Rpc.ObjectList.Set.IsArchived
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsArchived.Request"></a>
+
+### Rpc.ObjectList.Set.IsArchived.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
+| isArchived | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsArchived.Response"></a>
+
+### Rpc.ObjectList.Set.IsArchived.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectList.Set.IsArchived.Response.Error](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsArchived.Response.Error"></a>
+
+### Rpc.ObjectList.Set.IsArchived.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectList.Set.IsArchived.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsFavorite"></a>
+
+### Rpc.ObjectList.Set.IsFavorite
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsFavorite.Request"></a>
+
+### Rpc.ObjectList.Set.IsFavorite.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
+| isFavorite | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsFavorite.Response"></a>
+
+### Rpc.ObjectList.Set.IsFavorite.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectList.Set.IsFavorite.Response.Error](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error"></a>
+
+### Rpc.ObjectList.Set.IsFavorite.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectList.Set.IsFavorite.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ObjectType"></a>
 
 ### Rpc.ObjectType
@@ -11217,19 +11217,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.BlockList.Delete.Page.Response.Error.Code"></a>
-
-### Rpc.BlockList.Delete.Page.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.BlockList.Duplicate.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Duplicate.Response.Error.Code
@@ -11311,32 +11298,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.BlockList.Set.Fields.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Fields.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code"></a>
-
-### Rpc.BlockList.Set.Page.IsArchived.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code"></a>
-
-### Rpc.BlockList.Set.Page.IsFavorite.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -12008,6 +11969,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.ToSet.Response.Error.Code"></a>
 
 ### Rpc.Object.ToSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectList.Delete.Response.Error.Code"></a>
+
+### Rpc.ObjectList.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code"></a>
+
+### Rpc.ObjectList.Set.IsArchived.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code"></a>
+
+### Rpc.ObjectList.Set.IsFavorite.Response.Error.Code
 
 
 | Name | Number | Description |

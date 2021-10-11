@@ -149,11 +149,11 @@ type Service interface {
 	Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (pb.RpcBlockUndoRedoCounter, error)
 	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (pb.RpcBlockUndoRedoCounter, error)
 
-	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
+	SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error
 	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) error
 	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) error
 
-	DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) error
+	DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) error
 	DeleteObject(id string) error
 
 	GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error)
@@ -479,7 +479,7 @@ func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string
 }
 
 // SetPagesIsArchived is deprecated
-func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
+func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -487,7 +487,7 @@ func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest
 		}
 
 		anySucceed := false
-		for _, blockId := range req.BlockIds {
+		for _, blockId := range req.ObjectIds {
 			if req.IsArchived {
 				err = archive.AddObject(blockId)
 			} else {
@@ -530,7 +530,7 @@ func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
 }
 
-func (s *service) DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) (err error) {
+func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -538,7 +538,7 @@ func (s *service) DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) (e
 		}
 
 		anySucceed := false
-		for _, blockId := range req.BlockIds {
+		for _, blockId := range req.ObjectIds {
 			if exists, _ := archive.HasObject(blockId); exists {
 				if err = s.DeleteObject(blockId); err == nil {
 					archive.RemoveObject(blockId)

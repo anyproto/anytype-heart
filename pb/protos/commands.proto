@@ -180,55 +180,6 @@ message Rpc {
         }
 
         message Set {
-            message Page {
-                message IsArchived {
-                    message Request {
-                        string contextId = 1;
-                        repeated string blockIds = 2;
-                        bool isArchived = 3;
-                    }
-
-                    message Response {
-                        Error error = 1;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
-                message IsFavorite {
-                    message Request {
-                        string contextId = 1;
-                        repeated string blockIds = 2;
-                        bool isFavorite = 3;
-                    }
-
-                    message Response {
-                        Error error = 1;
-
-                        message Error {
-                            Code code = 1;
-                            string description = 2;
-
-                            enum Code {
-                                NULL = 0;
-                                UNKNOWN_ERROR = 1;
-                                BAD_INPUT = 2;
-                                // ...
-                            }
-                        }
-                    }
-                }
-            }
-
             // commands acceptable only for text blocks, others will be ignored
             message Text {
                 message Style {
@@ -407,32 +358,6 @@ message Rpc {
                 }
             }
 
-        }
-
-        message Delete {
-            // Deletes the page, keys and all records from the local store and unsubscribe from remote changes
-            message Page {
-                message Request {
-                    repeated string blockIds = 1; // pages to remove
-                }
-
-                message Response {
-                    Error error = 1;
-                    ResponseEvent event = 2;
-
-                    message Error {
-                        Code code = 1;
-                        string description = 2;
-
-                        enum Code {
-                            NULL = 0;
-                            UNKNOWN_ERROR = 1;
-                            BAD_INPUT = 2;
-                            // ...
-                        }
-                    }
-                }
-            }
         }
 
         message TurnInto {
@@ -3528,6 +3453,79 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         // ...
+                    }
+                }
+            }
+        }
+    }
+
+    message ObjectList {
+        message Delete {
+            // Deletes the object, keys from the local store and unsubscribe from remote changes. Also offloads all orphan files
+            message Request {
+                repeated string objectIds = 1; // objects to remove
+            }
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+        message Set {
+            message IsArchived {
+                message Request {
+                    string contextId = 1;
+                    repeated string objectIds = 2;
+                    bool isArchived = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message IsFavorite {
+                message Request {
+                    string contextId = 1;
+                    repeated string objectIds = 2;
+                    bool isFavorite = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
                     }
                 }
             }
