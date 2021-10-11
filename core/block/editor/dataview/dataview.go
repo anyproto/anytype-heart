@@ -256,7 +256,7 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return nil, err
 	} else {
 		db = target
@@ -316,7 +316,7 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return err
 	} else {
 		db = target
@@ -356,7 +356,7 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return err
 	} else {
 		db = target
@@ -443,7 +443,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*mode
 		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
-	agRels, err := d.Anytype().ObjectStore().ListRelations(sch.ObjectType())
+	agRels, err := d.Anytype().ObjectStore().ListRelations(sch.ObjectType().GetUrl())
 	if err != nil {
 		return nil, err
 	}
@@ -736,12 +736,15 @@ func (d *dataviewCollectionImpl) getDatabase(blockId string) (dataview.Block, da
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
 		return nil, nil, fmt.Errorf("not a dataview block")
 	} else {
-		ot := d.getObjectTypeSource(dvBlock)
+		sch, err := d.getSchema(dvBlock)
+		if err != nil {
+			return nil, nil, err
+		}
 
 		var db database.Database
 		if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 			return nil, nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-		} else if target, err := dbRouter.Get(ot); err != nil {
+		} else if target, err := dbRouter.Get(sch.ObjectType()); err != nil {
 			return nil, nil, err
 		} else {
 			db = target
@@ -1257,30 +1260,43 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 		return
 	}
 
+	var (
+		relations     []*model.Relation
+		viewRelations []*model.BlockContentDataviewRelation
+	)
+
+	for _, rel := range schema.ListRelations() {
+		// other relations should be added with
+		if pbtypes.HasRelation(relations, rel.Key) {
+			continue
+		}
+
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+	}
+
 	schemaRelations := schema.ListRelations()
 	if !pbtypes.HasRelation(schemaRelations, bundle.RelationKeyName.String()) {
 		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
 	}
 
-	var relations []*model.BlockContentDataviewRelation
-	for _, rel := range schemaRelations {
-		visible := !rel.Hidden
-		if rel.Key == bundle.RelationKeyType.String() {
-			visible = false
+	for _, relKey := range bundle.RequiredInternalRelations {
+		// add all non-hidden system-wide internal relations just in case
+		if pbtypes.HasRelation(relations, relKey.String()) {
+			continue
 		}
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
-	}
+		rel := bundle.MustGetRelation(relKey)
+		if rel.Hidden {
+			continue
+		}
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 
-	for _, rel := range bundle.RequiredInternalRelations {
-		if !pbtypes.HasRelation(schemaRelations, rel.String()) {
-			schemaRelations = append(schemaRelations, bundle.MustGetRelation(rel))
-			relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.String(), IsVisible: false})
-		}
 	}
 
 	res = model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Relations: schemaRelations,
+			Relations: relations,
 			Source:    source,
 			Views: []*model.BlockContentDataviewView{
 				{
@@ -1294,7 +1310,7 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 						},
 					},
 					Filters:   nil,
-					Relations: relations,
+					Relations: viewRelations,
 				},
 			},
 		},
