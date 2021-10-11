@@ -991,13 +991,12 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 		if b.Type() != model.SmartBlockType_Page {
 			return fmt.Errorf("can't make template from this obect type")
 		}
-		st = b.NewState().Copy()
-		return nil
+		st, err = b.MakeTemplateState()
+		return err
 	}); err != nil {
 		return
 	}
-	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
-	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
+
 	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
