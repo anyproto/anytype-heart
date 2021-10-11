@@ -215,17 +215,15 @@ func (v *workspaces) processMetaAction(action threadsDb.Action) {
 			if err != nil {
 				return
 			}
-
-			// removing current mention as link
-			s.Iterate(func(b simple.Block) (isContinue bool) {
-				if link := b.Model().GetLink(); link != nil && link.TargetBlockId == meta.TitleWorkspaceId() {
-					s.Unlink(b.Model().Id)
-					return false
-				}
-				return true
-			})
 		}
-
+		// removing current mention as link
+		s.Iterate(func(b simple.Block) (isContinue bool) {
+			if link := b.Model().GetLink(); link != nil && link.TargetBlockId == meta.TitleWorkspaceId() {
+				s.Unlink(b.Model().Id)
+				return false
+			}
+			return true
+		})
 		s.Set(simple.New(mention))
 		return
 	})
