@@ -652,6 +652,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		return "", nil, fmt.Errorf("object type not found")
 	}
 
+	var workspaceId string
 	if details != nil && details.Fields != nil {
 		var isDraft = pbtypes.GetBool(details, bundle.RelationKeyIsDraft.String())
 		delete(details.Fields, bundle.RelationKeyIsDraft.String())
@@ -672,13 +673,14 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		if isDraft {
 			createState.SetDetailAndBundledRelation(bundle.RelationKeyIsDraft, pbtypes.Bool(true))
 		}
+		detailsWorkspaceId := details.Fields[bundle.RelationKeyWorkspaceId.String()]
+		if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
+			workspaceId = detailsWorkspaceId.GetStringValue()
+		}
 	}
 
-	var workspaceId string
-	detailsWorkspaceId := details.Fields[bundle.RelationKeyWorkspaceId.String()]
-	if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
-		workspaceId = detailsWorkspaceId.GetStringValue()
-	} else {
+	// if we don't have anything in details then check the object store
+	if workspaceId == "" {
 		workspaceId, err = s.anytype.ObjectStore().GetCurrentWorkspaceId()
 		if err != nil {
 			workspaceId = ""
@@ -732,10 +734,12 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 	threads.WorkspaceLogger.
 		With("workspace id", workspaceId).
 		Info("adding workspace id to new object")
-	if req.Details.Fields == nil {
-		req.Details.Fields = make(map[string]*types.Value)
+	if workspaceId != "" && req.Details != nil {
+		if req.Details.Fields == nil {
+			req.Details.Fields = make(map[string]*types.Value)
+		}
+		req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
 	}
-	req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
 
 	pageId, _, err = s.CreateSmartBlockFromTemplate(coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 	if err != nil {
