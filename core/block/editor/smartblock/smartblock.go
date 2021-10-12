@@ -943,7 +943,7 @@ func (sb *smartBlock) MakeTemplateState() (*state.State, error) {
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
 	for _, rel := range sb.Relations() {
-		if rel.DataSource == model.Relation_details && !bundle.HasRelation(rel.Key) {
+		if rel.DataSource == model.Relation_details && !rel.Hidden {
 			st.RemoveDetail(rel.Key)
 		}
 	}
