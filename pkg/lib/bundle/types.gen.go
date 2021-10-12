@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "51bb5b6c67e7be3b62b23ffce514f6644c2b39fc5368019b3cf0bcfe35c02f82"
+const TypeChecksum = "d304fdda05af05827e457070bcc1ae930e40f68181514f7d3324844077602412"
 
 type TypeKey string
 
@@ -47,6 +47,7 @@ const (
 	TypeKeyClassNote       TypeKey = "classNote"
 	TypeKeyDiaryEntry      TypeKey = "diaryEntry"
 	TypeKeyPage            TypeKey = "page"
+	TypeKeySpace           TypeKey = "space"
 	TypeKeyImage           TypeKey = "image"
 	TypeKeyBug             TypeKey = "bug"
 	TypeKeyProfile         TypeKey = "profile"
@@ -414,6 +415,17 @@ var (
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeySetOf], relations[RelationKeyWorkspaceId]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Set},
 			Url:         TypePrefix + "set",
+		},
+		TypeKeySpace: {
+
+			Description: "Space is a union of one or more documents",
+			IconEmoji:   "🌎",
+			Layout:      model.ObjectType_space,
+			Name:        "Space",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Workspace},
+			Url:         TypePrefix + "space",
 		},
 		TypeKeyTask: {
 

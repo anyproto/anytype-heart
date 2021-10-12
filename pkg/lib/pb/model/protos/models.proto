@@ -454,6 +454,7 @@ message ObjectType {
         image = 8;
 
         database = 20; // to be released later
+        space = 21;
     }
 }
 

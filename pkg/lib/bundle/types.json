@@ -1060,6 +1060,42 @@
     ]
   },
   {
+    "description": "Space is a union of one or more documents",
+    "emoji": "🌎",
+    "id": "space",
+    "layout": "space",
+    "name": "Space",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "isFavorite"
+    ],
+    "types": [
+      "Workspace"
+    ]
+  },
+  {
     "description": "Auto-generated object from .jpg & .png files added to Anytype. A representation of the external form of a person or thing in art",
     "emoji": "🏞",
     "id": "image",

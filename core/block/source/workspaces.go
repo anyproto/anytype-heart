@@ -14,6 +14,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 	threadsDb "github.com/textileio/go-threads/db"
 )
 
@@ -233,6 +234,19 @@ func (v *workspaces) processMetaAction(action threadsDb.Action) {
 
 }
 
+func (v *workspaces) getDetails(workspaceName string) (p *types.Struct) {
+	return &types.Struct{Fields: map[string]*types.Value{
+		bundle.RelationKeyName.String():       pbtypes.String(workspaceName),
+		bundle.RelationKeyId.String():         pbtypes.String(v.id),
+		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
+		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
+		bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeySpace.String()),
+		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
+		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_space)),
+		bundle.RelationKeyIconEmoji.String():  pbtypes.String("🌎"),
+	}}
+}
+
 func (v *workspaces) createState() (*state.State, error) {
 	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
 	if err != nil {
@@ -283,12 +297,14 @@ func (v *workspaces) createState() (*state.State, error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 	initBlocksAndAddToRoot(s, blocks)
 
+	var workspaceName string
 	if meta == nil {
 		lastSymbols := v.id[len(v.id)-4 : len(v.id)]
-		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String("Workspace_"+lastSymbols))
+		workspaceName = "Workspace_" + lastSymbols
 	} else {
-		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(meta.WorkspaceName()))
+		workspaceName = meta.WorkspaceName()
 	}
+	s.SetDetails(v.getDetails(workspaceName))
 
 	return s, nil
 }

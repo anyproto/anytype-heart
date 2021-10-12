@@ -29,7 +29,6 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	templates := []template.StateTransformer{
-		template.WithDetailIconEmoji("🌎"),
 		template.WithTitle,
 	}
 
