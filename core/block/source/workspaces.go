@@ -240,7 +240,7 @@ func (v *workspaces) getDetails(workspaceName string) (p *types.Struct) {
 		bundle.RelationKeyId.String():         pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeySpace.String()),
+		bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeySpace.URL()),
 		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_space)),
 		bundle.RelationKeyIconEmoji.String():  pbtypes.String("🌎"),

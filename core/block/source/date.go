@@ -59,7 +59,7 @@ func (v *date) getDetails() (p *types.Struct) {
 		bundle.RelationKeyId.String():         pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String(): pbtypes.Bool(false),
-		bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeyDate.String()),
+		bundle.RelationKeyType.String():       pbtypes.String(bundle.TypeKeyDate.URL()),
 		bundle.RelationKeyIsHidden.String():   pbtypes.Bool(false),
 		bundle.RelationKeyLayout.String():     pbtypes.Float64(float64(model.ObjectType_basic)),
 		bundle.RelationKeyIconEmoji.String():  pbtypes.String("📅"),
