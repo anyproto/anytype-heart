@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
 	ds "github.com/ipfs/go-datastore"
@@ -49,6 +50,12 @@ var (
 	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
 	cafeConfig = ds.NewKey("/" + pagesPrefix + "/cafeconfig")
+
+	workspacesPrefix = "workspaces"
+	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
+
+	threadCreateQueuePrefix = "threadcreatequeue"
+	threadCreateQueueBase   = ds.NewKey("/" + threadCreateQueuePrefix)
 
 	relationsPrefix = "relations"
 	// /relations/options/<relOptionId>: option model
@@ -146,31 +153,6 @@ var (
 		Unique: false,
 	}
 
-	// /pages/format_relkey_optid/<relFormat>/<relKey>/<optId>/<objId>
-	indexFormatOptionObject = localstore.Index{
-		Prefix: pagesPrefix,
-		Name:   "format_relkey_optid",
-		Keys: func(val interface{}) []localstore.IndexKeyParts {
-			if v, ok := val.(*model.Relation); ok {
-				if v.Format != model.RelationFormat_tag && v.Format != model.RelationFormat_status {
-					return nil
-				}
-				if len(v.SelectDict) == 0 {
-					return nil
-				}
-
-				var indexes []localstore.IndexKeyParts
-				for _, opt := range v.SelectDict {
-					indexes = append(indexes, localstore.IndexKeyParts([]string{v.Format.String(), v.Key, opt.Id}))
-				}
-				return indexes
-			}
-			return nil
-		},
-		Unique:             false,
-		SplitIndexKeyParts: true,
-	}
-
 	// /pages/type/<objType>/<objId>
 	indexObjectTypeObject = localstore.Index{
 		Prefix: pagesPrefix,
@@ -251,13 +233,13 @@ type ObjectStore interface {
 	DeleteObject(id string) error
 	RemoveRelationFromCache(key string) error
 
-	UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error
+	UpdateRelationsInSetByObjectType(setId, objType, creatorId string, relations []*model.Relation) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetOutboundLinksById(id string) ([]string, error)
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
-	GetAggregatedOptions(relationKey string, relationFormat model.RelationFormat, objectType string) (options []*model.RelationOption, err error)
+	GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error)
 
 	HasIDs(ids ...string) (exists []string, err error)
 	GetByIDs(ids ...string) ([]*model.ObjectInfo, error)
@@ -265,6 +247,8 @@ type ObjectStore interface {
 	ListIds() ([]string, error)
 
 	QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error)
+	QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error)
+
 	AddToIndexQueue(id string) error
 	IndexForEach(f func(id string, tm time.Time) error) error
 	FTSearch() ftsearch.FTSearch
@@ -282,6 +266,14 @@ type ObjectStore interface {
 
 	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
 	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
+
+	GetCurrentWorkspaceId() (string, error)
+	SetCurrentWorkspaceId(threadId string) (err error)
+	RemoveCurrentWorkspaceId() (err error)
+
+	AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error)
+	RemoveThreadQueueEntry(threadId string) (err error)
+	GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error)
 }
 
 type relationOption struct {
@@ -347,6 +339,110 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	b, err := entry.Marshal()
+	if err != nil {
+		return fmt.Errorf("failed to marshal entry into binary: %w", err)
+	}
+
+	key := threadCreateQueueBase.Child(ds.NewKey(entry.ThreadId))
+	if err := txn.Put(key, b); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) RemoveThreadQueueEntry(threadId string) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	key := threadCreateQueueBase.Child(ds.NewKey(threadId))
+	if err = txn.Delete(key); err != nil {
+		return fmt.Errorf("failed to delete entry from ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	res, err := txn.Query(query.Query{
+		Prefix: threadCreateQueueBase.String(),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("error query txn in datastore: %w", err)
+	}
+	var models []*model.ThreadCreateQueueEntry
+	for entry := range res.Next() {
+		var qEntry model.ThreadCreateQueueEntry
+		err = proto.Unmarshal(entry.Value, &qEntry)
+		if err != nil {
+			log.Errorf("failed to unmarshal thread create entry")
+			continue
+		}
+		models = append(models, &qEntry)
+	}
+
+	return models, nil
+}
+
+func (m *dsObjectStore) GetCurrentWorkspaceId() (string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return "", fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	val, err := txn.Get(currentWorkspace)
+	if err != nil {
+		return "", err
+	}
+	return string(val), nil
+}
+
+func (m *dsObjectStore) SetCurrentWorkspaceId(threadId string) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Put(currentWorkspace, []byte(threadId)); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	if err := txn.Delete(currentWorkspace); err != nil {
+		return fmt.Errorf("failed to delete from ds: %w", err)
+	}
+
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error) {
@@ -509,59 +605,13 @@ func (m *dsObjectStore) AggregateObjectIdsByOptionForRelation(relationKey string
 	return
 }
 
-func (m *dsObjectStore) getAggregatedOptionsForFormat(format model.RelationFormat) (options []relationOption, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	defer txn.Discard()
-
-	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexFormatOptionObject.Name, []string{format.String()}, "/", false, 0)
-	if err != nil {
-		return nil, err
-	}
-
-	keys, err := localstore.ExtractKeysFromResults(res)
-	if err != nil {
-		return nil, err
-	}
-
-	var ex = make(map[string]struct{})
-	for _, key := range keys {
-		optionId, err := localstore.CarveKeyParts(key, -2, -1)
-		if err != nil {
-			return nil, err
-		}
-		relKey, err := localstore.CarveKeyParts(key, -3, -2)
-		if err != nil {
-			return nil, err
-		}
-
-		if _, exists := ex[optionId]; exists {
-			continue
-		}
-
-		ex[optionId] = struct{}{}
-		options = append(options, relationOption{
-			relationKey: relKey,
-			optionId:    optionId,
-		})
-	}
-	return
-}
-
-// GetAggregatedOptions returns aggregated options for specific relation and format. Options have a specific scope
-func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat model.RelationFormat, objectType string) (options []*model.RelationOption, err error) {
+// GetAggregatedOptions returns aggregated options for specific relation. Options have a specific scope
+func (m *dsObjectStore) GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error) {
 	objectsByOptionId, err := m.AggregateObjectIdsByOptionForRelation(relationKey)
 	if err != nil {
 		return nil, err
 	}
 
-	findOptionPos := func(opts []*model.RelationOption, id string) int {
-		for i := range opts {
-			if opts[i].Id == id {
-				return i
-			}
-		}
-		return -1
-	}
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, err
@@ -569,15 +619,17 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 
 	for optId, objIds := range objectsByOptionId {
 		var scope = model.RelationOption_relation
-		for _, objId := range objIds {
-			exists, err := isObjectBelongToType(txn, objId, objectType)
-			if err != nil {
-				return nil, err
-			}
+		if objectType != "" {
+			for _, objId := range objIds {
+				exists, err := isObjectBelongToType(txn, objId, objectType)
+				if err != nil {
+					return nil, err
+				}
 
-			if exists {
-				scope = model.RelationOption_local
-				break
+				if exists {
+					scope = model.RelationOption_local
+					break
+				}
 			}
 		}
 		opt, err := getOption(txn, optId)
@@ -588,48 +640,26 @@ func (m *dsObjectStore) GetAggregatedOptions(relationKey string, relationFormat 
 		options = append(options, opt)
 	}
 
-	relationOption, err := m.getAggregatedOptionsForFormat(relationFormat)
-	for _, opt := range relationOption {
-		if findOptionPos(options, opt.optionId) > -1 {
-			continue
-		}
-
-		opt2, err := getOption(txn, opt.optionId)
-		if err != nil {
-			return nil, err
-		}
-		opt2.Scope = model.RelationOption_format
-		options = append(options, opt2)
-	}
-
 	return
 }
 
-func (m *dsObjectStore) GetAggregatedOptionsForFormat(format model.RelationFormat) ([]*model.RelationOption, error) {
-	ros, err := m.getAggregatedOptionsForFormat(format)
-	if err != nil {
-		return nil, err
-	}
-
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, err
-	}
-
-	var options []*model.RelationOption
-	for _, ro := range ros {
-		opt, err := getOption(txn, ro.optionId)
-		if err != nil {
-			return nil, err
+func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
+	var filter filterSmartblockTypes
+	for _, otUrl := range ots {
+		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
+			for _, sbt := range ot.Types {
+				filter.smartBlockTypes = append(filter.smartBlockTypes, smartblock.SmartBlockType(sbt))
+			}
+			continue
 		}
-
-		options = append(options, opt)
+		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
+			filter.smartBlockTypes = append(filter.smartBlockTypes, sbt)
+		}
 	}
-
-	return options, nil
+	return &filter
 }
 
-func (m *dsObjectStore) QueryAndSubscribeForChanges(schema *schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
+func (m *dsObjectStore) QueryAndSubscribeForChanges(schema schema.Schema, q database.Query, sub database.Subscription) (records []database.Record, close func(), total int, err error) {
 	m.l.Lock()
 	defer m.l.Unlock()
 
@@ -690,7 +720,7 @@ func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub databa
 	return
 }
 
-func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []database.Record, total int, err error) {
+func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []database.Record, total int, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -707,9 +737,11 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	if !q.WithSystemObjects {
 		dsq.Filters = append([]query.Filter{filterNotSystemObjects}, dsq.Filters...)
 	}
+
 	if len(q.ObjectTypeFilter) > 0 {
 		dsq.Filters = append([]query.Filter{m.objectTypeFilter(q.ObjectTypeFilter...)}, dsq.Filters...)
 	}
+
 	if q.FullText != "" {
 		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
 			return
@@ -765,22 +797,6 @@ func (m *dsObjectStore) Query(sch *schema.Schema, q database.Query) (records []d
 	}
 
 	return results, total, nil
-}
-
-func (m *dsObjectStore) objectTypeFilter(ots ...string) query.Filter {
-	var filter filterSmartblockTypes
-	for _, otUrl := range ots {
-		if ot, err := bundle.GetTypeByUrl(otUrl); err == nil {
-			for _, sbt := range ot.Types {
-				filter.smartBlockTypes = append(filter.smartBlockTypes, smartblock.SmartBlockType(sbt))
-			}
-			continue
-		}
-		if sbt, err := smartblock.SmartBlockTypeFromID(otUrl); err == nil {
-			filter.smartBlockTypes = append(filter.smartBlockTypes, sbt)
-		}
-	}
-	return &filter
 }
 
 func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {
@@ -845,6 +861,63 @@ func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblo
 		results = append(results, oi)
 	}
 	return results, total, nil
+}
+
+func (m *dsObjectStore) QueryObjectIds(q database.Query, objectTypes []smartblock.SmartBlockType) (ids []string, total int, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	dsq, err := q.DSQuery(nil)
+	if err != nil {
+		return
+	}
+	dsq.Offset = 0
+	dsq.Limit = 0
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+	if len(objectTypes) > 0 {
+		dsq.Filters = append([]query.Filter{&filterSmartblockTypes{smartBlockTypes: objectTypes}}, dsq.Filters...)
+	}
+	if q.FullText != "" {
+		if dsq, err = m.makeFTSQuery(q.FullText, dsq); err != nil {
+			return
+		}
+	}
+	res, err := txn.Query(dsq)
+	if err != nil {
+		return nil, 0, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	var (
+		offset = q.Offset
+	)
+
+	// We use own limit/offset implementation in order to find out
+	// total number of records matching specified filters. Query
+	// returns this number for handy pagination on clients.
+	for rec := range res.Next() {
+		if rec.Error != nil {
+			return nil, 0, rec.Error
+		}
+		total++
+
+		if offset > 0 {
+			offset--
+			continue
+		}
+
+		if q.Limit > 0 && len(ids) >= q.Limit {
+			continue
+		}
+
+		key := ds.NewKey(rec.Key)
+		keyList := key.List()
+		id := keyList[len(keyList)-1]
+		ids = append(ids, id)
+	}
+	return ids, total, nil
 }
 
 func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err error) {
@@ -1504,6 +1577,62 @@ func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.Rel
 	return nil
 }
 
+func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, links []string) error {
+	threads.WorkspaceLogger.
+		With("existing links", exLinks).
+		With("new links", links).
+		With("workspace id", id).
+		Info("updating workspace links")
+
+	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
+	setDetail := func(memberId string, isRemoved bool) error {
+		tp := pbtypes.String(id)
+		if isRemoved {
+			tp = pbtypes.Null()
+		}
+		threads.WorkspaceLogger.
+			With("isRemoved", isRemoved).
+			With("thread id", memberId).
+			With("workspace id", id).
+			Info("trying to inject object details")
+		merged, err := m.injectObjectDetails(txn, memberId, &types.Struct{
+			Fields: map[string]*types.Value{
+				bundle.RelationKeyWorkspaceId.String(): tp,
+			},
+		})
+		if err != nil {
+			threads.WorkspaceLogger.
+				With("isRemoved", isRemoved).
+				With("thread id", memberId).
+				With("workspace id", id).
+				Info("details injected with error: %v", err)
+			return err
+		}
+
+		// inject localDetails into the meta pubsub
+		m.meta.SetLocalDetails(memberId, merged)
+
+		return nil
+	}
+
+	var err error
+	for _, objId := range removedLinks {
+		err = setDetail(objId, true)
+		if err != nil {
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
+		}
+	}
+
+	for _, objId := range addedLinks {
+		err = setDetail(objId, false)
+		if err != nil {
+			return fmt.Errorf("failed to setDetail: %s", err.Error())
+		}
+	}
+
+	return nil
+}
+
 func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string) error {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
@@ -1518,6 +1647,11 @@ func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string)
 		}
 	} else if sbt == smartblock.SmartBlockTypeHome {
 		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsFavorite, exLinks, links)
+		if err != nil {
+			return err
+		}
+	} else if sbt == smartblock.SmartBlockTypeWorkspace {
+		err = m.updateWorkspaceLinks(txn, id, exLinks, links)
 		if err != nil {
 			return err
 		}
@@ -1664,7 +1798,7 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
 }
 
-func (m *dsObjectStore) UpdateRelationsInSet(setId, objType, creatorId string, relations []*model.Relation) error {
+func (m *dsObjectStore) UpdateRelationsInSetByObjectType(setId, objType, creatorId string, relations []*model.Relation) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -1952,7 +2086,7 @@ func (m *dsObjectStore) Prefix() string {
 }
 
 func (m *dsObjectStore) Indexes() []localstore.Index {
-	return []localstore.Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexFormatOptionObject, indexObjectTypeObject}
+	return []localstore.Index{indexObjectTypeRelationObjectId, indexObjectTypeRelationSetId, indexRelationOptionObject, indexRelationObject, indexObjectTypeObject}
 }
 
 func (m *dsObjectStore) FTSearch() ftsearch.FTSearch {

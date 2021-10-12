@@ -2,7 +2,6 @@ package objects
 
 import (
 	"errors"
-
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -17,13 +16,14 @@ import (
 const (
 	//CustomObjectTypeURLPrefix  = "https://anytype.io/schemas/object/custom/"
 	BundledObjectTypeURLPrefix = "_ot"
+	defaultObjectType          = bundle.TypeKeyPage
 )
 
 var log = logging.Logger("anytype-core-db")
 
 func New(
 	pageStore objectstore.ObjectStore,
-	objectTypeUrl string,
+	objectType *model.ObjectType,
 	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
 	getRelations func(objectId string) (relations []*model.Relation, err error),
 	setRelations func(id string, relations []*model.Relation) (err error),
@@ -34,7 +34,7 @@ func New(
 ) database.Database {
 	return &setOfObjects{
 		ObjectStore:               pageStore,
-		objectTypeUrl:             objectTypeUrl,
+		objectType:                objectType,
 		setDetails:                setDetails,
 		getRelations:              getRelations,
 		setRelations:              setRelations,
@@ -47,7 +47,7 @@ func New(
 
 type setOfObjects struct {
 	objectstore.ObjectStore
-	objectTypeUrl             string
+	objectType                *model.ObjectType
 	setDetails                func(req pb.RpcBlockSetDetailsRequest) error
 	getRelations              func(objectId string) (relations []*model.Relation, err error)
 	setRelations              func(id string, relations []*model.Relation) (err error)
@@ -66,21 +66,40 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 	for _, rel := range relations {
 		if pbtypes.HasField(rec.Details, rel.Key) {
 			relsToSet = append(relsToSet, rel)
+		} else {
+			// we should not explicitly pass relation if set is created by the object type and this object type contains the relation
+			if sp.objectType == nil || !pbtypes.HasRelation(sp.objectType.Relations, rel.Key) {
+				relsToSet = append(relsToSet, rel)
+				// set detail to null so it will return in the subscription and the filter will work
+				rec.Details.Fields[rel.Key] = pbtypes.Null()
+			}
 		}
 	}
 
+	// todo: remove this? As we can only create SmartBlockTypePage via sets now
 	var sbType = coresb.SmartBlockTypePage
 	for sbT, objType := range bundle.DefaultObjectTypePerSmartblockType {
-		if objType.URL() == sp.objectTypeUrl {
+		if sp.objectType != nil && objType.URL() == sp.objectType.Url {
 			sbType = sbT
 			break
 		}
 	}
 
 	if targetType := pbtypes.GetString(rec.Details, bundle.RelationKeyTargetObjectType.String()); targetType != "" {
-		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList([]string{sp.objectTypeUrl, targetType})
+		var types []string
+		if sp.objectType != nil {
+			types = append(types, sp.objectType.Url)
+		} else {
+			types = append(types, defaultObjectType.URL())
+		}
+		types = append(types, targetType)
+		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.StringList(types)
+	} else if sp.objectType == nil {
+		if ot := pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()); ot == "" {
+			rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(defaultObjectType.URL())
+		}
 	} else {
-		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectTypeUrl)
+		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectType.Url)
 	}
 
 	id, newDetails, err := sp.createSmartBlock(sbType, rec.Details, relsToSet, templateId)

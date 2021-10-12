@@ -3,13 +3,10 @@ package threads
 import (
 	"context"
 	"fmt"
-	"os"
-	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -17,258 +14,15 @@ import (
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
-	threadsDb "github.com/textileio/go-threads/db"
-	threadsUtil "github.com/textileio/go-threads/util"
 )
 
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
 
-var (
-	threadInfoCollection = threadsDb.CollectionConfig{
-		Name:   ThreadInfoCollectionName,
-		Schema: threadsUtil.SchemaFromInstance(threadInfo{}, false),
-	}
-)
-
 type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
-}
-
-func (s *service) threadsDbInit() (chan map[thread.ID]threadInfo, error) {
-	if s.db != nil {
-		return nil, nil
-	}
-
-	accountID, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
-	if err != nil {
-		return nil, err
-	}
-
-	s.db, err = threadsDb.NewDB(context.Background(), s.threadsDbDS, s.t, accountID, threadsDb.WithNewCollections())
-	if err != nil {
-		return nil, err
-	}
-
-	s.threadsCollection = s.db.GetCollection(ThreadInfoCollectionName)
-	ch := make(chan map[thread.ID]threadInfo)
-	err = s.threadsDbListen(ch)
-	if err != nil {
-		return nil, fmt.Errorf("failed to listen external new threads: %w", err)
-	}
-
-	if s.threadsCollection == nil {
-		s.threadsCollection, err = s.db.NewCollection(threadInfoCollection)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return ch, nil
-}
-
-func (s *service) threadsDbListen(initialThreadsCh chan map[thread.ID]threadInfo) error {
-	log.Infof("threadsDbListen")
-	l, err := s.db.Listen()
-	if err != nil {
-		return err
-	}
-
-	var initialThreads map[thread.ID]threadInfo
-	threadsTotal := 0
-	initialThreadsLock := sync.RWMutex{}
-
-	startTime := time.Now()
-	progress := process.NewProgress(pb.ModelProcess_RecoverAccount)
-
-	removeElement := func(tid thread.ID) {
-		initialThreadsLock.RLock()
-		_, isInitialThread := initialThreads[tid]
-		initialThreadsLock.RUnlock()
-		if isInitialThread {
-			initialThreadsLock.Lock()
-			delete(initialThreads, tid)
-			threadsTotal--
-			progress.SetTotal(int64(threadsTotal))
-			initialThreadsLock.Unlock()
-		}
-	}
-
-	processThread := func(tid thread.ID, ti threadInfo) {
-		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-		info, err := s.t.GetThread(ctx, tid)
-		cancel()
-		if err != nil && err != logstore.ErrThreadNotFound {
-			log.With("thread", tid.String()).
-				Errorf("error getting thread while processing: %v", err)
-			removeElement(tid)
-			return
-		}
-		if info.ID != thread.Undef {
-			// our own event
-			removeElement(tid)
-			return
-		}
-
-		metrics.ExternalThreadReceivedCounter.Inc()
-		go func() {
-			if err := s.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
-				log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
-				return
-			}
-			ch := s.getNewThreadChan()
-			initialThreadsLock.RLock()
-			if len(initialThreads) == 0 {
-				initialThreadsLock.RUnlock()
-			} else {
-				_, isInitialThread := initialThreads[tid]
-				initialThreadsLock.RUnlock()
-				if isInitialThread {
-					initialThreadsLock.Lock()
-
-					delete(initialThreads, tid)
-					progress.AddDone(1)
-					if len(initialThreads) == 0 {
-						progress.Finish()
-						metrics.SharedClient.RecordEvent(metrics.AccountRecoverEvent{
-							SpentMs:              int(time.Now().Sub(startTime).Milliseconds()),
-							TotalThreads:         threadsTotal,
-							SimultaneousRequests: s.simultaneousRequests,
-						})
-					}
-
-					initialThreadsLock.Unlock()
-				}
-			}
-			if ch != nil && !s.stopped {
-				select {
-				case <-s.ctx.Done():
-				case ch <- tid.String():
-				}
-			}
-		}()
-	}
-
-	processThreads := func(ids []db.InstanceID) {
-		for _, id := range ids {
-			instanceBytes, err := s.threadsCollection.FindByID(id)
-			if err != nil {
-				log.Errorf("failed to find thread info for id %s: %w", id.String(), err)
-				continue
-			}
-
-			ti := threadInfo{}
-			threadsUtil.InstanceFromJSON(instanceBytes, &ti)
-			tid, err := thread.Decode(ti.ID.String())
-			if err != nil {
-				log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
-				continue
-			}
-			initialThreadsLock.RLock()
-			if len(initialThreads) != 0 {
-				_, ok := initialThreads[tid]
-				// if we are already downloading this thread as initial one
-				if ok {
-					initialThreadsLock.RUnlock()
-					continue
-				}
-			}
-			initialThreadsLock.RUnlock()
-			processThread(tid, ti)
-		}
-	}
-
-	processInitialThreads := func() {
-		copyMap := make(map[thread.ID]threadInfo)
-		initialThreadsLock.RLock()
-		for tid, ti := range initialThreads {
-			copyMap[tid] = ti
-		}
-		initialThreadsLock.RUnlock()
-
-		for tid, ti := range copyMap {
-			processThread(tid, ti)
-		}
-	}
-
-	go func() {
-		defer func() {
-			l.Close()
-			s.closeThreadChan()
-		}()
-		deadline := 1 * time.Second
-		// initially setting long duration (we can't set nil), because we want to be sure that the download starts
-		// only when we get initial entries from db, so the logic with initial threads map
-		// is clearer
-		tmr := time.NewTimer(1 * time.Hour)
-		flushBuffer := make([]db.InstanceID, 0, 100)
-		timerRead := false
-		initialThreadsAcquired := false
-
-		processBuffer := func() {
-			if len(flushBuffer) == 0 {
-				return
-			}
-			buffCopy := make([]db.InstanceID, len(flushBuffer))
-			for index, id := range flushBuffer {
-				buffCopy[index] = id
-			}
-			flushBuffer = flushBuffer[:0]
-			go processThreads(buffCopy)
-		}
-
-		for {
-			select {
-			case <-s.ctx.Done():
-				processBuffer()
-				return
-			case _ = <-tmr.C:
-				timerRead = true
-				// we don't have new messages for at least deadline and we have something to flush
-				processBuffer()
-			case m := <-initialThreadsCh:
-				initialThreadsLock.Lock()
-				initialThreads = m
-				threadsTotal = len(m)
-				initialThreadsLock.Unlock()
-
-				initialThreadsAcquired = true
-
-				// only starting processing when first batch is read
-				tmr.Stop()
-				tmr.Reset(deadline)
-
-				// this is an account recovery
-				if threadsTotal != 0 {
-					if os.Getenv("ANYTYPE_RECOVERY_PROGRESS") == "1" {
-						s.process.Add(progress)
-					}
-					progress.SetProgressMessage("recovering account")
-					progress.SetTotal(int64(threadsTotal))
-					processInitialThreads()
-				}
-
-			case c := <-l.Channel():
-				if initialThreadsAcquired {
-					// as per docs the timer should be stopped or expired with drained channel
-					// to be reset
-					if !tmr.Stop() && !timerRead {
-						<-tmr.C
-					}
-					tmr.Reset(deadline)
-					timerRead = false
-				}
-				switch c.Type {
-				case threadsDb.ActionCreate:
-					flushBuffer = append(flushBuffer, c.ID)
-				}
-			}
-		}
-	}()
-
-	return nil
 }
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
@@ -282,7 +36,7 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 		metrics.ExternalThreadHandlingAttempts.Inc()
 		attempt++
 		<-s.newThreadProcessingLimiter
-		err := s.processNewExternalThread(tid, ti)
+		err := s.processNewExternalThread(tid, ti, false)
 		if err != nil {
 			s.newThreadProcessingLimiter <- struct{}{}
 			log.Errorf("processNewExternalThread failed after %d attempt: %s", attempt, err.Error())
@@ -302,7 +56,7 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 	}
 }
 
-func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
+func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo, pullAsync bool) error {
 	log := log.With("thread", tid.String())
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
@@ -419,10 +173,25 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo) error {
 			s.newReplicatorProcessingLimiter <- struct{}{}
 		}()
 	}
-	_, err = s.pullThread(s.ctx, tid)
-	if err != nil {
-		log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
-		return fmt.Errorf("failed to pull thread: %w", err)
+
+	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(tid)
+	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
+		_, err = s.startWorkspaceThreadProcessor(tid.String())
+	}
+
+	// TODO: should we add timeout here?
+	pullFunc := func() error {
+		_, err = s.pullThread(s.ctx, tid)
+		if err != nil {
+			log.Errorf("processNewExternalThread: pull thread failed: %s", err.Error())
+			return fmt.Errorf("failed to pull thread: %w", err)
+		}
+		return nil
+	}
+	if pullAsync {
+		go pullFunc()
+	} else {
+		return pullFunc()
 	}
 
 	return nil

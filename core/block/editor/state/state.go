@@ -771,8 +771,8 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 		s.localDetails = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 
-	if _, isNull := value.GetKind().(*types.Value_NullValue); value == nil || isNull {
-		delete(s.localDetails.Fields, key)
+	if value == nil {
+		delete(s.details.Fields, key)
 		return
 	}
 
@@ -782,8 +782,7 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 
 func (s *State) SetLocalDetails(d *types.Struct) {
 	for k, v := range d.GetFields() {
-		// todo: remove null cleanup(should be done when receiving from client)
-		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
+		if v == nil {
 			delete(d.Fields, k)
 		}
 	}
@@ -803,7 +802,7 @@ func (s *State) SetDetail(key string, value *types.Value) {
 		s.details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 
-	if _, isNull := value.GetKind().(*types.Value_NullValue); value == nil || isNull {
+	if value == nil {
 		delete(s.details.Fields, key)
 		return
 	}
@@ -1013,9 +1012,17 @@ func (s *State) AggregatedOptionsByRelation() map[string][]*model.RelationOption
 }
 
 func (s *State) CombinedDetails() *types.Struct {
-	persisted := s.Details()
-	local := s.LocalDetails()
-	return pbtypes.StructMerge(persisted, local)
+	return pbtypes.StructMerge(s.Details(), s.LocalDetails(), false)
+}
+
+func (s *State) HasCombinedDetailsKey(key string) bool {
+	if pbtypes.HasField(s.Details(), key) {
+		return true
+	}
+	if pbtypes.HasField(s.LocalDetails(), key) {
+		return true
+	}
+	return false
 }
 
 func (s *State) Details() *types.Struct {
@@ -1222,30 +1229,28 @@ func (s *State) Validate() (err error) {
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
 func (s *State) IsEmpty() bool {
-	if pbtypes.GetString(s.details, bundle.RelationKeyName.String()) != "" {
+	if pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
 		return false
 	}
-	// todo: check other relations?
-
-	i := 0
-	blocksToTraverse := []string{"header"}
-	ignoredTemplateBlocksMap := map[string]struct{}{s.rootId: {}}
-	for i < len(blocksToTraverse) {
-		id := blocksToTraverse[i]
-		i++
-		b := s.Pick(id)
-		if b == nil {
-			continue
+	if title := s.Pick("title"); title != nil {
+		if title.Model().GetText().Text != "" {
+			return false
 		}
-		blocksToTraverse = append(blocksToTraverse, b.Model().ChildrenIds...)
-		ignoredTemplateBlocksMap[id] = struct{}{}
 	}
 
-	if len(s.blocks) <= len(ignoredTemplateBlocksMap) {
-		return true
+	if pbtypes.GetString(s.Details(), bundle.RelationKeyDescription.String()) != "" {
+		return false
 	}
 
-	return false
+	if root := s.Pick(s.RootId()); root != nil {
+		for _, chId := range root.Model().ChildrenIds {
+			if chId != "header" {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 func (s *State) Copy() *State {

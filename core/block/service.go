@@ -88,6 +88,7 @@ type Service interface {
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
+	ObjectToSet(id string, source []string) (newId string, err error)
 	UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error)
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
@@ -121,6 +122,7 @@ type Service interface {
 
 	SplitBlock(ctx *state.Context, req pb.RpcBlockSplitRequest) (blockId string, err error)
 	MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) error
+	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
 	SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequest) error
 	SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error
 	SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error
@@ -188,6 +190,12 @@ type Service interface {
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
 	CloneTemplate(id string) (templateId string, err error)
 	ApplyTemplate(contextId, templateId string) error
+
+	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
+	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
+
+	ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error
+	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
 
 	app.ComponentRunnable
 }
@@ -306,7 +314,12 @@ func (s *service) testArchiveInconsistency() {
 		log.Debugf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
 	}
 	records, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
-		IncludeArchivedObjects: true,
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyIsArchived.String(),
+				Condition:   model.BlockContentDataviewFilter_None,
+			},
+		},
 	})
 	if err != nil {
 		log.Errorf("ARCHIVE INCONSISTENCY: failed to query objectstore")
@@ -346,6 +359,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err != nil {
 		return
 	}
+	defer s.cache.Release(id)
 	ob.Lock()
 	defer ob.Unlock()
 	ob.SetEventFunc(s.sendEvent)
@@ -362,7 +376,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
-
+	s.cache.Lock(id)
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
 			fList = func() []string {
@@ -412,14 +426,24 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 }
 
 func (s *service) CloseBlock(id string) error {
+	var isDraft bool
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.BlockClose()
+		isDraft = pbtypes.GetBool(b.NewState().LocalDetails(), bundle.RelationKeyIsDraft.String())
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	s.cache.Release(id)
+	s.cache.Unlock(id)
+	if isDraft {
+		_, _ = s.cache.Remove(id)
+		if err = s.anytype.DeleteBlock(id); err != nil {
+			log.Errorf("error while block delete: %v", err)
+		} else {
+			s.sendOnRemoveEvent(id)
+		}
+	}
 	return nil
 }
 
@@ -432,6 +456,22 @@ func (s *service) CloseBlocks() {
 		s.cache.Reset(ob.Id())
 		return true
 	})
+}
+
+func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
+	return s.anytype.CreateWorkspace()
+}
+
+func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
+	return s.anytype.SelectWorkspace(req.WorkspaceId)
+}
+
+func (s *service) ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error {
+	return s.anytype.ObjectAddWithShareLink(req.Link)
+}
+
+func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error) {
+	return s.anytype.ObjectShareByLink(req.ObjectId)
 }
 
 // SetPagesIsArchived is deprecated
@@ -536,8 +576,28 @@ func (s *service) deleteObject(id string) (err error) {
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
+	s.cache.Reset(id)
+	if err = s.anytype.DeleteBlock(id); err != nil {
+		return
+	}
+	s.sendOnRemoveEvent(id)
+	return
+}
 
-	return s.anytype.DeleteBlock(id)
+func (s *service) sendOnRemoveEvent(ids ...string) {
+	if s.sendEvent != nil {
+		s.sendEvent(&pb.Event{
+			Messages: []*pb.EventMessage{
+				&pb.EventMessage{
+					Value: &pb.EventMessageValueOfObjectRemove{
+						ObjectRemove: &pb.EventObjectRemove{
+							Ids: ids,
+						},
+					},
+				},
+			},
+		})
+	}
 }
 
 func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {
@@ -572,12 +632,16 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		}
 	}
 
+
 	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
 	if err != nil {
 		return "", nil, fmt.Errorf("object type not found")
 	}
 
 	if details != nil && details.Fields != nil {
+		var isDraft = pbtypes.GetBool(details, bundle.RelationKeyIsDraft.String())
+		delete(details.Fields, bundle.RelationKeyIsDraft.String())
+
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
 			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
@@ -590,8 +654,16 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 				relations = append(relations, relCopy)
 			}
 		}
+
+		if isDraft {
+			createState.SetDetailAndBundledRelation(bundle.RelationKeyIsDraft, pbtypes.Bool(true))
+		}
 	}
 
+	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	if err == nil {
+		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
@@ -724,6 +796,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
+	case model.SmartBlockType_Workspace:
+		sb = editor.NewWorkspaces()
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -1025,4 +1099,10 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 		return nil, err
 	}
 	return ob, nil
+}
+
+func (s *service) replaceLink(id, oldId, newId string) error {
+	return s.DoBasic(id, func(b basic.Basic) error {
+		return b.ReplaceLink(oldId, newId)
+	})
 }

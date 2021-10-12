@@ -48,7 +48,8 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	}, nil, nil, "")
 	require.NoError(t, err)
 
-	recs, _, err := ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
+	ot := &model.ObjectType{Url: "_otp1", Name: "otp1"}
+	recs, _, err := ds.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -58,7 +59,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	}, nil, true)
 	require.NoError(t, err)
 
-	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
+	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Equal(t, pbtypes.Int64(4), pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -69,7 +70,7 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	}, nil, false)
 	require.NoError(t, err)
 
-	recs, _, err = ds.Query(&schema.Schema{ObjType: &model.ObjectType{Url: "_otp1"}}, database.Query{})
+	recs, _, err = ds.Query(schema.NewByType(ot, nil), database.Query{})
 	require.NoError(t, err)
 	require.Len(t, recs, 1)
 	require.Nil(t, pbtypes.Get(recs[0].Details, bundle.RelationKeyLastOpenedDate.String()))
@@ -321,9 +322,9 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	}}, nil, "s2"))
 	require.NoError(t, ds.CreateObject(id3, newDet("three", "_ota2"), nil, nil, "s3"))
 
-	restOpts, err := ds.GetAggregatedOptions("rel1", model.RelationFormat_status, "_otffff")
+	restOpts, err := ds.GetAggregatedOptions("rel1", "_otffff")
 	require.NoError(t, err)
-	require.Len(t, restOpts, 6)
+	require.Len(t, restOpts, 5)
 
 	time.Sleep(time.Millisecond * 50)
 	rels, err := ds.AggregateRelationsFromObjectsOfType("_ota1")

@@ -233,6 +233,11 @@
     - [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request)
     - [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response)
     - [Rpc.Block.Set.Image.Width.Response.Error](#anytype.Rpc.Block.Set.Image.Width.Response.Error)
+    - [Rpc.Block.Set.Latex](#anytype.Rpc.Block.Set.Latex)
+    - [Rpc.Block.Set.Latex.Text](#anytype.Rpc.Block.Set.Latex.Text)
+    - [Rpc.Block.Set.Latex.Text.Request](#anytype.Rpc.Block.Set.Latex.Text.Request)
+    - [Rpc.Block.Set.Latex.Text.Response](#anytype.Rpc.Block.Set.Latex.Text.Response)
+    - [Rpc.Block.Set.Latex.Text.Response.Error](#anytype.Rpc.Block.Set.Latex.Text.Response.Error)
     - [Rpc.Block.Set.Link](#anytype.Rpc.Block.Set.Link)
     - [Rpc.Block.Set.Link.TargetBlockId](#anytype.Rpc.Block.Set.Link.TargetBlockId)
     - [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype.Rpc.Block.Set.Link.TargetBlockId.Request)
@@ -473,6 +478,10 @@
     - [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype.Rpc.Navigation.ListObjects.Response.Error)
     - [Rpc.Object](#anytype.Rpc.Object)
+    - [Rpc.Object.AddWithShareLink](#anytype.Rpc.Object.AddWithShareLink)
+    - [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request)
+    - [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response)
+    - [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error)
     - [Rpc.Object.FeaturedRelation](#anytype.Rpc.Object.FeaturedRelation)
     - [Rpc.Object.FeaturedRelation.Add](#anytype.Rpc.Object.FeaturedRelation.Add)
     - [Rpc.Object.FeaturedRelation.Add.Request](#anytype.Rpc.Object.FeaturedRelation.Add.Request)
@@ -532,6 +541,14 @@
     - [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request)
     - [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response)
     - [Rpc.Object.SetLayout.Response.Error](#anytype.Rpc.Object.SetLayout.Response.Error)
+    - [Rpc.Object.ShareByLink](#anytype.Rpc.Object.ShareByLink)
+    - [Rpc.Object.ShareByLink.Request](#anytype.Rpc.Object.ShareByLink.Request)
+    - [Rpc.Object.ShareByLink.Response](#anytype.Rpc.Object.ShareByLink.Response)
+    - [Rpc.Object.ShareByLink.Response.Error](#anytype.Rpc.Object.ShareByLink.Response.Error)
+    - [Rpc.Object.ToSet](#anytype.Rpc.Object.ToSet)
+    - [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request)
+    - [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response)
+    - [Rpc.Object.ToSet.Response.Error](#anytype.Rpc.Object.ToSet.Response.Error)
     - [Rpc.ObjectType](#anytype.Rpc.ObjectType)
     - [Rpc.ObjectType.Create](#anytype.Rpc.ObjectType.Create)
     - [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request)
@@ -603,6 +620,15 @@
     - [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request)
     - [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response)
     - [Rpc.Wallet.Recover.Response.Error](#anytype.Rpc.Wallet.Recover.Response.Error)
+    - [Rpc.Workspace](#anytype.Rpc.Workspace)
+    - [Rpc.Workspace.Create](#anytype.Rpc.Workspace.Create)
+    - [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request)
+    - [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response)
+    - [Rpc.Workspace.Create.Response.Error](#anytype.Rpc.Workspace.Create.Response.Error)
+    - [Rpc.Workspace.Select](#anytype.Rpc.Workspace.Select)
+    - [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request)
+    - [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response)
+    - [Rpc.Workspace.Select.Response.Error](#anytype.Rpc.Workspace.Select.Response.Error)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
@@ -651,6 +677,7 @@
     - [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code)
     - [Rpc.Block.Set.Image.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Name.Response.Error.Code)
     - [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code)
+    - [Rpc.Block.Set.Latex.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Latex.Text.Response.Error.Code)
     - [Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code](#anytype.Rpc.Block.Set.Link.TargetBlockId.Response.Error.Code)
     - [Rpc.Block.Set.Page.IsArchived.Response.Error.Code](#anytype.Rpc.Block.Set.Page.IsArchived.Response.Error.Code)
     - [Rpc.Block.Set.Restrictions.Response.Error.Code](#anytype.Rpc.Block.Set.Restrictions.Response.Error.Code)
@@ -709,6 +736,7 @@
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
+    - [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Add.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
@@ -724,6 +752,8 @@
     - [Rpc.Object.SetIsArchived.Response.Error.Code](#anytype.Rpc.Object.SetIsArchived.Response.Error.Code)
     - [Rpc.Object.SetIsFavorite.Response.Error.Code](#anytype.Rpc.Object.SetIsFavorite.Response.Error.Code)
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
+    - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype.Rpc.Object.ShareByLink.Response.Error.Code)
+    - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
     - [Rpc.ObjectType.List.Response.Error.Code](#anytype.Rpc.ObjectType.List.Response.Error.Code)
     - [Rpc.ObjectType.Relation.Add.Response.Error.Code](#anytype.Rpc.ObjectType.Relation.Add.Response.Error.Code)
@@ -740,6 +770,8 @@
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code)
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
+    - [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code)
+    - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
   
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
@@ -847,6 +879,7 @@
     - [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend)
     - [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove)
     - [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set)
+    - [Event.Object.Remove](#anytype.Event.Object.Remove)
     - [Event.Object.Show](#anytype.Event.Object.Show)
     - [Event.Object.Show.RelationWithValuePerObject](#anytype.Event.Object.Show.RelationWithValuePerObject)
     - [Event.Ping](#anytype.Event.Ping)
@@ -923,6 +956,8 @@
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
+    - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
+    - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
@@ -930,6 +965,7 @@
     - [Block.Content.Dataview.Relation.DateFormat](#anytype.model.Block.Content.Dataview.Relation.DateFormat)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype.model.Block.Content.Dataview.Relation.TimeFormat)
     - [Block.Content.Dataview.Sort.Type](#anytype.model.Block.Content.Dataview.Sort.Type)
+    - [Block.Content.Dataview.View.Size](#anytype.model.Block.Content.Dataview.View.Size)
     - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
@@ -973,9 +1009,13 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
+| ObjectAddWithShareLink | [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request) | [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response) |  |
+| ObjectShareByLink | [Rpc.Object.ShareByLink.Request](#anytype.Rpc.Object.ShareByLink.Request) | [Rpc.Object.ShareByLink.Response](#anytype.Rpc.Object.ShareByLink.Response) |  |
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) |  |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request) | [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response) |  |
+| WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request) | [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response) |  |
+| WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request) | [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
@@ -1020,6 +1060,7 @@
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
 | BlockListDeletePage | [Rpc.BlockList.Delete.Page.Request](#anytype.Rpc.BlockList.Delete.Page.Request) | [Rpc.BlockList.Delete.Page.Response](#anytype.Rpc.BlockList.Delete.Page.Response) |  |
 | BlockListTurnInto | [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request) | [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response) |  |
+| BlockSetLatexText | [Rpc.Block.Set.Latex.Text.Request](#anytype.Rpc.Block.Set.Latex.Text.Request) | [Rpc.Block.Set.Latex.Text.Response](#anytype.Rpc.Block.Set.Latex.Text.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
 | BlockSetTextColor | [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request) | [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response) |  |
 | BlockListSetTextColor | [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request) | [Rpc.BlockList.Set.Text.Color.Response](#anytype.Rpc.BlockList.Set.Text.Color.Response) |  |
@@ -1076,6 +1117,7 @@
 | ObjectFeaturedRelationRemove | [Rpc.Object.FeaturedRelation.Remove.Request](#anytype.Rpc.Object.FeaturedRelation.Remove.Request) | [Rpc.Object.FeaturedRelation.Remove.Response](#anytype.Rpc.Object.FeaturedRelation.Remove.Response) |  |
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request) | [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
+| ObjectToSet | [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request) | [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response) | ObjectToSet creates new set from given object and removes object |
 | BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | TODO: rename BlockSetDetails -&gt; ObjectSetDetails |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page TODO: rename PageCreate -&gt; ObjectCreate |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) | SetCreate just creates the new set, without adding the link to it from some other page |
@@ -2218,7 +2260,7 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context block |
 | targetId | [string](#string) |  | id of the closest block |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | details |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
 
@@ -4467,6 +4509,75 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Latex"></a>
+
+### Rpc.Block.Set.Latex
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Latex.Text"></a>
+
+### Rpc.Block.Set.Latex.Text
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Latex.Text.Request"></a>
+
+### Rpc.Block.Set.Latex.Text.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| text | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Latex.Text.Response"></a>
+
+### Rpc.Block.Set.Latex.Text.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Latex.Text.Response.Error](#anytype.Rpc.Block.Set.Latex.Text.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Latex.Text.Response.Error"></a>
+
+### Rpc.Block.Set.Latex.Text.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Latex.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Latex.Text.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7937,6 +8048,62 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object.AddWithShareLink"></a>
+
+### Rpc.Object.AddWithShareLink
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithShareLink.Request"></a>
+
+### Rpc.Object.AddWithShareLink.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| link | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithShareLink.Response"></a>
+
+### Rpc.Object.AddWithShareLink.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error"></a>
+
+### Rpc.Object.AddWithShareLink.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.FeaturedRelation"></a>
 
 ### Rpc.Object.FeaturedRelation
@@ -8109,6 +8276,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | description | [string](#string) |  |  |
 | iconImage | [string](#string) |  |  |
 | iconEmoji | [string](#string) |  |  |
+| done | [bool](#bool) |  |  |
+| relationFormat | [int32](#int32) |  |  |
 
 
 
@@ -8601,8 +8770,11 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | fullText | [string](#string) |  |  |
 | offset | [int32](#int32) |  |  |
 | limit | [int32](#int32) |  |  |
-| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes
+
+deprecated, to be removed |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
+| ignoreWorkspace | [bool](#bool) |  |  |
 
 
 
@@ -8808,6 +8980,121 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink"></a>
+
+### Rpc.Object.ShareByLink
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Request"></a>
+
+### Rpc.Object.ShareByLink.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Response"></a>
+
+### Rpc.Object.ShareByLink.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| link | [string](#string) |  |  |
+| error | [Rpc.Object.ShareByLink.Response.Error](#anytype.Rpc.Object.ShareByLink.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Response.Error"></a>
+
+### Rpc.Object.ShareByLink.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ShareByLink.Response.Error.Code](#anytype.Rpc.Object.ShareByLink.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ToSet"></a>
+
+### Rpc.Object.ToSet
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ToSet.Request"></a>
+
+### Rpc.Object.ToSet.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ToSet.Response"></a>
+
+### Rpc.Object.ToSet.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ToSet.Response.Error](#anytype.Rpc.Object.ToSet.Response.Error) |  |  |
+| setId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ToSet.Response.Error"></a>
+
+### Rpc.Object.ToSet.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9394,7 +9681,7 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| objectTypeUrl | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | if omitted the name of page will be the same with object type |
 | templateId | [string](#string) |  | optional template id for creating from template |
 
@@ -9787,6 +10074,124 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace"></a>
+
+### Rpc.Workspace
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create"></a>
+
+### Rpc.Workspace.Create
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create.Request"></a>
+
+### Rpc.Workspace.Create.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create.Response"></a>
+
+### Rpc.Workspace.Create.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Create.Response.Error](#anytype.Rpc.Workspace.Create.Response.Error) |  |  |
+| workspaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Create.Response.Error"></a>
+
+### Rpc.Workspace.Create.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select"></a>
+
+### Rpc.Workspace.Select
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Request"></a>
+
+### Rpc.Workspace.Select.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| workspaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Response"></a>
+
+### Rpc.Workspace.Select.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.Select.Response.Error](#anytype.Rpc.Workspace.Select.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Response.Error"></a>
+
+### Rpc.Workspace.Select.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10426,6 +10831,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Set.Image.Width.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Image.Width.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Latex.Text.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Latex.Text.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -11211,6 +11629,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error.Code"></a>
+
+### Rpc.Object.AddWithShareLink.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code"></a>
 
 ### Rpc.Object.FeaturedRelation.Add.Response.Error.Code
@@ -11396,6 +11827,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.SetLayout.Response.Error.Code"></a>
 
 ### Rpc.Object.SetLayout.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.ShareByLink.Response.Error.Code"></a>
+
+### Rpc.Object.ShareByLink.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.ToSet.Response.Error.Code"></a>
+
+### Rpc.Object.ToSet.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -11628,6 +12085,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_CREATE_LOCAL_REPO | 101 |  |
 
 
+
+<a name="anytype.Rpc.Workspace.Create.Response.Error.Code"></a>
+
+### Rpc.Workspace.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Workspace.Select.Response.Error.Code"></a>
+
+### Rpc.Workspace.Select.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
  
 
  
@@ -11858,7 +12341,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| source | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 
 
 
@@ -13091,6 +13574,7 @@ Precondition: user A opened a block
 | objectRelationsSet | [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set) |  |  |
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
+| objectRemove | [Event.Object.Remove](#anytype.Event.Object.Remove) |  |  |
 | objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
@@ -13311,6 +13795,21 @@ Unset existing detail keys
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
 | relations | [model.Relation](#anytype.model.Relation) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Remove"></a>
+
+### Event.Object.Remove
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| ids | [string](#string) | repeated | notifies that objects were removed |
 
 
 
@@ -14020,7 +14519,7 @@ Bookmark is to keep a web-link and to preview a content.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| source | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
 | relations | [Relation](#anytype.model.Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |
@@ -14100,6 +14599,9 @@ Bookmark is to keep a web-link and to preview a content.
 | filters | [Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | relations | [Block.Content.Dataview.Relation](#anytype.model.Block.Content.Dataview.Relation) | repeated | relations fields/columns options, also used to provide the order |
 | coverRelationKey | [string](#string) |  | Relation used for cover in gallery |
+| hideIcon | [bool](#bool) |  | Hide icon near name |
+| cardSize | [Block.Content.Dataview.View.Size](#anytype.model.Block.Content.Dataview.View.Size) |  | Gallery card size |
+| coverFit | [bool](#bool) |  | Image fits container |
 
 
 
@@ -14550,6 +15052,38 @@ scope from which this relation have been aggregated |
 
 
 
+
+<a name="anytype.model.ThreadCreateQueueEntry"></a>
+
+### ThreadCreateQueueEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collectionThread | [string](#string) |  |  |
+| threadId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.ThreadDeeplinkPayload"></a>
+
+### ThreadDeeplinkPayload
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| addrs | [string](#string) | repeated |  |
+
+
+
+
+
  
 
 
@@ -14639,6 +15173,19 @@ scope from which this relation have been aggregated |
 | ---- | ------ | ----------- |
 | Asc | 0 |  |
 | Desc | 1 |  |
+
+
+
+<a name="anytype.model.Block.Content.Dataview.View.Size"></a>
+
+### Block.Content.Dataview.View.Size
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Small | 0 |  |
+| Medium | 1 |  |
+| Large | 2 |  |
 
 
 
@@ -14941,6 +15488,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | BundledObjectType | 514 |  |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
+| Workspace | 517 |  |
 
 
  

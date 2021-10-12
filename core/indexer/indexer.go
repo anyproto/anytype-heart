@@ -38,7 +38,7 @@ const (
 	CName = "indexer"
 
 	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 0  // reindex thread-based objects
+	ForceThreadsObjectsReindexCounter int32 = 1  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 4  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2  // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 11 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
@@ -340,6 +340,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			smartblock.SmartblockTypeMarketplaceRelation,
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeWorkspace,
 		)
 		if err != nil {
 			return err
@@ -620,9 +621,16 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 			dv = b.Model().GetDataview()
 		}
 		if b != nil && dv != nil {
-			if err := i.store.UpdateRelationsInSet(info.Id, dv.Source, setCreator, dv.Relations); err != nil {
-				log.With("thread", info.Id).Errorf("failed to index dataview relations: %s", err.Error())
+			if len(dv.Source) == 1 {
+				sbt, err := smartblock.SmartBlockTypeFromID(dv.Source[0])
+				// in case we have set by objectType we need to store relations for improved aggregation
+				if err == nil && (sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType) {
+					if err = i.store.UpdateRelationsInSetByObjectType(info.Id, dv.Source[0], setCreator, dv.Relations); err != nil {
+						log.With("thread", info.Id).Errorf("failed to index dataview relations: %s", err.Error())
+					}
+				}
 			}
+
 		}
 	}
 
@@ -708,10 +716,18 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 		}
 	}
 
-	if len(info.SetRelations) > 0 {
-		if err := i.store.UpdateRelationsInSet(id, info.SetSource, info.Creator, info.SetRelations); err != nil {
-			log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
+	if len(info.SetRelations) > 1 && len(info.SetSource) == 1 {
+		sbt, err := smartblock.SmartBlockTypeFromID(info.SetSource[0])
+		if err != nil {
+			return err
 		}
+
+		if sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType {
+			if err := i.store.UpdateRelationsInSetByObjectType(id, info.SetSource[0], info.Creator, info.SetRelations); err != nil {
+				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
+			}
+		}
+
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {

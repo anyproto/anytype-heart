@@ -2,6 +2,7 @@ package threads
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 )
@@ -12,6 +13,16 @@ const (
 
 type CafeConfigFetcher interface {
 	GetConfig(ctx context.Context) *cafePb.GetConfigResponseConfig
+}
+
+type CurrentWorkspaceThreadGetter interface {
+	GetCurrentWorkspaceId() (string, error)
+}
+
+type ThreadCreateQueue interface {
+	AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error)
+	RemoveThreadQueueEntry(threadId string) (err error)
+	GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error)
 }
 
 type Config struct {

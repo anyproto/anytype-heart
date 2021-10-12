@@ -3,6 +3,7 @@ package dataview
 import (
 	"context"
 	"fmt"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
@@ -168,6 +169,7 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 		return err
 	}
 
+	ot := d.getObjectTypeSource(tb)
 	if relation.Format == model.RelationFormat_file && relation.ObjectTypes == nil {
 		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
 	}
@@ -188,7 +190,7 @@ func (d *dataviewCollectionImpl) UpdateRelation(ctx *state.Context, blockId stri
 
 	if relation.Format == model.RelationFormat_status || relation.Format == model.RelationFormat_tag {
 		// reinject relation options
-		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(relationKey, relation.Format, tb.GetSource())
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(relationKey, ot)
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
 		} else {
@@ -222,7 +224,7 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return nil, err
 	} else {
 		db = target
@@ -238,7 +240,7 @@ func (d *dataviewCollectionImpl) AddRelationOption(ctx *state.Context, blockId, 
 	}
 
 	if option.Id == "" {
-		existingOptions, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+		existingOptions, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 		if err != nil {
 			log.Errorf("failed to get existing aggregated options: %s", err.Error())
 		} else {
@@ -282,7 +284,7 @@ func (d *dataviewCollectionImpl) UpdateRelationOption(ctx *state.Context, blockI
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return err
 	} else {
 		db = target
@@ -322,7 +324,7 @@ func (d *dataviewCollectionImpl) DeleteRelationOption(ctx *state.Context, allowM
 	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(""); err != nil {
+	} else if target, err := dbRouter.Get(nil); err != nil {
 		return err
 	} else {
 		db = target
@@ -387,10 +389,11 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*mode
 		return nil, err
 	}
 
-	objectType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
+	sch, err := d.getSchema(tb)
 	if err != nil {
 		return nil, err
 	}
+
 	hasRelations := func(rels []*model.Relation, key string) bool {
 		for _, rel := range rels {
 			if rel.Key == key {
@@ -400,7 +403,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*mode
 		return false
 	}
 
-	rels := objectType.Relations
+	rels := sch.ListRelations()
 	for _, rel := range tb.Model().GetDataview().GetRelations() {
 		if hasRelations(rels, rel.Key) {
 			continue
@@ -408,7 +411,7 @@ func (d *dataviewCollectionImpl) GetAggregatedRelations(blockId string) ([]*mode
 		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
-	agRels, err := d.Anytype().ObjectStore().ListRelations(tb.GetSource())
+	agRels, err := d.Anytype().ObjectStore().ListRelations(sch.ObjectType().GetUrl())
 	if err != nil {
 		return nil, err
 	}
@@ -484,20 +487,6 @@ func (d *dataviewCollectionImpl) DeleteView(ctx *state.Context, blockId string, 
 		return d.Apply(s)
 	}
 	return d.Apply(s, smartblock.NoEvent)
-}
-
-func (d *dataviewCollectionImpl) GetObjectTypeURL(ctx *state.Context, blockId string) (string, error) {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
-	if err != nil {
-		return "", err
-	}
-
-	if v, ok := tb.Model().Content.(*model.BlockContentOfDataview); !ok {
-		return "", fmt.Errorf("wrong dataview block content type: %T", tb.Model().Content)
-	} else {
-		return v.Dataview.Source, nil
-	}
 }
 
 func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, viewId string, view model.BlockContentDataviewView, showEvent bool) error {
@@ -576,13 +565,14 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 		return nil, err
 	}
 
-	if len(view.Relations) == 0 {
-		objType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), tb.GetSource())
-		if err != nil {
-			return nil, fmt.Errorf("object type not found")
-		}
+	sch, err := d.getSchema(tb)
+	if err != nil {
+		return nil, err
+	}
 
-		for _, rel := range objType.Relations {
+	if len(view.Relations) == 0 {
+		// by default use list of relations from the schema
+		for _, rel := range sch.ListRelations() {
 			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
 		}
 	}
@@ -619,24 +609,9 @@ func (d *dataviewCollectionImpl) fetchAllDataviewsRecordsAndSendEvents(ctx *stat
 }
 
 func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error) {
-	var (
-		source  string
-		ok      bool
-		dvBlock dataview.Block
-	)
-	if dvBlock, ok = d.Pick(blockId).(dataview.Block); !ok {
-		return nil, fmt.Errorf("not a dataview block")
-	} else {
-		source = dvBlock.Model().GetDataview().Source
-	}
-
-	var db database.Writer
-	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(source); err != nil {
+	dvBlock, db, err := d.getDatabase(blockId)
+	if err != nil {
 		return nil, err
-	} else {
-		db = target
 	}
 
 	dv := d.getDataviewImpl(dvBlock)
@@ -661,39 +636,22 @@ func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string
 }
 
 func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, recID string, rec model.ObjectDetails) error {
-	var (
-		source  string
-		ok      bool
-		dvBlock dataview.Block
-	)
-
-	if dvBlock, ok = d.Pick(blockId).(dataview.Block); !ok {
-		return fmt.Errorf("not a dataview block")
-	} else {
-		source = dvBlock.Model().GetDataview().Source
-	}
-
-	var db database.Database
-	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(source); err != nil {
+	dvBlock, db, err := d.getDatabase(blockId)
+	if err != nil {
 		return err
-	} else {
-		db = target
 	}
 
 	relationsFiltered := pbtypes.RelationsFilterKeys(dvBlock.Model().GetDataview().Relations, pbtypes.StructNotNilKeys(rec.Details))
-	err := db.Update(recID, relationsFiltered, database.Record{Details: rec.Details})
+	err = db.Update(recID, relationsFiltered, database.Record{Details: rec.Details})
 	if err != nil {
 		return err
 	}
 	dv := d.getDataviewImpl(dvBlock)
 
-	objectType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), source)
+	sch, err := d.getSchema(dvBlock)
 	if err != nil {
 		return err
 	}
-	sch := schema.New(objectType, dvBlock.Model().GetDataview().Relations)
 
 	var depIdsMap = map[string]struct{}{}
 	var depIds []string
@@ -706,7 +664,7 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 			continue
 		}
 
-		if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == model.RelationFormat_object || rel.GetFormat() == model.RelationFormat_file) {
+		if rel := pbtypes.GetRelation(sch.ListRelations(), key); rel != nil && (rel.GetFormat() == model.RelationFormat_object || rel.GetFormat() == model.RelationFormat_file) {
 			depIdsToAdd := pbtypes.GetStringListValue(item)
 			for _, depId := range depIdsToAdd {
 				if _, exists := depIdsMap[depId]; !exists {
@@ -742,21 +700,32 @@ func (d *dataviewCollectionImpl) UpdateRecord(_ *state.Context, blockId string, 
 	return nil
 }
 
-func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {
-	var source string
+func (d *dataviewCollectionImpl) getDatabase(blockId string) (dataview.Block, database.Database, error) {
 	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
-		return fmt.Errorf("not a dataview block")
+		return nil, nil, fmt.Errorf("not a dataview block")
 	} else {
-		source = dvBlock.Model().GetDataview().Source
-	}
+		sch, err := d.getSchema(dvBlock)
+		if err != nil {
+			return nil, nil, err
+		}
 
-	var db database.Writer
-	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(source); err != nil {
+		var db database.Database
+		if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
+			return nil, nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
+		} else if target, err := dbRouter.Get(sch.ObjectType()); err != nil {
+			return nil, nil, err
+		} else {
+			db = target
+		}
+
+		return dvBlock, db, nil
+	}
+}
+
+func (d *dataviewCollectionImpl) DeleteRecord(_ *state.Context, blockId string, recID string) error {
+	_, db, err := d.getDatabase(blockId)
+	if err != nil {
 		return err
-	} else {
-		db = target
 	}
 
 	return db.Delete(recID)
@@ -778,13 +747,13 @@ func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error
 
 func (d *dataviewCollectionImpl) fillAggregatedOptions(b dataview.Block) {
 	dvc := b.Model().GetDataview()
-
+	ot := d.getObjectTypeSource(b)
 	for _, rel := range dvc.Relations {
 		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
 			continue
 		}
 
-		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvc.Source)
+		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, ot)
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
 			continue
@@ -817,7 +786,8 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 }
 
 func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.State, dvBlock dataview.Block, rel *model.Relation) error {
-	options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, dvBlock.GetSource())
+	ot := d.getObjectTypeSource(dvBlock)
+	options, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, ot)
 	if err != nil {
 		return fmt.Errorf("failed to aggregate: %s", err.Error())
 	}
@@ -829,28 +799,124 @@ func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.St
 	return d.Apply(st)
 }
 
+// returns empty string
+func (d *dataviewCollectionImpl) getObjectTypeSource(dvBlock dataview.Block) string {
+	sources := dvBlock.Model().GetDataview().Source
+	if len(sources) > 1 {
+		return ""
+	}
+
+	for _, source := range sources {
+		sbt, err := smartblock2.SmartBlockTypeFromID(source)
+		if err != nil {
+			return ""
+		}
+
+		if sbt == smartblock2.SmartBlockTypeObjectType || sbt == smartblock2.SmartBlockTypeBundledObjectType {
+			return source
+		}
+		return ""
+	}
+
+	return ""
+}
+
+func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRelations []*model.Relation) (schema.Schema, error) {
+	var hasRelations, hasType bool
+
+	for _, source := range sources {
+		sbt, err := smartblock2.SmartBlockTypeFromID(source)
+		if err != nil {
+			return nil, err
+		}
+
+		if sbt == smartblock2.SmartBlockTypeObjectType || sbt == smartblock2.SmartBlockTypeBundledObjectType {
+			if hasRelations {
+				return nil, fmt.Errorf("dataview source contains both type and relation")
+			}
+			if hasType {
+				return nil, fmt.Errorf("dataview source contains more than one object type")
+			}
+			hasType = true
+		}
+
+		if sbt == smartblock2.SmartBlockTypeIndexedRelation || sbt == smartblock2.SmartBlockTypeBundledRelation {
+			if hasType {
+				return nil, fmt.Errorf("dataview source contains both type and relation")
+			}
+			hasRelations = true
+		}
+	}
+	if hasType {
+		objectType, err := objectstore.GetObjectType(store, sources[0])
+		if err != nil {
+			return nil, err
+		}
+		sch := schema.NewByType(objectType, optionalRelations)
+		return sch, nil
+	}
+
+	if hasRelations {
+		ids, _, err := store.QueryObjectIds(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyRecommendedRelations.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.StringList(sources),
+				},
+			},
+		}, []smartblock2.SmartBlockType{
+			smartblock2.SmartBlockTypeBundledObjectType,
+			smartblock2.SmartBlockTypeObjectType,
+		})
+		if err != nil {
+			return nil, err
+		}
+
+		var relations []*model.Relation
+		for _, relId := range sources {
+			relKey, err := pbtypes.RelationIdToKey(relId)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get relation key from id %s: %s", relId, err.Error())
+			}
+
+			rel, err := store.GetRelation(relKey)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get relation %s: %s", relKey, err.Error())
+			}
+
+			relations = append(relations, rel)
+		}
+		sch := schema.NewByRelations(ids, relations, optionalRelations)
+		return sch, nil
+	}
+
+	return nil, fmt.Errorf("relation or type not found")
+}
+
+func (d *dataviewCollectionImpl) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
+	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.Anytype().ObjectStore(), dvBlock.Model().GetDataview().Relations)
+}
+
 func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvBlock dataview.Block) ([]*pb.EventMessage, error) {
-	source := dvBlock.Model().GetDataview().Source
 	activeView, err := dvBlock.GetView(dv.activeViewId)
 	if err != nil {
 		return nil, err
 	}
 
-	var db database.Reader
+	sch, err := d.getSchema(dvBlock)
+	if err != nil {
+		return nil, err
+	}
+
+	var db database.Database
 	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
 		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(source); err != nil {
+	} else if target, err := dbRouter.Get(sch.ObjectType()); err != nil {
 		return nil, err
 	} else {
 		db = target
 	}
-
-	// todo: inject schema
-	objectType, err := objectstore.GetObjectType(d.Anytype().ObjectStore(), source)
-	if err != nil {
-		return nil, err
-	}
-	sch := schema.New(objectType, dvBlock.Model().GetDataview().Relations)
 
 	dv.mu.Lock()
 	if dv.recordsUpdatesCancel != nil {
@@ -863,7 +929,6 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 	depRecordsCh := make(chan *types.Struct)
 	recordsSub := database.NewSubscription(nil, recordsCh)
 	depRecordsSub := database.NewSubscription(nil, depRecordsCh)
-
 	q := database.Query{
 		Relations:         activeView.Relations,
 		Filters:           activeView.Filters,
@@ -872,7 +937,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 		Offset:            dv.offset,
 		WithSystemObjects: d.withSystemObjects,
 	}
-	entries, cancelRecordSubscription, total, err := db.QueryAndSubscribeForChanges(&sch, q, recordsSub)
+	entries, cancelRecordSubscription, total, err := db.QueryAndSubscribeForChanges(sch, q, recordsSub)
 	if err != nil {
 		return nil, err
 	}
@@ -913,7 +978,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				continue
 			}
 
-			if rel, _ := sch.GetRelationByKey(key); rel != nil && (rel.GetFormat() == model.RelationFormat_object || rel.GetFormat() == model.RelationFormat_file) && (len(rel.ObjectTypes) == 0 || rel.ObjectTypes[0] != bundle.TypeKeyRelation.URL()) {
+			if rel := pbtypes.GetRelation(sch.ListRelations(), key); rel != nil && (rel.GetFormat() == model.RelationFormat_object || rel.GetFormat() == model.RelationFormat_file) && (len(rel.ObjectTypes) == 0 || rel.ObjectTypes[0] != bundle.TypeKeyRelation.URL()) {
 				for _, depId := range pbtypes.GetStringListValue(item) {
 					if _, exists := depsMap[depId]; exists {
 						continue
@@ -965,14 +1030,14 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 
 	msgs = append(msgs, depEntriesToEvents(depsEntries)...)
 
-	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", source, activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
+	log.Debugf("db query for %s {filters: %+v, sorts: %+v, limit: %d, offset: %d} got %d records, total: %d, msgs: %d", sch.String(), activeView.Filters, activeView.Sorts, dv.limit, dv.offset, len(entries), total, len(msgs))
 	dv.records = entries
 	qFilter, err := filter.MakeAndFilter(activeView.Filters)
 	if err != nil {
 		return nil, err
 	}
 
-	filters := filter.AndFilters{qFilter, database.PreFilters(q.IncludeArchivedObjects, &sch)}
+	filters := filter.AndFilters{sch.Filters(), qFilter}
 	go func(dvBlockId string) {
 		for {
 			select {

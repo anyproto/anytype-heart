@@ -190,7 +190,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			continue
 		}
 
-		opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, ctx.State.ObjectType())
+		opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, ctx.State.ObjectType())
 		if err != nil {
 			log.Errorf("GetAggregatedOptions error: %s", err.Error())
 		} else {
@@ -428,7 +428,6 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 
 			if rel.Key == bundle.RelationKeyId.String() ||
 				rel.Key == bundle.RelationKeyType.String() ||
-				rel.Key == bundle.RelationKeyRecommendedRelations.String() ||
 				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
 				!includeCreatorModifier && (rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String()) {
 				continue
@@ -480,7 +479,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 	}
-
+	if err = sb.onApply(s); err != nil {
+		return
+	}
 	if sb.Anytype() != nil {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
@@ -535,7 +536,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	sb.reportChange(st)
+	if !act.IsEmpty() {
+		sb.reportChange(st)
+	}
 
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
@@ -628,7 +631,7 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 				}
 
 				if len(missingOptsIds) > 0 {
-					opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+					opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 					if err != nil {
 						return err
 					}
@@ -738,9 +741,9 @@ func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
 	copy := pbtypes.CopyRelations(s.ExtraRelations())
 
-	var existsMap = map[string]*model.Relation{}
-	for _, rel := range copy {
-		existsMap[rel.Key] = rel
+	var existsMap = map[string]int{}
+	for i, rel := range copy {
+		existsMap[rel.Key] = i
 	}
 	for _, rel := range relations {
 		if rel.Key == "" {
@@ -749,7 +752,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 		}
 
 		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 			if err != nil {
 				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
 			} else {
@@ -758,13 +761,9 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 		}
 
 		if relEx, exists := existsMap[rel.Key]; exists {
-			c := pbtypes.CopyRelation(rel)
-			if !pbtypes.RelationEqualOmitDictionary(relEx, rel) {
-				c = relEx
+			if !pbtypes.RelationEqualOmitDictionary(copy[relEx], rel) {
 				log.Warnf("failed to AddExtraRelations: provided relation %s not equal to existing aggregated one", rel.Key)
 			}
-			relationsWithKeys = append(relationsWithKeys, c)
-			copy = append(copy, c)
 		} else {
 			existingRelation, err := sb.Anytype().ObjectStore().GetRelation(rel.Key)
 			if err != nil {
@@ -780,7 +779,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 			relationsWithKeys = append(relationsWithKeys, c)
 			copy = append(copy, c)
 		}
-		if !pbtypes.HasField(s.Details(), rel.Key) {
+		if !s.HasCombinedDetailsKey(rel.Key) {
 			s.SetDetail(rel.Key, pbtypes.Null())
 		}
 	}
@@ -875,7 +874,7 @@ mainLoop:
 	st.SetExtraRelations(append(extraRelations, newRelations...))
 	for _, rel := range newRelations {
 		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, st.ObjectType())
+			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, st.ObjectType())
 			if err != nil {
 				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
 			} else {
@@ -957,7 +956,7 @@ func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey str
 	}
 
 	if option.Id == "" {
-		existingOptions, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, s.ObjectType())
+		existingOptions, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
 		if err != nil {
 			log.Errorf("failed to get existing aggregated options: %s", err.Error())
 		} else {
@@ -1197,11 +1196,11 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 }
 
 func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []*model.Relation, aggregatedRelations []*model.Relation, details *types.Struct) []*model.Relation {
-	var m = make(map[string]struct{}, len(extraRelations))
+	var m = make(map[string]int, len(extraRelations))
 	var rels = make([]*model.Relation, 0, len(objTypeRelations)+len(extraRelations))
 
-	for _, rel := range extraRelations {
-		m[rel.Key] = struct{}{}
+	for i, rel := range extraRelations {
+		m[rel.Key] = i
 		rels = append(rels, pbtypes.CopyRelation(rel))
 	}
 
@@ -1210,15 +1209,19 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 			continue
 		}
 		rels = append(rels, pbtypes.CopyRelation(rel))
-		m[rel.Key] = struct{}{}
+		m[rel.Key] = len(rels) - 1
 	}
 
 	for _, rel := range aggregatedRelations {
-		if _, exists := m[rel.Key]; exists {
+		if i, exists := m[rel.Key]; exists {
+			// overwrite name that we've got from DS
+			if rels[i].Name != rel.Name {
+				rels[i].Name = rel.Name
+			}
 			continue
 		}
-		m[rel.Key] = struct{}{}
 		rels = append(rels, pbtypes.CopyRelation(rel))
+		m[rel.Key] = len(rels) - 1
 	}
 
 	if details == nil || details.Fields == nil {
@@ -1281,7 +1284,7 @@ func (sb *smartBlock) fillAggregatedRelations(rels []*model.Relation, objType st
 			continue
 		}
 
-		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, rel.Format, objType)
+		options, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, objType)
 		if err != nil {
 			log.Errorf("failed to GetAggregatedOptions %s", err.Error())
 			continue
@@ -1333,7 +1336,7 @@ func (sb *smartBlock) GetDocInfo() (doc.DocInfo, error) {
 func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
 	var setRelations []*model.Relation
-	var setSource string
+	var setSource []string
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
 		creator = sb.Anytype().ProfileID()
@@ -1362,6 +1365,15 @@ func (sb *smartBlock) reportChange(s *state.State) {
 		return
 	}
 	sb.doc.ReportChange(context.TODO(), sb.getDocInfo(s))
+}
+
+func (sb *smartBlock) onApply(s *state.State) (err error) {
+	if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String()) {
+		if !s.IsEmpty() {
+			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+		}
+	}
+	return
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {

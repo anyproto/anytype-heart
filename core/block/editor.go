@@ -3,10 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
@@ -23,6 +20,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
@@ -478,6 +476,12 @@ func (s *service) SetTextText(ctx *state.Context, req pb.RpcBlockSetTextTextRequ
 	})
 }
 
+func (s *service) SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		return b.(basic.Basic).SetLatexText(ctx, req)
+	})
+}
+
 func (s *service) SetTextStyle(ctx *state.Context, contextId string, style model.BlockContentTextStyle, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
@@ -790,9 +794,9 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), req.ObjectTypeUrl)
+	schema, err := dataview.SchemaBySources(req.Source, s.anytype.ObjectStore(), nil)
 	if err != nil {
-		return "", "", err
+		return
 	}
 
 	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet)
@@ -802,8 +806,14 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	}
 	setId = csm.ID()
 
+	state := state.NewDoc(csm.ID(), nil).NewState()
+	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	if err == nil {
+		state.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	}
+
 	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
-		State: state.NewDoc(req.ObjectTypeUrl, nil).NewState(),
+		State: state,
 	})
 	if err != nil {
 		return "", "", err
@@ -813,19 +823,45 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		return "", setId, fmt.Errorf("unexpected set block type: %T", sb)
 	}
 
-	var relations []*model.BlockContentDataviewRelation
-	for _, rel := range objType.Relations {
-		visible := !rel.Hidden
-		if rel.Key == bundle.RelationKeyType.String() {
-			visible = false
+	var (
+		relations     []*model.Relation
+		viewRelations []*model.BlockContentDataviewRelation
+	)
+
+	for _, rel := range schema.RequiredRelations() {
+		// required relations (e.g. in the set by relation) should be visible by default. RequiredRelations includes name
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
+	}
+
+	for _, rel := range schema.ListRelations() {
+		// other relations should be added with
+		if pbtypes.HasRelation(relations, rel.Key) {
+			continue
 		}
-		relations = append(relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
+
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+	}
+
+	for _, relKey := range bundle.RequiredInternalRelations {
+		// add all non-hidden system-wide internal relations just in case
+		if pbtypes.HasRelation(relations, relKey.String()) {
+			continue
+		}
+		rel := bundle.MustGetRelation(relKey)
+		if rel.Hidden {
+			continue
+		}
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+
 	}
 
 	dataview := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
-			Relations: objType.Relations,
-			Source:    objType.Url,
+			Relations: relations,
+			Source:    req.Source,
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   bson.NewObjectId().Hex(),
@@ -837,7 +873,8 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Filters: nil,
+					Filters:   nil,
+					Relations: viewRelations,
 				},
 			},
 		},
@@ -846,7 +883,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
 
 	if name == "" {
-		name = objType.Name + " set"
+		name = schema.Description() + " set"
 	}
 
 	err = set.InitDataview(dataview, name, icon)
@@ -879,6 +916,37 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	})
 
 	return linkId, setId, nil
+}
+
+func (s *service) ObjectToSet(id string, source []string) (newId string, err error) {
+	var details *types.Struct
+	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		details = pbtypes.CopyStruct(b.Details())
+		return nil
+	}); err != nil {
+		return
+	}
+
+	_, newId, err = s.CreateSet(nil, pb.RpcBlockCreateSetRequest{
+		Source:  source,
+		Details: details,
+	})
+	if err != nil {
+		return
+	}
+
+	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	res, err := oStore.GetWithLinksInfoByID(id)
+	if err != nil {
+		return
+	}
+	for _, il := range res.Links.Inbound {
+		if err = s.replaceLink(il.Id, id, newId); err != nil {
+			return
+		}
+	}
+	s.deleteObject(id)
+	return
 }
 
 func (s *service) RemoveExtraRelations(ctx *state.Context, objectTypeId string, relationKeys []string) (err error) {

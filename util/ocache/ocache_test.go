@@ -20,6 +20,10 @@ func (t *testObject) Close() (err error) {
 	return t.closeErr
 }
 
+func (t *testObject) ShouldClose() bool {
+	return true
+}
+
 func TestOCache_Get(t *testing.T) {
 	t.Run("successful", func(t *testing.T) {
 		c := New(func(ctx context.Context, id string) (value Object, err error) {

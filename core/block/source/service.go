@@ -68,6 +68,8 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return NewIndexedRelation(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBreadcrumbs:
 		return NewVirtual(s.anytype, st.ToProto()), nil
+	case smartblock.SmartBlockTypeWorkspace:
+		return NewWorkspaces(s.anytype, id), nil
 	}
 
 	tid, err := thread.Decode(id)

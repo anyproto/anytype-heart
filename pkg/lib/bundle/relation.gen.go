@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "011738d4891586946307035e3f05a70c1a4685237d6aa08b7694d2ba491f5a60"
+const RelationChecksum = "a9017bb710d57e572d2078b020bf144b24cd0cdb3310c79a6166833c10719c42"
 
 type RelationKey string
 
@@ -108,6 +108,7 @@ const (
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
+	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -127,6 +128,7 @@ const (
 	RelationKeyPriority                  RelationKey = "priority"
 	RelationKeyFileMimeType              RelationKey = "fileMimeType"
 	RelationKeyType                      RelationKey = "type"
+	RelationKeyIsDraft                   RelationKey = "isDraft"
 	RelationKeyNumberOfEmployees         RelationKey = "numberOfEmployees"
 	RelationKeyLayout                    RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
@@ -1023,6 +1025,19 @@ var (
 			MaxCount:         1,
 			Name:             "Archived",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsDraft: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Relation that indicates document in draft state",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isDraft",
+			MaxCount:         1,
+			Name:             "Is draft",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1988,6 +2003,19 @@ var (
 			Key:              "widthInPixels",
 			MaxCount:         1,
 			Name:             "Width",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyWorkspaceId: {
+
+			DataSource:       model.Relation_account,
+			Description:      "Workspace id",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Key:              "workspaceId",
+			MaxCount:         1,
+			Name:             "WorkspaceId",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

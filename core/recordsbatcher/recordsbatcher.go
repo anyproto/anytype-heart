@@ -5,7 +5,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/cheggaaa/mb"
 )
@@ -30,16 +29,11 @@ func (r *recordsBatcher) Name() (name string) {
 	return CName
 }
 
-func (r *recordsBatcher) Add(msgs ...core.SmartblockRecordWithThreadID) error {
-	var msgsIfaces []interface{}
-	for _, msg := range msgs {
-		msgsIfaces = append(msgsIfaces, interface{}(msg))
-	}
-
-	return r.batcher.Add(msgsIfaces...)
+func (r *recordsBatcher) Add(msgs ...interface{}) error {
+	return r.batcher.Add(msgs...)
 }
 
-func (r *recordsBatcher) Read(buffer []core.SmartblockRecordWithThreadID) int {
+func (r *recordsBatcher) Read(buffer []interface{}) int {
 	defer func() {
 		time.Sleep(r.packDelay)
 	}()
@@ -49,7 +43,7 @@ func (r *recordsBatcher) Read(buffer []core.SmartblockRecordWithThreadID) int {
 		return 0
 	}
 	for i, msg := range msgs {
-		buffer[i] = msg.(core.SmartblockRecordWithThreadID)
+		buffer[i] = msg
 	}
 
 	return len(msgs)
@@ -65,7 +59,7 @@ func New() RecordsBatcher {
 
 type RecordsBatcher interface {
 	// Read reads a batch into the buffer, returns number of records that were read. 0 means no more data will be available
-	Read(buffer []core.SmartblockRecordWithThreadID) int
-	Add(msgs ...core.SmartblockRecordWithThreadID) error
+	Read(buffer []interface{}) int
+	Add(msgs ...interface{}) error
 	app.Component
 }

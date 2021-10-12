@@ -27,6 +27,11 @@ type SmartblockRecordWithThreadID struct {
 	ThreadID string
 }
 
+type ThreadRecordInfo struct {
+	LogId    string
+	ThreadID string
+}
+
 type SmartblockRecord struct {
 	ID      string
 	PrevID  string

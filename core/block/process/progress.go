@@ -27,6 +27,7 @@ type Progress struct {
 	m        sync.Mutex
 
 	isCancelled bool
+	isDone      bool
 }
 
 func (p *Progress) SetTotal(total int64) {
@@ -52,7 +53,13 @@ func (p *Progress) Canceled() chan struct{} {
 }
 
 func (p *Progress) Finish() {
+	p.m.Lock()
+	defer p.m.Unlock()
+	if p.isDone {
+		return
+	}
 	close(p.done)
+	p.isDone = true
 }
 
 func (p *Progress) Id() string {

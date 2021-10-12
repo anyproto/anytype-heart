@@ -13,6 +13,7 @@ var (
 	SharedClient     = NewClient()
 	clientMetricsLog = logging.Logger("client-metrics")
 	sendInterval     = 10.0 * time.Second
+	bufferSize       = 500
 )
 
 type EventRepresentable interface {
@@ -64,7 +65,7 @@ func NewClient() Client {
 	ctx, cancel := context.WithCancel(ctx)
 	return &client{
 		aggregatableMap:  make(map[string]EventAggregatable),
-		aggregatableChan: make(chan EventAggregatable),
+		aggregatableChan: make(chan EventAggregatable, bufferSize),
 		ctx:              ctx,
 		cancel:           cancel,
 	}
@@ -176,5 +177,8 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 }
 
 func (c *client) AggregateEvent(ev EventAggregatable) {
-	c.aggregatableChan <- ev
+	select {
+	case c.aggregatableChan <- ev:
+	default:
+	}
 }
