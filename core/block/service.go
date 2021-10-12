@@ -852,7 +852,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs(s.meta)
 	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspaces(s.meta)
+		sb = editor.NewWorkspace(s.meta, s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
