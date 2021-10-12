@@ -625,6 +625,14 @@
     - [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request)
     - [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response)
     - [Rpc.Workspace.Create.Response.Error](#anytype.Rpc.Workspace.Create.Response.Error)
+    - [Rpc.Workspace.GetAll](#anytype.Rpc.Workspace.GetAll)
+    - [Rpc.Workspace.GetAll.Request](#anytype.Rpc.Workspace.GetAll.Request)
+    - [Rpc.Workspace.GetAll.Response](#anytype.Rpc.Workspace.GetAll.Response)
+    - [Rpc.Workspace.GetAll.Response.Error](#anytype.Rpc.Workspace.GetAll.Response.Error)
+    - [Rpc.Workspace.GetCurrent](#anytype.Rpc.Workspace.GetCurrent)
+    - [Rpc.Workspace.GetCurrent.Request](#anytype.Rpc.Workspace.GetCurrent.Request)
+    - [Rpc.Workspace.GetCurrent.Response](#anytype.Rpc.Workspace.GetCurrent.Response)
+    - [Rpc.Workspace.GetCurrent.Response.Error](#anytype.Rpc.Workspace.GetCurrent.Response.Error)
     - [Rpc.Workspace.Select](#anytype.Rpc.Workspace.Select)
     - [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request)
     - [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response)
@@ -775,6 +783,8 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
     - [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code)
+    - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype.Rpc.Workspace.GetAll.Response.Error.Code)
+    - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype.Rpc.Workspace.GetCurrent.Response.Error.Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
     - [Rpc.Workspace.SetTitleObject.Response.Error.Code](#anytype.Rpc.Workspace.SetTitleObject.Response.Error.Code)
   
@@ -1021,6 +1031,8 @@
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request) | [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request) | [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response) |  |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request) | [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response) |  |
+| WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype.Rpc.Workspace.GetCurrent.Request) | [Rpc.Workspace.GetCurrent.Response](#anytype.Rpc.Workspace.GetCurrent.Response) |  |
+| WorkspaceGetAll | [Rpc.Workspace.GetAll.Request](#anytype.Rpc.Workspace.GetAll.Request) | [Rpc.Workspace.GetAll.Response](#anytype.Rpc.Workspace.GetAll.Response) |  |
 | WorkspaceSetTitleObject | [Rpc.Workspace.SetTitleObject.Request](#anytype.Rpc.Workspace.SetTitleObject.Request) | [Rpc.Workspace.SetTitleObject.Response](#anytype.Rpc.Workspace.SetTitleObject.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
@@ -10155,6 +10167,110 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Workspace.GetAll"></a>
+
+### Rpc.Workspace.GetAll
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll.Request"></a>
+
+### Rpc.Workspace.GetAll.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll.Response"></a>
+
+### Rpc.Workspace.GetAll.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.GetAll.Response.Error](#anytype.Rpc.Workspace.GetAll.Response.Error) |  |  |
+| workspaceIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll.Response.Error"></a>
+
+### Rpc.Workspace.GetAll.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.GetAll.Response.Error.Code](#anytype.Rpc.Workspace.GetAll.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent"></a>
+
+### Rpc.Workspace.GetCurrent
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Request"></a>
+
+### Rpc.Workspace.GetCurrent.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Response"></a>
+
+### Rpc.Workspace.GetCurrent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.GetCurrent.Response.Error](#anytype.Rpc.Workspace.GetCurrent.Response.Error) |  |  |
+| workspaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Response.Error"></a>
+
+### Rpc.Workspace.GetCurrent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype.Rpc.Workspace.GetCurrent.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Workspace.Select"></a>
 
 ### Rpc.Workspace.Select
@@ -12158,6 +12274,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Workspace.Create.Response.Error.Code"></a>
 
 ### Rpc.Workspace.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll.Response.Error.Code"></a>
+
+### Rpc.Workspace.GetAll.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Response.Error.Code"></a>
+
+### Rpc.Workspace.GetCurrent.Response.Error.Code
 
 
 | Name | Number | Description |

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
@@ -195,6 +196,8 @@ type Service interface {
 
 	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
 	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
+	GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error)
+	GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error)
 	SetWorkspaceTitleObject(req *pb.RpcWorkspaceSetTitleObjectRequest) error
 	// TODO: remove if it is not used
 	GetWorkspaceIdForObject(objectId string) (string, error)
@@ -471,6 +474,18 @@ func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, er
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	return s.anytype.SelectWorkspace(req.WorkspaceId)
+}
+
+func (s *service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
+	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
+		return "", nil
+	}
+	return workspaceId, err
+}
+
+func (s *service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
+	return s.anytype.GetAllWorkspaces()
 }
 
 func (s *service) SetWorkspaceTitleObject(req *pb.RpcWorkspaceSetTitleObjectRequest) error {
