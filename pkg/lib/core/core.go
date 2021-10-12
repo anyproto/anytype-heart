@@ -125,8 +125,6 @@ type Anytype struct {
 	ds datastore.Datastore
 
 	predefinedBlockIds threads.DerivedSmartblockIds
-	accountBlockIds    threads.DerivedSmartblockIds
-	workspaceBlockIds  *threads.DerivedSmartblockIds
 	threadService      threads.Service
 	pinService         pin.FilePinService
 	ipfs               ipfs.Node
@@ -297,8 +295,6 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 		// selecting account
 		threads.WorkspaceLogger.
 			Debug("selecting account")
-		a.predefinedBlockIds = a.accountBlockIds
-		a.workspaceBlockIds = nil
 		err := a.threadService.SelectAccount()
 		if err != nil {
 			return err
@@ -320,12 +316,10 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 		return fmt.Errorf("can't select non-workspace smartblock")
 	}
 
-	workspaceIds, err := a.threadService.SelectWorkspace(context.Background(), a.accountBlockIds, threadId)
+	err = a.threadService.SelectWorkspace(context.Background(), threadId)
 	if err != nil {
 		return fmt.Errorf("could not select workspace: %w", err)
 	}
-	// TODO: check if we need to do this
-	a.workspaceBlockIds = &workspaceIds
 
 	err = a.objectStore.SetCurrentWorkspaceId(workspaceId)
 	if err != nil {
@@ -412,7 +406,7 @@ func (a *Anytype) start() error {
 	return nil
 }
 
-func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) error {
+func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -425,17 +419,10 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) err
 		}
 	}()
 
-	accountIds, workspaceIds, err := a.threadService.EnsurePredefinedThreads(cctx, newAccount)
+
+	a.predefinedBlockIds, err = a.threadService.EnsurePredefinedThreads(cctx, newAccount)
 	if err != nil {
 		return err
-	}
-
-	a.accountBlockIds = accountIds
-	a.workspaceBlockIds = workspaceIds
-	if a.workspaceBlockIds != nil {
-		a.predefinedBlockIds = *a.workspaceBlockIds
-	} else {
-		a.predefinedBlockIds = accountIds
 	}
 
 	return nil

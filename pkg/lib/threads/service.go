@@ -311,7 +311,7 @@ type Service interface {
 	CafePeer() ma.Multiaddr
 
 	CreateWorkspace(string) (thread.Info, error)
-	SelectWorkspace(ctx context.Context, ids DerivedSmartblockIds, workspaceId thread.ID) (DerivedSmartblockIds, error)
+	SelectWorkspace(ctx context.Context, workspaceId thread.ID) error
 	SetWorkspaceTitleObject(workspaceId string, objectId string) error
 	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
@@ -328,7 +328,7 @@ type Service interface {
 	AddThread(threadId string, key string, addrs []string) error
 
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
-	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, *DerivedSmartblockIds, error)
+	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
 }
 
 type ThreadsGetter interface {
@@ -584,9 +584,8 @@ func (s *service) CreateWorkspace(name string) (thread.Info, error) {
 
 func (s *service) SelectWorkspace(
 	ctx context.Context,
-	ids DerivedSmartblockIds,
-	workspaceId thread.ID) (DerivedSmartblockIds, error) {
-	return s.ensureWorkspace(ctx, ids, workspaceId, true, true)
+	workspaceId thread.ID) error {
+	return s.ensureWorkspace(ctx, workspaceId, true, true)
 }
 
 func (s *service) SelectAccount() error {
@@ -682,7 +681,7 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 
 		collectionToAdd = accountProcessor.GetThreadCollection()
 
-		_, err = s.ensureWorkspace(context.Background(), DerivedSmartblockIds{}, id, true, false)
+		err = s.ensureWorkspace(context.Background(), id, true, false)
 	}
 
 	return err
