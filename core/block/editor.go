@@ -22,6 +22,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -296,6 +297,21 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 }
 
 func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (rec *types.Struct, err error) {
+	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
+	if err != nil {
+		threads.WorkspaceLogger.Errorf("cannot get workspace id for object: %v", err)
+	}
+	if workspaceId != "" {
+		if req.Record == nil {
+			req.Record = &types.Struct{Fields: make(map[string]*types.Value)}
+		}
+		// todo: maybe this check is not needed?
+		if req.Record.Fields == nil {
+			req.Record.Fields = make(map[string]*types.Value)
+		}
+		req.Record.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
+	}
+
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		cr, err := b.CreateRecord(ctx, req.BlockId, model.ObjectDetails{Details: req.Record}, req.TemplateId)
 		if err != nil {
@@ -799,7 +815,17 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		return
 	}
 
-	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet, "")
+	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
+	if err != nil {
+		threads.WorkspaceLogger.Errorf("failed to get workspaceId for object: %v", err)
+	}
+	if workspaceId == "" {
+		workspaceId, err = s.anytype.ObjectStore().GetCurrentWorkspaceId()
+		if err != nil {
+			threads.WorkspaceLogger.Errorf("failed to get current workspaceId: %v", err)
+		}
+	}
+	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet, workspaceId)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -807,8 +833,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	setId = csm.ID()
 
 	state := state.NewDoc(csm.ID(), nil).NewState()
-	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
-	if err == nil {
+	if workspaceId != "" {
 		state.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
 	}
 
