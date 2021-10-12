@@ -1416,7 +1416,6 @@ func TestArchiveIndex(t *testing.T) {
 	require.Equal(t, int(resp.Error.Code), 0, resp.Error.Description)
 
 	respArchive := mw.ObjectListSetIsArchived(&pb.RpcObjectListSetIsArchivedRequest{
-		ContextId:  "",
 		ObjectIds:  []string{resp.TargetId},
 		IsArchived: true,
 	})
@@ -1427,7 +1426,6 @@ func TestArchiveIndex(t *testing.T) {
 	require.True(t, pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(true)))
 
 	respArchive = mw.ObjectListSetIsArchived(&pb.RpcObjectListSetIsArchivedRequest{
-		ContextId:  "",
 		ObjectIds:  []string{resp.TargetId},
 		IsArchived: false,
 	})
