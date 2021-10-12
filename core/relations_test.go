@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"strings"
 	"testing"
@@ -38,11 +39,16 @@ func getRelationByKey(relations []*model.Relation, key string) *model.Relation {
 	return nil
 }
 
-func start(t *testing.T, eventSender event.Sender) (rootPath string, mw *Middleware) {
+func start(t *testing.T, eventSender event.Sender) (rootPath string, mw *Middleware, close func() error) {
+	if debug, ok := os.LookupEnv("ANYPROF"); ok && debug != "" {
+		go func() {
+			http.ListenAndServe(debug, nil)
+		}()
+	}
 	mw = New()
 	rootPath, err := ioutil.TempDir(os.TempDir(), "anytype_*")
 	require.NoError(t, err)
-	defer os.RemoveAll(rootPath)
+	close = func() error { return os.RemoveAll(rootPath) }
 
 	if eventSender == nil {
 		eventSender = event.NewCallbackSender(func(event *pb.Event) {
@@ -58,7 +64,7 @@ func start(t *testing.T, eventSender event.Sender) (rootPath string, mw *Middlew
 	respAccountCreate := mw.AccountCreate(&pb.RpcAccountCreateRequest{Name: "profile", AlphaInviteCode: "elbrus"})
 	require.Equal(t, 0, int(respAccountCreate.Error.Code), respAccountCreate.Error.Description)
 
-	return rootPath, mw
+	return rootPath, mw, close
 }
 
 func addRelation(t *testing.T, contextId string, mw *Middleware) (key string, name string) {
@@ -84,9 +90,10 @@ func TestRelationAdd(t *testing.T) {
 		return
 	}
 
-	rootPath, mw := start(t, event.NewCallbackSender(func(event *pb.Event) {
+	rootPath, mw, appClose := start(t, event.NewCallbackSender(func(event *pb.Event) {
 		eventHandler(event)
 	}))
+	defer appClose()
 
 	respOpenNewPage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: mw.GetAnytype().PredefinedBlocks().SetPages})
 	require.Equal(t, 0, int(respOpenNewPage.Error.Code), respOpenNewPage.Error.Description)
@@ -1112,8 +1119,8 @@ func TestRelationAdd(t *testing.T) {
 }
 
 func TestCustomType(t *testing.T) {
-	_, mw := start(t, nil)
-
+	_, mw, close := start(t, nil)
+	defer close()
 	respObjectTypeList := mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)
 
@@ -1234,7 +1241,9 @@ func TestCustomType(t *testing.T) {
 }
 
 func TestRelationSet(t *testing.T) {
-	_, mw := start(t, nil)
+	_, mw, close := start(t, nil)
+	defer close()
+
 	respObjectTypeCreate := mw.ObjectTypeCreate(&pb.RpcObjectTypeCreateRequest{
 		ObjectType: &model.ObjectType{
 			Name:   "2",
@@ -1353,7 +1362,8 @@ func TestRelationSet(t *testing.T) {
 }
 
 func TestBundledType(t *testing.T) {
-	_, mw := start(t, nil)
+	_, mw, close := start(t, nil)
+	defer close()
 
 	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
@@ -1399,14 +1409,15 @@ func TestBundledType(t *testing.T) {
 }
 
 func TestArchiveIndex(t *testing.T) {
-	_, mw := start(t, nil)
+	_, mw, close := start(t, nil)
+	defer close()
 
 	resp := mw.BlockCreatePage(&pb.RpcBlockCreatePageRequest{})
 	require.Equal(t, int(resp.Error.Code), 0, resp.Error.Description)
 
-	respArchive := mw.BlockListSetPageIsArchived(&pb.RpcBlockListSetPageIsArchivedRequest{
+	respArchive := mw.ObjectListSetIsArchived(&pb.RpcObjectListSetIsArchivedRequest{
 		ContextId:  "",
-		BlockIds:   []string{resp.TargetId},
+		ObjectIds:  []string{resp.TargetId},
 		IsArchived: true,
 	})
 	require.Equal(t, int(respArchive.Error.Code), 0, respArchive.Error.Description)
@@ -1415,9 +1426,9 @@ func TestArchiveIndex(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(true)))
 
-	respArchive = mw.BlockListSetPageIsArchived(&pb.RpcBlockListSetPageIsArchivedRequest{
+	respArchive = mw.ObjectListSetIsArchived(&pb.RpcObjectListSetIsArchivedRequest{
 		ContextId:  "",
-		BlockIds:   []string{resp.TargetId},
+		ObjectIds:  []string{resp.TargetId},
 		IsArchived: false,
 	})
 	require.Equal(t, int(respArchive.Error.Code), 0, respArchive.Error.Description)
