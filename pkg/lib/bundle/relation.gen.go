@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "a9017bb710d57e572d2078b020bf144b24cd0cdb3310c79a6166833c10719c42"
+const RelationChecksum = "b62ba7a54e15147a9c3f1327d794a63c6ca659463b07fe95a4954756a8836cbf"
 
 type RelationKey string
 
@@ -1044,7 +1044,7 @@ var (
 		RelationKeyIsFavorite: {
 
 			DataSource:       model.Relation_account,
-			Description:      "Adds the object to the home fashboard",
+			Description:      "Adds the object to the home dashboard",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
 			Key:              "isFavorite",
@@ -2010,12 +2010,11 @@ var (
 		RelationKeyWorkspaceId: {
 
 			DataSource:       model.Relation_account,
-			Description:      "Workspace id",
+			Description:      "The space to which current object belongs",
 			Format:           model.RelationFormat_object,
-			Hidden:           true,
 			Key:              "workspaceId",
 			MaxCount:         1,
-			Name:             "WorkspaceId",
+			Name:             "Space",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

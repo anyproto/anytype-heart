@@ -888,7 +888,7 @@
     "source": "details"
   },
   {
-    "description": "Adds the object to the home fashboard",
+    "description": "Adds the object to the home dashboard",
     "format": "checkbox",
     "hidden": true,
     "key": "isFavorite",
@@ -898,12 +898,12 @@
     "source": "account"
   },
   {
-    "description": "Workspace id",
+    "description": "The space to which current object belongs",
     "format": "object",
-    "hidden": true,
+    "hidden": false,
     "key": "workspaceId",
     "maxCount": 1,
-    "name": "WorkspaceId",
+    "name": "Space",
     "readonly": false,
     "source": "account"
   },

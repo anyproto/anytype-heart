@@ -358,7 +358,7 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	}
 	s := details.Details.Fields[bundle.RelationKeyWorkspaceId.String()]
 	if s == nil {
-		return "", fmt.Errorf("workspace id is empty")
+		return "", fmt.Errorf("object does not belong to workspace")
 	}
 
 	return s.GetStringValue(), nil
