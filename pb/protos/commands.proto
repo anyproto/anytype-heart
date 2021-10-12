@@ -3485,9 +3485,8 @@ message Rpc {
         message Set {
             message IsArchived {
                 message Request {
-                    string contextId = 1;
-                    repeated string objectIds = 2;
-                    bool isArchived = 3;
+                    repeated string objectIds = 1;
+                    bool isArchived = 2;
                 }
 
                 message Response {
@@ -3508,9 +3507,8 @@ message Rpc {
             }
             message IsFavorite {
                 message Request {
-                    string contextId = 1;
-                    repeated string objectIds = 2;
-                    bool isFavorite = 3;
+                    repeated string objectIds = 1;
+                    bool isFavorite = 2;
                 }
 
                 message Response {

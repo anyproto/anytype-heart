@@ -9130,7 +9130,6 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
 | objectIds | [string](#string) | repeated |  |
 | isArchived | [bool](#bool) |  |  |
 
@@ -9188,7 +9187,6 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
 | objectIds | [string](#string) | repeated |  |
 | isFavorite | [bool](#bool) |  |  |
 
