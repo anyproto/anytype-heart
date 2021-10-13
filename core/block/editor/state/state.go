@@ -1246,9 +1246,16 @@ func (s *State) IsEmpty() bool {
 
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
-			if chId != "header" {
-				return false
+			if chId == "header" {
+				continue
 			}
+			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil {
+				txt := child.Model().GetText()
+				if txt.Text == "" && txt.Style == 0 {
+					continue
+				}
+			}
+			return false
 		}
 	}
 
