@@ -357,6 +357,13 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		detailsChanged bool
 	)
 
+	// apply snippet
+	if s.parent != nil {
+		if s.Snippet() != s.parent.Snippet() {
+			s.SetLocalDetail(bundle.RelationKeySnippet.String(), pbtypes.String(s.Snippet()))
+		}
+	}
+
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		detailsChanged = !prev.Equal(s.details)
