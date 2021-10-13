@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
@@ -239,6 +240,37 @@ func TestStateNormalizeMerge(t *testing.T) {
 		ids = append(ids, bIds...)
 		assert.Equal(t, ids, s.Pick("parent").Model().ChildrenIds)
 	})
+}
+
+func TestState_ChangeDataviewOrder(t *testing.T) {
+	d := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"dv"}}),
+		"dv": simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{Id: "1"},
+					{Id: "2"},
+					{Id: "3"},
+				},
+			},
+		}}),
+	})
+	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks: d.Blocks(),
+		},
+	})
+	s := d.NewState()
+	s.Get("dv").(dataview.Block).SetViewOrder([]string{"3", "1", "2"})
+
+	_, _, err := ApplyState(s, true)
+	require.NoError(t, err)
+	changes := d.(*State).GetChanges()
+	s2 := dc.NewState()
+	require.NoError(t, s2.ApplyChange(changes...))
+	_, _, err = ApplyState(s2, true)
+	require.NoError(t, err)
+	assert.Equal(t, d.(*State).Pick("dv").Model().String(), dc.(*State).Pick("dv").Model().String())
 }
 
 func Test_ApplyChange(t *testing.T) {

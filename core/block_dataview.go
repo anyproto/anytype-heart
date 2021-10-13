@@ -114,6 +114,26 @@ func (mw *Middleware) BlockDataviewViewSetActive(req *pb.RpcBlockDataviewViewSet
 	return response(pb.RpcBlockDataviewViewSetActiveResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockDataviewViewSetPosition(req *pb.RpcBlockDataviewViewSetPositionRequest) *pb.RpcBlockDataviewViewSetPositionResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockDataviewViewSetPositionResponseErrorCode, err error) *pb.RpcBlockDataviewViewSetPositionResponse {
+		m := &pb.RpcBlockDataviewViewSetPositionResponse{Error: &pb.RpcBlockDataviewViewSetPositionResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetDataviewViewPosition(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockDataviewViewSetPositionResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockDataviewViewSetPositionResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockDataviewRecordCreate(req *pb.RpcBlockDataviewRecordCreateRequest) *pb.RpcBlockDataviewRecordCreateResponse {
 	ctx := state.NewContext(nil)
 	response := func(details *types.Struct, code pb.RpcBlockDataviewRecordCreateResponseErrorCode, err error) *pb.RpcBlockDataviewRecordCreateResponse {
