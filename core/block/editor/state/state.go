@@ -1371,7 +1371,7 @@ func (s *State) createOrCopyCollectionsFromParent() {
 			iterState = iterState.parent
 		}
 		// if we need to copy collection from some state
-		if iterState.collections != nil {
+		if iterState != nil && iterState.collections != nil {
 			for name, coll := range iterState.collections {
 				s.collections[name] = make(map[string]interface{})
 				for k, v := range coll {
@@ -1403,7 +1403,7 @@ func (s *State) GetCollection(collectionName string) map[string]interface{} {
 	for iterState != nil && (iterState.collections == nil || iterState.collections[collectionName] == nil) {
 		iterState = iterState.parent
 	}
-	if iterState.collections == nil || iterState.collections[collectionName] == nil {
+	if iterState == nil || iterState.collections == nil || iterState.collections[collectionName] == nil {
 		return nil
 	}
 

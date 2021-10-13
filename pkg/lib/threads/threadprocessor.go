@@ -44,7 +44,11 @@ func (t *threadProcessor) GetCollectionWithPrefix(prefix string) *threadsDb.Coll
 
 func (t *threadProcessor) AddCollectionWithPrefix(prefix string, schema interface{}) (*threadsDb.Collection, error) {
 	fullName := prefix + t.threadId.String()
-	return t.addCollection(fullName, schema)
+	coll, err := t.addCollection(fullName, schema)
+	if err == nil {
+		t.collections[prefix] = coll
+	}
+	return coll, err
 }
 
 func (t *threadProcessor) GetThreadCollection() *threadsDb.Collection {
@@ -113,6 +117,7 @@ func (t *threadProcessor) Init(id thread.ID) error {
 		threadIdString = ""
 	}
 	threadsCollectionName := threadIdString + threadIdString
+	t.collections = make(map[string]*threadsDb.Collection)
 
 	t.threadsCollection, err = t.addCollection(threadsCollectionName, threadInfo{})
 	if err != nil {
@@ -121,11 +126,10 @@ func (t *threadProcessor) Init(id thread.ID) error {
 	t.collections[ThreadInfoCollectionName] = t.threadsCollection
 
 	if !t.isAccountProcessor {
-		metaCollection, err := t.AddCollectionWithPrefix(MetaCollectionName, MetaInfo{})
+		_, err := t.AddCollectionWithPrefix(MetaCollectionName, MetaInfo{})
 		if err != nil {
 			return err
 		}
-		t.collections[MetaCollectionName] = metaCollection
 	}
 
 	return nil

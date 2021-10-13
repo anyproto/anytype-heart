@@ -18,8 +18,8 @@ import (
 	threadsDb "github.com/textileio/go-threads/db"
 )
 
-const WorkspaceCollection = "_workspace_collection"
-const HighlightedCollection = "_highlighted_collection"
+const WorkspaceCollection = "workspaces"
+const HighlightedCollection = "highlighted"
 
 func NewWorkspaces(a core.Service, id string) (s Source) {
 	return &workspaces{
@@ -64,17 +64,6 @@ func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		Info("reading document for workspace")
-	v.processor, err = v.a.GetThreadProcessorForWorkspace(v.id)
-	if err != nil {
-		return nil, err
-	}
-	_, err = v.processor.AddCollectionWithPrefix(HighlightedCollection, threads.CollectionUpdateInfo{})
-	if err != nil {
-		return nil, err
-	}
-	threads.WorkspaceLogger.
-		With("workspace id", v.id).
-		Info("finished adding collections in workspace")
 
 	s, err := v.createState()
 	if err != nil {
@@ -254,6 +243,19 @@ func (v *workspaces) getDetails(workspaceName string) (p *types.Struct) {
 }
 
 func (v *workspaces) createState() (*state.State, error) {
+	var err error
+	v.processor, err = v.a.GetThreadProcessorForWorkspace(v.id)
+	if err != nil {
+		return nil, err
+	}
+	_, err = v.processor.AddCollectionWithPrefix(HighlightedCollection, threads.CollectionUpdateInfo{})
+	if err != nil {
+		return nil, err
+	}
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		Info("finished adding collections in workspace")
+
 	s := state.NewDoc(v.id, nil).(*state.State)
 	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
 	if err != nil {
