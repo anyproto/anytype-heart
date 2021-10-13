@@ -116,7 +116,7 @@ func (t *threadProcessor) Init(id thread.ID) error {
 	if t.isAccountProcessor {
 		threadIdString = ""
 	}
-	threadsCollectionName := threadIdString + threadIdString
+	threadsCollectionName := ThreadInfoCollectionName + threadIdString
 	t.collections = make(map[string]*threadsDb.Collection)
 
 	t.threadsCollection, err = t.addCollection(threadsCollectionName, threadInfo{})

@@ -1415,7 +1415,10 @@ func (s *State) GetCollections() map[string]map[string]interface{} {
 	for iterState != nil && iterState.collections == nil {
 		iterState = iterState.parent
 	}
-	return s.collections
+	if iterState == nil {
+		return nil
+	}
+	return iterState.collections
 }
 
 type linkSource interface {
