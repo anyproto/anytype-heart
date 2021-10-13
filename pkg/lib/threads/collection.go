@@ -19,6 +19,7 @@ import (
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
 const MetaCollectionName = "meta"
+const HighlightedCollectionName = "highlighted"
 
 type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
@@ -28,21 +29,20 @@ type threadInfo struct {
 
 type WorkspaceMeta interface {
 	WorkspaceName() string
-	TitleWorkspaceId() string
 }
 
-type metaInfo struct {
-	ID            db.InstanceID `json:"_id"`
-	Name          string
-	TitleThreadId string
+type MetaInfo struct {
+	ID   db.InstanceID `json:"_id"`
+	Name string
 }
 
-func (m *metaInfo) WorkspaceName() string {
+type CollectionUpdateInfo struct {
+	ID    db.InstanceID `json:"_id"`
+	Value interface{}
+}
+
+func (m *MetaInfo) WorkspaceName() string {
 	return m.Name
-}
-
-func (m *metaInfo) TitleWorkspaceId() string {
-	return m.TitleThreadId
 }
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success

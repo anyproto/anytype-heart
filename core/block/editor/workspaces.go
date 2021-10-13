@@ -75,8 +75,6 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	if err != nil {
 		return err
 	}
-
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return p.Set.SetNewRecordDefaultFields("dataview", defaultValue)
-
 }

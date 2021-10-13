@@ -312,7 +312,7 @@ type Service interface {
 
 	CreateWorkspace(string) (thread.Info, error)
 	SelectWorkspace(ctx context.Context, workspaceId thread.ID) error
-	SetWorkspaceTitleObject(workspaceId string, objectId string) error
+	SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error
 	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
 	DeleteThread(id string) error
@@ -321,6 +321,7 @@ type Service interface {
 	GetAllWorkspaces() ([]string, error)
 	GetAllThreadsInWorkspace(id string) ([]string, error)
 	GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, error)
+	GetThreadProcessorForWorkspace(id string) (ThreadProcessor, error)
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
@@ -426,18 +427,13 @@ func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, err
 		return nil, fmt.Errorf("no meta entries found in workspace")
 	}
 
-	mInfo := metaInfo{}
+	mInfo := MetaInfo{}
 	threadsUtil.InstanceFromJSON(results[0], &mInfo)
 
 	return &mInfo, nil
 }
 
-func (s *service) SetWorkspaceTitleObject(workspaceId string, objectId string) error {
-	meta, err := s.GetLatestWorkspaceMeta(workspaceId)
-	if err != nil {
-		return err
-	}
-
+func (s *service) SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error {
 	threadId, err := thread.Decode(workspaceId)
 	if err != nil {
 		return err
@@ -453,23 +449,55 @@ func (s *service) SetWorkspaceTitleObject(workspaceId string, objectId string) e
 			return err
 		}
 	}
-	mInfo := meta.(*metaInfo)
-	mInfo.TitleThreadId = objectId
-	metaCollection := processor.GetMetaCollection()
 
-	err = metaCollection.Save(threadsUtil.JSONFromInstance(mInfo))
+	collection := processor.GetCollectionWithPrefix(HighlightedCollectionName)
+	if collection == nil {
+		return fmt.Errorf("no highlighted collection")
+	}
+
+	info := CollectionUpdateInfo{
+		ID:    db.InstanceID(objectId),
+		Value: struct{}{},
+	}
+
+	if isHighlighted {
+		err = collection.Save(threadsUtil.JSONFromInstance(info))
+	} else {
+		err = collection.Delete(db.InstanceID(objectId))
+	}
+
 	if err != nil {
 		WorkspaceLogger.
 			With("title object", objectId).
 			With("workspace id", workspaceId).
-			Errorf("failed to set title object: %v", err)
+			Errorf("failed to set isHighlighted: %v", err)
 	} else {
 		WorkspaceLogger.
 			With("title object", objectId).
 			With("workspace id", workspaceId).
-			Info("setting title object succeeded")
+			Info("setting isHighlighted succeeded")
 	}
 	return err
+}
+
+func (s *service) GetThreadProcessorForWorkspace(id string) (ThreadProcessor, error) {
+	threadId, err := thread.Decode(id)
+	if err != nil {
+		return nil, err
+	}
+
+	s.processorMutex.RLock()
+	processor, exists := s.threadProcessors[threadId]
+	s.processorMutex.RUnlock()
+
+	if !exists {
+		processor, err = s.startWorkspaceThreadProcessor(id)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return processor, nil
 }
 
 func (s *service) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
@@ -549,7 +577,7 @@ func (s *service) CreateWorkspace(name string) (thread.Info, error) {
 		return thread.Info{}, fmt.Errorf("could not start thread processor: %w", err)
 	}
 
-	mInfo := metaInfo{
+	mInfo := MetaInfo{
 		ID:   db.NewInstanceID(),
 		Name: name,
 	}

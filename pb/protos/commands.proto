@@ -2133,10 +2133,10 @@ message Rpc {
             }
         }
 
-        message SetTitleObject {
+        message SetIsHighlighted {
             message Request {
-                string workspaceId = 1;
-                string objectId = 2;
+                string objectId = 1;
+                bool isHighlighted = 2;
             }
 
             message Response {

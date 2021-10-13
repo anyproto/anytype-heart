@@ -27,9 +27,9 @@ func (mw *Middleware) WorkspaceCreate(req *pb.RpcWorkspaceCreateRequest) *pb.Rpc
 	return response(workspaceId, pb.RpcWorkspaceCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) WorkspaceSetTitleObject(req *pb.RpcWorkspaceSetTitleObjectRequest) *pb.RpcWorkspaceSetTitleObjectResponse {
-	response := func(code pb.RpcWorkspaceSetTitleObjectResponseErrorCode, err error) *pb.RpcWorkspaceSetTitleObjectResponse {
-		m := &pb.RpcWorkspaceSetTitleObjectResponse{Error: &pb.RpcWorkspaceSetTitleObjectResponseError{Code: code}}
+func (mw *Middleware) WorkspaceSetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) *pb.RpcWorkspaceSetIsHighlightedResponse {
+	response := func(code pb.RpcWorkspaceSetIsHighlightedResponseErrorCode, err error) *pb.RpcWorkspaceSetIsHighlightedResponse {
+		m := &pb.RpcWorkspaceSetIsHighlightedResponse{Error: &pb.RpcWorkspaceSetIsHighlightedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -38,14 +38,14 @@ func (mw *Middleware) WorkspaceSetTitleObject(req *pb.RpcWorkspaceSetTitleObject
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.SetWorkspaceTitleObject(req)
+		err = bs.SetIsHighlighted(req)
 		return
 	})
 	if err != nil {
-		return response(pb.RpcWorkspaceSetTitleObjectResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcWorkspaceSetIsHighlightedResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(pb.RpcWorkspaceSetTitleObjectResponseError_NULL, nil)
+	return response(pb.RpcWorkspaceSetIsHighlightedResponseError_NULL, nil)
 }
 
 func (mw *Middleware) WorkspaceSelect(req *pb.RpcWorkspaceSelectRequest) *pb.RpcWorkspaceSelectResponse {

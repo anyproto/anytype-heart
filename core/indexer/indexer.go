@@ -603,6 +603,16 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		sbType = smartblock.SmartBlockTypePage
 	}
 	indexDetails, indexLinks := sbType.Indexable()
+	if info.InjectedDetails != nil {
+		for objectId, details := range info.InjectedDetails {
+			threads.WorkspaceLogger.
+				With("object id", objectId).
+				With("workspace id", info.Id).
+				With("details", details).
+				Info("Injecting object details")
+			i.store.InjectObjectDetails(objectId, details)
+		}
+	}
 	if !indexDetails && !indexLinks {
 		return nil
 	}

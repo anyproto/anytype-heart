@@ -86,7 +86,7 @@ type Service interface {
 
 	CreateWorkspace(string) (string, error)
 	SelectWorkspace(workspaceId string) error
-	SetWorkspaceTitleObject(workspaceId string, objectId string) error
+	SetIsHighlighted(objectId string, isHighlighted bool) error
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
@@ -94,6 +94,7 @@ type Service interface {
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
+	GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error)
 
 	ObjectAddWithObjectId(objectId string, payload string) error
 	ObjectShareByLink(objectId string) (string, error)
@@ -329,8 +330,12 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	return nil
 }
 
-func (a *Anytype) SetWorkspaceTitleObject(workspaceId string, objectId string) error {
-	return a.threadService.SetWorkspaceTitleObject(workspaceId, objectId)
+func (a *Anytype) SetIsHighlighted(objectId string, isHighlighted bool) error {
+	workspaceId, err := a.GetWorkspaceIdForObject(objectId)
+	if err != nil {
+		return err
+	}
+	return a.threadService.SetIsHighlighted(workspaceId, objectId, isHighlighted)
 }
 
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {
@@ -360,6 +365,10 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 
 func (a *Anytype) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
 	return a.threadService.GetThreadActionsListenerForWorkspace(id)
+}
+
+func (a *Anytype) GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error) {
+	return a.threadService.GetThreadProcessorForWorkspace(id)
 }
 
 func (a *Anytype) CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error) {

@@ -3,6 +3,7 @@ package doc
 import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/gogo/protobuf/types"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -22,14 +23,15 @@ func New() Service {
 }
 
 type DocInfo struct {
-	Id           string
-	Links        []string
-	FileHashes   []string
-	LogHeads     map[string]string
-	SetRelations []*model.Relation
-	SetSource    []string
-	Creator      string
-	State        *state.State
+	Id              string
+	Links           []string
+	FileHashes      []string
+	LogHeads        map[string]string
+	SetRelations    []*model.Relation
+	SetSource       []string
+	Creator         string
+	State           *state.State
+	InjectedDetails map[string]*types.Struct
 }
 
 type OnDocChangeCallback func(ctx context.Context, info DocInfo) error

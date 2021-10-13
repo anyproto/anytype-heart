@@ -3,22 +3,22 @@ package source
 import (
 	"context"
 	"fmt"
+	threadsUtil "github.com/textileio/go-threads/util"
+	"strings"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 	threadsDb "github.com/textileio/go-threads/db"
 )
 
-const workspaceTitlePageKey = "_workspace_title_page"
+const WorkspaceCollection = "workspaces"
 
 func NewWorkspaces(a core.Service, id string) (s Source) {
 	return &workspaces{
@@ -27,15 +27,43 @@ func NewWorkspaces(a core.Service, id string) (s Source) {
 	}
 }
 
+type workspaceDetailsConverter struct{}
+
+func (w *workspaceDetailsConverter) ConvertToDetails(st *state.State) map[string]*types.Struct {
+	injectedDetails := make(map[string]*types.Struct)
+
+	workspaceCollection := st.GetCollection(WorkspaceCollection)
+	if workspaceCollection != nil {
+		for objId, workspaceId := range workspaceCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId.(string))
+		}
+	}
+
+	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
+	if highlightedCollection != nil {
+		for objId, isHighlighted := range highlightedCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(isHighlighted.(bool))
+		}
+	}
+	return injectedDetails
+}
+
 type workspaces struct {
 	id string
 	a  core.Service
 	m  sync.Mutex
 
-	receiver ChangeReceiver
-	listener threadsDb.Listener
-	ctx      context.Context
-	cancel   context.CancelFunc
+	receiver  ChangeReceiver
+	listener  threadsDb.Listener
+	processor threads.ThreadProcessor
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 func (v *workspaces) ReadOnly() bool {
@@ -62,6 +90,7 @@ func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		Info("reading document for workspace")
+
 	s, err := v.createState()
 	if err != nil {
 		return nil, err
@@ -130,10 +159,12 @@ func (v *workspaces) listenToChanges() (err error) {
 		for {
 			select {
 			case action := <-v.listener.Channel():
-				if action.Collection == threads.GetThreadCollectionName(v.id) {
+				if strings.HasPrefix(action.Collection, threads.ThreadInfoCollectionName) {
 					go v.processThreadAction(action)
-				} else {
+				} else if strings.HasPrefix(action.Collection, threads.MetaCollectionName) {
 					go v.processMetaAction(action)
+				} else {
+					go v.processHighlightedAction(action)
 				}
 			case <-v.ctx.Done():
 				return
@@ -146,31 +177,53 @@ func (v *workspaces) listenToChanges() (err error) {
 	return nil
 }
 
-func (v *workspaces) processThreadAction(action threadsDb.Action) {
-	if action.Type != threadsDb.ActionCreate {
-		return
-	}
+func (v *workspaces) processHighlightedAction(action threadsDb.Action) {
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		With("thread id", action.ID).
-		Info("processing new thread to link")
-	link := simple.New(&model.Block{
-		Content: &model.BlockContentOfLink{
-			Link: &model.BlockContentLink{
-				TargetBlockId: action.ID.String(),
-				Style:         model.BlockContentLink_Page,
-			},
-		},
-	})
+		Info("processing new thread to highlight")
+
 	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
 		s, ok := d.(*state.State)
 		if !ok {
 			err = fmt.Errorf("doc is not state")
 			return
 		}
+		v.m.Lock()
+		defer v.m.Unlock()
+		if action.Type == threadsDb.ActionSave {
+			s.SetInCollection(threads.HighlightedCollectionName, action.ID.String(), true)
+		} else if action.Type == threadsDb.ActionDelete {
+			s.SetInCollection(threads.HighlightedCollectionName, action.ID.String(), false)
+		}
+		return
+	})
+	if err != nil {
+		log.Errorf("failed to append state with new workspace thread: %v", err)
+	}
+}
 
-		s.Add(link)
-		err = s.InsertTo("", model.Block_Inner, link.Model().Id)
+func (v *workspaces) processThreadAction(action threadsDb.Action) {
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		With("thread id", action.ID).
+		Info("processing new thread to link")
+
+	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
+		s, ok := d.(*state.State)
+		if !ok {
+			err = fmt.Errorf("doc is not state")
+			return
+		}
+		v.m.Lock()
+		defer v.m.Unlock()
+		if action.Type == threadsDb.ActionCreate {
+			s.SetInCollection(WorkspaceCollection, action.ID.String(), v.id)
+			s.SetInCollection(threads.HighlightedCollectionName, action.ID.String(), false)
+		} else if action.Type == threadsDb.ActionDelete {
+			s.RemoveFromCollection(WorkspaceCollection, action.ID.String())
+			s.RemoveFromCollection(threads.HighlightedCollectionName, action.ID.String())
+		}
 		return
 	})
 	if err != nil {
@@ -184,54 +237,21 @@ func (v *workspaces) processMetaAction(action threadsDb.Action) {
 		log.Errorf("failed to get workspace meta: %v", err)
 		return
 	}
-	mention := WorkspaceTitleMention(workspaceTitlePageKey, meta.TitleWorkspaceId())
 	err = v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
 		s, ok := d.(*state.State)
 		if !ok {
 			err = fmt.Errorf("doc is not state")
 			return
 		}
-		b := s.Get(workspaceTitlePageKey)
-		if b == nil {
-			err = fmt.Errorf("workspace title should not be empty")
-			return
-		}
-		_, empty := b.Model().Content.(*model.BlockContentOfSmartblock)
-		if !empty {
-			// converting previous mention to link
-			previousObjectId := b.Model().Content.(*model.BlockContentOfText).Text.Marks.Marks[0].Param
-			if previousObjectId == meta.TitleWorkspaceId() {
-				return
-			}
-			link := simple.New(&model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: previousObjectId,
-						Style:         model.BlockContentLink_Page,
-					},
-				},
-			})
-			s.Add(link)
-			err = s.InsertTo("", model.Block_Inner, link.Model().Id)
-			if err != nil {
-				return
-			}
-		}
-		// removing current mention as link
-		s.Iterate(func(b simple.Block) (isContinue bool) {
-			if link := b.Model().GetLink(); link != nil && link.TargetBlockId == meta.TitleWorkspaceId() {
-				s.Unlink(b.Model().Id)
-				return false
-			}
-			return true
-		})
-		s.Set(simple.New(mention))
+
+		v.m.Lock()
+		defer v.m.Unlock()
+		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(meta.WorkspaceName()))
 		return
 	})
 	if err != nil {
 		log.Errorf("failed to append state with new workspace thread: %v", err)
 	}
-
 }
 
 func (v *workspaces) getDetails(workspaceName string) (p *types.Struct) {
@@ -249,6 +269,22 @@ func (v *workspaces) getDetails(workspaceName string) (p *types.Struct) {
 }
 
 func (v *workspaces) createState() (*state.State, error) {
+	var err error
+	v.processor, err = v.a.GetThreadProcessorForWorkspace(v.id)
+	if err != nil {
+		return nil, err
+	}
+	_, err = v.processor.AddCollectionWithPrefix(threads.HighlightedCollectionName, threads.CollectionUpdateInfo{})
+	if err != nil {
+		return nil, err
+	}
+	threads.WorkspaceLogger.
+		With("workspace id", v.id).
+		Info("finished adding collections in workspace")
+
+	s := state.NewDoc(v.id, nil).(*state.State)
+	s.DetailsCollectionConverter = &workspaceDetailsConverter{}
+
 	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
 	if err != nil {
 		threads.WorkspaceLogger.
@@ -262,41 +298,15 @@ func (v *workspaces) createState() (*state.State, error) {
 		return nil, err
 	}
 
-	var blocks []*model.Block
-
 	for _, objId := range objects {
-		if meta != nil && meta.TitleWorkspaceId() == objId {
-			continue
-		}
-		link := &model.Block{
-			Id: bson.NewObjectId().Hex(),
-			Content: &model.BlockContentOfLink{
-				Link: &model.BlockContentLink{
-					TargetBlockId: objId,
-					Style:         model.BlockContentLink_Page,
-				},
-			},
-		}
-		threads.WorkspaceLogger.
-			With("workspace id", v.id).
-			With("thread id", objId).
-			Info("adding initial link")
-		blocks = append(blocks, link)
+		s.SetInCollection(WorkspaceCollection, objId, v.id)
+		s.SetInCollection(threads.HighlightedCollectionName, objId, false)
 	}
-	if meta != nil && meta.TitleWorkspaceId() != "" {
-		mention := WorkspaceTitleMention(workspaceTitlePageKey, meta.TitleWorkspaceId())
-		blocks = append([]*model.Block{mention}, blocks...)
-	} else {
-		emptyMention := &model.Block{
-			Id: workspaceTitlePageKey,
-			Content: &model.BlockContentOfSmartblock{
-				Smartblock: &model.BlockContentSmartblock{},
-			},
-		}
-		blocks = append([]*model.Block{emptyMention}, blocks...)
+
+	err = v.getCurrentHighlightedState(s)
+	if err != nil {
+		return nil, err
 	}
-	s := state.NewDoc(v.id, nil).(*state.State)
-	initBlocksAndAddToRoot(s, blocks)
 
 	var workspaceName string
 	if meta == nil {
@@ -310,44 +320,25 @@ func (v *workspaces) createState() (*state.State, error) {
 	return s, nil
 }
 
-func initBlocksAndAddToRoot(s *state.State, blocks []*model.Block) {
-	// we could have used template.WithRootBlocks, but these causes circular references
-	s.Add(simple.New(&model.Block{
-		Id: s.RootId(),
-		Content: &model.BlockContentOfSmartblock{
-			Smartblock: &model.BlockContentSmartblock{},
-		},
-	}))
-
-	for _, block := range blocks {
-		if block.Id == "" {
-			panic("blocks must contains exact ids")
-		}
-		s.Add(simple.New(block))
-		err := s.InsertTo(s.RootId(), model.Block_Inner, block.Id)
-		if err != nil {
-			log.Errorf("template WithDataview failed to insert: %w", err)
-		}
+func (v *workspaces) getCurrentHighlightedState(s *state.State) error {
+	collection := v.processor.GetCollectionWithPrefix(threads.HighlightedCollectionName)
+	if collection == nil {
+		threads.WorkspaceLogger.
+			With("workspace id", v.id).
+			Error("no highlighted collection")
+		return nil
 	}
-}
-
-func WorkspaceTitleMention(objectId string, targetId string) *model.Block {
-	return &model.Block{
-		Id: objectId,
-		Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{
-				Text: "",
-				Marks: &model.BlockContentTextMarks{
-					Marks: []*model.BlockContentTextMark{
-						{
-							Range: &model.Range{0, 0},
-							Type:  model.BlockContentTextMark_Mention,
-							Param: targetId,
-						},
-					},
-				},
-				Style: model.BlockContentText_Header1,
-			},
-		},
+	instancesBytes, err := collection.Find(&threadsDb.Query{})
+	if err != nil {
+		return err
 	}
+
+	for _, instanceBytes := range instancesBytes {
+		collectionUpdate := threads.CollectionUpdateInfo{}
+		threadsUtil.InstanceFromJSON(instanceBytes, &collectionUpdate)
+
+		s.SetInCollection(threads.HighlightedCollectionName, collectionUpdate.ID.String(), true)
+	}
+
+	return nil
 }
