@@ -57,6 +57,10 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 						RelationKey: bundle.RelationKeyWorkspaceId.String(),
 						Condition:   model.BlockContentDataviewFilter_Equal,
 						Value:       pbtypes.String(p.Id()),
+					}, {
+						RelationKey: bundle.RelationKeyId.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.String(p.Id()),
 					}},
 				},
 			},
