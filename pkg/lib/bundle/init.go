@@ -47,7 +47,7 @@ var FormatFilePossibleTargetObjectTypes = []string{
 	TypeKeyAudio.URL()}
 
 var DefaultObjectTypePerSmartblockType = map[coresb.SmartBlockType]TypeKey{
-	coresb.SmartBlockTypePage:        TypeKeyNote,
+	coresb.SmartBlockTypePage:        TypeKeyPage,
 	coresb.SmartBlockTypeProfilePage: TypeKeyPage,
 	coresb.SmartBlockTypeSet:         TypeKeySet,
 	coresb.SmartBlockTypeObjectType:  TypeKeyObjectType,

@@ -1382,8 +1382,6 @@ func TestBundledType(t *testing.T) {
 	recordsSet := getEventRecordsSet(respOpenPagesSet.Event.Messages)
 	require.NotNil(t, recordsSet)
 
-	// TODO: default type was switched to Note, what we need to do with predefined page set?
-	return
 	require.Len(t, recordsSet.Records, 1)
 	require.Equal(t, respCreatePage.PageId, getEventRecordsSet(respOpenPagesSet.Event.Messages).Records[0].Fields["id"].GetStringValue())
 
