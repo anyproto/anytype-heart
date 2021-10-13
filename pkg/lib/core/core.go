@@ -86,7 +86,7 @@ type Service interface {
 
 	CreateWorkspace(string) (string, error)
 	SelectWorkspace(workspaceId string) error
-	SetWorkspaceTitleObject(workspaceId string, objectId string) error
+	SetIsHighlighted(objectId string, isHighlighted bool) error
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
@@ -330,8 +330,12 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	return nil
 }
 
-func (a *Anytype) SetWorkspaceTitleObject(workspaceId string, objectId string) error {
-	return a.threadService.SetWorkspaceTitleObject(workspaceId, objectId)
+func (a *Anytype) SetIsHighlighted(objectId string, isHighlighted bool) error {
+	workspaceId, err := a.GetWorkspaceIdForObject(objectId)
+	if err != nil {
+		return err
+	}
+	return a.threadService.SetIsHighlighted(workspaceId, objectId, isHighlighted)
 }
 
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {

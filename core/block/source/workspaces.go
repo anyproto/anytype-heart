@@ -19,7 +19,6 @@ import (
 )
 
 const WorkspaceCollection = "workspaces"
-const HighlightedCollection = "highlighted"
 
 func NewWorkspaces(a core.Service, id string) (s Source) {
 	return &workspaces{
@@ -28,16 +27,43 @@ func NewWorkspaces(a core.Service, id string) (s Source) {
 	}
 }
 
+type workspaceDetailsConverter struct{}
+
+func (w *workspaceDetailsConverter) ConvertToDetails(st *state.State) map[string]*types.Struct {
+	injectedDetails := make(map[string]*types.Struct)
+
+	workspaceCollection := st.GetCollection(WorkspaceCollection)
+	if workspaceCollection != nil {
+		for objId, workspaceId := range workspaceCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId.(string))
+		}
+	}
+
+	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
+	if highlightedCollection != nil {
+		for objId, isHighlighted := range highlightedCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(isHighlighted.(bool))
+		}
+	}
+	return injectedDetails
+}
+
 type workspaces struct {
 	id string
 	a  core.Service
 	m  sync.Mutex
 
-	receiver ChangeReceiver
-	listener threadsDb.Listener
+	receiver  ChangeReceiver
+	listener  threadsDb.Listener
 	processor threads.ThreadProcessor
-	ctx      context.Context
-	cancel   context.CancelFunc
+	ctx       context.Context
+	cancel    context.CancelFunc
 }
 
 func (v *workspaces) ReadOnly() bool {
@@ -165,10 +191,10 @@ func (v *workspaces) processHighlightedAction(action threadsDb.Action) {
 		}
 		v.m.Lock()
 		defer v.m.Unlock()
-		if action.Type == threadsDb.ActionCreate {
-			s.SetInCollection(HighlightedCollection, action.ID.String(), true)
+		if action.Type == threadsDb.ActionSave {
+			s.SetInCollection(threads.HighlightedCollectionName, action.ID.String(), true)
 		} else if action.Type == threadsDb.ActionDelete {
-			s.SetInCollection(HighlightedCollection, action.ID.String(), false)
+			s.SetInCollection(threads.HighlightedCollectionName, action.ID.String(), false)
 		}
 		return
 	})
@@ -193,10 +219,10 @@ func (v *workspaces) processThreadAction(action threadsDb.Action) {
 		defer v.m.Unlock()
 		if action.Type == threadsDb.ActionCreate {
 			s.SetInCollection(WorkspaceCollection, action.ID.String(), v.id)
-			s.SetInCollection(HighlightedCollection, action.ID.String(), false)
+			s.SetInCollection(threads.HighlightedCollectionName, action.ID.String(), false)
 		} else if action.Type == threadsDb.ActionDelete {
 			s.RemoveFromCollection(WorkspaceCollection, action.ID.String())
-			s.RemoveFromCollection(HighlightedCollection, action.ID.String())
+			s.RemoveFromCollection(threads.HighlightedCollectionName, action.ID.String())
 		}
 		return
 	})
@@ -248,7 +274,7 @@ func (v *workspaces) createState() (*state.State, error) {
 	if err != nil {
 		return nil, err
 	}
-	_, err = v.processor.AddCollectionWithPrefix(HighlightedCollection, threads.CollectionUpdateInfo{})
+	_, err = v.processor.AddCollectionWithPrefix(threads.HighlightedCollectionName, threads.CollectionUpdateInfo{})
 	if err != nil {
 		return nil, err
 	}
@@ -257,6 +283,8 @@ func (v *workspaces) createState() (*state.State, error) {
 		Info("finished adding collections in workspace")
 
 	s := state.NewDoc(v.id, nil).(*state.State)
+	s.DetailsCollectionConverter = &workspaceDetailsConverter{}
+
 	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
 	if err != nil {
 		threads.WorkspaceLogger.
@@ -272,7 +300,7 @@ func (v *workspaces) createState() (*state.State, error) {
 
 	for _, objId := range objects {
 		s.SetInCollection(WorkspaceCollection, objId, v.id)
-		s.SetInCollection(HighlightedCollection, objId, false)
+		s.SetInCollection(threads.HighlightedCollectionName, objId, false)
 	}
 
 	err = v.getCurrentHighlightedState(s)
@@ -293,7 +321,7 @@ func (v *workspaces) createState() (*state.State, error) {
 }
 
 func (v *workspaces) getCurrentHighlightedState(s *state.State) error {
-	collection := v.processor.GetCollectionWithPrefix(HighlightedCollection)
+	collection := v.processor.GetCollectionWithPrefix(threads.HighlightedCollectionName)
 	if collection == nil {
 		threads.WorkspaceLogger.
 			With("workspace id", v.id).
@@ -309,7 +337,7 @@ func (v *workspaces) getCurrentHighlightedState(s *state.State) error {
 		collectionUpdate := threads.CollectionUpdateInfo{}
 		threadsUtil.InstanceFromJSON(instanceBytes, &collectionUpdate)
 
-		s.SetInCollection(HighlightedCollection, collectionUpdate.ID.String(), true)
+		s.SetInCollection(threads.HighlightedCollectionName, collectionUpdate.ID.String(), true)
 	}
 
 	return nil

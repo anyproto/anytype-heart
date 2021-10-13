@@ -637,10 +637,10 @@
     - [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request)
     - [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response)
     - [Rpc.Workspace.Select.Response.Error](#anytype.Rpc.Workspace.Select.Response.Error)
-    - [Rpc.Workspace.SetTitleObject](#anytype.Rpc.Workspace.SetTitleObject)
-    - [Rpc.Workspace.SetTitleObject.Request](#anytype.Rpc.Workspace.SetTitleObject.Request)
-    - [Rpc.Workspace.SetTitleObject.Response](#anytype.Rpc.Workspace.SetTitleObject.Response)
-    - [Rpc.Workspace.SetTitleObject.Response.Error](#anytype.Rpc.Workspace.SetTitleObject.Response.Error)
+    - [Rpc.Workspace.SetIsHighlighted](#anytype.Rpc.Workspace.SetIsHighlighted)
+    - [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request)
+    - [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response)
+    - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
@@ -786,7 +786,7 @@
     - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype.Rpc.Workspace.GetAll.Response.Error.Code)
     - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype.Rpc.Workspace.GetCurrent.Response.Error.Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
-    - [Rpc.Workspace.SetTitleObject.Response.Error.Code](#anytype.Rpc.Workspace.SetTitleObject.Response.Error.Code)
+    - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
   
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
@@ -1033,7 +1033,7 @@
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request) | [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response) |  |
 | WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype.Rpc.Workspace.GetCurrent.Request) | [Rpc.Workspace.GetCurrent.Response](#anytype.Rpc.Workspace.GetCurrent.Response) |  |
 | WorkspaceGetAll | [Rpc.Workspace.GetAll.Request](#anytype.Rpc.Workspace.GetAll.Request) | [Rpc.Workspace.GetAll.Response](#anytype.Rpc.Workspace.GetAll.Response) |  |
-| WorkspaceSetTitleObject | [Rpc.Workspace.SetTitleObject.Request](#anytype.Rpc.Workspace.SetTitleObject.Request) | [Rpc.Workspace.SetTitleObject.Response](#anytype.Rpc.Workspace.SetTitleObject.Response) |  |
+| WorkspaceSetIsHighlighted | [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request) | [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
@@ -10327,56 +10327,56 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Workspace.SetTitleObject"></a>
+<a name="anytype.Rpc.Workspace.SetIsHighlighted"></a>
 
-### Rpc.Workspace.SetTitleObject
-
-
+### Rpc.Workspace.SetIsHighlighted
 
 
 
 
 
-<a name="anytype.Rpc.Workspace.SetTitleObject.Request"></a>
 
-### Rpc.Workspace.SetTitleObject.Request
+
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Request"></a>
+
+### Rpc.Workspace.SetIsHighlighted.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| workspaceId | [string](#string) |  |  |
 | objectId | [string](#string) |  |  |
+| isHighlighted | [bool](#bool) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Workspace.SetTitleObject.Response"></a>
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Response"></a>
 
-### Rpc.Workspace.SetTitleObject.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Workspace.SetTitleObject.Response.Error](#anytype.Rpc.Workspace.SetTitleObject.Response.Error) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Workspace.SetTitleObject.Response.Error"></a>
-
-### Rpc.Workspace.SetTitleObject.Response.Error
+### Rpc.Workspace.SetIsHighlighted.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Workspace.SetTitleObject.Response.Error.Code](#anytype.Rpc.Workspace.SetTitleObject.Response.Error.Code) |  |  |
+| error | [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Response.Error"></a>
+
+### Rpc.Workspace.SetIsHighlighted.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12323,9 +12323,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Workspace.SetTitleObject.Response.Error.Code"></a>
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code"></a>
 
-### Rpc.Workspace.SetTitleObject.Response.Error.Code
+### Rpc.Workspace.SetIsHighlighted.Response.Error.Code
 
 
 | Name | Number | Description |

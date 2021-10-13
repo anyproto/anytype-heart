@@ -19,6 +19,7 @@ import (
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
 const MetaCollectionName = "meta"
+const HighlightedCollectionName = "highlighted"
 
 type threadInfo struct {
 	ID    db.InstanceID `json:"_id"`
@@ -31,13 +32,13 @@ type WorkspaceMeta interface {
 }
 
 type MetaInfo struct {
-	ID            db.InstanceID `json:"_id"`
-	Name          string
+	ID   db.InstanceID `json:"_id"`
+	Name string
 }
 
 type CollectionUpdateInfo struct {
-	ID     db.InstanceID `json:"_id"`
-	Value  interface{}
+	ID    db.InstanceID `json:"_id"`
+	Value interface{}
 }
 
 func (m *MetaInfo) WorkspaceName() string {

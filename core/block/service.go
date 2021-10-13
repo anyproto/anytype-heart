@@ -198,7 +198,7 @@ type Service interface {
 	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
 	GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error)
 	GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error)
-	SetWorkspaceTitleObject(req *pb.RpcWorkspaceSetTitleObjectRequest) error
+	SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error
 	// TODO: remove if it is not used
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
@@ -488,8 +488,8 @@ func (s *service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 	return s.anytype.GetAllWorkspaces()
 }
 
-func (s *service) SetWorkspaceTitleObject(req *pb.RpcWorkspaceSetTitleObjectRequest) error {
-	return s.anytype.SetWorkspaceTitleObject(req.WorkspaceId, req.ObjectId)
+func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
+	return s.anytype.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
 }
 
 func (s *service) GetWorkspaceIdForObject(objectId string) (string, error) {

@@ -1474,15 +1474,20 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 		}
 	}
 	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
+	var injectedDetails map[string]*types.Struct
+	if st.DetailsCollectionConverter != nil {
+		injectedDetails = st.ConvertToDetails(st)
+	}
 	return doc.DocInfo{
-		Id:           sb.Id(),
-		Links:        depIds,
-		LogHeads:     sb.source.LogHeads(),
-		FileHashes:   fileHashes,
-		SetRelations: setRelations,
-		SetSource:    setSource,
-		Creator:      creator,
-		State:        st.Copy(),
+		Id:              sb.Id(),
+		Links:           depIds,
+		LogHeads:        sb.source.LogHeads(),
+		FileHashes:      fileHashes,
+		SetRelations:    setRelations,
+		SetSource:       setSource,
+		Creator:         creator,
+		State:           st.Copy(),
+		InjectedDetails: injectedDetails,
 	}
 }
 
