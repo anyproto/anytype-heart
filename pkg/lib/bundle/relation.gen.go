@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "b62ba7a54e15147a9c3f1327d794a63c6ca659463b07fe95a4954756a8836cbf"
+const RelationChecksum = "7c1c32c3e161b2bcb6f0e7d34c5360fb195f975d5372d6e2f03580f527f17528"
 
 type RelationKey string
 
@@ -108,6 +108,7 @@ const (
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
+	RelationKeyIsHighlighted             RelationKey = "isHighlighted"
 	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyJournaling                RelationKey = "journaling"
@@ -1063,6 +1064,19 @@ var (
 			Key:              "isHidden",
 			MaxCount:         1,
 			Name:             "Hidden",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyIsHighlighted: {
+
+			DataSource:       model.Relation_account,
+			Description:      "Adds the object to the highlighted dataview in space",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isHighlighted",
+			MaxCount:         1,
+			Name:             "Highlighted",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

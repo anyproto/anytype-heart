@@ -94,6 +94,7 @@ type Service interface {
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
+	GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error)
 
 	ObjectAddWithObjectId(objectId string, payload string) error
 	ObjectShareByLink(objectId string) (string, error)
@@ -360,6 +361,10 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 
 func (a *Anytype) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
 	return a.threadService.GetThreadActionsListenerForWorkspace(id)
+}
+
+func (a *Anytype) GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error) {
+	return a.threadService.GetThreadProcessorForWorkspace(id)
 }
 
 func (a *Anytype) CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error) {

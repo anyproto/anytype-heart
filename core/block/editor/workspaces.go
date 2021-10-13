@@ -3,6 +3,8 @@ package editor
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -78,5 +80,35 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return p.Set.SetNewRecordDefaultFields("dataview", defaultValue)
+}
 
+func (v *Workspaces) GetDocInfo() (doc.DocInfo, error) {
+	info, err := v.Set.GetDocInfo()
+	if err != nil {
+		return doc.DocInfo{}, err
+	}
+	injectedDetails := make(map[string]*types.Struct)
+
+	workspaceCollection := info.State.GetCollection(source.WorkspaceCollection)
+	if workspaceCollection != nil {
+		for objId, workspaceId := range workspaceCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId.(string))
+		}
+	}
+
+	highlightedCollection := info.State.GetCollection(source.HighlightedCollection)
+	if highlightedCollection != nil {
+		for objId, isHighlighted := range highlightedCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(isHighlighted.(bool))
+		}
+	}
+	info.InjectedDetails = injectedDetails
+
+	return info, nil
 }

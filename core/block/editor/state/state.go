@@ -82,6 +82,7 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
+	collections map[string]map[string]interface{}
 	objectTypes []string
 
 	changesStructureIgnoreIds []string
@@ -1266,6 +1267,16 @@ func (s *State) Copy() *State {
 	for k, v := range s.AggregatedOptionsByRelation() {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
 	}
+
+	collections := s.GetCollections()
+	newCollections := make(map[string]map[string]interface{})
+	for name, coll := range collections {
+		newCollections[name] = make(map[string]interface{})
+		for k, v := range coll {
+			newCollections[name][k] = v
+		}
+	}
+
 	copy := &State{
 		ctx:                         s.ctx,
 		blocks:                      blocks,
@@ -1276,6 +1287,7 @@ func (s *State) Copy() *State {
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,
 		noObjectType:                s.noObjectType,
+		collections:                 newCollections,
 	}
 	return copy
 }
@@ -1349,6 +1361,61 @@ func (s *State) RemoveLocalDetail(keys ...string) (ok bool) {
 		s.SetLocalDetails(det)
 	}
 	return
+}
+
+func (s *State) createOrCopyCollectionsFromParent() {
+	if s.collections == nil {
+		s.collections = make(map[string]map[string]interface{})
+		iterState := s
+		for iterState != nil && iterState.collections == nil {
+			iterState = iterState.parent
+		}
+		// if we need to copy collection from some state
+		if iterState.collections != nil {
+			for name, coll := range iterState.collections {
+				s.collections[name] = make(map[string]interface{})
+				for k, v := range coll {
+					s.collections[name][k] = v
+				}
+			}
+		}
+	}
+}
+
+func (s *State) SetInCollection(collectionName string, key string, value interface{}) {
+	s.createOrCopyCollectionsFromParent()
+	if s.collections[collectionName] == nil {
+		s.collections[collectionName] = make(map[string]interface{})
+	}
+	s.collections[collectionName][key] = value
+}
+
+func (s *State) RemoveFromCollection(collectionName string, key string) {
+	s.createOrCopyCollectionsFromParent()
+	if s.collections[collectionName] == nil {
+		return
+	}
+	delete(s.collections[collectionName], key)
+}
+
+func (s *State) GetCollection(collectionName string) map[string]interface{} {
+	iterState := s
+	for iterState != nil && (iterState.collections == nil || iterState.collections[collectionName] == nil) {
+		iterState = iterState.parent
+	}
+	if iterState.collections == nil || iterState.collections[collectionName] == nil {
+		return nil
+	}
+
+	return iterState.collections[collectionName]
+}
+
+func (s *State) GetCollections() map[string]map[string]interface{} {
+	iterState := s
+	for iterState != nil && iterState.collections == nil {
+		iterState = iterState.parent
+	}
+	return s.collections
 }
 
 type linkSource interface {
