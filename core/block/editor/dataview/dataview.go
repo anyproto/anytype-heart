@@ -110,7 +110,10 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 	}
 
 	if block != nil {
-		block.Model().Content = &dvContent
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Source = dvContent.Dataview.Source
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Views = dvContent.Dataview.Views
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Relations = dvContent.Dataview.Relations
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.ActiveView = dvContent.Dataview.ActiveView
 	} else {
 		block = simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
 		s.Set(block)
@@ -1308,6 +1311,16 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 		relations     []*model.Relation
 		viewRelations []*model.BlockContentDataviewRelation
 	)
+
+	for _, rel := range schema.RequiredRelations() {
+		// other relations should be added with
+		if pbtypes.HasRelation(relations, rel.Key) {
+			continue
+		}
+
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
+	}
 
 	for _, rel := range schema.ListRelations() {
 		// other relations should be added with
