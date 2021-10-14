@@ -104,6 +104,12 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 		return
 	}
 
+	if len(source) == 0 {
+		s.Unlink(blockId)
+		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		return d.Apply(s)
+	}
+
 	dvContent, _, err := DataviewBlockBySource(d.Anytype().ObjectStore(), source)
 	if err != nil {
 		return
