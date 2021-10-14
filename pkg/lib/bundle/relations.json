@@ -185,6 +185,14 @@
   },
   {
     "format": "longtext",
+    "hidden": true,
+    "key": "snippet",
+    "maxCount": 1,
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "format": "longtext",
     "hidden": false,
     "key": "hypothesisAssumptions",
     "maxCount": 1,

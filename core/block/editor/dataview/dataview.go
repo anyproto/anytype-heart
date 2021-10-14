@@ -3,12 +3,13 @@ package dataview
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
@@ -45,6 +46,7 @@ type Dataview interface {
 	DeleteView(ctx *state.Context, blockId string, viewId string, showEvent bool) error
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
+	SetViewPosition(ctx *state.Context, blockId string, viewId string, position uint32) error
 	AddRelation(ctx *state.Context, blockId string, relation model.Relation, showEvent bool) (*model.Relation, error)
 	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
 	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error
@@ -588,6 +590,47 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 	d.SmartBlock.CheckSubscriptions()
 
 	return nil
+}
+
+func (d *dataviewCollectionImpl) SetViewPosition(ctx *state.Context, blockId string, viewId string, position uint32) (err error) {
+	s := d.NewStateCtx(ctx)
+	dvBlock, err := getDataviewBlock(s, blockId)
+	if err != nil {
+		return
+	}
+	var (
+		curPos int
+		newPos = int(position)
+		found  bool
+		views  = dvBlock.Model().GetDataview().Views
+	)
+	for i, view := range views {
+		if view.Id == viewId {
+			curPos = i
+			found = true
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("view not found")
+	}
+	if newPos > len(views)-1 {
+		newPos = len(views) - 1
+	}
+	var newViews = make([]*model.BlockContentDataviewView, 0, len(views))
+	for i, view := range views {
+		if len(newViews) == newPos {
+			newViews = append(newViews, views[curPos])
+		}
+		if i != curPos {
+			newViews = append(newViews, view)
+		}
+	}
+	if len(newViews) == newPos {
+		newViews = append(newViews, views[curPos])
+	}
+	dvBlock.Model().GetDataview().Views = newViews
+	return d.Apply(s)
 }
 
 func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error) {

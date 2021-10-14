@@ -112,6 +112,7 @@ service ClientCommands {
     rpc BlockDataviewViewDelete (anytype.Rpc.Block.Dataview.ViewDelete.Request) returns (anytype.Rpc.Block.Dataview.ViewDelete.Response);
     rpc BlockDataviewViewUpdate (anytype.Rpc.Block.Dataview.ViewUpdate.Request) returns (anytype.Rpc.Block.Dataview.ViewUpdate.Response);
     rpc BlockDataviewViewSetActive (anytype.Rpc.Block.Dataview.ViewSetActive.Request) returns (anytype.Rpc.Block.Dataview.ViewSetActive.Response);
+    rpc BlockDataviewViewSetPosition(anytype.Rpc.Block.Dataview.ViewSetPosition.Request) returns (anytype.Rpc.Block.Dataview.ViewSetPosition.Response);
     rpc BlockDataviewSetSource (anytype.Rpc.Block.Dataview.SetSource.Request) returns (anytype.Rpc.Block.Dataview.SetSource.Response);
 
     // # Relation

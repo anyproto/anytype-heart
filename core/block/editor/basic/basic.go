@@ -358,7 +358,8 @@ func (bs *basic) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (e
 			return
 		}
 	}
-	return bs.Apply(s)
+	template.InitTemplate(s, template.ByLayout(layout)...)
+	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
 func (bs *basic) FeaturedRelationAdd(ctx *state.Context, relations ...string) (err error) {

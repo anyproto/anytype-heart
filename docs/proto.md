@@ -144,6 +144,10 @@
     - [Rpc.Block.Dataview.ViewSetActive.Request](#anytype.Rpc.Block.Dataview.ViewSetActive.Request)
     - [Rpc.Block.Dataview.ViewSetActive.Response](#anytype.Rpc.Block.Dataview.ViewSetActive.Response)
     - [Rpc.Block.Dataview.ViewSetActive.Response.Error](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error)
+    - [Rpc.Block.Dataview.ViewSetPosition](#anytype.Rpc.Block.Dataview.ViewSetPosition)
+    - [Rpc.Block.Dataview.ViewSetPosition.Request](#anytype.Rpc.Block.Dataview.ViewSetPosition.Request)
+    - [Rpc.Block.Dataview.ViewSetPosition.Response](#anytype.Rpc.Block.Dataview.ViewSetPosition.Response)
+    - [Rpc.Block.Dataview.ViewSetPosition.Response.Error](#anytype.Rpc.Block.Dataview.ViewSetPosition.Response.Error)
     - [Rpc.Block.Dataview.ViewUpdate](#anytype.Rpc.Block.Dataview.ViewUpdate)
     - [Rpc.Block.Dataview.ViewUpdate.Request](#anytype.Rpc.Block.Dataview.ViewUpdate.Request)
     - [Rpc.Block.Dataview.ViewUpdate.Response](#anytype.Rpc.Block.Dataview.ViewUpdate.Response)
@@ -661,6 +665,7 @@
     - [Rpc.Block.Dataview.ViewCreate.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewCreate.Response.Error.Code)
     - [Rpc.Block.Dataview.ViewDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewDelete.Response.Error.Code)
     - [Rpc.Block.Dataview.ViewSetActive.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error.Code)
+    - [Rpc.Block.Dataview.ViewSetPosition.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewSetPosition.Response.Error.Code)
     - [Rpc.Block.Dataview.ViewUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error.Code)
     - [Rpc.Block.Download.Response.Error.Code](#anytype.Rpc.Block.Download.Response.Error.Code)
     - [Rpc.Block.Export.Response.Error.Code](#anytype.Rpc.Block.Export.Response.Error.Code)
@@ -794,6 +799,7 @@
     - [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet)
     - [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet)
     - [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete)
+    - [Event.Block.Dataview.ViewOrder](#anytype.Event.Block.Dataview.ViewOrder)
     - [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet)
     - [Event.Block.Delete](#anytype.Event.Block.Delete)
     - [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload)
@@ -1095,6 +1101,7 @@
 | BlockDataviewViewDelete | [Rpc.Block.Dataview.ViewDelete.Request](#anytype.Rpc.Block.Dataview.ViewDelete.Request) | [Rpc.Block.Dataview.ViewDelete.Response](#anytype.Rpc.Block.Dataview.ViewDelete.Response) |  |
 | BlockDataviewViewUpdate | [Rpc.Block.Dataview.ViewUpdate.Request](#anytype.Rpc.Block.Dataview.ViewUpdate.Request) | [Rpc.Block.Dataview.ViewUpdate.Response](#anytype.Rpc.Block.Dataview.ViewUpdate.Response) |  |
 | BlockDataviewViewSetActive | [Rpc.Block.Dataview.ViewSetActive.Request](#anytype.Rpc.Block.Dataview.ViewSetActive.Request) | [Rpc.Block.Dataview.ViewSetActive.Response](#anytype.Rpc.Block.Dataview.ViewSetActive.Response) |  |
+| BlockDataviewViewSetPosition | [Rpc.Block.Dataview.ViewSetPosition.Request](#anytype.Rpc.Block.Dataview.ViewSetPosition.Request) | [Rpc.Block.Dataview.ViewSetPosition.Response](#anytype.Rpc.Block.Dataview.ViewSetPosition.Response) |  |
 | BlockDataviewSetSource | [Rpc.Block.Dataview.SetSource.Request](#anytype.Rpc.Block.Dataview.SetSource.Request) | [Rpc.Block.Dataview.SetSource.Response](#anytype.Rpc.Block.Dataview.SetSource.Response) |  |
 | BlockDataviewRelationAdd | [Rpc.Block.Dataview.RelationAdd.Request](#anytype.Rpc.Block.Dataview.RelationAdd.Request) | [Rpc.Block.Dataview.RelationAdd.Response](#anytype.Rpc.Block.Dataview.RelationAdd.Response) | # Relation |
 | BlockDataviewRelationUpdate | [Rpc.Block.Dataview.RelationUpdate.Request](#anytype.Rpc.Block.Dataview.RelationUpdate.Request) | [Rpc.Block.Dataview.RelationUpdate.Response](#anytype.Rpc.Block.Dataview.RelationUpdate.Response) |  |
@@ -3213,6 +3220,66 @@ set the current active view (persisted only within a session)
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Dataview.ViewSetActive.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetPosition"></a>
+
+### Rpc.Block.Dataview.ViewSetPosition
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetPosition.Request"></a>
+
+### Rpc.Block.Dataview.ViewSetPosition.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context block |
+| blockId | [string](#string) |  | id of the dataview |
+| viewId | [string](#string) |  | id of the view to remove |
+| position | [uint32](#uint32) |  | index of view position (0 - means first) |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetPosition.Response"></a>
+
+### Rpc.Block.Dataview.ViewSetPosition.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.ViewSetPosition.Response.Error](#anytype.Rpc.Block.Dataview.ViewSetPosition.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.ViewSetPosition.Response.Error"></a>
+
+### Rpc.Block.Dataview.ViewSetPosition.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.ViewSetPosition.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewSetPosition.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10643,6 +10710,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Dataview.ViewSetPosition.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.ViewSetPosition.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Dataview.ViewUpdate.Response.Error.Code"></a>
 
 ### Rpc.Block.Dataview.ViewUpdate.Response.Error.Code
@@ -12442,6 +12522,22 @@ sent when the dataview relation has been changed or added
 
 
 
+<a name="anytype.Event.Block.Dataview.ViewOrder"></a>
+
+### Event.Block.Dataview.ViewOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| viewIds | [string](#string) | repeated | view ids in new order |
+
+
+
+
+
+
 <a name="anytype.Event.Block.Dataview.ViewSet"></a>
 
 ### Event.Block.Dataview.ViewSet
@@ -13677,6 +13773,7 @@ Precondition: user A opened a block
 | blockDataviewSourceSet | [Event.Block.Dataview.SourceSet](#anytype.Event.Block.Dataview.SourceSet) |  |  |
 | blockDataviewViewSet | [Event.Block.Dataview.ViewSet](#anytype.Event.Block.Dataview.ViewSet) |  |  |
 | blockDataviewViewDelete | [Event.Block.Dataview.ViewDelete](#anytype.Event.Block.Dataview.ViewDelete) |  |  |
+| blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype.Event.Block.Dataview.ViewOrder) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype.Event.Block.Dataview.RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype.Event.Block.Dataview.RelationSet) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype.Event.User.Block.Join) |  |  |
@@ -15439,7 +15536,8 @@ scope from which this relation have been aggregated |
 | file | 6 |  |
 | dashboard | 7 |  |
 | image | 8 |  |
-| space | 9 |  |
+| note | 9 |  |
+| space | 10 |  |
 | database | 20 | to be released later |
 
 

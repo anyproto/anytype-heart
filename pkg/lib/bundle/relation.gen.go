@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "95be7f7cd3015e44882dcc505fe56f312128d6ef0e0c5b5bcc0bf5c217033da9"
+const RelationChecksum = "2c0f17673a12b8e35d0806d9e6814fbded8b28c0b45cde991c90231209bf1d36"
 
 type RelationKey string
 
@@ -33,6 +33,7 @@ const (
 	RelationKeyAttachments               RelationKey = "attachments"
 	RelationKeyAudioArtist               RelationKey = "audioArtist"
 	RelationKeyTasks                     RelationKey = "tasks"
+	RelationKeySnippet                   RelationKey = "snippet"
 	RelationKeyHypothesisAssumptions     RelationKey = "hypothesisAssumptions"
 	RelationKeyGratefulFor               RelationKey = "gratefulFor"
 	RelationKeyFounders                  RelationKey = "founders"
@@ -1716,6 +1717,19 @@ var (
 			MaxCount:         1,
 			Name:             "Size",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySnippet: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Key:              "snippet",
+			MaxCount:         1,
+			Name:             "",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

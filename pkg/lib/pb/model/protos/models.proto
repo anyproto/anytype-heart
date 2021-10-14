@@ -452,7 +452,8 @@ message ObjectType {
         file = 6;
         dashboard = 7;
         image = 8;
-        space = 9;
+        note = 9;
+        space = 10;
 
         database = 20; // to be released later
     }
