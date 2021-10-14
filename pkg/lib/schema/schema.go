@@ -87,9 +87,11 @@ func (sch *schemaByType) Description() string {
 }
 
 func (sch *schemaByRelations) RequiredRelations() []*model.Relation {
-	rels := sch.CommonRelations
-	if !pbtypes.HasRelation(rels, bundle.RelationKeyName.String()) {
-		rels = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, rels...)
+	var rels = []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName), bundle.MustGetRelation(bundle.RelationKeyType)}
+	for _, rel := range sch.CommonRelations {
+		if !pbtypes.HasRelation(rels, rel.Key) {
+			rels = append(rels, rel)
+		}
 	}
 	return rels
 }
