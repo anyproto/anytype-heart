@@ -294,6 +294,8 @@ func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
 func (l *Dataview) FillSmartIds(ids []string) []string {
 	relationsWithObjFormat := l.relationsWithObjectFormat()
 	activeView := l.getActiveView()
+
+	ids = append(ids, l.GetSource()...)
 	if activeView == nil {
 		// shouldn't be a case
 		return ids
@@ -315,6 +317,9 @@ func (l *Dataview) FillSmartIds(ids []string) []string {
 func (l *Dataview) HasSmartIds() bool {
 	relationsWithObjFormat := l.relationsWithObjectFormat()
 	activeView := l.getActiveView()
+	if len(l.GetSource()) > 0 {
+		return true
+	}
 	if activeView == nil {
 		// shouldn't be a case
 		return false
