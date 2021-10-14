@@ -314,11 +314,12 @@ var WithTitle = StateTransformer(func(s *state.State) {
 
 // WithDefaultFeaturedRelations **MUST** be called before WithDescription
 var WithDefaultFeaturedRelations = StateTransformer(func(s *state.State) {
-	var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
-	if s.ObjectType() == bundle.TypeKeyPage.URL() {
-		fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
-	}
 	if !pbtypes.HasField(s.Details(), bundle.RelationKeyFeaturedRelations.String()) {
+		var fr = []string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+		layout, _ := s.Layout()
+		if layout == model.ObjectType_basic || layout == model.ObjectType_note {
+			fr = []string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()}
+		}
 		s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(fr))
 	}
 })
@@ -374,6 +375,33 @@ var WithDescription = StateTransformer(func(s *state.State) {
 			}
 		}
 	}
+})
+
+var WithNoTitle = StateTransformer(func(s *state.State) {
+	WithFirstTextBlock(s)
+	s.Unlink(TitleBlockId)
+})
+
+var WithFirstTextBlock = StateTransformer(func(s *state.State) {
+	root := s.Pick(s.RootId())
+	if root != nil {
+		for _, chId := range root.Model().ChildrenIds {
+			if child := s.Pick(chId); child != nil {
+				if child.Model().GetText() != nil {
+					return
+				}
+			}
+		}
+		tb := simple.New(&model.Block{Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+		}})
+		s.Add(tb)
+		s.InsertTo("", 0, tb.Model().Id)
+	}
+})
+
+var WithNoDescription = StateTransformer(func(s *state.State) {
+	s.Unlink(DescriptionBlockId)
 })
 
 var WithFeaturedRelations = StateTransformer(func(s *state.State) {

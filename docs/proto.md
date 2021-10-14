@@ -15479,6 +15479,7 @@ scope from which this relation have been aggregated |
 | file | 6 |  |
 | dashboard | 7 |  |
 | image | 8 |  |
+| note | 9 |  |
 | database | 20 | to be released later |
 
 
