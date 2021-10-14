@@ -3,7 +3,6 @@ package doc
 import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/gogo/protobuf/types"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -31,7 +30,6 @@ type DocInfo struct {
 	SetSource       []string
 	Creator         string
 	State           *state.State
-	InjectedDetails map[string]*types.Struct
 }
 
 type OnDocChangeCallback func(ctx context.Context, info DocInfo) error

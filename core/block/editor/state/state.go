@@ -68,12 +68,7 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 	return s
 }
 
-type DetailsCollectionConverter interface {
-	ConvertToDetails(st *State) map[string]*types.Struct
-}
-
 type State struct {
-	DetailsCollectionConverter
 	ctx                         *Context
 	parent                      *State
 	blocks                      map[string]simple.Block

@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/sha256"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"math"
@@ -603,8 +604,9 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		sbType = smartblock.SmartBlockTypePage
 	}
 	indexDetails, indexLinks := sbType.Indexable()
-	if info.InjectedDetails != nil {
-		for objectId, details := range info.InjectedDetails {
+	if sbType == smartblock.SmartBlockTypeWorkspace {
+		injectedDetails := getInjectedDetailsFromWorkspaceCollections(info.State)
+		for objectId, details := range injectedDetails {
 			threads.WorkspaceLogger.
 				With("object id", objectId).
 				With("workspace id", info.Id).
@@ -800,4 +802,29 @@ func headsHash(headByLogId map[string]string) string {
 
 	sum := sha256.Sum256([]byte(strings.Join(sortedHeads, ",")))
 	return fmt.Sprintf("%x", sum)
+}
+
+func getInjectedDetailsFromWorkspaceCollections(st *state.State) map[string]*types.Struct {
+	injectedDetails := make(map[string]*types.Struct)
+
+	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
+	if workspaceCollection != nil {
+		for objId, workspaceId := range workspaceCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId.(string))
+		}
+	}
+
+	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
+	if highlightedCollection != nil {
+		for objId, isHighlighted := range highlightedCollection {
+			if injectedDetails[objId] == nil {
+				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			injectedDetails[objId].Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(isHighlighted.(bool))
+		}
+	}
+	return injectedDetails
 }

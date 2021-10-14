@@ -27,33 +27,6 @@ func NewWorkspaces(a core.Service, id string) (s Source) {
 	}
 }
 
-type workspaceDetailsConverter struct{}
-
-func (w *workspaceDetailsConverter) ConvertToDetails(st *state.State) map[string]*types.Struct {
-	injectedDetails := make(map[string]*types.Struct)
-
-	workspaceCollection := st.GetCollection(WorkspaceCollection)
-	if workspaceCollection != nil {
-		for objId, workspaceId := range workspaceCollection {
-			if injectedDetails[objId] == nil {
-				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
-			}
-			injectedDetails[objId].Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId.(string))
-		}
-	}
-
-	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
-	if highlightedCollection != nil {
-		for objId, isHighlighted := range highlightedCollection {
-			if injectedDetails[objId] == nil {
-				injectedDetails[objId] = &types.Struct{Fields: map[string]*types.Value{}}
-			}
-			injectedDetails[objId].Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(isHighlighted.(bool))
-		}
-	}
-	return injectedDetails
-}
-
 type workspaces struct {
 	id string
 	a  core.Service
@@ -283,7 +256,6 @@ func (v *workspaces) createState() (*state.State, error) {
 		Info("finished adding collections in workspace")
 
 	s := state.NewDoc(v.id, nil).(*state.State)
-	s.DetailsCollectionConverter = &workspaceDetailsConverter{}
 
 	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
 	if err != nil {
