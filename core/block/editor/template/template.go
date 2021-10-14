@@ -575,5 +575,5 @@ func ApplyTemplate(sb smartblock.SmartBlock, s *state.State, templates ...StateT
 	if err = InitTemplate(s, templates...); err != nil {
 		return
 	}
-	return sb.Apply(s, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
+	return sb.Apply(s, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges, smartblock.ForceIndex)
 }

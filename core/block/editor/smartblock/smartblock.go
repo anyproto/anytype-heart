@@ -47,6 +47,7 @@ const (
 	NoHooks
 	DoSnapshot
 	SkipIfNoChanges
+	ForceIndex
 )
 
 type Hook int
@@ -581,7 +582,7 @@ func (sb *smartBlock) DisableLayouts() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
-	var sendEvent, addHistory, doSnapshot, checkRestrictions = true, true, false, true
+	var sendEvent, addHistory, doSnapshot, checkRestrictions, forceIndex = true, true, false, true, false
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
@@ -592,6 +593,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			doSnapshot = true
 		case NoRestrictions:
 			checkRestrictions = false
+		case ForceIndex:
+			forceIndex = true
 		}
 	}
 	if sb.source.ReadOnly() && addHistory {
@@ -660,7 +663,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if !act.IsEmpty() {
+	if !act.IsEmpty() || forceIndex {
 		sb.reportChange(st)
 	}
 
