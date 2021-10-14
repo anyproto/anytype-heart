@@ -114,6 +114,7 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 		s.Set(block)
 		s.InsertTo("", 0, blockId)
 	}
+	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 	return d.Apply(s)
 }
 

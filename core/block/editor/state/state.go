@@ -772,7 +772,7 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 	}
 
 	if value == nil {
-		delete(s.details.Fields, key)
+		delete(s.localDetails.Fields, key)
 		return
 	}
 
@@ -989,6 +989,13 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
+	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
+		if b := s.Get("dataview"); b != nil {
+			source := b.Model().GetDataview().GetSource()
+			s.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		}
+
+	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))

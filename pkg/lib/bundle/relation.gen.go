@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "a9017bb710d57e572d2078b020bf144b24cd0cdb3310c79a6166833c10719c42"
+const RelationChecksum = "95be7f7cd3015e44882dcc505fe56f312128d6ef0e0c5b5bcc0bf5c217033da9"
 
 type RelationKey string
 
@@ -108,13 +108,14 @@ const (
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
-	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyStars                     RelationKey = "stars"
+	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
 	RelationKeyAudioGenre                RelationKey = "audioGenre"
 	RelationKeyIntentions                RelationKey = "intentions"
 	RelationKeyTelegram                  RelationKey = "telegram"
+	RelationKeyIsDraft                   RelationKey = "isDraft"
 	RelationKeyTrailer                   RelationKey = "trailer"
 	RelationKeyName                      RelationKey = "name"
 	RelationKeyMood                      RelationKey = "mood"
@@ -128,7 +129,6 @@ const (
 	RelationKeyPriority                  RelationKey = "priority"
 	RelationKeyFileMimeType              RelationKey = "fileMimeType"
 	RelationKeyType                      RelationKey = "type"
-	RelationKeyIsDraft                   RelationKey = "isDraft"
 	RelationKeyNumberOfEmployees         RelationKey = "numberOfEmployees"
 	RelationKeyLayout                    RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
@@ -146,6 +146,7 @@ const (
 	RelationKeyObjectives                RelationKey = "objectives"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
+	RelationKeyIsDeleted                 RelationKey = "isDeleted"
 	RelationKeyServings                  RelationKey = "servings"
 	RelationKeyCategory                  RelationKey = "category"
 	RelationKeyShipToAddress             RelationKey = "shipToAddress"
@@ -1028,6 +1029,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyIsDeleted: {
+
+			DataSource:       model.Relation_local,
+			Description:      "Relation that indicates document has been deleted",
+			Format:           model.RelationFormat_checkbox,
+			Hidden:           true,
+			Key:              "isDeleted",
+			MaxCount:         1,
+			Name:             "Is deleted",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIsDraft: {
 
 			DataSource:       model.Relation_derived,
@@ -1659,7 +1673,7 @@ var (
 		},
 		RelationKeySetOf: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
 			Format:           model.RelationFormat_object,
 			Key:              "setOf",
@@ -2009,14 +2023,15 @@ var (
 		},
 		RelationKeyWorkspaceId: {
 
-			DataSource:       model.Relation_account,
-			Description:      "Workspace id",
+			DataSource:       model.Relation_local,
+			Description:      "Space object belongs to",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Key:              "workspaceId",
 			MaxCount:         1,
-			Name:             "WorkspaceId",
-			ReadOnly:         false,
+			Name:             "Space",
+			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

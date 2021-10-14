@@ -15439,6 +15439,7 @@ scope from which this relation have been aggregated |
 | file | 6 |  |
 | dashboard | 7 |  |
 | image | 8 |  |
+| space | 9 |  |
 | database | 20 | to be released later |
 
 
@@ -15453,6 +15454,7 @@ scope from which this relation have been aggregated |
 | details | 0 | default, stored inside the object&#39;s details |
 | derived | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
+| local | 3 | stored locally |
 
 
 
