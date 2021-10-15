@@ -26,6 +26,30 @@ func TestState_Add(t *testing.T) {
 	})))
 }
 
+func TestState_AddRemoveAdd(t *testing.T) {
+	s := NewDoc("1", nil).NewState()
+	assert.Nil(t, s.Get("1"))
+	assert.True(t, s.Add(base.NewBase(&model.Block{
+		Id: "1",
+		Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id:   "v1",
+			Name: "v1",
+		}}}},
+	})))
+	assert.NotNil(t, s.Get("1"))
+	s.Unlink("1")
+	s.Set(base.NewBase(&model.Block{
+		Id: "1",
+		Content: &model.BlockContentOfDataview{Dataview: &model.BlockContentDataview{Views: []*model.BlockContentDataviewView{{
+			Id:   "v1",
+			Name: "v1",
+		}}}},
+	}))
+	assert.False(t, s.Add(base.NewBase(&model.Block{
+		Id: "1",
+	})))
+}
+
 func TestState_Get(t *testing.T) {
 	s := NewDoc("1", map[string]simple.Block{
 		"1": base.NewBase(&model.Block{Id: "1"}),

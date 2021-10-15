@@ -179,6 +179,21 @@ func (s *State) Pick(id string) (b simple.Block) {
 	return
 }
 
+func (s *State) CleanupBlock(id string) bool {
+	var (
+		t  = s
+		ok bool
+	)
+	for t != nil {
+		if _, ok = t.blocks[id]; ok {
+			delete(t.blocks, id)
+			return true
+		}
+		t = t.parent
+	}
+	return false
+}
+
 func (s *State) PickOrigin(id string) (b simple.Block) {
 	if s.parent != nil {
 		return s.parent.Pick(id)
