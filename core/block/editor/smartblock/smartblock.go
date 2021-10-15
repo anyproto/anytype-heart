@@ -367,9 +367,10 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		}
 
 	}).Subscribe(sb.depIds...)
+	sbMeta := sb.Meta()
 	sb.meta.ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.Meta(),
+		SmartBlockMeta: *sbMeta,
 	})
 
 	var uniqueObjTypes []string
@@ -423,6 +424,13 @@ loop:
 			break loop
 		case d := <-ch:
 			if d.Details != nil {
+				if sb.Id() == d.BlockId {
+					sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
+						Id:      d.BlockId,
+						Details: sbMeta.Details,
+					}
+					continue
+				}
 				sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
 					Id:      d.BlockId,
 					Details: d.Details,

@@ -1014,7 +1014,7 @@ func (s *State) InjectDerivedDetails() {
 	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
 		if b := s.Get("dataview"); b != nil {
 			source := b.Model().GetDataview().GetSource()
-			s.SetDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 		}
 
 	}
