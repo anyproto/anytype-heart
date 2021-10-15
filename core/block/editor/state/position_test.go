@@ -101,6 +101,20 @@ func TestState_InsertTo(t *testing.T) {
 		assert.Equal(t, []string{"child"}, r.Pick("first").Model().ChildrenIds)
 	})
 
+	t.Run("innerFirst", func(t *testing.T) {
+		r := NewDoc("root", nil).(*State)
+		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
+		r.Add(simple.New(&model.Block{Id: "target", ChildrenIds: []string{"e1", "e2"}}))
+		r.Add(simple.New(&model.Block{Id: "e1"}))
+		r.Add(simple.New(&model.Block{Id: "e2"}))
+
+		s := r.NewState()
+		s.Add(simple.New(&model.Block{Id: "first"}))
+		s.Add(simple.New(&model.Block{Id: "second"}))
+		require.NoError(t, s.InsertTo("target", model.Block_InnerFirst, "first", "second"))
+		assert.Equal(t, []string{"first", "second", "e1", "e2"}, s.Pick("target").Model().ChildrenIds)
+	})
+
 	moveFromSide := func(t *testing.T, pos model.BlockPosition) (r *State, c1, c2 simple.Block) {
 		r = NewDoc("root", nil).(*State)
 		r.Add(simple.New(&model.Block{Id: "root", ChildrenIds: []string{"target"}}))
