@@ -34,7 +34,44 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 
-	dataview := model.BlockContentOfDataview{
+	dataviewAllHighlightedObjects := model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
+			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)},
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   uuid.New().String(),
+					Type: model.BlockContentDataviewView_Gallery,
+					Name: "Highlighted",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Relations: []*model.BlockContentDataviewRelation{{
+						Key:       bundle.RelationKeyName.String(),
+						IsVisible: true,
+					}},
+					Filters: []*model.BlockContentDataviewFilter{{
+						RelationKey: bundle.RelationKeyWorkspaceId.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.String(p.Id()),
+					}, {
+						RelationKey: bundle.RelationKeyId.String(),
+						Condition:   model.BlockContentDataviewFilter_NotEqual,
+						Value:       pbtypes.String(p.Id()),
+					}, {
+						RelationKey: bundle.RelationKeyIsHighlighted.String(),
+						Condition:   model.BlockContentDataviewFilter_Equal,
+						Value:       pbtypes.Bool(true),
+					}},
+				},
+			},
+		},
+	}
+
+	dataviewAllWorkspaceObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
 			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)},
@@ -70,7 +107,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	err = template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
-		template.WithDataview(dataview, true),
+		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, true),
+		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, true),
 	)
 	if err != nil {
 		return err
