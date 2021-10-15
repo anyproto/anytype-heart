@@ -246,6 +246,8 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	}()
 	ctx := state.NewContext(nil)
 	s := t.newSetTextState(req.BlockId, ctx)
+	wasEmpty := s.IsEmpty()
+
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
 		return
@@ -256,7 +258,7 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	}
 	afterIds := tb.FillSmartIds(nil)
 
-	if _, ok := tb.(text.DetailsBlock); ok {
+	if _, ok := tb.(text.DetailsBlock); ok || wasEmpty {
 		defer t.cancelSetTextState()
 		if err = t.Apply(s); err != nil {
 			return
