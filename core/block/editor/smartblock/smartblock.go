@@ -423,14 +423,13 @@ loop:
 			log.Warnf("got %d out of %d dep objects after timeout: missing %v", len(sb.lastDepDetails), len(sb.depIds), missingDeps)
 			break loop
 		case d := <-ch:
+			if sb.Id() == d.BlockId {
+				// do not rely on the data from the meta sub, prefer the one we have in this smartblock
+				d.Details = sbMeta.Details
+				d.ObjectTypes = sbMeta.ObjectTypes
+				d.Relations = sbMeta.Relations
+			}
 			if d.Details != nil {
-				if sb.Id() == d.BlockId {
-					sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
-						Id:      d.BlockId,
-						Details: sbMeta.Details,
-					}
-					continue
-				}
 				sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
 					Id:      d.BlockId,
 					Details: d.Details,
