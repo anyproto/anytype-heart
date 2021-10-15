@@ -3,6 +3,8 @@ package smartblock
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"

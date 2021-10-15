@@ -86,6 +86,10 @@ func (st *SmartTest) DefaultObjectTypeUrl() string {
 	return ""
 }
 
+func (st *SmartTest) MakeTemplateState() (*state.State, error) {
+	return st.Doc.NewState().Copy(), nil
+}
+
 func (st *SmartTest) AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
 	rel := pbtypes.GetRelation(st.Relations(), relationKey)
 	if rel == nil {

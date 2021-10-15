@@ -357,6 +357,13 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		detailsChanged bool
 	)
 
+	// apply snippet
+	if s.parent != nil {
+		if s.Snippet() != s.parent.Snippet() {
+			s.SetLocalDetail(bundle.RelationKeySnippet.String(), pbtypes.String(s.Snippet()))
+		}
+	}
+
 	if s.parent != nil && s.details != nil {
 		prev := s.parent.Details()
 		detailsChanged = !prev.Equal(s.details)
@@ -993,6 +1000,7 @@ func (s *State) InjectDerivedDetails() {
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
 	}
+	s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(s.Snippet()))
 }
 
 func (s *State) LocalDetails() *types.Struct {
@@ -1064,10 +1072,11 @@ func (s *State) ObjectType() string {
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title {
-			if snippet != "" {
-				snippet += " "
+			nextText := strings.TrimSpace(text.Text)
+			if snippet != "" && nextText != "" {
+				snippet += "\n"
 			}
-			snippet += text.Text
+			snippet += nextText
 			if utf8.RuneCountInString(snippet) >= snippetMinSize {
 				return false
 			}
@@ -1244,9 +1253,16 @@ func (s *State) IsEmpty() bool {
 
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
-			if chId != "header" {
-				return false
+			if chId == "header" {
+				continue
 			}
+			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil {
+				txt := child.Model().GetText()
+				if txt.Text == "" && txt.Style == 0 {
+					continue
+				}
+			}
+			return false
 		}
 	}
 
@@ -1349,6 +1365,15 @@ func (s *State) RemoveLocalDetail(keys ...string) (ok bool) {
 		s.SetLocalDetails(det)
 	}
 	return
+}
+
+func (s *State) Layout() (model.ObjectTypeLayout, bool) {
+	if det := s.Details(); det != nil && det.Fields != nil {
+		if _, ok := det.Fields[bundle.RelationKeyLayout.String()]; ok {
+			return model.ObjectTypeLayout(pbtypes.GetInt64(det, bundle.RelationKeyLayout.String())), true
+		}
+	}
+	return 0, false
 }
 
 type linkSource interface {

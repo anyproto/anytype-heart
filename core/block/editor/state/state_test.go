@@ -270,3 +270,20 @@ func BenchmarkState_Iterate(b *testing.B) {
 		})
 	}
 }
+
+func TestState_IsEmpty(t *testing.T) {
+	s := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{
+			Id:          "root",
+			ChildrenIds: []string{"header", "emptyText"},
+		}),
+		"header": simple.New(&model.Block{Id: "header"}),
+		"emptyText": simple.New(&model.Block{Id: "emptyText",
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+			}}),
+	}).(*State)
+	assert.True(t, s.IsEmpty())
+	s.Pick("emptyText").Model().GetText().Text = "1"
+	assert.False(t, s.IsEmpty())
+}
