@@ -1376,6 +1376,10 @@ func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 	return 0, false
 }
 
+func (s *State) SetContext(context *Context) {
+	s.ctx = context
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool

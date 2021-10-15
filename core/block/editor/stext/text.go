@@ -209,8 +209,20 @@ func (t *textImpl) newSetTextState(blockId string, ctx *state.Context) *state.St
 
 func (t *textImpl) flushSetTextState() {
 	if t.lastSetTextState != nil {
-		if err := t.Apply(t.lastSetTextState, smartblock.NoEvent, smartblock.NoHooks); err != nil {
+		ctx := state.NewContext(nil)
+		t.lastSetTextState.SetContext(ctx)
+		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
+		}
+		msgs := ctx.GetMessages()
+		filteredMsgs := msgs[:0]
+		for _, msg := range msgs {
+			if msg.GetBlockSetText() == nil {
+				filteredMsgs = append(filteredMsgs, msg)
+			}
+		}
+		if len(filteredMsgs) > 0 {
+			t.SendEvent(filteredMsgs)
 		}
 		t.cancelSetTextState()
 	}
