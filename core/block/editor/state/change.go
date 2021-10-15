@@ -283,6 +283,7 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 func (s *State) changeBlockRemove(remove *pb.ChangeBlockRemove) error {
 	for _, id := range remove.Ids {
 		s.Unlink(id)
+		s.CleanupBlock(id)
 	}
 	return nil
 }
