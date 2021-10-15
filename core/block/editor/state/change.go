@@ -275,7 +275,7 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		b := simple.New(m)
 		bIds[i] = b.Model().Id
 		s.Unlink(bIds[i])
-		s.Add(b)
+		s.Set(b)
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
 }
