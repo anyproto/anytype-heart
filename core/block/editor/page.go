@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
@@ -55,7 +56,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	var layout model.ObjectTypeLayout
-	otypes := p.DocService().FetchObjectTypes(ctx.ObjectTypeUrls)
+	otypes, _ := objectstore.GetObjectTypes(p.ObjectStore(), ctx.ObjectTypeUrls)
 	for _, ot := range otypes {
 		layout = ot.Layout
 	}

@@ -9,7 +9,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
@@ -20,7 +19,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
@@ -102,6 +103,7 @@ type SmartBlock interface {
 	CheckSubscriptions() (changed bool)
 	GetDocInfo() (doc.DocInfo, error)
 	DocService() doc.Service
+	ObjectStore() objectstore.ObjectStore
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
 	BlockClose()
@@ -116,8 +118,9 @@ type InitContext struct {
 	ObjectTypeUrls []string
 	State          *state.State
 	Relations      []*model.Relation
-	App            *app.App
+	Restriction    restriction.Service
 	Doc            doc.Service
+	ObjectStore    objectstore.ObjectStore
 }
 
 type linkSource interface {
@@ -128,18 +131,23 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds            []string
-	sendEvent         func(e *pb.Event)
-	undo              undo.History
-	source            source.Source
-	doc               doc.Service
-	metaData          *core.SmartBlockMeta
-	lastDepDetails    map[string]*pb.EventObjectDetailsSet
-	restrictions      restriction.Restrictions
+	depIds         []string
+	sendEvent      func(e *pb.Event)
+	undo           undo.History
+	source         source.Source
+	doc            doc.Service
+	metaData       *core.SmartBlockMeta
+	lastDepDetails map[string]*pb.EventObjectDetailsSet
+	restrictions   restriction.Restrictions
+	objectStore    objectstore.ObjectStore
+
 	disableLayouts    bool
 	onNewStateHooks   []func()
 	onCloseHooks      []func()
 	onBlockCloseHooks []func()
+
+	recordsSub      database.Subscription
+	closeRecordsSub func()
 }
 
 func (sb *smartBlock) HasRelation(key string) bool {
@@ -163,6 +171,10 @@ func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	}
 }
 
+func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {
+	return sb.objectStore
+}
+
 func (sb *smartBlock) Type() model.SmartBlockType {
 	return sb.source.Type()
 }
@@ -174,6 +186,11 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 	sb.source = ctx.Source
 	sb.undo = undo.NewHistory(0)
+	sb.restrictions = ctx.Restriction.RestrictionsByObj(sb)
+	sb.doc = ctx.Doc
+	sb.objectStore = ctx.ObjectStore
+	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
+	
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
 
@@ -214,8 +231,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	if err = sb.normalizeRelations(ctx.State); err != nil {
 		return
 	}
-	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
-	sb.doc = ctx.Doc
 	return
 }
 
@@ -346,19 +361,48 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 }
 
 func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTypes []*model.ObjectType, err error) {
-
+	if sb.closeRecordsSub != nil {
+		sb.closeRecordsSub()
+		sb.closeRecordsSub = nil
+	}
+	recordsCh := make(chan *types.Struct)
+	sb.recordsSub = database.NewSubscription(nil, recordsCh)
+	sb.depIds = sb.dependentSmartIds(true, true)
+	var records []database.Record
+	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
+		return
+	}
+	details = make([]*pb.EventObjectDetailsSet, 0, len(records))
+	for _, rec := range records {
+		details = append(details, &pb.EventObjectDetailsSet{
+			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
+			Details: rec.Details,
+		})
+	}
+	go sb.metaListener(recordsCh)
 	return
 }
 
-func (sb *smartBlock) onMetaChange(d doc.DocInfo) {
-	sb.Lock()
-	defer sb.Unlock()
+func (sb *smartBlock) metaListener(ch chan *types.Struct) {
+	for {
+		rec, ok := <-ch
+		if !ok {
+			return
+		}
+		sb.Lock()
+		sb.onMetaChange(rec)
+		sb.Unlock()
+	}
+}
+
+func (sb *smartBlock) onMetaChange(details *types.Struct) {
 	if sb.sendEvent != nil {
+		id := pbtypes.GetString(details, bundle.RelationKeyId.String())
 		msgs := []*pb.EventMessage{}
-		if d.State.CombinedDetails() != nil {
-			if v, exists := sb.lastDepDetails[d.Id]; exists {
-				diff := pbtypes.StructDiff(v.Details, d.State.CombinedDetails())
-				if d.Id == sb.Id() {
+		if details != nil {
+			if v, exists := sb.lastDepDetails[id]; exists {
+				diff := pbtypes.StructDiff(v.Details, details)
+				if id == sb.Id() {
 					// if we've got update for ourselves, we are only interested in local-only details, because the rest details changes will be appended when applying records in the current sb
 					diff = pbtypes.StructFilterKeys(diff, bundle.LocalRelationsKeys)
 					if len(diff.GetFields()) > 0 {
@@ -366,20 +410,20 @@ func (sb *smartBlock) onMetaChange(d doc.DocInfo) {
 					}
 				}
 
-				msgs = append(msgs, state.StructDiffIntoEvents(d.Id, diff)...)
+				msgs = append(msgs, state.StructDiffIntoEvents(id, diff)...)
 			} else {
 				msgs = append(msgs, &pb.EventMessage{
 					Value: &pb.EventMessageValueOfObjectDetailsSet{
 						ObjectDetailsSet: &pb.EventObjectDetailsSet{
-							Id:      d.Id,
-							Details: d.State.Details(),
+							Id:      id,
+							Details: details,
 						},
 					},
 				})
 			}
-			sb.lastDepDetails[d.Id] = &pb.EventObjectDetailsSet{
-				Id:      d.Id,
-				Details: d.State.CombinedDetails(),
+			sb.lastDepDetails[id] = &pb.EventObjectDetailsSet{
+				Id:      id,
+				Details: details,
 			}
 		}
 
@@ -561,8 +605,15 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	depIds := sb.dependentSmartIds(true, true)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
-		if sb.doc != nil {
-			sb.doc.ReSubscribe(depIds...)
+		if sb.recordsSub != nil {
+			newIds := sb.recordsSub.Subscribe(sb.depIds)
+			records, err := sb.objectStore.QueryById(newIds)
+			if err != nil {
+				log.Errorf("queryById error: %v", err)
+			}
+			for _, rec := range records {
+				sb.onMetaChange(rec.Details)
+			}
 		}
 		return true
 	}
@@ -819,18 +870,22 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 		return fmt.Errorf("you must provide at least 1 object type")
 	}
 
-	otypes := sb.meta.FetchObjectTypes(objectTypes)
+	otypes, err := objectstore.GetObjectTypes(sb.objectStore, objectTypes)
+	if err != nil {
+		return
+	}
 	if len(otypes) == 0 {
 		return fmt.Errorf("object types not found")
 	}
 
 	ot := otypes[len(otypes)-1]
 
-	prevType := sb.meta.FetchObjectTypes([]string{s.ObjectType()})
+	prevType, _ := objectstore.GetObjectType(sb.objectStore, s.ObjectType())
+
 	s.SetObjectTypes(objectTypes)
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
-		len(prevType) == 0 || // if we have no type set for some reason or it is missing
-		float64(prevType[0].Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
+		prevType == nil || // if we have no type set for some reason or it is missing
+		float64(prevType.Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
 		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
 	}
 	return
@@ -1103,6 +1158,10 @@ func (sb *smartBlock) BlockClose() {
 func (sb *smartBlock) Close() (err error) {
 	sb.Lock()
 	sb.execHooks(HookOnClose)
+	if sb.closeRecordsSub != nil {
+		sb.closeRecordsSub()
+		sb.closeRecordsSub = nil
+	}
 	sb.Unlock()
 
 	sb.source.Close()
@@ -1300,15 +1359,14 @@ func (sb *smartBlock) ObjectTypeRelations() []*model.Relation {
 
 func (sb *smartBlock) objectTypeRelations(s *state.State) []*model.Relation {
 	var relations []*model.Relation
-	if sb.metaSub != nil {
-		objectTypes := sb.meta.FetchObjectTypes(s.ObjectTypes())
-		//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
-		// do not fetch objectTypes for object type type to avoid universe collapse
-		for _, objType := range objectTypes {
-			relations = append(relations, objType.Relations...)
-		}
-		//}
+
+	objectTypes, _ := objectstore.GetObjectTypes(sb.objectStore, sb.ObjectTypes())
+	//if !(len(objectTypes) == 1 && objectTypes[0].Url == bundle.TypeKeyObjectType.URL()) {
+	// do not fetch objectTypes for object type type to avoid universe collapse
+	for _, objType := range objectTypes {
+		relations = append(relations, objType.Relations...)
 	}
+	//}
 	return relations
 }
 

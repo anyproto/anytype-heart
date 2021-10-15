@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
@@ -233,6 +234,8 @@ type service struct {
 	app         *app.App
 	source      source.Service
 	cache       ocache.OCache
+	objectStore objectstore.ObjectStore
+	restriction restriction.Service
 }
 
 func (s *service) Name() string {
@@ -247,6 +250,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
 	s.doc = a.MustComponent(doc.CName).(doc.Service)
+	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -403,9 +408,10 @@ func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
 	bs := editor.NewBreadcrumbs()
 	if err = bs.Init(&smartblock.InitContext{
-		App:    s.app,
-		Doc:    s.doc,
-		Source: source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
+		Restriction: s.restriction,
+		ObjectStore: s.objectStore,
+		Doc:         s.doc,
+		Source:      source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
 	}
@@ -632,7 +638,6 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		}
 	}
 
-
 	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
 	if err != nil {
 		return "", nil, fmt.Errorf("object type not found")
@@ -807,8 +812,11 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
 	}
-	if initCtx.App == nil {
-		initCtx.App = s.app
+	if initCtx.Restriction == nil {
+		initCtx.Restriction = s.restriction
+	}
+	if initCtx.ObjectStore == nil {
+		initCtx.ObjectStore = s.objectStore
 	}
 	if initCtx.Doc == nil {
 		initCtx.Doc = s.doc

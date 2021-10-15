@@ -2527,3 +2527,16 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 	objectType.Types = []model.SmartBlockType{model.SmartBlockType_Page}
 	return objectType, err
 }
+
+func GetObjectTypes(store ObjectStore, urls []string) (ots []*model.ObjectType, err error) {
+	ots = make([]*model.ObjectType, 0, len(urls))
+	for _, url := range urls {
+		ot, e := GetObjectType(store, url)
+		if e != nil {
+			err = e
+		} else {
+			ots = append(ots, ot)
+		}
+	}
+	return
+}

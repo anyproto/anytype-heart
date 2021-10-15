@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -117,14 +116,6 @@ func (l *listener) wakeupLoop() {
 			}
 		}
 	}
-}
-
-func (l *listener) GetByIdsAndSubscribe(ids ...string) (records []database.Reader, err error) {
-	l.objectStore.QueryByIdAndSubscribeForChanges(ids)
-}
-
-func (l *listener) GetByIds(id ...string) (records []database.Reader, err error) {
-
 }
 
 func (l *listener) Close() (err error) {

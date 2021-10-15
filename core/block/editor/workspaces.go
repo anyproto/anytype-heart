@@ -4,13 +4,12 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func NewWorkspaces(m meta.Service) *Workspaces {
+func NewWorkspaces() *Workspaces {
 	return &Workspaces{
-		SmartBlock: smartblock.New(m),
+		SmartBlock: smartblock.New(),
 	}
 }
 
