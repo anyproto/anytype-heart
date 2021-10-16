@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
+	"github.com/textileio/go-threads/core/net"
 	"io"
 	"net/url"
 	"os"
@@ -37,6 +38,8 @@ import (
 )
 
 var log = logging.Logger("anytype-core")
+
+var ErrObjectDoesNotBelongToWorkspace = fmt.Errorf("object does not belong to workspace")
 
 const (
 	CName  = "anytype"
@@ -357,7 +360,7 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	}
 	s := details.Details.Fields[bundle.RelationKeyWorkspaceId.String()]
 	if s == nil {
-		return "", fmt.Errorf("object does not belong to workspace")
+		return "", ErrObjectDoesNotBelongToWorkspace
 	}
 
 	return s.GetStringValue(), nil
@@ -494,16 +497,85 @@ func (a *Anytype) TempDir() string {
 	return a.tempDir
 }
 
+func (a *Anytype) addCreatorData(rec net.ThreadRecord,
+	readMx *sync.RWMutex,
+	checkedThreads map[string]struct{},
+	checkedWorkspaces map[string]struct{}) {
+	threadId := rec.ThreadID().String()
+	if rec.LogID().String() != a.Device() {
+		return
+	}
+
+	readMx.RLock()
+	// if we already added info for this thread
+	if _, ok := checkedThreads[threadId]; ok {
+		readMx.RUnlock()
+		return
+	}
+	readMx.RUnlock()
+
+	workspaceId, err := a.GetWorkspaceIdForObject(threadId)
+	if err != nil {
+		if err == ErrObjectDoesNotBelongToWorkspace {
+			readMx.Lock()
+			defer readMx.Unlock()
+			checkedThreads[threadId] = struct{}{}
+		}
+		return
+	}
+
+	readMx.RLock()
+	if _, ok := checkedWorkspaces[workspaceId]; ok {
+		readMx.RUnlock()
+		readMx.Lock()
+		defer readMx.Unlock()
+		checkedThreads[threadId] = struct{}{}
+		return
+	}
+	readMx.RUnlock()
+
+	_, err = a.threadService.GetCreatorInfoForWorkspace(workspaceId, threadId)
+	if err == nil {
+		readMx.Lock()
+		defer readMx.Unlock()
+		checkedThreads[threadId] = struct{}{}
+		checkedWorkspaces[workspaceId] = struct{}{}
+		return
+	}
+	if err != nil && err != threads.ErrCreatorInfoNotFound {
+		return
+	}
+
+	err = a.threadService.AddCreatorInfoToWorkspace(workspaceId, threadId)
+	if err == nil {
+		threads.WorkspaceLogger.
+			With("workspaceId", workspaceId).
+			Info("successfully adding creator info")
+	} else {
+		threads.WorkspaceLogger.
+			With("workspaceId", workspaceId).
+			Error("error adding creator info")
+		return
+	}
+	readMx.Lock()
+	defer readMx.Unlock()
+	checkedThreads[threadId] = struct{}{}
+	checkedWorkspaces[workspaceId] = struct{}{}
+}
+
 // subscribeForNewRecords should be called only once as early as possible.
 // Subscribes to new records for all threads and add them to the batcher
 func (a *Anytype) subscribeForNewRecords() (err error) {
+	checkedWorkspaces := make(map[string]struct{})
+	checkedThreads := make(map[string]struct{})
+	creatorInfoMx := sync.RWMutex{}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	// do not defer cancel, cancel only on shutdown
 	threadsCh, err := a.threadService.PresubscribedNewRecords()
 	if err != nil {
 		return err
 	}
-
 	go func() {
 		a.lock.Lock()
 		shutdownCh := a.shutdownStartsCh
@@ -515,7 +587,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				if !ok {
 					return
 				}
-
+				go a.addCreatorData(val, &creatorInfoMx, checkedThreads, checkedWorkspaces)
 				id := val.ThreadID().String()
 				if id == a.predefinedBlockIds.Account {
 					// todo: not working on the early start

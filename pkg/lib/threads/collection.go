@@ -19,6 +19,7 @@ import (
 const nodeConnectionTimeout = time.Second * 15
 const ThreadInfoCollectionName = "threads"
 const MetaCollectionName = "meta"
+const CreatorCollectionName = "creator"
 const HighlightedCollectionName = "highlighted"
 
 type threadInfo struct {
@@ -34,6 +35,13 @@ type WorkspaceMeta interface {
 type MetaInfo struct {
 	ID   db.InstanceID `json:"_id"`
 	Name string
+}
+
+type CreatorInfo struct {
+	ID            db.InstanceID `json:"_id"`
+	AccountPubKey string
+	WorkspaceSig  []byte
+	Addrs         []string
 }
 
 type CollectionUpdateInfo struct {

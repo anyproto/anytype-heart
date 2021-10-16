@@ -353,7 +353,11 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 	}
 
 	workspaceProcessor = NewThreadProcessor(s, NewNoOpNotifier())
-	err = workspaceProcessor.Init(threadId)
+	err = workspaceProcessor.Init(threadId,
+		WithCollection(MetaCollectionName, MetaInfo{}),
+		WithCollectionAndActionProcessor(CreatorCollectionName,
+			CreatorInfo{},
+			newCreatorInfoActionProcessor(s)))
 	if err != nil {
 		return nil, fmt.Errorf("error initializing processor: %w", err)
 	}

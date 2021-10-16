@@ -48,6 +48,7 @@ var log = logging.Logger("anytype-threads")
 
 // TODO: remove when workspace debugging ends
 var WorkspaceLogger = logging.Logger("anytype-workspace-debug")
+var ErrCreatorInfoNotFound = fmt.Errorf("no creator info in collection")
 
 var (
 	permanentConnectionRetryDelay = time.Second * 5
@@ -322,7 +323,8 @@ type Service interface {
 	GetAllThreadsInWorkspace(id string) ([]string, error)
 	GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, error)
 	GetThreadProcessorForWorkspace(id string) (ThreadProcessor, error)
-
+	AddCreatorInfoToWorkspace(workspaceId, deviceId string) error
+	GetCreatorInfoForWorkspace(workspaceId, deviceId string) (CreatorInfo, error)
 	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 
 	GetThreadInfo(id thread.ID) (thread.Info, error)
@@ -417,7 +419,7 @@ func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, err
 		}
 	}
 
-	metaCollection := processor.GetMetaCollection()
+	metaCollection := processor.GetCollectionWithPrefix(MetaCollectionName)
 
 	results, err := metaCollection.Find(&threadsDb.Query{})
 	if err != nil {
@@ -431,6 +433,66 @@ func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, err
 	threadsUtil.InstanceFromJSON(results[0], &mInfo)
 
 	return &mInfo, nil
+}
+
+func (s *service) AddCreatorInfoToWorkspace(workspaceId, deviceId string) error {
+	_, err := s.GetCreatorInfoForWorkspace(workspaceId, deviceId)
+	if err == nil {
+		return nil
+	}
+
+	processor, err := s.GetThreadProcessorForWorkspace(workspaceId)
+	if err != nil {
+		return err
+	}
+
+	creatorCollection := processor.GetCollectionWithPrefix(CreatorCollectionName)
+	if creatorCollection == nil {
+		return fmt.Errorf("workspace doesn't have creator collection")
+	}
+
+	profileId, err := ProfileThreadIDFromAccountAddress(s.account.Address())
+	if err != nil {
+		return err
+	}
+	info, err := s.GetThreadInfo(profileId)
+	if err != nil {
+		return err
+	}
+
+	signature, err := s.account.Sign([]byte(workspaceId + deviceId))
+	if err != nil {
+		return fmt.Errorf("cannot sign device and workspace")
+	}
+	creator := CreatorInfo{
+		ID:            db.InstanceID(deviceId),
+		AccountPubKey: s.account.Address(),
+		WorkspaceSig:  signature,
+		Addrs:         util.MultiAddressesToStrings(info.Addrs),
+	}
+	_, err = creatorCollection.Create(threadsUtil.JSONFromInstance(creator))
+	return err
+}
+
+func (s *service) GetCreatorInfoForWorkspace(workspaceId, deviceId string) (CreatorInfo, error) {
+	processor, err := s.GetThreadProcessorForWorkspace(workspaceId)
+	if err != nil {
+		return CreatorInfo{}, err
+	}
+
+	creatorCollection := processor.GetCollectionWithPrefix(CreatorCollectionName)
+	if creatorCollection == nil {
+		return CreatorInfo{}, fmt.Errorf("workspace doesn't have creator collection")
+	}
+	result, err := creatorCollection.FindByID(db.InstanceID(deviceId))
+	if err != nil {
+		return CreatorInfo{}, ErrCreatorInfoNotFound
+	}
+
+	var info CreatorInfo
+	threadsUtil.InstanceFromJSON(result, &info)
+
+	return info, nil
 }
 
 func (s *service) SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error {
@@ -581,7 +643,7 @@ func (s *service) CreateWorkspace(name string) (thread.Info, error) {
 		ID:   db.NewInstanceID(),
 		Name: name,
 	}
-	metaCollection := processor.GetMetaCollection()
+	metaCollection := processor.GetCollectionWithPrefix(MetaCollectionName)
 	_, err = metaCollection.Create(threadsUtil.JSONFromInstance(mInfo))
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create workspace: %w", err)
@@ -893,13 +955,5 @@ func (s *service) getAccountProcessor() (ThreadProcessor, error) {
 		return nil, err
 	}
 
-	s.processorMutex.RLock()
-	processor, exists := s.threadProcessors[id]
-	s.processorMutex.RUnlock()
-
-	if !exists {
-		return nil, fmt.Errorf("account thread processor does not exist")
-	}
-
-	return processor, nil
+	return s.GetThreadProcessorForWorkspace(id.String())
 }
