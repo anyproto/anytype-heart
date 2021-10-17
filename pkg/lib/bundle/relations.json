@@ -1114,6 +1114,16 @@
     "source": "derived"
   },
   {
+    "description": "Relation that indicates text preview of the document",
+    "format": "longtext",
+    "hidden": true,
+    "key": "snippet",
+    "maxCount": 1,
+    "name": "Snippet",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "numberOfEmployees",

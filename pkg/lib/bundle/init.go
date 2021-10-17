@@ -18,6 +18,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyId,
 	RelationKeyName,
 	RelationKeyDescription,
+	RelationKeySnippet,
 	RelationKeyIconEmoji,
 	RelationKeyIconImage,
 	RelationKeyType,

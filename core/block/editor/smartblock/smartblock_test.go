@@ -1,8 +1,9 @@
 package smartblock
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"testing"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -49,13 +50,15 @@ func TestSmartBlock_Show(t *testing.T) {
 
 	fx.metaSubscriber.EXPECT().Callback(gomock.Any()).Return(fx.metaSubscriber).AnyTimes()
 	fx.metaSubscriber.EXPECT().Subscribe([]string{"1", "22", "33"}).Return(fx.metaSubscriber)
-	rel := bundle.MustGetRelation(bundle.RelationKeyId)
-	rel.Scope = 0
+	relId := bundle.MustGetRelation(bundle.RelationKeyId)
+	relId.Scope = 0
+	relSnippet := bundle.MustGetRelation(bundle.RelationKeySnippet)
+	relSnippet.Scope = 0
 	bm := meta.Meta{
 		BlockId: "1",
 		SmartBlockMeta: core.SmartBlockMeta{
 			Details:   fx.CombinedDetails(),
-			Relations: []*model.Relation{rel},
+			Relations: []*model.Relation{relId, relSnippet},
 		},
 	}
 	fx.metaService.EXPECT().ReportChange(bm).Do(func(d meta.Meta) {

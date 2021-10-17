@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "d304fdda05af05827e457070bcc1ae930e40f68181514f7d3324844077602412"
+const TypeChecksum = "109311a06bb25ddb561168a544e7b0973e689bfb2bd082c543f659309a300c36"
 
 type TypeKey string
 
@@ -319,7 +319,7 @@ var (
 
 			Description: "A brief record of points written down as an aid to memory",
 			IconEmoji:   "🗒️",
-			Layout:      model.ObjectType_basic,
+			Layout:      model.ObjectType_note,
 			Name:        "Note",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeyWorkspaceId]},

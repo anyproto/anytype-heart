@@ -275,7 +275,7 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 		b := simple.New(m)
 		bIds[i] = b.Model().Id
 		s.Unlink(bIds[i])
-		s.Add(b)
+		s.Set(b)
 	}
 	return s.InsertTo(bc.TargetId, bc.Position, bIds...)
 }
@@ -283,6 +283,7 @@ func (s *State) changeBlockCreate(bc *pb.ChangeBlockCreate) (err error) {
 func (s *State) changeBlockRemove(remove *pb.ChangeBlockRemove) error {
 	for _, id := range remove.Ids {
 		s.Unlink(id)
+		s.CleanupBlock(id)
 	}
 	return nil
 }
@@ -369,6 +370,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockDataviewSourceSet:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewViewSet:
+			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockDataviewViewOrder:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewViewDelete:
 			updMsgs = append(updMsgs, msg.Msg)

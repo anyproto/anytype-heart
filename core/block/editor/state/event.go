@@ -2,6 +2,7 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 
 	"github.com/gogo/protobuf/types"
@@ -106,6 +107,16 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				if f.SetView(o.BlockDataviewViewSet.ViewId, *o.BlockDataviewViewSet.View) != nil {
 					f.AddView(*o.BlockDataviewViewSet.View)
 				}
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDataviewViewOrder:
+		if err = apply(o.BlockDataviewViewOrder.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok  {
+				f.SetViewOrder(o.BlockDataviewViewOrder.ViewIds)
 				return nil
 			}
 			return fmt.Errorf("not a dataview block")

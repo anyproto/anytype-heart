@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -280,6 +281,12 @@ func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 func (s *service) SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.SetActiveView(ctx, req.BlockId, req.ViewId, int(req.Limit), int(req.Offset))
+	})
+}
+
+func (s *service) SetDataviewViewPosition(ctx *state.Context, req pb.RpcBlockDataviewViewSetPositionRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.SetViewPosition(ctx, req.BlockId, req.ViewId, req.Position)
 	})
 }
 
