@@ -22,14 +22,14 @@ func New() Service {
 }
 
 type DocInfo struct {
-	Id              string
-	Links           []string
-	FileHashes      []string
-	LogHeads        map[string]string
-	SetRelations    []*model.Relation
-	SetSource       []string
-	Creator         string
-	State           *state.State
+	Id           string
+	Links        []string
+	FileHashes   []string
+	LogHeads     map[string]string
+	SetRelations []*model.Relation
+	SetSource    []string
+	Creator      string
+	State        *state.State
 }
 
 type OnDocChangeCallback func(ctx context.Context, info DocInfo) error
