@@ -200,8 +200,6 @@ type Service interface {
 	GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error)
 	GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error)
 	SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error
-	// TODO: remove if it is not used
-	GetWorkspaceIdForObject(objectId string) (string, error)
 
 	ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
@@ -493,10 +491,6 @@ func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) 
 	return s.anytype.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
 }
 
-func (s *service) GetWorkspaceIdForObject(objectId string) (string, error) {
-	return s.anytype.GetWorkspaceIdForObject(objectId)
-}
-
 func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
 	return s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
 }
@@ -743,7 +737,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 			return "", "", basic.ErrNotSupported
 		}
 	}
-	workspaceId, err := s.GetWorkspaceIdForObject(req.ContextId)
+	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
 	if err != nil {
 		workspaceId = ""
 	}

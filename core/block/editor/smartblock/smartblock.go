@@ -1487,14 +1487,14 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	}
 	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
 	return doc.DocInfo{
-		Id:              sb.Id(),
-		Links:           depIds,
-		LogHeads:        sb.source.LogHeads(),
-		FileHashes:      fileHashes,
-		SetRelations:    setRelations,
-		SetSource:       setSource,
-		Creator:         creator,
-		State:           st.Copy(),
+		Id:           sb.Id(),
+		Links:        depIds,
+		LogHeads:     sb.source.LogHeads(),
+		FileHashes:   fileHashes,
+		SetRelations: setRelations,
+		SetSource:    setSource,
+		Creator:      creator,
+		State:        st.Copy(),
 	}
 }
 
