@@ -62,7 +62,7 @@ func (v *workspaces) Virtual() bool {
 func (v *workspaces) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
-		Info("reading document for workspace")
+		Debug("reading document for workspace")
 
 	s, err := v.createState()
 	if err != nil {
@@ -101,7 +101,7 @@ func (v *workspaces) Close() (err error) {
 
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
-		Info("closing listener channel")
+		Debug("closing listener channel")
 	v.cancel()
 	v.listener.Close()
 	v.listener = nil
@@ -121,7 +121,7 @@ func (v *workspaces) listenToChanges() (err error) {
 		return
 	}
 
-	v.listener, err = v.a.GetThreadActionsListenerForWorkspace(v.id)
+	v.listener, err = v.processor.GetDB().Listen()
 	if err != nil {
 		return
 	}
@@ -146,7 +146,7 @@ func (v *workspaces) listenToChanges() (err error) {
 	}()
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
-		Info("started listening to db changes")
+		Debug("started listening to db changes")
 	return nil
 }
 
@@ -154,7 +154,7 @@ func (v *workspaces) processHighlightedAction(action threadsDb.Action) {
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		With("thread id", action.ID).
-		Info("processing new thread to highlight")
+		Debug("processing new thread to highlight")
 
 	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
 		s, ok := d.(*state.State)
@@ -180,7 +180,7 @@ func (v *workspaces) processThreadAction(action threadsDb.Action) {
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		With("thread id", action.ID).
-		Info("processing new thread to link")
+		Debug("processing new thread to link")
 
 	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
 		s, ok := d.(*state.State)
@@ -227,9 +227,8 @@ func (v *workspaces) processMetaAction(action threadsDb.Action) {
 	}
 }
 
-func (v *workspaces) getDetails(workspaceName string) (p *types.Struct) {
-	return &types.Struct{Fields: map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(workspaceName),
+func (v *workspaces) getDetails(meta threads.WorkspaceMeta) (p *types.Struct) {
+	details := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():          pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false),
@@ -239,6 +238,17 @@ func (v *workspaces) getDetails(workspaceName string) (p *types.Struct) {
 		bundle.RelationKeyIconEmoji.String():   pbtypes.String("🌎"),
 		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.Id()),
 	}}
+	if meta != nil {
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(meta.WorkspaceName())
+		profiledId, err := threads.ProfileThreadIDFromAccountAddress(meta.Account())
+		if err == nil {
+			details.Fields[bundle.RelationKeyCreator.String()] = pbtypes.String(profiledId.String())
+		}
+	} else {
+		lastSymbols := v.id[len(v.id)-4 : len(v.id)]
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String("Workspace_" + lastSymbols)
+	}
+	return details
 }
 
 func (v *workspaces) createState() (*state.State, error) {
@@ -253,7 +263,7 @@ func (v *workspaces) createState() (*state.State, error) {
 	}
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
-		Info("finished adding collections in workspace")
+		Debug("finished adding collections in workspace")
 
 	s := state.NewDoc(v.id, nil).(*state.State)
 
@@ -280,14 +290,7 @@ func (v *workspaces) createState() (*state.State, error) {
 		return nil, err
 	}
 
-	var workspaceName string
-	if meta == nil {
-		lastSymbols := v.id[len(v.id)-4 : len(v.id)]
-		workspaceName = "Workspace_" + lastSymbols
-	} else {
-		workspaceName = meta.WorkspaceName()
-	}
-	s.SetDetails(v.getDetails(workspaceName))
+	s.SetDetails(v.getDetails(meta))
 
 	return s, nil
 }

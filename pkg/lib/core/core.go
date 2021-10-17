@@ -11,13 +11,6 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/gogo/protobuf/proto"
-	"github.com/libp2p/go-libp2p-core/peer"
-	pstore "github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/textileio/go-threads/core/thread"
-	threadsDb "github.com/textileio/go-threads/db"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -35,6 +28,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/gogo/protobuf/proto"
+	"github.com/libp2p/go-libp2p-core/peer"
+	pstore "github.com/libp2p/go-libp2p-core/peerstore"
+	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/textileio/go-threads/core/thread"
 )
 
 var log = logging.Logger("anytype-core")
@@ -95,8 +93,6 @@ type Service interface {
 	GetAllObjectsInWorkspace(id string) ([]string, error)
 	GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
-
-	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
 	GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error)
 
 	ObjectAddWithObjectId(objectId string, payload string) error
@@ -366,10 +362,6 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	return s.GetStringValue(), nil
 }
 
-func (a *Anytype) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
-	return a.threadService.GetThreadActionsListenerForWorkspace(id)
-}
-
 func (a *Anytype) GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error) {
 	return a.threadService.GetThreadProcessorForWorkspace(id)
 }
@@ -502,6 +494,15 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 	checkedThreads map[string]struct{},
 	checkedWorkspaces map[string]struct{}) {
 	threadId := rec.ThreadID().String()
+	var err error
+	defer func() {
+		if err != nil && err != ErrObjectDoesNotBelongToWorkspace {
+			threads.WorkspaceLogger.
+				With("thread id", threadId).
+				Errorf("error checking or adding creator info: %v", err)
+		}
+	}()
+
 	if rec.LogID().String() != a.Device() {
 		return
 	}
@@ -534,7 +535,7 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 	}
 	readMx.RUnlock()
 
-	_, err = a.threadService.GetCreatorInfoForWorkspace(workspaceId, threadId)
+	_, err = a.threadService.GetCreatorInfoForWorkspace(workspaceId)
 	if err == nil {
 		readMx.Lock()
 		defer readMx.Unlock()
@@ -546,17 +547,15 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 		return
 	}
 
-	err = a.threadService.AddCreatorInfoToWorkspace(workspaceId, threadId)
-	if err == nil {
-		threads.WorkspaceLogger.
-			With("workspaceId", workspaceId).
-			Info("successfully adding creator info")
-	} else {
-		threads.WorkspaceLogger.
-			With("workspaceId", workspaceId).
-			Error("error adding creator info")
+	err = a.threadService.AddCreatorInfoToWorkspace(workspaceId)
+	if err != nil {
 		return
 	}
+
+	threads.WorkspaceLogger.
+		With("workspace Id", workspaceId).
+		With("thread id", threadId).
+		Debug("successfully added creator info")
 	readMx.Lock()
 	defer readMx.Unlock()
 	checkedThreads[threadId] = struct{}{}

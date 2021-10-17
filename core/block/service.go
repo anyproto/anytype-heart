@@ -746,10 +746,10 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 	if err != nil {
 		workspaceId = ""
 	}
-	threads.WorkspaceLogger.
-		With("workspace id", workspaceId).
-		Info("adding workspace id to new object")
 	if workspaceId != "" && req.Details != nil {
+		threads.WorkspaceLogger.
+			With("workspace id", workspaceId).
+			Debug("adding workspace id to new object")
 		if req.Details.Fields == nil {
 			req.Details.Fields = make(map[string]*types.Value)
 		}

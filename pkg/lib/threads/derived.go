@@ -265,11 +265,11 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		}()
 		WorkspaceLogger.
 			With("workspace id", workspaceId).
-			Info("starting with workspace")
+			Debug("starting with workspace")
 		return accountIds, nil
 	}
 	WorkspaceLogger.
-		Info("starting with account")
+		Debug("starting with account")
 	return accountIds, nil
 }
 
@@ -502,7 +502,7 @@ func (s *service) ensureWorkspace(
 		return err
 	}
 	WorkspaceLogger.With("workspace id", workspaceId.String()).
-		Info("workspace thread exists")
+		Debug("workspace thread exists")
 
 	workspaceProcessor, err := s.startWorkspaceThreadProcessor(workspaceId.String())
 	if err != nil {
@@ -517,7 +517,7 @@ func (s *service) ensureWorkspace(
 	}
 	WorkspaceLogger.With("workspace id", workspaceId.String()).
 		With("archive id", archive.ID.String()).
-		Info("workspace archive thread exists")
+		Debug("workspace archive thread ensured")
 
 	if changeCollection {
 		s.db = workspaceProcessor.GetDB()
@@ -526,7 +526,7 @@ func (s *service) ensureWorkspace(
 
 		WorkspaceLogger.With("workspace id", workspaceId.String()).
 			With("collection name", s.threadsCollection.GetName()).
-			Info("setting new collection as current")
+			Debug("setting new collection as current")
 	}
 
 	return nil

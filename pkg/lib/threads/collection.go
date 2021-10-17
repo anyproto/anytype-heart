@@ -30,11 +30,13 @@ type threadInfo struct {
 
 type WorkspaceMeta interface {
 	WorkspaceName() string
+	Account() string
 }
 
 type MetaInfo struct {
-	ID   db.InstanceID `json:"_id"`
-	Name string
+	ID            db.InstanceID `json:"_id"`
+	Name          string
+	AccountPubKey string
 }
 
 type CreatorInfo struct {
@@ -51,6 +53,10 @@ type CollectionUpdateInfo struct {
 
 func (m *MetaInfo) WorkspaceName() string {
 	return m.Name
+}
+
+func (m *MetaInfo) Account() string {
+	return m.AccountPubKey
 }
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success

@@ -2,6 +2,7 @@ package threads
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"time"
 
@@ -14,17 +15,27 @@ import (
 
 func newCreatorInfoActionProcessor(s *service) CollectionActionProcessor {
 	return func(action threadsDb.Action, collection *threadsDb.Collection) {
-		WorkspaceLogger.
-			With("device id", action.ID.String()).
-			Info("processing creator info")
 		if !strings.HasPrefix(action.Collection, CreatorCollectionName) {
 			return
 		}
+		WorkspaceLogger.
+			With("device id", action.ID.String()).
+			Debug("processing creator info")
+		var err error
+		defer func() {
+			if err != nil {
+				WorkspaceLogger.
+					With("device id", action.ID.String()).
+					Errorf("error processing creator info: %v", err)
+			} else {
+				WorkspaceLogger.
+					With("device id", action.ID.String()).
+					Debug("successfully processed creator info")
+			}
+		}()
+
 		result, err := collection.FindByID(action.ID)
 		if err != nil {
-			WorkspaceLogger.
-				With("device id", action.ID.String()).
-				Error("can't find instance in database")
 			return
 		}
 		creatorInfo := CreatorInfo{}
@@ -32,19 +43,14 @@ func newCreatorInfoActionProcessor(s *service) CollectionActionProcessor {
 
 		profileId, err := ProfileThreadIDFromAccountAddress(creatorInfo.AccountPubKey)
 		if err != nil {
-			WorkspaceLogger.
-				With("device id", action.ID.String()).
-				Error("can't create profile id from address")
 			return
 		}
 
 		sk, rk, err := ProfileThreadKeysFromAccountAddress(creatorInfo.AccountPubKey)
 		if err != nil {
-			WorkspaceLogger.
-				With("device id", action.ID.String()).
-				Error("can't create keys from address")
 			return
 		}
+
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		info, err := s.t.GetThread(ctx, profileId)
 		cancel()
@@ -63,10 +69,7 @@ func newCreatorInfoActionProcessor(s *service) CollectionActionProcessor {
 
 		err = s.processNewExternalThreadUntilSuccess(profileId, ti)
 		if err != nil {
-			WorkspaceLogger.
-				With("device id", action.ID.String()).
-				With("profile id", profileId.String()).
-				Error("can't load profile")
+			err = fmt.Errorf("can't load profile: %w", err)
 			return
 		}
 	}

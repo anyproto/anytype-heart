@@ -611,7 +611,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 				With("object id", objectId).
 				With("workspace id", info.Id).
 				With("details", details).
-				Info("Injecting object details")
+				Debug("Injecting object details")
 			i.store.InjectObjectDetails(objectId, details)
 		}
 	}

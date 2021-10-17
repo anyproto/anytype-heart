@@ -323,9 +323,8 @@ type Service interface {
 	GetAllThreadsInWorkspace(id string) ([]string, error)
 	GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, error)
 	GetThreadProcessorForWorkspace(id string) (ThreadProcessor, error)
-	AddCreatorInfoToWorkspace(workspaceId, deviceId string) error
-	GetCreatorInfoForWorkspace(workspaceId, deviceId string) (CreatorInfo, error)
-	GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error)
+	AddCreatorInfoToWorkspace(workspaceId string) error
+	GetCreatorInfoForWorkspace(workspaceId string) (CreatorInfo, error)
 
 	GetThreadInfo(id thread.ID) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string) error
@@ -435,8 +434,9 @@ func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, err
 	return &mInfo, nil
 }
 
-func (s *service) AddCreatorInfoToWorkspace(workspaceId, deviceId string) error {
-	_, err := s.GetCreatorInfoForWorkspace(workspaceId, deviceId)
+func (s *service) AddCreatorInfoToWorkspace(workspaceId string) error {
+	deviceId := s.device.Address()
+	_, err := s.GetCreatorInfoForWorkspace(workspaceId)
 	if err == nil {
 		return nil
 	}
@@ -474,7 +474,8 @@ func (s *service) AddCreatorInfoToWorkspace(workspaceId, deviceId string) error 
 	return err
 }
 
-func (s *service) GetCreatorInfoForWorkspace(workspaceId, deviceId string) (CreatorInfo, error) {
+func (s *service) GetCreatorInfoForWorkspace(workspaceId string) (CreatorInfo, error) {
+	deviceId := s.device.Address()
 	processor, err := s.GetThreadProcessorForWorkspace(workspaceId)
 	if err != nil {
 		return CreatorInfo{}, err
@@ -537,7 +538,7 @@ func (s *service) SetIsHighlighted(workspaceId, objectId string, isHighlighted b
 		WorkspaceLogger.
 			With("title object", objectId).
 			With("workspace id", workspaceId).
-			Info("setting isHighlighted succeeded")
+			Debug("setting isHighlighted succeeded")
 	}
 	return err
 }
@@ -560,31 +561,6 @@ func (s *service) GetThreadProcessorForWorkspace(id string) (ThreadProcessor, er
 	}
 
 	return processor, nil
-}
-
-func (s *service) GetThreadActionsListenerForWorkspace(id string) (threadsDb.Listener, error) {
-	threadId, err := thread.Decode(id)
-	if err != nil {
-		return nil, err
-	}
-
-	s.processorMutex.RLock()
-	processor, exists := s.threadProcessors[threadId]
-	s.processorMutex.RUnlock()
-
-	if !exists {
-		processor, err = s.startWorkspaceThreadProcessor(id)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	listener, err := processor.GetDB().Listen()
-	if err != nil {
-		return nil, err
-	}
-
-	return listener, nil
 }
 
 func (s *service) getNewThreadChan() chan<- string {
@@ -640,13 +616,19 @@ func (s *service) CreateWorkspace(name string) (thread.Info, error) {
 	}
 
 	mInfo := MetaInfo{
-		ID:   db.NewInstanceID(),
-		Name: name,
+		ID:            db.NewInstanceID(),
+		Name:          name,
+		AccountPubKey: s.account.Address(),
 	}
 	metaCollection := processor.GetCollectionWithPrefix(MetaCollectionName)
 	_, err = metaCollection.Create(threadsUtil.JSONFromInstance(mInfo))
 	if err != nil {
 		return thread.Info{}, fmt.Errorf("could not create workspace: %w", err)
+	}
+
+	err = s.AddCreatorInfoToWorkspace(workspaceThread.ID.String())
+	if err != nil {
+		return thread.Info{}, nil
 	}
 
 	workspaceReadKeyBytes := workspaceThread.Key.Read().Bytes()
@@ -692,7 +674,7 @@ func (s *service) SelectAccount() error {
 	WorkspaceLogger.
 		With("collection name", s.threadsCollection.GetName()).
 		With("account id", s.currentWorkspaceId).
-		Info("switching to account")
+		Debug("switching to account")
 
 	return nil
 }
@@ -743,7 +725,7 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 		WorkspaceLogger.
 			With("thread id", threadId).
 			With("collection name", collectionToAdd.GetName()).
-			Info("adding thread to collection")
+			Debug("adding thread to collection")
 	}()
 
 	_, err = s.t.GetThread(context.Background(), id)
@@ -795,16 +777,16 @@ func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {
 
 func (s *service) CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error) {
 	var err error
-	threadId := s.currentWorkspaceId
+	insertedWorkspaceId := s.currentWorkspaceId
 	if workspaceId != "" {
-		threadId, err = thread.Decode(workspaceId)
+		insertedWorkspaceId, err = thread.Decode(workspaceId)
 		if err != nil {
 			return thread.Info{}, fmt.Errorf("could not create thread, because workspace id could not be decoded: %w", err)
 		}
 	}
 
 	s.processorMutex.RLock()
-	processor, exists := s.threadProcessors[threadId]
+	processor, exists := s.threadProcessors[insertedWorkspaceId]
 	s.processorMutex.RUnlock()
 
 	if !exists {
@@ -812,10 +794,10 @@ func (s *service) CreateThread(blockType smartblock.SmartBlockType, workspaceId 
 	}
 
 	WorkspaceLogger.
-		With("workspace id", threadId.String()).
-		Info("creating new thread with workspace")
+		With("workspace/account id", insertedWorkspaceId.String()).
+		Debug("creating new thread with workspace or account")
 
-	return s.createThreadWithCollection(blockType, processor.GetThreadCollection(), threadId)
+	return s.createThreadWithCollection(blockType, processor.GetThreadCollection(), insertedWorkspaceId)
 }
 
 func (s *service) createThreadWithCollection(
@@ -883,7 +865,7 @@ func (s *service) createThreadWithCollection(
 	WorkspaceLogger.
 		With("collection name", collection.GetName()).
 		With("thread id", thrd.ID.String()).
-		Info("pushing thread to thread collection")
+		Debug("pushing thread to thread collection")
 
 	// todo: wait for threadsCollection to push?
 	_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))

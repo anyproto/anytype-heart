@@ -74,7 +74,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	dataviewAllWorkspaceObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
-			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)},
+			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName), bundle.MustGetRelation(bundle.RelationKeyCreator)},
 			Views: []*model.BlockContentDataviewView{
 				{
 					Id:   uuid.New().String(),
