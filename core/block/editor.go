@@ -306,7 +306,7 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (rec *types.Struct, err error) {
 	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
 	if err != nil {
-		threads.WorkspaceLogger.Errorf("cannot get workspace id for object: %v", err)
+		threads.WorkspaceLogger.Debugf("cannot get workspace id for object: %v", err)
 	}
 	if workspaceId != "" {
 		if req.Record == nil {

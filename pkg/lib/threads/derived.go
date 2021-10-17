@@ -355,6 +355,7 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 	workspaceProcessor = NewThreadProcessor(s, NewNoOpNotifier())
 	err = workspaceProcessor.Init(threadId,
 		WithCollection(MetaCollectionName, MetaInfo{}),
+		WithCollection(HighlightedCollectionName, CollectionUpdateInfo{}),
 		WithCollectionAndActionProcessor(CreatorCollectionName,
 			CreatorInfo{},
 			newCreatorInfoActionProcessor(s)))

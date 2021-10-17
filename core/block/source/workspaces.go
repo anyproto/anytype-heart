@@ -220,6 +220,10 @@ func (v *workspaces) processMetaAction(action threadsDb.Action) {
 		v.m.Lock()
 		defer v.m.Unlock()
 		s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(meta.WorkspaceName()))
+		profiledId, err := threads.ProfileThreadIDFromAccountAddress(meta.Account())
+		if err == nil {
+			s.SetDetail(bundle.RelationKeyCreator.String(), pbtypes.String(profiledId.String()))
+		}
 		return
 	})
 	if err != nil {
@@ -254,10 +258,6 @@ func (v *workspaces) getDetails(meta threads.WorkspaceMeta) (p *types.Struct) {
 func (v *workspaces) createState() (*state.State, error) {
 	var err error
 	v.processor, err = v.a.GetThreadProcessorForWorkspace(v.id)
-	if err != nil {
-		return nil, err
-	}
-	_, err = v.processor.AddCollectionWithPrefix(threads.HighlightedCollectionName, threads.CollectionUpdateInfo{})
 	if err != nil {
 		return nil, err
 	}
