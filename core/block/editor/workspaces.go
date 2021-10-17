@@ -49,10 +49,16 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Relations: []*model.BlockContentDataviewRelation{{
-						Key:       bundle.RelationKeyName.String(),
-						IsVisible: true,
-					}},
+					Relations: []*model.BlockContentDataviewRelation{
+						{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+						{
+							Key:       bundle.RelationKeyCreator.String(),
+							IsVisible: true,
+						},
+					},
 					Filters: []*model.BlockContentDataviewFilter{{
 						RelationKey: bundle.RelationKeyWorkspaceId.String(),
 						Condition:   model.BlockContentDataviewFilter_Equal,
@@ -86,10 +92,16 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 							Type:        model.BlockContentDataviewSort_Asc,
 						},
 					},
-					Relations: []*model.BlockContentDataviewRelation{{
-						Key:       bundle.RelationKeyName.String(),
-						IsVisible: true,
-					}},
+					Relations: []*model.BlockContentDataviewRelation{
+						{
+							Key:       bundle.RelationKeyName.String(),
+							IsVisible: true,
+						},
+						{
+							Key:       bundle.RelationKeyCreator.String(),
+							IsVisible: true,
+						},
+					},
 					Filters: []*model.BlockContentDataviewFilter{{
 						RelationKey: bundle.RelationKeyWorkspaceId.String(),
 						Condition:   model.BlockContentDataviewFilter_Equal,
@@ -107,6 +119,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	err = template.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
+		template.WithFeaturedRelations,
+		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, true),
 		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, true),
 	)
