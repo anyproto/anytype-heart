@@ -168,13 +168,15 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		nodes = append(nodes, &pb.RpcObjectGraphNode{
-			Id:          id,
-			Type:        pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()),
-			Name:        pbtypes.GetString(rec.Details, bundle.RelationKeyName.String()),
-			Layout:      int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyLayout.String())),
-			Description: pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
-			IconImage:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
-			IconEmoji:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
+			Id:             id,
+			Type:           pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()),
+			Name:           pbtypes.GetString(rec.Details, bundle.RelationKeyName.String()),
+			Layout:         int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyLayout.String())),
+			Description:    pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
+			IconImage:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
+			IconEmoji:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
+			Done:           pbtypes.GetBool(rec.Details, bundle.RelationKeyDone.String()),
+			RelationFormat: int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyRelationFormat.String())),
 		})
 
 		var outgoingRelationLink = make(map[string]struct{}, 10)

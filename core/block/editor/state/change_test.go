@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
@@ -239,6 +240,152 @@ func TestStateNormalizeMerge(t *testing.T) {
 		ids = append(ids, bIds...)
 		assert.Equal(t, ids, s.Pick("parent").Model().ChildrenIds)
 	})
+}
+
+func TestState_ChangeDataviewOrder(t *testing.T) {
+	d := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"dv"}}),
+		"dv": simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
+			Dataview: &model.BlockContentDataview{
+				Views: []*model.BlockContentDataviewView{
+					{Id: "1"},
+					{Id: "2"},
+					{Id: "3"},
+				},
+			},
+		}}),
+	})
+	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks: d.Blocks(),
+		},
+	})
+	s := d.NewState()
+	s.Get("dv").(dataview.Block).SetViewOrder([]string{"3", "1", "2"})
+
+	_, _, err := ApplyState(s, true)
+	require.NoError(t, err)
+	changes := d.(*State).GetChanges()
+	s2 := dc.NewState()
+	require.NoError(t, s2.ApplyChange(changes...))
+	_, _, err = ApplyState(s2, true)
+	require.NoError(t, err)
+	assert.Equal(t, d.(*State).Pick("dv").Model().String(), dc.(*State).Pick("dv").Model().String())
+}
+
+func TestState_ChangeDataviewUnlink(t *testing.T) {
+	d := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{}}),
+	})
+	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks: d.Blocks(),
+		},
+	})
+	s := d.NewState()
+	s.Add(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Views: []*model.BlockContentDataviewView{
+				{Id: "1"},
+			},
+		},
+	}}))
+	s.InsertTo("root", model.Block_Inner, "dv")
+	_, _, err := ApplyState(s, true)
+	changes := d.(*State).GetChanges()
+	s = d.NewState()
+	s.Unlink("dv")
+	_, _, err = ApplyState(s, true)
+	require.NoError(t, err)
+	changes = append(changes, d.(*State).GetChanges()...)
+
+	s2 := dc.NewState()
+	require.NoError(t, s2.ApplyChange(changes...))
+	require.Nil(t, s2.Get("dv"))
+	require.Nil(t, s2.Pick("dv"))
+
+	_, _, err = ApplyState(s2, true)
+	require.NoError(t, err)
+	require.Nil(t, dc.(*State).Get("dv"))
+	require.Nil(t, dc.(*State).Pick("dv"))
+}
+
+func TestState_ChangeDataviewRemoveAdd(t *testing.T) {
+	d := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{}}),
+	})
+	dc := NewDocFromSnapshot("root", &pb.ChangeSnapshot{
+		Data: &model.SmartBlockSnapshotBase{
+			Blocks: d.Blocks(),
+		},
+	})
+	s := d.NewState()
+	s.Add(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Views: []*model.BlockContentDataviewView{
+				{Id: "1"},
+			},
+		},
+	}}))
+	s.InsertTo("root", model.Block_Inner, "dv")
+	_, _, err := ApplyState(s, true)
+	changes := d.(*State).GetChanges()
+	s = d.NewState()
+	s.Unlink("dv")
+	_, _, err = ApplyState(s, true)
+	require.NoError(t, err)
+	changes = append(changes, d.(*State).GetChanges()...)
+	s = d.NewState()
+	s.Add(simple.New(&model.Block{Id: "dv", Content: &model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Views: []*model.BlockContentDataviewView{
+				{Id: "2"},
+			},
+		},
+	}}))
+	s.InsertTo("root", model.Block_Inner, "dv")
+	_, _, err = ApplyState(s, true)
+	require.NoError(t, err)
+
+	changes = append(changes, d.(*State).GetChanges()...)
+	s2 := dc.NewState()
+	require.NoError(t, s2.ApplyChange(changes...))
+	require.NotNil(t, s2.Get("dv"))
+	require.Len(t, s2.Get("dv").Model().GetDataview().Views, 1)
+	require.Equal(t, "2", s2.Get("dv").Model().GetDataview().Views[0].Id)
+
+	_, _, err = ApplyState(s2, true)
+	require.NoError(t, err)
+	require.NotNil(t, dc.(*State).Get("dv"))
+	require.Len(t, dc.(*State).Get("dv").Model().GetDataview().Views, 1)
+	require.Equal(t, "2", dc.(*State).Get("dv").Model().GetDataview().Views[0].Id)
+}
+
+func TestState_ChangeDataviewRemoveMove(t *testing.T) {
+	d1 := NewDoc("root", map[string]simple.Block{
+		"root": simple.New(&model.Block{Id: "root", ChildrenIds: []string{"s"}}),
+		"s":    simple.New(&model.Block{Id: "s", ChildrenIds: []string{}}),
+	})
+
+	changes := []*pb.ChangeContent{
+		{
+			Value: &pb.ChangeContentValueOfBlockCreate{BlockCreate: &pb.ChangeBlockCreate{TargetId: "root", Position: model.Block_Inner, Blocks: []*model.Block{{Id: "b"}}}},
+		},
+		{
+			Value: &pb.ChangeContentValueOfBlockRemove{BlockRemove: &pb.ChangeBlockRemove{Ids: []string{"b"}}},
+		},
+		{
+			Value: &pb.ChangeContentValueOfBlockMove{BlockMove: &pb.ChangeBlockMove{TargetId: "s", Position: model.Block_Inner, Ids: []string{"b"}}},
+		},
+	}
+
+	s := d1.NewState()
+	require.NoError(t, s.ApplyChange(changes...))
+	ApplyState(s, true)
+	require.Nil(t, d1.(*State).blocks["b"])
+	require.NotContains(t, d1.(*State).Pick("s").Model().ChildrenIds, "b")
+	require.NotContains(t, d1.(*State).Pick("root").Model().ChildrenIds, "b")
+
 }
 
 func Test_ApplyChange(t *testing.T) {

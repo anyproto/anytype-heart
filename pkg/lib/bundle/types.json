@@ -30,6 +30,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "intentions",
       "happenings",
       "gratefulFor",
@@ -72,6 +74,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "time",
       "servings",
       "ingredients",
@@ -112,7 +116,9 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -149,6 +155,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "candidate",
       "job",
       "phone",
@@ -192,6 +200,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "phone",
       "email",
       "dateOfBirth",
@@ -240,6 +250,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "notes",
       "events",
       "tasks"
@@ -278,7 +290,9 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Date"
@@ -315,6 +329,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "company",
       "address",
       "billTo",
@@ -360,6 +376,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "problem",
       "solution",
       "alternative"
@@ -399,6 +417,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "assignee",
       "dueDate",
       "attachments",
@@ -427,6 +447,8 @@
       "creator",
       "layoutAlign",
       "isHidden",
+      "isDraft",
+      "workspaceId",
       "mpAddedToLibrary",
       "relationFormat",
       "relationMaxCount",
@@ -470,6 +492,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "author",
       "category",
       "rating",
@@ -509,6 +533,8 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -557,6 +583,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "story",
       "founded",
       "ceo",
@@ -602,7 +630,9 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Home"
@@ -639,6 +669,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "notes",
       "tasks",
       "events"
@@ -678,6 +710,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "participants",
       "agenda",
       "tasks"
@@ -717,6 +751,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "director",
       "stars",
       "genre",
@@ -760,7 +796,9 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -797,6 +835,8 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary"
@@ -804,6 +844,16 @@
     "types": [
       "STObjectType",
       "BundledObjectType"
+    ]
+  },
+  {
+    "description": "Space for sharing",
+    "id": "space",
+    "layout": "space",
+    "name": "Space",
+    "relations": [
+      "id",
+      "name"
     ]
   },
   {
@@ -836,6 +886,8 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "targetObjectType",
       "templateIsBundled"
     ],
@@ -874,6 +926,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "running",
       "meditation",
       "7hourssleep",
@@ -915,6 +969,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "setOf"
     ],
     "types": [
@@ -952,6 +1008,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "class",
       "classType",
       "records",
@@ -995,6 +1053,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "mood"
     ],
     "types": [
@@ -1031,7 +1091,9 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1067,6 +1129,8 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -1114,6 +1178,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "howToReproduce",
       "result",
       "additional",
@@ -1155,7 +1221,9 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Page",
@@ -1192,6 +1260,8 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -1242,6 +1312,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "tasks",
       "resources",
       "result",
@@ -1283,6 +1355,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "progress",
       "status",
       "dueDate",
@@ -1323,6 +1397,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "hypothesisAssumptions",
       "problem",
       "userStories",
@@ -1367,7 +1443,9 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Page"
@@ -1403,6 +1481,8 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -1443,6 +1523,8 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "objectives",
       "scope",
       "timeframe",

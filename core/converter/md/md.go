@@ -298,7 +298,7 @@ func (mw *marksWriter) writeMarks(pos int) {
 				}
 				fmt.Fprintf(mw.h.buf, "](%s)", urlS)
 			}
-		case model.BlockContentTextMark_Mention:
+		case model.BlockContentTextMark_Mention, model.BlockContentTextMark_Object:
 			if mw.h.isKnownLink(m.Param) {
 				if start {
 					mw.h.buf.WriteString("[")

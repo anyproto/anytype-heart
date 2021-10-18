@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "164b8f896bbee46214fe3a9e21e0abcf32b760fab7ade9224a7a415398ba4b6a"
+const RelationChecksum = "32a9b91f43e813a91c1187c7cec6eb4d0ba69e53c1495ad5294dbbcbb05faea2"
 
 type RelationKey string
 
@@ -33,6 +33,7 @@ const (
 	RelationKeyAttachments               RelationKey = "attachments"
 	RelationKeyAudioArtist               RelationKey = "audioArtist"
 	RelationKeyTasks                     RelationKey = "tasks"
+	RelationKeySnippet                   RelationKey = "snippet"
 	RelationKeyHypothesisAssumptions     RelationKey = "hypothesisAssumptions"
 	RelationKeyGratefulFor               RelationKey = "gratefulFor"
 	RelationKeyFounders                  RelationKey = "founders"
@@ -108,13 +109,14 @@ const (
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
-	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyStars                     RelationKey = "stars"
+	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
 	RelationKeyAudioGenre                RelationKey = "audioGenre"
 	RelationKeyIntentions                RelationKey = "intentions"
 	RelationKeyTelegram                  RelationKey = "telegram"
+	RelationKeyIsDraft                   RelationKey = "isDraft"
 	RelationKeyTrailer                   RelationKey = "trailer"
 	RelationKeyName                      RelationKey = "name"
 	RelationKeyMood                      RelationKey = "mood"
@@ -128,8 +130,6 @@ const (
 	RelationKeyPriority                  RelationKey = "priority"
 	RelationKeyFileMimeType              RelationKey = "fileMimeType"
 	RelationKeyType                      RelationKey = "type"
-	RelationKeyIsDraft                   RelationKey = "isDraft"
-	RelationKeyIsDeleted                 RelationKey = "isDeleted"
 	RelationKeyNumberOfEmployees         RelationKey = "numberOfEmployees"
 	RelationKeyLayout                    RelationKey = "layout"
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
@@ -147,6 +147,7 @@ const (
 	RelationKeyObjectives                RelationKey = "objectives"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
+	RelationKeyIsDeleted                 RelationKey = "isDeleted"
 	RelationKeyServings                  RelationKey = "servings"
 	RelationKeyCategory                  RelationKey = "category"
 	RelationKeyShipToAddress             RelationKey = "shipToAddress"
@@ -1031,7 +1032,7 @@ var (
 		},
 		RelationKeyIsDeleted: {
 
-			DataSource:       model.Relation_account,
+			DataSource:       model.Relation_local,
 			Description:      "Relation that indicates document has been deleted",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
@@ -1084,7 +1085,7 @@ var (
 		RelationKeyIsReadonly: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Indicates whether the object is readonly",
+			Description:      "Indicates whether the object is read-only. Means it can't be edited and archived",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
 			Key:              "isReadonly",
@@ -1673,7 +1674,7 @@ var (
 		},
 		RelationKeySetOf: {
 
-			DataSource:       model.Relation_details,
+			DataSource:       model.Relation_derived,
 			Description:      "Point to the object types used to aggregate the set. Empty means object of all types will be aggregated ",
 			Format:           model.RelationFormat_object,
 			Key:              "setOf",
@@ -1716,6 +1717,19 @@ var (
 			MaxCount:         1,
 			Name:             "Size",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeySnippet: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Key:              "snippet",
+			MaxCount:         1,
+			Name:             "",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -2023,14 +2037,15 @@ var (
 		},
 		RelationKeyWorkspaceId: {
 
-			DataSource:       model.Relation_account,
-			Description:      "Workspace id",
+			DataSource:       model.Relation_local,
+			Description:      "Space object belongs to",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Key:              "workspaceId",
 			MaxCount:         1,
-			Name:             "WorkspaceId",
-			ReadOnly:         false,
+			Name:             "Space",
+			ObjectTypes:      []string{TypePrefix + "space"},
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

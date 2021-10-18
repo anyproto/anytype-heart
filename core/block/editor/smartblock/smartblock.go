@@ -93,7 +93,7 @@ type SmartBlock interface {
 	AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
 	UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error
 	DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
-
+	MakeTemplateState() (*state.State, error)
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 
 	SendEvent(msgs []*pb.EventMessage)
@@ -367,9 +367,10 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		}
 
 	}).Subscribe(sb.depIds...)
+	sbMeta := sb.Meta()
 	sb.meta.ReportChange(meta.Meta{
 		BlockId:        sb.Id(),
-		SmartBlockMeta: *sb.Meta(),
+		SmartBlockMeta: *sbMeta,
 	})
 
 	var uniqueObjTypes []string
@@ -422,6 +423,12 @@ loop:
 			log.Warnf("got %d out of %d dep objects after timeout: missing %v", len(sb.lastDepDetails), len(sb.depIds), missingDeps)
 			break loop
 		case d := <-ch:
+			if sb.Id() == d.BlockId {
+				// do not rely on the data from the meta sub, prefer the one we have in this smartblock
+				d.Details = sbMeta.Details
+				d.ObjectTypes = sbMeta.ObjectTypes
+				d.Relations = sbMeta.Relations
+			}
 			if d.Details != nil {
 				sb.lastDepDetails[d.BlockId] = &pb.EventObjectDetailsSet{
 					Id:      d.BlockId,
@@ -936,6 +943,18 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 		}})
 	}
 	return
+}
+
+func (sb *smartBlock) MakeTemplateState() (*state.State, error) {
+	st := sb.NewState().Copy()
+	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
+	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
+	for _, rel := range sb.Relations() {
+		if rel.DataSource == model.Relation_details && !rel.Hidden {
+			st.RemoveDetail(rel.Key)
+		}
+	}
+	return st, nil
 }
 
 func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err error) {
