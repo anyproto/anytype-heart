@@ -660,9 +660,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		}
 	}
 
-	if !act.IsEmpty() || len(msgs) != 0 {
-		sb.reportChange(st)
-	}
+	sb.reportChange(st)
 
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
