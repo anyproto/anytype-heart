@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
@@ -36,6 +37,8 @@ var log = logging.Logger("anytype-mw-editor")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 
 type Dataview interface {
+	SetSource(ctx *state.Context, blockId string, source []string) (err error)
+
 	GetAggregatedRelations(blockId string) ([]*model.Relation, error)
 	GetDataviewRelations(blockId string) ([]*model.Relation, error)
 
@@ -85,6 +88,45 @@ type dataviewCollectionImpl struct {
 	smartblock.SmartBlock
 	dataviews         []*dataviewImpl
 	withSystemObjects bool
+}
+
+func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, source []string) (err error) {
+	s := d.NewStateCtx(ctx)
+	if blockId == "" {
+		blockId = template.DataviewBlockId
+	}
+
+	block, e := getDataviewBlock(s, blockId)
+	if e != nil && blockId != template.DataviewBlockId {
+		return e
+	}
+	if block != nil && slice.UnsortedEquals(block.GetSource(), source) {
+		return
+	}
+
+	if len(source) == 0 {
+		s.Unlink(blockId)
+		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		return d.Apply(s)
+	}
+
+	dvContent, _, err := DataviewBlockBySource(d.Anytype().ObjectStore(), source)
+	if err != nil {
+		return
+	}
+
+	if block != nil {
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Source = dvContent.Dataview.Source
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Views = dvContent.Dataview.Views
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Relations = dvContent.Dataview.Relations
+		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.ActiveView = dvContent.Dataview.ActiveView
+	} else {
+		block = simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
+		s.Set(block)
+		s.InsertTo("", 0, blockId)
+	}
+	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+	return d.Apply(s)
 }
 
 func (d *dataviewCollectionImpl) SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error {
@@ -780,8 +822,9 @@ func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error
 		if dvBlock, ok := b.(dataview.Block); !ok {
 			return true
 		} else {
+			dvBlock = b.Copy().(dataview.Block)
 			d.fillAggregatedOptions(dvBlock)
-			st.Set(b)
+			st.Set(dvBlock)
 			return true
 		}
 	})
@@ -1262,5 +1305,78 @@ func calculateEntriesDiff(a, b []database.Record) (updated []*types.Struct, remo
 		insertedGroupedByPosition = append(insertedGroupedByPosition, insertedToTheLastPosition)
 	}
 
+	return
+}
+
+func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res model.BlockContentOfDataview, schema schema.Schema, err error) {
+	if schema, err = SchemaBySources(source, store, nil); err != nil {
+		return
+	}
+
+	var (
+		relations     []*model.Relation
+		viewRelations []*model.BlockContentDataviewRelation
+	)
+
+	for _, rel := range schema.RequiredRelations() {
+		// other relations should be added with
+		if pbtypes.HasRelation(relations, rel.Key) {
+			continue
+		}
+
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: true})
+	}
+
+	for _, rel := range schema.ListRelations() {
+		// other relations should be added with
+		if pbtypes.HasRelation(relations, rel.Key) {
+			continue
+		}
+
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+	}
+
+	schemaRelations := schema.ListRelations()
+	if !pbtypes.HasRelation(schemaRelations, bundle.RelationKeyName.String()) {
+		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
+	}
+
+	for _, relKey := range bundle.RequiredInternalRelations {
+		// add all non-hidden system-wide internal relations just in case
+		if pbtypes.HasRelation(relations, relKey.String()) {
+			continue
+		}
+		rel := bundle.MustGetRelation(relKey)
+		if rel.Hidden {
+			continue
+		}
+		relations = append(relations, rel)
+		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
+
+	}
+
+	res = model.BlockContentOfDataview{
+		Dataview: &model.BlockContentDataview{
+			Relations: relations,
+			Source:    source,
+			Views: []*model.BlockContentDataviewView{
+				{
+					Id:   bson.NewObjectId().Hex(),
+					Type: model.BlockContentDataviewView_Table,
+					Name: "All",
+					Sorts: []*model.BlockContentDataviewSort{
+						{
+							RelationKey: "name",
+							Type:        model.BlockContentDataviewSort_Asc,
+						},
+					},
+					Filters:   nil,
+					Relations: viewRelations,
+				},
+			},
+		},
+	}
 	return
 }

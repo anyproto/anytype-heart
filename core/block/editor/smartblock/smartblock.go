@@ -190,7 +190,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.doc = ctx.Doc
 	sb.objectStore = ctx.ObjectStore
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
-	
+
 	sb.storeFileKeys()
 	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
 

@@ -179,6 +179,21 @@ func (s *State) Pick(id string) (b simple.Block) {
 	return
 }
 
+func (s *State) CleanupBlock(id string) bool {
+	var (
+		t  = s
+		ok bool
+	)
+	for t != nil {
+		if _, ok = t.blocks[id]; ok {
+			delete(t.blocks, id)
+			return true
+		}
+		t = t.parent
+	}
+	return false
+}
+
 func (s *State) PickOrigin(id string) (b simple.Block) {
 	if s.parent != nil {
 		return s.parent.Pick(id)
@@ -779,7 +794,7 @@ func (s *State) SetLocalDetail(key string, value *types.Value) {
 	}
 
 	if value == nil {
-		delete(s.details.Fields, key)
+		delete(s.localDetails.Fields, key)
 		return
 	}
 
@@ -996,6 +1011,13 @@ func (s *State) SetObjectTypes(objectTypes []string) *State {
 }
 
 func (s *State) InjectDerivedDetails() {
+	if objTypes := s.ObjectTypes(); len(objTypes) > 0 && objTypes[0] == bundle.TypeKeySet.URL() {
+		if b := s.Get("dataview"); b != nil {
+			source := b.Model().GetDataview().GetSource()
+			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		}
+
+	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 	if ot := s.ObjectType(); ot != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyType, pbtypes.String(ot))
@@ -1374,6 +1396,10 @@ func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 		}
 	}
 	return 0, false
+}
+
+func (s *State) SetContext(context *Context) {
+	s.ctx = context
 }
 
 type linkSource interface {

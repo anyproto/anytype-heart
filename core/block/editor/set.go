@@ -10,7 +10,6 @@ import (
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -30,7 +29,6 @@ func NewSet(dbCtrl database.Ctrl) *Set {
 	sb.IHistory = basic.NewHistory(sb)
 	sb.Dataview = dataview.NewDataview(sb)
 	sb.Router = database.New(dbCtrl)
-	sb.Text = stext.NewText(sb.SmartBlock)
 	return sb
 }
 
@@ -40,7 +38,6 @@ type Set struct {
 	basic.IHistory
 	dataview.Dataview
 	database.Router
-	stext.Text
 }
 
 func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
@@ -121,23 +118,27 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	return p.FillAggregatedOptions(nil)
 }
 
-func (p *Set) InitDataview(blockContent model.BlockContentOfDataview, name, icon string) error {
+func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, icon string) error {
 	s := p.NewState()
 
-	for i, view := range blockContent.Dataview.Views {
-		if view.Relations == nil {
-			blockContent.Dataview.Views[i].Relations = getDefaultViewRelations(blockContent.Dataview.Relations)
-		}
-	}
-
-	if err := template.ApplyTemplate(p, s,
+	tmpls := []template.StateTransformer{
 		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
 		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
-		template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
-		template.WithDataview(blockContent, false),
 		template.WithRequiredRelations(),
 		template.WithMaxCountMigration,
-	); err != nil {
+	}
+	if blockContent != nil {
+		for i, view := range blockContent.Dataview.Views {
+			if view.Relations == nil {
+				blockContent.Dataview.Views[i].Relations = getDefaultViewRelations(blockContent.Dataview.Relations)
+			}
+		}
+		tmpls = append(tmpls,
+			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
+			template.WithDataview(*blockContent, false),
+		)
+	}
+	if err := template.ApplyTemplate(p, s, tmpls...); err != nil {
 		return err
 	}
 	p.applyRestrictions(s)

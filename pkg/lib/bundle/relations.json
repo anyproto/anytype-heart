@@ -185,6 +185,14 @@
   },
   {
     "format": "longtext",
+    "hidden": true,
+    "key": "snippet",
+    "maxCount": 1,
+    "readonly": true,
+    "source": "derived"
+  },
+  {
+    "format": "longtext",
     "hidden": false,
     "key": "hypothesisAssumptions",
     "maxCount": 1,
@@ -898,16 +906,6 @@
     "source": "account"
   },
   {
-    "description": "Workspace id",
-    "format": "object",
-    "hidden": true,
-    "key": "workspaceId",
-    "maxCount": 1,
-    "name": "WorkspaceId",
-    "readonly": false,
-    "source": "account"
-  },
-  {
     "format": "object",
     "hidden": false,
     "key": "stars",
@@ -915,6 +913,19 @@
     "name": "Stars",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Space object belongs to",
+    "format": "object",
+    "hidden": true,
+    "key": "workspaceId",
+    "maxCount": 1,
+    "name": "Space",
+    "objectTypes": [
+      "space"
+    ],
+    "readonly": true,
+    "source": "local"
   },
   {
     "format": "checkbox",
@@ -961,6 +972,16 @@
     "name": "Telegram",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Relation that indicates document in draft state",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isDraft",
+    "maxCount": 1,
+    "name": "Is draft",
+    "readonly": true,
+    "source": "derived"
   },
   {
     "format": "file",
@@ -1090,26 +1111,6 @@
     "objectTypes": [
       "objectType"
     ],
-    "readonly": true,
-    "source": "derived"
-  },
-  {
-    "description": "Relation that indicates document in draft state",
-    "format": "checkbox",
-    "hidden": true,
-    "key": "isDraft",
-    "maxCount": 1,
-    "name": "Is draft",
-    "readonly": true,
-    "source": "derived"
-  },
-  {
-    "description": "Relation that indicates text preview of the document",
-    "format": "longtext",
-    "hidden": true,
-    "key": "snippet",
-    "maxCount": 1,
-    "name": "Snippet",
     "readonly": true,
     "source": "derived"
   },
@@ -1271,6 +1272,16 @@
     "source": "details"
   },
   {
+    "description": "Relation that indicates document has been deleted",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isDeleted",
+    "maxCount": 1,
+    "name": "Is deleted",
+    "readonly": true,
+    "source": "local"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "servings",
@@ -1405,7 +1416,7 @@
       "objectType"
     ],
     "readonly": true,
-    "source": "details"
+    "source": "derived"
   },
   {
     "format": "status",
