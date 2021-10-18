@@ -59,6 +59,8 @@ func init() {
 	DefaultConfig.Logstore.ValueThreshold = 1024               // store up to 1KB of value within the LSM tree itself to speed-up details filter queries
 	DefaultConfig.Logstore.Logger = logging.Logger("badger-logstore")
 	DefaultConfig.Litestore.Logger = logging.Logger("badger-litestore")
+	DefaultConfig.Litestore.ValueLogFileSize = 64 * 1024 * 1024
+	DefaultConfig.Litestore.GcDiscardRatio = 0.1
 	DefaultConfig.TextileDb.Logger = logging.Logger("badger-textiledb")
 	// we don't need to tune litestore&threadsDB badger instances because they should be fine with defaults for now
 }
