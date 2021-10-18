@@ -372,13 +372,56 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
 		return
 	}
+
+	var uniqueObjTypes []string
+
 	details = make([]*pb.EventObjectDetailsSet, 0, len(records))
 	for _, rec := range records {
 		details = append(details, &pb.EventObjectDetailsSet{
 			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
 			Details: rec.Details,
 		})
+		for _, key := range []string{bundle.RelationKeyType.String(), bundle.RelationKeyTargetObjectType.String()} {
+			ot := pbtypes.GetString(rec.Details, key)
+			if ot != "" && slice.FindPos(uniqueObjTypes, ot) == -1 {
+				uniqueObjTypes = append(uniqueObjTypes, ot)
+			}
+		}
 	}
+
+	if sb.Type() == model.SmartBlockType_Set {
+		// add the object type from the dataview source
+		if b := sb.Doc.Pick("dataview"); b != nil {
+			if dv := b.Model().GetDataview(); dv != nil {
+				if len(dv.Source) == 0 || dv.Source[0] == "" {
+					panic("empty dv source")
+				}
+				uniqueObjTypes = append(uniqueObjTypes, dv.Source...)
+				for _, rel := range dv.Relations {
+					if rel.Format == model.RelationFormat_file || rel.Format == model.RelationFormat_object {
+						if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() {
+							continue
+						}
+						for _, ot := range rel.ObjectTypes {
+							if slice.FindPos(uniqueObjTypes, ot) == -1 {
+								if ot == "" {
+									log.Errorf("dv relation %s(%s) has empty obj types", rel.Key, rel.Name)
+								} else {
+									if strings.HasPrefix(ot, "http") {
+										log.Errorf("dv rels has http source")
+									}
+									uniqueObjTypes = append(uniqueObjTypes, ot)
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
+
 	go sb.metaListener(recordsCh)
 	return
 }
