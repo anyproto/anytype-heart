@@ -3,12 +3,13 @@ package core
 import (
 	"context"
 	"fmt"
-	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
-	"io/ioutil"
-
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
+	badger "github.com/ipfs/go-ds-badger"
+	"io/ioutil"
 )
 
 func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIpfsImageGetBlobResponse {
@@ -101,8 +102,14 @@ func (mw *Middleware) FilesOffloadAll(req *pb.RpcIpfsFileOffloadAllRequest) *pb.
 		totalBytesOffloaded uint64
 		totalFilesOffloaded int32
 	)
-	for fileId, status := range pinStatus {
-		if status.Status != pb2.PinStatus_Done && !req.IncludeNotPinned {
+	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
+	blockDs, err := ds.BlockstoreDS()
+	if err != nil {
+		return response(0, 0, pb.RpcIpfsFileOffloadAllResponseError_UNKNOWN_ERROR, err)
+	}
+
+	for _, fileId := range files {
+		if st, exists := pinStatus[fileId]; (!exists || st.Status != pb2.PinStatus_Done) && !req.IncludeNotPinned {
 			continue
 		}
 		bytesRemoved, err := at.FileOffload(fileId)
@@ -112,6 +119,21 @@ func (mw *Middleware) FilesOffloadAll(req *pb.RpcIpfsFileOffloadAllRequest) *pb.
 		}
 		totalBytesOffloaded += bytesRemoved
 		totalFilesOffloaded++
+	}
+
+	var total int
+	var maxErrors = 1
+	for {
+		err = blockDs.(*badger.Datastore).DB.RunValueLogGC(0.000000000001)
+		if err != nil && err.Error() == "Value log GC attempt didn't result in any cleanup" {
+			maxErrors--
+			if maxErrors == 0 {
+				log.Errorf("badger gc exit on %d attempt", total)
+				break
+			}
+			continue
+		}
+		total++
 	}
 
 	return response(totalFilesOffloaded, totalBytesOffloaded, pb.RpcIpfsFileOffloadAllResponseError_NULL, nil)
