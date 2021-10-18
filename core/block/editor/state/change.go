@@ -33,7 +33,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 	s := &State{
 		rootId:         rootId,
 		blocks:         blocks,
-		details:        snapshot.Data.Details,
+		details:        pbtypes.StructCutKeys(snapshot.Data.Details, append(bundle.DerivedRelationsKeys, bundle.LocalRelationsKeys...)),
 		extraRelations: snapshot.Data.ExtraRelations,
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,

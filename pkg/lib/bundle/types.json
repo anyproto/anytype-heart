@@ -30,13 +30,14 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "intentions",
       "happenings",
       "gratefulFor",
       "mood",
       "worriedAbout",
-      "tasks",
-      "workspaceId"
+      "tasks"
     ],
     "types": [
       "Page"
@@ -73,6 +74,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "time",
       "servings",
       "ingredients",
@@ -88,7 +90,7 @@
     "description": "A brief record of points written down as an aid to memory",
     "emoji": "🗒️",
     "id": "note",
-    "layout": "note",
+    "layout": "basic",
     "name": "Note",
     "relations": [
       "id",
@@ -115,6 +117,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "workspaceId"
     ],
     "types": [
@@ -152,6 +155,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "candidate",
       "job",
       "phone",
@@ -196,6 +200,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "phone",
       "email",
       "dateOfBirth",
@@ -245,6 +250,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "notes",
       "events",
       "tasks",
@@ -284,7 +290,9 @@
       "isHidden",
       "isArchived",
       "tag",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Date"
@@ -321,6 +329,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "company",
       "address",
       "billTo",
@@ -367,6 +376,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "problem",
       "solution",
       "alternative",
@@ -407,6 +417,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "assignee",
       "dueDate",
       "attachments",
@@ -436,6 +447,8 @@
       "creator",
       "layoutAlign",
       "isHidden",
+      "isDraft",
+      "workspaceId",
       "mpAddedToLibrary",
       "relationFormat",
       "relationMaxCount",
@@ -479,6 +492,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "author",
       "category",
       "rating",
@@ -519,6 +533,7 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -568,6 +583,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "story",
       "founded",
       "ceo",
@@ -614,7 +630,9 @@
       "featuredRelations",
       "coverType",
       "layoutAlign",
-      "isHidden"
+      "isHidden",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Home"
@@ -651,6 +669,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "notes",
       "tasks",
       "events",
@@ -691,6 +710,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "participants",
       "agenda",
       "tasks",
@@ -731,6 +751,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "director",
       "stars",
       "genre",
@@ -776,6 +797,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "workspaceId"
     ],
     "types": [
@@ -813,6 +835,8 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
+      "workspaceId",
       "recommendedRelations",
       "recommendedLayout",
       "mpAddedToLibrary"
@@ -852,6 +876,7 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
       "targetObjectType",
       "templateIsBundled",
       "workspaceId"
@@ -891,6 +916,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "running",
       "meditation",
       "7hourssleep",
@@ -934,7 +960,8 @@
       "tag",
       "isFavorite",
       "setOf",
-      "workspaceId"
+      "workspaceId",
+      "isDraft"
     ],
     "types": [
       "Set"
@@ -971,6 +998,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "class",
       "classType",
       "records",
@@ -1015,8 +1043,9 @@
       "isArchived",
       "tag",
       "isFavorite",
-      "mood",
-      "workspaceId"
+      "isDraft",
+      "workspaceId",
+      "mood"
     ],
     "types": [
       "Page"
@@ -1053,6 +1082,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "workspaceId"
     ],
     "types": [
@@ -1060,7 +1090,7 @@
     ]
   },
   {
-    "description": "Space is a union of one or more documents",
+    "description": "Space for sharing",
     "emoji": "🌎",
     "id": "space",
     "layout": "space",
@@ -1125,6 +1155,7 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -1173,6 +1204,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "howToReproduce",
       "result",
       "additional",
@@ -1215,7 +1247,9 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
-      "isFavorite"
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
     ],
     "types": [
       "Page",
@@ -1252,6 +1286,7 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -1303,6 +1338,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "tasks",
       "resources",
       "result",
@@ -1345,6 +1381,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "progress",
       "status",
       "dueDate",
@@ -1386,6 +1423,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "hypothesisAssumptions",
       "problem",
       "userStories",
@@ -1432,6 +1470,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "workspaceId"
     ],
     "types": [
@@ -1468,6 +1507,7 @@
       "isHidden",
       "isArchived",
       "isFavorite",
+      "isDraft",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
@@ -1509,6 +1549,7 @@
       "isArchived",
       "tag",
       "isFavorite",
+      "isDraft",
       "objectives",
       "scope",
       "timeframe",

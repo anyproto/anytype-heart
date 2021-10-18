@@ -207,8 +207,8 @@ func TestTextImpl_SetText(t *testing.T) {
 	t.Run("set text after interval", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-			AddBlock(newTextBlock("1", "")).
-			AddBlock(newTextBlock("2", ""))
+			AddBlock(newTextBlock("1", " ")).
+			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb)
 
 		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
@@ -219,7 +219,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			BlockId: "1",
 			Text:    "12",
 		}))
-		assert.Equal(t, "", sb.NewState().Pick("1").Model().GetText().Text)
+		assert.Equal(t, " ", sb.NewState().Pick("1").Model().GetText().Text)
 		time.Sleep(time.Second)
 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
 		assert.Len(t, sb.Results.Applies, 1)
@@ -227,8 +227,8 @@ func TestTextImpl_SetText(t *testing.T) {
 	t.Run("set text and new op", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-			AddBlock(newTextBlock("1", "")).
-			AddBlock(newTextBlock("2", ""))
+			AddBlock(newTextBlock("1", " ")).
+			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb)
 
 		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
@@ -239,7 +239,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			BlockId: "1",
 			Text:    "12",
 		}))
-		assert.Equal(t, "", sb.NewState().Pick("1").Model().GetText().Text)
+		assert.Equal(t, " ", sb.NewState().Pick("1").Model().GetText().Text)
 		tb.(*textImpl).flushSetTextState()
 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
 		time.Sleep(time.Second)

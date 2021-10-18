@@ -23,9 +23,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -418,6 +418,12 @@ func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.
 	})
 
 	return err
+}
+
+func (s *service) SetDataviewSource(ctx *state.Context, contextId, blockId string, source []string) (err error) {
+	return s.DoDataview(contextId, func(b dataview.Dataview) error {
+		return b.SetSource(ctx, blockId, source)
+	})
 }
 
 func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot string, anySlot []*model.Block, err error) {
@@ -817,9 +823,12 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
-	schema, err := dataview.SchemaBySources(req.Source, s.anytype.ObjectStore(), nil)
-	if err != nil {
-		return
+	var dvContent model.BlockContentOfDataview
+	var dvSchema schema.Schema
+	if len(req.Source) != 0 {
+		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(s.anytype.ObjectStore(), req.Source); err != nil {
+			return
+		}
 	}
 
 	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
@@ -855,70 +864,17 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		return "", setId, fmt.Errorf("unexpected set block type: %T", sb)
 	}
 
-	var (
-		relations     []*model.Relation
-		viewRelations []*model.BlockContentDataviewRelation
-	)
-
-	for _, rel := range schema.RequiredRelations() {
-		// required relations (e.g. in the set by relation) should be visible by default. RequiredRelations includes name
-		relations = append(relations, rel)
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
-	}
-
-	for _, rel := range schema.ListRelations() {
-		// other relations should be added with
-		if pbtypes.HasRelation(relations, rel.Key) {
-			continue
-		}
-
-		relations = append(relations, rel)
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
-	}
-
-	for _, relKey := range bundle.RequiredInternalRelations {
-		// add all non-hidden system-wide internal relations just in case
-		if pbtypes.HasRelation(relations, relKey.String()) {
-			continue
-		}
-		rel := bundle.MustGetRelation(relKey)
-		if rel.Hidden {
-			continue
-		}
-		relations = append(relations, rel)
-		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
-
-	}
-
-	dataview := model.BlockContentOfDataview{
-		Dataview: &model.BlockContentDataview{
-			Relations: relations,
-			Source:    req.Source,
-			Views: []*model.BlockContentDataviewView{
-				{
-					Id:   bson.NewObjectId().Hex(),
-					Type: model.BlockContentDataviewView_Table,
-					Name: "All",
-					Sorts: []*model.BlockContentDataviewSort{
-						{
-							RelationKey: "name",
-							Type:        model.BlockContentDataviewSort_Asc,
-						},
-					},
-					Filters:   nil,
-					Relations: viewRelations,
-				},
-			},
-		},
-	}
 	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
 	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
 
-	if name == "" {
-		name = schema.Description() + " set"
+	if name == "" && dvSchema != nil {
+		name = dvSchema.Description() + " set"
 	}
-
-	err = set.InitDataview(dataview, name, icon)
+	if dvSchema != nil {
+		err = set.InitDataview(&dvContent, name, icon)
+	} else {
+		err = set.InitDataview(nil, name, icon)
+	}
 	if err != nil {
 		return "", setId, err
 	}

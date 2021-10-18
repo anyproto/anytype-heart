@@ -209,8 +209,20 @@ func (t *textImpl) newSetTextState(blockId string, ctx *state.Context) *state.St
 
 func (t *textImpl) flushSetTextState() {
 	if t.lastSetTextState != nil {
-		if err := t.Apply(t.lastSetTextState, smartblock.NoEvent, smartblock.NoHooks); err != nil {
+		ctx := state.NewContext(nil)
+		t.lastSetTextState.SetContext(ctx)
+		if err := t.Apply(t.lastSetTextState, smartblock.NoHooks); err != nil {
 			log.Errorf("can't apply setText state: %v", err)
+		}
+		msgs := ctx.GetMessages()
+		filteredMsgs := msgs[:0]
+		for _, msg := range msgs {
+			if msg.GetBlockSetText() == nil {
+				filteredMsgs = append(filteredMsgs, msg)
+			}
+		}
+		if len(filteredMsgs) > 0 {
+			t.SendEvent(filteredMsgs)
 		}
 		t.cancelSetTextState()
 	}
@@ -234,6 +246,8 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	}()
 	ctx := state.NewContext(nil)
 	s := t.newSetTextState(req.BlockId, ctx)
+	wasEmpty := s.IsEmpty()
+
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
 		return
@@ -244,7 +258,7 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 	}
 	afterIds := tb.FillSmartIds(nil)
 
-	if _, ok := tb.(text.DetailsBlock); ok {
+	if _, ok := tb.(text.DetailsBlock); ok || wasEmpty {
 		defer t.cancelSetTextState()
 		if err = t.Apply(s); err != nil {
 			return

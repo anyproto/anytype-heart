@@ -128,6 +128,10 @@
     - [Rpc.Block.Dataview.RelationUpdate.Request](#anytype.Rpc.Block.Dataview.RelationUpdate.Request)
     - [Rpc.Block.Dataview.RelationUpdate.Response](#anytype.Rpc.Block.Dataview.RelationUpdate.Response)
     - [Rpc.Block.Dataview.RelationUpdate.Response.Error](#anytype.Rpc.Block.Dataview.RelationUpdate.Response.Error)
+    - [Rpc.Block.Dataview.SetSource](#anytype.Rpc.Block.Dataview.SetSource)
+    - [Rpc.Block.Dataview.SetSource.Request](#anytype.Rpc.Block.Dataview.SetSource.Request)
+    - [Rpc.Block.Dataview.SetSource.Response](#anytype.Rpc.Block.Dataview.SetSource.Response)
+    - [Rpc.Block.Dataview.SetSource.Response.Error](#anytype.Rpc.Block.Dataview.SetSource.Response.Error)
     - [Rpc.Block.Dataview.ViewCreate](#anytype.Rpc.Block.Dataview.ViewCreate)
     - [Rpc.Block.Dataview.ViewCreate.Request](#anytype.Rpc.Block.Dataview.ViewCreate.Request)
     - [Rpc.Block.Dataview.ViewCreate.Response](#anytype.Rpc.Block.Dataview.ViewCreate.Response)
@@ -669,6 +673,7 @@
     - [Rpc.Block.Dataview.RelationDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationDelete.Response.Error.Code)
     - [Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationListAvailable.Response.Error.Code)
     - [Rpc.Block.Dataview.RelationUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationUpdate.Response.Error.Code)
+    - [Rpc.Block.Dataview.SetSource.Response.Error.Code](#anytype.Rpc.Block.Dataview.SetSource.Response.Error.Code)
     - [Rpc.Block.Dataview.ViewCreate.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewCreate.Response.Error.Code)
     - [Rpc.Block.Dataview.ViewDelete.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewDelete.Response.Error.Code)
     - [Rpc.Block.Dataview.ViewSetActive.Response.Error.Code](#anytype.Rpc.Block.Dataview.ViewSetActive.Response.Error.Code)
@@ -1115,6 +1120,7 @@
 | BlockDataviewViewUpdate | [Rpc.Block.Dataview.ViewUpdate.Request](#anytype.Rpc.Block.Dataview.ViewUpdate.Request) | [Rpc.Block.Dataview.ViewUpdate.Response](#anytype.Rpc.Block.Dataview.ViewUpdate.Response) |  |
 | BlockDataviewViewSetActive | [Rpc.Block.Dataview.ViewSetActive.Request](#anytype.Rpc.Block.Dataview.ViewSetActive.Request) | [Rpc.Block.Dataview.ViewSetActive.Response](#anytype.Rpc.Block.Dataview.ViewSetActive.Response) |  |
 | BlockDataviewViewSetPosition | [Rpc.Block.Dataview.ViewSetPosition.Request](#anytype.Rpc.Block.Dataview.ViewSetPosition.Request) | [Rpc.Block.Dataview.ViewSetPosition.Response](#anytype.Rpc.Block.Dataview.ViewSetPosition.Response) |  |
+| BlockDataviewSetSource | [Rpc.Block.Dataview.SetSource.Request](#anytype.Rpc.Block.Dataview.SetSource.Request) | [Rpc.Block.Dataview.SetSource.Response](#anytype.Rpc.Block.Dataview.SetSource.Response) |  |
 | BlockDataviewRelationAdd | [Rpc.Block.Dataview.RelationAdd.Request](#anytype.Rpc.Block.Dataview.RelationAdd.Request) | [Rpc.Block.Dataview.RelationAdd.Response](#anytype.Rpc.Block.Dataview.RelationAdd.Response) | # Relation |
 | BlockDataviewRelationUpdate | [Rpc.Block.Dataview.RelationUpdate.Request](#anytype.Rpc.Block.Dataview.RelationUpdate.Request) | [Rpc.Block.Dataview.RelationUpdate.Response](#anytype.Rpc.Block.Dataview.RelationUpdate.Response) |  |
 | BlockDataviewRelationDelete | [Rpc.Block.Dataview.RelationDelete.Request](#anytype.Rpc.Block.Dataview.RelationDelete.Request) | [Rpc.Block.Dataview.RelationDelete.Response](#anytype.Rpc.Block.Dataview.RelationDelete.Response) |  |
@@ -2993,6 +2999,65 @@ RecordRelationOptionAdd may return existing option in case object specified with
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Dataview.RelationUpdate.Response.Error.Code](#anytype.Rpc.Block.Dataview.RelationUpdate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.SetSource"></a>
+
+### Rpc.Block.Dataview.SetSource
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.SetSource.Request"></a>
+
+### Rpc.Block.Dataview.SetSource.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| source | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.SetSource.Response"></a>
+
+### Rpc.Block.Dataview.SetSource.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Dataview.SetSource.Response.Error](#anytype.Rpc.Block.Dataview.SetSource.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Dataview.SetSource.Response.Error"></a>
+
+### Rpc.Block.Dataview.SetSource.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Dataview.SetSource.Response.Error.Code](#anytype.Rpc.Block.Dataview.SetSource.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10778,6 +10843,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Dataview.SetSource.Response.Error.Code"></a>
+
+### Rpc.Block.Dataview.SetSource.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype.Rpc.Block.Dataview.ViewCreate.Response.Error.Code"></a>
 
 ### Rpc.Block.Dataview.ViewCreate.Response.Error.Code
@@ -15609,6 +15687,8 @@ scope from which this relation have been aggregated |
 | TextColor | 6 |  |
 | BackgroundColor | 7 |  |
 | Mention | 8 |  |
+| Emoji | 9 |  |
+| Object | 10 |  |
 
 
 
@@ -15643,12 +15723,13 @@ scope from which this relation have been aggregated |
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | None | 0 |  |
-| Top | 1 |  |
-| Bottom | 2 |  |
-| Left | 3 |  |
-| Right | 4 |  |
-| Inner | 5 |  |
-| Replace | 6 |  |
+| Top | 1 | above target block |
+| Bottom | 2 | under target block |
+| Left | 3 | to left of target block |
+| Right | 4 | to right of target block |
+| Inner | 5 | inside target block, as last block |
+| Replace | 6 | replace target block |
+| InnerFirst | 7 | inside target block, as first block |
 
 
 
@@ -15683,8 +15764,8 @@ scope from which this relation have been aggregated |
 | dashboard | 7 |  |
 | image | 8 |  |
 | note | 9 |  |
+| space | 10 |  |
 | database | 20 | to be released later |
-| space | 21 |  |
 
 
 
@@ -15698,6 +15779,7 @@ scope from which this relation have been aggregated |
 | details | 0 | default, stored inside the object&#39;s details |
 | derived | 1 | stored locally, e.g. in badger or generated on the fly |
 | account | 2 | stored in the account DB. means existing only for specific anytype account |
+| local | 3 | stored locally |
 
 
 

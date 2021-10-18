@@ -303,10 +303,17 @@ var WithTitle = StateTransformer(func(s *state.State) {
 		Align: align,
 	}))
 
+	if parent := s.PickParentOf(TitleBlockId); parent != nil {
+		if slice.FindPos(parent.Model().ChildrenIds, TitleBlockId) != 0 {
+			s.Unlink(TitleBlockId)
+			blockExists = false
+		}
+	}
+
 	if blockExists {
 		return
 	}
-	if err := s.InsertTo(HeaderLayoutId, model.Block_Inner, TitleBlockId); err != nil {
+	if err := s.InsertTo(HeaderLayoutId, model.Block_InnerFirst, TitleBlockId); err != nil {
 		log.Errorf("template WithTitle failed to insert: %w", err)
 	}
 })
