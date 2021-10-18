@@ -115,7 +115,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(dvBlock.Model().GetDataview().Source)))
 	}
 	templates = append(templates, template.WithTitle)
-	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
+	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
 	p.applyRestrictions(ctx.State)
@@ -142,7 +142,7 @@ func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, ico
 			template.WithDataview(*blockContent, false),
 		)
 	}
-	if err := template.ApplyTemplate(p, s, tmpls...); err != nil {
+	if err := smartblock.ApplyTemplate(p, s, tmpls...); err != nil {
 		return err
 	}
 	p.applyRestrictions(s)

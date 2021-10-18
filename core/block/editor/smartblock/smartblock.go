@@ -12,6 +12,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -1527,4 +1528,14 @@ func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
 		events[i] = msgs[i].Msg
 	}
 	return events
+}
+
+func ApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTransformer) (err error) {
+	if s == nil {
+		s = sb.NewState()
+	}
+	if err = template.InitTemplate(s, templates...); err != nil {
+		return
+	}
+	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }

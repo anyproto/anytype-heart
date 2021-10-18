@@ -81,7 +81,7 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Types"), template.WithDetailIconEmoji("📒"), template.WithRequiredRelations())
 
-	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
+	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
 	p.WithSystemObjects(true)
@@ -149,7 +149,7 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"), template.WithRequiredRelations())
 
-	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
+	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
 
@@ -217,7 +217,7 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"))
 
-	if err = template.ApplyTemplate(p, ctx.State, templates...); err != nil {
+	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
 		return
 	}
 

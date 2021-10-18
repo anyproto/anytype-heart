@@ -33,7 +33,7 @@ func TestBasic_Create(t *testing.T) {
 	t.Run("title", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
@@ -53,7 +53,7 @@ func TestBasic_Create(t *testing.T) {
 			},
 		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		_, err := b.Create(nil, "", pb.RpcBlockCreateRequest{})
 		assert.Equal(t, restriction.ErrRestricted, err)
@@ -115,7 +115,7 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("header", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id1, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
