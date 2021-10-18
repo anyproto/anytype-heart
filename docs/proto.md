@@ -15463,6 +15463,8 @@ scope from which this relation have been aggregated |
 | TextColor | 6 |  |
 | BackgroundColor | 7 |  |
 | Mention | 8 |  |
+| Emoji | 9 |  |
+| Object | 10 |  |
 
 
 
