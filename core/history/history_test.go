@@ -1,8 +1,9 @@
 package history
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"testing"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
@@ -10,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -60,7 +60,7 @@ func newFixture(t *testing.T) *fixture {
 	a.EXPECT().ObjectStore().Return(nil).AnyTimes()
 	a.EXPECT().ProfileID().AnyTimes()
 	a.EXPECT().LocalProfile().AnyTimes()
-	mockMeta.RegisterMockMeta(ctrl, ta)
+	testMock.RegisterMockObjectStore(ctrl, ta)
 	require.NoError(t, ta.Start())
 	return &fixture{
 		History: h,

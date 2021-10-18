@@ -4,11 +4,16 @@
 package testMock
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/app/testapp"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/golang/mock/gomock"
 )
+
+type App interface {
+	Register(component app.Component) *app.App
+}
 
 func RegisterMockAnytype(ctrl *gomock.Controller, ta *testapp.TestApp) *MockService {
 	ms := NewMockService(ctrl)
@@ -20,7 +25,7 @@ func RegisterMockAnytype(ctrl *gomock.Controller, ta *testapp.TestApp) *MockServ
 	return ms
 }
 
-func RegisterMockObjectStore(ctrl *gomock.Controller, ta *testapp.TestApp) *MockObjectStore {
+func RegisterMockObjectStore(ctrl *gomock.Controller, ta App) *MockObjectStore {
 	ms := NewMockObjectStore(ctrl)
 	ms.EXPECT().Name().AnyTimes().Return(objectstore.CName)
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()

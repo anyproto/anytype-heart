@@ -185,20 +185,12 @@ func New() ObjectStore {
 	return &dsObjectStore{}
 }
 
-type DetailInjector interface {
-	SetLocalDetails(id string, st *types.Struct)
-}
-
 type SourceIdEncodedDetails interface {
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
 
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
 	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
-	meta := a.Component("meta")
-	if meta != nil {
-		ls.meta = meta.(DetailInjector)
-	}
 	s := a.Component("source")
 	if s != nil {
 		ls.sourceService = a.MustComponent("source").(SourceIdEncodedDetails)
@@ -329,8 +321,6 @@ type dsObjectStore struct {
 	ds            ds.TxnDatastore
 	dsIface       datastore.Datastore
 	sourceService SourceIdEncodedDetails
-
-	meta DetailInjector // TODO: remove after we will migrate to the objectStore subscriptions
 
 	fts ftsearch.FTSearch
 
@@ -1548,14 +1538,10 @@ func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.Rel
 	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
 
 	setDetail := func(id string, val bool) error {
-		merged, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{key.String(): pbtypes.Bool(val)}})
+		_, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{key.String(): pbtypes.Bool(val)}})
 		if err != nil {
 			return err
 		}
-
-		// inject localDetails into the meta pubsub
-		m.meta.SetLocalDetails(id, merged)
-
 		return nil
 	}
 
@@ -1595,7 +1581,7 @@ func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, lin
 			With("thread id", memberId).
 			With("workspace id", id).
 			Info("trying to inject object details")
-		merged, err := m.injectObjectDetails(txn, memberId, &types.Struct{
+		_, err := m.injectObjectDetails(txn, memberId, &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyWorkspaceId.String(): tp,
 			},
@@ -1608,10 +1594,6 @@ func (m *dsObjectStore) updateWorkspaceLinks(txn ds.Txn, id string, exLinks, lin
 				Info("details injected with error: %v", err)
 			return err
 		}
-
-		// inject localDetails into the meta pubsub
-		m.meta.SetLocalDetails(memberId, merged)
-
 		return nil
 	}
 

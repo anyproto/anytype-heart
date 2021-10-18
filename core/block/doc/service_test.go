@@ -11,6 +11,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -41,12 +43,16 @@ func TestService_ReportChange(t *testing.T) {
 }
 
 func TestService_WakeupLoop(t *testing.T) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	dh := &testDocInfoHandler{
 		wakeupIds: make(chan string),
 	}
 	rb := recordsbatcher.New()
 	a := new(app.App)
 	a.Register(rb).Register(dh).Register(New())
+	testMock.RegisterMockObjectStore(ctrl, a)
 	require.NoError(t, a.Start())
 	defer a.Close()
 

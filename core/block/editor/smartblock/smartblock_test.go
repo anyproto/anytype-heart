@@ -3,9 +3,6 @@ package smartblock
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-
-	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -88,8 +85,6 @@ func (fx *fixture) init(blocks []*model.Block) {
 	doc := state.NewDoc(id, bm)
 	fx.source.EXPECT().ReadDoc(gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
-	ap := new(app.App)
-	ap.Register(restriction.New())
-	err := fx.Init(&InitContext{Source: fx.source, App: ap})
+	err := fx.Init(&InitContext{Source: fx.source, Restriction: restriction.New()})
 	require.NoError(fx.t, err)
 }
