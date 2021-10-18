@@ -107,6 +107,7 @@ type Service interface {
 	AddExtraRelations(ctx *state.Context, id string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
 	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
+	SetDataviewSource(ctx *state.Context, contextId, blockId string, source []string) error
 
 	ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error)
 	SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error)
@@ -635,7 +636,6 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 			objectTypes = []string{bundle.TypeKeyPage.URL()}
 		}
 	}
-
 
 	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
 	if err != nil {

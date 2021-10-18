@@ -461,6 +461,7 @@ message ObjectType {
         dashboard = 7;
         image = 8;
         note = 9;
+        space = 10;
 
         database = 20; // to be released later
     }
@@ -529,6 +530,7 @@ message Relation {
         details = 0; // default, stored inside the object's details
         derived = 1; // stored locally, e.g. in badger or generated on the fly
         account = 2; // stored in the account DB. means existing only for specific anytype account
+        local = 3; // stored locally
     }
 }
 
