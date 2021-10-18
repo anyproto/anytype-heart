@@ -244,7 +244,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 
 			} else if text := block.GetText(); text != nil && text.Marks != nil && len(text.Marks.Marks) > 0 {
 				for _, mark := range text.Marks.Marks {
-					if mark.Type != model.BlockContentTextMark_Mention {
+					if mark.Type != model.BlockContentTextMark_Mention && mark.Type != model.BlockContentTextMark_Object {
 						continue
 					}
 
