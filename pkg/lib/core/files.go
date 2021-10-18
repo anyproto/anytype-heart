@@ -59,11 +59,11 @@ func (a *Anytype) GetAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 				continue
 			}
 			visitedMap[link.Cid.String()] = struct{}{}
-			nestedLinksSize, nestedLinks, err := getCidsLinksRecursively(visitedMap, link.Cid)
+			_, nestedLinks, err := getCidsLinksRecursively(visitedMap, link.Cid)
 			if err != nil {
 				return 0, nil, err
 			}
-			totalSize += link.Size + nestedLinksSize
+			totalSize += link.Size
 			cids = append(cids, append(nestedLinks, link.Cid)...)
 		}
 
