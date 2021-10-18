@@ -104,7 +104,7 @@ func TestFile(t *testing.T) {
 
 		bytesRemoved, err := coreService.FileOffload(i.Hash())
 		require.NoError(t, err)
-		require.Equal(t, uint64(503908), bytesRemoved)
+		require.Equal(t, uint64(168317), bytesRemoved)
 	})
 
 	t.Run("offload_all", func(t *testing.T) {
