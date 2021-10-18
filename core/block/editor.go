@@ -538,14 +538,14 @@ func (s *service) SetBackgroundColor(ctx *state.Context, contextId string, color
 }
 
 func (s *service) SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error) {
-	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.SetAlign(ctx, align, blockIds...)
+	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+		return sb.SetAlign(ctx, align, blockIds...)
 	})
 }
 
 func (s *service) SetLayout(ctx *state.Context, contextId string, layout model.ObjectTypeLayout) (err error) {
-	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.SetLayout(ctx, layout)
+	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+		return sb.SetLayout(ctx, layout)
 	})
 }
 

@@ -3,8 +3,6 @@ package smartblock
 import (
 	"testing"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
@@ -14,8 +12,10 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
@@ -106,6 +106,38 @@ func TestSmartBlock_Apply(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, 1, fx.History().Len())
 		assert.NotNil(t, event)
+	})
+
+}
+
+func TestBasic_SetAlign(t *testing.T) {
+	t.Run("with ids", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+		fx.source.EXPECT().ReadOnly().Return(false)
+		fx.source.EXPECT().PushChange(gomock.Any())
+		fx.init([]*model.Block{
+			{Id: "test", ChildrenIds: []string{"title", "2"}},
+			{Id: "title"},
+			{Id: "2"},
+		})
+		require.NoError(t, fx.SetAlign(nil, model.Block_AlignRight, "2", "3"))
+		assert.Equal(t, model.Block_AlignRight, fx.NewState().Get("2").Model().Align)
+	})
+
+	t.Run("without ids", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.tearDown()
+		fx.source.EXPECT().ReadOnly().Return(false)
+		fx.source.EXPECT().PushChange(gomock.Any())
+		fx.init([]*model.Block{
+			{Id: "test", ChildrenIds: []string{"title", "2"}},
+			{Id: "title"},
+			{Id: "2"},
+		})
+		require.NoError(t, fx.SetAlign(nil, model.Block_AlignRight))
+		assert.Equal(t, model.Block_AlignRight, fx.NewState().Get("title").Model().Align)
+		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(fx.NewState().Details(), bundle.RelationKeyLayoutAlign.String()))
 	})
 
 }
