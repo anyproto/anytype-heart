@@ -9,8 +9,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockMeta"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/testMock"
+	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -294,8 +297,8 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2"}))
 		tb := NewText(sb)
 		assert.Error(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
-			BlockId:   "2",
-			Text:      "",
+			BlockId: "2",
+			Text:    "",
 		}))
 	})
 }
@@ -343,8 +346,11 @@ func TestTextImpl_TurnInto(t *testing.T) {
 	t.Run("turn link into text", func(t *testing.T) {
 		ctrl := gomock.NewController(t)
 		defer ctrl.Finish()
-		ms := mockMeta.NewMockService(ctrl)
-		sb := smarttest.NewWithMeta("test", ms)
+
+		sb := smarttest.New("test")
+		os := testMock.NewMockObjectStore(ctrl)
+		sb.SetObjectStore(os)
+
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(link.NewLink(&model.Block{
@@ -356,19 +362,16 @@ func TestTextImpl_TurnInto(t *testing.T) {
 				},
 			}))
 		tb := NewText(sb)
-		/*
-		ms.EXPECT().FetchMeta([]string{"targetId"}).Return([]meta.Meta{
+
+		os.EXPECT().QueryById([]string{"targetId"}).Return([]database.Record{
 			{
-				BlockId: "targetId",
-				SmartBlockMeta: core.SmartBlockMeta{
-					Details: &types.Struct{
-						Fields: map[string]*types.Value{
-							"name": pbtypes.String("link name"),
-						},
+				Details: &types.Struct{
+					Fields: map[string]*types.Value{
+						"name": pbtypes.String("link name"),
 					},
 				},
 			},
-		})*/
+		}, nil)
 
 		require.NoError(t, tb.TurnInto(nil, model.BlockContentText_Paragraph, "2"))
 		secondBlockId := sb.Doc.Pick("test").Model().ChildrenIds[1]

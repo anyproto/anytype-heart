@@ -28,11 +28,6 @@ func New(id string) *SmartTest {
 	}
 }
 
-func NewWithMeta(id string) *SmartTest {
-	st := New(id)
-	return st
-}
-
 type SmartTest struct {
 	Results          Results
 	anytype          *testMock.MockService
@@ -42,6 +37,7 @@ type SmartTest struct {
 	TestRestrictions restriction.Restrictions
 	sync.Mutex
 	state.Doc
+	os *testMock.MockObjectStore
 }
 
 func (st *SmartTest) DocService() doc.Service {
@@ -49,7 +45,7 @@ func (st *SmartTest) DocService() doc.Service {
 }
 
 func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
-	return nil
+	return st.os
 }
 
 func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
@@ -326,6 +322,10 @@ func (st *SmartTest) BlockClose() {
 
 func (st *SmartTest) Close() (err error) {
 	return
+}
+
+func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
+	st.os = os
 }
 
 type Results struct {
