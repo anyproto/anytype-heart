@@ -2,18 +2,64 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/ipfs/go-datastore/query"
 	"github.com/stretchr/testify/require"
+	"math/rand"
 	"os"
+	"path/filepath"
 	"testing"
 )
 
+type Metrics struct {
+	NumSST    int
+	SizeSSTs  int64
+	NumVLOG   int
+	SizeVLOGs int64
+}
+
 func TestFile(t *testing.T) {
-	_, mw, close := start(t, nil)
+	rootPath, mw, close := start(t, nil)
 	defer close()
+	getMetrics := func(path string) (m Metrics, err error) {
+		err = filepath.Walk(path, func(_ string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+			ext := filepath.Ext(info.Name())
+			switch ext {
+			case ".sst":
+				m.NumSST++
+				m.SizeSSTs += info.Size() / 1024
+			case ".vlog":
+				m.NumVLOG++
+				m.SizeVLOGs += info.Size() / 1024
+			}
+			return nil
+		})
+		return
+	}
+	_ = func() {
+		ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
+		blockDs, err := ds.BlockstoreDS()
+		require.NoError(t, err)
+		res, err := blockDs.Query(query.Query{
+			Prefix:       "",
+			Limit:        0,
+			Offset:       0,
+			KeysOnly:     true,
+			ReturnsSizes: true,
+		})
+		require.NoError(t, err)
+		results, err := res.Rest()
+		require.NoError(t, err)
+		fmt.Printf("%d keys: %v\n\n", len(results), results)
+	}
 	t.Run("image_should_open_as_object", func(t *testing.T) {
 		respUploadImage := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
 		require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)
@@ -59,6 +105,38 @@ func TestFile(t *testing.T) {
 		bytesRemoved, err := coreService.FileOffload(i.Hash())
 		require.NoError(t, err)
 		require.Equal(t, uint64(503908), bytesRemoved)
+	})
+
+	t.Run("offload_all", func(t *testing.T) {
+		if os.Getenv("ANYTYPE_FULL_TEST") != "1" {
+			return
+		}
+		coreService := mw.app.MustComponent(core.CName).(core.Service)
+		for i := 1; i <= 200; i++ {
+			r := rand.New(rand.NewSource(int64(i)))
+			// lets the file not fit in the single block
+			b := make([]byte, 1024*1024*3)
+			r.Read(b)
+
+			f, err := coreService.FileAdd(context.Background(), files.WithBytes(b))
+			require.NoError(t, err)
+			require.Equal(t, int64(1024*1024*3), f.Meta().Size)
+		}
+		m, err := getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
+		require.NoError(t, err)
+		require.Equal(t, 10, m.NumVLOG)
+		fmt.Printf("BADGER METRICS AFTER ADD: %+v\n", m)
+		resp := mw.FilesOffloadAll(&pb.RpcIpfsFileOffloadAllRequest{IncludeNotPinned: true})
+		require.Equal(t, 0, int(resp.Error.Code), resp.Error.Description)
+		fmt.Println(resp.BytesOffloaded - 1024*1024*3*200)
+		require.Equal(t, uint64(1024*1024*3*200+237000), resp.BytesOffloaded) // 237000 is the overhead for the links and meta
+		require.Equal(t, int32(200), resp.OffloadedFiles)
+
+		m, err = getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
+		require.NoError(t, err)
+		fmt.Printf("BADGER METRICS AFTER OFFLOAD: %+v\n", m)
+		require.Equal(t, 2, m.NumVLOG)
+
 	})
 
 }
