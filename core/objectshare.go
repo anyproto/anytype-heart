@@ -5,9 +5,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) *pb.RpcObjectAddWithShareLinkResponse {
-	response := func(code pb.RpcObjectAddWithShareLinkResponseErrorCode, err error) *pb.RpcObjectAddWithShareLinkResponse {
-		m := &pb.RpcObjectAddWithShareLinkResponse{Error: &pb.RpcObjectAddWithShareLinkResponseError{Code: code}}
+func (mw *Middleware) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) *pb.RpcObjectAddWithObjectIdResponse {
+	response := func(code pb.RpcObjectAddWithObjectIdResponseErrorCode, err error) *pb.RpcObjectAddWithObjectIdResponse {
+		m := &pb.RpcObjectAddWithObjectIdResponse{Error: &pb.RpcObjectAddWithObjectIdResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -16,13 +16,13 @@ func (mw *Middleware) ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRe
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.ObjectAddWithShareLink(req)
+		return bs.ObjectAddWithObjectId(req)
 	})
 	if err != nil {
-		return response(pb.RpcObjectAddWithShareLinkResponseError_BAD_INPUT, err)
+		return response(pb.RpcObjectAddWithObjectIdResponseError_BAD_INPUT, err)
 	}
 
-	return response(pb.RpcObjectAddWithShareLinkResponseError_NULL, nil)
+	return response(pb.RpcObjectAddWithObjectIdResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) *pb.RpcObjectShareByLinkResponse {

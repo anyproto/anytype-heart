@@ -7,6 +7,13 @@
     ]
   },
   {
+    "id": "space",
+    "name": "Space",
+    "requiredRelations": [
+      "name"
+    ]
+  },
+  {
     "id": "set",
     "name": "Set",
     "requiredRelations": [
@@ -37,10 +44,6 @@
       "done",
       "name"
     ]
-  },
-  {
-    "id": "space",
-    "name": "Space"
   },
   {
     "id": "image",
