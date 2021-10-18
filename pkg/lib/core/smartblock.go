@@ -452,7 +452,7 @@ func findOutgoingLinks(blocks []*model.Block) []string {
 
 		if text := block.GetText(); text != nil && text.Marks != nil {
 			for _, m := range text.Marks.Marks {
-				if m.Type == model.BlockContentTextMark_Mention {
+				if m.Type == model.BlockContentTextMark_Mention || m.Type == model.BlockContentTextMark_Object {
 					linksMap[m.Param] = struct{}{}
 				}
 			}
