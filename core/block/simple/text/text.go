@@ -564,7 +564,8 @@ func (t *Text) String() string {
 func (t *Text) FillSmartIds(ids []string) []string {
 	if t.content.Marks != nil {
 		for _, m := range t.content.Marks.Marks {
-			if m.Type == model.BlockContentTextMark_Mention && m.Param != "" {
+			if (m.Type == model.BlockContentTextMark_Mention || 
+				m.Type == model.BlockContentTextMark_Object) && m.Param != "" {
 				ids = append(ids, m.Param)
 			}
 		}
@@ -575,7 +576,7 @@ func (t *Text) FillSmartIds(ids []string) []string {
 func (t *Text) HasSmartIds() bool {
 	if t.content.Marks != nil {
 		for _, m := range t.content.Marks.Marks {
-			if m.Type == model.BlockContentTextMark_Mention {
+			if m.Type == model.BlockContentTextMark_Mention || m.Type == model.BlockContentTextMark_Object {
 				return true
 			}
 		}
