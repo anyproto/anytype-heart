@@ -15497,12 +15497,13 @@ scope from which this relation have been aggregated |
 | Name | Number | Description |
 | ---- | ------ | ----------- |
 | None | 0 |  |
-| Top | 1 |  |
-| Bottom | 2 |  |
-| Left | 3 |  |
-| Right | 4 |  |
-| Inner | 5 |  |
-| Replace | 6 |  |
+| Top | 1 | above target block |
+| Bottom | 2 | under target block |
+| Left | 3 | to left of target block |
+| Right | 4 | to right of target block |
+| Inner | 5 | inside target block, as last block |
+| Replace | 6 | replace target block |
+| InnerFirst | 7 | inside target block, as first block |
 
 
 

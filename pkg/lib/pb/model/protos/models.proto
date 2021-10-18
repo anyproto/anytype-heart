@@ -74,12 +74,20 @@ message Block {
 
     enum Position {
         None = 0;
+        // above target block
         Top = 1;
+        // under target block
         Bottom = 2;
+        // to left of target block
         Left = 3;
+        // to right of target block
         Right = 4;
+        // inside target block, as last block
         Inner = 5;
+        // replace target block
         Replace = 6;
+        // inside target block, as first block
+        InnerFirst = 7;
     }
 
     enum Align {
