@@ -126,11 +126,11 @@ func TestFile(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, 10, m.NumVLOG)
 		fmt.Printf("BADGER METRICS AFTER ADD: %+v\n", m)
-		resp := mw.FilesOffloadAll(&pb.RpcIpfsFileOffloadAllRequest{IncludeNotPinned: true})
+		resp := mw.FileListOffload(&pb.RpcFileListOffloadRequest{IncludeNotPinned: true})
 		require.Equal(t, 0, int(resp.Error.Code), resp.Error.Description)
 		fmt.Println(resp.BytesOffloaded - 1024*1024*3*200)
 		require.Equal(t, uint64(1024*1024*3*200+237000), resp.BytesOffloaded) // 237000 is the overhead for the links and meta
-		require.Equal(t, int32(200), resp.OffloadedFiles)
+		require.Equal(t, int32(200), resp.FilesOffloaded)
 
 		m, err = getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
 		require.NoError(t, err)
