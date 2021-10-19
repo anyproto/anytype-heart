@@ -1,7 +1,6 @@
 package core
 
 import (
-	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	pb2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
@@ -9,14 +8,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	badger "github.com/ipfs/go-ds-badger"
-	"io/ioutil"
 )
 
-func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIpfsImageGetBlobResponse {
+func (mw *Middleware) FileListOffloadAll(req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
-	response := func(blob []byte, code pb.RpcIpfsImageGetBlobResponseErrorCode, err error) *pb.RpcIpfsImageGetBlobResponse {
-		m := &pb.RpcIpfsImageGetBlobResponse{Blob: blob, Error: &pb.RpcIpfsImageGetBlobResponseError{Code: code}}
+	response := func(filesOffloaded int32, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {
+		m := &pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: code}, BytesOffloaded: bytesOffloaded, FilesOffloaded: filesOffloaded}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -25,77 +23,19 @@ func (mw *Middleware) ImageGetBlob(req *pb.RpcIpfsImageGetBlobRequest) *pb.RpcIp
 	}
 
 	if mw.app == nil {
-		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
-	}
-
-	at := mw.app.MustComponent(core.CName).(core.Service)
-
-	if !at.IsStarted() {
-		response(nil, pb.RpcIpfsImageGetBlobResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
-	}
-
-	image, err := at.ImageByHash(context.TODO(), req.GetHash())
-	if err != nil {
-		if err == core.ErrFileNotFound {
-			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
-		}
-
-		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
-	}
-	file, err := image.GetFileForWidth(context.TODO(), int(req.WantWidth))
-	if err != nil {
-		if err == core.ErrFileNotFound {
-			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
-		}
-
-		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
-	}
-
-	rd, err := file.Reader()
-	if err != nil {
-		if err == core.ErrFileNotFound {
-			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
-		}
-
-		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
-	}
-	data, err := ioutil.ReadAll(rd)
-	if err != nil {
-		if err == core.ErrFileNotFound {
-			return response(nil, pb.RpcIpfsImageGetBlobResponseError_NOT_FOUND, err)
-		}
-
-		return response(nil, pb.RpcIpfsImageGetBlobResponseError_UNKNOWN_ERROR, err)
-	}
-	return response(data, pb.RpcIpfsImageGetBlobResponseError_NULL, nil)
-}
-
-func (mw *Middleware) FilesOffloadAll(req *pb.RpcIpfsFileOffloadAllRequest) *pb.RpcIpfsFileOffloadAllResponse {
-	mw.m.RLock()
-	defer mw.m.RUnlock()
-	response := func(filesOffloaded int32, bytesOffloaded uint64, code pb.RpcIpfsFileOffloadAllResponseErrorCode, err error) *pb.RpcIpfsFileOffloadAllResponse {
-		m := &pb.RpcIpfsFileOffloadAllResponse{Error: &pb.RpcIpfsFileOffloadAllResponseError{Code: code}, BytesOffloaded: bytesOffloaded, OffloadedFiles: filesOffloaded}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-
-		return m
-	}
-
-	if mw.app == nil {
-		response(0, 0, pb.RpcIpfsFileOffloadAllResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
+		response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	pin := mw.app.MustComponent(pin.CName).(pin.FilePinService)
 
 	if !at.IsStarted() {
-		response(0, 0, pb.RpcIpfsFileOffloadAllResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
+		response(0, 0, pb.RpcFileListOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
 	files, err := at.FileStore().ListTargets()
 	if err != nil {
-		return response(0, 0, pb.RpcIpfsFileOffloadAllResponseError_UNKNOWN_ERROR, err)
+		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
 	pinStatus := pin.PinStatus(files...)
 	var (
@@ -105,7 +45,7 @@ func (mw *Middleware) FilesOffloadAll(req *pb.RpcIpfsFileOffloadAllRequest) *pb.
 	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
 	blockDs, err := ds.BlockstoreDS()
 	if err != nil {
-		return response(0, 0, pb.RpcIpfsFileOffloadAllResponseError_UNKNOWN_ERROR, err)
+		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
 
 	for _, fileId := range files {
@@ -136,14 +76,14 @@ func (mw *Middleware) FilesOffloadAll(req *pb.RpcIpfsFileOffloadAllRequest) *pb.
 		total++
 	}
 
-	return response(totalFilesOffloaded, totalBytesOffloaded, pb.RpcIpfsFileOffloadAllResponseError_NULL, nil)
+	return response(totalFilesOffloaded, totalBytesOffloaded, pb.RpcFileListOffloadResponseError_NULL, nil)
 }
 
-func (mw *Middleware) FileOffload(req *pb.RpcIpfsFileOffloadRequest) *pb.RpcIpfsFileOffloadResponse {
+func (mw *Middleware) FileOffload(req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
-	response := func(bytesOffloaded uint64, code pb.RpcIpfsFileOffloadResponseErrorCode, err error) *pb.RpcIpfsFileOffloadResponse {
-		m := &pb.RpcIpfsFileOffloadResponse{BytesOffloaded: bytesOffloaded, Error: &pb.RpcIpfsFileOffloadResponseError{Code: code}}
+	response := func(bytesOffloaded uint64, code pb.RpcFileOffloadResponseErrorCode, err error) *pb.RpcFileOffloadResponse {
+		m := &pb.RpcFileOffloadResponse{BytesOffloaded: bytesOffloaded, Error: &pb.RpcFileOffloadResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -152,14 +92,14 @@ func (mw *Middleware) FileOffload(req *pb.RpcIpfsFileOffloadRequest) *pb.RpcIpfs
 	}
 
 	if mw.app == nil {
-		response(0, pb.RpcIpfsFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
+		response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype is nil"))
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	pin := mw.app.MustComponent(pin.CName).(pin.FilePinService)
 
 	if !at.IsStarted() {
-		response(0, pb.RpcIpfsFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
+		response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
 	}
 
 	pinStatus := pin.PinStatus(req.Id)
@@ -178,5 +118,5 @@ func (mw *Middleware) FileOffload(req *pb.RpcIpfsFileOffloadRequest) *pb.RpcIpfs
 		totalBytesOffloaded += bytesRemoved
 	}
 
-	return response(totalBytesOffloaded, pb.RpcIpfsFileOffloadResponseError_NULL, nil)
+	return response(totalBytesOffloaded, pb.RpcFileOffloadResponseError_NULL, nil)
 }
