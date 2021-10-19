@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "fd0823046cc0551a6b345dbf5aaebf441986d655f67f9085d6c019be1bd95c50"
+const TypeChecksum = "6b593be286295a8231cf49211592b7eae00e83367c091bebca71978354abb476"
 
 type TypeKey string
 
@@ -317,8 +317,8 @@ var (
 		},
 		TypeKeyNote: {
 
-			Description: "A brief record of points written down as an aid to memory",
-			IconEmoji:   "🗒️",
+			Description: "Blank canvas with no Title. A brief record of points written down as an aid to memory",
+			IconEmoji:   "⚪",
 			Layout:      model.ObjectType_note,
 			Name:        "Note",
 			Readonly:    true,
@@ -340,10 +340,10 @@ var (
 		},
 		TypeKeyPage: {
 
-			Description: "Proto type to start with",
+			Description: "Blank canvas with Title",
 			IconEmoji:   "📄",
 			Layout:      model.ObjectType_basic,
-			Name:        "Draft",
+			Name:        "Page",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},

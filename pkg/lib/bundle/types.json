@@ -87,8 +87,8 @@
     ]
   },
   {
-    "description": "A brief record of points written down as an aid to memory",
-    "emoji": "🗒️",
+    "description": "Blank canvas with no Title. A brief record of points written down as an aid to memory",
+    "emoji": "⚪",
     "id": "note",
     "layout": "note",
     "name": "Note",
@@ -1062,11 +1062,11 @@
     ]
   },
   {
-    "description": "Proto type to start with",
+    "description": "Blank canvas with Title",
     "emoji": "📄",
     "id": "page",
     "layout": "basic",
-    "name": "Draft",
+    "name": "Page",
     "relations": [
       "id",
       "name",

@@ -19,6 +19,10 @@
     "name": "Database"
   },
   {
+    "id": "note",
+    "name": "Note"
+  },
+  {
     "id": "relation",
     "name": "Relation"
   },
