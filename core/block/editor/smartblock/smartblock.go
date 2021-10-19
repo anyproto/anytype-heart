@@ -928,7 +928,7 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
 	}
-
+	s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
 	// send event here to send updated details to client
 	if err = sb.Apply(s, NoRestrictions); err != nil {
 		return
