@@ -480,10 +480,10 @@
     - [Rpc.Navigation.ListObjects.Response](#anytype.Rpc.Navigation.ListObjects.Response)
     - [Rpc.Navigation.ListObjects.Response.Error](#anytype.Rpc.Navigation.ListObjects.Response.Error)
     - [Rpc.Object](#anytype.Rpc.Object)
-    - [Rpc.Object.AddWithShareLink](#anytype.Rpc.Object.AddWithShareLink)
-    - [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request)
-    - [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response)
-    - [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error)
+    - [Rpc.Object.AddWithObjectId](#anytype.Rpc.Object.AddWithObjectId)
+    - [Rpc.Object.AddWithObjectId.Request](#anytype.Rpc.Object.AddWithObjectId.Request)
+    - [Rpc.Object.AddWithObjectId.Response](#anytype.Rpc.Object.AddWithObjectId.Response)
+    - [Rpc.Object.AddWithObjectId.Response.Error](#anytype.Rpc.Object.AddWithObjectId.Response.Error)
     - [Rpc.Object.FeaturedRelation](#anytype.Rpc.Object.FeaturedRelation)
     - [Rpc.Object.FeaturedRelation.Add](#anytype.Rpc.Object.FeaturedRelation.Add)
     - [Rpc.Object.FeaturedRelation.Add.Request](#anytype.Rpc.Object.FeaturedRelation.Add.Request)
@@ -641,10 +641,22 @@
     - [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request)
     - [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response)
     - [Rpc.Workspace.Create.Response.Error](#anytype.Rpc.Workspace.Create.Response.Error)
+    - [Rpc.Workspace.GetAll](#anytype.Rpc.Workspace.GetAll)
+    - [Rpc.Workspace.GetAll.Request](#anytype.Rpc.Workspace.GetAll.Request)
+    - [Rpc.Workspace.GetAll.Response](#anytype.Rpc.Workspace.GetAll.Response)
+    - [Rpc.Workspace.GetAll.Response.Error](#anytype.Rpc.Workspace.GetAll.Response.Error)
+    - [Rpc.Workspace.GetCurrent](#anytype.Rpc.Workspace.GetCurrent)
+    - [Rpc.Workspace.GetCurrent.Request](#anytype.Rpc.Workspace.GetCurrent.Request)
+    - [Rpc.Workspace.GetCurrent.Response](#anytype.Rpc.Workspace.GetCurrent.Response)
+    - [Rpc.Workspace.GetCurrent.Response.Error](#anytype.Rpc.Workspace.GetCurrent.Response.Error)
     - [Rpc.Workspace.Select](#anytype.Rpc.Workspace.Select)
     - [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request)
     - [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response)
     - [Rpc.Workspace.Select.Response.Error](#anytype.Rpc.Workspace.Select.Response.Error)
+    - [Rpc.Workspace.SetIsHighlighted](#anytype.Rpc.Workspace.SetIsHighlighted)
+    - [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request)
+    - [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response)
+    - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
@@ -753,7 +765,7 @@
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
-    - [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code)
+    - [Rpc.Object.AddWithObjectId.Response.Error.Code](#anytype.Rpc.Object.AddWithObjectId.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Add.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Add.Response.Error.Code)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
@@ -791,7 +803,10 @@
     - [Rpc.Wallet.Create.Response.Error.Code](#anytype.Rpc.Wallet.Create.Response.Error.Code)
     - [Rpc.Wallet.Recover.Response.Error.Code](#anytype.Rpc.Wallet.Recover.Response.Error.Code)
     - [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code)
+    - [Rpc.Workspace.GetAll.Response.Error.Code](#anytype.Rpc.Workspace.GetAll.Response.Error.Code)
+    - [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype.Rpc.Workspace.GetCurrent.Response.Error.Code)
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
+    - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
   
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
@@ -1030,13 +1045,16 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| ObjectAddWithShareLink | [Rpc.Object.AddWithShareLink.Request](#anytype.Rpc.Object.AddWithShareLink.Request) | [Rpc.Object.AddWithShareLink.Response](#anytype.Rpc.Object.AddWithShareLink.Response) |  |
+| ObjectAddWithObjectId | [Rpc.Object.AddWithObjectId.Request](#anytype.Rpc.Object.AddWithObjectId.Request) | [Rpc.Object.AddWithObjectId.Response](#anytype.Rpc.Object.AddWithObjectId.Response) |  |
 | ObjectShareByLink | [Rpc.Object.ShareByLink.Request](#anytype.Rpc.Object.ShareByLink.Request) | [Rpc.Object.ShareByLink.Response](#anytype.Rpc.Object.ShareByLink.Response) |  |
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) |  |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
 | WalletConvert | [Rpc.Wallet.Convert.Request](#anytype.Rpc.Wallet.Convert.Request) | [Rpc.Wallet.Convert.Response](#anytype.Rpc.Wallet.Convert.Response) |  |
 | WorkspaceCreate | [Rpc.Workspace.Create.Request](#anytype.Rpc.Workspace.Create.Request) | [Rpc.Workspace.Create.Response](#anytype.Rpc.Workspace.Create.Response) |  |
 | WorkspaceSelect | [Rpc.Workspace.Select.Request](#anytype.Rpc.Workspace.Select.Request) | [Rpc.Workspace.Select.Response](#anytype.Rpc.Workspace.Select.Response) |  |
+| WorkspaceGetCurrent | [Rpc.Workspace.GetCurrent.Request](#anytype.Rpc.Workspace.GetCurrent.Request) | [Rpc.Workspace.GetCurrent.Response](#anytype.Rpc.Workspace.GetCurrent.Response) |  |
+| WorkspaceGetAll | [Rpc.Workspace.GetAll.Request](#anytype.Rpc.Workspace.GetAll.Request) | [Rpc.Workspace.GetAll.Response](#anytype.Rpc.Workspace.GetAll.Response) |  |
+| WorkspaceSetIsHighlighted | [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request) | [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
@@ -8115,55 +8133,56 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink"></a>
+<a name="anytype.Rpc.Object.AddWithObjectId"></a>
 
-### Rpc.Object.AddWithShareLink
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.AddWithShareLink.Request"></a>
-
-### Rpc.Object.AddWithShareLink.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| link | [string](#string) |  |  |
+### Rpc.Object.AddWithObjectId
 
 
 
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink.Response"></a>
 
-### Rpc.Object.AddWithShareLink.Response
+<a name="anytype.Rpc.Object.AddWithObjectId.Request"></a>
+
+### Rpc.Object.AddWithObjectId.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.AddWithShareLink.Response.Error](#anytype.Rpc.Object.AddWithShareLink.Response.Error) |  |  |
+| objectId | [string](#string) |  |  |
+| payload | [string](#string) |  |  |
 
 
 
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error"></a>
+<a name="anytype.Rpc.Object.AddWithObjectId.Response"></a>
 
-### Rpc.Object.AddWithShareLink.Response.Error
+### Rpc.Object.AddWithObjectId.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.AddWithShareLink.Response.Error.Code](#anytype.Rpc.Object.AddWithShareLink.Response.Error.Code) |  |  |
+| error | [Rpc.Object.AddWithObjectId.Response.Error](#anytype.Rpc.Object.AddWithObjectId.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.AddWithObjectId.Response.Error"></a>
+
+### Rpc.Object.AddWithObjectId.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.AddWithObjectId.Response.Error.Code](#anytype.Rpc.Object.AddWithObjectId.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10365,6 +10384,11 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
 
 
 
@@ -10394,6 +10418,110 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Workspace.Create.Response.Error.Code](#anytype.Rpc.Workspace.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll"></a>
+
+### Rpc.Workspace.GetAll
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll.Request"></a>
+
+### Rpc.Workspace.GetAll.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll.Response"></a>
+
+### Rpc.Workspace.GetAll.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.GetAll.Response.Error](#anytype.Rpc.Workspace.GetAll.Response.Error) |  |  |
+| workspaceIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetAll.Response.Error"></a>
+
+### Rpc.Workspace.GetAll.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.GetAll.Response.Error.Code](#anytype.Rpc.Workspace.GetAll.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent"></a>
+
+### Rpc.Workspace.GetCurrent
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Request"></a>
+
+### Rpc.Workspace.GetCurrent.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Response"></a>
+
+### Rpc.Workspace.GetCurrent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.GetCurrent.Response.Error](#anytype.Rpc.Workspace.GetCurrent.Response.Error) |  |  |
+| workspaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Response.Error"></a>
+
+### Rpc.Workspace.GetCurrent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.GetCurrent.Response.Error.Code](#anytype.Rpc.Workspace.GetCurrent.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10450,6 +10578,63 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.SetIsHighlighted"></a>
+
+### Rpc.Workspace.SetIsHighlighted
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Request"></a>
+
+### Rpc.Workspace.SetIsHighlighted.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectId | [string](#string) |  |  |
+| isHighlighted | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Response"></a>
+
+### Rpc.Workspace.SetIsHighlighted.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Response.Error"></a>
+
+### Rpc.Workspace.SetIsHighlighted.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11903,9 +12088,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Object.AddWithShareLink.Response.Error.Code"></a>
+<a name="anytype.Rpc.Object.AddWithObjectId.Response.Error.Code"></a>
 
-### Rpc.Object.AddWithShareLink.Response.Error.Code
+### Rpc.Object.AddWithObjectId.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -12412,9 +12597,48 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Workspace.GetAll.Response.Error.Code"></a>
+
+### Rpc.Workspace.GetAll.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Workspace.GetCurrent.Response.Error.Code"></a>
+
+### Rpc.Workspace.GetCurrent.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Workspace.Select.Response.Error.Code"></a>
 
 ### Rpc.Workspace.Select.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code"></a>
+
+### Rpc.Workspace.SetIsHighlighted.Response.Error.Code
 
 
 | Name | Number | Description |

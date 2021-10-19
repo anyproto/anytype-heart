@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,11 +16,43 @@ import (
 )
 
 type ThreadProcessor interface {
-	Init(thread.ID) error
+	Init(thread.ID, ...ThreadProcessorOption) error
 	Listen(map[thread.ID]threadInfo) error
 	GetThreadId() thread.ID
-	GetCollection() *threadsDb.Collection
+	GetThreadCollection() *threadsDb.Collection
+	GetCollectionWithPrefix(prefix string) *threadsDb.Collection
+	AddCollectionWithPrefix(prefix string, schema interface{}) (*threadsDb.Collection, error)
 	GetDB() *threadsDb.DB
+}
+
+type CollectionActionProcessor func(action threadsDb.Action, collection *threadsDb.Collection)
+type ThreadProcessorOption func(options *ThreadProcessorOptions)
+
+type ThreadProcessorOptions struct {
+	actionProcessors map[string]CollectionActionProcessor
+	collections      map[string]interface{}
+}
+
+func NewThreadProcessorOptions() *ThreadProcessorOptions {
+	return &ThreadProcessorOptions{
+		actionProcessors: make(map[string]CollectionActionProcessor),
+		collections:      make(map[string]interface{}),
+	}
+}
+
+func WithCollection(collectionName string, schema interface{}) ThreadProcessorOption {
+	return func(options *ThreadProcessorOptions) {
+		options.collections[collectionName] = schema
+	}
+}
+
+func WithCollectionAndActionProcessor(collectionName string,
+	schema interface{},
+	actionProcessor CollectionActionProcessor) ThreadProcessorOption {
+	return func(options *ThreadProcessorOptions) {
+		options.collections[collectionName] = schema
+		options.actionProcessors[collectionName] = actionProcessor
+	}
 }
 
 type threadProcessor struct {
@@ -28,13 +61,33 @@ type threadProcessor struct {
 
 	db                *threadsDb.DB
 	threadsCollection *threadsDb.Collection
+	collections       map[string]*threadsDb.Collection
+	actionProcessors  map[string]CollectionActionProcessor
 
 	isAccountProcessor bool
 
 	threadId thread.ID
+	sync.RWMutex
 }
 
-func (t *threadProcessor) GetCollection() *threadsDb.Collection {
+func (t *threadProcessor) GetCollectionWithPrefix(prefix string) *threadsDb.Collection {
+	t.RLock()
+	defer t.RUnlock()
+	return t.collections[prefix]
+}
+
+func (t *threadProcessor) AddCollectionWithPrefix(prefix string, schema interface{}) (*threadsDb.Collection, error) {
+	t.Lock()
+	defer t.Unlock()
+	fullName := prefix + t.threadId.String()
+	coll, err := t.addCollection(fullName, schema)
+	if err == nil {
+		t.collections[prefix] = coll
+	}
+	return coll, err
+}
+
+func (t *threadProcessor) GetThreadCollection() *threadsDb.Collection {
 	return t.threadsCollection
 }
 
@@ -61,9 +114,13 @@ func NewAccountThreadProcessor(s *service, simultaneousRequests int) ThreadProce
 	}
 }
 
-func (t *threadProcessor) Init(id thread.ID) error {
+func (t *threadProcessor) Init(id thread.ID, options ...ThreadProcessorOption) error {
 	if t.db != nil {
 		return nil
+	}
+	processorOptions := NewThreadProcessorOptions()
+	for _, opt := range options {
+		opt(processorOptions)
 	}
 
 	if id == thread.Undef {
@@ -95,20 +152,22 @@ func (t *threadProcessor) Init(id thread.ID) error {
 	if t.isAccountProcessor {
 		threadIdString = ""
 	}
-	collectionName := fmt.Sprintf("%s%s", ThreadInfoCollectionName, threadIdString)
-	t.threadsCollection = t.db.GetCollection(collectionName)
+	threadsCollectionName := ThreadInfoCollectionName + threadIdString
+	t.collections = make(map[string]*threadsDb.Collection)
 
-	if t.threadsCollection == nil {
-		collectionConfig := threadsDb.CollectionConfig{
-			Name:   collectionName,
-			Schema: threadsUtil.SchemaFromInstance(threadInfo{}, false),
-		}
-		t.threadsCollection, err = t.db.NewCollection(collectionConfig)
+	t.threadsCollection, err = t.addCollection(threadsCollectionName, threadInfo{})
+	if err != nil {
+		return err
+	}
+	t.collections[ThreadInfoCollectionName] = t.threadsCollection
+
+	for name, schema := range processorOptions.collections {
+		_, err := t.AddCollectionWithPrefix(name, schema)
 		if err != nil {
 			return err
 		}
 	}
-
+	t.actionProcessors = processorOptions.actionProcessors
 	return nil
 }
 
@@ -116,7 +175,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 	WorkspaceLogger.
 		With("is account", t.isAccountProcessor).
 		With("workspace id", t.threadId).
-		Info("started listening for workspace")
+		Debug("started listening for workspace")
 
 	log.With("thread id", t.threadId).
 		Info("listen for workspace")
@@ -174,7 +233,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 			With("is account", t.isAccountProcessor).
 			With("workspace id", t.threadId).
 			With("thread id", tid.String()).
-			Info("processing thread")
+			Debug("processing thread")
 		metrics.ExternalThreadReceivedCounter.Inc()
 		go func() {
 			if err := t.threadsService.processNewExternalThreadUntilSuccess(tid, ti); err != nil {
@@ -212,6 +271,18 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 
 	processThreadActions := func(actions []threadsDb.Action) {
 		for _, action := range actions {
+			if !strings.HasPrefix(action.Collection, ThreadInfoCollectionName) {
+				collectionName := strings.Split(action.Collection, t.threadId.String())[0]
+				t.RLock()
+				collection, collectionExists := t.collections[collectionName]
+				actionProcessor, actionExists := t.actionProcessors[collectionName]
+				t.RUnlock()
+
+				if collectionExists && actionExists {
+					go actionProcessor(action, collection)
+				}
+				continue
+			}
 			if action.Type == threadsDb.ActionDelete {
 				removeThread(action.ID.String())
 				continue
@@ -321,4 +392,21 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 	}()
 
 	return nil
+}
+
+func (t *threadProcessor) addCollection(
+	collectionName string,
+	schema interface{}) (collection *threadsDb.Collection, err error) {
+	collection = t.db.GetCollection(collectionName)
+
+	if collection != nil {
+		return
+	}
+
+	collectionConfig := threadsDb.CollectionConfig{
+		Name:   collectionName,
+		Schema: threadsUtil.SchemaFromInstance(schema, false),
+	}
+	collection, err = t.db.NewCollection(collectionConfig)
+	return
 }
