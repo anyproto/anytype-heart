@@ -835,7 +835,7 @@
     "source": "details"
   },
   {
-    "description": "Indicates whether the object is readonly",
+    "description": "Indicates whether the object is read-only. Means it can't be edited and archived",
     "format": "checkbox",
     "hidden": true,
     "key": "isReadonly",
