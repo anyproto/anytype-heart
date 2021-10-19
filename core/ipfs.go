@@ -10,7 +10,7 @@ import (
 	badger "github.com/ipfs/go-ds-badger"
 )
 
-func (mw *Middleware) FileListOffloadAll(req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
+func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	response := func(filesOffloaded int32, bytesOffloaded uint64, code pb.RpcFileListOffloadResponseErrorCode, err error) *pb.RpcFileListOffloadResponse {

@@ -25,7 +25,7 @@ service ClientCommands {
     rpc AccountStop (anytype.Rpc.Account.Stop.Request) returns (anytype.Rpc.Account.Stop.Response);
 
     rpc FileOffload (anytype.Rpc.File.Offload.Request) returns (anytype.Rpc.File.Offload.Response);
-    rpc FileListOffloadAll (anytype.Rpc.FileList.Offload.Request) returns (anytype.Rpc.FileList.Offload.Response);
+    rpc FileListOffload (anytype.Rpc.FileList.Offload.Request) returns (anytype.Rpc.FileList.Offload.Response);
 
     rpc VersionGet (anytype.Rpc.Version.Get.Request) returns (anytype.Rpc.Version.Get.Response);
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
