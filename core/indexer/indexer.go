@@ -576,8 +576,16 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
 			}
 		}
-		if exists, err := i.store.FTSearch().Has(id); !exists {
-			// add to fulltext only in case it was not indexed before
+
+		var skipFulltext bool
+		if i.store.FTSearch() != nil {
+			// skip fulltext if we already has the object indexed
+			if exists, _ := i.store.FTSearch().Has(id); exists {
+				skipFulltext = true
+			}
+		}
+
+		if !skipFulltext {
 			if err = i.store.AddToIndexQueue(id); err != nil {
 				log.With("thread", id).Errorf("can't add to index: %v", err)
 			}
