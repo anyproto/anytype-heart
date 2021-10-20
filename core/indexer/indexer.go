@@ -576,8 +576,8 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
 			}
 		}
-		if curDetails == nil || t == smartblock.SmartBlockTypeFile {
-			// add to fulltext only in case
+		if exists, err := i.store.FTSearch().Has(id); !exists {
+			// add to fulltext only in case it was not indexed before
 			if err = i.store.AddToIndexQueue(id); err != nil {
 				log.With("thread", id).Errorf("can't add to index: %v", err)
 			}
