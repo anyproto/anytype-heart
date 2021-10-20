@@ -1272,15 +1272,16 @@ func (s *State) IsEmpty() bool {
 	if pbtypes.GetString(s.Details(), bundle.RelationKeyDescription.String()) != "" {
 		return false
 	}
-
+	var emptyTextFound bool
 	if root := s.Pick(s.RootId()); root != nil {
 		for _, chId := range root.Model().ChildrenIds {
 			if chId == "header" {
 				continue
 			}
-			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil {
+			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil && !emptyTextFound {
 				txt := child.Model().GetText()
 				if txt.Text == "" && txt.Style == 0 {
+					emptyTextFound = true
 					continue
 				}
 			}
