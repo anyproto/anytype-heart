@@ -1834,6 +1834,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context blo1k
                 string blockId = 2;
+                string traceId = 3;
             }
 
             message Response {
@@ -1859,6 +1860,7 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context blo1k
                 string blockId = 2;
+                string traceId = 3;
             }
 
             message Response {
@@ -1907,6 +1909,7 @@ message Rpc {
         message OpenBreadcrumbs {
             message Request {
                 string contextId = 1; // id of the context blo1k
+                string traceId = 2;
             }
 
             message Response {
@@ -2913,12 +2916,14 @@ message Rpc {
             message Request {
                 string pageId = 1;
                 string versionId = 2;
+                string traceId = 3;
             }
 
             message Response {
                 Error error = 1;
                 Event.Object.Show objectShow = 2;
                 History.Versions.Version version = 3;
+                string traceId = 4;
 
                 message Error {
                     Code code = 1;

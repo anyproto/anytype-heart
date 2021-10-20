@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -28,6 +32,10 @@
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -798,6 +806,9 @@
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -935,6 +946,9 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -945,6 +959,10 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
+  
+  
+  
+
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -1011,6 +1029,9 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -3901,6 +3922,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context blo1k |
 | blockId | [string](#string) |  |  |
+| traceId | [string](#string) |  |  |
 
 
 
@@ -3958,6 +3980,7 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context blo1k |
+| traceId | [string](#string) |  |  |
 
 
 
@@ -5382,6 +5405,7 @@ Image/Video/File blocks then:
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context blo1k |
 | blockId | [string](#string) |  |  |
+| traceId | [string](#string) |  |  |
 
 
 
@@ -7488,6 +7512,7 @@ returns blockShow event for given version
 | ----- | ---- | ----- | ----------- |
 | pageId | [string](#string) |  |  |
 | versionId | [string](#string) |  |  |
+| traceId | [string](#string) |  |  |
 
 
 
@@ -7505,6 +7530,7 @@ returns blockShow event for given version
 | error | [Rpc.History.Show.Response.Error](#anytype.Rpc.History.Show.Response.Error) |  |  |
 | objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
 | version | [Rpc.History.Versions.Version](#anytype.Rpc.History.Versions.Version) |  |  |
+| traceId | [string](#string) |  |  |
 
 
 
@@ -14590,6 +14616,7 @@ Precondition: user A and user B opened the same block
 | ----- | ---- | ----- | ----------- |
 | messages | [Event.Message](#anytype.Event.Message) | repeated |  |
 | contextId | [string](#string) |  |  |
+| traceId | [string](#string) |  |  |
 
 
 
