@@ -331,7 +331,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		}
 	}
 
-	// for all other things setting cache timeout for reindexing
+	// for all ids except home and archive setting cache timeout for reindexing
 	ctx = context.WithValue(ctx, ocache.CacheTimeoutKey{}, cacheTimeout)
 	if reindex&reindexThreadObjects != 0 {
 		ids, err := getIdsForTypes(
