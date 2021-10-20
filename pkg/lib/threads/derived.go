@@ -77,7 +77,7 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
-func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, *DerivedSmartblockIds, error) {
+func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
 	// FIXME: method refactoring required, racy vars (err)
 
 	s.Lock()
@@ -98,7 +98,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	// account
 	account, justCreated, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccount, newAccount, false)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 
 	accountIds.Account = account.ID.String()
@@ -107,13 +107,13 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	s.threadProcessors[account.ID] = accountProcessor
 	err = accountProcessor.Init(account.ID)
 	if err != nil {
-		return accountIds, nil, fmt.Errorf("account proccessor init failed: %w", err)
+		return accountIds, fmt.Errorf("account proccessor init failed: %w", err)
 	}
 
 	// by default setting collection to account
 	// we will change it later if needed
 	s.db = accountProcessor.GetDB()
-	s.threadsCollection = accountProcessor.GetCollection()
+	s.threadsCollection = accountProcessor.GetThreadCollection()
 	s.currentWorkspaceId = account.ID
 
 	var accountPullErr error
@@ -156,7 +156,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 				err = s.handleMissingRecordsForCollection(
 					account.ID.String(),
 					accountProcessor.GetDB(),
-					accountProcessor.GetCollection())
+					accountProcessor.GetThreadCollection())
 			} else {
 				metrics.ServedThreads.Set(0)
 			}
@@ -174,7 +174,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 						if err != nil {
 							log.Errorf("failed to delete account thread: %s", err.Error())
 						}
-						return accountIds, nil, err
+						return accountIds, err
 					}
 					break loop
 				case <-cctx.Done():
@@ -186,56 +186,56 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	} else {
 		err = accountProcessor.Listen(make(map[thread.ID]threadInfo))
 		if err != nil {
-			return accountIds, nil, err
+			return accountIds, err
 		}
 	}
 
 	// profile
 	profile, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexProfilePage, newAccount, true)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 	accountIds.Profile = profile.ID.String()
 
 	// home
 	home, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexHome, newAccount, true)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 	accountIds.Home = home.ID.String()
 
 	// archive
 	archive, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexArchive, newAccount, true)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 	accountIds.Archive = archive.ID.String()
 
 	// set pages
 	setPages, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexSetPages, newAccount, true)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 	accountIds.SetPages = setPages.ID.String()
 
 	// marketplace
 	marketplace, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceType, newAccount, true)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 	accountIds.MarketplaceType = marketplace.ID.String()
 
 	// marketplace library
 	marketplaceLib, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceRelation, newAccount, true)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 	accountIds.MarketplaceRelation = marketplaceLib.ID.String()
 
 	// marketplace template
 	marketplaceTemplate, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceTemplate, newAccount, true)
 	if err != nil {
-		return accountIds, nil, err
+		return accountIds, err
 	}
 	accountIds.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
@@ -245,13 +245,13 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		workspaceId, err := thread.Decode(workspaceThreadIdString)
 		if err != nil {
 			log.Errorf("failed to start the workspace: %v", err)
-			return accountIds, nil, nil
+			return accountIds, nil
 		}
 
-		workspaceIds, err := s.ensureWorkspace(ctx, accountIds, workspaceId, false, true)
+		err = s.ensureWorkspace(ctx, workspaceId, false, true)
 		if err != nil {
 			log.Errorf("failed to start the workspace: %v", err)
-			return accountIds, nil, nil
+			return accountIds, nil
 		}
 
 		s.processorMutex.RLock()
@@ -261,16 +261,16 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		go func() {
 			_ = s.handleMissingRecordsForCollection(workspaceThreadIdString,
 				workspaceProcessor.GetDB(),
-				workspaceProcessor.GetCollection())
+				workspaceProcessor.GetThreadCollection())
 		}()
 		WorkspaceLogger.
 			With("workspace id", workspaceId).
-			Info("starting with workspace")
-		return accountIds, &workspaceIds, nil
+			Debug("starting with workspace")
+		return accountIds, nil
 	}
 	WorkspaceLogger.
-		Info("starting with account")
-	return accountIds, nil, nil
+		Debug("starting with account")
+	return accountIds, nil
 }
 
 func (s *service) createThreadsDbMap() (map[thread.ID]threadInfo, error) {
@@ -353,7 +353,12 @@ func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, err
 	}
 
 	workspaceProcessor = NewThreadProcessor(s, NewNoOpNotifier())
-	err = workspaceProcessor.Init(threadId)
+	err = workspaceProcessor.Init(threadId,
+		WithCollection(MetaCollectionName, MetaInfo{}),
+		WithCollection(HighlightedCollectionName, CollectionUpdateInfo{}),
+		WithCollectionAndActionProcessor(CreatorCollectionName,
+			CreatorInfo{},
+			newCreatorInfoActionProcessor(s)))
 	if err != nil {
 		return nil, fmt.Errorf("error initializing processor: %w", err)
 	}
@@ -489,55 +494,43 @@ func (s *service) threadCreate(threadId thread.ID, key thread.Key) (thread.Info,
 
 func (s *service) ensureWorkspace(
 	ctx context.Context,
-	ids DerivedSmartblockIds,
 	workspaceId thread.ID,
 	pullAsync bool,
-	changeCollection bool) (DerivedSmartblockIds, error) {
+	changeCollection bool) error {
 	// workspace here must be added at the time of switch
 	thrdInfo, err := s.t.GetThread(ctx, workspaceId)
 	if err != nil {
-		return ids, err
+		return err
 	}
 	WorkspaceLogger.With("workspace id", workspaceId.String()).
-		Info("workspace thread exists")
+		Debug("workspace thread exists")
 
 	workspaceProcessor, err := s.startWorkspaceThreadProcessor(workspaceId.String())
 	if err != nil {
-		return ids, fmt.Errorf("could not start workspace: %w", err)
+		return fmt.Errorf("could not start workspace: %w", err)
 	}
 
 	addrs := util.MultiAddressesToStrings(thrdInfo.Addrs)
-	home, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexHome, thrdInfo.Key, addrs, pullAsync)
-	if err != nil {
-		return ids, err
-	}
-	WorkspaceLogger.
-		With("workspace id", workspaceId.String()).
-		With("home id", home.ID.String()).
-		Info("workspace home thread exists")
 
 	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, pullAsync)
 	if err != nil {
-		return ids, err
+		return err
 	}
 	WorkspaceLogger.With("workspace id", workspaceId.String()).
 		With("archive id", archive.ID.String()).
-		Info("workspace archive thread exists")
-
-	ids.Home = home.ID.String()
-	ids.Archive = archive.ID.String()
+		Debug("workspace archive thread ensured")
 
 	if changeCollection {
 		s.db = workspaceProcessor.GetDB()
-		s.threadsCollection = workspaceProcessor.GetCollection()
+		s.threadsCollection = workspaceProcessor.GetThreadCollection()
 		s.currentWorkspaceId = workspaceId
 
 		WorkspaceLogger.With("workspace id", workspaceId.String()).
 			With("collection name", s.threadsCollection.GetName()).
-			Info("setting new collection as current")
+			Debug("setting new collection as current")
 	}
 
-	return ids, nil
+	return nil
 }
 
 func (s *service) workspaceThreadEnsure(

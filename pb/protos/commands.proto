@@ -2114,13 +2114,81 @@ message Rpc {
     }
 
     message Workspace {
-        message Create {
+        message GetCurrent {
             message Request {
             }
 
             message Response {
                 Error error = 1;
                 string workspaceId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message GetAll {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1;
+                repeated string workspaceIds = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message Create {
+            message Request {
+                string name = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                string workspaceId = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message SetIsHighlighted {
+            message Request {
+                string objectId = 1;
+                bool isHighlighted = 2;
+            }
+
+            message Response {
+                Error error = 1;
 
                 message Error {
                     Code code = 1;
@@ -3116,9 +3184,10 @@ message Rpc {
             }
         }
 
-        message AddWithShareLink {
+        message AddWithObjectId {
             message Request {
-                string link = 1;
+                string objectId = 1;
+                string payload = 2;
             }
 
             message Response {

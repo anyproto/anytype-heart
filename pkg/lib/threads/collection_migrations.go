@@ -144,7 +144,7 @@ func (s *service) addMissingThreadsToCollection() error {
 				continue
 			}
 		}
-		collection := processor.GetCollection()
+		collection := processor.GetThreadCollection()
 
 		_, err = collection.FindByID(threadInfo.ID)
 		if err == nil {
@@ -154,7 +154,7 @@ func (s *service) addMissingThreadsToCollection() error {
 
 		WorkspaceLogger.
 			With("collection name", collection.GetName()).
-			Info("adding missing thread to collection")
+			Debug("adding missing thread to collection")
 		_, err = collection.Create(threadsUtil.JSONFromInstance(threadInfo))
 		if err == nil {
 			_ = s.threadCreateQueue.RemoveThreadQueueEntry(threadInfo.ID.String())
