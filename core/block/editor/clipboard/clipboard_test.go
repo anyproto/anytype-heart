@@ -3,6 +3,7 @@ package clipboard
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -606,7 +607,7 @@ func TestClipboard_PasteToTitle(t *testing.T) {
 
 func TestClipboard_PasteToCodeBock(t *testing.T) {
 	sb := smarttest.New("text")
-	require.NoError(t, template.ApplyTemplate(sb, nil, template.WithTitle))
+	require.NoError(t, smartblock.ApplyTemplate(sb, nil, template.WithTitle))
 	s := sb.NewState()
 	codeBlock := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{

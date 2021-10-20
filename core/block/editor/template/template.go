@@ -1,7 +1,6 @@
 package template
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -603,12 +602,3 @@ func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	return
 }
 
-func ApplyTemplate(sb smartblock.SmartBlock, s *state.State, templates ...StateTransformer) (err error) {
-	if s == nil {
-		s = sb.NewState()
-	}
-	if err = InitTemplate(s, templates...); err != nil {
-		return
-	}
-	return sb.Apply(s, smartblock.NoHistory, smartblock.NoEvent, smartblock.NoRestrictions, smartblock.SkipIfNoChanges)
-}

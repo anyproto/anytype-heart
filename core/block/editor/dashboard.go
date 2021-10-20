@@ -39,7 +39,7 @@ func (p *Dashboard) Init(ctx *smartblock.InitContext) (err error) {
 
 func (p *Dashboard) init(s *state.State) (err error) {
 	state.CleanupLayouts(s)
-	if err = template.ApplyTemplate(p, s,
+	if err = smartblock.ApplyTemplate(p, s,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyDashboard.URL()}),
 		template.WithEmpty,
 		template.WithDetailName("Home"),

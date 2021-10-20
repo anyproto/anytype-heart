@@ -33,7 +33,7 @@ func TestBasic_Create(t *testing.T) {
 	t.Run("title", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
@@ -53,7 +53,7 @@ func TestBasic_Create(t *testing.T) {
 			},
 		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		_, err := b.Create(nil, "", pb.RpcBlockCreateRequest{})
 		assert.Equal(t, restriction.ErrRestricted, err)
@@ -115,7 +115,7 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("header", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, template.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id1, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
@@ -279,28 +279,6 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			BlockId: "2",
 			Key:     "not exists",
 		}))
-	})
-}
-
-func TestBasic_SetAlign(t *testing.T) {
-	t.Run("with ids", func(t *testing.T) {
-		sb := smarttest.New("test")
-		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"title", "2"}})).
-			AddBlock(simple.New(&model.Block{Id: "title"})).
-			AddBlock(simple.New(&model.Block{Id: "2"}))
-		b := NewBasic(sb)
-		require.NoError(t, b.SetAlign(nil, model.Block_AlignRight, "2", "3"))
-		assert.Equal(t, model.Block_AlignRight, sb.NewState().Get("2").Model().Align)
-	})
-	t.Run("without ids", func(t *testing.T) {
-		sb := smarttest.New("test")
-		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"title", "2"}})).
-			AddBlock(simple.New(&model.Block{Id: "title"})).
-			AddBlock(simple.New(&model.Block{Id: "2"}))
-		b := NewBasic(sb)
-		require.NoError(t, b.SetAlign(nil, model.Block_AlignRight))
-		assert.Equal(t, model.Block_AlignRight, sb.NewState().Get("title").Model().Align)
-		assert.Equal(t, int64(model.Block_AlignRight), pbtypes.GetInt64(sb.NewState().Details(), bundle.RelationKeyLayoutAlign.String()))
 	})
 }
 

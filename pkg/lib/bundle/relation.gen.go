@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "16cc8ca7628f474a93e7c713dd040239748d6731c6e7441754c43fed609625ed"
+const RelationChecksum = "21486fc346a5af79471e07ebaa4075ddee240a663348ffc926e7852d8b6ec4af"
 
 type RelationKey string
 
@@ -1099,7 +1099,7 @@ var (
 		RelationKeyIsReadonly: {
 
 			DataSource:       model.Relation_details,
-			Description:      "Indicates whether the object is readonly",
+			Description:      "Indicates whether the object is read-only. Means it can't be edited and archived",
 			Format:           model.RelationFormat_checkbox,
 			Hidden:           true,
 			Key:              "isReadonly",

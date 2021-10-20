@@ -1264,10 +1264,12 @@ func (s *State) IsEmpty() bool {
 	if pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
 		return false
 	}
+	var emptyTextFound bool
 	if title := s.Pick("title"); title != nil {
 		if title.Model().GetText().Text != "" {
 			return false
 		}
+		emptyTextFound = true
 	}
 
 	if pbtypes.GetString(s.Details(), bundle.RelationKeyDescription.String()) != "" {
@@ -1279,9 +1281,10 @@ func (s *State) IsEmpty() bool {
 			if chId == "header" {
 				continue
 			}
-			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil {
+			if child := s.Pick(chId); child != nil && child.Model().GetText() != nil && !emptyTextFound {
 				txt := child.Model().GetText()
 				if txt.Text == "" && txt.Style == 0 {
+					emptyTextFound = true
 					continue
 				}
 			}
