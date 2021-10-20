@@ -34,6 +34,15 @@ func (a *Anytype) DeleteBlock(id string) error {
 	if err != nil && err != ErrObjectDoesNotBelongToWorkspace {
 		return err
 	}
+	if workspaceId == id {
+		objects, err := a.GetAllObjectsInWorkspace(id)
+		if err != nil {
+			return err
+		}
+		if len(objects) > 0 {
+			return fmt.Errorf("deleting non-empty workspace is restricted. First, remove all the objects inside")
+		}
+	}
 	err = a.threadService.DeleteThread(id, workspaceId)
 	if err != nil {
 		return err
