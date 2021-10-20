@@ -353,6 +353,7 @@ func (a *Anytype) GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceM
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
+	// todo: probably need to have more reliable way to get the workspace where this object is stored
 	details, err := a.objectStore.GetDetails(objectId)
 	if err != nil {
 		return "", err

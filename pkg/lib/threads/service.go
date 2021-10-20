@@ -929,22 +929,10 @@ func (s *service) DeleteThread(id, workspace string) error {
 	if workspace == "" {
 		collectionToRemove = s.threadsCollection
 	} else {
-		threadId, err := thread.Decode(workspace)
+		processor, err := s.GetThreadProcessorForWorkspace(workspace)
 		if err != nil {
 			return err
 		}
-
-		s.processorMutex.RLock()
-		processor, exists := s.threadProcessors[threadId]
-		s.processorMutex.RUnlock()
-
-		if !exists {
-			processor, err = s.startWorkspaceThreadProcessor(workspace)
-			if err != nil {
-				return err
-			}
-		}
-
 		collectionToRemove = processor.GetCollectionWithPrefix(ThreadInfoCollectionName)
 		if collectionToRemove == nil {
 			return fmt.Errorf("no workspace collection found")

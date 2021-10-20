@@ -3,8 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"strings"
 
 	"github.com/textileio/go-threads/core/thread"
@@ -32,12 +30,11 @@ func (a *Anytype) GetBlockCtx(ctx context.Context, id string) (SmartBlock, error
 }
 
 func (a *Anytype) DeleteBlock(id string) error {
-	var workspaceId string
-	// todo: probably need to have more reliable way to get the workspace where this object is stored
-	if d, err := a.ObjectStore().GetDetails(id); err != nil {
-		workspaceId = pbtypes.GetString(d.Details, bundle.RelationKeyWorkspaceId.String())
+	workspaceId, err := a.GetWorkspaceIdForObject(id)
+	if err != nil && err != ErrObjectDoesNotBelongToWorkspace {
+		return err
 	}
-	err := a.threadService.DeleteThread(id, workspaceId)
+	err = a.threadService.DeleteThread(id, workspaceId)
 	if err != nil {
 		return err
 	}
