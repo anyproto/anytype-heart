@@ -692,7 +692,7 @@ func (s *service) AddRelationBlock(ctx *state.Context, req pb.RpcBlockRelationAd
 }
 
 func (s *service) GetDocInfo(ctx context.Context, id string) (info doc.DocInfo, err error) {
-	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+	if err = s.DoWithContext(ctx, id, func(b smartblock.SmartBlock) error {
 		info, err = b.GetDocInfo()
 		return err
 	}); err != nil {

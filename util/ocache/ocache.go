@@ -3,6 +3,7 @@ package ocache
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -19,6 +20,8 @@ var (
 	defaultTTL = time.Minute
 	defaultGC  = 20 * time.Second
 )
+
+type CacheTimeoutKey struct{}
 
 var log = logging.Logger("anytype-mw-ocache")
 
@@ -139,8 +142,23 @@ func (c *oCache) Get(ctx context.Context, id string) (value Object, err error) {
 	e.refCount++
 	c.mu.Unlock()
 
+	timeout := ctx.Value(CacheTimeoutKey{})
 	if load {
-		c.load(ctx, id, e)
+		if timeout != nil {
+			go c.load(ctx, id, e)
+		} else {
+			c.load(ctx, id, e)
+		}
+	}
+
+	if timeout != nil {
+		duration := timeout.(time.Duration)
+		select {
+		case <-e.load:
+			return e.value, e.loadErr
+		case <-time.After(duration):
+			return nil, fmt.Errorf("loading object timed out")
+		}
 	}
 	<-e.load
 	return e.value, e.loadErr

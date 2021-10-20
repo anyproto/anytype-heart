@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"math"
 	"sort"
 	"strings"
@@ -69,6 +70,8 @@ type Hasher interface {
 }
 
 type reindexFlags uint64
+
+const cacheTimeout = 4 * time.Second
 
 const (
 	reindexBundledTypes reindexFlags = 1 << iota
@@ -260,8 +263,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 			if id == i.anytype.PredefinedBlocks().Account {
 				continue
 			}
-			ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-			cancel()
+			ctx := context.WithValue(context.Background(), ocache.CacheTimeoutKey{}, cacheTimeout)
 			d, err := i.doc.GetDocInfo(ctx, id)
 			if err != nil {
 				log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
@@ -329,6 +331,8 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		}
 	}
 
+	// for all other things setting cache timeout for reindexing
+	ctx = context.WithValue(ctx, ocache.CacheTimeoutKey{}, cacheTimeout)
 	if reindex&reindexThreadObjects != 0 {
 		ids, err := getIdsForTypes(
 			smartblock.SmartBlockTypePage,
@@ -708,7 +712,9 @@ func (i *indexer) ftIndex() {
 
 func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
-	info, err := i.doc.GetDocInfo(context.TODO(), id)
+	ctx := context.WithValue(context.Background(), ocache.CacheTimeoutKey{}, cacheTimeout)
+
+	info, err := i.doc.GetDocInfo(ctx, id)
 	if err != nil {
 		return
 	}
@@ -724,7 +730,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 		newIds := slice.Difference(info.FileHashes, existingIDs)
 		for _, hash := range newIds {
 			// file's hash is id
-			err = i.reindexDoc(context.TODO(), hash, false)
+			err = i.reindexDoc(ctx, hash, false)
 			if err != nil {
 				log.With("id", hash).Errorf("failed to reindex file: %s", err.Error())
 			}
