@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/ipfs/go-cid"
-	format "github.com/ipfs/go-ipld-format"
 	"io"
 	"time"
 
@@ -34,37 +33,42 @@ func (a *Anytype) FileStoreKeys(fileKeys ...files.FileKeys) error {
 }
 
 func (a *Anytype) GetAllExistingFileBlocksCids(hash string) (totalSize uint64, cids []cid.Cid, err error) {
-	//fileList, err := a.fileStore.ListByTarget(hash)
-	var getCidsLinksRecursively func(visitedMap map[string]struct{}, c cid.Cid) (totalSize uint64, cids []cid.Cid, err error)
+	var getCidsLinksRecursively func(c cid.Cid) (err error)
 
-	getCidsLinksRecursively = func(visitedMap map[string]struct{}, c cid.Cid) (totalSize uint64, cids []cid.Cid, err error) {
+	var visitedMap = make(map[string]struct{})
+	getCidsLinksRecursively = func(c cid.Cid) (err error) {
 		if exists, err := a.ipfs.BlockStore().Has(c); err != nil {
-			return 0, nil, err
+			return err
 		} else if !exists {
 			// double-check the blockstore, if we don't have the block - we have not yet downloaded it
 			// otherwise format.GetLinks will do bitswap
-			return 0, nil, nil
+			return nil
 		}
+		cids = append(cids, c)
+
+		// here we can be sure that the block is loaded to the blockstore, so 1s should be more than enough
 		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		links, err := format.GetLinks(ctx, a.ipfs, c)
+		n, err := a.ipfs.Get(ctx, c)
 		if err != nil {
 			log.Errorf("GetAllExistingFileBlocksCids: failed to get links: %s", err.Error())
 		}
 		cancel()
-		if len(links) == 0 {
-			return 0, nil, nil
+		if n != nil {
+			// use rawData because Size() includes size of inner links which may be not loaded
+			totalSize += uint64(len(n.RawData()))
 		}
-		for _, link := range links {
+		if n == nil || len(n.Links()) == 0 {
+			return nil
+		}
+		for _, link := range n.Links() {
 			if _, visited := visitedMap[link.Cid.String()]; visited {
 				continue
 			}
 			visitedMap[link.Cid.String()] = struct{}{}
-			_, nestedLinks, err := getCidsLinksRecursively(visitedMap, link.Cid)
+			err := getCidsLinksRecursively(link.Cid)
 			if err != nil {
-				return 0, nil, err
+				return err
 			}
-			totalSize += link.Size
-			cids = append(cids, append(nestedLinks, link.Cid)...)
 		}
 
 		return
@@ -75,14 +79,9 @@ func (a *Anytype) GetAllExistingFileBlocksCids(hash string) (totalSize uint64, c
 		return 0, nil, err
 	}
 
-	totalSize, links, err := getCidsLinksRecursively(map[string]struct{}{}, c)
-	if err != nil {
-		return 0, nil, err
-	}
+	err = getCidsLinksRecursively(c)
 
-	cids = append(cids, append(links, c)...)
-
-	return totalSize, cids, nil
+	return
 }
 
 func (a *Anytype) FileOffload(hash string) (totalSize uint64, err error) {

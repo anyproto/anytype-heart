@@ -64,6 +64,7 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 	var total int
 	var maxErrors = 1
 	for {
+		// set the discard ratio to the lowest value means we want to rewrite value log if we have any values removed
 		err = blockDs.(*badger.Datastore).DB.RunValueLogGC(0.000000000001)
 		if err != nil && err.Error() == "Value log GC attempt didn't result in any cleanup" {
 			maxErrors--

@@ -712,14 +712,14 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if !indexDetails {
 		return nil
 	}
-	if indexDetails {
-		if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
-			return
-		}
+
+	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
+		return
 	}
 
 	if len(info.FileHashes) > 0 {
-		existingIDs, err := i.store.HasIDs()
+		// todo: move file indexing to the main indexer as we have  the full state there now
+		existingIDs, err := i.store.HasIDs(info.FileHashes...)
 		if err != nil {
 			log.Errorf("failed to get existing file ids : %s", err.Error())
 		}

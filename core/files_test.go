@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/ipfs/go-datastore/query"
 	"github.com/stretchr/testify/require"
 	"math/rand"
 	"os"
@@ -44,22 +42,7 @@ func TestFile(t *testing.T) {
 		})
 		return
 	}
-	_ = func() {
-		ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
-		blockDs, err := ds.BlockstoreDS()
-		require.NoError(t, err)
-		res, err := blockDs.Query(query.Query{
-			Prefix:       "",
-			Limit:        0,
-			Offset:       0,
-			KeysOnly:     true,
-			ReturnsSizes: true,
-		})
-		require.NoError(t, err)
-		results, err := res.Rest()
-		require.NoError(t, err)
-		fmt.Printf("%d keys: %v\n\n", len(results), results)
-	}
+
 	t.Run("image_should_open_as_object", func(t *testing.T) {
 		respUploadImage := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
 		require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)
@@ -104,12 +87,12 @@ func TestFile(t *testing.T) {
 
 		bytesRemoved, err := coreService.FileOffload(i.Hash())
 		require.NoError(t, err)
-		require.Equal(t, uint64(168317), bytesRemoved)
+		require.Equal(t, uint64(168368), bytesRemoved)
 	})
 
 	t.Run("offload_all", func(t *testing.T) {
-		if os.Getenv("ANYTYPE_FULL_TEST") != "1" {
-			return
+		if os.Getenv("ANYTYPE_TEST_FULL") != "1" {
+			//	return
 		}
 		coreService := mw.app.MustComponent(core.CName).(core.Service)
 		for i := 1; i <= 200; i++ {
@@ -129,13 +112,13 @@ func TestFile(t *testing.T) {
 		resp := mw.FileListOffload(&pb.RpcFileListOffloadRequest{IncludeNotPinned: true})
 		require.Equal(t, 0, int(resp.Error.Code), resp.Error.Description)
 		fmt.Println(resp.BytesOffloaded - 1024*1024*3*200)
-		require.Equal(t, uint64(1024*1024*3*200+237000), resp.BytesOffloaded) // 237000 is the overhead for the links and meta
+		require.Equal(t, uint64(1024*1024*3*200+247400), resp.BytesOffloaded) // 247400 is the overhead for the links and meta
 		require.Equal(t, int32(200), resp.FilesOffloaded)
 
 		m, err = getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
 		require.NoError(t, err)
 		fmt.Printf("BADGER METRICS AFTER OFFLOAD: %+v\n", m)
-		require.Equal(t, 2, m.NumVLOG)
+		require.Equal(t, 3, m.NumVLOG)
 
 	})
 
