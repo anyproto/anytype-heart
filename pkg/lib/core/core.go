@@ -62,9 +62,6 @@ type Service interface {
 	IsStarted() bool
 	BecameOnline(ch chan<- error)
 
-	// InitNewSmartblocksChan allows to init the chan to inform when there is a new smartblock becomes available
-	// Can be called only once. Returns error if called more than once
-	InitNewSmartblocksChan(ch chan<- string) error
 	InitPredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
@@ -454,14 +451,6 @@ func (a *Anytype) Stop() error {
 
 func (a *Anytype) ThreadService() threads.Service {
 	return a.threadService
-}
-
-func (a *Anytype) InitNewSmartblocksChan(ch chan<- string) error {
-	if a.threadService == nil {
-		return fmt.Errorf("thread service not ready yet")
-	}
-
-	return a.threadService.InitNewThreadsChan(ch)
 }
 
 func (a *Anytype) TempDir() string {

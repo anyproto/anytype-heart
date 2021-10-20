@@ -174,7 +174,6 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				return
 			}
 
-			ch := t.threadsService.getNewThreadChan()
 			initialThreadsLock.RLock()
 			if len(initialThreads) == 0 {
 				initialThreadsLock.RUnlock()
@@ -191,12 +190,6 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 					}
 
 					initialThreadsLock.Unlock()
-				}
-			}
-			if ch != nil && !t.threadsService.stopped {
-				select {
-				case <-t.threadsService.ctx.Done():
-				case ch <- tid.String():
 				}
 			}
 		}()
@@ -261,10 +254,7 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 	}
 
 	go func() {
-		defer func() {
-			l.Close()
-			t.threadsService.closeThreadChan()
-		}()
+		defer l.Close()
 		deadline := 1 * time.Second
 		tmr := time.NewTimer(deadline)
 		flushBuffer := make([]threadsDb.Action, 0, 100)
