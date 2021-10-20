@@ -1150,8 +1150,6 @@ func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock, err error) {
 	val, err := s.cache.Get(ctx, id)
 	if err != nil {
-		sbType, _ := coresb.SmartBlockTypeFromID(id)
-		fmt.Println("[observing]: returned error from get with timeout", err.Error(), sbType)
 		return
 	}
 	ob = val.(*openedBlock)
