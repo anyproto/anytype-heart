@@ -227,7 +227,6 @@ var WithForcedDetail = func(key bundle.RelationKey, value *types.Value) StateTra
 
 var WithDetailIconEmoji = func(iconEmoji string) StateTransformer {
 	return WithDetail(bundle.RelationKeyIconEmoji, pbtypes.String(iconEmoji))
-
 }
 
 var WithHeader = StateTransformer(func(s *state.State) {

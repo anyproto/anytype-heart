@@ -6,7 +6,7 @@ import "pb/protos/commands.proto";
 import "pb/protos/events.proto";
 
 service ClientCommands {
-    rpc ObjectAddWithShareLink (anytype.Rpc.Object.AddWithShareLink.Request) returns (anytype.Rpc.Object.AddWithShareLink.Response);
+    rpc ObjectAddWithObjectId (anytype.Rpc.Object.AddWithObjectId.Request) returns (anytype.Rpc.Object.AddWithObjectId.Response);
     rpc ObjectShareByLink (anytype.Rpc.Object.ShareByLink.Request) returns (anytype.Rpc.Object.ShareByLink.Response);
 
     rpc WalletCreate (anytype.Rpc.Wallet.Create.Request) returns (anytype.Rpc.Wallet.Create.Response);
@@ -15,6 +15,9 @@ service ClientCommands {
 
     rpc WorkspaceCreate (anytype.Rpc.Workspace.Create.Request) returns (anytype.Rpc.Workspace.Create.Response);
     rpc WorkspaceSelect (anytype.Rpc.Workspace.Select.Request) returns (anytype.Rpc.Workspace.Select.Response);
+    rpc WorkspaceGetCurrent (anytype.Rpc.Workspace.GetCurrent.Request) returns (anytype.Rpc.Workspace.GetCurrent.Response);
+    rpc WorkspaceGetAll (anytype.Rpc.Workspace.GetAll.Request) returns (anytype.Rpc.Workspace.GetAll.Response);
+    rpc WorkspaceSetIsHighlighted (anytype.Rpc.Workspace.SetIsHighlighted.Request) returns (anytype.Rpc.Workspace.SetIsHighlighted.Response);
 
     rpc AccountRecover (anytype.Rpc.Account.Recover.Request) returns (anytype.Rpc.Account.Recover.Response);
     rpc AccountCreate (anytype.Rpc.Account.Create.Request) returns (anytype.Rpc.Account.Create.Response);

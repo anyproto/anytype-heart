@@ -896,12 +896,22 @@
     "source": "details"
   },
   {
-    "description": "Adds the object to the home fashboard",
+    "description": "Adds the object to the home dashboard",
     "format": "checkbox",
     "hidden": true,
     "key": "isFavorite",
     "maxCount": 1,
     "name": "Favorited",
+    "readonly": false,
+    "source": "account"
+  },
+  {
+    "description": "Adds the object to the highlighted dataview in space",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isHighlighted",
+    "maxCount": 1,
+    "name": "Highlighted",
     "readonly": false,
     "source": "account"
   },

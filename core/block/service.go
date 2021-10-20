@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -196,8 +198,11 @@ type Service interface {
 
 	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
 	SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error
+	GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error)
+	GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error)
+	SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error
 
-	ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error
+	ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
 
 	app.ComponentRunnable
@@ -464,15 +469,31 @@ func (s *service) CloseBlocks() {
 }
 
 func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
-	return s.anytype.CreateWorkspace()
+	return s.anytype.CreateWorkspace(req.Name)
 }
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
 	return s.anytype.SelectWorkspace(req.WorkspaceId)
 }
 
-func (s *service) ObjectAddWithShareLink(req *pb.RpcObjectAddWithShareLinkRequest) error {
-	return s.anytype.ObjectAddWithShareLink(req.Link)
+func (s *service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
+	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
+	if err != nil && strings.HasSuffix(err.Error(), "key not found") {
+		return "", nil
+	}
+	return workspaceId, err
+}
+
+func (s *service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string, error) {
+	return s.anytype.GetAllWorkspaces()
+}
+
+func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
+	return s.anytype.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
+}
+
+func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
+	return s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
 }
 
 func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error) {
@@ -642,6 +663,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		return "", nil, fmt.Errorf("object type not found")
 	}
 
+	var workspaceId string
 	if details != nil && details.Fields != nil {
 		var isDraft = pbtypes.GetBool(details, bundle.RelationKeyIsDraft.String())
 		delete(details.Fields, bundle.RelationKeyIsDraft.String())
@@ -662,16 +684,27 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 		if isDraft {
 			createState.SetDetailAndBundledRelation(bundle.RelationKeyIsDraft, pbtypes.Bool(true))
 		}
+		detailsWorkspaceId := details.Fields[bundle.RelationKeyWorkspaceId.String()]
+		if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
+			workspaceId = detailsWorkspaceId.GetStringValue()
+		}
 	}
 
-	workspaceId, err := s.anytype.ObjectStore().GetCurrentWorkspaceId()
-	if err == nil {
+	// if we don't have anything in details then check the object store
+	if workspaceId == "" {
+		workspaceId, err = s.anytype.ObjectStore().GetCurrentWorkspaceId()
+		if err != nil {
+			workspaceId = ""
+		}
+	}
+
+	if workspaceId != "" {
 		createState.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
 	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
-	csm, err := s.anytype.CreateBlock(sbType)
+	csm, err := s.anytype.CreateBlock(sbType, workspaceId)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -705,6 +738,20 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 			return "", "", basic.ErrNotSupported
 		}
 	}
+	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
+	if err != nil {
+		workspaceId = ""
+	}
+	if workspaceId != "" && req.Details != nil {
+		threads.WorkspaceLogger.
+			With("workspace id", workspaceId).
+			Debug("adding workspace id to new object")
+		if req.Details.Fields == nil {
+			req.Details.Fields = make(map[string]*types.Value)
+		}
+		req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
+	}
+
 	pageId, _, err = s.CreateSmartBlockFromTemplate(coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
@@ -801,7 +848,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs(s.meta)
 	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspaces(s.meta)
+		sb = editor.NewWorkspace(s.meta, s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
