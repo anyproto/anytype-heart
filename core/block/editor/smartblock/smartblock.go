@@ -921,7 +921,7 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 }
 
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
-	s := sb.NewState()
+	s := sb.NewStateCtx(ctx)
 
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
