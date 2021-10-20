@@ -106,6 +106,17 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 
 	if len(source) == 0 {
 		s.Unlink(blockId)
+		// todo: we should move d.dataviews cleanup somewhere globally to support direct dv block unlink
+		filtered := d.dataviews[:0]
+		for _, dv := range d.dataviews {
+			if dv.blockId == blockId {
+				dv.recordsUpdatesCancel()
+				continue
+			}
+			filtered = append(filtered, dv)
+		}
+
+		d.dataviews = filtered
 		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 		return d.Apply(s)
 	}
@@ -1144,7 +1155,7 @@ func (d *dataviewCollectionImpl) fetchAndGetEventsMessages(dv *dataviewImpl, dvB
 				} else {
 					d.Lock()
 					st := d.NewState()
-					tb, _ := getDataviewBlock(st, dvBlockId)
+					tb, err := getDataviewBlock(st, dvBlockId)
 					if err != nil {
 						log.Errorf("fetchAndGetEventsMessages subscription getDataviewBlock failed: %s", err.Error())
 						d.Unlock()
