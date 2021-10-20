@@ -608,12 +608,17 @@ func (s *service) DeleteObject(id string) (err error) {
 	var (
 		fileHashes  []string
 		workspaceId string
+		isFavorite  bool
 	)
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
 		b.BlockClose()
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
 		workspaceId = pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
+		if isFavorite {
+			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
+		}
 		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
 			return err
 		}
