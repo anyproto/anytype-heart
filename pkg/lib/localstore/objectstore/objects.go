@@ -1960,6 +1960,11 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
 
+	if newDetails.GetDetails().GetFields() == nil {
+		return fmt.Errorf("newDetails is nil")
+	}
+
+	newDetails.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id) // always ensure we have id set
 	b, err := proto.Marshal(newDetails)
 	if err != nil {
 		return err
@@ -2126,6 +2131,7 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 		}
 		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 		// return empty details in case not found
+		return &details, nil
 	} else if err := proto.Unmarshal(val, &details); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
