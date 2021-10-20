@@ -107,7 +107,7 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 	if len(source) == 0 {
 		s.Unlink(blockId)
 		// todo: we should move d.dataviews cleanup somewhere globally to support direct dv block unlink
-		var filtered []*dataviewImpl
+		filtered := d.dataviews[:0]
 		for _, dv := range d.dataviews {
 			if dv.blockId == blockId {
 				dv.recordsUpdatesCancel()
