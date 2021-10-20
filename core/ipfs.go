@@ -57,8 +57,10 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 			log.Errorf("failed to offload file %s: %s", fileId, err.Error())
 			continue
 		}
-		totalBytesOffloaded += bytesRemoved
-		totalFilesOffloaded++
+		if bytesRemoved > 0 {
+			totalBytesOffloaded += bytesRemoved
+			totalFilesOffloaded++
+		}
 	}
 
 	var total int
