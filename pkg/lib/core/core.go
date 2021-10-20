@@ -70,7 +70,7 @@ type Service interface {
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
-	DeleteBlock(blockId string) error
+	DeleteBlock(blockId, workspaceId string) error
 	CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error)
 
 	// FileOffload removes file blocks ercursively, but leave details

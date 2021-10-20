@@ -437,10 +437,16 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 }
 
 func (s *service) CloseBlock(id string) error {
-	var isDraft bool
+	var (
+		isDraft     bool
+		workspaceId string
+	)
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.BlockClose()
-		isDraft = pbtypes.GetBool(b.NewState().LocalDetails(), bundle.RelationKeyIsDraft.String())
+		s := b.NewState()
+		isDraft = pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String())
+		workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+
 		return nil
 	})
 	if err != nil {
@@ -449,7 +455,7 @@ func (s *service) CloseBlock(id string) error {
 	s.cache.Unlock(id)
 	if isDraft {
 		_, _ = s.cache.Remove(id)
-		if err = s.anytype.DeleteBlock(id); err != nil {
+		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
 			s.sendOnRemoveEvent(id)
@@ -599,24 +605,29 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 }
 
 func (s *service) DeleteObject(id string) (err error) {
-	var fileHashes []string
+	var (
+		fileHashes  []string
+		workspaceId string
+	)
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		b.BlockClose()
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
+		workspaceId = pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
+			return err
+		}
 		return nil
 	})
+
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
 
-	err = s.CloseBlock(id)
-	if err != nil && err != ErrBlockNotFound {
-		return err
-	}
-	s.cache.Reset(id)
-	if err = s.anytype.DeleteBlock(id); err != nil {
-		return
-	}
+	s.meta.ReportChange(meta.Meta{BlockId: id, SmartBlockMeta: core.SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), bundle.RelationKeyIsHidden.String(): pbtypes.Bool(true)}}}})
+	s.cache.Unlock(id)
+	_, _ = s.cache.Remove(id)
+
 	for _, fileHash := range fileHashes {
 		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
 		if err != nil {
@@ -624,13 +635,18 @@ func (s *service) DeleteObject(id string) (err error) {
 			continue
 		}
 		if len(inboundLinks) == 0 {
-			_, err = s.Anytype().FileOffload(fileHash)
-			if err != nil {
-				log.Errorf("failed to offload file %s: %s", fileHash, err.Error())
-				continue
-			}
 			if err = s.Anytype().ObjectStore().DeleteObject(fileHash); err != nil {
-				return err
+				log.With("file", fileHash).Errorf("failed to delete file from objectstore: %s", err.Error())
+			}
+			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
+			}
+			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
+			}
+			if _, err = s.Anytype().FileOffload(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
+				continue
 			}
 
 		}

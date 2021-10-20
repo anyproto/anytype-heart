@@ -1166,6 +1166,8 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 	}
 
 	if m.fts != nil {
+		_ = m.removeFromIndexQueue(id)
+
 		if err := m.fts.Delete(id); err != nil {
 			return err
 		}

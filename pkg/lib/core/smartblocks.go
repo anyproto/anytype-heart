@@ -29,21 +29,8 @@ func (a *Anytype) GetBlockCtx(ctx context.Context, id string) (SmartBlock, error
 	return smartBlock, nil
 }
 
-func (a *Anytype) DeleteBlock(id string) error {
-	workspaceId, err := a.GetWorkspaceIdForObject(id)
-	if err != nil && err != ErrObjectDoesNotBelongToWorkspace {
-		return err
-	}
-	if workspaceId == id {
-		objects, err := a.GetAllObjectsInWorkspace(id)
-		if err != nil {
-			return err
-		}
-		if len(objects) > 0 {
-			return fmt.Errorf("deleting non-empty workspace is restricted. First, remove all the objects inside")
-		}
-	}
-	err = a.threadService.DeleteThread(id, workspaceId)
+func (a *Anytype) DeleteBlock(id, workspaceId string) error {
+	err := a.threadService.DeleteThread(id, workspaceId)
 	if err != nil {
 		return err
 	}
