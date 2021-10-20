@@ -561,7 +561,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	detailsObjectScope := pbtypes.StructCutKeys(details, bundle.LocalRelationsKeys)
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, bundle.LocalRelationsKeys)
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
-		if indexesWereRemoved || curDetails == nil {
+		if indexesWereRemoved || curDetails.GetFields() == nil {
 			if err := i.store.CreateObject(id, details, &model.Relations{d.State.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't create object in the store: %v", err)
 			}
