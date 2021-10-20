@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 	"github.com/tj/go-naturaldate"
@@ -167,14 +168,14 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		nodes = append(nodes, &pb.RpcObjectGraphNode{
-			Id:          id,
-			Type:        pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()),
-			Name:        pbtypes.GetString(rec.Details, bundle.RelationKeyName.String()),
-			Layout:      int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyLayout.String())),
-			Description: pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
-			IconImage:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
-			IconEmoji:   pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
-			Done: 	     pbtypes.GetBool(rec.Details, bundle.RelationKeyDone.String()),
+			Id:             id,
+			Type:           pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()),
+			Name:           pbtypes.GetString(rec.Details, bundle.RelationKeyName.String()),
+			Layout:         int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyLayout.String())),
+			Description:    pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
+			IconImage:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
+			IconEmoji:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
+			Done:           pbtypes.GetBool(rec.Details, bundle.RelationKeyDone.String()),
 			RelationFormat: int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyRelationFormat.String())),
 		})
 
@@ -217,6 +218,11 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 		}
 		links, _ := at.ObjectStore().GetOutboundLinksById(id)
 		for _, link := range links {
+			sbType, _ := smartblock.SmartBlockTypeFromID(link)
+			// ignore files because we index all file blocks as outgoing links
+			if sbType == smartblock.SmartBlockTypeFile {
+				continue
+			}
 			if _, exists := outgoingRelationLink[link]; !exists {
 				if _, exists := nodeExists[link]; !exists {
 					continue

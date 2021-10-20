@@ -236,6 +236,8 @@ type ObjectStore interface {
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetOutboundLinksById(id string) ([]string, error)
+	GetInboundLinksById(id string) ([]string, error)
+
 	GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error)
 	GetDetails(id string) (*model.ObjectDetails, error)
 	GetAggregatedOptions(relationKey string, objectType string) (options []*model.RelationOption, err error)
@@ -1124,6 +1126,17 @@ func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*mod
 }
 
 func (m *dsObjectStore) DeleteObject(id string) error {
+	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
+	err := m.UpdateObjectDetails(id, &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyId.String():        pbtypes.String(id),
+			bundle.RelationKeyIsHidden.String():  pbtypes.Bool(true),
+			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
+		},
+	}, &model.Relations{Relations: []*model.Relation{}}, false)
+	if err != nil {
+		return fmt.Errorf("failed to overwrite details and relations: %w", err)
+	}
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
@@ -1132,32 +1145,29 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 
 	// todo: remove all indexes with this object
 	for _, k := range []ds.Key{
-		pagesDetailsBase.ChildString(id),
 		pagesSnippetBase.ChildString(id),
-		pagesRelationsBase.ChildString(id),
 		indexQueueBase.ChildString(id),
+		setRelationsBase.ChildString(id),
+		indexedHeadsState.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
 			return err
 		}
 	}
 
-	inLinks, err := findInboundLinks(txn, id)
+	_, err = removeByPrefix(txn, pagesInboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
 
-	outLinks, err := findOutboundLinks(txn, id)
+	_, err = removeByPrefix(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
 
-	for _, k := range pageLinkKeys(id, inLinks, outLinks) {
-		if err := txn.Delete(k); err != nil {
-			return err
-		}
-	}
 	if m.fts != nil {
+		_ = m.removeFromIndexQueue(id)
+
 		if err := m.fts.Delete(id); err != nil {
 			return err
 		}
@@ -1239,6 +1249,16 @@ func (m *dsObjectStore) GetOutboundLinksById(id string) ([]string, error) {
 	defer txn.Discard()
 
 	return findOutboundLinks(txn, id)
+}
+
+func (m *dsObjectStore) GetInboundLinksById(id string) ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return findInboundLinks(txn, id)
 }
 
 func (m *dsObjectStore) GetWithOutboundLinksInfoById(id string) (*model.ObjectInfoWithOutboundLinks, error) {
@@ -1982,9 +2002,9 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 		// todo: remove null cleanup(should be done when receiving from client)
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			if slice.FindPos(bundle.LocalRelationsKeys, k) > -1 || slice.FindPos(bundle.DerivedRelationsKeys, k) > -1 {
-				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
-			} else {
 				log.Errorf("updateDetails %s: localDetail nulled %s: %s", id, k, pbtypes.Sprint(v))
+			} else {
+				log.Errorf("updateDetails %s: detail nulled %s: %s", id, k, pbtypes.Sprint(v))
 			}
 		}
 	}

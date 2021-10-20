@@ -90,6 +90,7 @@ type service struct {
 
 	fetcher               CafeConfigFetcher
 	workspaceThreadGetter CurrentWorkspaceThreadGetter
+	objectDeleter         ObjectDeleter
 	threadCreateQueue     ThreadCreateQueue
 
 	replicatorAddr ma.Multiaddr
@@ -140,6 +141,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
+	s.objectDeleter = a.MustComponent("blockService").(ObjectDeleter)
 
 	s.device, err = wl.GetDevicePrivkey()
 	if err != nil {
@@ -316,7 +318,7 @@ type Service interface {
 	SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error
 	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
-	DeleteThread(id string) error
+	DeleteThread(id, workspace string) error
 	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
 	GetAllWorkspaces() ([]string, error)
@@ -908,7 +910,7 @@ func (s *service) createThreadWithCollection(
 	return thrd, nil
 }
 
-func (s *service) DeleteThread(id string) error {
+func (s *service) DeleteThread(id, workspace string) error {
 	if s.threadsCollection == nil {
 		return fmt.Errorf("thread collection not initialized: need to call EnsurePredefinedThreads first")
 	}
@@ -923,10 +925,22 @@ func (s *service) DeleteThread(id string) error {
 		return err
 	}
 
-	err = s.threadsCollection.Delete(db.InstanceID(id))
+	var collectionToRemove *threadsDb.Collection
+	if workspace == "" {
+		collectionToRemove = s.threadsCollection
+	} else {
+		processor, err := s.GetThreadProcessorForWorkspace(workspace)
+		if err != nil {
+			return err
+		}
+		collectionToRemove = processor.GetCollectionWithPrefix(ThreadInfoCollectionName)
+		if collectionToRemove == nil {
+			return fmt.Errorf("no workspace collection found")
+		}
+	}
+	err = collectionToRemove.Delete(db.InstanceID(id))
 	if err != nil {
-		// todo: here we can get an error if we didn't yet added thead keys into DB
-		log.With("thread", id).Error("DeleteThread failed to remove thread from collection: %s", err.Error())
+		log.With("workspace", workspace).With("thread", id).Errorf("failed to remove thread from collection")
 	}
 	return nil
 }

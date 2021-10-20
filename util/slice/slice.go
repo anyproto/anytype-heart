@@ -59,6 +59,7 @@ func Insert(s []string, pos int, v ...string) []string {
 	return append(s[:pos], append(v, s[pos:]...)...)
 }
 
+// Remove reuses provided slice capacity. Provided s slice should not be used after without reassigning to the func return!
 func Remove(s []string, v string) []string {
 	var n int
 	for _, x := range s {

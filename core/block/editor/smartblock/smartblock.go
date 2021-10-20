@@ -1535,10 +1535,19 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 			setSource = b.Model().GetDataview().GetSource()
 		}
 	}
-	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
+
+	links := sb.dependentSmartIds(false, false)
+	for _, fileHash := range fileHashes {
+		if slice.FindPos(links, fileHash) == -1 {
+			links = append(links, fileHash)
+		}
+	}
+
+	links = slice.Remove(links, sb.Id())
+
 	return doc.DocInfo{
 		Id:           sb.Id(),
-		Links:        depIds,
+		Links:        links,
 		LogHeads:     sb.source.LogHeads(),
 		FileHashes:   fileHashes,
 		SetRelations: setRelations,
