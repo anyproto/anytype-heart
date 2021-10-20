@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
@@ -116,7 +117,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
-	err = template.ApplyTemplate(p, ctx.State,
+	err = smartblock.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
