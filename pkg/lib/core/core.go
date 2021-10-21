@@ -67,8 +67,11 @@ type Service interface {
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
-	DeleteBlock(blockId string) error
+	DeleteBlock(blockId, workspaceId string) error
 	CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error)
+
+	// FileOffload removes file blocks ercursively, but leave details
+	FileOffload(id string) (bytesRemoved uint64, err error)
 
 	FileByHash(ctx context.Context, hash string) (File, error)
 	FileAdd(ctx context.Context, opts ...files.AddOption) (File, error)
@@ -347,6 +350,7 @@ func (a *Anytype) GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceM
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
+	// todo: probably need to have more reliable way to get the workspace where this object is stored
 	details, err := a.objectStore.GetDetails(objectId)
 	if err != nil {
 		return "", err
@@ -419,7 +423,6 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) (er
 			cancel()
 		}
 	}()
-
 
 	a.predefinedBlockIds, err = a.threadService.EnsurePredefinedThreads(cctx, newAccount)
 	if err != nil {

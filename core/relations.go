@@ -191,7 +191,7 @@ func (mw *Middleware) ObjectTypeRelationRemove(req *pb.RpcObjectTypeRelationRemo
 				relId = addr.CustomRelationURLPrefix + req.RelationKey
 			}
 
-			slice.Remove(list, relId)
+			list = slice.Remove(list, relId)
 			detCopy := pbtypes.CopyStruct(current)
 			detCopy.Fields[bundle.RelationKeyRecommendedRelations.String()] = pbtypes.StringList(list)
 			return detCopy, nil

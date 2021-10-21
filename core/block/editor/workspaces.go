@@ -116,7 +116,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
-	err = template.ApplyTemplate(p, ctx.State,
+	err = smartblock.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,

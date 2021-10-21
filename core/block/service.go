@@ -152,11 +152,12 @@ type Service interface {
 	Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (pb.RpcBlockUndoRedoCounter, error)
 	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (pb.RpcBlockUndoRedoCounter, error)
 
-	SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) error
+	SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error
 	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) error
 	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) error
 
-	DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) error
+	DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) error
+	DeleteObject(id string) error
 
 	GetAggregatedRelations(req pb.RpcBlockDataviewRelationListAvailableRequest) (relations []*model.Relation, err error)
 	DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error
@@ -439,10 +440,16 @@ func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err 
 }
 
 func (s *service) CloseBlock(id string) error {
-	var isDraft bool
+	var (
+		isDraft     bool
+		workspaceId string
+	)
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.BlockClose()
-		isDraft = pbtypes.GetBool(b.NewState().LocalDetails(), bundle.RelationKeyIsDraft.String())
+		s := b.NewState()
+		isDraft = pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String())
+		workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+
 		return nil
 	})
 	if err != nil {
@@ -451,7 +458,7 @@ func (s *service) CloseBlock(id string) error {
 	s.cache.Unlock(id)
 	if isDraft {
 		_, _ = s.cache.Remove(id)
-		if err = s.anytype.DeleteBlock(id); err != nil {
+		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
 			s.sendOnRemoveEvent(id)
@@ -504,7 +511,7 @@ func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string
 }
 
 // SetPagesIsArchived is deprecated
-func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest) (err error) {
+func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -512,7 +519,7 @@ func (s *service) SetPagesIsArchived(req pb.RpcBlockListSetPageIsArchivedRequest
 		}
 
 		anySucceed := false
-		for _, blockId := range req.BlockIds {
+		for _, blockId := range req.ObjectIds {
 			if req.IsArchived {
 				err = archive.AddObject(blockId)
 			} else {
@@ -555,7 +562,7 @@ func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err e
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
 }
 
-func (s *service) DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) (err error) {
+func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err error) {
 	return s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
 		archive, ok := b.(collection.Collection)
 		if !ok {
@@ -563,9 +570,9 @@ func (s *service) DeleteArchivedObjects(req pb.RpcBlockListDeletePageRequest) (e
 		}
 
 		anySucceed := false
-		for _, blockId := range req.BlockIds {
+		for _, blockId := range req.ObjectIds {
 			if exists, _ := archive.HasObject(blockId); exists {
-				if err = s.deleteObject(blockId); err == nil {
+				if err = s.DeleteObject(blockId); err == nil {
 					archive.RemoveObject(blockId)
 					anySucceed = true
 				}
@@ -588,7 +595,7 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 		}
 
 		if exists, _ := archive.HasObject(id); exists {
-			if err = s.deleteObject(id); err == nil {
+			if err = s.DeleteObject(id); err == nil {
 				err = archive.RemoveObject(id)
 				if err != nil {
 					return err
@@ -600,15 +607,62 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
-func (s *service) deleteObject(id string) (err error) {
-	err = s.CloseBlock(id)
+func (s *service) DeleteObject(id string) (err error) {
+	var (
+		fileHashes  []string
+		workspaceId string
+		isFavorite  bool
+	)
+	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		b.BlockClose()
+		st := b.NewState()
+		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
+		workspaceId = pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
+		if isFavorite {
+			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
+		}
+		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
+			return err
+		}
+		return nil
+	})
+
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
-	s.cache.Reset(id)
-	if err = s.anytype.DeleteBlock(id); err != nil {
-		return
+	info := doc.DocInfo{
+		Id:    id,
+		State: state.NewDoc(id, nil).NewState().SetDetails(&types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), bundle.RelationKeyIsHidden.String(): pbtypes.Bool(true)}}),
 	}
+	s.doc.ReportChange(context.TODO(), info)
+	s.cache.Unlock(id)
+	_, _ = s.cache.Remove(id)
+
+	for _, fileHash := range fileHashes {
+		inboundLinks, err := s.Anytype().ObjectStore().GetOutboundLinksById(fileHash)
+		if err != nil {
+			log.Errorf("failed to get inbound links for file %s: %s", fileHash, err.Error())
+			continue
+		}
+		if len(inboundLinks) == 0 {
+			if err = s.Anytype().ObjectStore().DeleteObject(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to delete file from objectstore: %s", err.Error())
+			}
+			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
+			}
+			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
+			}
+			if _, err = s.Anytype().FileOffload(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
+				continue
+			}
+
+		}
+	}
+
 	s.sendOnRemoveEvent(id)
 	return
 }

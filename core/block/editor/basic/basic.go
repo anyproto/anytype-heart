@@ -34,8 +34,6 @@ type Basic interface {
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
-	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
-	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	FeaturedRelationAdd(ctx *state.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
 	ReplaceLink(oldId, newId string) error
@@ -326,40 +324,6 @@ func (bs *basic) getAllDescendants(uniqMap map[string]struct{}, block simple.Blo
 		blocks = bs.getAllDescendants(uniqMap, bs.Pick(cId).Copy(), blocks)
 	}
 	return blocks
-}
-
-func (bs *basic) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) (err error) {
-	s := bs.NewStateCtx(ctx)
-	if err = bs.setAlign(s, align, ids...); err != nil {
-		return
-	}
-	return bs.Apply(s)
-}
-
-func (bs *basic) setAlign(s *state.State, align model.BlockAlign, ids ...string) (err error) {
-	if len(ids) == 0 {
-		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
-		ids = []string{template.TitleBlockId, template.DescriptionBlockId, template.FeaturedRelationsId}
-	}
-	for _, id := range ids {
-		if b := s.Get(id); b != nil {
-			b.Model().Align = align
-		}
-	}
-	return
-}
-
-func (bs *basic) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
-	s := bs.NewStateCtx(ctx)
-	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(layout)))
-	// reset align when layout todo
-	if layout == model.ObjectType_todo {
-		if err = bs.setAlign(s, model.Block_AlignLeft); err != nil {
-			return
-		}
-	}
-	template.InitTemplate(s, template.ByLayout(layout)...)
-	return bs.Apply(s, smartblock.NoRestrictions)
 }
 
 func (bs *basic) FeaturedRelationAdd(ctx *state.Context, relations ...string) (err error) {

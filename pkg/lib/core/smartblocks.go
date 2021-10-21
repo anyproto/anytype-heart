@@ -29,8 +29,8 @@ func (a *Anytype) GetBlockCtx(ctx context.Context, id string) (SmartBlock, error
 	return smartBlock, nil
 }
 
-func (a *Anytype) DeleteBlock(id string) error {
-	err := a.threadService.DeleteThread(id)
+func (a *Anytype) DeleteBlock(id, workspaceId string) error {
+	err := a.threadService.DeleteThread(id, workspaceId)
 	if err != nil {
 		return err
 	}

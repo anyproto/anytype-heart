@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "6c10df20c5a664c7b95323365923ec8ef26d51a802637d6daed123f3035c54f8"
+const TypeChecksum = "ebf03ba8ed7275e88e3b825b6fa58266b1c46ae42a4093d71851c3ead4bfb4b7"
 
 type TypeKey string
 
@@ -317,9 +317,9 @@ var (
 		},
 		TypeKeyNote: {
 
-			Description: "A brief record of points written down as an aid to memory",
-			IconEmoji:   "🗒️",
-			Layout:      model.ObjectType_basic,
+			Description: "Blank canvas with no Title. A brief record of points written down as an aid to memory",
+			IconEmoji:   "⚪",
+			Layout:      model.ObjectType_note,
 			Name:        "Note",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId]},
@@ -340,10 +340,10 @@ var (
 		},
 		TypeKeyPage: {
 
-			Description: "Proto type to start with",
+			Description: "Blank canvas with Title",
 			IconEmoji:   "📄",
 			Layout:      model.ObjectType_basic,
-			Name:        "Draft",
+			Name:        "Page",
 			Readonly:    true,
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},

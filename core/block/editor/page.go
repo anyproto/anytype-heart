@@ -60,7 +60,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 			layout = ot.Layout
 		}
 	}
-	return template.ApplyTemplate(p, ctx.State,
+	return smartblock.ApplyTemplate(p, ctx.State,
 		template.ByLayout(
 			layout,
 			template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),

@@ -11,6 +11,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
@@ -95,6 +96,8 @@ type SmartBlock interface {
 	DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
 	MakeTemplateState() (*state.State, error)
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
+	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
+	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
@@ -881,14 +884,14 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 }
 
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
-	s := sb.NewState()
+	s := sb.NewStateCtx(ctx)
 
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
 	}
-
+	s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
 	// send event here to send updated details to client
-	if err = sb.Apply(s); err != nil {
+	if err = sb.Apply(s, NoRestrictions); err != nil {
 		return
 	}
 
@@ -904,6 +907,46 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 		}})
 	}
 	return
+}
+
+func (sb *smartBlock) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) (err error) {
+	s := sb.NewStateCtx(ctx)
+	if err = sb.setAlign(s, align, ids...); err != nil {
+		return
+	}
+	return sb.Apply(s)
+}
+
+func (sb *smartBlock) setAlign(s *state.State, align model.BlockAlign, ids ...string) (err error) {
+	if len(ids) == 0 {
+		s.SetDetail(bundle.RelationKeyLayoutAlign.String(), pbtypes.Int64(int64(align)))
+		ids = []string{template.TitleBlockId, template.DescriptionBlockId, template.FeaturedRelationsId}
+	}
+	for _, id := range ids {
+		if b := s.Get(id); b != nil {
+			b.Model().Align = align
+		}
+	}
+	return
+}
+
+func (sb *smartBlock) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {
+	s := sb.NewStateCtx(ctx)
+	if err = sb.setLayout(s, layout); err != nil {
+		return
+	}
+	return sb.Apply(s, NoRestrictions)
+}
+
+func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (err error) {
+	s.SetDetail(bundle.RelationKeyLayout.String(), pbtypes.Int64(int64(layout)))
+	// reset align when layout todo
+	if layout == model.ObjectType_todo {
+		if err = sb.setAlign(s, model.Block_AlignLeft); err != nil {
+			return
+		}
+	}
+	return template.InitTemplate(s, template.ByLayout(layout)...)
 }
 
 func (sb *smartBlock) MakeTemplateState() (*state.State, error) {
@@ -939,7 +982,9 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 	if v := pbtypes.Get(s.Details(), bundle.RelationKeyLayout.String()); v == nil || // if layout is not set yet
 		prevType == nil || // if we have no type set for some reason or it is missing
 		float64(prevType.Layout) == v.GetNumberValue() { // or we have a objecttype recommended layout set for this object
-		s.SetDetailAndBundledRelation(bundle.RelationKeyLayout, pbtypes.Float64(float64(ot.Layout)))
+		if err = sb.setLayout(s, ot.Layout); err != nil {
+			return
+		}
 	}
 	return
 }
@@ -1458,10 +1503,19 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 			setSource = b.Model().GetDataview().GetSource()
 		}
 	}
-	depIds := slice.Remove(sb.dependentSmartIds(false, false), sb.Id())
+
+	links := sb.dependentSmartIds(false, false)
+	for _, fileHash := range fileHashes {
+		if slice.FindPos(links, fileHash) == -1 {
+			links = append(links, fileHash)
+		}
+	}
+
+	links = slice.Remove(links, sb.Id())
+
 	return doc.DocInfo{
 		Id:           sb.Id(),
-		Links:        depIds,
+		Links:        links,
 		LogHeads:     sb.source.LogHeads(),
 		FileHashes:   fileHashes,
 		SetRelations: setRelations,
@@ -1493,4 +1547,14 @@ func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
 		events[i] = msgs[i].Msg
 	}
 	return events
+}
+
+func ApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTransformer) (err error) {
+	if s == nil {
+		s = sb.NewState()
+	}
+	if err = template.InitTemplate(s, templates...); err != nil {
+		return
+	}
+	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }

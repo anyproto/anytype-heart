@@ -36,7 +36,7 @@ type ThreadProcessorOptions struct {
 func NewThreadProcessorOptions() *ThreadProcessorOptions {
 	return &ThreadProcessorOptions{
 		actionProcessors: make(map[string]CollectionActionProcessor),
-		collections: make(map[string]interface{}),
+		collections:      make(map[string]interface{}),
 	}
 }
 
@@ -114,7 +114,7 @@ func NewAccountThreadProcessor(s *service, simultaneousRequests int) ThreadProce
 	}
 }
 
-func (t *threadProcessor) Init(id thread.ID, options... ThreadProcessorOption) error {
+func (t *threadProcessor) Init(id thread.ID, options ...ThreadProcessorOption) error {
 	if t.db != nil {
 		return nil
 	}
@@ -203,6 +203,14 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 		}
 	}
 
+	removeThread := func(tid string) {
+		err := t.threadsService.objectDeleter.DeleteObject(tid)
+		if err != nil && err != logstore.ErrThreadNotFound {
+			log.With("thread id", tid).
+				Debugf("failed to delete thread")
+		}
+	}
+
 	processThread := func(tid thread.ID, ti threadInfo) {
 		log.With("thread id", tid.String()).
 			Debugf("trying to process new thread")
@@ -268,9 +276,15 @@ func (t *threadProcessor) Listen(initialThreads map[thread.ID]threadInfo) error 
 				}
 				continue
 			}
-			if action.Type != threadsDb.ActionCreate {
+			if action.Type == threadsDb.ActionDelete {
+				removeThread(action.ID.String())
 				continue
 			}
+			if action.Type != threadsDb.ActionCreate {
+				log.Errorf("failed to process workspace thread db %s(type %d)", action.ID.String(), action.Type)
+				continue
+			}
+
 			instanceBytes, err := t.threadsCollection.FindByID(action.ID)
 			if err != nil {
 				log.Errorf("failed to find thread info for id %s: %v", action.ID.String(), err)

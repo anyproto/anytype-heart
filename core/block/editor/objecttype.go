@@ -128,7 +128,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		})
 	}
 
-	err = template.ApplyTemplate(p, ctx.State,
+	err = smartblock.ApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithEmpty,
 		template.WithTitle,

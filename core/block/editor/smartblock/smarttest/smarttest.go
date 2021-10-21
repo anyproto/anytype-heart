@@ -48,6 +48,14 @@ func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
 	return st.os
 }
 
+func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
+	return nil
+}
+
+func (st *SmartTest) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error {
+	return nil
+}
+
 func (st *SmartTest) SetRestrictions(r restriction.Restrictions) {
 	st.TestRestrictions = r
 }

@@ -25,7 +25,7 @@ func (p *Breadcrumbs) Init(ctx *smartblock.InitContext) (err error) {
 		return
 	}
 	p.SmartBlock.DisableLayouts()
-	return template.ApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoObjectTypes())
+	return smartblock.ApplyTemplate(p, ctx.State, template.WithEmpty, template.WithNoObjectTypes())
 }
 
 func (p *Breadcrumbs) Relations() []*model.Relation {
