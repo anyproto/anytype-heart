@@ -3,7 +3,6 @@ package ocache
 import (
 	"context"
 	"errors"
-	"fmt"
 	"sync"
 	"time"
 
@@ -12,8 +11,9 @@ import (
 )
 
 var (
-	ErrClosed = errors.New("object cache closed")
-	ErrExists = errors.New("object exists")
+	ErrClosed  = errors.New("object cache closed")
+	ErrExists  = errors.New("object exists")
+	ErrTimeout = errors.New("loading object timed out")
 )
 
 var (
@@ -159,7 +159,7 @@ func (c *oCache) Get(ctx context.Context, id string) (value Object, err error) {
 		case <-e.load:
 			return e.value, e.loadErr
 		case <-time.After(duration):
-			return nil, fmt.Errorf("loading object timed out")
+			return nil, ErrTimeout
 		}
 	}
 	<-e.load
