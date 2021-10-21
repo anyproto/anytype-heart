@@ -631,11 +631,6 @@ func (s *service) DeleteObject(id string) (err error) {
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
-	info := doc.DocInfo{
-		Id:    id,
-		State: state.NewDoc(id, nil).NewState().SetDetails(&types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), bundle.RelationKeyIsHidden.String(): pbtypes.Bool(true)}}),
-	}
-	s.doc.ReportChange(context.TODO(), info)
 	s.cache.Unlock(id)
 	_, _ = s.cache.Remove(id)
 
