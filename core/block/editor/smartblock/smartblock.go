@@ -368,7 +368,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
 	}
-	recordsCh := make(chan *types.Struct)
+	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 	sb.depIds = sb.dependentSmartIds(true, true)
 	var records []database.Record
@@ -424,7 +424,6 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 	}
 
 	objectTypes, _ = objectstore.GetObjectTypes(sb.objectStore, uniqueObjTypes)
-
 	go sb.metaListener(recordsCh)
 	return
 }
