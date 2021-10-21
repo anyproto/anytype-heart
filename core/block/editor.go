@@ -933,7 +933,12 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 			return
 		}
 	}
-	s.deleteObject(id)
+	err = s.DeleteObject(id)
+	if err != nil {
+		// intentionally do not return error here
+		log.Errorf("failed to delete object after conversion to set: %s", err.Error())
+	}
+
 	return
 }
 

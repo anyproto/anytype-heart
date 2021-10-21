@@ -42,7 +42,7 @@ const (
 	ForceThreadsObjectsReindexCounter int32 = 1  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 4  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 2  // reindex objects like anytypeProfile
-	ForceIdxRebuildCounter            int32 = 11 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
+	ForceIdxRebuildCounter            int32 = 12 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 2  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
@@ -561,8 +561,8 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	detailsObjectScope := pbtypes.StructCutKeys(details, bundle.LocalRelationsKeys)
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, bundle.LocalRelationsKeys)
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
-		if indexesWereRemoved || curDetails == nil {
-			if err := i.store.CreateObject(id, details, &model.Relations{d.State.ExtraRelations()}, nil, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
+		if indexesWereRemoved || curDetails.GetFields() == nil {
+			if err := i.store.CreateObject(id, details, &model.Relations{d.State.ExtraRelations()}, d.Links, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't create object in the store: %v", err)
 			}
 		} else {
@@ -576,8 +576,16 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 				log.With("thread", id).Errorf("failed to save indexed heads hash: %v", err)
 			}
 		}
-		if curDetails == nil || t == smartblock.SmartBlockTypeFile {
-			// add to fulltext only in case
+
+		var skipFulltext bool
+		if i.store.FTSearch() != nil {
+			// skip fulltext if we already has the object indexed
+			if exists, _ := i.store.FTSearch().Has(id); exists {
+				skipFulltext = true
+			}
+		}
+
+		if !skipFulltext {
 			if err = i.store.AddToIndexQueue(id); err != nil {
 				log.With("thread", id).Errorf("can't add to index: %v", err)
 			}
@@ -704,12 +712,22 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	if err != nil {
 		return
 	}
+	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
+	if err != nil {
+		sbType = smartblock.SmartBlockTypePage
+	}
+	indexDetails, _ := sbType.Indexable()
+	if !indexDetails {
+		return nil
+	}
+
 	if err = i.store.UpdateObjectSnippet(id, info.State.Snippet()); err != nil {
 		return
 	}
 
 	if len(info.FileHashes) > 0 {
-		existingIDs, err := i.store.HasIDs()
+		// todo: move file indexing to the main indexer as we have  the full state there now
+		existingIDs, err := i.store.HasIDs(info.FileHashes...)
 		if err != nil {
 			log.Errorf("failed to get existing file ids : %s", err.Error())
 		}
@@ -729,12 +747,7 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	}
 
 	if len(info.SetRelations) > 1 && len(info.SetSource) == 1 {
-		sbt, err := smartblock.SmartBlockTypeFromID(info.SetSource[0])
-		if err != nil {
-			return err
-		}
-
-		if sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType {
+		if sbType == smartblock.SmartBlockTypeObjectType || sbType == smartblock.SmartBlockTypeBundledObjectType {
 			if err := i.store.UpdateRelationsInSetByObjectType(id, info.SetSource[0], info.Creator, info.SetRelations); err != nil {
 				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
 			}

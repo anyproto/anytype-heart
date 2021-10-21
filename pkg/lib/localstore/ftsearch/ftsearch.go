@@ -31,6 +31,7 @@ type FTSearch interface {
 	app.ComponentRunnable
 	Index(d SearchDoc) (err error)
 	Search(query string) (results []string, err error)
+	Has(id string) (exists bool, err error)
 	Delete(id string) error
 	DocCount() (uint64, error)
 }
@@ -111,6 +112,14 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 		results = append(results, r.ID)
 	}
 	return
+}
+
+func (f *ftSearch) Has(id string) (exists bool, err error) {
+	d, err := f.index.Document(id)
+	if err != nil {
+		return false, err
+	}
+	return d != nil, nil
 }
 
 func (f *ftSearch) Delete(id string) (err error) {

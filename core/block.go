@@ -523,9 +523,9 @@ func (mw *Middleware) BlockSetRestrictions(req *pb.RpcBlockSetRestrictionsReques
 	return response(pb.RpcBlockSetRestrictionsResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockListDeletePage(req *pb.RpcBlockListDeletePageRequest) *pb.RpcBlockListDeletePageResponse {
-	response := func(code pb.RpcBlockListDeletePageResponseErrorCode, err error) *pb.RpcBlockListDeletePageResponse {
-		m := &pb.RpcBlockListDeletePageResponse{Error: &pb.RpcBlockListDeletePageResponseError{Code: code}}
+func (mw *Middleware) ObjectListDelete(req *pb.RpcObjectListDeleteRequest) *pb.RpcObjectListDeleteResponse {
+	response := func(code pb.RpcObjectListDeleteResponseErrorCode, err error) *pb.RpcObjectListDeleteResponse {
+		m := &pb.RpcObjectListDeleteResponse{Error: &pb.RpcObjectListDeleteResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -535,14 +535,14 @@ func (mw *Middleware) BlockListDeletePage(req *pb.RpcBlockListDeletePageRequest)
 		return bs.DeleteArchivedObjects(*req)
 	})
 	if err != nil {
-		return response(pb.RpcBlockListDeletePageResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectListDeleteResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockListDeletePageResponseError_NULL, nil)
+	return response(pb.RpcObjectListDeleteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockListSetPageIsArchived(req *pb.RpcBlockListSetPageIsArchivedRequest) *pb.RpcBlockListSetPageIsArchivedResponse {
-	response := func(code pb.RpcBlockListSetPageIsArchivedResponseErrorCode, err error) *pb.RpcBlockListSetPageIsArchivedResponse {
-		m := &pb.RpcBlockListSetPageIsArchivedResponse{Error: &pb.RpcBlockListSetPageIsArchivedResponseError{Code: code}}
+func (mw *Middleware) ObjectListSetIsArchived(req *pb.RpcObjectListSetIsArchivedRequest) *pb.RpcObjectListSetIsArchivedResponse {
+	response := func(code pb.RpcObjectListSetIsArchivedResponseErrorCode, err error) *pb.RpcObjectListSetIsArchivedResponse {
+		m := &pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -552,9 +552,9 @@ func (mw *Middleware) BlockListSetPageIsArchived(req *pb.RpcBlockListSetPageIsAr
 		return bs.SetPagesIsArchived(*req)
 	})
 	if err != nil {
-		return response(pb.RpcBlockListSetPageIsArchivedResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockListSetPageIsArchivedResponseError_NULL, nil)
+	return response(pb.RpcObjectListSetIsArchivedResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {

@@ -247,3 +247,7 @@ func (i *liteNet) BlockStore() blockstore.Blockstore {
 func (i *liteNet) HasBlock(c cid.Cid) (bool, error) {
 	return i.Peer.HasBlock(c)
 }
+
+func (i *liteNet) Remove(ctx context.Context, c cid.Cid) error {
+	return i.Peer.Remove(ctx, c)
+}

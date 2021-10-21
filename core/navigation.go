@@ -77,7 +77,7 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetO
 	filter := func(Objects []*model.ObjectInfo) []*model.ObjectInfo {
 		var filtered []*model.ObjectInfo
 		for _, page := range Objects {
-			if page.ObjectType == model.SmartBlockType_Set || page.ObjectType == model.SmartBlockType_Archive {
+			if page.ObjectType == model.SmartBlockType_Set || page.ObjectType == model.SmartBlockType_Archive || page.ObjectType == model.SmartBlockType_File {
 				continue
 			}
 
