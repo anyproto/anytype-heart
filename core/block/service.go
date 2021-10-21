@@ -76,6 +76,7 @@ func init() {
 
 type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
+	DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error
 
 	OpenBlock(ctx *state.Context, id string) error
 	ShowBlock(ctx *state.Context, id string) error
@@ -852,8 +853,8 @@ func (s *service) Close() error {
 }
 
 // pickBlock returns opened smartBlock or opens smartBlock in silent mode
-func (s *service) pickBlock(id string) (sb smartblock.SmartBlock, release func(), err error) {
-	ob, err := s.getSmartblock(context.TODO(), id)
+func (s *service) pickBlock(ctx context.Context, id string) (sb smartblock.SmartBlock, release func(), err error) {
+	ob, err := s.getSmartblock(ctx, id)
 	if err != nil {
 		return
 	}
@@ -935,7 +936,7 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 }
 
 func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -949,7 +950,7 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 }
 
 func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -963,7 +964,7 @@ func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) 
 }
 
 func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -977,7 +978,7 @@ func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 }
 
 func (s *service) DoText(id string, apply func(b stext.Text) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -991,7 +992,7 @@ func (s *service) DoText(id string, apply func(b stext.Text) error) error {
 }
 
 func (s *service) DoFile(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -1005,7 +1006,7 @@ func (s *service) DoFile(id string, apply func(b file.File) error) error {
 }
 
 func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -1019,7 +1020,7 @@ func (s *service) DoBookmark(id string, apply func(b bookmark.Bookmark) error) e
 }
 
 func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -1031,7 +1032,7 @@ func (s *service) DoFileNonLock(id string, apply func(b file.File) error) error 
 }
 
 func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -1045,7 +1046,7 @@ func (s *service) DoHistory(id string, apply func(b basic.IHistory) error) error
 }
 
 func (s *service) DoImport(id string, apply func(b _import.Import) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -1060,7 +1061,7 @@ func (s *service) DoImport(id string, apply func(b _import.Import) error) error 
 }
 
 func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
 	}
@@ -1074,7 +1075,18 @@ func (s *service) DoDataview(id string, apply func(b dataview.Dataview) error) e
 }
 
 func (s *service) Do(id string, apply func(b smartblock.SmartBlock) error) error {
-	sb, release, err := s.pickBlock(id)
+	sb, release, err := s.pickBlock(context.TODO(), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	sb.Lock()
+	defer sb.Unlock()
+	return apply(sb)
+}
+
+func (s *service) DoWithContext(ctx context.Context, id string, apply func(b smartblock.SmartBlock) error) error {
+	sb, release, err := s.pickBlock(ctx, id)
 	if err != nil {
 		return err
 	}

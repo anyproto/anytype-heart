@@ -11,14 +11,19 @@ import (
 )
 
 var (
-	ErrClosed = errors.New("object cache closed")
-	ErrExists = errors.New("object exists")
+	ErrClosed  = errors.New("object cache closed")
+	ErrExists  = errors.New("object exists")
+	ErrTimeout = errors.New("loading object timed out")
 )
 
 var (
 	defaultTTL = time.Minute
 	defaultGC  = 20 * time.Second
 )
+
+type key int
+
+const CacheTimeout key = 0
 
 var log = logging.Logger("anytype-mw-ocache")
 
@@ -139,8 +144,23 @@ func (c *oCache) Get(ctx context.Context, id string) (value Object, err error) {
 	e.refCount++
 	c.mu.Unlock()
 
+	timeout := ctx.Value(CacheTimeout)
 	if load {
-		c.load(ctx, id, e)
+		if timeout != nil {
+			go c.load(ctx, id, e)
+		} else {
+			c.load(ctx, id, e)
+		}
+	}
+
+	if timeout != nil {
+		duration := timeout.(time.Duration)
+		select {
+		case <-e.load:
+			return e.value, e.loadErr
+		case <-time.After(duration):
+			return nil, ErrTimeout
+		}
 	}
 	<-e.load
 	return e.value, e.loadErr

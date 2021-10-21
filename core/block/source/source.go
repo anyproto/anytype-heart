@@ -164,14 +164,21 @@ func (s *source) ReadDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 
 func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Doc, err error) {
 	var ch chan core.SmartblockRecordEnvelope
+	batch := mb.New(0)
 	if receiver != nil {
 		s.receiver = receiver
 		ch = make(chan core.SmartblockRecordEnvelope)
 		if s.unsubscribe, err = s.sb.SubscribeForRecords(ch); err != nil {
 			return
 		}
+		go func() {
+			for rec := range ch {
+				batch.Add(rec)
+			}
+		}()
 		defer func() {
 			if err != nil {
+				batch.Close()
 				s.unsubscribe()
 				s.unsubscribe = nil
 			}
@@ -202,7 +209,7 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 
 	if s.unsubscribe != nil {
 		s.closed = make(chan struct{})
-		go s.changeListener(ch)
+		go s.changeListener(batch)
 	}
 	return
 }
@@ -385,8 +392,7 @@ func (s *source) needSnapshot() bool {
 	return rand.Intn(500) == 42
 }
 
-func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
-	batch := mb.New(0)
+func (s *source) changeListener(batch *mb.MB) {
 	defer batch.Close()
 	go func() {
 		defer close(s.closed)
@@ -416,9 +422,6 @@ func (s *source) changeListener(recordsCh chan core.SmartblockRecordEnvelope) {
 			time.Sleep(100 * time.Millisecond)
 		}
 	}()
-	for r := range recordsCh {
-		batch.Add(r)
-	}
 }
 
 func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
