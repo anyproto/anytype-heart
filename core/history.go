@@ -20,6 +20,7 @@ func (mw *Middleware) HistoryShow(req *pb.RpcHistoryShowRequest) *pb.RpcHistoryS
 		} else {
 			res.ObjectShow = show
 			res.Version = ver
+			res.TraceId = req.TraceId
 		}
 		return res
 	}
