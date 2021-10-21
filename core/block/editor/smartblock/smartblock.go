@@ -378,25 +378,31 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 
 	var uniqueObjTypes []string
 
-	details = make([]*pb.EventObjectDetailsSet, 0, len(records))
-	for _, rec := range records {
-		details = append(details, &pb.EventObjectDetailsSet{
-			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
-			Details: rec.Details,
-		})
+	var addObjectTypesByDetails = func(det *types.Struct) {
 		for _, key := range []string{bundle.RelationKeyType.String(), bundle.RelationKeyTargetObjectType.String()} {
-			ot := pbtypes.GetString(rec.Details, key)
+			ot := pbtypes.GetString(det, key)
 			if ot != "" && slice.FindPos(uniqueObjTypes, ot) == -1 {
 				uniqueObjTypes = append(uniqueObjTypes, ot)
 			}
 		}
 	}
 
+	details = make([]*pb.EventObjectDetailsSet, 0, len(records)+1)
+
 	// add self details
 	details = append(details, &pb.EventObjectDetailsSet{
 		Id:      sb.Id(),
 		Details: sb.CombinedDetails(),
 	})
+	addObjectTypesByDetails(sb.CombinedDetails())
+
+	for _, rec := range records {
+		details = append(details, &pb.EventObjectDetailsSet{
+			Id:      pbtypes.GetString(rec.Details, bundle.RelationKeyId.String()),
+			Details: rec.Details,
+		})
+		addObjectTypesByDetails(rec.Details)
+	}
 
 	if sb.Type() == model.SmartBlockType_Set {
 		// add the object type from the dataview source
