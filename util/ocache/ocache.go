@@ -21,7 +21,9 @@ var (
 	defaultGC  = 20 * time.Second
 )
 
-type CacheTimeoutKey struct{}
+type key int
+
+const CacheTimeout key = 0
 
 var log = logging.Logger("anytype-mw-ocache")
 
@@ -142,7 +144,7 @@ func (c *oCache) Get(ctx context.Context, id string) (value Object, err error) {
 	e.refCount++
 	c.mu.Unlock()
 
-	timeout := ctx.Value(CacheTimeoutKey{})
+	timeout := ctx.Value(CacheTimeout)
 	if load {
 		if timeout != nil {
 			go c.load(ctx, id, e)

@@ -263,7 +263,7 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 			if id == i.anytype.PredefinedBlocks().Account {
 				continue
 			}
-			ctx := context.WithValue(context.Background(), ocache.CacheTimeoutKey{}, cacheTimeout)
+			ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 			d, err := i.doc.GetDocInfo(ctx, id)
 			if err != nil {
 				log.Errorf("reindexDoc failed to open %s: %s", id, err.Error())
@@ -332,7 +332,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	}
 
 	// for all ids except home and archive setting cache timeout for reindexing
-	ctx = context.WithValue(ctx, ocache.CacheTimeoutKey{}, cacheTimeout)
+	ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if reindex&reindexThreadObjects != 0 {
 		ids, err := getIdsForTypes(
 			smartblock.SmartBlockTypePage,
@@ -712,7 +712,7 @@ func (i *indexer) ftIndex() {
 
 func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	st := time.Now()
-	ctx := context.WithValue(context.Background(), ocache.CacheTimeoutKey{}, cacheTimeout)
+	ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 
 	info, err := i.doc.GetDocInfo(ctx, id)
 	if err != nil {
