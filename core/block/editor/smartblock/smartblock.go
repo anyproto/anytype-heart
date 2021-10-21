@@ -392,6 +392,12 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 		}
 	}
 
+	// add self details
+	details = append(details, &pb.EventObjectDetailsSet{
+		Id:      sb.Id(),
+		Details: sb.CombinedDetails(),
+	})
+
 	if sb.Type() == model.SmartBlockType_Set {
 		// add the object type from the dataview source
 		if b := sb.Doc.Pick("dataview"); b != nil {
@@ -485,7 +491,6 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 
 func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
-	ids = append(ids, sb.Id())
 
 	if sb.Type() != model.SmartBlockType_Breadcrumbs {
 		if includeObjTypes {
