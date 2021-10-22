@@ -2,10 +2,12 @@ package editor
 
 import (
 	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	database2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
@@ -15,14 +17,16 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
-func NewWorkspace(dbCtrl database.Ctrl) *Workspaces {
+func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
-		Set: NewSet(dbCtrl),
+		Set:             NewSet(dbCtrl),
+		DetailsModifier: dmservice,
 	}
 }
 
 type Workspaces struct {
 	*Set
+	DetailsModifier DetailsModifier
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
@@ -116,6 +120,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
+	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
 	err = smartblock.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
@@ -129,4 +134,95 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return p.Set.SetNewRecordDefaultFields("dataview", defaultValue)
+}
+
+func (p *Workspaces) updateObjects() {
+	st := p.NewState()
+
+	records, _, err := p.ObjectStore().Query(nil, database2.Query{
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				RelationKey: bundle.RelationKeyWorkspaceId.String(),
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				Value:       pbtypes.String(p.Id()),
+			},
+		},
+	})
+	if err != nil {
+		log.Errorf("archive: can't get store archived ids: %v", err)
+		return
+	}
+	var storeObjectInWorkspace = make(map[string]bool, len(records))
+	for _, rec := range records {
+		var isHighlighted bool
+		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHighlighted.String()) {
+			isHighlighted = true
+		}
+		storeObjectInWorkspace[bundle.RelationKeyId.String()] = isHighlighted
+	}
+
+	var objectInWorkspace map[string]bool
+	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
+	if workspaceCollection != nil {
+		objectInWorkspace = make(map[string]bool, len(workspaceCollection))
+		for objId, workspaceId := range workspaceCollection {
+			if workspaceId == nil {
+				continue
+			}
+			if v, ok := workspaceId.(string); ok && v == p.Id() {
+				objectInWorkspace[objId] = false
+			}
+		}
+	}
+
+	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
+	if highlightedCollection != nil {
+		for objId, isHighlighted := range highlightedCollection {
+			if isHighlighted == nil {
+				continue
+			}
+			if v, ok := isHighlighted.(bool); ok && v {
+				objectInWorkspace[objId] = true
+			}
+		}
+	}
+	for id, isHighlighted := range objectInWorkspace {
+		if wasHighlighted, exists := storeObjectInWorkspace[id]; exists && isHighlighted == wasHighlighted {
+			continue
+		}
+
+		if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if current == nil || current.Fields == nil {
+				current = &types.Struct{
+					Fields: map[string]*types.Value{},
+				}
+			}
+			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(p.Id())
+			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(isHighlighted)
+
+			return current, nil
+		}); err != nil {
+			log.Errorf("workspace: can't set detail to object: %v", err)
+		}
+	}
+
+	for id, _ := range storeObjectInWorkspace {
+		if _, removed := objectInWorkspace[id]; !removed {
+			continue
+		}
+
+		if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if current == nil || current.Fields == nil {
+				current = &types.Struct{
+					Fields: map[string]*types.Value{},
+				}
+			}
+			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.Null()
+			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Null()
+			return current, nil
+		}); err != nil {
+			log.Errorf("workspace: can't set detail to object: %v", err)
+		}
+	}
+
 }
