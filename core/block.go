@@ -116,7 +116,7 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 }
 
 func (mw *Middleware) BlockShow(req *pb.RpcBlockShowRequest) *pb.RpcBlockShowResponse {
-	ctx := state.NewContext(nil)
+	ctx := state.NewContextTrace(req.TraceId, nil)
 	response := func(code pb.RpcBlockShowResponseErrorCode, err error) *pb.RpcBlockShowResponse {
 		m := &pb.RpcBlockShowResponse{Error: &pb.RpcBlockShowResponseError{Code: code}}
 		if err != nil {
@@ -172,7 +172,7 @@ func (mw *Middleware) BlockGetPublicWebURL(req *pb.RpcBlockGetPublicWebURLReques
 }
 
 func (mw *Middleware) BlockOpenBreadcrumbs(req *pb.RpcBlockOpenBreadcrumbsRequest) *pb.RpcBlockOpenBreadcrumbsResponse {
-	ctx := state.NewContext(nil)
+	ctx := state.NewContextTrace(req.TraceId, nil)
 	response := func(code pb.RpcBlockOpenBreadcrumbsResponseErrorCode, id string, err error) *pb.RpcBlockOpenBreadcrumbsResponse {
 		m := &pb.RpcBlockOpenBreadcrumbsResponse{Error: &pb.RpcBlockOpenBreadcrumbsResponseError{Code: code}, BlockId: id}
 		if err != nil {
