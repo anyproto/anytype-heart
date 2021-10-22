@@ -89,29 +89,33 @@ func (p *Dashboard) updateObjects() {
 
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeFavoritedIds, favoritedIds)
 	for _, removedId := range removedIds {
-		if err := p.DetailsModifier.ModifyDetails(removedId, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil || current.Fields == nil {
-				current = &types.Struct{
-					Fields: map[string]*types.Value{},
+		go func(id string) {
+			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+				if current == nil || current.Fields == nil {
+					current = &types.Struct{
+						Fields: map[string]*types.Value{},
+					}
 				}
+				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
+				return current, nil
+			}); err != nil {
+				log.Errorf("favorite: can't set detail to object: %v", err)
 			}
-			current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(false)
-			return current, nil
-		}); err != nil {
-			log.Errorf("favorite: can't set detail to object: %v", err)
-		}
+		}(removedId)
 	}
 	for _, addedId := range addedIds {
-		if err := p.DetailsModifier.ModifyDetails(addedId, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil || current.Fields == nil {
-				current = &types.Struct{
-					Fields: map[string]*types.Value{},
+		go func(id string) {
+			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+				if current == nil || current.Fields == nil {
+					current = &types.Struct{
+						Fields: map[string]*types.Value{},
+					}
 				}
+				current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
+				return current, nil
+			}); err != nil {
+				log.Errorf("favorite: can't set detail to object: %v", err)
 			}
-			current.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(true)
-			return current, nil
-		}); err != nil {
-			log.Errorf("favorite: can't set detail to object: %v", err)
-		}
+		}(addedId)
 	}
 }
