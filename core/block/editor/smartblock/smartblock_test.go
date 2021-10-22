@@ -15,6 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock/mockSource"
+	"github.com/gogo/protobuf/types"
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -88,6 +89,7 @@ type fixture struct {
 	ctrl     *gomock.Controller
 	source   *mockSource.MockSource
 	snapshot *testMock.MockSmartBlockSnapshot
+	store    *testMock.MockObjectStore
 	SmartBlock
 }
 
@@ -97,11 +99,12 @@ func newFixture(t *testing.T) *fixture {
 	source.EXPECT().Type().AnyTimes().Return(model.SmartBlockType_Page)
 	source.EXPECT().Anytype().AnyTimes().Return(nil)
 	source.EXPECT().Virtual().AnyTimes().Return(false)
-
+	store := testMock.NewMockObjectStore(ctrl)
 	return &fixture{
 		SmartBlock: New(),
 		t:          t,
 		ctrl:       ctrl,
+		store:      store,
 		source:     source,
 	}
 }
@@ -119,6 +122,9 @@ func (fx *fixture) init(blocks []*model.Block) {
 	doc := state.NewDoc(id, bm)
 	fx.source.EXPECT().ReadDoc(gomock.Any(), false).Return(doc, nil)
 	fx.source.EXPECT().Id().Return(id).AnyTimes()
-	err := fx.Init(&InitContext{Source: fx.source, Restriction: restriction.New()})
+	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
+		Details: &types.Struct{Fields: map[string]*types.Value{}},
+	}, nil)
+	err := fx.Init(&InitContext{Source: fx.source, Restriction: restriction.New(), ObjectStore: fx.store})
 	require.NoError(fx.t, err)
 }

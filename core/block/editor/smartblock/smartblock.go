@@ -837,6 +837,9 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.R
 }
 
 func (sb *smartBlock) injectLocalDetails(s *state.State) error {
+	if sb.objectStore == nil {
+		return nil
+	}
 	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
 	if err != nil {
 		return err
