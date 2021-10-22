@@ -54,6 +54,7 @@ type Hook int
 
 const (
 	HookOnNewState Hook = iota
+	HookAfterApply
 	HookOnClose
 	HookOnBlockClose
 )
@@ -143,10 +144,14 @@ type smartBlock struct {
 	restrictions   restriction.Restrictions
 	objectStore    objectstore.ObjectStore
 
-	disableLayouts    bool
-	onNewStateHooks   []func()
-	onCloseHooks      []func()
-	onBlockCloseHooks []func()
+	disableLayouts bool
+
+	hooks struct {
+		onNewState   []func()
+		afterApply   []func()
+		onClose      []func()
+		onBlockClose []func()
+	}
 
 	recordsSub      database.Subscription
 	closeRecordsSub func()
@@ -209,7 +214,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 			continue
 		}
 
-		opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, ctx.State.ObjectType())
+		opts, err := sb.objectStore.GetAggregatedOptions(rel.Key, ctx.State.ObjectType())
 		if err != nil {
 			log.Errorf("GetAggregatedOptions error: %s", err.Error())
 		} else {
@@ -644,6 +649,8 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
+
+	sb.execHooks(HookAfterApply)
 	return
 }
 
@@ -1355,11 +1362,13 @@ func (sb *smartBlock) AddHook(f func(), events ...Hook) {
 	for _, e := range events {
 		switch e {
 		case HookOnClose:
-			sb.onCloseHooks = append(sb.onCloseHooks, f)
+			sb.hooks.onClose = append(sb.hooks.onClose, f)
 		case HookOnNewState:
-			sb.onNewStateHooks = append(sb.onNewStateHooks, f)
+			sb.hooks.onNewState = append(sb.hooks.onNewState, f)
 		case HookOnBlockClose:
-			sb.onBlockCloseHooks = append(sb.onBlockCloseHooks, f)
+			sb.hooks.onBlockClose = append(sb.hooks.onClose, f)
+		case HookAfterApply:
+			sb.hooks.afterApply = append(sb.hooks.afterApply, f)
 		}
 	}
 }
@@ -1484,11 +1493,13 @@ func (sb *smartBlock) execHooks(event Hook) {
 	var hooks []func()
 	switch event {
 	case HookOnNewState:
-		hooks = sb.onNewStateHooks
+		hooks = sb.hooks.onNewState
 	case HookOnClose:
-		hooks = sb.onCloseHooks
+		hooks = sb.hooks.onClose
 	case HookOnBlockClose:
-		hooks = sb.onBlockCloseHooks
+		hooks = sb.hooks.onBlockClose
+	case HookAfterApply:
+		hooks = sb.hooks.afterApply
 	}
 	for _, h := range hooks {
 		if h != nil {
