@@ -6,8 +6,13 @@ func NewContext(se func(e *pb.Event)) *Context {
 	return &Context{sendEvent: se}
 }
 
+func NewContextTrace(traceId string, se func(e *pb.Event)) *Context {
+	return &Context{sendEvent: se, traceId: traceId}
+}
+
 type Context struct {
 	smartBlockId string
+	traceId      string
 	messages     []*pb.EventMessage
 	sendEvent    func(e *pb.Event)
 }
@@ -44,5 +49,6 @@ func (ctx *Context) GetResponseEvent() *pb.ResponseEvent {
 	return &pb.ResponseEvent{
 		Messages:  ctx.messages,
 		ContextId: ctx.smartBlockId,
+		TraceId:   ctx.traceId,
 	}
 }
