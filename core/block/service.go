@@ -873,7 +873,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
 		sb = editor.NewPage(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Archive:
-		sb = editor.NewArchive()
+		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
 		sb = editor.NewDashboard(s)
 	case model.SmartBlockType_Set:
