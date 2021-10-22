@@ -54,7 +54,7 @@ type Hook int
 
 const (
 	HookOnNewState Hook = iota
-	HookAfterApply
+	HookAfterApply      // runs after changes applied from the user or externally via changeListener
 	HookOnClose
 	HookOnBlockClose
 )
@@ -1242,6 +1242,8 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		sb.CheckSubscriptions()
 	}
 	sb.reportChange(s)
+	sb.execHooks(HookAfterApply)
+
 	return nil
 }
 
@@ -1263,6 +1265,8 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys()
 	sb.CheckSubscriptions()
 	sb.reportChange(sb.Doc.(*state.State))
+	sb.execHooks(HookAfterApply)
+
 	return nil
 }
 
