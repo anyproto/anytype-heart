@@ -368,9 +368,7 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return nil, fmt.Errorf("no smarblock in builder")
 	}
 	st := time.Now()
-	ctx, cancel := context.WithTimeout(context.Background(), changeLoadTimeout)
-	defer cancel()
-	sr, err := sb.smartblock.GetRecord(ctx, id)
+	sr, err := sb.smartblock.GetRecord(context.Background(), id)
 	if err != nil {
 		return
 	}
@@ -401,7 +399,7 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 				filtered = append(filtered, bue)
 			}
 			if len(filtered) != len(bu.Events) {
-				sb.duplicateEvents += len(bu.Events)-len(filtered)
+				sb.duplicateEvents += len(bu.Events) - len(filtered)
 				bu.Events = filtered
 				runtime.GC()
 			}
