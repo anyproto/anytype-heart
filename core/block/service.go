@@ -875,7 +875,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard(s)
+		sb = editor.NewDashboard(s, s)
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet(s)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
@@ -901,7 +901,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspace(s)
+		sb = editor.NewWorkspace(s, s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
