@@ -1208,10 +1208,6 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 		return
 	}
 	ob = val.(*openedBlock)
-	ob.Lock()
-	// we should avoid this to be done in getSmartblock after metaSub refactor
-	err = ob.RefreshLocalDetails(nil)
-	ob.Unlock()
 	if err != nil {
 		return nil, err
 	}

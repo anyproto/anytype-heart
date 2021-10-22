@@ -87,7 +87,6 @@ type SmartBlock interface {
 	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
 	HasRelation(relationKey string) bool
 	AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
-	RefreshLocalDetails(ctx *state.Context) (err error)
 
 	UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error)
 	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
@@ -232,6 +231,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	}
 
 	if err = sb.normalizeRelations(ctx.State); err != nil {
+		return
+	}
+
+	if err = sb.injectLocalDetails(ctx.State); err != nil {
 		return
 	}
 	return
@@ -826,9 +829,8 @@ func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.R
 	return
 }
 
-func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
-	s := sb.NewStateCtx(ctx)
-	storedDetails, err := sb.Anytype().ObjectStore().GetDetails(sb.Id())
+func (sb *smartBlock) injectLocalDetails(s *state.State) error {
+	storedDetails, err := sb.objectStore.GetDetails(sb.Id())
 	if err != nil {
 		return err
 	}
@@ -840,7 +842,7 @@ func (sb *smartBlock) RefreshLocalDetails(ctx *state.Context) error {
 	}
 
 	source.InjectLocalDetails(s, storedLocalScopeDetails)
-	return sb.Apply(s, NoHistory)
+	return nil
 }
 
 func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
