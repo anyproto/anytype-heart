@@ -72,7 +72,12 @@ func (p *Archive) updateObjects() {
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
 	for _, removedId := range removedIds {
 		if err := p.DetailsModifier.ModifyDetails(removedId, func(current *types.Struct) (*types.Struct, error) {
-			pbtypes.Delete(current, bundle.RelationKeyIsArchived.String())
+			if current == nil || current.Fields == nil {
+				current = &types.Struct{
+					Fields: map[string]*types.Value{},
+				}
+			}
+			current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(false)
 			return current, nil
 		}); err != nil {
 			log.Errorf("archive: can't set detail to object: %v", err)
