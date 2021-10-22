@@ -919,6 +919,18 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	defer txn.Discard()
 
 	for _, id := range ids {
+		if sbt, err := smartblock.SmartBlockTypeFromID(id); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
+				details, err := m.sourceService.GetDetailsFromIdBasedSource(id)
+				if err != nil {
+					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
+					continue
+				}
+				details.Fields[database.RecordIDField] = pb.ToValue(id)
+				records = append(records, database.Record{Details: details})
+				continue
+			}
+		}
 		v, err := txn.Get(pagesDetailsBase.ChildString(id))
 		if err != nil {
 			log.Errorf("QueryByIds failed to find id: %s", id)
