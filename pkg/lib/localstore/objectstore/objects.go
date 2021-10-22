@@ -184,20 +184,12 @@ func New() ObjectStore {
 	return &dsObjectStore{}
 }
 
-type DetailInjector interface {
-	SetLocalDetails(id string, st *types.Struct)
-}
-
 type SourceIdEncodedDetails interface {
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
 
 func (ls *dsObjectStore) Init(a *app.App) (err error) {
 	ls.dsIface = a.MustComponent(datastore.CName).(datastore.Datastore)
-	meta := a.Component("meta")
-	if meta != nil {
-		ls.meta = meta.(DetailInjector)
-	}
 	s := a.Component("source")
 	if s != nil {
 		ls.sourceService = a.MustComponent("source").(SourceIdEncodedDetails)
@@ -225,7 +217,6 @@ type ObjectStore interface {
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
-	InjectObjectDetails(id string, details *types.Struct) (mergedDetails *types.Struct, err error)
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
 
@@ -330,8 +321,6 @@ type dsObjectStore struct {
 	ds            ds.TxnDatastore
 	dsIface       datastore.Datastore
 	sourceService SourceIdEncodedDetails
-
-	meta DetailInjector // TODO: remove after we will migrate to the objectStore subscriptions
 
 	fts ftsearch.FTSearch
 
@@ -929,6 +918,18 @@ func (m *dsObjectStore) QueryById(ids []string) (records []database.Record, err 
 	defer txn.Discard()
 
 	for _, id := range ids {
+		if sbt, err := smartblock.SmartBlockTypeFromID(id); err == nil {
+			if indexDetails, _ := sbt.Indexable(); !indexDetails && m.sourceService != nil {
+				details, err := m.sourceService.GetDetailsFromIdBasedSource(id)
+				if err != nil {
+					log.Errorf("QueryByIds failed to GetDetailsFromIdBasedSource id: %s", id)
+					continue
+				}
+				details.Fields[database.RecordIDField] = pb.ToValue(id)
+				records = append(records, database.Record{Details: details})
+				continue
+			}
+		}
 		v, err := txn.Get(pagesDetailsBase.ChildString(id))
 		if err != nil {
 			log.Errorf("QueryByIds failed to find id: %s", id)
@@ -1451,51 +1452,6 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 	return nil
 }
 
-func (m *dsObjectStore) InjectObjectDetails(id string, details *types.Struct) (mergedDetails *types.Struct, err error) {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	mergedDetails, err = m.injectObjectDetails(txn, id, details)
-	if err != nil {
-		return mergedDetails, err
-	}
-
-	err = txn.Commit()
-	if err != nil {
-		return mergedDetails, err
-	}
-
-	return mergedDetails, nil
-}
-
-func (m *dsObjectStore) injectObjectDetails(txn ds.Txn, id string, details *types.Struct) (mergedDetails *types.Struct, err error) {
-	detailsBefore, err := getObjectDetails(txn, id)
-	if err != nil {
-		return nil, err
-	}
-
-	if details == nil {
-		return detailsBefore.GetDetails(), nil
-	}
-
-	mergedDetails = pbtypes.CopyStruct(detailsBefore.GetDetails())
-	for k, v := range details.Fields {
-		mergedDetails.Fields[k] = v
-	}
-
-	err = m.updateDetails(txn, id, detailsBefore, &model.ObjectDetails{Details: mergedDetails})
-	if err != nil {
-		return mergedDetails, err
-	}
-
-	return mergedDetails, nil
-}
-
 // GetLastIndexedHeadsHash return empty hash without error if record was not found
 func (m *dsObjectStore) GetLastIndexedHeadsHash(id string) (headsHash string, err error) {
 	txn, err := m.ds.NewTransaction(true)
@@ -1563,58 +1519,8 @@ func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) updateLinksBasedLocalRelation(txn ds.Txn, key bundle.RelationKey, exLinks, links []string) error {
-	removedLinks, addedLinks := slice.DifferenceRemovedAdded(exLinks, links)
-
-	setDetail := func(id string, val bool) error {
-		merged, err := m.injectObjectDetails(txn, id, &types.Struct{Fields: map[string]*types.Value{key.String(): pbtypes.Bool(val)}})
-		if err != nil {
-			return err
-		}
-
-		// inject localDetails into the meta pubsub
-		m.meta.SetLocalDetails(id, merged)
-
-		return nil
-	}
-
-	var err error
-	for _, objId := range removedLinks {
-		err = setDetail(objId, false)
-		if err != nil {
-			return fmt.Errorf("failed to setDetail: %s", err.Error())
-		}
-	}
-
-	for _, objId := range addedLinks {
-		err = setDetail(objId, true)
-		if err != nil {
-			return fmt.Errorf("failed to setDetail: %s", err.Error())
-		}
-	}
-
-	return nil
-}
-
 func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string) error {
-	sbt, err := smartblock.SmartBlockTypeFromID(id)
-	if err != nil {
-		return fmt.Errorf("failed to extract smartblock type: %w", err)
-	}
-
 	exLinks, _ := findOutboundLinks(txn, id)
-	if sbt == smartblock.SmartBlockTypeArchive {
-		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsArchived, exLinks, links)
-		if err != nil {
-			return err
-		}
-	} else if sbt == smartblock.SmartBlockTypeHome {
-		err = m.updateLinksBasedLocalRelation(txn, bundle.RelationKeyIsFavorite, exLinks, links)
-		if err != nil {
-			return err
-		}
-	}
-
 	var addedLinks, removedLinks []string
 
 	removedLinks, addedLinks = slice.DifferenceRemovedAdded(exLinks, links)
@@ -2490,4 +2396,17 @@ func GetObjectType(store ObjectStore, url string) (*model.ObjectType, error) {
 	// we use Page for all custom object types
 	objectType.Types = []model.SmartBlockType{model.SmartBlockType_Page}
 	return objectType, err
+}
+
+func GetObjectTypes(store ObjectStore, urls []string) (ots []*model.ObjectType, err error) {
+	ots = make([]*model.ObjectType, 0, len(urls))
+	for _, url := range urls {
+		ot, e := GetObjectType(store, url)
+		if e != nil {
+			err = e
+		} else {
+			ots = append(ots, ot)
+		}
+	}
+	return
 }

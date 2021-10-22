@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/export"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -101,7 +100,6 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(pin.New()).
 		Register(status.New()).
 		Register(indexer.New()).
-		Register(meta.New()).
 		Register(block.New()).
 		Register(history.New()).
 		Register(gateway.New()).

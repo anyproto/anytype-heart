@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -27,7 +28,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
@@ -234,7 +234,6 @@ func New() Service {
 
 type service struct {
 	anytype     core.Service
-	meta        meta.Service
 	status      status.Service
 	sendEvent   func(event *pb.Event)
 	closed      bool
@@ -244,6 +243,8 @@ type service struct {
 	app         *app.App
 	source      source.Service
 	cache       ocache.OCache
+	objectStore objectstore.ObjectStore
+	restriction restriction.Service
 }
 
 func (s *service) Name() string {
@@ -252,13 +253,14 @@ func (s *service) Name() string {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
-	s.meta = a.MustComponent(meta.CName).(meta.Service)
 	s.status = a.MustComponent(status.CName).(status.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
 	s.doc = a.MustComponent(doc.CName).(doc.Service)
+	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -413,11 +415,12 @@ func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
 }
 
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
-	bs := editor.NewBreadcrumbs(s.meta)
+	bs := editor.NewBreadcrumbs()
 	if err = bs.Init(&smartblock.InitContext{
-		App:    s.app,
-		Doc:    s.doc,
-		Source: source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
+		Restriction: s.restriction,
+		ObjectStore: s.objectStore,
+		Doc:         s.doc,
+		Source:      source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
 	}
@@ -629,8 +632,6 @@ func (s *service) DeleteObject(id string) (err error) {
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
-
-	s.meta.ReportChange(meta.Meta{BlockId: id, SmartBlockMeta: core.SmartBlockMeta{Details: &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), bundle.RelationKeyIsHidden.String(): pbtypes.Bool(true)}}}})
 	s.cache.Unlock(id)
 	_, _ = s.cache.Remove(id)
 
@@ -870,37 +871,37 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s.meta, s, s, s, s.linkPreview)
+		sb = editor.NewPage(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Archive:
-		sb = editor.NewArchive(s.meta)
+		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
-		sb = editor.NewDashboard(s.meta, s)
+		sb = editor.NewDashboard(s, s)
 	case model.SmartBlockType_Set:
-		sb = editor.NewSet(s.meta, s)
+		sb = editor.NewSet(s)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s.meta, s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
-		sb = editor.NewObjectType(s.meta, s)
+		sb = editor.NewObjectType(s)
 	case model.SmartBlockType_BundledRelation,
 		model.SmartBlockType_IndexedRelation:
-		sb = editor.NewRelation(s.meta, s)
+		sb = editor.NewRelation(s)
 	case model.SmartBlockType_File:
-		sb = editor.NewFiles(s.meta)
+		sb = editor.NewFiles()
 	case model.SmartBlockType_MarketplaceType:
-		sb = editor.NewMarketplaceType(s.meta, s)
+		sb = editor.NewMarketplaceType(s)
 	case model.SmartBlockType_MarketplaceRelation:
-		sb = editor.NewMarketplaceRelation(s.meta, s)
+		sb = editor.NewMarketplaceRelation(s)
 	case model.SmartBlockType_MarketplaceTemplate:
-		sb = editor.NewMarketplaceTemplate(s.meta, s)
+		sb = editor.NewMarketplaceTemplate(s)
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s.meta, s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Breadcrumbs:
-		sb = editor.NewBreadcrumbs(s.meta)
+		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspace(s.meta, s)
+		sb = editor.NewWorkspace(s, s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -910,8 +911,11 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
 	}
-	if initCtx.App == nil {
-		initCtx.App = s.app
+	if initCtx.Restriction == nil {
+		initCtx.Restriction = s.restriction
+	}
+	if initCtx.ObjectStore == nil {
+		initCtx.ObjectStore = s.objectStore
 	}
 	if initCtx.Doc == nil {
 		initCtx.Doc = s.doc
@@ -1204,10 +1208,6 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 		return
 	}
 	ob = val.(*openedBlock)
-	ob.Lock()
-	// we should avoid this to be done in getSmartblock after metaSub refactor
-	err = ob.RefreshLocalDetails(nil)
-	ob.Unlock()
 	if err != nil {
 		return nil, err
 	}

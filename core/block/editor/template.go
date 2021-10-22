@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
@@ -17,13 +16,12 @@ import (
 )
 
 func NewTemplate(
-	m meta.Service,
 	fileSource file.BlockService,
 	bCtrl bookmark.DoBookmark,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
 ) *Template {
-	page := NewPage(m, fileSource, bCtrl, importServices, lp)
+	page := NewPage(fileSource, bCtrl, importServices, lp)
 	return &Template{Page: page}
 }
 

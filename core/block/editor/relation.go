@@ -4,7 +4,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/google/uuid"
@@ -14,9 +13,9 @@ type Relation struct {
 	*Set
 }
 
-func NewRelation(m meta.Service, dbCtrl database.Ctrl) *Relation {
+func NewRelation(dbCtrl database.Ctrl) *Relation {
 	return &Relation{
-		Set: NewSet(m, dbCtrl),
+		Set: NewSet(dbCtrl),
 	}
 }
 

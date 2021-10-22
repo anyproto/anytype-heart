@@ -393,35 +393,32 @@ func (s *source) needSnapshot() bool {
 }
 
 func (s *source) changeListener(batch *mb.MB) {
-	defer batch.Close()
-	go func() {
-		defer close(s.closed)
-		var records []core.SmartblockRecordEnvelope
-		for {
-			msgs := batch.Wait()
-			if len(msgs) == 0 {
-				return
-			}
-			records = records[:0]
-			for _, msg := range msgs {
-				records = append(records, msg.(core.SmartblockRecordEnvelope))
-			}
-
-			s.receiver.Lock()
-			if err := s.applyRecords(records); err != nil {
-				log.Errorf("can't handle records: %v; records: %v", err, records)
-			} else if s.ss != nil {
-				// notify about probably updated timeline
-				if tl := s.timeline(); len(tl) > 0 {
-					s.ss.UpdateTimeline(s.tid, tl)
-				}
-			}
-			s.receiver.Unlock()
-
-			// wait 100 millisecond for better batching
-			time.Sleep(100 * time.Millisecond)
+	defer close(s.closed)
+	var records []core.SmartblockRecordEnvelope
+	for {
+		msgs := batch.Wait()
+		if len(msgs) == 0 {
+			return
 		}
-	}()
+		records = records[:0]
+		for _, msg := range msgs {
+			records = append(records, msg.(core.SmartblockRecordEnvelope))
+		}
+
+		s.receiver.Lock()
+		if err := s.applyRecords(records); err != nil {
+			log.Errorf("can't handle records: %v; records: %v", err, records)
+		} else if s.ss != nil {
+			// notify about probably updated timeline
+			if tl := s.timeline(); len(tl) > 0 {
+				s.ss.UpdateTimeline(s.tid, tl)
+			}
+		}
+		s.receiver.Unlock()
+
+		// wait 100 millisecond for better batching
+		time.Sleep(100 * time.Millisecond)
+	}
 }
 
 func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
@@ -462,6 +459,7 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	case change.Rebuild:
 		s.lastSnapshotId = s.tree.LastSnapshotId()
 		doc, err := s.buildState()
+
 		if err != nil {
 			return err
 		}

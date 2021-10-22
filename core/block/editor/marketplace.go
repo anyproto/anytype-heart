@@ -4,7 +4,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -15,8 +14,8 @@ const (
 	viewIdMarketplace = "marketplace"
 )
 
-func NewMarketplaceType(ms meta.Service, dbCtrl database.Ctrl) *MarketplaceType {
-	return &MarketplaceType{Set: NewSet(ms, dbCtrl)}
+func NewMarketplaceType(dbCtrl database.Ctrl) *MarketplaceType {
+	return &MarketplaceType{Set: NewSet(dbCtrl)}
 }
 
 type MarketplaceType struct {
@@ -92,8 +91,8 @@ type MarketplaceRelation struct {
 	*Set
 }
 
-func NewMarketplaceRelation(ms meta.Service, dbCtrl database.Ctrl) *MarketplaceRelation {
-	return &MarketplaceRelation{Set: NewSet(ms, dbCtrl)}
+func NewMarketplaceRelation(dbCtrl database.Ctrl) *MarketplaceRelation {
+	return &MarketplaceRelation{Set: NewSet(dbCtrl)}
 }
 
 func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
@@ -160,8 +159,8 @@ type MarketplaceTemplate struct {
 	*Set
 }
 
-func NewMarketplaceTemplate(ms meta.Service, dbCtrl database.Ctrl) *MarketplaceTemplate {
-	return &MarketplaceTemplate{Set: NewSet(ms, dbCtrl)}
+func NewMarketplaceTemplate(dbCtrl database.Ctrl) *MarketplaceTemplate {
+	return &MarketplaceTemplate{Set: NewSet(dbCtrl)}
 }
 
 func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {

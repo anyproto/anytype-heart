@@ -9,12 +9,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -40,15 +43,15 @@ type BlockService interface {
 }
 
 type history struct {
-	a    core.Service
-	bs   BlockService
-	meta meta.Service
+	a            core.Service
+	blockService BlockService
+	objectStore  objectstore.ObjectStore
 }
 
 func (h *history) Init(a *app.App) (err error) {
 	h.a = a.MustComponent(core.CName).(core.Service)
-	h.bs = a.MustComponent(block.CName).(BlockService)
-	h.meta = a.MustComponent(meta.CName).(meta.Service)
+	h.blockService = a.MustComponent(block.CName).(BlockService)
+	h.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	return
 }
 
@@ -62,31 +65,29 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 		return
 	}
 
-	metaD := h.meta.FetchMeta(s.DepSmartIds())
+	metaD, _ := h.objectStore.QueryById(s.DepSmartIds())
 	details := make([]*pb.EventObjectDetailsSet, 0, len(metaD))
 	var uniqueObjTypes []string
 	sbType, err := smartblock.SmartBlockTypeFromID(pageId)
 	if err != nil {
 		return nil, nil, fmt.Errorf("incorrect sb type: %w", err)
 	}
-	metaD = append(metaD, meta.Meta{BlockId: pageId, SmartBlockMeta: core.SmartBlockMeta{ObjectTypes: s.ObjectTypes(), Details: s.Details()}})
+	metaD = append(metaD, database.Record{Details: s.CombinedDetails()})
+	uniqueObjTypes = s.ObjectTypes()
 	for _, m := range metaD {
 		details = append(details, &pb.EventObjectDetailsSet{
-			Id:      m.BlockId,
+			Id:      pbtypes.GetString(m.Details, bundle.RelationKeyId.String()),
 			Details: m.Details,
 		})
 
-		if len(m.ObjectTypes) > 0 {
-			for _, ot := range m.ObjectTypes {
-				if slice.FindPos(uniqueObjTypes, ot) == -1 {
-					uniqueObjTypes = append(uniqueObjTypes, ot)
-				}
+		if ot := pbtypes.GetString(m.Details, bundle.RelationKeyType.String()); ot != "" {
+			if slice.FindPos(uniqueObjTypes, ot) == -1 {
+				uniqueObjTypes = append(uniqueObjTypes, ot)
 			}
 		}
-
 	}
 
-	objectTypes := h.meta.FetchObjectTypes(uniqueObjTypes)
+	objectTypes, _ := objectstore.GetObjectTypes(h.objectStore, uniqueObjTypes)
 	return &pb.EventObjectShow{
 		RootId:      pageId,
 		Type:        model.SmartBlockType(sbType),
@@ -185,7 +186,7 @@ func (h *history) SetVersion(pageId, versionId string) (err error) {
 	if err != nil {
 		return
 	}
-	return h.bs.ResetToState(pageId, s)
+	return h.blockService.ResetToState(pageId, s)
 }
 
 func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree *change.Tree, blockType smartblock.SmartBlockType, err error) {

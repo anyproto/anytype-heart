@@ -9,19 +9,18 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
 
 func NewPage(
-	m meta.Service,
 	fileSource file.BlockService,
 	bCtrl bookmark.DoBookmark,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
 ) *Page {
-	sb := smartblock.New(m)
+	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Page{
 		SmartBlock: sb,
@@ -56,7 +55,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	layout, ok := ctx.State.Layout()
 	if !ok {
-		otypes := p.MetaService().FetchObjectTypes(ctx.ObjectTypeUrls)
+		otypes, _ := objectstore.GetObjectTypes(p.ObjectStore(), ctx.ObjectTypeUrls)
 		for _, ot := range otypes {
 			layout = ot.Layout
 		}

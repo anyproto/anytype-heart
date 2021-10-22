@@ -2,8 +2,9 @@ package doc
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"sync"
+
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"

@@ -4,10 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	threadsApp "github.com/textileio/go-threads/core/app"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	threadsApp "github.com/textileio/go-threads/core/app"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/ipfs/go-cid"
@@ -76,17 +77,6 @@ func (s *service) addMissingThreadsFromCollection(collection *threadsDb.Collecti
 				if s.processNewExternalThreadUntilSuccess(tid, ti) != nil {
 					log.With("thread", tid.String()).Error("processNewExternalThreadUntilSuccess failed: %s", err.Error())
 					return
-				}
-
-				// here we need to lock any changes to the channel before we send to it
-				// otherwise we may receive panic
-				s.Lock()
-				defer s.Unlock()
-				if s.newThreadChan != nil {
-					select {
-					case <-s.ctx.Done():
-					case s.newThreadChan <- tid.String():
-					}
 				}
 			}()
 		}

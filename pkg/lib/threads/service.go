@@ -3,6 +3,9 @@ package threads
 import (
 	"context"
 	"fmt"
+	"sync"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -15,8 +18,6 @@ import (
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	threadsNet "github.com/textileio/go-threads/net"
 	threadsQueue "github.com/textileio/go-threads/net/queue"
-	"sync"
-	"time"
 
 	ma "github.com/multiformats/go-multiaddr"
 	threadsApp "github.com/textileio/go-threads/core/app"
@@ -81,7 +82,6 @@ type service struct {
 	account                        walletUtil.Keypair
 	ipfsNode                       ipfs.Node
 	repoRootPath                   string
-	newThreadChan                  chan<- string
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
 	process                        process.Service
@@ -319,7 +319,6 @@ type Service interface {
 	SelectAccount() error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
 	DeleteThread(id, workspace string) error
-	InitNewThreadsChan(ch chan<- string) error // can be called only once
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllThreadsInWorkspace(id string) ([]string, error)
@@ -337,17 +336,6 @@ type Service interface {
 
 type ThreadsGetter interface {
 	Threads() (thread.IDSlice, error)
-}
-
-func (s *service) InitNewThreadsChan(ch chan<- string) error {
-	s.Lock()
-	defer s.Unlock()
-	if s.newThreadChan != nil {
-		return fmt.Errorf("already set")
-	}
-
-	s.newThreadChan = ch
-	return nil
 }
 
 func (s *service) GetAllWorkspaces() ([]string, error) {
@@ -563,21 +551,6 @@ func (s *service) GetThreadProcessorForWorkspace(id string) (ThreadProcessor, er
 	}
 
 	return processor, nil
-}
-
-func (s *service) getNewThreadChan() chan<- string {
-	s.Lock()
-	defer s.Unlock()
-	return s.newThreadChan
-}
-
-func (s *service) closeThreadChan() {
-	s.Lock()
-	defer s.Unlock()
-	if s.newThreadChan != nil {
-		close(s.newThreadChan)
-	}
-	s.newThreadChan = nil
 }
 
 func (s *service) ThreadsCollection() (*threadsDb.Collection, error) {

@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -21,12 +20,9 @@ import (
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
-func NewSet(
-	ms meta.Service,
-	dbCtrl database.Ctrl,
-) *Set {
+func NewSet(dbCtrl database.Ctrl) *Set {
 	sb := &Set{
-		SmartBlock: smartblock.New(ms),
+		SmartBlock: smartblock.New(),
 	}
 
 	sb.Basic = basic.NewBasic(sb)

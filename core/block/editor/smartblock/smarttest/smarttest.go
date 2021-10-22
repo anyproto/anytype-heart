@@ -7,12 +7,12 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/meta"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
@@ -28,22 +28,24 @@ func New(id string) *SmartTest {
 	}
 }
 
-func NewWithMeta(id string, ms meta.Service) *SmartTest {
-	st := New(id)
-	st.ms = ms
-	return st
-}
-
 type SmartTest struct {
 	Results          Results
 	anytype          *testMock.MockService
 	id               string
 	hist             undo.History
 	meta             *core.SmartBlockMeta
-	ms               meta.Service
 	TestRestrictions restriction.Restrictions
 	sync.Mutex
 	state.Doc
+	os *testMock.MockObjectStore
+}
+
+func (st *SmartTest) DocService() doc.Service {
+	return nil
+}
+
+func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
+	return st.os
 }
 
 func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
@@ -318,10 +320,6 @@ func (st *SmartTest) ResetToVersion(s *state.State) (err error) {
 	return nil
 }
 
-func (st *SmartTest) MetaService() meta.Service {
-	return st.ms
-}
-
 func (st *SmartTest) FileRelationKeys() []string {
 	return nil
 }
@@ -332,6 +330,10 @@ func (st *SmartTest) BlockClose() {
 
 func (st *SmartTest) Close() (err error) {
 	return
+}
+
+func (st *SmartTest) SetObjectStore(os *testMock.MockObjectStore) {
+	st.os = os
 }
 
 type Results struct {

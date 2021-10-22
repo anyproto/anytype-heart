@@ -121,11 +121,11 @@ func StructDiff(st1, st2 *types.Struct) *types.Struct {
 func StructMerge(st1, st2 *types.Struct, copyVals bool) *types.Struct {
 	var res *types.Struct
 	if st1 == nil || st1.Fields == nil {
-		return st2
+		return CopyStruct(st2)
 	}
 
 	if st2 == nil || st2.Fields == nil {
-		return st1
+		return CopyStruct(st1)
 	}
 
 	res = CopyStruct(st1)
