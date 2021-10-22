@@ -172,6 +172,7 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 			return
 		}
 		go func() {
+			defer batch.Close()
 			for rec := range ch {
 				batch.Add(rec)
 			}
