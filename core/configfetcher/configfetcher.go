@@ -21,6 +21,7 @@ var defaultConfigResponse = &pb.GetConfigResponseConfig{
 	EnableDebug:                false,
 	EnableReleaseChannelSwitch: false,
 	SimultaneousRequests:       20,
+	EnableSpaces:               false,
 	Extra:                      nil,
 }
 
