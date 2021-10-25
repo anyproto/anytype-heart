@@ -219,6 +219,7 @@ func (p *Workspaces) updateObjects() {
 			}
 			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.Null()
 			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Null()
+			// should we delete this object?
 			return current, nil
 		}); err != nil {
 			log.Errorf("workspace: can't set detail to object: %v", err)

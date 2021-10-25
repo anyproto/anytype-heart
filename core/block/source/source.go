@@ -2,8 +2,10 @@ package source
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/logstore"
 	"math/rand"
 	"sync"
 	"time"
@@ -26,6 +28,7 @@ import (
 )
 
 var log = logging.Logger("anytype-mw-source")
+var ErrObjectNotFound = errors.New("object not found")
 
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, err error)) error
@@ -92,6 +95,9 @@ func newSource(a core.Service, ss status.Service, tid thread.ID, listenToOwnChan
 	id := tid.String()
 	sb, err := a.GetBlock(id)
 	if err != nil {
+		if err == logstore.ErrThreadNotFound {
+			return nil, ErrObjectNotFound
+		}
 		err = fmt.Errorf("anytype.GetBlock error: %w", err)
 		return
 	}
