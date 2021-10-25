@@ -71,29 +71,33 @@ func (p *Archive) updateObjects() {
 
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeArchivedIds, archivedIds)
 	for _, removedId := range removedIds {
-		if err := p.DetailsModifier.ModifyDetails(removedId, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil || current.Fields == nil {
-				current = &types.Struct{
-					Fields: map[string]*types.Value{},
+		go func(id string) {
+			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+				if current == nil || current.Fields == nil {
+					current = &types.Struct{
+						Fields: map[string]*types.Value{},
+					}
 				}
+				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(false)
+				return current, nil
+			}); err != nil {
+				log.Errorf("archive: can't set detail to object: %v", err)
 			}
-			current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(false)
-			return current, nil
-		}); err != nil {
-			log.Errorf("archive: can't set detail to object: %v", err)
-		}
+		}(removedId)
 	}
 	for _, addedId := range addedIds {
-		if err := p.DetailsModifier.ModifyDetails(addedId, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil || current.Fields == nil {
-				current = &types.Struct{
-					Fields: map[string]*types.Value{},
+		go func(id string) {
+			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+				if current == nil || current.Fields == nil {
+					current = &types.Struct{
+						Fields: map[string]*types.Value{},
+					}
 				}
+				current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(true)
+				return current, nil
+			}); err != nil {
+				log.Errorf("archive: can't set detail to object: %v", err)
 			}
-			current.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(true)
-			return current, nil
-		}); err != nil {
-			log.Errorf("archive: can't set detail to object: %v", err)
-		}
+		}(addedId)
 	}
 }
