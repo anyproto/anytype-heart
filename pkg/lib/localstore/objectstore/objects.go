@@ -1131,7 +1131,6 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 	err := m.UpdateObjectDetails(id, &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyId.String():        pbtypes.String(id),
-			bundle.RelationKeyIsHidden.String():  pbtypes.Bool(true),
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
 		},
 	}, &model.Relations{Relations: []*model.Relation{}}, false)
