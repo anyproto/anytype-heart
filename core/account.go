@@ -110,7 +110,9 @@ func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
 	defer cancel()
-	cfg := fetcher.GetConfig(ctx)
+	cfg := fetcher.GetAccountConfig(ctx)
+
+	// TODO: change proto defs to use same model from "models.proto" and not from "api.proto"
 	return &pb.RpcAccountConfig{
 		EnableDataview:             cfg.EnableDataview,
 		EnableDebug:                cfg.EnableDebug,

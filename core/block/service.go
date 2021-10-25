@@ -9,6 +9,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -245,6 +246,7 @@ type service struct {
 	cache       ocache.OCache
 	objectStore objectstore.ObjectStore
 	restriction restriction.Service
+	fetcher     configfetcher.ConfigFetcher
 }
 
 func (s *service) Name() string {
@@ -261,6 +263,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
+	s.fetcher = a.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -480,7 +483,12 @@ func (s *service) CloseBlocks() {
 }
 
 func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
-	return s.anytype.CreateWorkspace(req.Name)
+	workspace, err := s.anytype.CreateWorkspace(req.Name)
+	if err != nil {
+		return "", err
+	}
+	s.sendUpdatedAccountConfigEvent()
+	return workspace, nil
 }
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
@@ -504,7 +512,21 @@ func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) 
 }
 
 func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
-	return s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
+	err := s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
+	if err != nil {
+		return err
+	}
+
+	sbType, err := coresb.SmartBlockTypeFromID(req.ObjectId)
+	if err != nil {
+		log.Errorf("failed to send update event, because of error decoding smartblock type")
+		return nil
+	}
+
+	if sbType == coresb.SmartBlockTypeWorkspace {
+		s.sendUpdatedAccountConfigEvent()
+	}
+	return nil
 }
 
 func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error) {
@@ -1218,4 +1240,25 @@ func (s *service) replaceLink(id, oldId, newId string) error {
 	return s.DoBasic(id, func(b basic.Basic) error {
 		return b.ReplaceLink(oldId, newId)
 	})
+}
+
+func (s *service) sendUpdatedAccountConfigEvent() {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	currentConfig := s.fetcher.GetAccountConfig(ctx)
+	cancel()
+
+	event := &pb.Event{
+		Messages: []*pb.EventMessage{
+			&pb.EventMessage{
+				Value: &pb.EventMessageValueOfAccountConfigUpdate{
+					AccountConfigUpdate: &pb.EventAccountConfigUpdate{
+						Config: currentConfig,
+					},
+				},
+			},
+		},
+	}
+	if s.sendEvent != nil {
+		s.sendEvent(event)
+	}
 }

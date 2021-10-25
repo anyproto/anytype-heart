@@ -794,6 +794,8 @@
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
+    - [Event.Account.Config](#anytype.Event.Account.Config)
+    - [Event.Account.Config.Update](#anytype.Event.Account.Config.Update)
     - [Event.Account.Details](#anytype.Event.Account.Details)
     - [Event.Account.Show](#anytype.Event.Account.Show)
     - [Event.Block](#anytype.Event.Block)
@@ -941,6 +943,7 @@
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
+    - [Account.Config](#anytype.model.Account.Config)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
@@ -12438,6 +12441,31 @@ Event – type of message, that could be sent from a middleware to the correspon
 
 
 
+<a name="anytype.Event.Account.Config"></a>
+
+### Event.Account.Config
+
+
+
+
+
+
+
+<a name="anytype.Event.Account.Config.Update"></a>
+
+### Event.Account.Config.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
+
+
+
+
+
+
 <a name="anytype.Event.Account.Details"></a>
 
 ### Event.Account.Details
@@ -13869,6 +13897,7 @@ Precondition: user A opened a block
 | ----- | ---- | ----- | ----------- |
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
+| accountConfigUpdate | [Event.Account.Config.Update](#anytype.Event.Account.Config.Update) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype.Event.Object.Details.Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset) |  |  |
@@ -14746,6 +14775,25 @@ Avatar of a user&#39;s account. It could be an image or color
 | ----- | ---- | ----- | ----------- |
 | image | [Block.Content.File](#anytype.model.Block.Content.File) |  | Image of the avatar. Contains the hash to retrieve the image. |
 | color | [string](#string) |  | Color of the avatar, used if image not set. |
+
+
+
+
+
+
+<a name="anytype.model.Account.Config"></a>
+
+### Account.Config
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| enableDataview | [bool](#bool) |  |  |
+| enableDebug | [bool](#bool) |  |  |
+| enableReleaseChannelSwitch | [bool](#bool) |  |  |
+| enableSpaces | [bool](#bool) |  |  |
+| extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 
