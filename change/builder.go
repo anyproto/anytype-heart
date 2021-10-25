@@ -16,8 +16,7 @@ import (
 )
 
 var (
-	ErrEmpty          = errors.New("logs empty")
-	changeLoadTimeout = time.Second * 3
+	ErrEmpty = errors.New("logs empty")
 )
 
 var log = logging.Logger("anytype-mw-change-builder")

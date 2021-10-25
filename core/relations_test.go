@@ -1421,6 +1421,7 @@ func TestArchiveIndex(t *testing.T) {
 		IsArchived: true,
 	})
 	require.Equal(t, int(respArchive.Error.Code), 0, respArchive.Error.Description)
+	time.Sleep(time.Millisecond * 100) // todo: remove after we have moved to the callbacks
 
 	d, err := mw.GetAnytype().ObjectStore().GetDetails(resp.TargetId)
 	require.NoError(t, err)
@@ -1431,7 +1432,7 @@ func TestArchiveIndex(t *testing.T) {
 		IsArchived: false,
 	})
 	require.Equal(t, int(respArchive.Error.Code), 0, respArchive.Error.Description)
-
+	time.Sleep(time.Millisecond * 100) // todo: remove after we have moved to the callbacks
 	d, err = mw.GetAnytype().ObjectStore().GetDetails(resp.TargetId)
 	require.NoError(t, err)
 	require.True(t, pbtypes.Get(d.GetDetails(), bundle.RelationKeyIsArchived.String()).Equal(pbtypes.Bool(false)))
