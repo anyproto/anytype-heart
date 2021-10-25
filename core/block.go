@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/textileio/go-threads/core/logstore"
 	"os"
 	"time"
 
@@ -108,6 +109,8 @@ func (mw *Middleware) BlockOpen(req *pb.RpcBlockOpenRequest) *pb.RpcBlockOpenRes
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {
 			return response(pb.RpcBlockOpenResponseError_ANYTYPE_NEEDS_UPGRADE, err)
+		} else if err == logstore.ErrThreadNotFound {
+			return response(pb.RpcBlockOpenResponseError_NOT_FOUND, err)
 		}
 		return response(pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, err)
 	}
@@ -133,6 +136,8 @@ func (mw *Middleware) BlockShow(req *pb.RpcBlockShowRequest) *pb.RpcBlockShowRes
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {
 			return response(pb.RpcBlockShowResponseError_ANYTYPE_NEEDS_UPGRADE, err)
+		} else if err == logstore.ErrThreadNotFound {
+			return response(pb.RpcBlockShowResponseError_NOT_FOUND, err)
 		}
 		return response(pb.RpcBlockShowResponseError_UNKNOWN_ERROR, err)
 	}
