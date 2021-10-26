@@ -77,7 +77,7 @@ require (
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	github.com/yuin/goldmark v1.3.5
 	go.uber.org/zap v1.16.0
-	golang.org/x/text v0.3.6
+	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.37.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
@@ -93,3 +93,5 @@ replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.202
 replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7
 
 replace github.com/hsanjuan/ipfs-lite => github.com/anytypeio/ipfs-lite v1.1.20-0.20210428105030-fc5b3446abae
+
+replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-20210806203422-f82c8742c9f8 // use a fork to support dd.mm.yyyy date format
