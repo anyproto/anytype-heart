@@ -12,7 +12,7 @@ const (
 )
 
 type CafeConfigFetcher interface {
-	GetConfig(ctx context.Context) *cafePb.GetConfigResponseConfig
+	GetCafeConfig(ctx context.Context) *cafePb.GetConfigResponseConfig
 }
 
 type CurrentWorkspaceThreadGetter interface {

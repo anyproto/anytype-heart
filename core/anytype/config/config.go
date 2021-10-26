@@ -29,7 +29,6 @@ type ConfigRequired struct {
 	HostAddr string
 }
 
-
 type Config struct {
 	ConfigRequired           `json:",inline"`
 	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
@@ -45,8 +44,8 @@ type Config struct {
 	BootstrapNodes []string
 	RelayNodes     []string
 
-	Threads threads.Config
-	DS      clientds.Config
+	Threads           threads.Config
+	DS                clientds.Config
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 }
 

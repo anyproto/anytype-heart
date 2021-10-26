@@ -82,6 +82,7 @@ message GetConfigResponse {
         bool  enableDebug = 2;
         bool  enableReleaseChannelSwitch = 3;
         int32 simultaneousRequests = 4;
+        bool  enableSpaces = 5;
 
         google.protobuf.Struct extra = 100;
     }

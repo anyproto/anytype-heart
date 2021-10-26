@@ -10,33 +10,59 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var log = logging.Logger("anytype-mw-configfetcher")
 
 const CName = "configfetcher"
 
+type WorkspaceGetter interface {
+	GetAllWorkspaces() ([]string, error)
+}
+
 var defaultConfigResponse = &pb.GetConfigResponseConfig{
 	EnableDataview:             false,
 	EnableDebug:                false,
 	EnableReleaseChannelSwitch: false,
 	SimultaneousRequests:       20,
+	EnableSpaces:               false,
 	Extra:                      nil,
 }
 
 type ConfigFetcher interface {
 	app.ComponentRunnable
-	// GetConfig fetches the config or returns default after context is done
-	GetConfig(ctx context.Context) *pb.GetConfigResponseConfig
+	// GetCafeConfig fetches the config or returns default after context is done
+	GetCafeConfig(ctx context.Context) *pb.GetConfigResponseConfig
+	GetAccountConfig(ctx context.Context) *model.AccountConfig
 }
 
 type configFetcher struct {
-	store objectstore.ObjectStore
-	cafe  cafeClient.Client
+	store           objectstore.ObjectStore
+	cafe            cafeClient.Client
+	workspaceGetter WorkspaceGetter
 
 	fetched chan struct{}
 	ctx     context.Context
 	cancel  context.CancelFunc
+}
+
+func (c *configFetcher) GetAccountConfig(ctx context.Context) *model.AccountConfig {
+	cafeConfig := c.GetCafeConfig(ctx)
+	// we could have cached this, but for now it is not needed, because we call this rarely
+	enableSpaces := cafeConfig.GetEnableSpaces()
+	workspaces, err := c.workspaceGetter.GetAllWorkspaces()
+	if err == nil && len(workspaces) != 0 {
+		enableSpaces = true
+	}
+
+	return &model.AccountConfig{
+		EnableDataview:             cafeConfig.EnableDataview,
+		EnableDebug:                cafeConfig.EnableDebug,
+		EnableReleaseChannelSwitch: cafeConfig.EnableReleaseChannelSwitch,
+		Extra:                      cafeConfig.Extra,
+		EnableSpaces:               enableSpaces,
+	}
 }
 
 func New() ConfigFetcher {
@@ -66,7 +92,7 @@ func (c *configFetcher) Run() error {
 	return nil
 }
 
-func (c *configFetcher) GetConfig(ctx context.Context) *pb.GetConfigResponseConfig {
+func (c *configFetcher) GetCafeConfig(ctx context.Context) *pb.GetConfigResponseConfig {
 	select {
 	case <-c.fetched:
 	case <-ctx.Done():
@@ -83,6 +109,7 @@ func (c *configFetcher) GetConfig(ctx context.Context) *pb.GetConfigResponseConf
 func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.cafe = a.MustComponent(cafeClient.CName).(cafeClient.Client)
+	c.workspaceGetter = a.MustComponent("threads").(WorkspaceGetter)
 	c.fetched = make(chan struct{})
 	return nil
 }
@@ -98,6 +125,7 @@ func (c *configFetcher) fetchConfig() (err error) {
 	if err != nil {
 		return fmt.Errorf("failed to request cafe config: %w", err)
 	}
+
 	if resp != nil {
 		err = c.store.SaveCafeConfig(resp.Config)
 		if err != nil {
