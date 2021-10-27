@@ -11,7 +11,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
 func NewPage(
@@ -49,7 +51,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 	if ctx.ObjectTypeUrls == nil {
 		ctx.ObjectTypeUrls = []string{bundle.TypeKeyPage.URL()}
 	}
-
+	newDoc := ctx.State != nil
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
@@ -60,10 +62,23 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 			layout = ot.Layout
 		}
 	}
+
+	tmpls := []template.StateTransformer{
+		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
+	}
+
+	// replace title to text block for note
+	if newDoc && layout == model.ObjectType_note {
+		if name := pbtypes.GetString(ctx.State.Details(), bundle.RelationKeyName.String()); name != "" {
+			ctx.State.RemoveDetail(bundle.RelationKeyName.String())
+			tmpls = append(tmpls, template.WithFirstTextBlockContent(name))
+		}
+	}
+
 	return smartblock.ApplyTemplate(p, ctx.State,
 		template.ByLayout(
 			layout,
-			template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
+			tmpls...,
 		)...,
 	)
 }

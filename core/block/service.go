@@ -20,7 +20,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -777,14 +776,6 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	}
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
-
-	// place title as text block for notes
-	if objType.Url == bundle.TypeKeyNote.URL() {
-		if name := pbtypes.GetString(createState.Details(), bundle.RelationKeyName.String()); name != "" {
-			createState.RemoveDetail(bundle.RelationKeyName.String())
-			template.WithFirstTextBlockContent(name)
-		}
-	}
 
 	csm, err := s.anytype.CreateBlock(sbType, workspaceId)
 	if err != nil {

@@ -391,11 +391,15 @@ var WithFirstTextBlock = WithFirstTextBlockContent("")
 
 var WithFirstTextBlockContent = func(text string) StateTransformer {
 	return func(s *state.State) {
+		WithEmpty(s)
 		root := s.Pick(s.RootId())
 		if root != nil {
-			for _, chId := range root.Model().ChildrenIds {
+			for i, chId := range root.Model().ChildrenIds {
 				if child := s.Pick(chId); child != nil {
-					if child.Model().GetText() != nil {
+					if exText := child.Model().GetText(); exText != nil {
+						if text != "" &&  i == len(root.Model().ChildrenIds)-1 && exText.Text != text{
+							s.Get(chId).Model().GetText().Text = text
+						}
 						return
 					}
 				}
