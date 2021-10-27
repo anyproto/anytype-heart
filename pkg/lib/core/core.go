@@ -4,17 +4,20 @@ import (
 	"context"
 	"encoding/base64"
 	"fmt"
-	"github.com/textileio/go-threads/core/net"
 	"io"
 	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -32,6 +35,7 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
 )
 
@@ -121,6 +125,8 @@ type Anytype struct {
 	mdns        discovery.Service
 	objectStore objectstore.ObjectStore
 	fileStore   filestore.FileStore
+	fetcher     configfetcher.ConfigFetcher
+	sendEvent   func(event *pb.Event)
 
 	ds datastore.Datastore
 
@@ -228,6 +234,8 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.files = ap.MustComponent(files.CName).(*files.Service)
 	a.pinService = ap.MustComponent(pin.CName).(pin.FilePinService)
 	a.ipfs = ap.MustComponent(ipfs.CName).(ipfs.Node)
+	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
+	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
 
 	return
 }
@@ -561,6 +569,12 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	checkedThreads := make(map[string]struct{})
 	creatorInfoMx := sync.RWMutex{}
 
+	isWorkspaceEventSent := false
+	isWorkspace := func(id string) bool {
+		sbType, err := smartblock.SmartBlockTypeFromID(id)
+		return err == nil && sbType == smartblock.SmartBlockTypeWorkspace
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	// do not defer cancel, cancel only on shutdown
 	threadsCh, err := a.threadService.PresubscribedNewRecords()
@@ -584,6 +598,11 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 					// todo: not working on the early start
 					continue
 				}
+				// todo: find better place for this notification
+				if !isWorkspaceEventSent && isWorkspace(id) {
+					go a.sendUpdatedAccountConfigEvent()
+					isWorkspaceEventSent = true
+				}
 
 				err = a.recordsbatch.Add(ThreadRecordInfo{
 					LogId:    val.LogID().String(),
@@ -603,4 +622,25 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	}()
 
 	return nil
+}
+
+func (a *Anytype) sendUpdatedAccountConfigEvent() {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	currentConfig := a.fetcher.GetAccountConfig(ctx)
+	cancel()
+
+	event := &pb.Event{
+		Messages: []*pb.EventMessage{
+			&pb.EventMessage{
+				Value: &pb.EventMessageValueOfAccountConfigUpdate{
+					AccountConfigUpdate: &pb.EventAccountConfigUpdate{
+						Config: currentConfig,
+					},
+				},
+			},
+		},
+	}
+	if a.sendEvent != nil {
+		a.sendEvent(event)
+	}
 }
