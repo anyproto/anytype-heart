@@ -219,18 +219,10 @@ func (p *Workspaces) updateObjects() {
 			continue
 		}
 
-		if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil || current.Fields == nil {
-				current = &types.Struct{
-					Fields: map[string]*types.Value{},
-				}
-			}
-			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.Null()
-			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Null()
-			// should we delete this object?
-			return current, nil
-		}); err != nil {
-			log.Errorf("workspace: can't set detail to object: %v", err)
+		err = p.Anytype().DeleteBlock(id, p.Id())
+		if err != nil {
+			// we will get error here if block has been already removed
+			log.Errorf("workspace: failed to remove object locally")
 		}
 	}
 
