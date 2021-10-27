@@ -149,7 +149,7 @@ func (p *Workspaces) updateObjects() {
 		},
 	})
 	if err != nil {
-		log.Errorf("archive: can't get store archived ids: %v", err)
+		log.Errorf("workspace: can't get store workspace ids: %v", err)
 		return
 	}
 	var storeObjectInWorkspace = make(map[string]bool, len(records))
@@ -158,9 +158,12 @@ func (p *Workspaces) updateObjects() {
 		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHighlighted.String()) {
 			isHighlighted = true
 		}
-		storeObjectInWorkspace[bundle.RelationKeyId.String()] = isHighlighted
+		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		storeObjectInWorkspace[id] = isHighlighted
 	}
 
+	// we ignore the workspace object itself
+	delete(storeObjectInWorkspace, p.Id())
 	var objectInWorkspace map[string]bool
 	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
 	if workspaceCollection != nil {
@@ -175,6 +178,10 @@ func (p *Workspaces) updateObjects() {
 		}
 	}
 
+	if objectInWorkspace == nil {
+		objectInWorkspace = map[string]bool{}
+	}
+
 	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
 	if highlightedCollection != nil {
 		for objId, isHighlighted := range highlightedCollection {
@@ -182,7 +189,10 @@ func (p *Workspaces) updateObjects() {
 				continue
 			}
 			if v, ok := isHighlighted.(bool); ok && v {
-				objectInWorkspace[objId] = true
+				if _, exists := objectInWorkspace[objId]; exists {
+					// only set if the object is really exist in the workspace collection
+					objectInWorkspace[objId] = true
+				}
 			}
 		}
 	}
@@ -207,22 +217,14 @@ func (p *Workspaces) updateObjects() {
 	}
 
 	for id, _ := range storeObjectInWorkspace {
-		if _, removed := objectInWorkspace[id]; !removed {
+		if _, exists := objectInWorkspace[id]; exists {
 			continue
 		}
 
-		if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil || current.Fields == nil {
-				current = &types.Struct{
-					Fields: map[string]*types.Value{},
-				}
-			}
-			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.Null()
-			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Null()
-			// should we delete this object?
-			return current, nil
-		}); err != nil {
-			log.Errorf("workspace: can't set detail to object: %v", err)
+		err = p.Anytype().DeleteBlock(id, p.Id())
+		if err != nil {
+			// we will get error here if block has been already removed
+			log.Errorf("workspace: failed to remove object locally")
 		}
 	}
 
