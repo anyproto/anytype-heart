@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 	"github.com/tj/go-naturaldate"
@@ -40,28 +41,29 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
 }
 
-func handleDateSearch(query string, records []database.Record) []database.Record {
+func handleDateSearch(req *pb.RpcObjectSearchRequest, records []database.Record) []database.Record {
 	n := time.Now()
-	t, err := naturaldate.Parse(query, n)
+	f, _ := filter.MakeAndFilter(req.Filters)
+	t, err := naturaldate.Parse(req.FullText, n)
 	if err == nil {
-		if !t.Equal(n) || strings.EqualFold(query, "now") {
+		if t.Equal(n) && !strings.EqualFold(req.FullText, "now") {
 			// naturaldate pkg returns NOW by default, but we don't need it
-			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
-				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
-				"iconEmoji": pbtypes.String("📅"),
-			}}}}, records...)
+			t = time.Time{}
 		}
 	} else {
-		t, err = dateparse.ParseAny(query)
-		if err == nil {
-			records = append([]database.Record{{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
-				"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-				"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
-				"iconEmoji": pbtypes.String("📅"),
-			}}}}, records...)
+		// todo: use system locale to get preferred date format
+		t, err = dateparse.ParseAny(req.FullText, dateparse.PreferMonthFirst(false))
+	}
+
+	if !t.IsZero() {
+		d := &types.Struct{Fields: map[string]*types.Value{
+			"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
+			"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
+			"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
+			"iconEmoji": pbtypes.String("📅"),
+		}}
+		if vg := pbtypes.ValueGetter(d); f.FilterObject(vg) {
+			records = append([]database.Record{{Details: d}}, records...)
 		}
 	}
 
@@ -106,10 +108,8 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	records = handleDateSearch(req.FullText, records)
-
+	records = handleDateSearch(req, records)
 	var records2 = make([]*types.Struct, 0, len(records))
-
 	for _, rec := range records {
 		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
 	}
