@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"sort"
 	"time"
 
@@ -135,6 +136,34 @@ func (mw *Middleware) DebugTree(req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeRes
 	dbg := app.MustComponent(debug.CName).(debug.Debug)
 	filename, err := dbg.DumpTree(req.BlockId, req.Path)
 	return response(err, filename)
+}
+
+func (mw *Middleware) ExportLocalstore(req *pb.RpcExportLocalstoreRequest) *pb.RpcExportLocalstoreResponse {
+	response := func(path string, err error) (res *pb.RpcExportLocalstoreResponse) {
+		res = &pb.RpcExportLocalstoreResponse{
+			Error: &pb.RpcExportLocalstoreResponseError{
+				Code: pb.RpcExportLocalstoreResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcExportLocalstoreResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		} else {
+			res.Path = path
+		}
+		return res
+	}
+	var (
+		path string
+		err  error
+	)
+	err = mw.doBlockService(func(s block.Service) error {
+		dbg := mw.app.MustComponent(debug.CName).(debug.Debug)
+		path, err = dbg.DumpLocalstore(req.DocIds, req.Path)
+		return err
+	})
+	return response(path, err)
 }
 
 func getThreadInfo(ipfs ipfs.IPFS, t threads.Service, id thread.ID, ownDeviceId string, cafePeer peer.ID, skipEmptyLogs bool, downloadRemoteRecords bool) pb.RpcDebugthreadInfo {

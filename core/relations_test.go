@@ -1147,7 +1147,6 @@ func TestCustomType(t *testing.T) {
 			break
 		}
 	}
-
 	time.Sleep(time.Millisecond * 200)
 	respObjectTypeList = mw.ObjectTypeList(nil)
 	require.Equal(t, 0, int(respObjectTypeList.Error.Code), respObjectTypeList.Error.Description)

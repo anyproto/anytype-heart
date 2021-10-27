@@ -400,6 +400,10 @@
     - [Rpc.Export.Request](#anytype.Rpc.Export.Request)
     - [Rpc.Export.Response](#anytype.Rpc.Export.Response)
     - [Rpc.Export.Response.Error](#anytype.Rpc.Export.Response.Error)
+    - [Rpc.ExportLocalstore](#anytype.Rpc.ExportLocalstore)
+    - [Rpc.ExportLocalstore.Request](#anytype.Rpc.ExportLocalstore.Request)
+    - [Rpc.ExportLocalstore.Response](#anytype.Rpc.ExportLocalstore.Response)
+    - [Rpc.ExportLocalstore.Response.Error](#anytype.Rpc.ExportLocalstore.Response.Error)
     - [Rpc.ExportTemplates](#anytype.Rpc.ExportTemplates)
     - [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request)
     - [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response)
@@ -731,6 +735,7 @@
     - [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
+    - [Rpc.ExportLocalstore.Response.Error.Code](#anytype.Rpc.ExportLocalstore.Response.Error.Code)
     - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
@@ -1162,6 +1167,7 @@
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
 | ExportTemplates | [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request) | [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response) |  |
+| ExportLocalstore | [Rpc.ExportLocalstore.Request](#anytype.Rpc.ExportLocalstore.Request) | [Rpc.ExportLocalstore.Response](#anytype.Rpc.ExportLocalstore.Response) |  |
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
 | MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
 | CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
@@ -6992,6 +6998,65 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.ExportLocalstore"></a>
+
+### Rpc.ExportLocalstore
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportLocalstore.Request"></a>
+
+### Rpc.ExportLocalstore.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  | the path where export files will place |
+| docIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportLocalstore.Response"></a>
+
+### Rpc.ExportLocalstore.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ExportLocalstore.Response.Error](#anytype.Rpc.ExportLocalstore.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportLocalstore.Response.Error"></a>
+
+### Rpc.ExportLocalstore.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ExportLocalstore.Response.Error.Code](#anytype.Rpc.ExportLocalstore.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ExportTemplates"></a>
 
 ### Rpc.ExportTemplates
@@ -11601,6 +11666,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Export.Response.Error.Code"></a>
 
 ### Rpc.Export.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ExportLocalstore.Response.Error.Code"></a>
+
+### Rpc.ExportLocalstore.Response.Error.Code
 
 
 | Name | Number | Description |
