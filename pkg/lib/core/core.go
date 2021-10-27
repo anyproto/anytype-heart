@@ -598,7 +598,6 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 					// todo: not working on the early start
 					continue
 				}
-				// todo: find better place for this notification
 				if !isWorkspaceEventSent && isWorkspace(id) {
 					go a.sendUpdatedAccountConfigEvent()
 					isWorkspaceEventSent = true
