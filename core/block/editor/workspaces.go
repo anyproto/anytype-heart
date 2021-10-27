@@ -162,6 +162,8 @@ func (p *Workspaces) updateObjects() {
 		storeObjectInWorkspace[id] = isHighlighted
 	}
 
+	// we ignore the workspace object itself
+	delete(storeObjectInWorkspace, p.Id())
 	var objectInWorkspace map[string]bool
 	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
 	if workspaceCollection != nil {
@@ -215,7 +217,7 @@ func (p *Workspaces) updateObjects() {
 	}
 
 	for id, _ := range storeObjectInWorkspace {
-		if _, removed := objectInWorkspace[id]; !removed {
+		if _, exists := objectInWorkspace[id]; exists {
 			continue
 		}
 
