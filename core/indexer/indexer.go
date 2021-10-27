@@ -160,8 +160,26 @@ func (i *indexer) Run() (err error) {
 		return err
 	}
 	i.doc.OnWholeChange(i.index)
+	i.migrateRemoveNonindexableObjects()
 	go i.ftLoop()
 	return
+}
+
+func (i *indexer) migrateRemoveNonindexableObjects() {
+	ids, err := i.getIdsForTypes(
+		smartblock.SmartblockTypeMarketplaceType, smartblock.SmartblockTypeMarketplaceRelation,
+		smartblock.SmartblockTypeMarketplaceTemplate, smartblock.SmartBlockTypeDate, smartblock.SmartBlockTypeBreadcrumbs,
+	)
+	if err != nil {
+		log.Errorf("migrateRemoveNonindexableObjects: failed to get ids: %s", err.Error())
+	}
+
+	for _, id := range ids {
+		err = i.store.DeleteDetails(id)
+		if err != nil {
+			log.Errorf("migrateRemoveNonindexableObjects: failed to get ids: %s", err.Error())
+		}
+	}
 }
 
 func (i *indexer) reindexIfNeeded() error {
@@ -279,26 +297,27 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 	return len(idsToReindex), success, nil
 }
 
+func (i *indexer) getIdsForTypes(sbt ...smartblock.SmartBlockType) ([]string, error) {
+	var ids []string
+	for _, t := range sbt {
+		st, err := i.source.SourceTypeBySbType(t)
+		if err != nil {
+			return nil, err
+		}
+		idsT, err := st.ListIds()
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, idsT...)
+	}
+	return ids, nil
+}
+
 func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error) {
 	if reindex != 0 {
 		log.Infof("start store reindex (eraseIndexes=%v, reindexFileObjects=%v, reindexThreadObjects=%v, reindexBundledRelations=%v, reindexBundledTypes=%v, reindexFulltext=%v, reindexBundledTemplates=%v, reindexBundledObjects=%v)", reindex&eraseIndexes != 0, reindex&reindexFileObjects != 0, reindex&reindexThreadObjects != 0, reindex&reindexBundledRelations != 0, reindex&reindexBundledTypes != 0, reindex&reindexFulltext != 0, reindex&reindexBundledTemplates != 0, reindex&reindexBundledObjects != 0)
 	}
 
-	getIdsForTypes := func(sbt ...smartblock.SmartBlockType) ([]string, error) {
-		var ids []string
-		for _, t := range sbt {
-			st, err := i.source.SourceTypeBySbType(t)
-			if err != nil {
-				return nil, err
-			}
-			idsT, err := st.ListIds()
-			if err != nil {
-				return nil, err
-			}
-			ids = append(ids, idsT...)
-		}
-		return ids, nil
-	}
 	var indexesWereRemoved bool
 	if reindex&eraseIndexes != 0 {
 		err = i.store.EraseIndexes()
@@ -333,7 +352,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	// for all ids except home and archive setting cache timeout for reindexing
 	ctx = context.WithValue(ctx, ocache.CacheTimeout, cacheTimeout)
 	if reindex&reindexThreadObjects != 0 {
-		ids, err := getIdsForTypes(
+		ids, err := i.getIdsForTypes(
 			smartblock.SmartBlockTypePage,
 			smartblock.SmartBlockTypeSet,
 			smartblock.SmartBlockTypeObjectType,
@@ -381,7 +400,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	}
 
 	if reindex&reindexFileObjects != 0 {
-		ids, err := getIdsForTypes(smartblock.SmartBlockTypeFile)
+		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeFile)
 		if err != nil {
 			return err
 		}
@@ -404,7 +423,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		}
 	}
 	if reindex&reindexBundledRelations != 0 {
-		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledRelation)
+		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeBundledRelation)
 		if err != nil {
 			return err
 		}
@@ -428,7 +447,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	}
 	if reindex&reindexBundledTypes != 0 {
 		// lets add anytypeProfile here, because it's seems too much to create one more counter especially for it
-		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
 		}
@@ -480,7 +499,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		for _, rec := range existsRec {
 			existsIds = append(existsIds, rec.Id)
 		}
-		ids, err := getIdsForTypes(smartblock.SmartBlockTypeBundledTemplate)
+		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypeBundledTemplate)
 		if err != nil {
 			return err
 		}
@@ -501,7 +520,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 	}
 	if reindex&reindexFulltext != 0 {
 		var ids []string
-		ids, err := getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
+		ids, err := i.getIdsForTypes(smartblock.SmartBlockTypePage, smartblock.SmartBlockTypeFile, smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeBundledObjectType, smartblock.SmartBlockTypeAnytypeProfile)
 		if err != nil {
 			return err
 		}
@@ -545,6 +564,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	}
 
 	if !indexDetails {
+		i.store.DeleteDetails(d.Id)
 		return nil
 	}
 
@@ -670,6 +690,8 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		} else {
 			log.With("thread", info.Id).Debugf("to index queue")
 		}
+	} else {
+		_ = i.store.DeleteDetails(info.Id)
 	}
 
 	return nil
@@ -769,12 +791,12 @@ func (i *indexer) ftInit() error {
 			return err
 		}
 		if docCount == 0 {
-			all, err := i.store.List()
+			ids, err := i.store.ListIds()
 			if err != nil {
 				return err
 			}
-			for _, d := range all {
-				if err := i.store.AddToIndexQueue(d.Id); err != nil {
+			for _, id := range ids {
+				if err := i.store.AddToIndexQueue(id); err != nil {
 					return err
 				}
 			}
