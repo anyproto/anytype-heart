@@ -2155,11 +2155,6 @@ func (m *dsObjectStore) getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo,
 		details = detailsWrapped.GetDetails()
 	}
 
-	objectTypes, err := getObjectTypeFromDetails(details)
-	if err != nil {
-		return nil, err
-	}
-
 	relations, err := getObjectRelations(txn, id)
 	if err != nil {
 		return nil, err
@@ -2185,7 +2180,6 @@ func (m *dsObjectStore) getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo,
 		Relations:       relations,
 		Snippet:         snippet,
 		HasInboundLinks: hasInbound,
-		ObjectTypeUrls:  objectTypes,
 	}, nil
 }
 
