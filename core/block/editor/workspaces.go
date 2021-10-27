@@ -149,7 +149,7 @@ func (p *Workspaces) updateObjects() {
 		},
 	})
 	if err != nil {
-		log.Errorf("archive: can't get store archived ids: %v", err)
+		log.Errorf("workspace: can't get store workspace ids: %v", err)
 		return
 	}
 	var storeObjectInWorkspace = make(map[string]bool, len(records))
@@ -158,7 +158,8 @@ func (p *Workspaces) updateObjects() {
 		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHighlighted.String()) {
 			isHighlighted = true
 		}
-		storeObjectInWorkspace[bundle.RelationKeyId.String()] = isHighlighted
+		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		storeObjectInWorkspace[id] = isHighlighted
 	}
 
 	var objectInWorkspace map[string]bool
@@ -175,6 +176,10 @@ func (p *Workspaces) updateObjects() {
 		}
 	}
 
+	if objectInWorkspace == nil {
+		objectInWorkspace = map[string]bool{}
+	}
+
 	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
 	if highlightedCollection != nil {
 		for objId, isHighlighted := range highlightedCollection {
@@ -182,7 +187,10 @@ func (p *Workspaces) updateObjects() {
 				continue
 			}
 			if v, ok := isHighlighted.(bool); ok && v {
-				objectInWorkspace[objId] = true
+				if _, exists := objectInWorkspace[objId]; exists {
+					// only set if the object is really exist in the workspace collection
+					objectInWorkspace[objId] = true
+				}
 			}
 		}
 	}
