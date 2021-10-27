@@ -74,6 +74,7 @@ func newFixture(t *testing.T) *fixture {
 	fx.anytype.EXPECT().ProfileID().AnyTimes()
 	fx.objectStore.EXPECT().GetDetails("_anytype_profile")
 	fx.objectStore.EXPECT().AddToIndexQueue("_anytype_profile")
+	fx.anytype.EXPECT().ThreadsIds().AnyTimes()
 	fx.objectStore.EXPECT().FTSearch().Return(nil).AnyTimes()
 	fx.objectStore.EXPECT().IndexForEach(gomock.Any()).Times(1)
 	fx.objectStore.EXPECT().UpdateObjectLinks(gomock.Any(), gomock.Any()).Return(nil).AnyTimes()

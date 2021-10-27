@@ -221,6 +221,8 @@ type ObjectStore interface {
 	UpdateObjectSnippet(id string, snippet string) error
 
 	DeleteObject(id string) error
+	DeleteDetails(id string) error
+
 	RemoveRelationFromCache(key string) error
 
 	UpdateRelationsInSetByObjectType(setId, objType, creatorId string, relations []*model.Relation) error
@@ -1126,6 +1128,29 @@ func (m *dsObjectStore) AggregateRelationsFromSetsOfType(objType string) ([]*mod
 	return rels, nil
 }
 
+func (m *dsObjectStore) DeleteDetails(id string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	// todo: remove all indexes with this object
+	for _, k := range []ds.Key{
+		pagesSnippetBase.ChildString(id),
+		pagesDetailsBase.ChildString(id),
+		setRelationsBase.ChildString(id),
+		indexedHeadsState.ChildString(id),
+	} {
+		if err = txn.Delete(k); err != nil {
+			return err
+		}
+	}
+
+	return txn.Commit()
+}
+
+// DeleteObject removes all details, leaving only id and isDeleted
 func (m *dsObjectStore) DeleteObject(id string) error {
 	// do not completely remove object details, so we can distinguish links to deleted and not-yet-loaded objects
 	err := m.UpdateObjectDetails(id, &types.Struct{

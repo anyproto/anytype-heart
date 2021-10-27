@@ -7,22 +7,13 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
-	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
-
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/util/ocache"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/collection"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/file"
 	_import "github.com/anytypeio/go-anytype-middleware/core/block/editor/import"
@@ -30,19 +21,24 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
@@ -271,7 +267,6 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Run() (err error) {
 	s.initPredefinedBlocks()
-	s.testArchiveInconsistency() //// TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
 	return
 }
 
@@ -294,75 +289,6 @@ func (s *service) initPredefinedBlocks() {
 			}
 		} else {
 			sb.Close()
-		}
-	}
-}
-
-// TODO: THIS IS TEMPORARY DEBUG, REMOVE ME
-func (s *service) testArchiveInconsistency() {
-	var (
-		archivedObjects   = make(map[string]bool)
-		archivedObjectsSl []string
-	)
-
-	err := s.Do(s.anytype.PredefinedBlocks().Archive, func(b smartblock.SmartBlock) error {
-		for _, b := range b.Blocks() {
-			if v := b.GetLink(); v != nil {
-				if _, exists := archivedObjects[v.TargetBlockId]; !exists {
-					archivedObjectsSl = append(archivedObjectsSl, v.TargetBlockId)
-					archivedObjects[v.TargetBlockId] = false
-				}
-			}
-		}
-		return nil
-	})
-	if err != nil {
-		log.Errorf("ARCHIVE INCONSISTENCY: failed to open archive sb")
-		return
-	}
-
-	archiveLinks, err := s.anytype.ObjectStore().GetOutboundLinksById(s.anytype.PredefinedBlocks().Archive)
-	if err != nil {
-		log.Errorf("ARCHIVE INCONSISTENCY: failed to get archive outbound links from localstore")
-	}
-
-	removed, added := slice.DifferenceRemovedAdded(archivedObjectsSl, archiveLinks)
-	if len(added)+len(removed) > 0 {
-		log.Debugf("ARCHIVE INCONSISTENCY: indexed outgoing links mismatch: added %v, removed %v", added, removed)
-	}
-	records, _, err := s.anytype.ObjectStore().Query(nil, database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_None,
-			},
-		},
-	})
-	if err != nil {
-		log.Errorf("ARCHIVE INCONSISTENCY: failed to query objectstore")
-		return
-	}
-
-	for _, rec := range records {
-		id := pbtypes.GetString(rec.Details, "id")
-		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsArchived.String()) {
-			if _, exists := archivedObjects[id]; !exists {
-				log.Errorf("ARCHIVE INCONSISTENCY: object %s should not have archived flag", id)
-			} else {
-				archivedObjects[id] = true
-			}
-		} else {
-			if _, exists := archivedObjects[id]; exists {
-				log.Errorf("ARCHIVE INCONSISTENCY: object %s should have archived flag", id)
-				archivedObjects[id] = true
-			}
-		}
-	}
-
-	for id, proceed := range archivedObjects {
-		if !proceed {
-			// this may be ok in case of recovery, so keep it debug
-			log.Debugf("ARCHIVE INCONSISTENCY: object %s not found in objectsearch", id)
 		}
 	}
 }

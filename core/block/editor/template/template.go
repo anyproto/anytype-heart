@@ -387,23 +387,32 @@ var WithNoTitle = StateTransformer(func(s *state.State) {
 	s.Unlink(TitleBlockId)
 })
 
-var WithFirstTextBlock = StateTransformer(func(s *state.State) {
-	root := s.Pick(s.RootId())
-	if root != nil {
-		for _, chId := range root.Model().ChildrenIds {
-			if child := s.Pick(chId); child != nil {
-				if child.Model().GetText() != nil {
-					return
+var WithFirstTextBlock = WithFirstTextBlockContent("")
+
+var WithFirstTextBlockContent = func(text string) StateTransformer {
+	return func(s *state.State) {
+		WithEmpty(s)
+		root := s.Pick(s.RootId())
+		if root != nil {
+			for i, chId := range root.Model().ChildrenIds {
+				if child := s.Pick(chId); child != nil {
+					if exText := child.Model().GetText(); exText != nil {
+						if text != "" &&  i == len(root.Model().ChildrenIds)-1 && exText.Text != text{
+							s.Get(chId).Model().GetText().Text = text
+						}
+						return
+					}
 				}
 			}
+			tb := simple.New(&model.Block{Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}, Text: text},
+			}})
+			s.Add(tb)
+			s.InsertTo("", 0, tb.Model().Id)
 		}
-		tb := simple.New(&model.Block{Content: &model.BlockContentOfText{
-			Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
-		}})
-		s.Add(tb)
-		s.InsertTo("", 0, tb.Model().Id)
 	}
-})
+}
+
 
 var WithNoDescription = StateTransformer(func(s *state.State) {
 	s.Unlink(DescriptionBlockId)
