@@ -919,7 +919,7 @@ func (s *service) DeleteThread(id, workspace string) error {
 }
 
 func (s *service) getAccountProcessor() (ThreadProcessor, error) {
-	id, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
+	id, err := s.derivedThreadIdByIndex(threadDerivedIndexAccountOld)
 	if err != nil {
 		return nil, err
 	}

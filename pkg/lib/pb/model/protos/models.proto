@@ -14,7 +14,8 @@ message SmartBlockSnapshotBase {
 }
 
 enum SmartBlockType {
-    Breadcrumbs = 0;
+    AccountOld = 0;
+    Breadcrumbs = 0x01;
 
     Page = 0x10;
     ProfilePage = 0x11;

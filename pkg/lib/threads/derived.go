@@ -31,7 +31,8 @@ const (
 	threadDerivedIndexProfilePage threadDerivedIndex = 0
 	threadDerivedIndexHome        threadDerivedIndex = 1
 	threadDerivedIndexArchive     threadDerivedIndex = 2
-	threadDerivedIndexAccount     threadDerivedIndex = 3
+	threadDerivedIndexAccountOld  threadDerivedIndex = 3
+	threadDerivedIndexAccount     threadDerivedIndex = 4
 
 	threadDerivedIndexSetPages threadDerivedIndex = 20
 
@@ -61,12 +62,9 @@ type DerivedSmartblockIds struct {
 	MarketplaceTemplate string
 }
 
-var threadDerivedIndexToThreadName = map[threadDerivedIndex]string{
-	threadDerivedIndexProfilePage: "profile",
-	threadDerivedIndexHome:        "home",
-	threadDerivedIndexArchive:     "archive",
-}
 var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.SmartBlockType{
+	threadDerivedIndexAccount:             smartblock.SmartBlockTypeWorkspaceV2,
+	threadDerivedIndexAccountOld:          smartblock.SmartBlockTypeAccountOld,
 	threadDerivedIndexProfilePage:         smartblock.SmartBlockTypeProfilePage,
 	threadDerivedIndexHome:                smartblock.SmartBlockTypeHome,
 	threadDerivedIndexArchive:             smartblock.SmartBlockTypeArchive,
@@ -96,7 +94,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 
 	accountIds := DerivedSmartblockIds{}
 	// account
-	account, justCreated, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccount, newAccount, false)
+	account, justCreated, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccountOld, newAccount, false)
 	if err != nil {
 		return accountIds, err
 	}
@@ -418,25 +416,6 @@ func (s *service) derivedThreadIdByIndex(index threadDerivedIndex) (thread.ID, e
 	copy(masterKey, pkey[:32])
 
 	return threadDeriveId(index, masterKey)
-}
-
-func (s *service) derivedThreadByName(name string) (thread.Info, error) {
-	for index, tname := range threadDerivedIndexToThreadName {
-		if name == tname {
-			return s.derivedThreadWithIndex(index)
-		}
-	}
-
-	return thread.Info{}, fmt.Errorf("thread not found")
-}
-
-func (s *service) derivedThreadWithIndex(index threadDerivedIndex) (thread.Info, error) {
-	id, err := s.derivedThreadIdByIndex(index)
-	if err != nil {
-		return thread.Info{}, err
-	}
-
-	return s.t.GetThread(context.TODO(), id)
 }
 
 func (s *service) derivedThreadEnsure(ctx context.Context, index threadDerivedIndex, newAccount bool, pull bool) (thrd thread.Info, justCreated bool, err error) {

@@ -14,6 +14,8 @@ import (
 type SmartBlockType uint64
 
 const (
+	SmartBlockTypeAccountOld = SmartBlockType(model.SmartBlockType_AccountOld)
+
 	SmartBlockTypePage                = SmartBlockType(model.SmartBlockType_Page)
 	SmartBlockTypeProfilePage         = SmartBlockType(model.SmartBlockType_ProfilePage)
 	SmartBlockTypeHome                = SmartBlockType(model.SmartBlockType_Home)
@@ -87,9 +89,7 @@ func SmartBlockTypeFromThreadID(tid thread.ID) (SmartBlockType, error) {
 	if err := SmartBlockType(blockType).Valid(); err != nil {
 		return 0, err
 	}
-	if blockType == 0 {
-		return 0, fmt.Errorf("unexpected sb type 0")
-	}
+
 	return SmartBlockType(blockType), nil
 }
 
