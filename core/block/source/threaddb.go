@@ -257,7 +257,7 @@ func (v *threadDB) createState() (*state.State, error) {
 	}
 
 	for _, objId := range objects {
-		val, err := v.threadInfoValue(db.InstanceID(v.id))
+		val, err := v.threadInfoValue(db.InstanceID(objId))
 		if err != nil {
 			log.Errorf("threadsDb source createState error: %s", err.Error())
 			continue
