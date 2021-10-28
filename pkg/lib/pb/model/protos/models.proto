@@ -39,8 +39,8 @@ enum SmartBlockType {
     BundledObjectType = 0x202;
     AnytypeProfile = 0x203;
     Date = 0x204;
-    Workspace = 0x205;
-    WorkspaceV2 = 0x206;
+    WorkspaceOld = 0x205; // deprecated thread-based workspace
+    Workspace = 0x206;
 
 }
 

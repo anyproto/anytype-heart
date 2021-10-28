@@ -15998,8 +15998,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | BundledObjectType | 514 |  |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
-| Workspace | 517 |  |
-| WorkspaceV2 | 518 |  |
+| WorkspaceOld | 517 | deprecated thread-based workspace |
+| Workspace | 518 |  |
 
 
  

@@ -35,8 +35,8 @@ const (
 	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate                = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
+	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_Workspace) // deprecated thread-based workspaces
 	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
-	SmartBlockTypeWorkspaceV2         = SmartBlockType(model.SmartBlockType_WorkspaceV2)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {
@@ -109,7 +109,7 @@ func (sbt SmartBlockType) Valid() (err error) {
 func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {
 	case SmartblockTypeMarketplaceType, SmartblockTypeMarketplaceRelation,
-		SmartblockTypeMarketplaceTemplate, SmartBlockTypeDate, SmartBlockTypeBreadcrumbs:
+		SmartblockTypeMarketplaceTemplate, SmartBlockTypeDate, SmartBlockTypeBreadcrumbs, SmartBlockTypeAccountOld, SmartBlockTypeWorkspaceOld:
 		return false, false
 	case SmartBlockTypeArchive:
 		return false, true

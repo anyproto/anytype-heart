@@ -209,7 +209,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo, pullAsy
 	}
 
 	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(tid)
-	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
+	if smartBlockType == smartblock.SmartBlockTypeWorkspaceOld {
 		_, err = s.startWorkspaceThreadProcessor(tid.String())
 	}
 

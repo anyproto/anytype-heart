@@ -346,7 +346,7 @@ func (s *service) GetAllWorkspaces() ([]string, error) {
 
 	var workspaceThreads []string
 	for _, th := range threads {
-		if tp, err := smartblock.SmartBlockTypeFromThreadID(th); err == nil && tp == smartblock.SmartBlockTypeWorkspace {
+		if tp, err := smartblock.SmartBlockTypeFromThreadID(th); err == nil && tp == smartblock.SmartBlockTypeWorkspaceOld {
 			workspaceThreads = append(workspaceThreads, th.String())
 		}
 	}
@@ -573,7 +573,7 @@ func (s *service) CreateWorkspace(name string) (thread.Info, error) {
 
 	// create new workspace thread
 	workspaceThread, err := s.createThreadWithCollection(
-		smartblock.SmartBlockTypeWorkspace,
+		smartblock.SmartBlockTypeWorkspaceOld,
 		accountProcessor.GetThreadCollection(),
 		accountProcessor.GetThreadId())
 	if err != nil {
@@ -720,7 +720,7 @@ func (s *service) AddThread(threadId string, key string, addrs []string) error {
 	}
 
 	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(id)
-	if smartBlockType == smartblock.SmartBlockTypeWorkspace {
+	if smartBlockType == smartblock.SmartBlockTypeWorkspaceOld {
 		accountProcessor, err := s.getAccountProcessor()
 		if err != nil {
 			return err

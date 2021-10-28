@@ -321,7 +321,7 @@ func (a *Anytype) SelectWorkspace(workspaceId string) error {
 	if err != nil {
 		return err
 	}
-	if smartBlockType != smartblock.SmartBlockTypeWorkspace {
+	if smartBlockType != smartblock.SmartBlockTypeWorkspaceOld {
 		return fmt.Errorf("can't select non-workspace smartblock")
 	}
 
@@ -577,7 +577,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	isWorkspaceEventSent := false
 	isWorkspace := func(id string) bool {
 		sbType, err := smartblock.SmartBlockTypeFromID(id)
-		return err == nil && sbType == smartblock.SmartBlockTypeWorkspace
+		return err == nil && sbType == smartblock.SmartBlockTypeWorkspaceOld
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
