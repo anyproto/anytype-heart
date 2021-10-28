@@ -349,6 +349,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 				Details:        params.State.Details(),
 				ExtraRelations: params.State.ExtraRelations(),
 				ObjectTypes:    params.State.ObjectTypes(),
+				Collections:    params.State.Collections(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}

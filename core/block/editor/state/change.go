@@ -37,6 +37,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		extraRelations: snapshot.Data.ExtraRelations,
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
+		collections:    snapshot.Data.Collections,
 	}
 	s.InjectDerivedDetails()
 
@@ -146,6 +147,14 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		}
 	case ch.GetObjectTypeRemove() != nil:
 		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
+			return
+		}
+	case ch.GetCollectionKeySet() != nil:
+		if err = s.changeCollectionKeySet(ch.GetCollectionKeySet()); err != nil {
+			return
+		}
+	case ch.GetCollectionKeyUnset() != nil:
+		if err = s.changeCollectionKeyUnset(ch.GetCollectionKeyUnset()); err != nil {
 			return
 		}
 	default:
@@ -309,6 +318,16 @@ func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
 	return err
 }
 
+func (s *State) changeCollectionKeySet(set *pb.ChangeCollectionKeySet) error {
+	s.SetInCollection(set.CollectionName, set.Key, set.Value)
+	return nil
+}
+
+func (s *State) changeCollectionKeyUnset(unset *pb.ChangeCollectionKeyUnset) error {
+	s.RemoveFromCollection(unset.CollectionName, unset.Key)
+	return nil
+}
+
 func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
@@ -409,6 +428,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeRelationsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
+	s.changes = append(s.changes, s.makeCollectionChanges()...)
 
 }
 
@@ -502,6 +522,59 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 					DetailsUnset: &pb.ChangeDetailsUnset{Key: k},
 				},
 			})
+		}
+	}
+	return
+}
+
+func (s *State) makeCollectionChanges() (ch []*pb.ChangeContent) {
+	if s.collections == nil {
+		return nil
+	}
+
+	var prev map[string]*types.Struct
+	if s.parent != nil {
+		prev = s.parent.Collections()
+	}
+	if prev == nil {
+		prev = map[string]*types.Struct{}
+	}
+
+	curCollections := s.Collections()
+	for collName, coll := range curCollections {
+		for k, v := range coll.Fields {
+			var (
+				keyExists = false
+				prevValue *types.Value
+			)
+
+			if prevColl, collExists := prev[collName]; collExists {
+				prevValue, keyExists = prevColl.Fields[k]
+			}
+			if !keyExists || !prevValue.Equal(v) {
+				ch = append(ch, &pb.ChangeContent{
+					Value: &pb.ChangeContentValueOfCollectionKeySet{
+						CollectionKeySet: &pb.ChangeCollectionKeySet{CollectionName: collName, Key: k, Value: v},
+					},
+				})
+			}
+		}
+	}
+
+	for collName, coll := range prev {
+		for k, _ := range coll.Fields {
+			keyExists := false
+			if prevColl, collExists := curCollections[collName]; collExists {
+				_, keyExists = prevColl.Fields[k]
+			}
+
+			if !keyExists {
+				ch = append(ch, &pb.ChangeContent{
+					Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+						CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{CollectionName: collName, Key: k},
+					},
+				})
+			}
 		}
 	}
 	return

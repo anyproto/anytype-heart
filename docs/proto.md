@@ -13,6 +13,9 @@
     - [Change.BlockMove](#anytype.Change.BlockMove)
     - [Change.BlockRemove](#anytype.Change.BlockRemove)
     - [Change.BlockUpdate](#anytype.Change.BlockUpdate)
+    - [Change.CollectionKeySet](#anytype.Change.CollectionKeySet)
+    - [Change.CollectionKeyUnset](#anytype.Change.CollectionKeyUnset)
+    - [Change.CollectionSet](#anytype.Change.CollectionSet)
     - [Change.Content](#anytype.Change.Content)
     - [Change.DetailsSet](#anytype.Change.DetailsSet)
     - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
@@ -983,6 +986,7 @@
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
+    - [SmartBlockSnapshotBase.CollectionsEntry](#anytype.model.SmartBlockSnapshotBase.CollectionsEntry)
     - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
     - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
@@ -1290,6 +1294,55 @@ the element of change tree used to store and internal apply smartBlock history
 
 
 
+<a name="anytype.Change.CollectionKeySet"></a>
+
+### Change.CollectionKeySet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collectionName | [string](#string) |  |  |
+| key | [string](#string) |  |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.CollectionKeyUnset"></a>
+
+### Change.CollectionKeyUnset
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collectionName | [string](#string) |  |  |
+| key | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.CollectionSet"></a>
+
+### Change.CollectionSet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| collectionName | [string](#string) |  |  |
+| value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
 <a name="anytype.Change.Content"></a>
 
 ### Change.Content
@@ -1310,6 +1363,8 @@ the element of change tree used to store and internal apply smartBlock history
 | relationUpdate | [Change.RelationUpdate](#anytype.Change.RelationUpdate) |  |  |
 | objectTypeAdd | [Change.ObjectTypeAdd](#anytype.Change.ObjectTypeAdd) |  |  |
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype.Change.ObjectTypeRemove) |  |  |
+| collectionKeySet | [Change.CollectionKeySet](#anytype.Change.CollectionKeySet) |  |  |
+| collectionKeyUnset | [Change.CollectionKeyUnset](#anytype.Change.CollectionKeyUnset) |  |  |
 
 
 
@@ -14694,7 +14749,7 @@ Precondition: user A and user B opened the same block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| objectTypeUrls | [string](#string) | repeated |  |
+| objectTypeUrls | [string](#string) | repeated | deprecated |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | relations | [Relation](#anytype.model.Relation) | repeated |  |
 | snippet | [string](#string) |  |  |
@@ -15478,6 +15533,23 @@ scope from which this relation have been aggregated |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | extraRelations | [Relation](#anytype.model.Relation) | repeated |  |
 | objectTypes | [string](#string) | repeated |  |
+| collections | [SmartBlockSnapshotBase.CollectionsEntry](#anytype.model.SmartBlockSnapshotBase.CollectionsEntry) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.model.SmartBlockSnapshotBase.CollectionsEntry"></a>
+
+### SmartBlockSnapshotBase.CollectionsEntry
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 

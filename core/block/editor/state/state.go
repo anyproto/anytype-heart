@@ -82,7 +82,7 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
-	collections map[string]map[string]interface{}
+	collections map[string]*types.Struct
 	objectTypes []string
 
 	changesStructureIgnoreIds []string
@@ -1310,13 +1310,10 @@ func (s *State) Copy() *State {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
 	}
 
-	collections := s.GetCollections()
-	newCollections := make(map[string]map[string]interface{})
+	collections := s.Collections()
+	newCollections := make(map[string]*types.Struct)
 	for name, coll := range collections {
-		newCollections[name] = make(map[string]interface{})
-		for k, v := range coll {
-			newCollections[name][k] = v
-		}
+		newCollections[name] = pbtypes.CopyStruct(coll)
 	}
 
 	copy := &State{
@@ -1412,41 +1409,36 @@ func (s *State) createOrCopyCollectionsFromParent() {
 	if s.collections != nil {
 		return
 	}
-	s.collections = make(map[string]map[string]interface{})
-	iterState := s
-	for iterState != nil && iterState.collections == nil {
-		iterState = iterState.parent
-	}
-	// if we need to copy collection from some state
-	if iterState != nil && iterState.collections != nil {
-		for name, coll := range iterState.collections {
-			s.collections[name] = make(map[string]interface{})
-			for k, v := range coll {
-				s.collections[name][k] = v
-			}
-		}
+	colls := s.Collections()
+	s.collections = make(map[string]*types.Struct, len(colls))
+	for name, coll := range colls {
+		s.collections[name] = pbtypes.CopyStructMap(coll)
 	}
 }
 
-func (s *State) SetInCollection(collectionName string, key string, value interface{}) {
+func (s *State) SetInCollection(collectionName string, key string, value *types.Value) {
+	// todo: optimize to not copy all collection values, but only the map reusing existing values pointers
 	s.createOrCopyCollectionsFromParent()
 	if s.collections[collectionName] == nil {
-		s.collections[collectionName] = make(map[string]interface{})
+		s.collections[collectionName] = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	s.collections[collectionName][key] = value
+	if value != nil {
+		s.collections[collectionName].Fields[key] = value
+	} else {
+		delete(s.collections[collectionName].Fields, key)
+	}
 }
 
 func (s *State) RemoveFromCollection(collectionName string, key string) {
-	collection := s.GetCollection(collectionName)
-	if collection == nil || collection[key] == nil {
+	// todo: optimize to not copy all collection values, but only the map reusing existing values pointers
+	s.createOrCopyCollectionsFromParent()
+	if s.collections[collectionName] == nil {
 		return
 	}
-
-	s.createOrCopyCollectionsFromParent()
-	delete(s.collections[collectionName], key)
+	delete(s.collections[collectionName].Fields, key)
 }
 
-func (s *State) GetCollection(collectionName string) map[string]interface{} {
+func (s *State) GetCollection(collectionName string) *types.Struct {
 	iterState := s
 	for iterState != nil && (iterState.collections == nil || iterState.collections[collectionName] == nil) {
 		iterState = iterState.parent
@@ -1458,7 +1450,7 @@ func (s *State) GetCollection(collectionName string) map[string]interface{} {
 	return iterState.collections[collectionName]
 }
 
-func (s *State) GetCollections() map[string]map[string]interface{} {
+func (s *State) Collections() map[string]*types.Struct {
 	iterState := s
 	for iterState != nil && iterState.collections == nil {
 		iterState = iterState.parent

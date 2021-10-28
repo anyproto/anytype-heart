@@ -23,6 +23,7 @@ func (p *pbj) Convert() []byte {
 			Details:        p.s.Details(),
 			ExtraRelations: p.s.ExtraRelations(),
 			ObjectTypes:    p.s.ObjectTypes(),
+			Collections:    p.s.Collections(),
 		},
 	}
 	for _, fk := range p.s.GetFileKeys() {

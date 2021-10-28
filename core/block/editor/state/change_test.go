@@ -2,6 +2,8 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -41,6 +43,44 @@ func TestState_ChangesCreate_MoveAdd(t *testing.T) {
 		newMoveChange("3.1", model.Block_Bottom, "4", "5"),
 		newRemoveChange("3"),
 	}, changes)
+}
+
+func TestState_ChangesCreate_Collection_Set(t *testing.T) {
+	d := NewDoc("root", nil)
+	s := d.NewState()
+	s.SetInCollection("coll1", "key1", pbtypes.String("1"))
+	_, _, err := ApplyState(s, true)
+	require.NoError(t, err)
+	changes := d.(*State).GetChanges()
+	require.Len(t, changes, 1)
+	assert.Equal(t, (&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfCollectionKeySet{
+			CollectionKeySet: &pb.ChangeCollectionKeySet{
+				CollectionName: "coll1",
+				Key:            "key1",
+				Value:          pbtypes.String("1"),
+			},
+		},
+	}).String(), changes[0].String())
+}
+
+func TestState_ChangesCreate_Collection_Unset(t *testing.T) {
+	d := NewDoc("root", nil)
+	d.(*State).collections = map[string]*types.Struct{"coll1": &types.Struct{Fields: map[string]*types.Value{"key1": pbtypes.String("1")}}}
+	s := d.NewState()
+	s.RemoveFromCollection("coll1", "key1")
+	_, _, err := ApplyState(s, true)
+	require.NoError(t, err)
+	changes := d.(*State).GetChanges()
+	require.Len(t, changes, 1)
+	assert.Equal(t, (&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+			CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{
+				CollectionName: "coll1",
+				Key:            "key1",
+			},
+		},
+	}).String(), changes[0].String())
 }
 
 func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
@@ -410,6 +450,40 @@ func Test_ApplyChange(t *testing.T) {
 			},
 		}))
 		assert.Len(t, s.ObjectTypes(), 0)
+	})
+
+	t.Run("collection set/unset key", func(t *testing.T) {
+		root := NewDoc("root", nil)
+
+		s := root.NewState()
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeySet{
+				CollectionKeySet: &pb.ChangeCollectionKeySet{
+					CollectionName: "col1",
+					Key:            "key1",
+					Value:          pbtypes.String("v1"),
+				},
+			},
+		}))
+		assert.Equal(t, map[string]*types.Struct{"col1": {Fields: map[string]*types.Value{"key1": pbtypes.String("v1")}}}, s.Collections())
+
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{
+					CollectionName: "col1",
+					Key:            "key1",
+				},
+			},
+		}))
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{
+					CollectionName: "col1",
+					Key:            "key2",
+				},
+			},
+		}))
+		assert.Equal(t, map[string]*types.Struct{"col1": {Fields: map[string]*types.Value{}}}, s.Collections())
 	})
 }
 
