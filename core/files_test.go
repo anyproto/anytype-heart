@@ -126,3 +126,20 @@ func TestFile(t *testing.T) {
 	})
 
 }
+
+func TestAccount(t *testing.T) {
+	_, mw, close := start(t, nil)
+	defer close()
+
+	t.Run("account_should_open", func(t *testing.T) {
+		accId := mw.GetAnytype().PredefinedBlocks().Account
+		resp := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: accId})
+		require.Equal(t, 0, int(resp.Error.Code), resp.Error.Description)
+		show := getEventObjectShow(resp.Event.Messages)
+
+		require.Equal(t, accId, show.Details[0].Id)
+		require.Equal(t, "show.Details[0].Details.Fields", show.Details[0].Details.Fields)
+
+	})
+
+}

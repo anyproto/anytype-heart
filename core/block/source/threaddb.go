@@ -66,7 +66,7 @@ func (v *threadDB) Anytype() core.Service {
 }
 
 func (v *threadDB) Type() model.SmartBlockType {
-	return model.SmartBlockType_WorkspaceV2
+	return model.SmartBlockType_AccountOld
 }
 
 func (v *threadDB) Virtual() bool {

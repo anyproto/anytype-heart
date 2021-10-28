@@ -409,7 +409,9 @@ func (s *service) GetLatestWorkspaceMeta(workspaceId string) (WorkspaceMeta, err
 	}
 
 	metaCollection := processor.GetCollectionWithPrefix(MetaCollectionName)
-
+	if metaCollection == nil {
+		return nil, fmt.Errorf("meta collection doesn't exist")
+	}
 	results, err := metaCollection.Find(&threadsDb.Query{})
 	if err != nil {
 		return nil, fmt.Errorf("could not get meta for workspace: %w", err)

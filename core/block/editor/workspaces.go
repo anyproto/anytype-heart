@@ -30,8 +30,8 @@ type Workspaces struct {
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
-	if ctx.Source.Type() != model.SmartBlockType_Workspace {
-		return fmt.Errorf("source type should be a workspace")
+	if ctx.Source.Type() != model.SmartBlockType_Workspace && ctx.Source.Type() != model.SmartBlockType_AccountOld {
+		return fmt.Errorf("source type should be a workspace or an old account")
 	}
 
 	if err = p.SmartBlock.Init(ctx); err != nil {
@@ -167,12 +167,12 @@ func (p *Workspaces) updateObjects() {
 	var objectInWorkspace map[string]bool
 	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
 	if workspaceCollection != nil {
-		objectInWorkspace = make(map[string]bool, len(workspaceCollection))
-		for objId, workspaceId := range workspaceCollection {
+		objectInWorkspace = make(map[string]bool, len(workspaceCollection.Fields))
+		for objId, workspaceId := range workspaceCollection.Fields {
 			if workspaceId == nil {
 				continue
 			}
-			if v, ok := workspaceId.(string); ok && v == p.Id() {
+			if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
 				objectInWorkspace[objId] = false
 			}
 		}
@@ -184,11 +184,11 @@ func (p *Workspaces) updateObjects() {
 
 	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
 	if highlightedCollection != nil {
-		for objId, isHighlighted := range highlightedCollection {
+		for objId, isHighlighted := range highlightedCollection.Fields {
 			if isHighlighted == nil {
 				continue
 			}
-			if v, ok := isHighlighted.(bool); ok && v {
+			if v, ok := isHighlighted.Kind.(*types.Value_BoolValue); ok && v.BoolValue {
 				if _, exists := objectInWorkspace[objId]; exists {
 					// only set if the object is really exist in the workspace collection
 					objectInWorkspace[objId] = true

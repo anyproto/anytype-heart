@@ -63,7 +63,7 @@ type DerivedSmartblockIds struct {
 }
 
 var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.SmartBlockType{
-	threadDerivedIndexAccount:             smartblock.SmartBlockTypeWorkspaceV2,
+	threadDerivedIndexAccount:             smartblock.SmartBlockTypeWorkspaceOld,
 	threadDerivedIndexAccountOld:          smartblock.SmartBlockTypeAccountOld,
 	threadDerivedIndexProfilePage:         smartblock.SmartBlockTypeProfilePage,
 	threadDerivedIndexHome:                smartblock.SmartBlockTypeHome,
