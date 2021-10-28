@@ -105,6 +105,7 @@ type Service interface {
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
 	ThreadsIds() ([]string, error)        // deprecated
+	ThreadsService() threads.Service
 
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
@@ -347,6 +348,10 @@ func (a *Anytype) SetIsHighlighted(objectId string, isHighlighted bool) error {
 
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 	return a.threadService.GetAllWorkspaces()
+}
+
+func (a *Anytype) ThreadsService() threads.Service {
+	return a.threadService
 }
 
 func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {

@@ -53,7 +53,9 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 	if id == addr.AnytypeProfileId {
 		return NewAnytypeProfile(s.anytype, id), nil
 	}
-
+	if id == s.anytype.PredefinedBlocks().Account {
+		return NewThreadDB(s.anytype, id), nil
+	}
 	st, err := smartblock.SmartBlockTypeFromID(id)
 	switch st {
 	case smartblock.SmartBlockTypeFile:
@@ -69,7 +71,7 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 	case smartblock.SmartBlockTypeBreadcrumbs:
 		return NewVirtual(s.anytype, st.ToProto()), nil
 	case smartblock.SmartBlockTypeWorkspace:
-		return NewWorkspaces(s.anytype, id), nil
+		return nil, fmt.Errorf("threadDB-based workspaces are deprecated")
 	}
 
 	tid, err := thread.Decode(id)

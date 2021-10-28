@@ -79,7 +79,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
 		return &bundledRelation{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeWorkspace:
-		return &workspaces{a: s.anytype}, nil
+		return &threadDB{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
 		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
 	default:

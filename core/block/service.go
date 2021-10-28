@@ -826,10 +826,14 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
-	case model.SmartBlockType_Workspace:
+	case model.SmartBlockType_WorkspaceV2:
 		sb = editor.NewWorkspace(s, s)
 	default:
-		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
+		if id == s.anytype.PredefinedBlocks().Account {
+			sb = editor.NewWorkspace(s, s)
+		} else {
+			return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
+		}
 	}
 
 	sb.Lock()
