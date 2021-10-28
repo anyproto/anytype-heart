@@ -5,6 +5,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	database2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
@@ -27,6 +29,34 @@ func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
 type Workspaces struct {
 	*Set
 	DetailsModifier DetailsModifier
+}
+
+func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
+	return nil, nil
+}
+
+func (p *Workspaces) CreateWorkspace(name string) error {
+	return nil
+}
+
+func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error  {
+	return nil
+}
+
+func (p *Workspaces) DeleteObject(objectId string) error {
+	return nil
+}
+
+func (p *Workspaces) GetAllObjects() []string {
+	return nil
+}
+
+func (p *Workspaces) AddCreatorInfoIfNeeded() error {
+	return nil
+}
+
+func (p *Workspaces) GetCreatorInfo(deviceId string) (*threads.CreatorInfo, error) {
+	return nil, nil
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
@@ -220,12 +250,7 @@ func (p *Workspaces) updateObjects() {
 		if _, exists := objectInWorkspace[id]; exists {
 			continue
 		}
-
-		err = p.Anytype().DeleteBlock(id, p.Id())
-		if err != nil {
-			// we will get error here if block has been already removed
-			log.Errorf("workspace: failed to remove object locally")
-		}
+		// TODO: Use thread service to delete objects
 	}
 
 }

@@ -5,15 +5,10 @@ import (
 	"crypto/rand"
 	"encoding/binary"
 	"fmt"
-
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
-	"github.com/textileio/go-threads/core/db"
-	"github.com/textileio/go-threads/core/logstore"
 	threadsDb "github.com/textileio/go-threads/db"
 	threadsUtil "github.com/textileio/go-threads/util"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-slip21"
@@ -77,7 +72,6 @@ var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts 
 
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
 	// FIXME: method refactoring required, racy vars (err)
-
 	s.Lock()
 	defer s.Unlock()
 
@@ -92,100 +86,19 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		}
 	}()
 
+	// we actually need to set up new one and old one and check if we need to start old one at all
 	accountIds := DerivedSmartblockIds{}
 	// account
-	account, justCreated, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccountOld, newAccount, false)
+	account, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccountOld, newAccount, false)
 	if err != nil {
 		return accountIds, err
 	}
-
 	accountIds.Account = account.ID.String()
 
-	accountProcessor := NewAccountThreadProcessor(s, s.simultaneousRequests)
-	s.threadProcessors[account.ID] = accountProcessor
-	err = accountProcessor.Init(account.ID)
+	// we still need to do this at threads level for old account
+	err = s.SetupThreadsDB(account.ID)
 	if err != nil {
-		return accountIds, fmt.Errorf("account proccessor init failed: %w", err)
-	}
-
-	// by default setting collection to account
-	// we will change it later if needed
-	s.db = accountProcessor.GetDB()
-	s.threadsCollection = accountProcessor.GetThreadCollection()
-	s.currentWorkspaceId = account.ID
-
-	var accountPullErr error
-
-	if !newAccount {
-		log.Infof("start account pull")
-		accountThreadPullDone := make(chan struct{})
-		ctxPull, pullCancel := context.WithCancel(context.Background())
-		// accountSelect common case
-		go func() {
-			defer func() {
-				m := make(map[thread.ID]threadInfo)
-				if justCreated {
-					m, err = s.createThreadsDbMap()
-					if err != nil {
-						m = make(map[thread.ID]threadInfo)
-					}
-				}
-				err = accountProcessor.Listen(m)
-				if err != nil {
-					// that can happen if we already closed the db, so no need to do anything specific
-					log.Errorf("listening to threads db failed: %v", err.Error())
-				}
-				close(accountThreadPullDone)
-			}()
-
-			// pull only after threadsDbInit to handle all events
-			_, accountPullErr = s.pullThread(ctxPull, account.ID)
-			if accountPullErr != nil {
-				log.Errorf("account pull failed: %s", accountPullErr.Error())
-				return
-			}
-			log.Infof("account pull done")
-
-			if !justCreated {
-				ids, _ := s.Logstore().Threads()
-				metrics.ServedThreads.Set(float64(len(ids)))
-
-				s.handleMissingReplicatorsAndThreadsInQueue()
-				err = s.handleMissingRecordsForCollection(
-					account.ID.String(),
-					accountProcessor.GetDB(),
-					accountProcessor.GetThreadCollection())
-			} else {
-				metrics.ServedThreads.Set(0)
-			}
-		}()
-
-		if justCreated {
-			// this is the case of accountSelect after accountRecovery
-			// we need to wait for account thread pull to be done
-		loop:
-			for {
-				select {
-				case <-accountThreadPullDone:
-					if accountPullErr != nil {
-						err := s.t.DeleteThread(context.Background(), account.ID)
-						if err != nil {
-							log.Errorf("failed to delete account thread: %s", err.Error())
-						}
-						return accountIds, err
-					}
-					break loop
-				case <-cctx.Done():
-					// cancel pull context and wait till it exits
-					pullCancel()
-				}
-			}
-		}
-	} else {
-		err = accountProcessor.Listen(make(map[thread.ID]threadInfo))
-		if err != nil {
-			return accountIds, err
-		}
+		return accountIds, err
 	}
 
 	// profile
@@ -237,62 +150,48 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	}
 	accountIds.MarketplaceTemplate = marketplaceTemplate.ID.String()
 
-	// trying to set up the workspace if errors occur then bail out
-	workspaceThreadIdString, err := s.workspaceThreadGetter.GetCurrentWorkspaceId()
-	if err == nil {
-		workspaceId, err := thread.Decode(workspaceThreadIdString)
-		if err != nil {
-			log.Errorf("failed to start the workspace: %v", err)
-			return accountIds, nil
-		}
-
-		err = s.ensureWorkspace(ctx, workspaceId, false, true)
-		if err != nil {
-			log.Errorf("failed to start the workspace: %v", err)
-			return accountIds, nil
-		}
-
-		s.processorMutex.RLock()
-		workspaceProcessor := s.threadProcessors[workspaceId]
-		s.processorMutex.RUnlock()
-
-		go func() {
-			_ = s.handleMissingRecordsForCollection(workspaceThreadIdString,
-				workspaceProcessor.GetDB(),
-				workspaceProcessor.GetThreadCollection())
-		}()
-		WorkspaceLogger.
-			With("workspace id", workspaceId).
-			Debug("starting with workspace")
-		return accountIds, nil
-	}
-	WorkspaceLogger.
-		Debug("starting with account")
 	return accountIds, nil
 }
 
-func (s *service) createThreadsDbMap() (map[thread.ID]threadInfo, error) {
-	instancesBytes, err := s.threadsCollection.Find(&threadsDb.Query{})
+func (s *service) SetupThreadsDB(id thread.ID) error {
+	if s.db != nil {
+		return nil
+	}
+	if id == thread.Undef {
+		return fmt.Errorf("cannot start setup threads db with undefined thread")
+	}
+	tInfo, err := s.t.GetThread(context.Background(), id)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("cannot start threads db, because thread is not downloaded: %w", err)
 	}
 
-	m := make(map[thread.ID]threadInfo)
-	for _, instanceBytes := range instancesBytes {
-		ti := threadInfo{}
-		threadsUtil.InstanceFromJSON(instanceBytes, &ti)
-
-		tid, err := thread.Decode(ti.ID.String())
-		if err != nil {
-			log.Errorf("failed to parse thread id %s: %s", ti.ID, err.Error())
-			continue
-		}
-		if tid == thread.Undef {
-			continue
-		}
-		m[tid] = ti
+	s.db, err = threadsDb.NewDB(
+		context.Background(),
+		s.threadsDbDS,
+		s.t,
+		id,
+		// We need to provide the key beforehand
+		// otherwise there can be problems if the log is not created (and therefore the keys are not matched)
+		// this happens with workspaces, because we are adding threads but not creating them
+		threadsDb.WithNewKey(tInfo.Key),
+		threadsDb.WithNewCollections())
+	if err != nil {
+		return err
 	}
-	return m, nil
+
+	threadsCollectionName := ThreadInfoCollectionName
+	s.threadsCollection = s.db.GetCollection(threadsCollectionName)
+
+	if s.threadsCollection != nil {
+		return nil
+	}
+
+	collectionConfig := threadsDb.CollectionConfig{
+		Name:   threadsCollectionName,
+		Schema: threadsUtil.SchemaFromInstance(ThreadDBInfo{}, false),
+	}
+	s.threadsCollection, err = s.db.NewCollection(collectionConfig)
+	return err
 }
 
 func ProfileThreadIDFromAccountPublicKey(pubk crypto.PubKey) (thread.ID, error) {
@@ -334,41 +233,6 @@ func ProfileThreadIDFromAccountAddress(address string) (thread.ID, error) {
 		return thread.Undef, err
 	}
 	return ProfileThreadIDFromAccountPublicKey(pubk)
-}
-
-func (s *service) startWorkspaceThreadProcessor(id string) (ThreadProcessor, error) {
-	s.processorMutex.Lock()
-	defer s.processorMutex.Unlock()
-
-	threadId, err := thread.Decode(id)
-	if err != nil {
-		return nil, fmt.Errorf("error decoding string %w", err)
-	}
-
-	workspaceProcessor, exists := s.threadProcessors[threadId]
-	if exists {
-		return workspaceProcessor, nil
-	}
-
-	workspaceProcessor = NewThreadProcessor(s, NewNoOpNotifier())
-	err = workspaceProcessor.Init(threadId,
-		WithCollection(MetaCollectionName, MetaInfo{}),
-		WithCollection(HighlightedCollectionName, CollectionUpdateInfo{}),
-		WithCollectionAndActionProcessor(CreatorCollectionName,
-			CreatorInfo{},
-			newCreatorInfoActionProcessor(s)))
-	if err != nil {
-		return nil, fmt.Errorf("error initializing processor: %w", err)
-	}
-
-	err = workspaceProcessor.Listen(make(map[thread.ID]threadInfo))
-	if err != nil {
-		return nil, fmt.Errorf("error listening to processor: %w", err)
-	}
-
-	s.threadProcessors[threadId] = workspaceProcessor
-
-	return workspaceProcessor, nil
 }
 
 func (s *service) derivedThreadKeyByIndex(index threadDerivedIndex) (service *symmetric.Key, read *symmetric.Key, err error) {
@@ -469,102 +333,6 @@ func (s *service) threadCreate(threadId thread.ID, key thread.Key) (thread.Info,
 	}()
 
 	return thrd, nil
-}
-
-func (s *service) ensureWorkspace(
-	ctx context.Context,
-	workspaceId thread.ID,
-	pullAsync bool,
-	changeCollection bool) error {
-	// workspace here must be added at the time of switch
-	thrdInfo, err := s.t.GetThread(ctx, workspaceId)
-	if err != nil {
-		return err
-	}
-	WorkspaceLogger.With("workspace id", workspaceId.String()).
-		Debug("workspace thread exists")
-
-	workspaceProcessor, err := s.startWorkspaceThreadProcessor(workspaceId.String())
-	if err != nil {
-		return fmt.Errorf("could not start workspace: %w", err)
-	}
-
-	addrs := util.MultiAddressesToStrings(thrdInfo.Addrs)
-
-	archive, err := s.workspaceThreadEnsure(ctx, threadDerivedIndexArchive, thrdInfo.Key, addrs, pullAsync)
-	if err != nil {
-		return err
-	}
-	WorkspaceLogger.With("workspace id", workspaceId.String()).
-		With("archive id", archive.ID.String()).
-		Debug("workspace archive thread ensured")
-
-	if changeCollection {
-		s.db = workspaceProcessor.GetDB()
-		s.threadsCollection = workspaceProcessor.GetThreadCollection()
-		s.currentWorkspaceId = workspaceId
-
-		WorkspaceLogger.With("workspace id", workspaceId.String()).
-			With("collection name", s.threadsCollection.GetName()).
-			Debug("setting new collection as current")
-	}
-
-	return nil
-}
-
-func (s *service) workspaceThreadEnsure(
-	ctx context.Context,
-	index threadDerivedIndex,
-	key thread.Key,
-	addrs []string,
-	pullAsync bool) (thrd thread.Info, err error) {
-	id, err := threadDeriveId(index, key.Read().Bytes())
-	if err != nil {
-		return thread.Info{}, err
-	}
-
-	sk, rk, err := threadDeriveKeys(index, key.Read().Bytes())
-	if err != nil {
-		return thread.Info{}, err
-	}
-
-	thrd, err = s.t.GetThread(ctx, id)
-	if err == nil {
-		if pullAsync {
-			// in case of select pulling all in background
-			go func() {
-				pullErr := s.t.PullThread(ctx, thrd.ID)
-				if pullErr != nil {
-					log.Errorf("failed to pull workspace thread: %v", pullErr)
-				}
-			}()
-		} else {
-			err = s.t.PullThread(ctx, thrd.ID)
-		}
-		return
-	}
-	if err != logstore.ErrThreadNotFound {
-		return
-	}
-
-	newKey := thread.NewKey(sk, rk)
-	tInfo := threadInfo{
-		ID:    db.InstanceID(id.String()),
-		Key:   newKey.String(),
-		Addrs: addrs,
-	}
-	for i := 0; i < 3; i++ {
-		err = s.processNewExternalThread(id, tInfo, pullAsync)
-		if err == nil {
-			break
-		}
-	}
-	if err != nil {
-		return
-	}
-
-	thrd, err = s.t.GetThread(ctx, id)
-	return
 }
 
 func (s *service) derivedThreadAddExistingFromLocalOrRemote(ctx context.Context, index threadDerivedIndex, pull bool) (thrd thread.Info, justCreated bool, err error) {

@@ -47,12 +47,6 @@ type threadDB struct {
 	cancel    context.CancelFunc
 }
 
-type threadInfo struct {
-	ID    db.InstanceID `json:"_id"`
-	Key   string
-	Addrs []string
-}
-
 func (v *threadDB) ReadOnly() bool {
 	return false
 }
@@ -135,7 +129,7 @@ func (v *threadDB) listenToChanges() (err error) {
 		return
 	}
 
-	v.listener, err = v.processor.GetDB().Listen()
+	v.listener, err = v.Anytype().ThreadsService().ThreadsDB().Listen()
 	if err != nil {
 		return
 	}
@@ -161,26 +155,29 @@ func (v *threadDB) listenToChanges() (err error) {
 }
 
 func (v *threadDB) threadInfoValue(actionId db.InstanceID) (*types.Value, error) {
-	tc, err := v.Anytype().ThreadsService().ThreadsCollection()
-	if err != nil {
-		return nil, err
-	}
+	tc := v.Anytype().ThreadsService().ThreadsCollection()
 	instanceBytes, err := tc.FindByID(actionId)
 	if err != nil {
 		return nil, err
 	}
 
-	ti := threadInfo{}
+	ti := threads.ThreadDBInfo{}
 	threadsUtil.InstanceFromJSON(instanceBytes, &ti)
 	tid, err := thread.Decode(ti.ID.String())
 	if err != nil {
 		return nil, err
 	}
-	return &types.Value{Kind: &types.Value_StructValue{&types.Struct{Fields: map[string]*types.Value{
-		collectionKeyId:    pbtypes.String(tid.String()),
-		collectionKeyKey:   pbtypes.String(ti.Key),
-		collectionKeyAddrs: pbtypes.StringList(ti.Addrs),
-	}}}}, nil
+	return &types.Value{
+			Kind: &types.Value_StructValue{
+				StructValue: &types.Struct{
+					Fields: map[string]*types.Value{
+						collectionKeyId:    pbtypes.String(tid.String()),
+						collectionKeyKey:   pbtypes.String(ti.Key),
+						collectionKeyAddrs: pbtypes.StringList(ti.Addrs),
+				},
+			},
+		},
+	}, nil
 }
 
 func (v *threadDB) processThreadAction(action threadsDb.Action) {
@@ -214,7 +211,7 @@ func (v *threadDB) processThreadAction(action threadsDb.Action) {
 	}
 }
 
-func (v *threadDB) getDetails(meta threads.WorkspaceMeta) (p *types.Struct) {
+func (v *threadDB) getDetails() (p *types.Struct) {
 	details := &types.Struct{Fields: map[string]*types.Value{
 		bundle.RelationKeyId.String():          pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
@@ -232,24 +229,7 @@ func (v *threadDB) getDetails(meta threads.WorkspaceMeta) (p *types.Struct) {
 }
 
 func (v *threadDB) createState() (*state.State, error) {
-	var err error
-	v.processor, err = v.a.GetThreadProcessorForWorkspace(v.id)
-	if err != nil {
-		return nil, err
-	}
-	threads.WorkspaceLogger.
-		With("workspace id", v.id).
-		Debug("finished adding collections in workspace")
-
 	s := state.NewDoc(v.id, nil).(*state.State)
-
-	meta, err := v.a.GetLatestWorkspaceMeta(v.id)
-	if err != nil {
-		threads.WorkspaceLogger.
-			With("workspace id", v.id).
-			Errorf("could not get latest meta: %v", err)
-		meta = nil
-	}
 
 	objects, err := v.a.GetAllObjectsInWorkspace(v.id)
 	if err != nil {
@@ -266,7 +246,7 @@ func (v *threadDB) createState() (*state.State, error) {
 		s.SetInCollection(WorkspaceCollection, objId, val)
 	}
 
-	s.SetDetails(v.getDetails(meta))
+	s.SetDetails(v.getDetails())
 
 	return s, nil
 }

@@ -71,8 +71,6 @@ type Service interface {
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
-	DeleteBlock(blockId, workspaceId string) error
-	CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error)
 
 	// FileOffload removes file blocks ercursively, but leave details
 	FileOffload(id string) (bytesRemoved uint64, err error)
@@ -95,9 +93,7 @@ type Service interface {
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
-	GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
-	GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error)
 
 	ObjectAddWithObjectId(objectId string, payload string) error
 	ObjectShareByLink(objectId string) (string, error)
@@ -120,14 +116,19 @@ var _ app.Component = (*Anytype)(nil)
 
 var _ Service = (*Anytype)(nil)
 
+type CreatorInfoAdder interface {
+	AddCreatorInfoIfNeeded(workspaceId string) error
+}
+
 type Anytype struct {
-	files       *files.Service
-	cafe        cafe.Client
-	mdns        discovery.Service
-	objectStore objectstore.ObjectStore
-	fileStore   filestore.FileStore
-	fetcher     configfetcher.ConfigFetcher
-	sendEvent   func(event *pb.Event)
+	files            *files.Service
+	cafe             cafe.Client
+	mdns             discovery.Service
+	objectStore      objectstore.ObjectStore
+	fileStore        filestore.FileStore
+	fetcher          configfetcher.ConfigFetcher
+	sendEvent        func(event *pb.Event)
+	creatorInfoAdder CreatorInfoAdder
 
 	ds datastore.Datastore
 
@@ -237,7 +238,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.ipfs = ap.MustComponent(ipfs.CName).(ipfs.Node)
 	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
 	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-
+	a.creatorInfoAdder = ap.MustComponent("blockService").(CreatorInfoAdder)
 	return
 }
 
@@ -358,10 +359,6 @@ func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {
 	return a.threadService.GetAllThreadsInWorkspace(id)
 }
 
-func (a *Anytype) GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error) {
-	return a.threadService.GetLatestWorkspaceMeta(workspaceId)
-}
-
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	// todo: probably need to have more reliable way to get the workspace where this object is stored
 	details, err := a.objectStore.GetDetails(objectId)
@@ -370,23 +367,10 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	}
 	s := details.Details.Fields[bundle.RelationKeyWorkspaceId.String()]
 	if s == nil {
-		return "", ErrObjectDoesNotBelongToWorkspace
+		return a.PredefinedBlocks().Account, nil
 	}
 
 	return s.GetStringValue(), nil
-}
-
-func (a *Anytype) GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error) {
-	return a.threadService.GetThreadProcessorForWorkspace(id)
-}
-
-func (a *Anytype) CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error) {
-	thrd, err := a.threadService.CreateThread(t, workspaceId)
-	if err != nil {
-		return nil, err
-	}
-	sb := &smartBlock{thread: thrd, node: a}
-	return sb, nil
 }
 
 // PredefinedBlocks returns default blocks like home and archive
@@ -540,22 +524,14 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 	}
 	readMx.RUnlock()
 
-	_, err = a.threadService.GetCreatorInfoForWorkspace(workspaceId)
-	if err == nil {
-		readMx.Lock()
-		defer readMx.Unlock()
-		checkedThreads[threadId] = struct{}{}
-		checkedWorkspaces[workspaceId] = struct{}{}
-		return
-	}
-	if err != nil && err != threads.ErrCreatorInfoNotFound {
-		return
-	}
-
-	err = a.threadService.AddCreatorInfoToWorkspace(workspaceId)
+	err = a.creatorInfoAdder.AddCreatorInfoIfNeeded(workspaceId)
 	if err != nil {
 		return
 	}
+	readMx.Lock()
+	defer readMx.Unlock()
+	checkedThreads[threadId] = struct{}{}
+	checkedWorkspaces[workspaceId] = struct{}{}
 
 	threads.WorkspaceLogger.
 		With("workspace Id", workspaceId).

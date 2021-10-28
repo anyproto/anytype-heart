@@ -203,6 +203,8 @@ type Service interface {
 	ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
 
+	AddCreatorInfoIfNeeded(workspaceId string) error
+
 	app.ComponentRunnable
 }
 
@@ -385,7 +387,7 @@ func (s *service) CloseBlock(id string) error {
 	s.cache.Unlock(id)
 	if isDraft {
 		_, _ = s.cache.Remove(id)
-		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
+		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
 			s.sendOnRemoveEvent(id)
@@ -534,6 +536,16 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
+func (s *service) AddCreatorInfoIfNeeded(workspaceId string) error {
+	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		return workspace.AddCreatorInfoIfNeeded()
+	})
+}
+
 func (s *service) DeleteObject(id string) (err error) {
 	var (
 		fileHashes  []string
@@ -549,7 +561,7 @@ func (s *service) DeleteObject(id string) (err error) {
 		if isFavorite {
 			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
 		}
-		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
+		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
 			return err
 		}
 		return nil
@@ -671,10 +683,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 
 	// if we don't have anything in details then check the object store
 	if workspaceId == "" {
-		workspaceId, err = s.anytype.ObjectStore().GetCurrentWorkspaceId()
-		if err != nil {
-			workspaceId = ""
-		}
+		workspaceId = s.anytype.PredefinedBlocks().Account
 	}
 
 	if workspaceId != "" {
@@ -683,7 +692,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
-	csm, err := s.anytype.CreateBlock(sbType, workspaceId)
+	csm, err := s.CreateObjectInWorkspace(workspaceId, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return

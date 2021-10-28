@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -22,7 +21,7 @@ const MetaCollectionName = "meta"
 const CreatorCollectionName = "creator"
 const HighlightedCollectionName = "highlighted"
 
-type threadInfo struct {
+type ThreadDBInfo struct {
 	ID    db.InstanceID `json:"_id"`
 	Key   string
 	Addrs []string
@@ -61,7 +60,7 @@ func (m *MetaInfo) Account() string {
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
 // supposed to be run in goroutine
-func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadInfo) error {
+func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti ThreadDBInfo) error {
 	log := log.With("thread", tid.String())
 	log.With("threadAddrs", ti.Addrs).Info("got new thread")
 	start := time.Now()
@@ -90,7 +89,7 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti threadI
 	}
 }
 
-func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo, pullAsync bool) error {
+func (s *service) processNewExternalThread(tid thread.ID, ti ThreadDBInfo, pullAsync bool) error {
 	log := log.With("thread", tid.String())
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {
@@ -206,11 +205,6 @@ func (s *service) processNewExternalThread(tid thread.ID, ti threadInfo, pullAsy
 			}
 			s.newReplicatorProcessingLimiter <- struct{}{}
 		}()
-	}
-
-	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(tid)
-	if smartBlockType == smartblock.SmartBlockTypeWorkspaceOld {
-		_, err = s.startWorkspaceThreadProcessor(tid.String())
 	}
 
 	// TODO: should we add timeout here?
