@@ -322,10 +322,9 @@ type Service interface {
 	SelectAccount() error
 
 	ProcessThreadsForPull(ids []string) error
-	ProcessThreadsForDelete(ids []string) error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
-	AddThread(threadId string, key string, addrs []string) error
-	DeleteThread(id, workspace string) error
+	AddThread(threadId string, key string, addrs []string, workspaceId string) error
+	DeleteThread(id string) error
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllThreadsInWorkspace(id string) ([]string, error)

@@ -106,6 +106,13 @@ type smartBlock struct {
 	node   *Anytype
 }
 
+func NewSmartBlock(thread thread.Info, node Service) SmartBlock {
+	return &smartBlock{
+		thread: thread,
+		node:   node.(*Anytype),
+	}
+}
+
 func (block *smartBlock) Creator() (string, error) {
 	return "", fmt.Errorf("to be implemented")
 }

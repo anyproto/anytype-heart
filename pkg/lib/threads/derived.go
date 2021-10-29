@@ -47,6 +47,7 @@ const (
 )
 
 type DerivedSmartblockIds struct {
+	// TODO: add account old
 	Account             string
 	Profile             string
 	Home                string

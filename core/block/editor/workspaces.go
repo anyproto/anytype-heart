@@ -43,19 +43,41 @@ func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
 }
 
 func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
-	return nil, nil
-}
+	threadService := p.Anytype().ThreadsService()
+	st := p.NewState()
+	threadInfo, err := threadService.CreateThread(sbType, p.Id())
+	if err != nil {
+		return nil, err
+	}
+	st.SetInCollection(source.WorkspaceCollection, p.Id(), stringValueFromString(threadInfo.ID.String()))
 
-func (p *Workspaces) CreateWorkspace(name string) (string, error) {
-	return "", nil
+	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
 }
 
 func (p *Workspaces) DeleteObject(objectId string) error {
-	return nil
+	threadService := p.Anytype().ThreadsService()
+	st := p.NewState()
+	err := threadService.DeleteThread(p.Id())
+	if err != nil {
+		return err
+	}
+	st.RemoveFromCollection(source.WorkspaceCollection, p.Id())
+	return p.Apply(st)
 }
 
 func (p *Workspaces) GetAllObjects() []string {
-	return nil
+	st := p.NewState()
+	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
+	if workspaceCollection == nil || workspaceCollection.Fields == nil {
+		return nil
+	}
+	objects := make([]string, 0, len(workspaceCollection.Fields))
+	for objId, workspaceId := range workspaceCollection.Fields {
+		if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
+			objects = append(objects, objId)
+		}
+	}
+	return objects
 }
 
 func (p *Workspaces) AddCreatorInfoIfNeeded() error {
@@ -65,8 +87,13 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
 	threadService := p.Anytype().ThreadsService()
 	st := p.NewState()
-
-	return nil
+	err := threadService.AddThread(objectId, key, addrs, p.Id())
+	if err != nil {
+		return err
+	}
+	st.SetInCollection(source.WorkspaceCollection, p.Id(), stringValueFromString(objectId))
+	
+	return p.Apply(st)
 }
 
 func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
@@ -202,7 +229,6 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 // TODO: try to get changes from apply
 func (p *Workspaces) updateObjects() {
 	st := p.NewState()
-
 	records, _, err := p.ObjectStore().Query(nil, database2.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -226,12 +252,8 @@ func (p *Workspaces) updateObjects() {
 		log.With("workspace id", p.Id()).Errorf("process threads for pull failed: %v", err)
 	}
 
-	p.updateDetailsIfParametersChanged(storedParameters, parameters)
-
-	deleted := p.deletedObjects(storedParameters, parameters)
-	err = p.Anytype().ThreadsService().ProcessThreadsForDelete(deleted)
-	if err != nil {
-		log.With("workspace id", p.Id()).Errorf("process threads for delete failed: %v", err)
+	if p.Id() != p.Anytype().PredefinedBlocks().Account {
+		p.updateDetailsIfParametersChanged(storedParameters, parameters)
 	}
 }
 
@@ -302,17 +324,8 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 			log.Errorf("workspace: can't set detail to object: %v", err)
 		}
 	}
-	// TODO: clear details for old parameters
 }
 
-func (p *Workspaces)deletedObjects(
-	oldParameters map[string]*WorkspaceParameters,
-	newParameters map[string]*WorkspaceParameters) []string {
-	var deletedObjects []string
-	for id, _ := range newParameters {
-		if _, exists := oldParameters[id]; !exists {
-			deletedObjects = append(deletedObjects, id)
-		}
-	}
-	return deletedObjects
+func stringValueFromString(s string) *types.Value {
+	return &types.Value{Kind: &types.Value_StringValue{StringValue: s}}
 }
