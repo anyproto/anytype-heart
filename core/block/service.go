@@ -438,22 +438,47 @@ func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) 
 }
 
 func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
-	return s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
+	if req.ObjectId == "" || req.Payload == "" {
+		return fmt.Errorf("cannot add object without objectId or payload")
+	}
+	decodedPayload, err := base64.RawStdEncoding.DecodeString(req.Payload)
+	if err != nil {
+		return fmt.Errorf("error adding object: cannot decode base64 payload")
+	}
+
+	var protoPayload model.ThreadDeeplinkPayload
+	err = proto.Unmarshal(decodedPayload, &protoPayload)
+	if err != nil {
+		return fmt.Errorf("failed unmarshalling the payload: %w", err)
+	}
+	return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+
+		return workspace.AddObject(req.ObjectId, protoPayload.Key, protoPayload.Addrs)
+	})
 }
 
 func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
 	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
-	var payload *model.ThreadDeeplinkPayload
+	var key string
+	var addrs []string
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		payload, err = workspace.GetShareInfo(req.ObjectId)
+		key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
 		return err
 	})
 	if err != nil {
 		return "", err
+	}
+	payload := &model.ThreadDeeplinkPayload{
+		Key:   key,
+		Addrs: addrs,
 	}
 	marshalledPayload, err := proto.Marshal(payload)
 	if err != nil {

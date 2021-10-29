@@ -41,10 +41,6 @@ func (p *Workspaces) CreateWorkspace(name string) error {
 	return nil
 }
 
-func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error  {
-	return nil
-}
-
 func (p *Workspaces) DeleteObject(objectId string) error {
 	return nil
 }
@@ -61,26 +57,29 @@ func (p *Workspaces) GetCreatorInfo(deviceId string) (*threads.CreatorInfo, erro
 	return nil, nil
 }
 
-func (p *Workspaces) GetShareInfo(objectId string) (*model.ThreadDeeplinkPayload, error) {
+func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
+	threadService := p.Anytype().ThreadsService()
+	st := p.NewState()
+	// TODO: Add saving logic
+	return nil
+}
+
+func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
 	st := p.NewState()
 	if !st.ContainsInCollection(source.WorkspaceCollection, objectId) {
-		return nil, fmt.Errorf("%s is not contained in workspace %s", objectId, p.Id())
+		return "", nil, fmt.Errorf("%s is not contained in workspace %s", objectId, p.Id())
 	}
 	threadId, err := thread.Decode(objectId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode object %s: %w", objectId, err)
+		return "", nil, fmt.Errorf("failed to decode object %s: %w", objectId, err)
 	}
 
 	threadInfo, err := p.Anytype().ThreadsService().GetThreadInfo(threadId)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
+		return "", nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
 	}
 
-	payload := &model.ThreadDeeplinkPayload{
-		Key:   threadInfo.Key.String(),
-		Addrs: util.MultiAddressesToStrings(threadInfo.Addrs),
-	}
-	return payload, nil
+	return threadInfo.Key.String(), util.MultiAddressesToStrings(threadInfo.Addrs), nil
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {

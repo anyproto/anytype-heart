@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -30,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
-	"github.com/gogo/protobuf/proto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
@@ -92,8 +90,6 @@ type Service interface {
 	GetAllObjectsInWorkspace(id string) ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
-	ObjectAddWithObjectId(objectId string, payload string) error
-
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
 	ThreadsIds() ([]string, error)        // deprecated
@@ -151,24 +147,6 @@ type Anytype struct {
 	wallet              wallet.Wallet
 	tmpFolderAutocreate sync.Once
 	tempDir             string
-}
-
-func (a *Anytype) ObjectAddWithObjectId(objectId string, payload string) error {
-	if objectId == "" || payload == "" {
-		return fmt.Errorf("cannot add object with empty objectId or payload")
-	}
-	decodedPayload, err := base64.RawStdEncoding.DecodeString(payload)
-	if err != nil {
-		return fmt.Errorf("error adding object: cannot decode base64 payload")
-	}
-
-	var protoPayload model.ThreadDeeplinkPayload
-	err = proto.Unmarshal(decodedPayload, &protoPayload)
-	if err != nil {
-		return fmt.Errorf("failed unmarshalling the payload: %w", err)
-	}
-
-	return a.threadService.AddThread(objectId, protoPayload.Key, protoPayload.Addrs)
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {
