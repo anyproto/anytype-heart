@@ -413,12 +413,20 @@ func (s *service) CloseBlocks() {
 	})
 }
 
-func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
-	return s.anytype.CreateWorkspace(req.Name)
+func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
+	err = s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		workspaceId, err = workspace.CreateWorkspace(req.Name)
+		return err
+	})
+	return workspaceId, err
 }
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
-	return s.anytype.SelectWorkspace(req.WorkspaceId)
+	panic("should be removed")
 }
 
 func (s *service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
@@ -434,7 +442,14 @@ func (s *service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 }
 
 func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
-	return s.anytype.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
+	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
+	})
 }
 
 func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {

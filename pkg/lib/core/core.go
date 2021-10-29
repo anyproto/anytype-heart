@@ -33,7 +33,6 @@ import (
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/textileio/go-threads/core/net"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 var log = logging.Logger("anytype-core")
@@ -81,10 +80,6 @@ type Service interface {
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
-
-	CreateWorkspace(string) (string, error)
-	SelectWorkspace(workspaceId string) error
-	SetIsHighlighted(objectId string, isHighlighted bool) error
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllObjectsInWorkspace(id string) ([]string, error)
@@ -235,53 +230,6 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 			close(ch)
 		}
 	}
-}
-
-func (a *Anytype) CreateWorkspace(name string) (string, error) {
-	info, err := a.threadService.CreateWorkspace(name)
-	if err != nil {
-		return "", fmt.Errorf("error creating workspace: %w", err)
-	}
-	return info.ID.String(), nil
-}
-
-func (a *Anytype) SelectWorkspace(workspaceId string) error {
-	if workspaceId == "" {
-		// selecting account
-		threads.WorkspaceLogger.
-			Debug("selecting account")
-		err := a.threadService.SelectAccount()
-		if err != nil {
-			return err
-		}
-
-		return a.objectStore.RemoveCurrentWorkspaceId()
-	}
-
-	threadId, err := thread.Decode(workspaceId)
-	if err != nil {
-		return err
-	}
-
-	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(threadId)
-	if err != nil {
-		return err
-	}
-	if smartBlockType != smartblock.SmartBlockTypeWorkspaceOld {
-		return fmt.Errorf("can't select non-workspace smartblock")
-	}
-
-	err = a.threadService.SelectWorkspace(context.Background(), threadId)
-	if err != nil {
-		return fmt.Errorf("could not select workspace: %w", err)
-	}
-
-	err = a.objectStore.SetCurrentWorkspaceId(workspaceId)
-	if err != nil {
-		return fmt.Errorf("error setting workspace thread: %w", err)
-	}
-
-	return nil
 }
 
 func (a *Anytype) SetIsHighlighted(objectId string, isHighlighted bool) error {

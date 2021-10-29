@@ -37,8 +37,8 @@ func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.Smart
 	return nil, nil
 }
 
-func (p *Workspaces) CreateWorkspace(name string) error {
-	return nil
+func (p *Workspaces) CreateWorkspace(name string) (string, error) {
+	return "", nil
 }
 
 func (p *Workspaces) DeleteObject(objectId string) error {
@@ -51,10 +51,6 @@ func (p *Workspaces) GetAllObjects() []string {
 
 func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	return nil
-}
-
-func (p *Workspaces) GetCreatorInfo(deviceId string) (*threads.CreatorInfo, error) {
-	return nil, nil
 }
 
 func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
@@ -80,6 +76,11 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 	}
 
 	return threadInfo.Key.String(), util.MultiAddressesToStrings(threadInfo.Addrs), nil
+}
+
+func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
+	// TODO: this should be removed probably in the future?
+	return nil
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
