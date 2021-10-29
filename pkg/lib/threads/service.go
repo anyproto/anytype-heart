@@ -90,8 +90,8 @@ type service struct {
 	fetcher               CafeConfigFetcher
 	workspaceThreadGetter CurrentWorkspaceThreadGetter
 	objectDeleter         ObjectDeleter
-	threadCreateQueue     ThreadCreateQueue
-	pullThreadWorker      PullThreadWorker
+	threadCreateQueue ThreadCreateQueue
+	pullThreadWorker  ThreadQueue
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -313,21 +313,24 @@ type Service interface {
 	ThreadsCollection() *threadsDb.Collection
 	ThreadsDB() *threadsDb.DB
 	Threads() threadsApp.Net
+
 	CafePeer() ma.Multiaddr
 
 	CreateWorkspace(string) (thread.Info, error)
 	SelectWorkspace(ctx context.Context, workspaceId thread.ID) error
 	SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error
 	SelectAccount() error
+
+	ProcessThreadsForPull(ids []string) error
+	ProcessThreadsForDelete(ids []string) error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
+	AddThread(threadId string, key string, addrs []string) error
 	DeleteThread(id, workspace string) error
 
 	GetAllWorkspaces() ([]string, error)
 	GetAllThreadsInWorkspace(id string) ([]string, error)
 
 	GetThreadInfo(id thread.ID) (thread.Info, error)
-	AddThread(threadId string, key string, addrs []string) error
-
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
 	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
 }
@@ -342,6 +345,10 @@ func (s *service) ThreadsCollection() *threadsDb.Collection {
 
 func (s *service) ThreadsDB() *threadsDb.DB {
 	return s.db
+}
+
+func (s *service) ProcessThreadsForPull(ids []string) error {
+	return nil
 }
 
 func (s *service) GetAllWorkspaces() ([]string, error) {
@@ -360,23 +367,7 @@ func (s *service) GetAllWorkspaces() ([]string, error) {
 }
 
 func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
-	threadId, err := thread.Decode(id)
-	if err != nil {
-		return nil, err
-	}
-
-	s.processorMutex.RLock()
-	processor, exists := s.threadProcessors[threadId]
-	s.processorMutex.RUnlock()
-
-	if !exists {
-		processor, err = s.startWorkspaceThreadProcessor(id)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	collection := processor.GetThreadCollection()
+	collection := s.threadsCollection
 	instancesBytes, err := collection.Find(&threadsDb.Query{})
 	if err != nil {
 		return nil, err
@@ -396,25 +387,7 @@ func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
 
 	return threadsInWorkspace, nil
 }
-func (s *service) GetThreadProcessorForWorkspace(id string) (ThreadProcessor, error) {
-	threadId, err := thread.Decode(id)
-	if err != nil {
-		return nil, err
-	}
 
-	s.processorMutex.RLock()
-	processor, exists := s.threadProcessors[threadId]
-	s.processorMutex.RUnlock()
-
-	if !exists {
-		processor, err = s.startWorkspaceThreadProcessor(id)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return processor, nil
-}
 func (s *service) Threads() threadsApp.Net {
 	return s.t
 }

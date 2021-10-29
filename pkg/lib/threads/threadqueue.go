@@ -2,18 +2,19 @@ package threads
 
 import "github.com/textileio/go-threads/core/thread"
 
-type PullThreadWorker interface {
-	AddThread(threadId thread.ID) error
+type ThreadQueue interface {
+
+	PullThread(threadId thread.ID) error
 	IsAdded(threadId thread.ID) bool
 }
 
 type pullThreadWorker struct{}
 
-func NewPullThreadWorker() PullThreadWorker {
+func NewPullThreadWorker() ThreadQueue {
 	return &pullThreadWorker{}
 }
 
-func (p *pullThreadWorker) AddThread(threadId thread.ID) error {
+func (p *pullThreadWorker) PullThread(threadId thread.ID) error {
 	panic("implement me")
 }
 

@@ -3,6 +3,7 @@ package editor
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -33,6 +34,14 @@ type Workspaces struct {
 	DetailsModifier DetailsModifier
 }
 
+type WorkspaceParameters struct {
+	IsHighlighted bool
+}
+
+func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
+	return wp.IsHighlighted == other.IsHighlighted
+}
+
 func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
 	return nil, nil
 }
@@ -56,7 +65,7 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
 	threadService := p.Anytype().ThreadsService()
 	st := p.NewState()
-	// TODO: Add saving logic
+
 	return nil
 }
 
@@ -190,6 +199,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	return p.Set.SetNewRecordDefaultFields("dataview", defaultValue)
 }
 
+// TODO: try to get changes from apply
 func (p *Workspaces) updateObjects() {
 	st := p.NewState()
 
@@ -206,34 +216,51 @@ func (p *Workspaces) updateObjects() {
 		log.Errorf("workspace: can't get store workspace ids: %v", err)
 		return
 	}
-	var storeObjectInWorkspace = make(map[string]bool, len(records))
-	for _, rec := range records {
-		var isHighlighted bool
-		if pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHighlighted.String()) {
-			isHighlighted = true
-		}
-		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		storeObjectInWorkspace[id] = isHighlighted
-	}
 
+	storedParameters := p.workspaceParametersFromRecords(records)
 	// we ignore the workspace object itself
-	delete(storeObjectInWorkspace, p.Id())
-	var objectInWorkspace map[string]bool
-	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
-	if workspaceCollection != nil {
-		objectInWorkspace = make(map[string]bool, len(workspaceCollection.Fields))
-		for objId, workspaceId := range workspaceCollection.Fields {
-			if workspaceId == nil {
-				continue
-			}
-			if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
-				objectInWorkspace[objId] = false
-			}
-		}
+	delete(storedParameters, p.Id())
+	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
+	err = p.Anytype().ThreadsService().ProcessThreadsForPull(objects)
+	if err != nil {
+		log.With("workspace id", p.Id()).Errorf("process threads for pull failed: %v", err)
 	}
 
-	if objectInWorkspace == nil {
-		objectInWorkspace = map[string]bool{}
+	p.updateDetailsIfParametersChanged(storedParameters, parameters)
+
+	deleted := p.deletedObjects(storedParameters, parameters)
+	err = p.Anytype().ThreadsService().ProcessThreadsForDelete(deleted)
+	if err != nil {
+		log.With("workspace id", p.Id()).Errorf("process threads for delete failed: %v", err)
+	}
+}
+
+func (p *Workspaces) workspaceParametersFromRecords(records []database2.Record) map[string]*WorkspaceParameters {
+	var storeObjectInWorkspace = make(map[string]*WorkspaceParameters, len(records))
+	for _, rec := range records {
+		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
+		storeObjectInWorkspace[id] = &WorkspaceParameters{
+			IsHighlighted: pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHighlighted.String()),
+		}
+	}
+	return storeObjectInWorkspace
+}
+
+func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]string, map[string]*WorkspaceParameters) {
+	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
+	if workspaceCollection == nil || workspaceCollection.Fields == nil {
+		return nil, nil
+	}
+	parameters := make(map[string]*WorkspaceParameters, len(workspaceCollection.Fields))
+	objects := make([]string, 0, len(workspaceCollection.Fields))
+	for objId, workspaceId := range workspaceCollection.Fields {
+		if workspaceId == nil {
+			continue
+		}
+		if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
+			parameters[objId] = &WorkspaceParameters{IsHighlighted: false}
+			objects = append(objects, objId)
+		}
 	}
 
 	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
@@ -243,15 +270,21 @@ func (p *Workspaces) updateObjects() {
 				continue
 			}
 			if v, ok := isHighlighted.Kind.(*types.Value_BoolValue); ok && v.BoolValue {
-				if _, exists := objectInWorkspace[objId]; exists {
-					// only set if the object is really exist in the workspace collection
-					objectInWorkspace[objId] = true
+				if _, exists := parameters[objId]; exists {
+					parameters[objId].IsHighlighted = true
 				}
 			}
 		}
 	}
-	for id, isHighlighted := range objectInWorkspace {
-		if wasHighlighted, exists := storeObjectInWorkspace[id]; exists && isHighlighted == wasHighlighted {
+
+	return objects, parameters
+}
+
+func (p *Workspaces) updateDetailsIfParametersChanged(
+	oldParameters map[string]*WorkspaceParameters,
+	newParameters map[string]*WorkspaceParameters) {
+	for id, params := range newParameters {
+		if oldParams, exists := oldParameters[id]; exists && oldParams.Equal(params) {
 			continue
 		}
 
@@ -262,19 +295,24 @@ func (p *Workspaces) updateObjects() {
 				}
 			}
 			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(p.Id())
-			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(isHighlighted)
+			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(params.IsHighlighted)
 
 			return current, nil
 		}); err != nil {
 			log.Errorf("workspace: can't set detail to object: %v", err)
 		}
 	}
+	// TODO: clear details for old parameters
+}
 
-	for id, _ := range storeObjectInWorkspace {
-		if _, exists := objectInWorkspace[id]; exists {
-			continue
+func (p *Workspaces)deletedObjects(
+	oldParameters map[string]*WorkspaceParameters,
+	newParameters map[string]*WorkspaceParameters) []string {
+	var deletedObjects []string
+	for id, _ := range newParameters {
+		if _, exists := oldParameters[id]; !exists {
+			deletedObjects = append(deletedObjects, id)
 		}
-		// TODO: Use thread service to delete objects
 	}
-
+	return deletedObjects
 }
