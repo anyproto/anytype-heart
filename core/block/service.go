@@ -2,8 +2,11 @@ package block
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/gogo/protobuf/proto"
+	"net/url"
 	"strings"
 	"time"
 
@@ -43,7 +46,10 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-const CName = "blockService"
+const (
+	CName           = "blockService"
+	linkObjectShare = "anytype://object/share?"
+)
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
@@ -435,8 +441,32 @@ func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest)
 	return s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
 }
 
-func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error) {
-	return s.anytype.ObjectShareByLink(req.ObjectId)
+func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
+	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	var payload *model.ThreadDeeplinkPayload
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		payload, err = workspace.GetShareInfo(req.ObjectId)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	marshalledPayload, err := proto.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
+	}
+	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
+
+	params := url.Values{}
+	params.Add("id", req.ObjectId)
+	params.Add("payload", encodedPayload)
+	encoded := params.Encode()
+
+	return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 // SetPagesIsArchived is deprecated

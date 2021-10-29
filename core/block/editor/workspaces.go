@@ -10,9 +10,11 @@ import (
 	database2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/google/uuid"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -57,6 +59,28 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 
 func (p *Workspaces) GetCreatorInfo(deviceId string) (*threads.CreatorInfo, error) {
 	return nil, nil
+}
+
+func (p *Workspaces) GetShareInfo(objectId string) (*model.ThreadDeeplinkPayload, error) {
+	st := p.NewState()
+	if !st.ContainsInCollection(source.WorkspaceCollection, objectId) {
+		return nil, fmt.Errorf("%s is not contained in workspace %s", objectId, p.Id())
+	}
+	threadId, err := thread.Decode(objectId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode object %s: %w", objectId, err)
+	}
+
+	threadInfo, err := p.Anytype().ThreadsService().GetThreadInfo(threadId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
+	}
+
+	payload := &model.ThreadDeeplinkPayload{
+		Key:   threadInfo.Key.String(),
+		Addrs: util.MultiAddressesToStrings(threadInfo.Addrs),
+	}
+	return payload, nil
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {

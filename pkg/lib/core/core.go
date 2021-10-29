@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -46,8 +45,6 @@ var ErrObjectDoesNotBelongToWorkspace = fmt.Errorf("object does not belong to wo
 const (
 	CName  = "anytype"
 	tmpDir = "tmp"
-
-	linkObjectShare = "anytype://object/share?"
 )
 
 type PredefinedBlockIds struct {
@@ -96,7 +93,6 @@ type Service interface {
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
 	ObjectAddWithObjectId(objectId string, payload string) error
-	ObjectShareByLink(objectId string) (string, error)
 
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
@@ -173,35 +169,6 @@ func (a *Anytype) ObjectAddWithObjectId(objectId string, payload string) error {
 	}
 
 	return a.threadService.AddThread(objectId, protoPayload.Key, protoPayload.Addrs)
-}
-
-func (a *Anytype) ObjectShareByLink(objectId string) (string, error) {
-	threadId, err := thread.Decode(objectId)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode the block: %w", err)
-	}
-
-	threadInfo, err := a.threadService.GetThreadInfo(threadId)
-	if err != nil {
-		return "", fmt.Errorf("failed to get info on the thread: %w", err)
-	}
-
-	payload := &model.ThreadDeeplinkPayload{
-		Key:   threadInfo.Key.String(),
-		Addrs: util.MultiAddressesToStrings(threadInfo.Addrs),
-	}
-	marshalledPayload, err := proto.Marshal(payload)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
-	}
-	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
-
-	params := url.Values{}
-	params.Add("id", objectId)
-	params.Add("payload", encodedPayload)
-	encoded := params.Encode()
-
-	return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {

@@ -1429,6 +1429,11 @@ func (s *State) SetInCollection(collectionName string, key string, value *types.
 	}
 }
 
+func (s *State) ContainsInCollection(collectionName string, key string) bool {
+	coll := s.GetCollection(collectionName)
+	return coll != nil && coll.Fields != nil && coll.Fields[key] != nil
+}
+
 func (s *State) RemoveFromCollection(collectionName string, key string) {
 	// todo: optimize to not copy all collection values, but only the map reusing existing values pointers
 	s.createOrCopyCollectionsFromParent()
