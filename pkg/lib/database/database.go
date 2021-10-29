@@ -194,7 +194,7 @@ type filterGetter struct {
 
 func (f filterGetter) Get(key string) *types.Value {
 	res := pbtypes.Get(f.curEl, key)
-	if slice.FindPos(f.dateKeys, key) != -1 {
+	if res != nil && slice.FindPos(f.dateKeys, key) != -1 {
 		res = dateOnly(res)
 	}
 	return res
