@@ -90,8 +90,8 @@ type service struct {
 	fetcher               CafeConfigFetcher
 	workspaceThreadGetter CurrentWorkspaceThreadGetter
 	objectDeleter         ObjectDeleter
-	threadCreateQueue ThreadCreateQueue
-	pullThreadWorker  ThreadQueue
+	threadCreateQueue     ThreadCreateQueue
+	pullThreadWorker      ThreadQueue
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -321,11 +321,12 @@ type Service interface {
 	SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error
 	SelectAccount() error
 
-	ProcessThreadsForPull(ids []string) error
+	ProcessWorkspaceThreads(ids []string, workspaceId string) error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string, workspaceId string) error
 	DeleteThread(id string) error
 
+	GetCreatorInfo(workspaceId string) (CreatorInfo, error)
 	GetAllWorkspaces() ([]string, error)
 	GetAllThreadsInWorkspace(id string) ([]string, error)
 
@@ -365,6 +366,28 @@ func (s *service) GetAllWorkspaces() ([]string, error) {
 	return workspaceThreads, nil
 }
 
+func (s *service) GetCreatorInfo(workspaceId string) (CreatorInfo, error) {
+	deviceId := s.device.Address()
+	profileId, err := ProfileThreadIDFromAccountAddress(s.account.Address())
+	if err != nil {
+		return CreatorInfo{}, err
+	}
+	info, err := s.GetThreadInfo(profileId)
+	if err != nil {
+		return CreatorInfo{}, err
+	}
+
+	signature, err := s.account.Sign([]byte(workspaceId + deviceId))
+	if err != nil {
+		return CreatorInfo{}, fmt.Errorf("cannot sign device and workspace")
+	}
+	return CreatorInfo{
+		AccountPubKey: s.account.Address(),
+		WorkspaceSig:  signature,
+		Addrs:         util.MultiAddressesToStrings(info.Addrs),
+	}, nil
+}
+
 func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
 	collection := s.threadsCollection
 	instancesBytes, err := collection.Find(&threadsDb.Query{})
@@ -391,7 +414,7 @@ func (s *service) Threads() threadsApp.Net {
 	return s.t
 }
 
-func (s *service) AddThread(threadId string, key string, addrs []string) error {
+func (s *service) AddThread(threadId string, key string, addrs []string, workspaceId string) error {
 	addedInfo := ThreadDBInfo{
 		ID:    db.InstanceID(threadId),
 		Key:   key,

@@ -21,6 +21,7 @@ import (
 )
 
 const WorkspaceCollection = "threadDB"
+const CreatorCollection = "collection"
 
 const (
 	collectionKeyId    = "id"
@@ -42,7 +43,6 @@ type threadDB struct {
 
 	receiver  ChangeReceiver
 	listener  threadsDb.Listener
-	processor threads.ThreadProcessor
 	ctx       context.Context
 	cancel    context.CancelFunc
 }

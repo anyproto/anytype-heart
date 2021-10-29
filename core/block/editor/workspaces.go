@@ -22,6 +22,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
+const (
+	signatureKey       = "signature"
+	accountKey         = "account"
+	addrsKey           = "addrs"
+	collectionKeyId    = "id"
+	collectionKeyKey   = "key"
+	collectionKeyAddrs = "addrs"
+)
+
 func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
 		Set:             NewSet(dbCtrl),
@@ -49,7 +58,7 @@ func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.Smart
 	if err != nil {
 		return nil, err
 	}
-	st.SetInCollection(source.WorkspaceCollection, p.Id(), stringValueFromString(threadInfo.ID.String()))
+	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.threadInfoValue(threadInfo))
 
 	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
 }
@@ -81,7 +90,20 @@ func (p *Workspaces) GetAllObjects() []string {
 }
 
 func (p *Workspaces) AddCreatorInfoIfNeeded() error {
-	return nil
+	st := p.NewState()
+	deviceId := p.Anytype().Device()
+
+	creatorCollection := st.GetCollection(source.CreatorCollection)
+	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceId] == nil {
+		return nil
+	}
+	info, err := p.Anytype().ThreadsService().GetCreatorInfo(p.Id())
+	if err != nil {
+		return err
+	}
+	st.SetInCollection(source.CreatorCollection, deviceId, p.creatorInfoValue(info))
+
+	return p.Apply(st)
 }
 
 func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
@@ -91,8 +113,8 @@ func (p *Workspaces) AddObject(objectId string, key string, addrs []string) erro
 	if err != nil {
 		return err
 	}
-	st.SetInCollection(source.WorkspaceCollection, p.Id(), stringValueFromString(objectId))
-	
+	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.threadInfoValue(objectId, key, addrs))
+
 	return p.Apply(st)
 }
 
@@ -247,7 +269,7 @@ func (p *Workspaces) updateObjects() {
 	// we ignore the workspace object itself
 	delete(storedParameters, p.Id())
 	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
-	err = p.Anytype().ThreadsService().ProcessThreadsForPull(objects)
+	err = p.Anytype().ThreadsService().ProcessWorkspaceThreads(objects, p.Id())
 	if err != nil {
 		log.With("workspace id", p.Id()).Errorf("process threads for pull failed: %v", err)
 	}
@@ -326,6 +348,34 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 	}
 }
 
-func stringValueFromString(s string) *types.Value {
-	return &types.Value{Kind: &types.Value_StringValue{StringValue: s}}
+func (p *Workspaces) creatorInfoValue(info threads.CreatorInfo) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_StructValue{
+			StructValue: &types.Struct{
+				Fields: map[string]*types.Value{
+					accountKey:   pbtypes.String(info.AccountPubKey),
+					signatureKey: pbtypes.String(string(info.WorkspaceSig)),
+					addrsKey:     pbtypes.StringList(info.Addrs),
+				},
+			},
+		},
+	}
+}
+
+func (p *Workspaces) threadInfoValue(id string, key string, addrs []string) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_StructValue{
+			StructValue: &types.Struct{
+				Fields: map[string]*types.Value{
+					collectionKeyId:    pbtypes.String(id),
+					collectionKeyKey:   pbtypes.String(key),
+					collectionKeyAddrs: pbtypes.StringList(util.MultiAddressesToStrings(addrs)),
+				},
+			},
+		},
+	}
+}
+
+func (p *Workspaces) threadInfoValueFromStruct(ti thread.Info) *types.Value {
+	return p.threadInfoValue(ti.ID.String(), ti.Key.String(), util.MultiAddressesToStrings(ti.Addrs))
 }

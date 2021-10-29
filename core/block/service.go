@@ -414,15 +414,11 @@ func (s *service) CloseBlocks() {
 }
 
 func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
-	err = s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
-		workspace, ok := b.(*editor.Workspaces)
-		if !ok {
-			return fmt.Errorf("incorrect object with workspace id")
-		}
-		workspaceId, err = workspace.CreateWorkspace(req.Name)
-		return err
-	})
-	return workspaceId, err
+	id, _, err := s.CreateSmartBlock(coresb.SmartBlockTypeWorkspace,
+		&types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyName.String(): pbtypes.String(req.Name),
+		}}, nil)
+	return id, err
 }
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
@@ -607,6 +603,10 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 }
 
 func (s *service) AddCreatorInfoIfNeeded(workspaceId string) error {
+	// TODO: Add old account check
+	if workspaceId == s.Anytype().PredefinedBlocks().Account {
+		return nil
+	}
 	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
