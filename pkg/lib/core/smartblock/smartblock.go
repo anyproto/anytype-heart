@@ -35,7 +35,7 @@ const (
 	SmartBlockTypeAnytypeProfile      = SmartBlockType(model.SmartBlockType_AnytypeProfile)
 	SmartBlockTypeDate                = SmartBlockType(model.SmartBlockType_Date)
 	SmartBlockTypeBreadcrumbs         = SmartBlockType(model.SmartBlockType_Breadcrumbs)
-	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_Workspace) // deprecated thread-based workspaces
+	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
 	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
 )
 

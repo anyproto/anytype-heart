@@ -32,12 +32,9 @@ const (
 )
 
 func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
-	s := NewSet(dbCtrl)
 	return &Workspaces{
 		Set:             NewSet(dbCtrl),
 		DetailsModifier: dmservice,
-		threadService:   s.Anytype().ThreadsService(),
-		threadQueue:     s.Anytype().ThreadsService().ThreadQueue(),
 	}
 }
 
@@ -157,6 +154,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
+	p.threadService = p.Anytype().ThreadsService()
+	p.threadQueue = p.Anytype().ThreadsService().ThreadQueue()
 
 	dataviewAllHighlightedObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{

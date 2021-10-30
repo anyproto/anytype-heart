@@ -63,7 +63,7 @@ func (d DerivedSmartblockIds) IsAccount(id string) bool {
 }
 
 var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.SmartBlockType{
-	threadDerivedIndexAccount:             smartblock.SmartBlockTypeWorkspaceOld,
+	threadDerivedIndexAccount:             smartblock.SmartBlockTypeWorkspace,
 	threadDerivedIndexAccountOld:          smartblock.SmartBlockTypeAccountOld,
 	threadDerivedIndexProfilePage:         smartblock.SmartBlockTypeProfilePage,
 	threadDerivedIndexHome:                smartblock.SmartBlockTypeHome,
