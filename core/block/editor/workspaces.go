@@ -62,7 +62,7 @@ func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.Smart
 	if err != nil {
 		return nil, err
 	}
-	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.pbThreadInfoValueFromStruct(threadInfo))
+	st.SetInCollection([]string{source.WorkspaceCollection, p.Id()}, p.pbThreadInfoValueFromStruct(threadInfo))
 
 	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
 }
@@ -73,7 +73,7 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 	if err != nil {
 		return err
 	}
-	st.RemoveFromCollection(source.WorkspaceCollection, p.Id())
+	st.RemoveFromCollection([]string{source.WorkspaceCollection, p.Id()})
 	return p.Apply(st)
 }
 
@@ -104,7 +104,7 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	if err != nil {
 		return err
 	}
-	st.SetInCollection(source.CreatorCollection, deviceId, p.pbCreatorInfoValue(info))
+	st.SetInCollection([]string{source.CreatorCollection, deviceId}, p.pbCreatorInfoValue(info))
 
 	return p.Apply(st)
 }
@@ -119,14 +119,14 @@ func (p *Workspaces) AddObject(objectId string, key string, addrs []string) erro
 	if err != nil {
 		return err
 	}
-	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.pbThreadInfoValue(objectId, key, addrs))
+	st.SetInCollection([]string{source.WorkspaceCollection, p.Id()}, p.pbThreadInfoValue(objectId, key, addrs))
 
 	return p.Apply(st)
 }
 
 func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
 	st := p.NewState()
-	if !st.ContainsInCollection(source.WorkspaceCollection, objectId) {
+	if !st.ContainsInCollection([]string{source.WorkspaceCollection, objectId}) {
 		return "", nil, fmt.Errorf("%s is not contained in workspace %s", objectId, p.Id())
 	}
 	threadId, err := thread.Decode(objectId)
@@ -145,7 +145,7 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 	// TODO: this should be removed probably in the future?
 	st := p.NewState()
-	st.SetInCollection(source.HighlightedCollection, objectId, pbtypes.Bool(value))
+	st.SetInCollection([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
 	return p.Apply(st)
 }
 

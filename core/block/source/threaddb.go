@@ -200,9 +200,9 @@ func (v *threadDB) processThreadAction(action threadsDb.Action) {
 			if err != nil {
 				return nil, err
 			}
-			s.SetInCollection(WorkspaceCollection, action.ID.String(), val)
+			s.SetInCollection([]string{WorkspaceCollection, action.ID.String()}, val)
 		} else if action.Type == threadsDb.ActionDelete {
-			s.RemoveFromCollection(WorkspaceCollection, action.ID.String())
+			s.RemoveFromCollection([]string{WorkspaceCollection, action.ID.String()})
 		}
 		return
 	})
@@ -242,7 +242,7 @@ func (v *threadDB) createState() (*state.State, error) {
 			continue
 		}
 
-		s.SetInCollection(WorkspaceCollection, objId, val)
+		s.SetInCollection([]string{WorkspaceCollection, objId}, val)
 	}
 
 	s.SetDetails(v.getDetails())
