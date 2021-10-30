@@ -52,6 +52,7 @@ var (
 
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
+	workspaceMapBase = ds.NewKey("/" + workspacesPrefix + "/workspacemap")
 
 	threadCreateQueuePrefix = "threadcreatequeue"
 	threadCreateQueueBase   = ds.NewKey("/" + threadCreateQueuePrefix)
@@ -268,6 +269,10 @@ type ObjectStore interface {
 	AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error)
 	RemoveThreadQueueEntry(threadId string) (err error)
 	GetAllQueueEntries() ([]*model.ThreadCreateQueueEntry, error)
+
+	AddThreadToWorkspace(threadId, workspaceId string) error
+	RemoveThreadForWorkspace(threadId, workspaceId string) error
+	GetThreadQueueState() (map[string]map[string]struct{}, map[string]map[string]struct{}, error)
 }
 
 type relationOption struct {
@@ -331,6 +336,72 @@ type dsObjectStore struct {
 
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
+}
+
+func (m *dsObjectStore) AddThreadToWorkspace(threadId, workspaceId string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	workspaceKey := workspaceMapBase.Child(ds.NewKey(workspaceId)).Child(ds.NewKey(threadId))
+	if err := txn.Put(workspaceKey, nil); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+	return nil
+}
+
+func (m *dsObjectStore) RemoveThreadForWorkspace(threadId, workspaceId string) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	workspaceKey := workspaceMapBase.Child(ds.NewKey(workspaceId)).Child(ds.NewKey(threadId))
+	if err := txn.Delete(workspaceKey); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+	return nil
+}
+
+func (m *dsObjectStore) GetThreadQueueState() (map[string]map[string]struct{}, map[string]map[string]struct{}, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	res, err := txn.Query(query.Query{
+		Prefix: workspaceMapBase.String(),
+		KeysOnly: true,
+	})
+	if err != nil {
+		return nil, nil, err
+	}
+
+	threadWorkspaces := make(map[string]map[string]struct{})
+	workspaceThreads := make(map[string]map[string]struct{})
+	for entry := range res.Next() {
+		split := strings.Split(entry.Key, "/")
+		if len(split) < 2 {
+			continue
+		}
+		workspaceId := split[len(split) - 2]
+		threadId := split[len(split) - 1]
+		threadKV, exists := threadWorkspaces[threadId]
+		if !exists {
+			threadKV = make(map[string]struct{})
+			threadWorkspaces[threadId] = threadKV
+		}
+		workspaceKV, exists := workspaceThreads[workspaceId]
+		if !exists {
+			workspaceKV = make(map[string]struct{})
+			workspaceThreads[workspaceId] = workspaceKV
+		}
+		threadKV[workspaceId] = struct{}{}
+		workspaceKV[threadId] = struct{}{}
+	}
+	return workspaceThreads, threadWorkspaces, nil
 }
 
 func (m *dsObjectStore) AddThreadQueueEntry(entry *model.ThreadCreateQueueEntry) (err error) {

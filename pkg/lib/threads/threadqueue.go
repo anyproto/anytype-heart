@@ -15,10 +15,10 @@ type ThreadQueueState struct {
 	threadWorkspaces map[string]map[string]struct{}
 }
 
-type ThreadStore interface {
+type ThreadWorkspaceStore interface {
 	AddThreadToWorkspace(threadId, workspaceId string) error
 	RemoveThreadForWorkspace(threadId, workspaceId string) error
-	GetThreadQueueState() (ThreadQueueState, error)
+	GetThreadQueueState() (map[string]map[string]struct{}, map[string]map[string]struct{}, error)
 }
 
 type ThreadQueue interface {
@@ -42,7 +42,7 @@ type threadQueue struct {
 	workspaceThreads  map[string]map[string]struct{}
 	threadWorkspaces  map[string]map[string]struct{}
 	threadsService    *service
-	threadStore       ThreadStore
+	threadStore       ThreadWorkspaceStore
 	operationsBuffer  []ThreadOperation
 	currentOperations map[string]ThreadOperation
 	operationsMutex   sync.Mutex
@@ -77,14 +77,23 @@ func (p *threadQueue) GetThreadsForWorkspace(workspaceId string) map[string]stru
 	return objects
 }
 
-func NewThreadQueue(s *service, state ThreadQueueState) ThreadQueue {
+func NewThreadQueue(s *service, store ThreadWorkspaceStore) ThreadQueue {
 	return &threadQueue{
-		workspaceThreads:  state.workspaceThreads,
-		threadWorkspaces:  state.threadWorkspaces,
 		threadsService:    s,
+		threadStore:       store,
 		wakeupChan:        make(chan struct{}, 1),
 		currentOperations: map[string]ThreadOperation{},
 	}
+}
+
+func (p *threadQueue) Init() error {
+	workspaceThreads, threadWorkspaces, err := p.threadStore.GetThreadQueueState()
+	if err != nil {
+		return err
+	}
+	p.workspaceThreads = workspaceThreads
+	p.threadWorkspaces = threadWorkspaces
+	return nil
 }
 
 func (p *threadQueue) Run() {
