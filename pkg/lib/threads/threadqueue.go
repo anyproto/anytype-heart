@@ -270,6 +270,11 @@ func (p *threadQueue) finishDeleteOperation(id, workspaceId string) {
 		return
 	}
 
+	err = p.threadsService.objectDeleter.DeleteObject(id)
+	if err != nil {
+		log.Errorf("error deleting object from store %s %s %v", id, workspaceId, err.Error())
+	}
+
 	p.Lock()
 	workspaceKV, exists := p.workspaceThreads[workspaceId]
 	if exists {
