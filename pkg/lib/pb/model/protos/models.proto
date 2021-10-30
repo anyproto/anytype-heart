@@ -10,7 +10,7 @@ message SmartBlockSnapshotBase {
     google.protobuf.Struct fileKeys = 3;
     repeated Relation extraRelations = 4;
     repeated string objectTypes = 5;
-    map<string, google.protobuf.Struct> collections = 6;
+    google.protobuf.Struct collections = 6;
 }
 
 enum SmartBlockType {

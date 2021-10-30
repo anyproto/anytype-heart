@@ -319,12 +319,12 @@ func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
 }
 
 func (s *State) changeCollectionKeySet(set *pb.ChangeCollectionKeySet) error {
-	s.SetInCollection(set.CollectionName, set.Key, set.Value)
+	s.SetInCollection(set.Key, set.Value)
 	return nil
 }
 
 func (s *State) changeCollectionKeyUnset(unset *pb.ChangeCollectionKeyUnset) error {
-	s.RemoveFromCollection(unset.CollectionName, unset.Key)
+	s.RemoveFromCollection(unset.Key)
 	return nil
 }
 

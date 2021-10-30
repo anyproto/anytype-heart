@@ -15,7 +15,6 @@
     - [Change.BlockUpdate](#anytype.Change.BlockUpdate)
     - [Change.CollectionKeySet](#anytype.Change.CollectionKeySet)
     - [Change.CollectionKeyUnset](#anytype.Change.CollectionKeyUnset)
-    - [Change.CollectionSet](#anytype.Change.CollectionSet)
     - [Change.Content](#anytype.Change.Content)
     - [Change.DetailsSet](#anytype.Change.DetailsSet)
     - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
@@ -986,7 +985,6 @@
     - [Restrictions](#anytype.model.Restrictions)
     - [Restrictions.DataviewRestrictions](#anytype.model.Restrictions.DataviewRestrictions)
     - [SmartBlockSnapshotBase](#anytype.model.SmartBlockSnapshotBase)
-    - [SmartBlockSnapshotBase.CollectionsEntry](#anytype.model.SmartBlockSnapshotBase.CollectionsEntry)
     - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
     - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
@@ -1302,8 +1300,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| collectionName | [string](#string) |  |  |
-| key | [string](#string) |  |  |
+| key | [string](#string) | repeated |  |
 | value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
 
 
@@ -1319,24 +1316,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| collectionName | [string](#string) |  |  |
-| key | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.CollectionSet"></a>
-
-### Change.CollectionSet
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| collectionName | [string](#string) |  |  |
-| value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| key | [string](#string) | repeated |  |
 
 
 
@@ -15533,23 +15513,7 @@ scope from which this relation have been aggregated |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | extraRelations | [Relation](#anytype.model.Relation) | repeated |  |
 | objectTypes | [string](#string) | repeated |  |
-| collections | [SmartBlockSnapshotBase.CollectionsEntry](#anytype.model.SmartBlockSnapshotBase.CollectionsEntry) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.model.SmartBlockSnapshotBase.CollectionsEntry"></a>
-
-### SmartBlockSnapshotBase.CollectionsEntry
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| collections | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 

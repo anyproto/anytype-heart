@@ -129,17 +129,11 @@ message Change {
     }
 
     message CollectionKeySet {
-        string collectionName = 1;
-        string key = 2;
-        google.protobuf.Value value = 3;
+        repeated string key = 1;
+        google.protobuf.Value value = 2;
     }
 
     message CollectionKeyUnset {
-        string collectionName = 1;
-        string key = 2;
-    }
-    message CollectionSet {
-        string collectionName = 1;
-        google.protobuf.Struct value = 2;
+        repeated string key = 1;
     }
 }
