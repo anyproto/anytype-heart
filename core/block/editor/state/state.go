@@ -1410,7 +1410,7 @@ func (s *State) createOrCopyCollectionsFromParent() {
 }
 
 func (s *State) SetInCollection(keys []string, value *types.Value) {
-	if value == nil || len(keys) == 0 {
+	if len(keys) == 0 {
 		return
 	}
 	// todo: optimize to not copy all collection values, but only the map reusing existing values pointers

@@ -466,7 +466,7 @@ func Test_ApplyChange(t *testing.T) {
 			Value: &pb.ChangeContentValueOfCollectionKeySet{
 				CollectionKeySet: &pb.ChangeCollectionKeySet{
 					Key:            []string{"coll1", "key1"},
-					Value:          pbtypes.String("v1"),
+					Value:          pbtypes.String("1"),
 				},
 			},
 		}))
@@ -486,7 +486,12 @@ func Test_ApplyChange(t *testing.T) {
 				},
 			},
 		}))
-		assert.Equal(t, map[string]*types.Struct{"col1": {Fields: map[string]*types.Value{}}}, s.Collections())
+		frankenstein := &types.Struct{
+			Fields: map[string]*types.Value{
+				"coll1": {Kind: &types.Value_StructValue{
+					StructValue: &types.Struct{Fields: map[string]*types.Value{}},
+				}}}}
+		assert.Equal(t, frankenstein, s.Collections())
 	})
 }
 
