@@ -16,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -240,17 +239,13 @@ func (a *Anytype) ThreadsService() threads.Service {
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
-	// todo: probably need to have more reliable way to get the workspace where this object is stored
-	details, err := a.objectStore.GetDetails(objectId)
-	if err != nil {
-		return "", err
-	}
-	s := details.Details.Fields[bundle.RelationKeyWorkspaceId.String()]
-	if s == nil {
-		return a.PredefinedBlocks().Account, nil
+	workspaceIds := a.threadService.ThreadQueue().GetWorkspacesForThread(objectId)
+	if len(workspaceIds) != 0 && workspaceIds[0] != a.predefinedBlockIds.Account {
+		return workspaceIds[0], nil
 	}
 
-	return s.GetStringValue(), nil
+
+	return "", ErrObjectDoesNotBelongToWorkspace
 }
 
 // PredefinedBlocks returns default blocks like home and archive
