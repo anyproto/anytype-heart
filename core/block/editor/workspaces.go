@@ -23,12 +23,12 @@ import (
 )
 
 const (
-	signatureKey       = "signature"
-	accountKey         = "account"
-	addrsKey           = "addrs"
-	collectionKeyId    = "id"
-	collectionKeyKey   = "key"
-	collectionKeyAddrs = "addrs"
+	collectionKeySignature = "signature"
+	collectionKeyAccount   = "account"
+	collectionKeyProfileId = "profileId"
+	collectionKeyAddrs     = "addrs"
+	collectionKeyId        = "id"
+	collectionKeyKey       = "key"
 )
 
 func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
@@ -290,21 +290,19 @@ func (p *Workspaces) workspaceParametersFromRecords(records []database2.Record) 
 	return storeObjectInWorkspace
 }
 
-func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]string, map[string]*WorkspaceParameters) {
+func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]threads.ThreadDBInfo, map[string]*WorkspaceParameters) {
 	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
 	if workspaceCollection == nil || workspaceCollection.Fields == nil {
 		return nil, nil
 	}
 	parameters := make(map[string]*WorkspaceParameters, len(workspaceCollection.Fields))
-	objects := make([]string, 0, len(workspaceCollection.Fields))
+	objects := make([]threads.ThreadDBInfo, 0, len(workspaceCollection.Fields))
 	for objId, workspaceId := range workspaceCollection.Fields {
 		if workspaceId == nil {
 			continue
 		}
-		if v, ok := workspaceId.Kind.(*types.Value_StringValue); ok && v.StringValue == p.Id() {
-			parameters[objId] = &WorkspaceParameters{IsHighlighted: false}
-			objects = append(objects, objId)
-		}
+		parameters[objId] = &WorkspaceParameters{IsHighlighted: false}
+		objects = append(objects, objId)
 	}
 
 	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
@@ -353,9 +351,10 @@ func (p *Workspaces) creatorInfoValue(info threads.CreatorInfo) *types.Value {
 		Kind: &types.Value_StructValue{
 			StructValue: &types.Struct{
 				Fields: map[string]*types.Value{
-					accountKey:   pbtypes.String(info.AccountPubKey),
-					signatureKey: pbtypes.String(string(info.WorkspaceSig)),
-					addrsKey:     pbtypes.StringList(info.Addrs),
+					collectionKeyAccount:   pbtypes.String(info.AccountPubKey),
+					collectionKeySignature: pbtypes.String(string(info.WorkspaceSig)),
+					collectionKeyProfileId: pbtypes.String(info.ProfileId),
+					collectionKeyAddrs:     pbtypes.StringList(info.Addrs),
 				},
 			},
 		},
@@ -378,4 +377,22 @@ func (p *Workspaces) threadInfoValue(id string, key string, addrs []string) *typ
 
 func (p *Workspaces) threadInfoValueFromStruct(ti thread.Info) *types.Value {
 	return p.threadInfoValue(ti.ID.String(), ti.Key.String(), util.MultiAddressesToStrings(ti.Addrs))
+}
+
+func (p *Workspaces) threadInfoFromWorkspacePB(val *types.Value) threads.ThreadInfo {
+	fields := val.Kind.(*types.Value_StructValue).StructValue.Fields
+	return threads.ThreadInfo{
+		ID:    fields[collectionKeyId].Kind.(*types.Value_StringValue).String(),
+		Key:   fields[collectionKeyKey].Kind.(*types.Value_StringValue).String(),
+		Addrs: pbtypes.GetStringListValue(fields[collectionKeyAddrs]),
+	}
+}
+
+func (p *Workspaces) creatorInfoFromCreatorPB(val *types.Value) threads.ThreadInfo {
+	fields := val.Kind.(*types.Value_StructValue).StructValue.Fields
+	return threads.ThreadInfo{
+		ID:    fields[collectionKeyProfileId].Kind.(*types.Value_StringValue).String(),
+		Key:   fields[collectionKeyKey].Kind.(*types.Value_StringValue).String(),
+		Addrs: pbtypes.GetStringListValue(fields[collectionKeyAddrs]),
+	}
 }

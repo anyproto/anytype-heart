@@ -27,6 +27,12 @@ type ThreadDBInfo struct {
 	Addrs []string
 }
 
+type ThreadInfo struct {
+	ID    string
+	Key   string
+	Addrs []string
+}
+
 type WorkspaceMeta interface {
 	WorkspaceName() string
 	Account() string
@@ -39,10 +45,11 @@ type MetaInfo struct {
 }
 
 type CreatorInfo struct {
-	ID            db.InstanceID `json:"_id"`
+	ID            string
 	AccountPubKey string
 	WorkspaceSig  []byte
 	Addrs         []string
+	ProfileId     string
 }
 
 type CollectionUpdateInfo struct {
@@ -60,7 +67,7 @@ func (m *MetaInfo) Account() string {
 
 // processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
 // supposed to be run in goroutine
-func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti ThreadDBInfo) error {
+func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti ThreadInfo) error {
 	log := log.With("thread", tid.String())
 	log.With("threadAddrs", ti.Addrs).Info("got new thread")
 	start := time.Now()
@@ -89,7 +96,7 @@ func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti ThreadD
 	}
 }
 
-func (s *service) processNewExternalThread(tid thread.ID, ti ThreadDBInfo, pullAsync bool) error {
+func (s *service) processNewExternalThread(tid thread.ID, ti ThreadInfo, pullAsync bool) error {
 	log := log.With("thread", tid.String())
 	key, err := thread.KeyFromString(ti.Key)
 	if err != nil {

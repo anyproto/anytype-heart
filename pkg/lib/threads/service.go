@@ -142,7 +142,7 @@ func (s *service) Init(a *app.App) (err error) {
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
 	s.objectDeleter = a.MustComponent("blockService").(ObjectDeleter)
-	s.pullThreadWorker = NewPullThreadWorker()
+	s.pullThreadWorker = NewThreadQueue()
 
 	s.device, err = wl.GetDevicePrivkey()
 	if err != nil {
@@ -321,7 +321,7 @@ type Service interface {
 	SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error
 	SelectAccount() error
 
-	ProcessWorkspaceThreads(ids []string, workspaceId string) error
+	ProcessWorkspaceThreads(threadInfos []ThreadInfo, creatorInfos []CreatorInfo, workspaceId string) error
 	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string, workspaceId string) error
 	DeleteThread(id string) error
