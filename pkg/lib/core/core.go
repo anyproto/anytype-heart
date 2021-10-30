@@ -240,10 +240,9 @@ func (a *Anytype) ThreadsService() threads.Service {
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	workspaceIds := a.threadService.ThreadQueue().GetWorkspacesForThread(objectId)
-	if len(workspaceIds) != 0 && workspaceIds[0] != a.predefinedBlockIds.Account {
+	if len(workspaceIds) != 0 && !a.predefinedBlockIds.IsAccount(objectId) {
 		return workspaceIds[0], nil
 	}
-
 
 	return "", ErrObjectDoesNotBelongToWorkspace
 }
@@ -450,7 +449,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				}
 				go a.addCreatorData(val, &creatorInfoMx, checkedThreads, checkedWorkspaces)
 				id := val.ThreadID().String()
-				if id == a.predefinedBlockIds.Account {
+				if a.predefinedBlockIds.IsAccount(id) {
 					// todo: not working on the early start
 					continue
 				}

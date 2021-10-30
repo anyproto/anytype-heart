@@ -378,7 +378,7 @@ func (v *source) ListIds() ([]string, error) {
 		return nil, err
 	}
 	ids = slice.Filter(ids, func(id string) bool {
-		if id == v.Anytype().PredefinedBlocks().Account {
+		if v.Anytype().PredefinedBlocks().IsAccount(id) {
 			return false
 		}
 		t, err := smartblock.SmartBlockTypeFromID(id)

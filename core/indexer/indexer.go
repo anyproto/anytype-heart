@@ -277,9 +277,10 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 
 	if len(idsToReindex) > 0 {
 		for _, id := range idsToReindex {
-			if id == i.anytype.PredefinedBlocks().Account {
-				continue
-			}
+			// TODO: we should reindex it I guess at start
+			//if i.anytype.PredefinedBlocks().IsAccount(id) {
+			//	continue
+			//}
 			ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 			d, err := i.doc.GetDocInfo(ctx, id)
 			if err != nil {

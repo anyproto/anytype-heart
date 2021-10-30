@@ -603,8 +603,7 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 }
 
 func (s *service) AddCreatorInfoIfNeeded(workspaceId string) error {
-	// TODO: Add old account check
-	if workspaceId == s.Anytype().PredefinedBlocks().Account {
+	if s.Anytype().PredefinedBlocks().IsAccount(workspaceId) {
 		return nil
 	}
 	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {

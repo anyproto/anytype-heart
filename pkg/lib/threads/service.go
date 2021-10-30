@@ -21,7 +21,6 @@ import (
 
 	ma "github.com/multiformats/go-multiaddr"
 	threadsApp "github.com/textileio/go-threads/core/app"
-	"github.com/textileio/go-threads/core/db"
 	tlcore "github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/net"
 	"github.com/textileio/go-threads/core/thread"
@@ -89,7 +88,7 @@ type service struct {
 	workspaceThreadGetter CurrentWorkspaceThreadGetter
 	objectDeleter         ObjectDeleter
 	threadCreateQueue     ThreadCreateQueue
-	pullThreadWorker      ThreadQueue
+	threadQueue           ThreadQueue
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -139,7 +138,8 @@ func (s *service) Init(a *app.App) (err error) {
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
 	s.objectDeleter = a.MustComponent("blockService").(ObjectDeleter)
-	s.pullThreadWorker = NewThreadQueue()
+	threadWorkspaceStore := a.MustComponent("objectstore").(ThreadWorkspaceStore)
+	s.threadQueue = NewThreadQueue(s, threadWorkspaceStore)
 
 	s.device, err = wl.GetDevicePrivkey()
 	if err != nil {
@@ -191,6 +191,11 @@ func (s *service) Run() (err error) {
 	}
 
 	s.logstoreDS, err = s.ds.LogstoreDS()
+	if err != nil {
+		return err
+	}
+
+	err = s.threadQueue.Init()
 	if err != nil {
 		return err
 	}
@@ -339,8 +344,8 @@ func (s *service) ThreadsDB() *threadsDb.DB {
 	return s.db
 }
 
-func (s *service) ThreadQueue() ThreadQueue{
-	return nil
+func (s *service) ThreadQueue() ThreadQueue {
+	return s.threadQueue
 }
 
 func (s *service) GetAllWorkspaces() ([]string, error) {
