@@ -230,8 +230,7 @@ func (v *threadDB) getDetails() (p *types.Struct) {
 
 func (v *threadDB) createState() (*state.State, error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
-
-	objects, err := v.a.GetAllObjectsInWorkspace(v.id)
+	objects, err := v.a.ThreadsService().GetAllThreadsInOldAccount()
 	if err != nil {
 		return nil, err
 	}

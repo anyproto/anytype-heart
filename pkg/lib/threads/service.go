@@ -84,8 +84,6 @@ type service struct {
 	newThreadProcessingLimiter     chan struct{}
 	newReplicatorProcessingLimiter chan struct{}
 	process                        process.Service
-	threadProcessors               map[thread.ID]ThreadProcessor
-	processorMutex                 sync.RWMutex
 
 	fetcher               CafeConfigFetcher
 	workspaceThreadGetter CurrentWorkspaceThreadGetter
@@ -128,7 +126,6 @@ func New() Service {
 		ctx:                  ctx,
 		ctxCancel:            cancel,
 		simultaneousRequests: simultaneousRequests,
-		threadProcessors:     make(map[thread.ID]ThreadProcessor),
 	}
 }
 
@@ -313,22 +310,17 @@ type Service interface {
 	ThreadsCollection() *threadsDb.Collection
 	ThreadsDB() *threadsDb.DB
 	Threads() threadsApp.Net
+	ThreadQueue() ThreadQueue
 
 	CafePeer() ma.Multiaddr
 
-	CreateWorkspace(string) (thread.Info, error)
-	SelectWorkspace(ctx context.Context, workspaceId thread.ID) error
-	SetIsHighlighted(workspaceId, objectId string, isHighlighted bool) error
-	SelectAccount() error
-
-	ProcessWorkspaceThreads(threadInfos []ThreadInfo, creatorInfos []CreatorInfo, workspaceId string) error
-	CreateThread(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
-	AddThread(threadId string, key string, addrs []string, workspaceId string) error
+	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
+	AddThread(threadId string, key string, addrs []string) error
 	DeleteThread(id string) error
 
 	GetCreatorInfo(workspaceId string) (CreatorInfo, error)
 	GetAllWorkspaces() ([]string, error)
-	GetAllThreadsInWorkspace(id string) ([]string, error)
+	GetAllThreadsInOldAccount() ([]string, error)
 
 	GetThreadInfo(id thread.ID) (thread.Info, error)
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
@@ -347,7 +339,7 @@ func (s *service) ThreadsDB() *threadsDb.DB {
 	return s.db
 }
 
-func (s *service) ProcessThreadsForPull(ids []string) error {
+func (s *service) ThreadQueue() ThreadQueue{
 	return nil
 }
 
@@ -388,7 +380,7 @@ func (s *service) GetCreatorInfo(workspaceId string) (CreatorInfo, error) {
 	}, nil
 }
 
-func (s *service) GetAllThreadsInWorkspace(id string) ([]string, error) {
+func (s *service) GetAllThreadsInOldAccount() ([]string, error) {
 	collection := s.threadsCollection
 	instancesBytes, err := collection.Find(&threadsDb.Query{})
 	if err != nil {
@@ -414,9 +406,9 @@ func (s *service) Threads() threadsApp.Net {
 	return s.t
 }
 
-func (s *service) AddThread(threadId string, key string, addrs []string, workspaceId string) error {
-	addedInfo := ThreadDBInfo{
-		ID:    db.InstanceID(threadId),
+func (s *service) AddThread(threadId string, key string, addrs []string) error {
+	addedInfo := ThreadInfo{
+		ID:    threadId,
 		Key:   key,
 		Addrs: addrs,
 	}

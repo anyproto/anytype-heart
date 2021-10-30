@@ -82,7 +82,6 @@ type Service interface {
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
 	GetAllWorkspaces() ([]string, error)
-	GetAllObjectsInWorkspace(id string) ([]string, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
 
 	ObjectStore() objectstore.ObjectStore // deprecated
@@ -232,24 +231,12 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 	}
 }
 
-func (a *Anytype) SetIsHighlighted(objectId string, isHighlighted bool) error {
-	workspaceId, err := a.GetWorkspaceIdForObject(objectId)
-	if err != nil {
-		return err
-	}
-	return a.threadService.SetIsHighlighted(workspaceId, objectId, isHighlighted)
-}
-
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 	return a.threadService.GetAllWorkspaces()
 }
 
 func (a *Anytype) ThreadsService() threads.Service {
 	return a.threadService
-}
-
-func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {
-	return a.threadService.GetAllThreadsInWorkspace(id)
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
