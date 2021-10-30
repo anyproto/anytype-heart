@@ -32,15 +32,20 @@ const (
 )
 
 func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
+	s := NewSet(dbCtrl)
 	return &Workspaces{
 		Set:             NewSet(dbCtrl),
 		DetailsModifier: dmservice,
+		threadService:   s.Anytype().ThreadsService(),
+		threadQueue:     s.Anytype().ThreadsService().ThreadQueue(),
 	}
 }
 
 type Workspaces struct {
 	*Set
 	DetailsModifier DetailsModifier
+	threadService   threads.Service
+	threadQueue     threads.ThreadQueue
 }
 
 type WorkspaceParameters struct {
@@ -52,21 +57,19 @@ func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
 }
 
 func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
-	threadService := p.Anytype().ThreadsService()
 	st := p.NewState()
-	threadInfo, err := threadService.CreateThread(sbType, p.Id())
+	threadInfo, err := p.threadQueue.CreateThreadSync(sbType, p.Id())
 	if err != nil {
 		return nil, err
 	}
-	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.threadInfoValue(threadInfo))
+	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.pbThreadInfoValueFromStruct(threadInfo))
 
 	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
 }
 
 func (p *Workspaces) DeleteObject(objectId string) error {
-	threadService := p.Anytype().ThreadsService()
 	st := p.NewState()
-	err := threadService.DeleteThread(p.Id())
+	err := p.threadQueue.DeleteThreadSync(objectId, p.Id())
 	if err != nil {
 		return err
 	}
@@ -97,23 +100,26 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceId] == nil {
 		return nil
 	}
-	info, err := p.Anytype().ThreadsService().GetCreatorInfo(p.Id())
+	info, err := p.threadService.GetCreatorInfo(p.Id())
 	if err != nil {
 		return err
 	}
-	st.SetInCollection(source.CreatorCollection, deviceId, p.creatorInfoValue(info))
+	st.SetInCollection(source.CreatorCollection, deviceId, p.pbCreatorInfoValue(info))
 
 	return p.Apply(st)
 }
 
 func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
-	threadService := p.Anytype().ThreadsService()
 	st := p.NewState()
-	err := threadService.AddThread(objectId, key, addrs, p.Id())
+	err := p.threadQueue.AddThreadSync(threads.ThreadInfo{
+		ID:    objectId,
+		Key:   key,
+		Addrs: addrs,
+	}, p.Id())
 	if err != nil {
 		return err
 	}
-	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.threadInfoValue(objectId, key, addrs))
+	st.SetInCollection(source.WorkspaceCollection, p.Id(), p.pbThreadInfoValue(objectId, key, addrs))
 
 	return p.Apply(st)
 }
@@ -128,7 +134,7 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 		return "", nil, fmt.Errorf("failed to decode object %s: %w", objectId, err)
 	}
 
-	threadInfo, err := p.Anytype().ThreadsService().GetThreadInfo(threadId)
+	threadInfo, err := p.threadService.GetThreadInfo(threadId)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
 	}
@@ -138,7 +144,9 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 
 func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 	// TODO: this should be removed probably in the future?
-	return nil
+	st := p.NewState()
+	st.SetInCollection(source.HighlightedCollection, objectId, pbtypes.Bool(value))
+	return p.Apply(st)
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
@@ -248,9 +256,22 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	return p.Set.SetNewRecordDefaultFields("dataview", defaultValue)
 }
 
-// TODO: try to get changes from apply
+// TODO: try to save results from processing of previous state and get changes from apply for performance
 func (p *Workspaces) updateObjects() {
 	st := p.NewState()
+
+	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
+	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
+	// TODO: Also include old account
+	if p.Id() != p.Anytype().PredefinedBlocks().Account {
+		storedParameters := p.workspaceParametersFromRecords(p.storedRecordsForWorkspace())
+		// we ignore the workspace object itself
+		delete(storedParameters, p.Id())
+		p.updateDetailsIfParametersChanged(storedParameters, parameters)
+	}
+}
+
+func (p *Workspaces) storedRecordsForWorkspace() []database2.Record {
 	records, _, err := p.ObjectStore().Query(nil, database2.Query{
 		Filters: []*model.BlockContentDataviewFilter{
 			{
@@ -262,21 +283,9 @@ func (p *Workspaces) updateObjects() {
 	})
 	if err != nil {
 		log.Errorf("workspace: can't get store workspace ids: %v", err)
-		return
+		return nil
 	}
-
-	storedParameters := p.workspaceParametersFromRecords(records)
-	// we ignore the workspace object itself
-	delete(storedParameters, p.Id())
-	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
-	err = p.Anytype().ThreadsService().ProcessWorkspaceThreads(objects, p.Id())
-	if err != nil {
-		log.With("workspace id", p.Id()).Errorf("process threads for pull failed: %v", err)
-	}
-
-	if p.Id() != p.Anytype().PredefinedBlocks().Account {
-		p.updateDetailsIfParametersChanged(storedParameters, parameters)
-	}
+	return records
 }
 
 func (p *Workspaces) workspaceParametersFromRecords(records []database2.Record) map[string]*WorkspaceParameters {
@@ -290,22 +299,32 @@ func (p *Workspaces) workspaceParametersFromRecords(records []database2.Record) 
 	return storeObjectInWorkspace
 }
 
-func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]threads.ThreadDBInfo, map[string]*WorkspaceParameters) {
+func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]threads.ThreadInfo, map[string]*WorkspaceParameters) {
 	workspaceCollection := st.GetCollection(source.WorkspaceCollection)
 	if workspaceCollection == nil || workspaceCollection.Fields == nil {
 		return nil, nil
 	}
 	parameters := make(map[string]*WorkspaceParameters, len(workspaceCollection.Fields))
-	objects := make([]threads.ThreadDBInfo, 0, len(workspaceCollection.Fields))
-	for objId, workspaceId := range workspaceCollection.Fields {
-		if workspaceId == nil {
+	objects := make([]threads.ThreadInfo, 0, len(workspaceCollection.Fields))
+	for objId, value := range workspaceCollection.Fields {
+		if value == nil {
 			continue
 		}
 		parameters[objId] = &WorkspaceParameters{IsHighlighted: false}
-		objects = append(objects, objId)
+		objects = append(objects, p.threadInfoFromWorkspacePB(value))
 	}
 
-	highlightedCollection := st.GetCollection(threads.HighlightedCollectionName)
+	creatorCollection := st.GetCollection(source.CreatorCollection)
+	if creatorCollection != nil {
+		for _, value := range creatorCollection.Fields {
+			info, err := p.threadInfoFromCreatorPB(value)
+			if err != nil {
+				continue
+			}
+			objects = append(objects, info)
+		}
+	}
+	highlightedCollection := st.GetCollection(source.HighlightedCollection)
 	if highlightedCollection != nil {
 		for objId, isHighlighted := range highlightedCollection.Fields {
 			if isHighlighted == nil {
@@ -346,7 +365,7 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 	}
 }
 
-func (p *Workspaces) creatorInfoValue(info threads.CreatorInfo) *types.Value {
+func (p *Workspaces) pbCreatorInfoValue(info threads.CreatorInfo) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_StructValue{
 			StructValue: &types.Struct{
@@ -361,22 +380,22 @@ func (p *Workspaces) creatorInfoValue(info threads.CreatorInfo) *types.Value {
 	}
 }
 
-func (p *Workspaces) threadInfoValue(id string, key string, addrs []string) *types.Value {
+func (p *Workspaces) pbThreadInfoValue(id string, key string, addrs []string) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_StructValue{
 			StructValue: &types.Struct{
 				Fields: map[string]*types.Value{
 					collectionKeyId:    pbtypes.String(id),
 					collectionKeyKey:   pbtypes.String(key),
-					collectionKeyAddrs: pbtypes.StringList(util.MultiAddressesToStrings(addrs)),
+					collectionKeyAddrs: pbtypes.StringList(addrs),
 				},
 			},
 		},
 	}
 }
 
-func (p *Workspaces) threadInfoValueFromStruct(ti thread.Info) *types.Value {
-	return p.threadInfoValue(ti.ID.String(), ti.Key.String(), util.MultiAddressesToStrings(ti.Addrs))
+func (p *Workspaces) pbThreadInfoValueFromStruct(ti thread.Info) *types.Value {
+	return p.pbThreadInfoValue(ti.ID.String(), ti.Key.String(), util.MultiAddressesToStrings(ti.Addrs))
 }
 
 func (p *Workspaces) threadInfoFromWorkspacePB(val *types.Value) threads.ThreadInfo {
@@ -388,11 +407,20 @@ func (p *Workspaces) threadInfoFromWorkspacePB(val *types.Value) threads.ThreadI
 	}
 }
 
-func (p *Workspaces) creatorInfoFromCreatorPB(val *types.Value) threads.ThreadInfo {
+func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadInfo, error) {
 	fields := val.Kind.(*types.Value_StructValue).StructValue.Fields
-	return threads.ThreadInfo{
-		ID:    fields[collectionKeyProfileId].Kind.(*types.Value_StringValue).String(),
-		Key:   fields[collectionKeyKey].Kind.(*types.Value_StringValue).String(),
-		Addrs: pbtypes.GetStringListValue(fields[collectionKeyAddrs]),
+	account := fields[collectionKeyAccount].Kind.(*types.Value_StringValue).String()
+	profileId, err := threads.ProfileThreadIDFromAccountAddress(account)
+	if err != nil {
+		return threads.ThreadInfo{}, err
 	}
+	sk, pk, err := threads.ProfileThreadKeysFromAccountAddress(account)
+	if err != nil {
+		return threads.ThreadInfo{}, err
+	}
+	return threads.ThreadInfo{
+		ID:    profileId.String(),
+		Key:   thread.NewKey(sk, pk).String(),
+		Addrs: pbtypes.GetStringListValue(fields[collectionKeyAddrs]),
+	}, nil
 }

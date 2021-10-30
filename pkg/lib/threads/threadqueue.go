@@ -26,8 +26,8 @@ type ThreadQueue interface {
 	AddThreadSync(info ThreadInfo, workspaceId string) error
 	CreateThreadSync(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
 	DeleteThreadSync(id, workspaceId string) error
-	GetWorkspacesForThread(threadId string) []string
-	GetThreadsForWorkspace(workspaceId string) []string
+	GetWorkspacesForThread(threadId string) map[string]struct{}
+	GetThreadsForWorkspace(workspaceId string) map[string]struct{}
 }
 
 type ThreadOperation struct {
@@ -49,30 +49,30 @@ type threadQueue struct {
 	wakeupChan        chan struct{}
 }
 
-func (p *threadQueue) GetWorkspacesForThread(threadId string) []string {
+func (p *threadQueue) GetWorkspacesForThread(threadId string) map[string]struct{} {
 	p.Lock()
 	defer p.Unlock()
-	var objects []string
+	objects := make(map[string]struct{})
 	threadsKV, exists := p.threadWorkspaces[threadId]
 	if !exists {
 		return nil
 	}
 	for id := range threadsKV {
-		objects = append(objects, id)
+		objects[id] = struct{}{}
 	}
 	return objects
 }
 
-func (p *threadQueue) GetThreadsForWorkspace(workspaceId string) []string {
+func (p *threadQueue) GetThreadsForWorkspace(workspaceId string) map[string]struct{} {
 	p.Lock()
 	defer p.Unlock()
-	var objects []string
+	objects := make(map[string]struct{})
 	workspaceKV, exists := p.workspaceThreads[workspaceId]
 	if !exists {
 		return nil
 	}
 	for id := range workspaceKV {
-		objects = append(objects, id)
+		objects[id] = struct{}{}
 	}
 	return objects
 }

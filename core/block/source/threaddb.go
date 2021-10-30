@@ -20,13 +20,13 @@ import (
 	threadsDb "github.com/textileio/go-threads/db"
 )
 
-const WorkspaceCollection = "threadDB"
-const CreatorCollection = "collection"
-
 const (
-	collectionKeyId    = "id"
-	collectionKeyKey   = "key"
-	collectionKeyAddrs = "addrs"
+	collectionKeyId       = "id"
+	collectionKeyKey      = "key"
+	collectionKeyAddrs    = "addrs"
+	WorkspaceCollection   = "threadDB"
+	CreatorCollection     = "collection"
+	HighlightedCollection = "highlighted"
 )
 
 func NewThreadDB(a core.Service, id string) (s Source) {
@@ -41,10 +41,10 @@ type threadDB struct {
 	a  core.Service
 	m  sync.Mutex
 
-	receiver  ChangeReceiver
-	listener  threadsDb.Listener
-	ctx       context.Context
-	cancel    context.CancelFunc
+	receiver ChangeReceiver
+	listener threadsDb.Listener
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 func (v *threadDB) ReadOnly() bool {
@@ -168,12 +168,12 @@ func (v *threadDB) threadInfoValue(actionId db.InstanceID) (*types.Value, error)
 		return nil, err
 	}
 	return &types.Value{
-			Kind: &types.Value_StructValue{
-				StructValue: &types.Struct{
-					Fields: map[string]*types.Value{
-						collectionKeyId:    pbtypes.String(tid.String()),
-						collectionKeyKey:   pbtypes.String(ti.Key),
-						collectionKeyAddrs: pbtypes.StringList(ti.Addrs),
+		Kind: &types.Value_StructValue{
+			StructValue: &types.Struct{
+				Fields: map[string]*types.Value{
+					collectionKeyId:    pbtypes.String(tid.String()),
+					collectionKeyKey:   pbtypes.String(ti.Key),
+					collectionKeyAddrs: pbtypes.StringList(ti.Addrs),
 				},
 			},
 		},
