@@ -37,5 +37,5 @@ func TestPatchSmartBlockType_Account(t *testing.T) {
 	sbt, err = smartblock.SmartBlockTypeFromThreadID(id)
 	require.NoError(t, err)
 
-	require.Equal(t, smartblock.SmartBlockTypeWorkspaceV2, sbt)
+	require.Equal(t, smartblock.SmartBlockTypeWorkspace, sbt)
 }
