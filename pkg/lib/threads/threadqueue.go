@@ -192,7 +192,10 @@ func (p *threadQueue) ProcessThreadsAsync(threadsFromState []ThreadInfo, workspa
 		})
 	}
 	p.operationsMutex.Unlock()
-	p.wakeupChan <- struct{}{}
+	select {
+	case p.wakeupChan <- struct{}{}:
+	default:
+	}
 }
 
 func (p *threadQueue) processBufferedEvents() {

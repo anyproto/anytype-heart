@@ -277,7 +277,7 @@ func (s *service) Run() (err error) {
 
 func (s *service) initPredefinedBlocks() {
 	ids := []string{
-		// skip account because it is not a smartblock, it's a threadsDB
+		s.anytype.PredefinedBlocks().Account,
 		s.anytype.PredefinedBlocks().Profile,
 		s.anytype.PredefinedBlocks().Archive,
 		s.anytype.PredefinedBlocks().Home,
