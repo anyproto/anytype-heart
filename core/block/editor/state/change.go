@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
@@ -527,57 +528,70 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	return
 }
 
+func (s *State) getMapOfKeysFromCollection(collection *types.Struct) map[string]*types.Value {
+	keyMap := map[string]*types.Value{}
+	if collection == nil {
+		return keyMap
+	}
+	keyStack := []string{""}
+	collStack := []*types.Struct{collection}
+
+	for len(collStack) != 0 {
+		coll := collStack[len(collStack)-1]
+		lastKey := keyStack[len(keyStack)-1]
+		keyStack = keyStack[:len(keyStack)-1]
+		collStack = collStack[:len(collStack)-1]
+		for k, v := range coll.Fields {
+			subColl, ok := v.Kind.(*types.Value_StructValue)
+			updatedKey := lastKey
+			if updatedKey != "" {
+				updatedKey += "/"
+			}
+			updatedKey += k
+			if !ok {
+				keyMap[updatedKey] = v
+				continue
+			}
+			collStack = append(collStack, subColl.StructValue)
+			keyStack = append(keyStack, updatedKey)
+		}
+	}
+	return keyMap
+}
+
+func (s *State) compareKeyMaps(before map[string]*types.Value, after map[string]*types.Value) (changes []*pb.ChangeContent) {
+	for k, afterValue := range after {
+		beforeValue, exists := before[k]
+		if exists && afterValue.Equal(beforeValue) {
+			continue
+		}
+		changes = append(changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeySet{
+				CollectionKeySet: &pb.ChangeCollectionKeySet{Key: strings.Split(k, "/"), Value: afterValue},
+			},
+		})
+	}
+
+	for k := range before {
+		if _, exists := after[k]; exists {
+			continue
+		}
+		changes = append(changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{Key: strings.Split(k, "/")},
+			},
+		})
+	}
+	return
+}
+
 func (s *State) makeCollectionChanges() (ch []*pb.ChangeContent) {
 	if s.collections == nil {
 		return nil
 	}
-
-	var prev map[string]*types.Struct
-	if s.parent != nil {
-		prev = s.parent.Collections()
-	}
-	if prev == nil {
-		prev = map[string]*types.Struct{}
-	}
-
-	curCollections := s.Collections()
-	for collName, coll := range curCollections {
-		for k, v := range coll.Fields {
-			var (
-				keyExists = false
-				prevValue *types.Value
-			)
-
-			if prevColl, collExists := prev[collName]; collExists {
-				prevValue, keyExists = prevColl.Fields[k]
-			}
-			if !keyExists || !prevValue.Equal(v) {
-				ch = append(ch, &pb.ChangeContent{
-					Value: &pb.ChangeContentValueOfCollectionKeySet{
-						CollectionKeySet: &pb.ChangeCollectionKeySet{CollectionName: collName, Key: k, Value: v},
-					},
-				})
-			}
-		}
-	}
-
-	for collName, coll := range prev {
-		for k, _ := range coll.Fields {
-			keyExists := false
-			if prevColl, collExists := curCollections[collName]; collExists {
-				_, keyExists = prevColl.Fields[k]
-			}
-
-			if !keyExists {
-				ch = append(ch, &pb.ChangeContent{
-					Value: &pb.ChangeContentValueOfCollectionKeyUnset{
-						CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{CollectionName: collName, Key: k},
-					},
-				})
-			}
-		}
-	}
-	return
+	before := s.getMapOfKeysFromCollection(s.parent.Collections())
+	after := s.getMapOfKeysFromCollection(s.collections)
+	return s.compareKeyMaps(before, after)
 }
 
 func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.ChangeRelationUpdate, error) {
