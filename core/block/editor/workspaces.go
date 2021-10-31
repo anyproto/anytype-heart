@@ -47,6 +47,7 @@ type Workspaces struct {
 
 type WorkspaceParameters struct {
 	IsHighlighted bool
+	WorkspaceId   string
 }
 
 func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
@@ -293,6 +294,7 @@ func (p *Workspaces) workspaceParametersFromRecords(records []database2.Record) 
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		storeObjectInWorkspace[id] = &WorkspaceParameters{
 			IsHighlighted: pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHighlighted.String()),
+			WorkspaceId: pbtypes.GetString(rec.Details, bundle.RelationKeyWorkspaceId.String()),
 		}
 	}
 	return storeObjectInWorkspace
@@ -309,7 +311,10 @@ func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]
 		if value == nil {
 			continue
 		}
-		parameters[objId] = &WorkspaceParameters{IsHighlighted: false}
+		parameters[objId] = &WorkspaceParameters{
+			IsHighlighted: false,
+			WorkspaceId: p.Id(),
+		}
 		objects = append(objects, p.threadInfoFromWorkspacePB(value))
 	}
 
@@ -354,7 +359,7 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 					Fields: map[string]*types.Value{},
 				}
 			}
-			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(p.Id())
+			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(params.WorkspaceId)
 			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(params.IsHighlighted)
 
 			return current, nil
