@@ -94,7 +94,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	// we actually need to set up new one and old one and check if we need to start old one at all
 	accountIds := DerivedSmartblockIds{}
 	// account old
-	accountOld, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccountOld, newAccount, false)
+	accountOld, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccountOld, newAccount, true)
 	if err != nil {
 		return accountIds, err
 	}
@@ -107,7 +107,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	}
 
 	// account new
-	account, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccount, newAccount, false)
+	account, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccount, newAccount, true)
 	if err != nil {
 		return accountIds, err
 	}
