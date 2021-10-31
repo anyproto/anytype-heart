@@ -36,7 +36,7 @@ type ThreadOperation struct {
 	IsAddOperation bool
 	ID             string
 	WorkspaceId    string
-	info           *ThreadInfo
+	info           ThreadInfo
 }
 
 type threadQueue struct {
@@ -178,7 +178,7 @@ func (p *threadQueue) ProcessThreadsAsync(threadsFromState []ThreadInfo, workspa
 		p.operationsBuffer = append(p.operationsBuffer, ThreadOperation{
 			IsAddOperation: true,
 			ID:             info.ID,
-			info:           &info,
+			info:           info,
 			WorkspaceId:    workspaceId,
 		})
 	}
@@ -217,7 +217,7 @@ func (p *threadQueue) processBufferedEvents() {
 	}
 }
 
-func (p *threadQueue) processAddedThread(ti *ThreadInfo, workspaceId string) {
+func (p *threadQueue) processAddedThread(ti ThreadInfo, workspaceId string) {
 	id, err := thread.Decode(ti.ID)
 	if err != nil {
 		return
@@ -226,7 +226,8 @@ func (p *threadQueue) processAddedThread(ti *ThreadInfo, workspaceId string) {
 	info, err := p.threadsService.t.GetThread(ctx, id)
 	cancel()
 	if err == nil {
-		p.removeFromOperations(id.String())
+		// just to be on the safe side saving this to db
+		p.finishAddOperation(id.String(), workspaceId)
 		return
 	}
 
@@ -241,7 +242,7 @@ func (p *threadQueue) processAddedThread(ti *ThreadInfo, workspaceId string) {
 	// TODO: check if we still need to have separate goroutine logic
 	go func() {
 		defer p.removeFromOperations(id.String())
-		err := p.threadsService.processNewExternalThreadUntilSuccess(id, *ti)
+		err := p.threadsService.processNewExternalThreadUntilSuccess(id, ti)
 		if err != nil {
 			log.With("thread", info.ID.String()).
 				Errorf("error processing thread: %v", err)
