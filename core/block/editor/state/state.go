@@ -600,6 +600,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
 	}
 
+	if s.parent != nil && s.collections != nil {
+		s.parent.collections = s.collections
+	}
+
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -625,6 +629,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
+	}
+	if s.collections != nil {
+		s.parent.collections = s.collections
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)

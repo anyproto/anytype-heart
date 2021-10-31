@@ -59,7 +59,7 @@ func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.Smart
 	if err != nil {
 		return nil, err
 	}
-	st.SetInCollection([]string{source.WorkspaceCollection, p.Id()}, p.pbThreadInfoValueFromStruct(threadInfo))
+	st.SetInCollection([]string{source.WorkspaceCollection, threadInfo.ID.String()}, p.pbThreadInfoValueFromStruct(threadInfo))
 
 	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
 }
@@ -70,7 +70,7 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 	if err != nil {
 		return err
 	}
-	st.RemoveFromCollection([]string{source.WorkspaceCollection, p.Id()})
+	st.RemoveFromCollection([]string{source.WorkspaceCollection, objectId})
 	return p.Apply(st)
 }
 
@@ -116,7 +116,7 @@ func (p *Workspaces) AddObject(objectId string, key string, addrs []string) erro
 	if err != nil {
 		return err
 	}
-	st.SetInCollection([]string{source.WorkspaceCollection, p.Id()}, p.pbThreadInfoValue(objectId, key, addrs))
+	st.SetInCollection([]string{source.WorkspaceCollection, objectId}, p.pbThreadInfoValue(objectId, key, addrs))
 
 	return p.Apply(st)
 }
@@ -398,17 +398,17 @@ func (p *Workspaces) pbThreadInfoValueFromStruct(ti thread.Info) *types.Value {
 }
 
 func (p *Workspaces) threadInfoFromWorkspacePB(val *types.Value) threads.ThreadInfo {
-	fields := val.Kind.(*types.Value_StructValue).StructValue.Fields
+	fields := val.Kind.(*types.Value_StructValue).StructValue
 	return threads.ThreadInfo{
-		ID:    fields[collectionKeyId].Kind.(*types.Value_StringValue).String(),
-		Key:   fields[collectionKeyKey].Kind.(*types.Value_StringValue).String(),
-		Addrs: pbtypes.GetStringListValue(fields[collectionKeyAddrs]),
+		ID:    pbtypes.GetString(fields, collectionKeyId),
+		Key:   pbtypes.GetString(fields, collectionKeyKey),
+		Addrs: pbtypes.GetStringListValue(fields.Fields[collectionKeyAddrs]),
 	}
 }
 
 func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadInfo, error) {
-	fields := val.Kind.(*types.Value_StructValue).StructValue.Fields
-	account := fields[collectionKeyAccount].Kind.(*types.Value_StringValue).String()
+	fields := val.Kind.(*types.Value_StructValue).StructValue
+	account := pbtypes.GetString(fields, collectionKeyAccount)
 	profileId, err := threads.ProfileThreadIDFromAccountAddress(account)
 	if err != nil {
 		return threads.ThreadInfo{}, err
@@ -420,6 +420,6 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 	return threads.ThreadInfo{
 		ID:    profileId.String(),
 		Key:   thread.NewKey(sk, pk).String(),
-		Addrs: pbtypes.GetStringListValue(fields[collectionKeyAddrs]),
+		Addrs: pbtypes.GetStringListValue(fields.Fields[collectionKeyAddrs]),
 	}, nil
 }

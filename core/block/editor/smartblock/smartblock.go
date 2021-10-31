@@ -600,11 +600,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	st := sb.Doc.(*state.State)
-	if !act.IsEmpty() {
-		changes := st.GetChanges()
-		if len(changes) == 0 && !doSnapshot {
-			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
-		}
+
+	changes := st.GetChanges()
+	pushChange := func() {
 		fileDetailsKeys := st.FileRelationKeys()
 		fileDetailsKeysFiltered := fileDetailsKeys[:0]
 		for _, ch := range changes {
@@ -626,11 +624,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 		sb.Doc.(*state.State).SetChangeId(id)
-
+	}
+	if !act.IsEmpty() {
+		if len(changes) == 0 && !doSnapshot {
+			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
+		}
+		pushChange()
 		if sb.undo != nil && addHistory {
 			act.Group = s.GroupId()
 			sb.undo.Add(act)
 		}
+	} else if len(changes) > 0 {
+		pushChange()
 	}
 	if sendEvent {
 		events := msgsToEvents(msgs)
