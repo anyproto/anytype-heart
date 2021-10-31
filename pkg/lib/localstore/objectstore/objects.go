@@ -348,7 +348,7 @@ func (m *dsObjectStore) AddThreadToWorkspace(threadId, workspaceId string) error
 	if err := txn.Put(workspaceKey, nil); err != nil {
 		return fmt.Errorf("failed to put into ds: %w", err)
 	}
-	return nil
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) RemoveThreadForWorkspace(threadId, workspaceId string) error {
@@ -361,7 +361,7 @@ func (m *dsObjectStore) RemoveThreadForWorkspace(threadId, workspaceId string) e
 	if err := txn.Delete(workspaceKey); err != nil {
 		return fmt.Errorf("failed to put into ds: %w", err)
 	}
-	return nil
+	return txn.Commit()
 }
 
 func (m *dsObjectStore) GetThreadQueueState() (map[string]map[string]struct{}, map[string]map[string]struct{}, error) {

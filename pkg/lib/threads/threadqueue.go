@@ -23,6 +23,7 @@ type ThreadWorkspaceStore interface {
 
 type ThreadQueue interface {
 	Init() error
+	Run()
 	ProcessThreadsAsync(threadsFromState []ThreadInfo, workspaceId string)
 	AddThreadSync(info ThreadInfo, workspaceId string) error
 	CreateThreadSync(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)

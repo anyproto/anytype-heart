@@ -199,6 +199,7 @@ func (s *service) Run() (err error) {
 	if err != nil {
 		return err
 	}
+	s.threadQueue.Run()
 
 	s.threadsDbDS, err = s.ds.ThreadsDbDS()
 	if err != nil {
