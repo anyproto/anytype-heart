@@ -25,7 +25,7 @@ const (
 	collectionKeyKey      = "key"
 	collectionKeyAddrs    = "addrs"
 	WorkspaceCollection   = "threadDB"
-	CreatorCollection     = "collection"
+	CreatorCollection     = "creator"
 	HighlightedCollection = "highlighted"
 )
 

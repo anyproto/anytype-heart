@@ -25,7 +25,6 @@ import (
 const (
 	collectionKeySignature = "signature"
 	collectionKeyAccount   = "account"
-	collectionKeyProfileId = "profileId"
 	collectionKeyAddrs     = "addrs"
 	collectionKeyId        = "id"
 	collectionKeyKey       = "key"
@@ -95,7 +94,7 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	deviceId := p.Anytype().Device()
 
 	creatorCollection := st.GetCollection(source.CreatorCollection)
-	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceId] == nil {
+	if creatorCollection != nil && creatorCollection.Fields != nil && creatorCollection.Fields[deviceId] != nil {
 		return nil
 	}
 	info, err := p.threadService.GetCreatorInfo(p.Id())
@@ -376,7 +375,6 @@ func (p *Workspaces) pbCreatorInfoValue(info threads.CreatorInfo) *types.Value {
 				Fields: map[string]*types.Value{
 					collectionKeyAccount:   pbtypes.String(info.AccountPubKey),
 					collectionKeySignature: pbtypes.String(string(info.WorkspaceSig)),
-					collectionKeyProfileId: pbtypes.String(info.ProfileId),
 					collectionKeyAddrs:     pbtypes.StringList(info.Addrs),
 				},
 			},

@@ -239,8 +239,19 @@ func (a *Anytype) ThreadsService() threads.Service {
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
+	if a.predefinedBlockIds.IsAccount(objectId) {
+		return "", ErrObjectDoesNotBelongToWorkspace
+	}
+	sbType, err := smartblock.SmartBlockTypeFromID(objectId)
+	if err != nil {
+		return "", err
+	}
+	if sbType == smartblock.SmartBlockTypeWorkspace {
+		return objectId, nil
+	}
+
 	workspaceIds := a.threadService.ThreadQueue().GetWorkspacesForThread(objectId)
-	if len(workspaceIds) != 0 && !a.predefinedBlockIds.IsAccount(objectId) {
+	if len(workspaceIds) != 0 && !a.predefinedBlockIds.IsAccount(workspaceIds[0]) {
 		return workspaceIds[0], nil
 	}
 
@@ -427,7 +438,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	isWorkspaceEventSent := false
 	isWorkspace := func(id string) bool {
 		sbType, err := smartblock.SmartBlockTypeFromID(id)
-		return err == nil && sbType == smartblock.SmartBlockTypeWorkspaceOld
+		return err == nil && !a.predefinedBlockIds.IsAccount(id) && sbType == smartblock.SmartBlockTypeWorkspace
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
