@@ -137,7 +137,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
-	s.objectDeleter = a.MustComponent("blockService").(ObjectDeleter)
+	s.objectDeleter = a.MustComponent("objectstore").(ObjectDeleter)
 	threadWorkspaceStore := a.MustComponent("objectstore").(ThreadWorkspaceStore)
 	s.threadQueue = NewThreadQueue(s, threadWorkspaceStore)
 
