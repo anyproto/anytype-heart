@@ -1424,6 +1424,7 @@ func (s *State) SetInCollection(keys []string, value *types.Value) {
 	s.createOrCopyCollectionsFromParent()
 	coll := s.collections
 	nested := keys[:len(keys)-1]
+	collStack := []*types.Struct{coll}
 	for _, key := range nested {
 		if coll.Fields == nil {
 			coll.Fields = map[string]*types.Value{}
@@ -1449,11 +1450,22 @@ func (s *State) SetInCollection(keys []string, value *types.Value) {
 			}
 		}
 		coll = coll.Fields[key].Kind.(*types.Value_StructValue).StructValue
+		collStack = append(collStack, coll)
+	}
+	if coll.Fields == nil {
+		coll.Fields = map[string]*types.Value{}
 	}
 	if value != nil {
 		coll.Fields[keys[len(keys)-1]] = value
-	} else {
-		delete(coll.Fields, keys[len(keys)-1])
+		return
+	}
+	delete(coll.Fields, keys[len(keys)-1])
+	// cleaning empty structs from collection to avoid empty pb values
+	idx := len(keys)-2
+	for len(coll.Fields) == 0 && idx >= 0 {
+		delete(collStack[idx].Fields, keys[idx])
+		coll = collStack[idx]
+		idx--
 	}
 }
 
@@ -1479,6 +1491,9 @@ func (s *State) ContainsInCollection(keys []string) bool {
 			return false
 		}
 		coll = coll.Fields[key].Kind.(*types.Value_StructValue).StructValue
+	}
+	if coll.Fields == nil {
+		return false
 	}
 	return coll.Fields[keys[len(keys)-1]] != nil
 }

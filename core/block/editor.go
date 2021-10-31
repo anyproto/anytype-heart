@@ -859,8 +859,12 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 			return
 		}
 	}
-
-	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ContextId)
+	var workspaceId string
+	if req.ContextId != "" {
+		workspaceId, _ = s.anytype.GetWorkspaceIdForObject(req.ContextId)
+	} else {
+		workspaceId = s.anytype.PredefinedBlocks().Account
+	}
 	csm, err := s.CreateObjectInWorkspace(workspaceId, coresb.SmartBlockTypeSet)
 	if err != nil {
 		return "", "", err
