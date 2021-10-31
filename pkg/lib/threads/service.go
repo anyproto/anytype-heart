@@ -357,7 +357,7 @@ func (s *service) GetAllWorkspaces() ([]string, error) {
 
 	var workspaceThreads []string
 	for _, th := range threads {
-		if tp, err := smartblock.SmartBlockTypeFromThreadID(th); err == nil && tp == smartblock.SmartBlockTypeWorkspaceOld {
+		if tp, err := smartblock.SmartBlockTypeFromThreadID(th); err == nil && tp == smartblock.SmartBlockTypeWorkspace {
 			workspaceThreads = append(workspaceThreads, th.String())
 		}
 	}

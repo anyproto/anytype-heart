@@ -277,6 +277,7 @@ func (s *service) Run() (err error) {
 
 func (s *service) initPredefinedBlocks() {
 	ids := []string{
+		s.anytype.PredefinedBlocks().AccountOld,
 		s.anytype.PredefinedBlocks().Account,
 		s.anytype.PredefinedBlocks().Profile,
 		s.anytype.PredefinedBlocks().Archive,
@@ -904,8 +905,10 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
-	case model.SmartBlockType_Workspace, model.SmartBlockType_AccountOld:
+	case model.SmartBlockType_Workspace:
 		sb = editor.NewWorkspace(s, s)
+	case model.SmartBlockType_AccountOld:
+		sb = editor.NewThreadDB(s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -941,6 +944,16 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 		return nil, fmt.Errorf("can't apply template: %v", err)
 	}
 	return
+}
+
+func (s *service) MigrateMany(objects []threads.ThreadInfo) error {
+	return s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		return workspace.MigrateMany(objects)
+	})
 }
 
 func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {

@@ -572,7 +572,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 
-	if len(msgs) == 0 && action.IsEmpty() {
+	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
 		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {

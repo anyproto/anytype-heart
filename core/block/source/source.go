@@ -208,7 +208,10 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 	} else if doc, err = s.buildState(); err != nil {
 		return
 	}
-
+	sbType, _ := smartblock.SmartBlockTypeFromID(s.sb.ID())
+	if sbType == smartblock.SmartBlockTypeWorkspace {
+		fmt.Println("[observing]: found it", s.sb.ID())
+	}
 	if s.ss != nil {
 		// update timeline with recent information about heads
 		s.ss.UpdateTimeline(s.tid, s.timeline())

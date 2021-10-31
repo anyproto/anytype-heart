@@ -26,6 +26,7 @@ const (
 	collectionKeyAddrs    = "addrs"
 	WorkspaceCollection   = "threadDB"
 	CreatorCollection     = "creator"
+	AccountMigration      = "accountmigration"
 	HighlightedCollection = "highlighted"
 )
 

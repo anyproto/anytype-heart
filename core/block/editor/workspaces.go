@@ -106,6 +106,21 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	return p.Apply(st)
 }
 
+func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) error {
+	st := p.NewState()
+	for _, info := range infos {
+		if st.ContainsInCollection([]string{source.AccountMigration, info.ID}) {
+			continue
+		}
+		st.SetInCollection([]string{source.AccountMigration, info.ID}, pbtypes.Bool(true))
+		st.SetInCollection([]string{source.WorkspaceCollection, info.ID},
+			p.pbThreadInfoValue(info.ID, info.Key, info.Addrs),
+		)
+	}
+
+	return p.Apply(st)
+}
+
 func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {
 	st := p.NewState()
 	err := p.threadQueue.AddThreadSync(threads.ThreadInfo{
@@ -157,6 +172,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	p.threadService = p.Anytype().ThreadsService()
 	p.threadQueue = p.Anytype().ThreadsService().ThreadQueue()
 
+	fmt.Println("[observing]: opening workspace")
 	dataviewAllHighlightedObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
@@ -261,6 +277,7 @@ func (p *Workspaces) updateObjects() {
 
 	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
 	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
+	fmt.Println("[observing]:", p.Id())
 	// TODO: Also include old account
 	if !p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
 		storedParameters := p.workspaceParametersFromRecords(p.storedRecordsForWorkspace())
@@ -293,7 +310,7 @@ func (p *Workspaces) workspaceParametersFromRecords(records []database2.Record) 
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
 		storeObjectInWorkspace[id] = &WorkspaceParameters{
 			IsHighlighted: pbtypes.GetBool(rec.Details, bundle.RelationKeyIsHighlighted.String()),
-			WorkspaceId: pbtypes.GetString(rec.Details, bundle.RelationKeyWorkspaceId.String()),
+			WorkspaceId:   pbtypes.GetString(rec.Details, bundle.RelationKeyWorkspaceId.String()),
 		}
 	}
 	return storeObjectInWorkspace
@@ -312,7 +329,7 @@ func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]
 		}
 		parameters[objId] = &WorkspaceParameters{
 			IsHighlighted: false,
-			WorkspaceId: p.Id(),
+			WorkspaceId:   p.Id(),
 		}
 		objects = append(objects, p.threadInfoFromWorkspacePB(value))
 	}
