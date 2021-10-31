@@ -823,8 +823,8 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 	})
 }
 
-func (s *service) CreateObjectInWorkspace(workspaceId string, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
-	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+func (s *service) CreateObjectInWorkspace(ctx context.Context, workspaceId string, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
+	err = s.DoWithContext(ctx, workspaceId, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
@@ -865,7 +865,8 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 	} else {
 		workspaceId = s.anytype.PredefinedBlocks().Account
 	}
-	csm, err := s.CreateObjectInWorkspace(workspaceId, coresb.SmartBlockTypeSet)
+	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
+	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, coresb.SmartBlockTypeSet)
 	if err != nil {
 		return "", "", err
 	}

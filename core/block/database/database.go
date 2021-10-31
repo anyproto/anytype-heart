@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"github.com/anytypeio/go-anytype-middleware/core/block/database/objects"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -19,7 +20,7 @@ type Ctrl interface {
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
 	GetRelations(objectId string) (relations []*model.Relation, err error)
 
-	CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	UpdateExtraRelations(ctx *state.Context, id string, relations []*model.Relation, createIfMissing bool) (err error)
 	AddExtraRelations(ctx *state.Context, id string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
 	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)

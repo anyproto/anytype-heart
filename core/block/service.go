@@ -88,9 +88,9 @@ type Service interface {
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -414,7 +414,7 @@ func (s *service) CloseBlocks() {
 }
 
 func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
-	id, _, err := s.CreateSmartBlock(coresb.SmartBlockTypeWorkspace,
+	id, _, err := s.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypeWorkspace,
 		&types.Struct{Fields: map[string]*types.Value{
 			bundle.RelationKeyName.String(): pbtypes.String(req.Name),
 		}}, nil)
@@ -686,11 +686,11 @@ func (s *service) sendOnRemoveEvent(ids ...string) {
 	}
 }
 
-func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {
-	return s.CreateSmartBlockFromState(sbType, details, relations, state.NewDoc("", nil).NewState())
+func (s *service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {
+	return s.CreateSmartBlockFromState(ctx, sbType, details, relations, state.NewDoc("", nil).NewState())
 }
 
-func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateId != "" {
 		if createState, err = s.stateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -699,10 +699,10 @@ func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, det
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return s.CreateSmartBlockFromState(sbType, details, relations, createState)
+	return s.CreateSmartBlockFromState(ctx, sbType, details, relations, createState)
 }
 
-func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {
 		objectTypes = createState.ObjectTypes()
@@ -761,7 +761,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
-	csm, err := s.CreateObjectInWorkspace(workspaceId, sbType)
+	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -809,7 +809,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 		req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
 	}
 
-	pageId, _, err = s.CreateSmartBlockFromTemplate(coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+	pageId, _, err = s.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
@@ -1099,8 +1099,11 @@ func (s *service) DoWithContext(ctx context.Context, id string, apply func(b sma
 		return err
 	}
 	defer release()
-	sb.Lock()
-	defer sb.Unlock()
+	callerId, _ := ctx.Value(smartblock.CallerKey).(string)
+	if callerId != id {
+		sb.Lock()
+		defer sb.Unlock()
+	}
 	return apply(sb)
 }
 
@@ -1116,7 +1119,7 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 		return
 	}
 
-	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1130,7 +1133,7 @@ func (s *service) MakeTemplateByObjectType(otId string) (templateId string, err 
 	var st = state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otId})
-	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1149,7 +1152,7 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 	}); err != nil {
 		return
 	}
-	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}

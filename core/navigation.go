@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -113,7 +114,7 @@ func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreate
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, _, err = bs.CreateSmartBlock(coresb.SmartBlockTypePage, req.Details, nil)
+		id, _, err = bs.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil)
 		return
 	})
 

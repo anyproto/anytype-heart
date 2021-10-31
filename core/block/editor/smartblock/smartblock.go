@@ -59,6 +59,10 @@ const (
 	HookOnBlockClose
 )
 
+type key int
+
+const CallerKey key = 0
+
 var log = logging.Logger("anytype-mw-smartblock")
 
 // DepSmartblockEventsTimeout sets the timeout after which we will stop to synchronously wait dependent smart blocks and will send them as a separate events in the background

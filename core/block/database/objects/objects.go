@@ -1,6 +1,7 @@
 package objects
 
 import (
+	"context"
 	"errors"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -30,7 +31,7 @@ func New(
 	modifyExtraRelations func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error,
 	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *model.RelationOption, err error),
 	deleteRelationOption func(id string, relationKey string, optionId string) error,
-	createSmartBlock func(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error),
+	createSmartBlock func(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error),
 ) database.Database {
 	return &setOfObjects{
 		ObjectStore:               pageStore,
@@ -54,10 +55,10 @@ type setOfObjects struct {
 	modifyExtraRelations      func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error
 	deleteExtraRelationOption func(id string, relationKey string, optionId string) error
 	updateExtraRelationOption func(req pb.RpcObjectRelationOptionUpdateRequest) (opt *model.RelationOption, err error)
-	createSmartBlock          func(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
+	createSmartBlock          func(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 }
 
-func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, sub database.Subscription, templateId string) (database.Record, error) {
+func (sp setOfObjects) Create(ctx context.Context, relations []*model.Relation, rec database.Record, sub database.Subscription, templateId string) (database.Record, error) {
 	if rec.Details == nil || rec.Details.Fields == nil {
 		rec.Details = &types.Struct{Fields: make(map[string]*types.Value)}
 	}
@@ -102,7 +103,7 @@ func (sp setOfObjects) Create(relations []*model.Relation, rec database.Record, 
 		rec.Details.Fields[bundle.RelationKeyType.String()] = pbtypes.String(sp.objectType.Url)
 	}
 
-	id, newDetails, err := sp.createSmartBlock(sbType, rec.Details, relsToSet, templateId)
+	id, newDetails, err := sp.createSmartBlock(ctx, sbType, rec.Details, relsToSet, templateId)
 	if err != nil {
 		return rec, err
 	}

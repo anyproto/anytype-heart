@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -47,7 +48,7 @@ type Writer interface {
 	// Creating record involves some additional operations that may change
 	// the record. So we return potentially modified record as a result.
 	// in case subscription is not nil it will be subscribed to the record updates
-	Create(relations []*model.Relation, rec Record, sub Subscription, templateId string) (Record, error)
+	Create(ctx context.Context, relations []*model.Relation, rec Record, sub Subscription, templateId string) (Record, error)
 
 	Update(id string, relations []*model.Relation, rec Record) error
 	DeleteRelationOption(id string, relKey string, optionId string) error
