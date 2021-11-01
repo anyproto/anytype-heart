@@ -10,7 +10,7 @@ import "google/protobuf/struct.proto";
 */
 message Event {
     repeated Message messages = 1;
-    string contextId = 2;
+    repeated string contextIds = 2;
     anytype.model.Account initiator = 3;
     string traceId = 4;
 
