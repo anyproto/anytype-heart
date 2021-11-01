@@ -125,6 +125,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return accountIds, err
 	}
 	accountIds.Account = account.ID.String()
+	s.accountId = account.ID
 
 	// profile
 	profile, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexProfilePage, newAccount, true)

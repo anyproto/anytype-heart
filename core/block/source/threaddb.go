@@ -8,6 +8,7 @@ import (
 	threadsUtil "github.com/textileio/go-threads/util"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -136,23 +137,83 @@ func (v *threadDB) listenToChanges() (err error) {
 	}
 
 	v.ctx, v.cancel = context.WithCancel(context.Background())
-
-	go func() {
-		for {
-			select {
-			case action := <-v.listener.Channel():
-				if strings.HasPrefix(action.Collection, threads.ThreadInfoCollectionName) {
-					go v.processThreadAction(action)
-				}
-			case <-v.ctx.Done():
-				return
-			}
-		}
-	}()
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		Debug("started listening to db changes")
+
+	// better to use old logic to batch the changes and also not create too many goroutines
+	go func() {
+		deadline := 1 * time.Second
+		tmr := time.NewTimer(deadline)
+		flushBuffer := make([]threadsDb.Action, 0, 100)
+		timerRead := false
+
+		processBuffer := func() {
+			if len(flushBuffer) == 0 {
+				return
+			}
+			buffCopy := make([]threadsDb.Action, 0, len(flushBuffer))
+			for _, action := range flushBuffer {
+				if strings.HasPrefix(action.Collection, threads.ThreadInfoCollectionName) {
+					buffCopy = append(buffCopy, action)
+				}
+			}
+			flushBuffer = flushBuffer[:0]
+			go v.processThreadActions(buffCopy)
+		}
+
+		for {
+			select {
+			case <-v.ctx.Done():
+				processBuffer()
+				return
+			case _ = <-tmr.C:
+				timerRead = true
+				// we don't have new messages for at least deadline and we have something to flush
+				processBuffer()
+
+			case c := <-v.listener.Channel():
+				log.With("thread id", c.ID.String()).
+					Debugf("received new thread through channel")
+				// as per docs the timer should be stopped or expired with drained channel
+				// to be reset
+				if !tmr.Stop() && !timerRead {
+					<-tmr.C
+				}
+				tmr.Reset(deadline)
+				timerRead = false
+				flushBuffer = append(flushBuffer, c)
+			}
+		}
+	}()
 	return nil
+}
+
+func (v *threadDB) processThreadActions(buffer []threadsDb.Action) {
+	v.m.Lock()
+	defer v.m.Unlock()
+	err := v.receiver.StateAppend(func(d state.Doc) (s *state.State, err error) {
+		s, ok := d.(*state.State)
+		if !ok {
+			err = fmt.Errorf("doc is not state")
+			return
+		}
+		for _, action := range buffer {
+			if action.Type == threadsDb.ActionCreate {
+				val, err := v.threadInfoValue(action.ID)
+				if err != nil {
+					return nil, err
+				}
+				s.SetInCollection([]string{WorkspaceCollection, action.ID.String()}, val)
+			} else if action.Type == threadsDb.ActionDelete {
+				s.RemoveFromCollection([]string{WorkspaceCollection, action.ID.String()})
+			}
+		}
+		return
+	})
+	if err != nil {
+		log.Errorf("failed to append state with new workspace thread: %v", err)
+	}
 }
 
 func (v *threadDB) threadInfoValue(actionId db.InstanceID) (*types.Value, error) {
@@ -182,6 +243,8 @@ func (v *threadDB) threadInfoValue(actionId db.InstanceID) (*types.Value, error)
 }
 
 func (v *threadDB) processThreadAction(action threadsDb.Action) {
+	v.m.Lock()
+	defer v.m.Unlock()
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		With("thread id", action.ID).
@@ -193,8 +256,6 @@ func (v *threadDB) processThreadAction(action threadsDb.Action) {
 			err = fmt.Errorf("doc is not state")
 			return
 		}
-		v.m.Lock()
-		defer v.m.Unlock()
 
 		if action.Type == threadsDb.ActionCreate {
 			val, err := v.threadInfoValue(action.ID)

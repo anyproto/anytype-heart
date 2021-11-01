@@ -47,7 +47,6 @@ var log = logging.Logger("anytype-threads")
 
 // TODO: remove when workspace debugging ends
 var WorkspaceLogger = logging.Logger("anytype-workspace-debug")
-var ErrCreatorInfoNotFound = fmt.Errorf("no creator info in collection")
 
 var (
 	permanentConnectionRetryDelay = time.Second * 5
@@ -75,9 +74,9 @@ type service struct {
 	t                              threadsApp.Net
 	db                             *threadsDb.DB
 	threadsCollection              *threadsDb.Collection
-	currentWorkspaceId             thread.ID
 	device                         walletUtil.Keypair
 	account                        walletUtil.Keypair
+	accountId                      thread.ID
 	ipfsNode                       ipfs.Node
 	repoRootPath                   string
 	newThreadProcessingLimiter     chan struct{}
@@ -357,6 +356,13 @@ func (s *service) GetAllWorkspaces() ([]string, error) {
 
 	var workspaceThreads []string
 	for _, th := range threads {
+		// this hack is used everywhere
+		// we need to have at least one central place where we can identify
+		// that the thread is a workspace but not an account
+		// or to use other smartblock type
+		if th == s.accountId {
+			continue
+		}
 		if tp, err := smartblock.SmartBlockTypeFromThreadID(th); err == nil && tp == smartblock.SmartBlockTypeWorkspace {
 			workspaceThreads = append(workspaceThreads, th.String())
 		}
