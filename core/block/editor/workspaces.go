@@ -366,19 +366,22 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 			continue
 		}
 
-		if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
-			if current == nil || current.Fields == nil {
-				current = &types.Struct{
-					Fields: map[string]*types.Value{},
+		// TODO: we need to move it to another service, but now it is what it is
+		go func(id string) {
+			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+				if current == nil || current.Fields == nil {
+					current = &types.Struct{
+						Fields: map[string]*types.Value{},
+					}
 				}
-			}
-			current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(params.WorkspaceId)
-			current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(params.IsHighlighted)
+				current.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(params.WorkspaceId)
+				current.Fields[bundle.RelationKeyIsHighlighted.String()] = pbtypes.Bool(params.IsHighlighted)
 
-			return current, nil
-		}); err != nil {
-			log.Errorf("workspace: can't set detail to object: %v", err)
-		}
+				return current, nil
+			}); err != nil {
+				log.Errorf("workspace: can't set detail to object: %v", err)
+			}
+		}(id)
 	}
 }
 
