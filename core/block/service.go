@@ -277,8 +277,8 @@ func (s *service) Run() (err error) {
 
 func (s *service) initPredefinedBlocks() {
 	ids := []string{
-		s.anytype.PredefinedBlocks().AccountOld,
 		s.anytype.PredefinedBlocks().Account,
+		s.anytype.PredefinedBlocks().AccountOld,
 		s.anytype.PredefinedBlocks().Profile,
 		s.anytype.PredefinedBlocks().Archive,
 		s.anytype.PredefinedBlocks().Home,

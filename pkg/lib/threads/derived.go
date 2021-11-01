@@ -76,7 +76,6 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
-	// FIXME: method refactoring required, racy vars (err)
 	s.Lock()
 	defer s.Unlock()
 
@@ -94,7 +93,7 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	// we actually need to set up new one and old one and check if we need to start old one at all
 	accountIds := DerivedSmartblockIds{}
 	// account old
-	accountOld, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccountOld, newAccount, true)
+	accountOld, justCreated, err := s.derivedThreadEnsure(cctx, threadDerivedIndexAccountOld, newAccount, false)
 	if err != nil {
 		return accountIds, err
 	}
@@ -104,6 +103,20 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 	err = s.SetupThreadsDB(accountOld.ID)
 	if err != nil {
 		return accountIds, err
+	}
+
+	if !newAccount {
+		if justCreated {
+			// old account thread: sync pull case
+			err = s.t.PullThread(cctx, accountOld.ID)
+			if ctx.Err() != context.Canceled && err != nil {
+				return accountIds, err
+			}
+		} else {
+			s.handleMissingReplicators()
+			// old account thread: async pull case
+			s.handleMissingOldDbRecords(accountOld.ID.String())
+		}
 	}
 
 	// account new
