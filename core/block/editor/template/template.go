@@ -201,6 +201,14 @@ var WithDetailName = func(name string) StateTransformer {
 	return WithDetail(bundle.RelationKeyName, pbtypes.String(name))
 }
 
+var WithCondition = func(condition bool, f StateTransformer) StateTransformer {
+	if condition {
+		return f
+	} else {
+		return func(s *state.State) {}
+	}
+}
+
 var WithDetail = func(key bundle.RelationKey, value *types.Value) StateTransformer {
 	return func(s *state.State) {
 		if s.Details() == nil || s.Details().Fields == nil || s.Details().Fields[key.String()] == nil {

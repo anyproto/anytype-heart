@@ -477,7 +477,10 @@ func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest)
 }
 
 func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
-	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	if err == core.ErrObjectDoesNotBelongToWorkspace {
+		workspaceId = s.Anytype().PredefinedBlocks().Account
+	}
 	var key string
 	var addrs []string
 	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {

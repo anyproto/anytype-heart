@@ -137,15 +137,12 @@ func (p *Workspaces) AddObject(objectId string, key string, addrs []string) erro
 }
 
 func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
-	st := p.NewState()
-	if !st.ContainsInCollection([]string{source.WorkspaceCollection, objectId}) {
-		return "", nil, fmt.Errorf("%s is not contained in workspace %s", objectId, p.Id())
-	}
 	threadId, err := thread.Decode(objectId)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to decode object %s: %w", objectId, err)
 	}
 
+	// we could have gotten the data from state, but to be sure 100% let's take it from service :-)
 	threadInfo, err := p.threadService.GetThreadInfo(threadId)
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
@@ -260,6 +257,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
+		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
+			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, true),
 		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, true),

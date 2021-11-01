@@ -246,6 +246,9 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// TODO: not sure that this is the correct logic
+	// we should return the workspace to which it belongs to
+	// right now this is mostly used for creator thing which is a bit hacky
 	if sbType == smartblock.SmartBlockTypeWorkspace {
 		return objectId, nil
 	}
