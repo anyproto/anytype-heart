@@ -277,8 +277,6 @@ func (p *Workspaces) updateObjects() {
 
 	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
 	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
-	fmt.Println("[observing]:", p.Id())
-	// TODO: Also include old account
 	if !p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
 		storedParameters := p.workspaceParametersFromRecords(p.storedRecordsForWorkspace())
 		// we ignore the workspace object itself

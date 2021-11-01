@@ -417,7 +417,10 @@ func (s *service) CloseBlocks() {
 func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
 	id, _, err := s.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypeWorkspace,
 		&types.Struct{Fields: map[string]*types.Value{
-			bundle.RelationKeyName.String(): pbtypes.String(req.Name),
+			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
+			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
+			bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
+			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
 		}}, nil)
 	return id, err
 }

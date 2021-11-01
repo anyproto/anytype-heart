@@ -217,11 +217,7 @@ func (v *threadDB) getDetails() (p *types.Struct) {
 		bundle.RelationKeyId.String():          pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false), // todo: replace with true
-		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false), // todo: replace with true
-		bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeySpace.URL()),
-		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(false),
-		bundle.RelationKeyLayout.String():      pbtypes.Float64(float64(model.ObjectType_space)),
-		bundle.RelationKeyIconEmoji.String():   pbtypes.String("🌎"),
+		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(true), // todo: replace with true
 		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.Id()),
 		bundle.RelationKeyName.String():        pbtypes.String("Old account thread"),
 	}}
