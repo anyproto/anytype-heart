@@ -200,6 +200,14 @@ func (f filterGetter) Get(key string) *types.Value {
 	return res
 }
 
+type sortGetter struct {
+	curEl    *types.Struct
+}
+
+func (f sortGetter) Get(key string) *types.Value {
+	return pbtypes.Get(f.curEl, key)
+}
+
 type filters struct {
 	filter   filter.Filter
 	order    filter.Order
@@ -207,7 +215,7 @@ type filters struct {
 }
 
 func (f *filters) Filter(e query.Entry) bool {
-	g := f.unmarshal(e)
+	g := f.unmarshalFilter(e)
 	if g == nil {
 		return false
 	}
@@ -219,25 +227,33 @@ func (f *filters) Compare(a, b query.Entry) int {
 	if f.order == nil {
 		return 0
 	}
-	ag := f.unmarshal(a)
+	ag := f.unmarshalSort(a)
 	if ag == nil {
 		return 0
 	}
-	bg := f.unmarshal(b)
+	bg := f.unmarshalSort(b)
 	if bg == nil {
 		return 0
 	}
 	return f.order.Compare(ag, bg)
 }
 
-func (f *filters) unmarshal(e query.Entry) filter.Getter {
+func (f *filters) unmarshalFilter(e query.Entry) filter.Getter {
+	return filterGetter{dateKeys: f.dateKeys, curEl: f.unmarshal(e)}
+}
+
+func (f *filters) unmarshalSort(e query.Entry) filter.Getter {
+	return sortGetter{curEl: f.unmarshal(e)}
+}
+
+func (f *filters) unmarshal(e query.Entry) *types.Struct {
 	var details model.ObjectDetails
 	err := proto.Unmarshal(e.Value, &details)
 	if err != nil {
 		log.Errorf("query filters decode error: %s", err.Error())
 		return nil
 	}
-	return filterGetter{dateKeys: f.dateKeys, curEl: details.Details}
+	return details.Details
 }
 
 func (f *filters) hasOrders() bool {
@@ -245,12 +261,7 @@ func (f *filters) hasOrders() bool {
 }
 
 func (f *filters) String() string {
-	var fs string
-	if f.filter != nil {
-		fs = fmt.Sprintf("WHERE %v", f.filter.String())
-	}
-	// TODO: order to string
-	return fs
+	return fmt.Sprintf("WHERE %v ORDER BY %v", f.filter.String(), f.order.String())
 }
 
 func dateOnly(v *types.Value) *types.Value {
