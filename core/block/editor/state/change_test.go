@@ -486,12 +486,7 @@ func Test_ApplyChange(t *testing.T) {
 				},
 			},
 		}))
-		frankenstein := &types.Struct{
-			Fields: map[string]*types.Value{
-				"coll1": {Kind: &types.Value_StructValue{
-					StructValue: &types.Struct{Fields: map[string]*types.Value{}},
-				}}}}
-		assert.Equal(t, frankenstein, s.Collections())
+		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, s.Collections())
 	})
 }
 
