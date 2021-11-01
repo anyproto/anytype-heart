@@ -632,7 +632,10 @@ func (s *service) DeleteObject(id string) (err error) {
 		b.BlockClose()
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
-		workspaceId = pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
+		if err == core.ErrObjectDoesNotBelongToWorkspace {
+			workspaceId = s.anytype.PredefinedBlocks().Account
+		}
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 		if isFavorite {
 			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
