@@ -344,10 +344,7 @@ func (p *Workspaces) workspaceObjectsAndParametersFromState(st *state.State) ([]
 	highlightedCollection := st.GetCollection(source.HighlightedCollection)
 	if highlightedCollection != nil {
 		for objId, isHighlighted := range highlightedCollection.Fields {
-			if isHighlighted == nil {
-				continue
-			}
-			if v, ok := isHighlighted.Kind.(*types.Value_BoolValue); ok && v.BoolValue {
+			if pbtypes.IsExpectedBoolValue(isHighlighted, true) {
 				if _, exists := parameters[objId]; exists {
 					parameters[objId].IsHighlighted = true
 				}

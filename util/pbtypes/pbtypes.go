@@ -93,6 +93,16 @@ func GetBool(s *types.Struct, name string) bool {
 	return false
 }
 
+func IsExpectedBoolValue(val *types.Value, expectedValue bool) bool {
+	if val == nil {
+		return false
+	}
+	if v, ok := val.Kind.(*types.Value_BoolValue); ok && v.BoolValue == expectedValue {
+		return true
+	}
+	return false
+}
+
 func Exists(s *types.Struct, name string) bool {
 	if s == nil || s.Fields == nil {
 		return false
@@ -424,7 +434,6 @@ func Map(s *types.Struct, keys ...string) *types.Struct {
 	}
 	return ns
 }
-
 
 func Sprint(p proto.Message) string {
 	m := jsonpb.Marshaler{Indent: " "}

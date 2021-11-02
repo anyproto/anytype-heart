@@ -242,16 +242,6 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	if a.predefinedBlockIds.IsAccount(objectId) {
 		return "", ErrObjectDoesNotBelongToWorkspace
 	}
-	sbType, err := smartblock.SmartBlockTypeFromID(objectId)
-	if err != nil {
-		return "", err
-	}
-	// TODO: not sure that this is the correct logic
-	// we should return the workspace to which it belongs to
-	// right now this is mostly used for creator thing which is a bit hacky
-	if sbType == smartblock.SmartBlockTypeWorkspace {
-		return objectId, nil
-	}
 
 	workspaceIds := a.threadService.ThreadQueue().GetWorkspacesForThread(objectId)
 	if len(workspaceIds) != 0 && !a.predefinedBlockIds.IsAccount(workspaceIds[0]) {
@@ -392,14 +382,24 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 	}
 	readMx.RUnlock()
 
-	workspaceId, err := a.GetWorkspaceIdForObject(threadId)
+	sbType, err := smartblock.SmartBlockTypeFromID(threadId)
 	if err != nil {
-		if err == ErrObjectDoesNotBelongToWorkspace {
-			readMx.Lock()
-			defer readMx.Unlock()
-			checkedThreads[threadId] = struct{}{}
-		}
 		return
+	}
+	var workspaceId string
+	if sbType == smartblock.SmartBlockTypeWorkspace {
+		// if we add something to workspace itself, it means that we should add our creator info
+		workspaceId = threadId
+	} else {
+		workspaceId, err = a.GetWorkspaceIdForObject(threadId)
+		if err != nil {
+			if err == ErrObjectDoesNotBelongToWorkspace {
+				readMx.Lock()
+				defer readMx.Unlock()
+				checkedThreads[threadId] = struct{}{}
+			}
+			return
+		}
 	}
 
 	readMx.RLock()
