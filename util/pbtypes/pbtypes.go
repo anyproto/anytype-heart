@@ -279,6 +279,55 @@ func StructToMap(s *types.Struct) map[string]interface{} {
 	return m
 }
 
+func GetMapOfKeysAndValuesFromStruct(collection *types.Struct) map[string]*types.Value {
+	keyMap := map[string]*types.Value{}
+	if collection == nil {
+		return keyMap
+	}
+	keyStack := []string{""}
+	collStack := []*types.Struct{collection}
+
+	for len(collStack) != 0 {
+		coll := collStack[len(collStack)-1]
+		lastKey := keyStack[len(keyStack)-1]
+		keyStack = keyStack[:len(keyStack)-1]
+		collStack = collStack[:len(collStack)-1]
+		for k, v := range coll.Fields {
+			subColl, ok := v.Kind.(*types.Value_StructValue)
+			updatedKey := lastKey
+			if updatedKey != "" {
+				updatedKey += "/"
+			}
+			updatedKey += k
+			if !ok {
+				keyMap[updatedKey] = v
+				continue
+			}
+			collStack = append(collStack, subColl.StructValue)
+			keyStack = append(keyStack, updatedKey)
+		}
+	}
+	return keyMap
+}
+
+func CompareKeyMaps(before map[string]*types.Value, after map[string]*types.Value) (keysSet []string, keysRemoved []string) {
+	for k, afterValue := range after {
+		beforeValue, exists := before[k]
+		if exists && afterValue.Equal(beforeValue) {
+			continue
+		}
+		keysSet = append(keysSet, k)
+	}
+
+	for k := range before {
+		if _, exists := after[k]; exists {
+			continue
+		}
+		keysRemoved = append(keysRemoved, k)
+	}
+	return
+}
+
 func ValueToInterface(v *types.Value) interface{} {
 	switch k := v.Kind.(type) {
 	case *types.Value_NullValue:

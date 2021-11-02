@@ -1456,9 +1456,19 @@ func (s *State) SetInCollection(keys []string, value *types.Value) {
 		coll.Fields = map[string]*types.Value{}
 	}
 	if value != nil {
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeySet{
+				CollectionKeySet: &pb.ChangeCollectionKeySet{Key: keys, Value: value},
+			},
+		})
 		coll.Fields[keys[len(keys)-1]] = value
 		return
 	}
+	s.changes = append(s.changes, &pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+			CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{Key: keys},
+		},
+	})
 	delete(coll.Fields, keys[len(keys)-1])
 	// cleaning empty structs from collection to avoid empty pb values
 	idx := len(keys)-2

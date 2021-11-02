@@ -425,11 +425,11 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			},
 		})
 	}
+	s.collapseSameKeyCollectionChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeRelationsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
-	s.changes = append(s.changes, s.makeCollectionChanges()...)
 
 }
 
@@ -528,70 +528,34 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	return
 }
 
-func (s *State) getMapOfKeysFromCollection(collection *types.Struct) map[string]*types.Value {
-	keyMap := map[string]*types.Value{}
-	if collection == nil {
-		return keyMap
-	}
-	keyStack := []string{""}
-	collStack := []*types.Struct{collection}
-
-	for len(collStack) != 0 {
-		coll := collStack[len(collStack)-1]
-		lastKey := keyStack[len(keyStack)-1]
-		keyStack = keyStack[:len(keyStack)-1]
-		collStack = collStack[:len(collStack)-1]
-		for k, v := range coll.Fields {
-			subColl, ok := v.Kind.(*types.Value_StructValue)
-			updatedKey := lastKey
-			if updatedKey != "" {
-				updatedKey += "/"
-			}
-			updatedKey += k
-			if !ok {
-				keyMap[updatedKey] = v
-				continue
-			}
-			collStack = append(collStack, subColl.StructValue)
-			keyStack = append(keyStack, updatedKey)
-		}
-	}
-	return keyMap
-}
-
-func (s *State) compareKeyMaps(before map[string]*types.Value, after map[string]*types.Value) (changes []*pb.ChangeContent) {
-	for k, afterValue := range after {
-		beforeValue, exists := before[k]
-		if exists && afterValue.Equal(beforeValue) {
+func (s *State) collapseSameKeyCollectionChanges() {
+	seen := make(map[string]struct{}, len(s.changes))
+	var filteredChanges []*pb.ChangeContent
+	for i := len(s.changes) - 1; i >= 0; i-- {
+		ch := s.changes[i]
+		var key []string
+		if ch.GetCollectionKeySet() != nil {
+			key = ch.GetCollectionKeySet().Key
+		} else if ch.GetCollectionKeyUnset() != nil {
+			key = ch.GetCollectionKeyUnset().Key
+		} else {
+			filteredChanges = append(filteredChanges, ch)
 			continue
 		}
-		changes = append(changes, &pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfCollectionKeySet{
-				CollectionKeySet: &pb.ChangeCollectionKeySet{Key: strings.Split(k, "/"), Value: afterValue},
-			},
-		})
-	}
-
-	for k := range before {
-		if _, exists := after[k]; exists {
+		joined := strings.Join(key, "/")
+		if _, exists := seen[joined]; exists {
 			continue
 		}
-		changes = append(changes, &pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
-				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{Key: strings.Split(k, "/")},
-			},
-		})
+		seen[joined] = struct{}{}
+		filteredChanges = append(filteredChanges, ch)
 	}
-	return
-}
-
-func (s *State) makeCollectionChanges() (ch []*pb.ChangeContent) {
-	if s.collections == nil {
-		return nil
+	l := len(filteredChanges)
+	for i := 0; i < l/2; i++ {
+		temp := filteredChanges[i]
+		filteredChanges[i] = filteredChanges[l-i-1]
+		filteredChanges[l-i-1] = temp
 	}
-	before := s.getMapOfKeysFromCollection(s.parent.Collections())
-	after := s.getMapOfKeysFromCollection(s.collections)
-	return s.compareKeyMaps(before, after)
+	s.changes = filteredChanges
 }
 
 func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.ChangeRelationUpdate, error) {
