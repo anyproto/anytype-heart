@@ -15,7 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/mauidude/go-readability"
 	"github.com/microcosm-cc/bluemonday"
-	"github.com/otiai10/opengraph"
+	"github.com/otiai10/opengraph/v2"
 )
 
 const CName = "linkpreview"
@@ -51,7 +51,11 @@ func (l *linkPreview) Name() (name string) {
 func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPreview, error) {
 	rt := &proxyRoundTripper{RoundTripper: http.DefaultTransport}
 	client := &http.Client{Transport: rt}
-	og, err := opengraph.FetchWithContext(ctx, fetchUrl, client)
+	og := opengraph.New(fetchUrl)
+	og.URL = fetchUrl
+	og.Intent.Context = ctx
+	og.Intent.HTTPClient = client
+	err := og.Fetch()
 	if err != nil {
 		if resp := rt.lastResponse; resp != nil && resp.StatusCode == http.StatusOK {
 			return l.makeNonHtml(fetchUrl, resp)
@@ -72,18 +76,13 @@ func (l *linkPreview) Fetch(ctx context.Context, fetchUrl string) (model.LinkPre
 }
 
 func (l *linkPreview) convertOGToInfo(og *opengraph.OpenGraph) (i model.LinkPreview) {
-	og.ToAbsURL()
+	og.ToAbs()
 	i = model.LinkPreview{
-		Url:         og.URL.String(),
+		Url:         og.URL,
 		Title:       og.Title,
 		Description: og.Description,
 		Type:        model.LinkPreview_Page,
-		FaviconUrl:  og.Favicon,
-	}
-	if len(i.FaviconUrl) == 0 {
-		og.URL.Path = "favicon.ico"
-		og.URL.RawQuery = ""
-		i.FaviconUrl = og.URL.String()
+		FaviconUrl:  og.Favicon.URL,
 	}
 
 	if len(og.Image) != 0 {

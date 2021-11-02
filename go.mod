@@ -64,7 +64,7 @@ require (
 	github.com/multiformats/go-multibase v0.0.3
 	github.com/multiformats/go-multihash v0.0.15
 	github.com/opentracing/opentracing-go v1.2.0
-	github.com/otiai10/opengraph v1.1.3
+	github.com/otiai10/opengraph/v2 v2.1.0
 	github.com/prometheus/client_golang v1.10.0
 	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/spf13/cobra v0.0.7
@@ -77,6 +77,7 @@ require (
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	github.com/yuin/goldmark v1.3.5
 	go.uber.org/zap v1.16.0
+	golang.org/x/net v0.0.0-20211101193420-4a448f8816b3 // indirect
 	golang.org/x/text v0.3.7
 	google.golang.org/grpc v1.37.0
 	gopkg.in/Graylog2/go-gelf.v2 v2.0.0-20180125164251-1832d8546a9f
