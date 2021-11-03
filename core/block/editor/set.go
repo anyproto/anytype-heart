@@ -2,8 +2,7 @@ package editor
 
 import (
 	"fmt"
-
-	"github.com/google/uuid"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -67,47 +66,35 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDescription,
 		template.WithFeaturedRelations,
 	}
-	if p.Id() == p.Anytype().PredefinedBlocks().SetPages {
+	if p.Id() == p.Anytype().PredefinedBlocks().SetPages && p.Pick(template.DataviewBlockId) == nil {
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
-				Source:    []string{"_otpage"},
-				Relations: bundle.MustGetType(bundle.TypeKeyPage).Relations,
+				Source:    []string{bundle.TypeKeyNote.URL()},
+				Relations: bundle.MustGetType(bundle.TypeKeyNote).Relations,
 				Views: []*model.BlockContentDataviewView{
 					{
-						Id:   uuid.New().String(),
+						Id:   bson.NewObjectId().Hex(),
 						Type: model.BlockContentDataviewView_Table,
-						Name: "All drafts",
+						Name: "All notes",
 						Sorts: []*model.BlockContentDataviewSort{
 							{
-								RelationKey: "name",
-								Type:        model.BlockContentDataviewSort_Asc,
+								RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
-						Relations: getDefaultViewRelations(bundle.MustGetType(bundle.TypeKeyPage).Relations),
+						Relations: getDefaultViewRelations(bundle.MustGetType(bundle.TypeKeyNote).Relations),
 						Filters:   nil,
 					},
 				},
 			},
 		}
-		var (
-			oldName, oldIcon = "Pages", "📒"
-			newName, newIcon = "Drafts", "⚪"
-			forcedDataview   bool
-		)
-		if slice.FindPos([]string{oldName, ""}, pbtypes.GetString(p.Details(), bundle.RelationKeyName.String())) > -1 &&
-			pbtypes.GetString(p.Details(), bundle.RelationKeyIconEmoji.String()) == oldIcon {
-			// we should migrate existing dataview
-			templates = append(templates, template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(newName)))
-			templates = append(templates, template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(newIcon)))
-			forcedDataview = true
-		}
 
 		templates = append(templates,
-			template.WithDataview(dataview, forcedDataview),
-			template.WithDetailName(newName),
-			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{"_otpage"})),
-			template.WithDetailIconEmoji(newIcon))
-	} else if dvBlock := p.Pick("dataview"); dvBlock != nil {
+			template.WithDataview(dataview, false),
+			template.WithDetailName("Notes"),
+			template.WithDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{bundle.TypeKeyNote.URL()})),
+			template.WithDetailIconEmoji("⚪"))
+	} else if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(dvBlock.Model().GetDataview().Source)))
 	}
 	templates = append(templates, template.WithTitle)

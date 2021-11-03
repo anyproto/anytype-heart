@@ -113,11 +113,13 @@ func (sch *schemaByRelations) ListRelations() []*model.Relation {
 }
 
 func (sch *schemaByRelations) Filters() filter.Filter {
-	relTypeFilter := filter.OrFilters{
-		filter.In{
+	var relTypeFilter filter.OrFilters
+
+	if len(sch.ObjectTypeIds) > 0 {
+		relTypeFilter = append(relTypeFilter, filter.In{
 			Key:   bundle.RelationKeyType.String(),
 			Value: pbtypes.StringList(sch.ObjectTypeIds).GetListValue(),
-		},
+		})
 	}
 
 	for _, rel := range sch.CommonRelations {

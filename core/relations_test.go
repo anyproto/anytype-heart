@@ -768,13 +768,13 @@ func TestRelationAdd(t *testing.T) {
 
 		respPage1Create := mw.PageCreate(&pb.RpcPageCreateRequest{
 			Details: &types2.Struct{Fields: map[string]*types2.Value{
-				bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyPage.URL()}),
+				bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyNote.URL()}),
 			}},
 		})
 		require.Equal(t, 0, int(respPage1Create.Error.Code), respPage1Create.Error.Description)
 		respPage2Create := mw.PageCreate(&pb.RpcPageCreateRequest{
 			Details: &types2.Struct{Fields: map[string]*types2.Value{
-				bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyPage.URL()}),
+				bundle.RelationKeyType.String(): pbtypes.StringList([]string{bundle.TypeKeyNote.URL()}),
 			}},
 		})
 		require.Equal(t, 0, int(respPage1Create.Error.Code), respPage1Create.Error.Description)
@@ -1365,7 +1365,7 @@ func TestBundledType(t *testing.T) {
 	_, mw, close := start(t, nil)
 	defer close()
 
-	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1")}}})
+	respCreatePage := mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test1"), "type": pbtypes.String("_otnote")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 	log.Errorf("page %s created", respCreatePage.PageId)
 	respOpenPage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respCreatePage.PageId})
@@ -1394,7 +1394,7 @@ func TestBundledType(t *testing.T) {
 	require.Len(t, recordsSet.Records, 1)
 	require.Equal(t, respCreatePage.PageId, getEventRecordsSet(respOpenPagesSet.Event.Messages).Records[0].Fields["id"].GetStringValue())
 
-	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2")}}})
+	respCreatePage = mw.PageCreate(&pb.RpcPageCreateRequest{Details: &types2.Struct{Fields: map[string]*types2.Value{"name": pbtypes.String("test2"), "type" : pbtypes.String("_otnote")}}})
 	require.Equal(t, 0, int(respCreatePage.Error.Code), respCreatePage.Error.Description)
 
 	time.Sleep(time.Millisecond * 200)

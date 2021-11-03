@@ -2,12 +2,14 @@ package filter
 
 import (
 	"github.com/gogo/protobuf/types"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 type Order interface {
 	Compare(a, b Getter) int
+	String() string
 }
 
 type SetOrder []Order
@@ -21,6 +23,14 @@ func (so SetOrder) Compare(a, b Getter) int {
 	return 0
 }
 
+func (so SetOrder) String() (s string) {
+	var ss []string
+	for _, o := range so {
+		ss = append(ss, o.String())
+	}
+	return strings.Join(ss, ", ")
+}
+
 type KeyOrder struct {
 	Key       string
 	Type      model.BlockContentDataviewSortType
@@ -31,7 +41,6 @@ func (ko KeyOrder) Compare(a, b Getter) int {
 	av := a.Get(ko.Key)
 	bv := b.Get(ko.Key)
 	comp := av.Compare(bv)
-
 	_, aString := av.GetKind().(*types.Value_StringValue)
 	_, bString := bv.GetKind().(*types.Value_StringValue)
 	if ko.EmptyLast && (aString || av == nil) && (bString || bv == nil) {
@@ -45,4 +54,12 @@ func (ko KeyOrder) Compare(a, b Getter) int {
 		comp = -comp
 	}
 	return comp
+}
+
+func (ko KeyOrder) String() (s string) {
+	s = ko.Key
+	if ko.Type == model.BlockContentDataviewSort_Desc {
+		s += " DESC"
+	}
+	return
 }
