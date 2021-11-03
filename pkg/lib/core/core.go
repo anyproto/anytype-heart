@@ -420,15 +420,6 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 	defer readMx.Unlock()
 	checkedThreads[threadId] = struct{}{}
 	checkedWorkspaces[workspaceId] = struct{}{}
-
-	threads.WorkspaceLogger.
-		With("workspace Id", workspaceId).
-		With("thread id", threadId).
-		Debug("successfully added creator info")
-	readMx.Lock()
-	defer readMx.Unlock()
-	checkedThreads[threadId] = struct{}{}
-	checkedWorkspaces[workspaceId] = struct{}{}
 }
 
 // subscribeForNewRecords should be called only once as early as possible.
