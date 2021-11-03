@@ -130,23 +130,31 @@ message Event {
 
             // Adds new document to subscriptions
             message Add {
-                repeated string subIds = 1; // subscription ids
-                string id = 2; // object id
-                google.protobuf.Struct details = 3; // object details
-                string afterId = 4; // id of previous doc in order, empty means first
+                string id = 1; // object id
+                google.protobuf.Struct details = 2; // object details
+                string afterId = 3; // id of previous doc in order, empty means first
+                Counters counters = 4;
             }
 
             // Removes document from subscription
             message Remove {
-                repeated string subIds = 1; // subscription ids
-                string id = 2; // object id
+                string id = 1; // object id
+                Counters counters = 2;
             }
 
             // Indicates new position of document
             message Position {
-                repeated string subIds = 1; // subscription ids
-                string id = 2; // object id
-                string afterId = 3;  // id of previous doc in order, empty means first
+                string id = 1; // object id
+                string afterId = 2;  // id of previous doc in order, empty means first
+            }
+
+            message Counters {
+                // total available records
+                int64 total = 1;
+                // how many records available after
+                int64 nextCount = 2;
+                // how many records available before
+                int64 prevCount = 3;
             }
 
         }
