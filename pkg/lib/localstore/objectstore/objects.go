@@ -1739,6 +1739,11 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*model.Relation) 
 			return err
 		}
 
+		err = m.AddToIndexQueue(id)
+		if err != nil {
+			log.Errorf("failed to add indexed relation to the ft queue: %s", err.Error())
+		}
+
 		err = m.updateObjectLinksAndSnippet(txn, id, nil, relation.Description)
 		if err != nil {
 			return err
