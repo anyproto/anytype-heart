@@ -77,7 +77,7 @@ func (cb *clipboard) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot
 	htmlSlot = ""
 
 	if len(req.Blocks) == 0 {
-		return textSlot, htmlSlot, anySlot, ErrAllSlotsEmpty
+		return textSlot, htmlSlot, anySlot, fmt.Errorf("copy: no blocks")
 	}
 
 	s := cb.blocksToState(req.Blocks)
