@@ -2,19 +2,20 @@ package editor
 
 import (
 	"fmt"
-	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 )
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
@@ -28,6 +29,7 @@ func NewSet(dbCtrl database.Ctrl) *Set {
 	sb.IHistory = basic.NewHistory(sb)
 	sb.Dataview = dataview.NewDataview(sb)
 	sb.Router = database.New(dbCtrl)
+	sb.Text = stext.NewText(sb)
 	return sb
 }
 
@@ -37,6 +39,7 @@ type Set struct {
 	basic.IHistory
 	dataview.Dataview
 	database.Router
+	stext.Text
 }
 
 func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
