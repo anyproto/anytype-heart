@@ -1417,6 +1417,23 @@ func (s *State) createOrCopyCollectionsFromParent() {
 }
 
 func (s *State) SetInCollection(keys []string, value *types.Value) {
+	s.setInCollection(keys, value)
+	if value != nil {
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeySet{
+				CollectionKeySet: &pb.ChangeCollectionKeySet{Key: keys, Value: value},
+			},
+		})
+	} else {
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{Key: keys},
+			},
+		})
+	}
+}
+
+func (s *State) setInCollection(keys []string, value *types.Value) {
 	if len(keys) == 0 {
 		return
 	}
@@ -1430,6 +1447,7 @@ func (s *State) SetInCollection(keys []string, value *types.Value) {
 			coll.Fields = map[string]*types.Value{}
 		}
 		_, ok := coll.Fields[key]
+		// TODO: refactor this with pbtypes
 		if !ok {
 			coll.Fields[key] = &types.Value{
 				Kind: &types.Value_StructValue{
@@ -1456,19 +1474,9 @@ func (s *State) SetInCollection(keys []string, value *types.Value) {
 		coll.Fields = map[string]*types.Value{}
 	}
 	if value != nil {
-		s.changes = append(s.changes, &pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfCollectionKeySet{
-				CollectionKeySet: &pb.ChangeCollectionKeySet{Key: keys, Value: value},
-			},
-		})
 		coll.Fields[keys[len(keys)-1]] = value
 		return
 	}
-	s.changes = append(s.changes, &pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfCollectionKeyUnset{
-			CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{Key: keys},
-		},
-	})
 	delete(coll.Fields, keys[len(keys)-1])
 	// cleaning empty structs from collection to avoid empty pb values
 	idx := len(keys)-2
@@ -1492,6 +1500,7 @@ func (s *State) ContainsInCollection(keys []string) bool {
 		if coll.Fields == nil {
 			return false
 		}
+		// TODO: refactor this with pbtypes
 		_, ok := coll.Fields[key]
 		if !ok {
 			return false
@@ -1508,14 +1517,27 @@ func (s *State) ContainsInCollection(keys []string) bool {
 	return coll.Fields[keys[len(keys)-1]] != nil
 }
 
-func (s *State) RemoveFromCollection(keys []string) {
+func (s *State) RemoveFromCollection(keys []string) bool {
+	res := s.removeFromCollection(keys)
+	if res {
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
+				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{Key: keys},
+			},
+		})
+	}
+	return res
+}
+
+func (s *State) removeFromCollection(keys []string) bool {
 	if len(keys) == 0 {
-		return
+		return false
 	}
 	if !s.ContainsInCollection(keys) {
-		return
+		return false
 	}
-	s.SetInCollection(keys, nil)
+	s.setInCollection(keys, nil)
+	return true
 }
 
 func (s *State) GetCollection(collectionName string) *types.Struct {
