@@ -3351,45 +3351,40 @@ message Rpc {
             }
         }
 
-        message QueryAndSubscribe {
+        message SearchSubscribe {
             message Request {
                 // (optional) subscription identifier
                 // client can provide some string or middleware will generate it automatically
                 // if subId is already registered on middleware, the new query will replace previous subscription
                 string subId = 1;
-                // subscription mode
-                Mode mode = 2;
                 // filters
-                repeated anytype.model.Block.Content.Dataview.Filter filters = 3;
+                repeated anytype.model.Block.Content.Dataview.Filter filters = 2;
                 // sorts
-                repeated anytype.model.Block.Content.Dataview.Sort sorts = 4;
+                repeated anytype.model.Block.Content.Dataview.Sort sorts = 3;
                 // fulltext query (optional)
-                string fullText = 5;
+                string fullText = 4;
                 // results limit
-                int32 limit = 6;
-                // needed keys in details for return, when empty - will return all
-                repeated string keys = 7;
+                int32 limit = 5;
+                // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
+                repeated string keys = 6;
+
                 bool ignoreWorkspace = 8;
 
                 // (optional) pagination: middleware will return results after given id
                 string afterId = 9;
                 // (optional) pagination: middleware will return results before given id
                 string beforeId = 10;
-
-                enum Mode {
-                    // subscription for all documents that satisfy filters
-                    All = 0;
-                    // subscription only for documents that returned by query
-                    Page = 1;
-                }
             }
 
             message Response {
                 Error error = 1;
+
                 repeated google.protobuf.Struct records = 2;
-                string subId = 3;
-                bool hasNext = 4;
-                bool hasPrevious = 5;
+                repeated google.protobuf.Struct dependencies = 3;
+
+                string subId = 4;
+                bool hasNext = 5;
+                bool hasPrevious = 6;
 
                 message Error {
                     Code code = 1;
@@ -3400,6 +3395,27 @@ message Rpc {
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
                         // ...
+                    }
+                }
+            }
+        }
+
+        message SearchUnsubscribe {
+            message Request {
+                repeated string subIds = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                      NULL = 0;
+                      UNKNOWN_ERROR = 1;
+                      BAD_INPUT = 2;
                     }
                 }
             }

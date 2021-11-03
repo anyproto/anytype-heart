@@ -10,7 +10,7 @@ import "google/protobuf/struct.proto";
 */
 message Event {
     repeated Message messages = 1;
-    repeated string contextIds = 2;
+    string contextId = 2;
     anytype.model.Account initiator = 3;
     string traceId = 4;
 
@@ -108,19 +108,47 @@ message Event {
                 }
                 string id = 1; // context objectId
                 repeated KeyValue details = 2; // slice of changed key-values
+                repeated string subIds = 3;
             }
 
             // Overwrite current state
             message Set {
                 string id = 1; // context objectId
                 google.protobuf.Struct details = 2; // can not be a partial state. Should replace client details state
+                repeated string subIds = 3;
             }
 
             // Unset existing detail keys
             message Unset {
                 string id = 1; // context objectId
                 repeated string keys = 2;
+                repeated string subIds = 3;
             }
+        }
+
+        message Subscription {
+
+            // Adds new document to subscriptions
+            message Add {
+                repeated string subIds = 1; // subscription ids
+                string id = 2; // object id
+                google.protobuf.Struct details = 3; // object details
+                string afterId = 4; // id of previous doc in order, empty means first
+            }
+
+            // Removes document from subscription
+            message Remove {
+                repeated string subIds = 1; // subscription ids
+                string id = 2; // object id
+            }
+
+            // Indicates new position of document
+            message Position {
+                repeated string subIds = 1; // subscription ids
+                string id = 2; // object id
+                string afterId = 3;  // id of previous doc in order, empty means first
+            }
+
         }
 
         message Relations {
