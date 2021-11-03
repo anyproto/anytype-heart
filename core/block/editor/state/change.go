@@ -38,7 +38,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		extraRelations: snapshot.Data.ExtraRelations,
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
-		collections:    snapshot.Data.Collections,
+		store:          snapshot.Data.Collections,
 	}
 	s.InjectDerivedDetails()
 
@@ -150,12 +150,12 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
 			return
 		}
-	case ch.GetCollectionKeySet() != nil:
-		if err = s.changeCollectionKeySet(ch.GetCollectionKeySet()); err != nil {
+	case ch.GetStoreKeySet() != nil:
+		if err = s.changeStoreKeySet(ch.GetStoreKeySet()); err != nil {
 			return
 		}
-	case ch.GetCollectionKeyUnset() != nil:
-		if err = s.changeCollectionKeyUnset(ch.GetCollectionKeyUnset()); err != nil {
+	case ch.GetStoreKeyUnset() != nil:
+		if err = s.changeStoreKeyUnset(ch.GetStoreKeyUnset()); err != nil {
 			return
 		}
 	default:
@@ -319,13 +319,13 @@ func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
 	return err
 }
 
-func (s *State) changeCollectionKeySet(set *pb.ChangeCollectionKeySet) error {
-	s.setInCollection(set.Key, set.Value)
+func (s *State) changeStoreKeySet(set *pb.ChangeStoreKeySet) error {
+	s.setInStore(set.Path, set.Value)
 	return nil
 }
 
-func (s *State) changeCollectionKeyUnset(unset *pb.ChangeCollectionKeyUnset) error {
-	s.removeFromCollection(unset.Key)
+func (s *State) changeStoreKeyUnset(unset *pb.ChangeStoreKeyUnset) error {
+	s.removeFromStore(unset.Path)
 	return nil
 }
 
@@ -425,7 +425,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			},
 		})
 	}
-	s.collapseSameKeyCollectionChanges()
+	s.collapseSameKeyStoreChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeRelationsChanges()...)
@@ -528,16 +528,16 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 	return
 }
 
-func (s *State) collapseSameKeyCollectionChanges() {
+func (s *State) collapseSameKeyStoreChanges() {
 	seen := make(map[string]struct{}, len(s.changes))
 	var filteredChanges []*pb.ChangeContent
 	for i := len(s.changes) - 1; i >= 0; i-- {
 		ch := s.changes[i]
 		var key []string
-		if ch.GetCollectionKeySet() != nil {
-			key = ch.GetCollectionKeySet().Key
-		} else if ch.GetCollectionKeyUnset() != nil {
-			key = ch.GetCollectionKeyUnset().Key
+		if ch.GetStoreKeySet() != nil {
+			key = ch.GetStoreKeySet().Path
+		} else if ch.GetStoreKeyUnset() != nil {
+			key = ch.GetStoreKeyUnset().Path
 		} else {
 			filteredChanges = append(filteredChanges, ch)
 			continue

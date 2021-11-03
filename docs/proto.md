@@ -13,8 +13,6 @@
     - [Change.BlockMove](#anytype.Change.BlockMove)
     - [Change.BlockRemove](#anytype.Change.BlockRemove)
     - [Change.BlockUpdate](#anytype.Change.BlockUpdate)
-    - [Change.CollectionKeySet](#anytype.Change.CollectionKeySet)
-    - [Change.CollectionKeyUnset](#anytype.Change.CollectionKeyUnset)
     - [Change.Content](#anytype.Change.Content)
     - [Change.DetailsSet](#anytype.Change.DetailsSet)
     - [Change.DetailsUnset](#anytype.Change.DetailsUnset)
@@ -29,6 +27,8 @@
     - [Change.RelationUpdate.ObjectTypes](#anytype.Change.RelationUpdate.ObjectTypes)
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
+    - [Change.StoreKeySet](#anytype.Change.StoreKeySet)
+    - [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset)
   
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
@@ -1292,37 +1292,6 @@ the element of change tree used to store and internal apply smartBlock history
 
 
 
-<a name="anytype.Change.CollectionKeySet"></a>
-
-### Change.CollectionKeySet
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) | repeated |  |
-| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
-
-
-
-
-
-
-<a name="anytype.Change.CollectionKeyUnset"></a>
-
-### Change.CollectionKeyUnset
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) | repeated |  |
-
-
-
-
-
-
 <a name="anytype.Change.Content"></a>
 
 ### Change.Content
@@ -1343,8 +1312,8 @@ the element of change tree used to store and internal apply smartBlock history
 | relationUpdate | [Change.RelationUpdate](#anytype.Change.RelationUpdate) |  |  |
 | objectTypeAdd | [Change.ObjectTypeAdd](#anytype.Change.ObjectTypeAdd) |  |  |
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype.Change.ObjectTypeRemove) |  |  |
-| collectionKeySet | [Change.CollectionKeySet](#anytype.Change.CollectionKeySet) |  |  |
-| collectionKeyUnset | [Change.CollectionKeyUnset](#anytype.Change.CollectionKeyUnset) |  |  |
+| storeKeySet | [Change.StoreKeySet](#anytype.Change.StoreKeySet) |  |  |
+| storeKeyUnset | [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset) |  |  |
 
 
 
@@ -1552,6 +1521,37 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.StoreKeySet"></a>
+
+### Change.StoreKeySet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) | repeated |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.StoreKeyUnset"></a>
+
+### Change.StoreKeyUnset
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) | repeated |  |
 
 
 
@@ -15963,7 +15963,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | WorkspaceOld | 517 | deprecated thread-based workspace |
-| Workspace | 518 |  |
+| Workspace | 279 |  |
 
 
  

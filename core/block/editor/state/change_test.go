@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func makeCollectionWithTwoKeysAndValue(first, second, value string) *types.Struct {
+func makeStoreWithTwoKeysAndValue(first, second, value string) *types.Struct {
 	return &types.Struct{
 		Fields: map[string]*types.Value{
 			first: {Kind: &types.Value_StructValue{
@@ -56,16 +56,16 @@ func TestState_ChangesCreate_MoveAdd(t *testing.T) {
 func TestState_ChangesCreate_Collection_Set(t *testing.T) {
 	d := NewDoc("root", nil)
 	s := d.NewState()
-	s.SetInCollection([]string{"coll1", "key1"}, pbtypes.String("1"))
+	s.SetInStore([]string{"coll1", "key1"}, pbtypes.String("1"))
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
 	changes := d.(*State).GetChanges()
 	require.Len(t, changes, 1)
 	assert.Equal(t, (&pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfCollectionKeySet{
-			CollectionKeySet: &pb.ChangeCollectionKeySet{
-				Key:            []string{"coll1", "key1"},
-				Value:          pbtypes.String("1"),
+		Value: &pb.ChangeContentValueOfStoreKeySet{
+			StoreKeySet: &pb.ChangeStoreKeySet{
+				Path:  []string{"coll1", "key1"},
+				Value: pbtypes.String("1"),
 			},
 		},
 	}).String(), changes[0].String())
@@ -73,17 +73,17 @@ func TestState_ChangesCreate_Collection_Set(t *testing.T) {
 
 func TestState_ChangesCreate_Collection_Unset(t *testing.T) {
 	d := NewDoc("root", nil)
-	d.(*State).collections = makeCollectionWithTwoKeysAndValue("coll1", "key1", "1")
+	d.(*State).store = makeStoreWithTwoKeysAndValue("coll1", "key1", "1")
 	s := d.NewState()
-	s.RemoveFromCollection([]string{"coll1", "key1"})
+	s.RemoveFromStore([]string{"coll1", "key1"})
 	_, _, err := ApplyState(s, true)
 	require.NoError(t, err)
 	changes := d.(*State).GetChanges()
 	require.Len(t, changes, 1)
 	assert.Equal(t, (&pb.ChangeContent{
-		Value: &pb.ChangeContentValueOfCollectionKeyUnset{
-			CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{
-				Key:            []string{"coll1", "key1"},
+		Value: &pb.ChangeContentValueOfStoreKeyUnset{
+			StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+				Path: []string{"coll1", "key1"},
 			},
 		},
 	}).String(), changes[0].String())
@@ -463,30 +463,30 @@ func Test_ApplyChange(t *testing.T) {
 
 		s := root.NewState()
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfCollectionKeySet{
-				CollectionKeySet: &pb.ChangeCollectionKeySet{
-					Key:            []string{"coll1", "key1"},
-					Value:          pbtypes.String("1"),
+			Value: &pb.ChangeContentValueOfStoreKeySet{
+				StoreKeySet: &pb.ChangeStoreKeySet{
+					Path:   []string{"coll1", "key1"},
+					Value: pbtypes.String("1"),
 				},
 			},
 		}))
-		assert.Equal(t, makeCollectionWithTwoKeysAndValue("coll1", "key1", "1"), s.Collections())
+		assert.Equal(t, makeStoreWithTwoKeysAndValue("coll1", "key1", "1"), s.Store())
 
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
-				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{
-					Key:            []string{"coll1", "key1"},
+			Value: &pb.ChangeContentValueOfStoreKeyUnset{
+				StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+					Path: []string{"coll1", "key1"},
 				},
 			},
 		}))
 		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
-			Value: &pb.ChangeContentValueOfCollectionKeyUnset{
-				CollectionKeyUnset: &pb.ChangeCollectionKeyUnset{
-					Key:            []string{"coll1", "key1"},
+			Value: &pb.ChangeContentValueOfStoreKeyUnset{
+				StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+					Path: []string{"coll1", "key1"},
 				},
 			},
 		}))
-		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, s.Collections())
+		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, s.Store())
 	})
 }
 

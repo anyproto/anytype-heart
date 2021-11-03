@@ -638,7 +638,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			act.Group = s.GroupId()
 			sb.undo.Add(act)
 		}
-	} else if hasCollectionChanges(changes) { // TODO: change to len(changes) > 0
+	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
 		pushChange()
 	}
 	if sendEvent {
@@ -1598,9 +1598,9 @@ func ApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTra
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
 }
 
-func hasCollectionChanges(changes []*pb.ChangeContent) bool {
+func hasStoreChanges(changes []*pb.ChangeContent) bool {
 	for _, ch := range changes {
-		if ch.GetCollectionKeySet() != nil || ch.GetCollectionKeyUnset() != nil {
+		if ch.GetStoreKeySet() != nil || ch.GetStoreKeyUnset() != nil {
 			return true
 		}
 	}

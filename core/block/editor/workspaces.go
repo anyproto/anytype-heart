@@ -59,7 +59,7 @@ func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.Smart
 	if err != nil {
 		return nil, err
 	}
-	st.SetInCollection([]string{source.WorkspaceCollection, threadInfo.ID.String()}, p.pbThreadInfoValueFromStruct(threadInfo))
+	st.SetInStore([]string{source.WorkspaceCollection, threadInfo.ID.String()}, p.pbThreadInfoValueFromStruct(threadInfo))
 
 	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
 }
@@ -70,7 +70,7 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 	if err != nil {
 		return err
 	}
-	st.RemoveFromCollection([]string{source.WorkspaceCollection, objectId})
+	st.RemoveFromStore([]string{source.WorkspaceCollection, objectId})
 	return p.Apply(st)
 }
 
@@ -101,7 +101,7 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	if err != nil {
 		return err
 	}
-	st.SetInCollection([]string{source.CreatorCollection, deviceId}, p.pbCreatorInfoValue(info))
+	st.SetInStore([]string{source.CreatorCollection, deviceId}, p.pbCreatorInfoValue(info))
 
 	return p.Apply(st)
 }
@@ -109,11 +109,11 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) error {
 	st := p.NewState()
 	for _, info := range infos {
-		if st.ContainsInCollection([]string{source.AccountMigration, info.ID}) {
+		if st.ContainsInStore([]string{source.AccountMigration, info.ID}) {
 			continue
 		}
-		st.SetInCollection([]string{source.AccountMigration, info.ID}, pbtypes.Bool(true))
-		st.SetInCollection([]string{source.WorkspaceCollection, info.ID},
+		st.SetInStore([]string{source.AccountMigration, info.ID}, pbtypes.Bool(true))
+		st.SetInStore([]string{source.WorkspaceCollection, info.ID},
 			p.pbThreadInfoValue(info.ID, info.Key, info.Addrs),
 		)
 	}
@@ -131,7 +131,7 @@ func (p *Workspaces) AddObject(objectId string, key string, addrs []string) erro
 	if err != nil {
 		return err
 	}
-	st.SetInCollection([]string{source.WorkspaceCollection, objectId}, p.pbThreadInfoValue(objectId, key, addrs))
+	st.SetInStore([]string{source.WorkspaceCollection, objectId}, p.pbThreadInfoValue(objectId, key, addrs))
 
 	return p.Apply(st)
 }
@@ -154,7 +154,7 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 	// TODO: this should be removed probably in the future?
 	st := p.NewState()
-	st.SetInCollection([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
+	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
 	return p.Apply(st)
 }
 

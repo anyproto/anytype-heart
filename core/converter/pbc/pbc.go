@@ -22,7 +22,7 @@ func (p *pbc) Convert() (result []byte) {
 			Details:        p.s.Details(),
 			ExtraRelations: p.s.ExtraRelations(),
 			ObjectTypes:    p.s.ObjectTypes(),
-			Collections:    p.s.Collections(),
+			Collections:    p.s.Store(),
 		},
 	}
 	for _, fk := range p.s.GetFileKeys() {
