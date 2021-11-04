@@ -429,7 +429,7 @@ var (
 		TypeKeyTask: {
 
 			Description: "A piece of work to be done or undertaken",
-			IconEmoji:   "📮",
+			IconEmoji:   "✅",
 			Layout:      model.ObjectType_todo,
 			Name:        "Task",
 			Readonly:    true,

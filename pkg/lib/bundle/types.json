@@ -388,7 +388,7 @@
   },
   {
     "description": "A piece of work to be done or undertaken",
-    "emoji": "📮",
+    "emoji": "✅",
     "id": "task",
     "layout": "todo",
     "name": "Task",
