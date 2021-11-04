@@ -20,7 +20,7 @@ func NewThreadDB(migrator AccountMigrator) *ThreadDB {
 }
 
 type AccountMigrator interface {
-	MigrateMany(threadInfos []threads.ThreadInfo) error
+	MigrateMany(threadInfos []threads.ThreadInfo) (int, error)
 }
 
 type ThreadDB struct {
@@ -48,9 +48,12 @@ func (p *ThreadDB) updateObjects() {
 	st := p.NewState()
 
 	objects := p.workspaceObjectsFromState(st)
-	err := p.migrator.MigrateMany(objects)
+	log.Debugf("threadDB migrate %d objects", len(objects))
+	migrated, err := p.migrator.MigrateMany(objects)
 	if err != nil {
-		log.Errorf("failed migrating many objects")
+		log.Errorf("failed migrating many objects: %s", err.Error())
+	} else {
+		log.Infof("migrated %d threads", migrated)
 	}
 }
 

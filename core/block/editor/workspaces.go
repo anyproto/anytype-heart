@@ -106,8 +106,9 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	return p.Apply(st)
 }
 
-func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) error {
+func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) (int, error) {
 	st := p.NewState()
+	migrated := 0
 	for _, info := range infos {
 		if st.ContainsInStore([]string{source.AccountMigration, info.ID}) {
 			continue
@@ -116,9 +117,15 @@ func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) error {
 		st.SetInStore([]string{source.WorkspaceCollection, info.ID},
 			p.pbThreadInfoValue(info.ID, info.Key, info.Addrs),
 		)
+		migrated++
 	}
 
-	return p.Apply(st)
+	err := p.Apply(st)
+	if err != nil {
+		return 0, err
+	}
+
+	return migrated, nil
 }
 
 func (p *Workspaces) AddObject(objectId string, key string, addrs []string) error {

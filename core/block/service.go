@@ -960,14 +960,20 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 	return
 }
 
-func (s *service) MigrateMany(objects []threads.ThreadInfo) error {
-	return s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err error) {
+	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		return workspace.MigrateMany(objects)
+
+		migrated, err = workspace.MigrateMany(objects)
+		if err != nil {
+			return err
+		}
+		return err
 	})
+	return
 }
 
 func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
