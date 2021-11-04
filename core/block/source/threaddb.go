@@ -120,7 +120,24 @@ func (v *threadDB) Close() (err error) {
 }
 
 func (v *threadDB) LogHeads() map[string]string {
-	return nil
+	// this method may return non-consistent result cause log heads may change externally
+	tid, err := thread.Decode(v.id)
+	if err != nil {
+		log.With("thread", v.id).Errorf("threadDB source failed to decode id: %s", err.Error())
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	defer cancel()
+	i, err := v.Anytype().ThreadsService().Threads().GetThread(ctx, tid)
+	if err != nil {
+		log.With("thread", v.id).Errorf("threadDB source failed to get thread info: %s", err.Error())
+		return nil
+	}
+	var m = make(map[string]string, len(i.Logs))
+	for _, l := range i.Logs {
+		m[l.ID.String()] = l.Head.ID.String()
+	}
+	return m
 }
 
 func (v *threadDB) listenToChanges() (err error) {
@@ -140,6 +157,7 @@ func (v *threadDB) listenToChanges() (err error) {
 	threads.WorkspaceLogger.
 		With("workspace id", v.id).
 		Debug("started listening to db changes")
+	listenerCh := v.listener.Channel()
 
 	// better to use old logic to batch the changes and also not create too many goroutines
 	go func() {
@@ -172,7 +190,7 @@ func (v *threadDB) listenToChanges() (err error) {
 				// we don't have new messages for at least deadline and we have something to flush
 				processBuffer()
 
-			case c := <-v.listener.Channel():
+			case c := <-listenerCh:
 				log.With("thread id", c.ID.String()).
 					Debugf("received new thread through channel")
 				// as per docs the timer should be stopped or expired with drained channel
@@ -278,7 +296,7 @@ func (v *threadDB) getDetails() (p *types.Struct) {
 		bundle.RelationKeyId.String():          pbtypes.String(v.id),
 		bundle.RelationKeyIsReadonly.String():  pbtypes.Bool(true),
 		bundle.RelationKeyIsArchived.String():  pbtypes.Bool(false), // todo: replace with true
-		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(true), // todo: replace with true
+		bundle.RelationKeyIsHidden.String():    pbtypes.Bool(true),  // todo: replace with true
 		bundle.RelationKeyWorkspaceId.String(): pbtypes.String(v.Id()),
 		bundle.RelationKeyName.String():        pbtypes.String("Old account thread"),
 	}}
