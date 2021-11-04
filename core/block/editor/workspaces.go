@@ -14,7 +14,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -176,14 +175,13 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	p.threadService = p.Anytype().ThreadsService()
 	p.threadQueue = p.Anytype().ThreadsService().ThreadQueue()
 
-	fmt.Println("[observing]: opening workspace")
 	dataviewAllHighlightedObjects := model.BlockContentOfDataview{
 		Dataview: &model.BlockContentDataview{
 			Source:    []string{addr.BundledRelationURLPrefix + bundle.RelationKeyName.String()},
 			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)},
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:   uuid.New().String(),
+					Id:   "_view1_1",
 					Type: model.BlockContentDataviewView_Gallery,
 					Name: "Highlighted",
 					Sorts: []*model.BlockContentDataviewSort{
@@ -226,7 +224,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			Relations: []*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName), bundle.MustGetRelation(bundle.RelationKeyCreator)},
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:   uuid.New().String(),
+					Id:   "_view2_1",
 					Type: model.BlockContentDataviewView_Table,
 					Name: "All",
 					Sorts: []*model.BlockContentDataviewSort{
@@ -267,8 +265,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
 			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
-		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, true),
-		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, true),
+		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, false),
+		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, false),
 	)
 	if err != nil {
 		return err
