@@ -1,6 +1,7 @@
 package core
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"strings"
@@ -263,7 +264,7 @@ func (mw *Middleware) ObjectTypeCreate(req *pb.RpcObjectTypeCreateRequest) *pb.R
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		sbId, _, err = bs.CreateSmartBlock(smartblock.SmartBlockTypeObjectType, &types.Struct{
+		sbId, _, err = bs.CreateSmartBlock(context.TODO(), smartblock.SmartBlockTypeObjectType, &types.Struct{
 			Fields: map[string]*types.Value{
 				bundle.RelationKeyName.String():                 pbtypes.String(req.ObjectType.Name),
 				bundle.RelationKeyIconEmoji.String():            pbtypes.String(req.ObjectType.IconEmoji),

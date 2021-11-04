@@ -28,6 +28,23 @@ func CopyBlock(in *model.Block) (out *model.Block) {
 	return
 }
 
+// CopyStructMap copies pb struct map, while reusing map values' pointers
+func CopyStructMap(in *types.Struct) (out *types.Struct) {
+	if in == nil {
+		return nil
+	}
+	if in.Fields == nil {
+		return &types.Struct{}
+	}
+
+	out = &types.Struct{Fields: make(map[string]*types.Value, len(in.Fields))}
+	for k, v := range in.Fields {
+		out.Fields[k] = v
+	}
+
+	return
+}
+
 func CopyStruct(in *types.Struct) (out *types.Struct) {
 	if in == nil {
 		return nil

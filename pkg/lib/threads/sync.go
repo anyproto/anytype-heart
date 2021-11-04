@@ -52,6 +52,15 @@ func (s *service) pullThread(ctx context.Context, id thread.ID) (headsChanged bo
 	return
 }
 
+func (s *service) handleMissingReplicators() {
+	go func() {
+		err := s.addMissingReplicators()
+		if err != nil {
+			log.Errorf("addMissingReplicators: %s", err.Error())
+		}
+	}()
+}
+
 func (s *service) addMissingReplicators() error {
 	threadsIds, err := s.logstore.Threads()
 	if err != nil {

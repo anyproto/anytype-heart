@@ -2,10 +2,8 @@ package core
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"io"
-	"net/url"
 	"os"
 	"path/filepath"
 	"sync"
@@ -18,7 +16,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
@@ -31,12 +28,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
-	"github.com/gogo/protobuf/proto"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/textileio/go-threads/core/net"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 var log = logging.Logger("anytype-core")
@@ -46,8 +41,6 @@ var ErrObjectDoesNotBelongToWorkspace = fmt.Errorf("object does not belong to wo
 const (
 	CName  = "anytype"
 	tmpDir = "tmp"
-
-	linkObjectShare = "anytype://object/share?"
 )
 
 type PredefinedBlockIds struct {
@@ -71,8 +64,6 @@ type Service interface {
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
-	DeleteBlock(blockId, workspaceId string) error
-	CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error)
 
 	// FileOffload removes file blocks ercursively, but leave details
 	FileOffload(id string) (bytesRemoved uint64, err error)
@@ -89,22 +80,13 @@ type Service interface {
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 
-	CreateWorkspace(string) (string, error)
-	SelectWorkspace(workspaceId string) error
-	SetIsHighlighted(objectId string, isHighlighted bool) error
-
 	GetAllWorkspaces() ([]string, error)
-	GetAllObjectsInWorkspace(id string) ([]string, error)
-	GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error)
 	GetWorkspaceIdForObject(objectId string) (string, error)
-	GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error)
-
-	ObjectAddWithObjectId(objectId string, payload string) error
-	ObjectShareByLink(objectId string) (string, error)
 
 	ObjectStore() objectstore.ObjectStore // deprecated
 	FileStore() filestore.FileStore       // deprecated
 	ThreadsIds() ([]string, error)        // deprecated
+	ThreadsService() threads.Service
 
 	ObjectInfoWithLinks(id string) (*model.ObjectInfoWithLinks, error)
 	ObjectList() ([]*model.ObjectInfo, error)
@@ -119,14 +101,19 @@ var _ app.Component = (*Anytype)(nil)
 
 var _ Service = (*Anytype)(nil)
 
+type CreatorInfoAdder interface {
+	AddCreatorInfoIfNeeded(workspaceId string) error
+}
+
 type Anytype struct {
-	files       *files.Service
-	cafe        cafe.Client
-	mdns        discovery.Service
-	objectStore objectstore.ObjectStore
-	fileStore   filestore.FileStore
-	fetcher     configfetcher.ConfigFetcher
-	sendEvent   func(event *pb.Event)
+	files            *files.Service
+	cafe             cafe.Client
+	mdns             discovery.Service
+	objectStore      objectstore.ObjectStore
+	fileStore        filestore.FileStore
+	fetcher          configfetcher.ConfigFetcher
+	sendEvent        func(event *pb.Event)
+	creatorInfoAdder CreatorInfoAdder
 
 	ds datastore.Datastore
 
@@ -153,53 +140,6 @@ type Anytype struct {
 	wallet              wallet.Wallet
 	tmpFolderAutocreate sync.Once
 	tempDir             string
-}
-
-func (a *Anytype) ObjectAddWithObjectId(objectId string, payload string) error {
-	if objectId == "" || payload == "" {
-		return fmt.Errorf("cannot add object with empty objectId or payload")
-	}
-	decodedPayload, err := base64.RawStdEncoding.DecodeString(payload)
-	if err != nil {
-		return fmt.Errorf("error adding object: cannot decode base64 payload")
-	}
-
-	var protoPayload model.ThreadDeeplinkPayload
-	err = proto.Unmarshal(decodedPayload, &protoPayload)
-	if err != nil {
-		return fmt.Errorf("failed unmarshalling the payload: %w", err)
-	}
-
-	return a.threadService.AddThread(objectId, protoPayload.Key, protoPayload.Addrs)
-}
-
-func (a *Anytype) ObjectShareByLink(objectId string) (string, error) {
-	threadId, err := thread.Decode(objectId)
-	if err != nil {
-		return "", fmt.Errorf("failed to decode the block: %w", err)
-	}
-
-	threadInfo, err := a.threadService.GetThreadInfo(threadId)
-	if err != nil {
-		return "", fmt.Errorf("failed to get info on the thread: %w", err)
-	}
-
-	payload := &model.ThreadDeeplinkPayload{
-		Key:   threadInfo.Key.String(),
-		Addrs: util.MultiAddressesToStrings(threadInfo.Addrs),
-	}
-	marshalledPayload, err := proto.Marshal(payload)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
-	}
-	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
-
-	params := url.Values{}
-	params.Add("id", objectId)
-	params.Add("payload", encodedPayload)
-	encoded := params.Encode()
-
-	return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 func (a *Anytype) ThreadsIds() ([]string, error) {
@@ -236,7 +176,7 @@ func (a *Anytype) Init(ap *app.App) (err error) {
 	a.ipfs = ap.MustComponent(ipfs.CName).(ipfs.Node)
 	a.sendEvent = ap.MustComponent(event.CName).(event.Sender).Send
 	a.fetcher = ap.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-
+	a.creatorInfoAdder = ap.MustComponent("blockService").(CreatorInfoAdder)
 	return
 }
 
@@ -290,98 +230,25 @@ func (a *Anytype) BecameOnline(ch chan<- error) {
 	}
 }
 
-func (a *Anytype) CreateWorkspace(name string) (string, error) {
-	info, err := a.threadService.CreateWorkspace(name)
-	if err != nil {
-		return "", fmt.Errorf("error creating workspace: %w", err)
-	}
-	return info.ID.String(), nil
-}
-
-func (a *Anytype) SelectWorkspace(workspaceId string) error {
-	if workspaceId == "" {
-		// selecting account
-		threads.WorkspaceLogger.
-			Debug("selecting account")
-		err := a.threadService.SelectAccount()
-		if err != nil {
-			return err
-		}
-
-		return a.objectStore.RemoveCurrentWorkspaceId()
-	}
-
-	threadId, err := thread.Decode(workspaceId)
-	if err != nil {
-		return err
-	}
-
-	smartBlockType, err := smartblock.SmartBlockTypeFromThreadID(threadId)
-	if err != nil {
-		return err
-	}
-	if smartBlockType != smartblock.SmartBlockTypeWorkspace {
-		return fmt.Errorf("can't select non-workspace smartblock")
-	}
-
-	err = a.threadService.SelectWorkspace(context.Background(), threadId)
-	if err != nil {
-		return fmt.Errorf("could not select workspace: %w", err)
-	}
-
-	err = a.objectStore.SetCurrentWorkspaceId(workspaceId)
-	if err != nil {
-		return fmt.Errorf("error setting workspace thread: %w", err)
-	}
-
-	return nil
-}
-
-func (a *Anytype) SetIsHighlighted(objectId string, isHighlighted bool) error {
-	workspaceId, err := a.GetWorkspaceIdForObject(objectId)
-	if err != nil {
-		return err
-	}
-	return a.threadService.SetIsHighlighted(workspaceId, objectId, isHighlighted)
-}
-
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {
 	return a.threadService.GetAllWorkspaces()
 }
 
-func (a *Anytype) GetAllObjectsInWorkspace(id string) ([]string, error) {
-	return a.threadService.GetAllThreadsInWorkspace(id)
-}
-
-func (a *Anytype) GetLatestWorkspaceMeta(workspaceId string) (threads.WorkspaceMeta, error) {
-	return a.threadService.GetLatestWorkspaceMeta(workspaceId)
+func (a *Anytype) ThreadsService() threads.Service {
+	return a.threadService
 }
 
 func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
-	// todo: probably need to have more reliable way to get the workspace where this object is stored
-	details, err := a.objectStore.GetDetails(objectId)
-	if err != nil {
-		return "", err
-	}
-	s := details.Details.Fields[bundle.RelationKeyWorkspaceId.String()]
-	if s == nil {
+	if a.predefinedBlockIds.IsAccount(objectId) {
 		return "", ErrObjectDoesNotBelongToWorkspace
 	}
 
-	return s.GetStringValue(), nil
-}
-
-func (a *Anytype) GetThreadProcessorForWorkspace(id string) (threads.ThreadProcessor, error) {
-	return a.threadService.GetThreadProcessorForWorkspace(id)
-}
-
-func (a *Anytype) CreateBlock(t smartblock.SmartBlockType, workspaceId string) (SmartBlock, error) {
-	thrd, err := a.threadService.CreateThread(t, workspaceId)
-	if err != nil {
-		return nil, err
+	workspaceIds := a.threadService.ThreadQueue().GetWorkspacesForThread(objectId)
+	if len(workspaceIds) != 0 && !a.predefinedBlockIds.IsAccount(workspaceIds[0]) {
+		return workspaceIds[0], nil
 	}
-	sb := &smartBlock{thread: thrd, node: a}
-	return sb, nil
+
+	return "", ErrObjectDoesNotBelongToWorkspace
 }
 
 // PredefinedBlocks returns default blocks like home and archive
@@ -515,14 +382,24 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 	}
 	readMx.RUnlock()
 
-	workspaceId, err := a.GetWorkspaceIdForObject(threadId)
+	sbType, err := smartblock.SmartBlockTypeFromID(threadId)
 	if err != nil {
-		if err == ErrObjectDoesNotBelongToWorkspace {
-			readMx.Lock()
-			defer readMx.Unlock()
-			checkedThreads[threadId] = struct{}{}
-		}
 		return
+	}
+	var workspaceId string
+	if sbType == smartblock.SmartBlockTypeWorkspace {
+		// if we add something to workspace itself, it means that we should add our creator info
+		workspaceId = threadId
+	} else {
+		workspaceId, err = a.GetWorkspaceIdForObject(threadId)
+		if err != nil {
+			if err == ErrObjectDoesNotBelongToWorkspace {
+				readMx.Lock()
+				defer readMx.Unlock()
+				checkedThreads[threadId] = struct{}{}
+			}
+			return
+		}
 	}
 
 	readMx.RLock()
@@ -535,27 +412,10 @@ func (a *Anytype) addCreatorData(rec net.ThreadRecord,
 	}
 	readMx.RUnlock()
 
-	_, err = a.threadService.GetCreatorInfoForWorkspace(workspaceId)
-	if err == nil {
-		readMx.Lock()
-		defer readMx.Unlock()
-		checkedThreads[threadId] = struct{}{}
-		checkedWorkspaces[workspaceId] = struct{}{}
-		return
-	}
-	if err != nil && err != threads.ErrCreatorInfoNotFound {
-		return
-	}
-
-	err = a.threadService.AddCreatorInfoToWorkspace(workspaceId)
+	err = a.creatorInfoAdder.AddCreatorInfoIfNeeded(workspaceId)
 	if err != nil {
 		return
 	}
-
-	threads.WorkspaceLogger.
-		With("workspace Id", workspaceId).
-		With("thread id", threadId).
-		Debug("successfully added creator info")
 	readMx.Lock()
 	defer readMx.Unlock()
 	checkedThreads[threadId] = struct{}{}
@@ -572,7 +432,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	isWorkspaceEventSent := false
 	isWorkspace := func(id string) bool {
 		sbType, err := smartblock.SmartBlockTypeFromID(id)
-		return err == nil && sbType == smartblock.SmartBlockTypeWorkspace
+		return err == nil && !a.predefinedBlockIds.IsAccount(id) && sbType == smartblock.SmartBlockTypeWorkspace
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -594,7 +454,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				}
 				go a.addCreatorData(val, &creatorInfoMx, checkedThreads, checkedWorkspaces)
 				id := val.ThreadID().String()
-				if id == a.predefinedBlockIds.Account {
+				if a.predefinedBlockIds.IsAccount(id) {
 					// todo: not working on the early start
 					continue
 				}

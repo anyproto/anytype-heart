@@ -277,9 +277,10 @@ func (i *indexer) reindexOutdatedThreads() (toReindex, success int, err error) {
 
 	if len(idsToReindex) > 0 {
 		for _, id := range idsToReindex {
-			if id == i.anytype.PredefinedBlocks().Account {
-				continue
-			}
+			// TODO: we should reindex it I guess at start
+			//if i.anytype.PredefinedBlocks().IsAccount(id) {
+			//	continue
+			//}
 			ctx := context.WithValue(context.Background(), ocache.CacheTimeout, cacheTimeout)
 			d, err := i.doc.GetDocInfo(ctx, id)
 			if err != nil {
@@ -363,7 +364,7 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 			smartblock.SmartblockTypeMarketplaceRelation,
 			smartblock.SmartBlockTypeArchive,
 			smartblock.SmartBlockTypeHome,
-			smartblock.SmartBlockTypeWorkspace,
+			smartblock.SmartBlockTypeWorkspaceOld,
 		)
 		if err != nil {
 			return err
@@ -381,22 +382,24 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		}
 		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
 	} else {
-		start := time.Now()
-		total, success, err := i.reindexOutdatedThreads()
-		if err != nil {
-			log.Infof("failed to reindex outdated objects: %s", err.Error())
-		} else {
-			log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
-		}
-		if metrics.Enabled && total > 0 {
-			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType:    metrics.ReindexTypeOutdatedHeads,
-				Total:          total,
-				Success:        success,
-				SpentMs:        int(time.Since(start).Milliseconds()),
-				IndexesRemoved: indexesWereRemoved,
-			})
-		}
+		go func() {
+			start := time.Now()
+			total, success, err := i.reindexOutdatedThreads()
+			if err != nil {
+				log.Infof("failed to reindex outdated objects: %s", err.Error())
+			} else {
+				log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
+			}
+			if metrics.Enabled && total > 0 {
+				metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+					ReindexType:    metrics.ReindexTypeOutdatedHeads,
+					Total:          total,
+					Success:        success,
+					SpentMs:        int(time.Since(start).Milliseconds()),
+					IndexesRemoved: indexesWereRemoved,
+				})
+			}
+		}()
 	}
 
 	if reindex&reindexFileObjects != 0 {
@@ -634,8 +637,18 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
 	}
+	saveIndexedHash := func() {
+		if headsHash := headsHash(info.LogHeads); headsHash != "" {
+			err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
+			if err != nil {
+				log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
+			}
+		}
+	}
+
 	indexDetails, indexLinks := sbType.Indexable()
 	if !indexDetails && !indexLinks {
+		saveIndexedHash()
 		return nil
 	}
 
@@ -662,29 +675,22 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 					}
 				}
 			}
-
 		}
 	}
 
+	var hasError bool
 	if indexLinks {
-		if err := i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
+		if err = i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
+			hasError = true
 			log.With("thread", info.Id).Errorf("failed to save object links: %v", err)
 		}
 	}
 
 	if indexDetails {
 		if err := i.store.UpdateObjectDetails(info.Id, details, &model.Relations{Relations: info.State.ExtraRelations()}, false); err != nil {
+			hasError = true
 			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
-		} else {
-			if headsHash := headsHash(info.LogHeads); headsHash != "" {
-				err = i.store.SaveLastIndexedHeadsHash(info.Id, headsHash)
-				if err != nil {
-					log.With("thread", info.Id).Errorf("failed to save indexed heads hash: %v", err)
-				}
-			}
-			log.With("thread", info.Id).Infof("indexed: det: %v", pbtypes.GetString(details, bundle.RelationKeyName.String()))
 		}
-
 		if err := i.store.AddToIndexQueue(info.Id); err != nil {
 			log.With("thread", info.Id).Errorf("can't add id to index queue: %v", err)
 		} else {
@@ -692,6 +698,10 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		}
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
+	}
+
+	if !hasError {
+		saveIndexedHash()
 	}
 
 	return nil
@@ -825,6 +835,9 @@ func headsHash(headByLogId map[string]string) string {
 
 	var sortedHeads = make([]string, 0, len(headByLogId))
 	for _, head := range headByLogId {
+		if head == "b" {
+			continue
+		}
 		sortedHeads = append(sortedHeads, head)
 	}
 	sort.Strings(sortedHeads)
