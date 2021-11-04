@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/thread"
+	"strings"
 	"sync"
 	"time"
 )
@@ -213,7 +214,7 @@ func (p *threadQueue) processBufferedEvents() {
 		if op.IsAddOperation {
 			p.processAddedThread(op.info, op.WorkspaceId)
 		} else {
-			p.processDeletedThread(op.ID, op.WorkspaceId)
+			p.processDeletedObject(op.ID, op.WorkspaceId)
 		}
 	}
 }
@@ -253,7 +254,11 @@ func (p *threadQueue) processAddedThread(ti ThreadInfo, workspaceId string) {
 	}()
 }
 
-func (p *threadQueue) processDeletedThread(id, workspaceId string) {
+// this is more than just deleting a thread as opposed to DeleteThreadSync
+// because we are calling DeleteThreadSync from blockService :-)
+// and here we are calling blockService so that it will do a bunch of stuff and then call DeleteThreadSync
+// it's confusing I know
+func (p *threadQueue) processDeletedObject(id, workspaceId string) {
 	go func() {
 		select {
 		case <-p.threadsService.ctx.Done():
@@ -261,21 +266,26 @@ func (p *threadQueue) processDeletedThread(id, workspaceId string) {
 		default:
 		}
 		defer p.removeFromOperations(id)
-		err := p.threadsService.DeleteThread(id)
-		if err != nil && err != logstore.ErrThreadNotFound {
-			log.Errorf("error deleting thread %s %s %v", id, workspaceId, err.Error())
-			return
+		// TODO: this looks strange to call upper level service, consider refactoring
+		err := p.threadsService.blockServiceObjectDeleter.DeleteObject(id)
+		if err != nil {
+		    if strings.Contains(err.Error(), "block not found") {
+				// we still want to update the database even if the thread is not there
+				p.finishDeleteOperation(id, workspaceId)
+			} else {
+				log.With("object id", id).Errorf("could not delete object: %v", err)
+			}
 		}
-		p.finishDeleteOperation(id, workspaceId)
 	}()
 }
 
 func (p *threadQueue) finishDeleteOperation(id, workspaceId string) {
-	err := p.threadsService.objectDeleter.DeleteObject(id)
+	err := p.threadsService.objectStoreDeleter.DeleteObject(id)
 	if err != nil {
 		log.Errorf("error deleting object from store %s %s %v", id, workspaceId, err.Error())
 	}
 
+	// it is important that we remove thread from workspace only if everything is fine
 	err = p.threadStore.RemoveThreadForWorkspace(id, workspaceId)
 	if err != nil {
 		log.Errorf("error removing thread from store %s %s %v", id, workspaceId, err.Error())

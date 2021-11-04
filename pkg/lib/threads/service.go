@@ -83,11 +83,12 @@ type service struct {
 	newReplicatorProcessingLimiter chan struct{}
 	process                        process.Service
 
-	fetcher               CafeConfigFetcher
-	workspaceThreadGetter CurrentWorkspaceThreadGetter
-	objectDeleter         ObjectDeleter
-	threadCreateQueue     ThreadCreateQueue
-	threadQueue           ThreadQueue
+	fetcher                   CafeConfigFetcher
+	workspaceThreadGetter     CurrentWorkspaceThreadGetter
+	blockServiceObjectDeleter ObjectDeleter
+	objectStoreDeleter        ObjectDeleter
+	threadCreateQueue         ThreadCreateQueue
+	threadQueue               ThreadQueue
 
 	replicatorAddr ma.Multiaddr
 	sync.Mutex
@@ -136,7 +137,8 @@ func (s *service) Init(a *app.App) (err error) {
 	s.process = a.MustComponent(process.CName).(process.Service)
 	wl := a.MustComponent(wallet.CName).(wallet.Wallet)
 	s.ipfsNode = a.MustComponent(ipfs.CName).(ipfs.Node)
-	s.objectDeleter = a.MustComponent("objectstore").(ObjectDeleter)
+	s.blockServiceObjectDeleter = a.MustComponent("blockService").(ObjectDeleter)
+	s.objectStoreDeleter = a.MustComponent("objectstore").(ObjectDeleter)
 	threadWorkspaceStore := a.MustComponent("objectstore").(ThreadWorkspaceStore)
 	s.threadQueue = NewThreadQueue(s, threadWorkspaceStore)
 
