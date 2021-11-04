@@ -133,7 +133,7 @@ func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err err
 			}
 		}
 	}
-	if toRemove != - 1 {
+	if toRemove != -1 {
 		if virtActive {
 			msgs[toRemove] = virtEvent
 		} else {
@@ -200,7 +200,7 @@ func (td *textDetails) RangeCut(from int32, to int32) (cutBlock *model.Block, in
 	if cutBlock, initialBlock, err = td.Text.RangeCut(from, to); err != nil {
 		return nil, nil, err
 	}
-	if pbtypes.GetString(cutBlock.GetFields(), DetailsKeyFieldName) != "" {
+	if pbtypes.Exists(cutBlock.GetFields(), DetailsKeyFieldName) {
 		delete(cutBlock.GetFields().Fields, DetailsKeyFieldName)
 	}
 	cutBlock.GetText().Style = model.BlockContentText_Paragraph
