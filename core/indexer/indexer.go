@@ -833,6 +833,9 @@ func headsHash(headByLogId map[string]string) string {
 
 	var sortedHeads = make([]string, 0, len(headByLogId))
 	for _, head := range headByLogId {
+		if head == "b" {
+			continue
+		}
 		sortedHeads = append(sortedHeads, head)
 	}
 	sort.Strings(sortedHeads)
