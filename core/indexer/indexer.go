@@ -382,22 +382,24 @@ func (i *indexer) Reindex(ctx context.Context, reindex reindexFlags) (err error)
 		}
 		log.Infof("%d/%d objects have been successfully reindexed", successfullyReindexed, len(ids))
 	} else {
-		start := time.Now()
-		total, success, err := i.reindexOutdatedThreads()
-		if err != nil {
-			log.Infof("failed to reindex outdated objects: %s", err.Error())
-		} else {
-			log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
-		}
-		if metrics.Enabled && total > 0 {
-			metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
-				ReindexType:    metrics.ReindexTypeOutdatedHeads,
-				Total:          total,
-				Success:        success,
-				SpentMs:        int(time.Since(start).Milliseconds()),
-				IndexesRemoved: indexesWereRemoved,
-			})
-		}
+		go func() {
+			start := time.Now()
+			total, success, err := i.reindexOutdatedThreads()
+			if err != nil {
+				log.Infof("failed to reindex outdated objects: %s", err.Error())
+			} else {
+				log.Infof("%d/%d outdated objects have been successfully reindexed", success, total)
+			}
+			if metrics.Enabled && total > 0 {
+				metrics.SharedClient.RecordEvent(metrics.ReindexEvent{
+					ReindexType:    metrics.ReindexTypeOutdatedHeads,
+					Total:          total,
+					Success:        success,
+					SpentMs:        int(time.Since(start).Milliseconds()),
+					IndexesRemoved: indexesWereRemoved,
+				})
+			}
+		}()
 	}
 
 	if reindex&reindexFileObjects != 0 {
