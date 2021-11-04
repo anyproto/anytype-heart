@@ -407,7 +407,7 @@ var (
 		},
 		TypeKeySet: {
 
-			Description: "A collection of objects with the same characteristics.\nWorks like a database, but doesn't store objects internally",
+			Description: "Collection of objects with equal types and relations. Database experience based on all objects in Anytype",
 			IconEmoji:   "🗂️",
 			Layout:      model.ObjectType_set,
 			Name:        "Set",
