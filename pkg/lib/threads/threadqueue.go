@@ -264,6 +264,7 @@ func (p *threadQueue) processDeletedThread(id, workspaceId string) {
 		err := p.threadsService.DeleteThread(id)
 		if err != nil && err != logstore.ErrThreadNotFound {
 			log.Errorf("error deleting thread %s %s %v", id, workspaceId, err.Error())
+			return
 		}
 		p.finishDeleteOperation(id, workspaceId)
 	}()
