@@ -372,7 +372,7 @@ func (m *dsObjectStore) GetThreadQueueState() (map[string]map[string]struct{}, m
 	defer txn.Discard()
 
 	res, err := txn.Query(query.Query{
-		Prefix: workspaceMapBase.String(),
+		Prefix:   workspaceMapBase.String(),
 		KeysOnly: true,
 	})
 	if err != nil {
@@ -386,8 +386,8 @@ func (m *dsObjectStore) GetThreadQueueState() (map[string]map[string]struct{}, m
 		if len(split) < 2 {
 			continue
 		}
-		workspaceId := split[len(split) - 2]
-		threadId := split[len(split) - 1]
+		workspaceId := split[len(split)-2]
+		threadId := split[len(split)-1]
 		threadKV, exists := threadWorkspaces[threadId]
 		if !exists {
 			threadKV = make(map[string]struct{})
@@ -1211,7 +1211,6 @@ func (m *dsObjectStore) DeleteDetails(id string) error {
 		pagesSnippetBase.ChildString(id),
 		pagesDetailsBase.ChildString(id),
 		setRelationsBase.ChildString(id),
-		indexedHeadsState.ChildString(id),
 	} {
 		if err = txn.Delete(k); err != nil {
 			return err
