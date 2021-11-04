@@ -206,6 +206,7 @@ func (p *threadQueue) processBufferedEvents() {
 		operationsCopy = append(operationsCopy, op)
 		p.currentOperations[op.ID] = op
 	}
+	p.operationsBuffer = nil
 	p.operationsMutex.Unlock()
 
 	for _, op := range operationsCopy {
