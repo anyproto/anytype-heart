@@ -271,15 +271,15 @@ func (p *threadQueue) processDeletedThread(id, workspaceId string) {
 }
 
 func (p *threadQueue) finishDeleteOperation(id, workspaceId string) {
-	err := p.threadStore.RemoveThreadForWorkspace(id, workspaceId)
+	err := p.threadsService.objectDeleter.DeleteObject(id)
+	if err != nil {
+		log.Errorf("error deleting object from store %s %s %v", id, workspaceId, err.Error())
+	}
+
+	err = p.threadStore.RemoveThreadForWorkspace(id, workspaceId)
 	if err != nil {
 		log.Errorf("error removing thread from store %s %s %v", id, workspaceId, err.Error())
 		return
-	}
-
-	err = p.threadsService.objectDeleter.DeleteObject(id)
-	if err != nil {
-		log.Errorf("error deleting object from store %s %s %v", id, workspaceId, err.Error())
 	}
 
 	p.Lock()
