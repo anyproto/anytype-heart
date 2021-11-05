@@ -2,8 +2,11 @@ package block
 
 import (
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/gogo/protobuf/proto"
+	"net/url"
 	"strings"
 	"time"
 
@@ -43,7 +46,10 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 )
 
-const CName = "blockService"
+const (
+	CName           = "blockService"
+	linkObjectShare = "anytype://object/share?"
+)
 
 var (
 	ErrBlockNotFound       = errors.New("block not found")
@@ -82,9 +88,9 @@ type Service interface {
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -203,6 +209,8 @@ type Service interface {
 	ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
 
+	AddCreatorInfoIfNeeded(workspaceId string) error
+
 	app.ComponentRunnable
 }
 
@@ -269,7 +277,8 @@ func (s *service) Run() (err error) {
 
 func (s *service) initPredefinedBlocks() {
 	ids := []string{
-		// skip account because it is not a smartblock, it's a threadsDB
+		s.anytype.PredefinedBlocks().Account,
+		s.anytype.PredefinedBlocks().AccountOld,
 		s.anytype.PredefinedBlocks().Profile,
 		s.anytype.PredefinedBlocks().Archive,
 		s.anytype.PredefinedBlocks().Home,
@@ -279,7 +288,12 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 	}
 	for _, id := range ids {
-		sb, err := s.newSmartBlock(id, &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)})
+		ctx := &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)}
+		// this is needed so that old account will create its state successfully on first launch
+		if id == s.anytype.PredefinedBlocks().AccountOld {
+			ctx = nil
+		}
+		sb, err := s.newSmartBlock(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
 				log.Errorf("can't init predefined block: %v", err)
@@ -385,7 +399,7 @@ func (s *service) CloseBlock(id string) error {
 	s.cache.Unlock(id)
 	if isDraft {
 		_, _ = s.cache.Remove(id)
-		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
+		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
 			log.Errorf("error while block delete: %v", err)
 		} else {
 			s.sendOnRemoveEvent(id)
@@ -405,12 +419,19 @@ func (s *service) CloseBlocks() {
 	})
 }
 
-func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error) {
-	return s.anytype.CreateWorkspace(req.Name)
+func (s *service) CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (workspaceId string, err error) {
+	id, _, err := s.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypeWorkspace,
+		&types.Struct{Fields: map[string]*types.Value{
+			bundle.RelationKeyName.String():      pbtypes.String(req.Name),
+			bundle.RelationKeyType.String():      pbtypes.String(bundle.TypeKeySpace.URL()),
+			bundle.RelationKeyIconEmoji.String(): pbtypes.String("🌎"),
+			bundle.RelationKeyLayout.String():    pbtypes.Float64(float64(model.ObjectType_space)),
+		}}, nil)
+	return id, err
 }
 
 func (s *service) SelectWorkspace(req *pb.RpcWorkspaceSelectRequest) error {
-	return s.anytype.SelectWorkspace(req.WorkspaceId)
+	panic("should be removed")
 }
 
 func (s *service) GetCurrentWorkspace(req *pb.RpcWorkspaceGetCurrentRequest) (string, error) {
@@ -426,15 +447,74 @@ func (s *service) GetAllWorkspaces(req *pb.RpcWorkspaceGetAllRequest) ([]string,
 }
 
 func (s *service) SetIsHighlighted(req *pb.RpcWorkspaceSetIsHighlightedRequest) error {
-	return s.anytype.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
+	workspaceId, _ := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		return workspace.SetIsHighlighted(req.ObjectId, req.IsHighlighted)
+	})
 }
 
 func (s *service) ObjectAddWithObjectId(req *pb.RpcObjectAddWithObjectIdRequest) error {
-	return s.anytype.ObjectAddWithObjectId(req.ObjectId, req.Payload)
+	if req.ObjectId == "" || req.Payload == "" {
+		return fmt.Errorf("cannot add object without objectId or payload")
+	}
+	decodedPayload, err := base64.RawStdEncoding.DecodeString(req.Payload)
+	if err != nil {
+		return fmt.Errorf("error adding object: cannot decode base64 payload")
+	}
+
+	var protoPayload model.ThreadDeeplinkPayload
+	err = proto.Unmarshal(decodedPayload, &protoPayload)
+	if err != nil {
+		return fmt.Errorf("failed unmarshalling the payload: %w", err)
+	}
+	return s.Do(s.Anytype().PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+
+		return workspace.AddObject(req.ObjectId, protoPayload.Key, protoPayload.Addrs)
+	})
 }
 
-func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error) {
-	return s.anytype.ObjectShareByLink(req.ObjectId)
+func (s *service) ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (link string, err error) {
+	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ObjectId)
+	if err == core.ErrObjectDoesNotBelongToWorkspace {
+		workspaceId = s.Anytype().PredefinedBlocks().Account
+	}
+	var key string
+	var addrs []string
+	err = s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		key, addrs, err = workspace.GetObjectKeyAddrs(req.ObjectId)
+		return err
+	})
+	if err != nil {
+		return "", err
+	}
+	payload := &model.ThreadDeeplinkPayload{
+		Key:   key,
+		Addrs: addrs,
+	}
+	marshalledPayload, err := proto.Marshal(payload)
+	if err != nil {
+		return "", fmt.Errorf("failed to marshal deeplink payload: %w", err)
+	}
+	encodedPayload := base64.RawStdEncoding.EncodeToString(marshalledPayload)
+
+	params := url.Values{}
+	params.Add("id", req.ObjectId)
+	params.Add("payload", encodedPayload)
+	encoded := params.Encode()
+
+	return fmt.Sprintf("%s%s", linkObjectShare, encoded), nil
 }
 
 // SetPagesIsArchived is deprecated
@@ -534,6 +614,19 @@ func (s *service) DeleteArchivedObject(id string) (err error) {
 	})
 }
 
+func (s *service) AddCreatorInfoIfNeeded(workspaceId string) error {
+	if s.Anytype().PredefinedBlocks().IsAccount(workspaceId) {
+		return nil
+	}
+	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		return workspace.AddCreatorInfoIfNeeded()
+	})
+}
+
 func (s *service) DeleteObject(id string) (err error) {
 	var (
 		fileHashes  []string
@@ -544,12 +637,15 @@ func (s *service) DeleteObject(id string) (err error) {
 		b.BlockClose()
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
-		workspaceId = pbtypes.GetString(st.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
+		workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
+		if err == core.ErrObjectDoesNotBelongToWorkspace {
+			workspaceId = s.anytype.PredefinedBlocks().Account
+		}
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
 		if isFavorite {
 			_ = s.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{IsFavorite: false, ContextId: id})
 		}
-		if err = s.anytype.DeleteBlock(id, workspaceId); err != nil {
+		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
 			return err
 		}
 		return nil
@@ -605,11 +701,11 @@ func (s *service) sendOnRemoveEvent(ids ...string) {
 	}
 }
 
-func (s *service) CreateSmartBlock(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {
-	return s.CreateSmartBlockFromState(sbType, details, relations, state.NewDoc("", nil).NewState())
+func (s *service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {
+	return s.CreateSmartBlockFromState(ctx, sbType, details, relations, state.NewDoc("", nil).NewState())
 }
 
-func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateId != "" {
 		if createState, err = s.stateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -618,10 +714,10 @@ func (s *service) CreateSmartBlockFromTemplate(sbType coresb.SmartBlockType, det
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return s.CreateSmartBlockFromState(sbType, details, relations, createState)
+	return s.CreateSmartBlockFromState(ctx, sbType, details, relations, createState)
 }
 
-func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {
 		objectTypes = createState.ObjectTypes()
@@ -671,10 +767,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 
 	// if we don't have anything in details then check the object store
 	if workspaceId == "" {
-		workspaceId, err = s.anytype.ObjectStore().GetCurrentWorkspaceId()
-		if err != nil {
-			workspaceId = ""
-		}
+		workspaceId = s.anytype.PredefinedBlocks().Account
 	}
 
 	if workspaceId != "" {
@@ -683,7 +776,7 @@ func (s *service) CreateSmartBlockFromState(sbType coresb.SmartBlockType, detail
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
-	csm, err := s.anytype.CreateBlock(sbType, workspaceId)
+	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -731,7 +824,7 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 		req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
 	}
 
-	pageId, _, err = s.CreateSmartBlockFromTemplate(coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+	pageId, _, err = s.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
@@ -828,6 +921,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
 		sb = editor.NewWorkspace(s, s)
+	case model.SmartBlockType_AccountOld:
+		sb = editor.NewThreadDB(s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -862,6 +957,22 @@ func (s *service) stateFromTemplate(templateId, name string) (st *state.State, e
 	}); err != nil {
 		return nil, fmt.Errorf("can't apply template: %v", err)
 	}
+	return
+}
+
+func (s *service) MigrateMany(objects []threads.ThreadInfo) (migrated int, err error) {
+	err = s.Do(s.anytype.PredefinedBlocks().Account, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+
+		migrated, err = workspace.MigrateMany(objects)
+		if err != nil {
+			return err
+		}
+		return err
+	})
 	return
 }
 
@@ -1021,8 +1132,11 @@ func (s *service) DoWithContext(ctx context.Context, id string, apply func(b sma
 		return err
 	}
 	defer release()
-	sb.Lock()
-	defer sb.Unlock()
+	callerId, _ := ctx.Value(smartblock.CallerKey).(string)
+	if callerId != id {
+		sb.Lock()
+		defer sb.Unlock()
+	}
 	return apply(sb)
 }
 
@@ -1038,7 +1152,7 @@ func (s *service) MakeTemplate(id string) (templateId string, err error) {
 		return
 	}
 
-	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1052,7 +1166,7 @@ func (s *service) MakeTemplateByObjectType(otId string) (templateId string, err 
 	var st = state.NewDoc("", nil).(*state.State)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(otId))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), otId})
-	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
@@ -1071,7 +1185,7 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 	}); err != nil {
 		return
 	}
-	templateId, _, err = s.CreateSmartBlockFromState(coresb.SmartBlockTypeTemplate, nil, nil, st)
+	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}

@@ -59,6 +59,10 @@ const (
 	HookOnBlockClose
 )
 
+type key int
+
+const CallerKey key = 0
+
 var log = logging.Logger("anytype-mw-smartblock")
 
 // DepSmartblockEventsTimeout sets the timeout after which we will stop to synchronously wait dependent smart blocks and will send them as a separate events in the background
@@ -600,11 +604,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	st := sb.Doc.(*state.State)
-	if !act.IsEmpty() {
-		changes := st.GetChanges()
-		if len(changes) == 0 && !doSnapshot {
-			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
-		}
+
+	changes := st.GetChanges()
+	pushChange := func() {
 		fileDetailsKeys := st.FileRelationKeys()
 		fileDetailsKeysFiltered := fileDetailsKeys[:0]
 		for _, ch := range changes {
@@ -626,11 +628,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 		sb.Doc.(*state.State).SetChangeId(id)
-
+	}
+	if !act.IsEmpty() {
+		if len(changes) == 0 && !doSnapshot {
+			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
+		}
+		pushChange()
 		if sb.undo != nil && addHistory {
 			act.Group = s.GroupId()
 			sb.undo.Add(act)
 		}
+	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
+		pushChange()
 	}
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -1587,4 +1596,13 @@ func ApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTra
 		return
 	}
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
+}
+
+func hasStoreChanges(changes []*pb.ChangeContent) bool {
+	for _, ch := range changes {
+		if ch.GetStoreKeySet() != nil || ch.GetStoreKeyUnset() != nil {
+			return true
+		}
+	}
+	return false
 }

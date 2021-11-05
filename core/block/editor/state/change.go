@@ -3,6 +3,7 @@ package state
 import (
 	"bytes"
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 
@@ -37,6 +38,7 @@ func NewDocFromSnapshot(rootId string, snapshot *pb.ChangeSnapshot) Doc {
 		extraRelations: snapshot.Data.ExtraRelations,
 		objectTypes:    snapshot.Data.ObjectTypes,
 		fileKeys:       fileKeys,
+		store:          snapshot.Data.Collections,
 	}
 	s.InjectDerivedDetails()
 
@@ -146,6 +148,14 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		}
 	case ch.GetObjectTypeRemove() != nil:
 		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
+			return
+		}
+	case ch.GetStoreKeySet() != nil:
+		if err = s.changeStoreKeySet(ch.GetStoreKeySet()); err != nil {
+			return
+		}
+	case ch.GetStoreKeyUnset() != nil:
+		if err = s.changeStoreKeyUnset(ch.GetStoreKeyUnset()); err != nil {
 			return
 		}
 	default:
@@ -309,6 +319,16 @@ func (s *State) changeBlockMove(move *pb.ChangeBlockMove) error {
 	return err
 }
 
+func (s *State) changeStoreKeySet(set *pb.ChangeStoreKeySet) error {
+	s.setInStore(set.Path, set.Value)
+	return nil
+}
+
+func (s *State) changeStoreKeyUnset(unset *pb.ChangeStoreKeyUnset) error {
+	s.removeFromStore(unset.Path)
+	return nil
+}
+
 func (s *State) GetChanges() []*pb.ChangeContent {
 	return s.changes
 }
@@ -405,6 +425,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			},
 		})
 	}
+	s.collapseSameKeyStoreChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
 	s.changes = append(s.changes, s.makeRelationsChanges()...)
@@ -505,6 +526,36 @@ func (s *State) makeDetailsChanges() (ch []*pb.ChangeContent) {
 		}
 	}
 	return
+}
+
+func (s *State) collapseSameKeyStoreChanges() {
+	seen := make(map[string]struct{}, len(s.changes))
+	var filteredChanges []*pb.ChangeContent
+	for i := len(s.changes) - 1; i >= 0; i-- {
+		ch := s.changes[i]
+		var key []string
+		if ch.GetStoreKeySet() != nil {
+			key = ch.GetStoreKeySet().Path
+		} else if ch.GetStoreKeyUnset() != nil {
+			key = ch.GetStoreKeyUnset().Path
+		} else {
+			filteredChanges = append(filteredChanges, ch)
+			continue
+		}
+		joined := strings.Join(key, "/")
+		if _, exists := seen[joined]; exists {
+			continue
+		}
+		seen[joined] = struct{}{}
+		filteredChanges = append(filteredChanges, ch)
+	}
+	l := len(filteredChanges)
+	for i := 0; i < l/2; i++ {
+		temp := filteredChanges[i]
+		filteredChanges[i] = filteredChanges[l-i-1]
+		filteredChanges[l-i-1] = temp
+	}
+	s.changes = filteredChanges
 }
 
 func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.ChangeRelationUpdate, error) {

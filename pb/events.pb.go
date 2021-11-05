@@ -2067,7 +2067,7 @@ func (m *EventObjectShow) GetType() model.SmartBlockType {
 	if m != nil {
 		return m.Type
 	}
-	return model.SmartBlockType_Breadcrumbs
+	return model.SmartBlockType_AccountOld
 }
 
 func (m *EventObjectShow) GetObjectTypes() []*model.ObjectType {

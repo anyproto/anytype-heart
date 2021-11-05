@@ -723,7 +723,8 @@ func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string
 			}
 		}
 	}
-	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
+	callerCtx := context.WithValue(context.Background(), smartblock.CallerKey, d.Id())
+	created, err := db.Create(callerCtx, dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
 	if err != nil {
 		return nil, err
 	}

@@ -2,15 +2,9 @@ package change
 
 import (
 	"encoding/json"
-	"time"
-
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
 )
 
 func NewChangeFromRecord(record core.SmartblockRecordEnvelope) (*Change, error) {
@@ -75,28 +69,6 @@ func (ch *Change) HasMeta() bool {
 		}
 	}
 	return false
-}
-
-func NewSnapshotChange(blocks []*model.Block, details *types.Struct, relations []*model.Relation, objectTypes []string, fileKeys []*files.FileKeys) proto.Marshaler {
-	fkeys := make([]*pb.ChangeFileKeys, len(fileKeys))
-	for i, k := range fileKeys {
-		fkeys[i] = &pb.ChangeFileKeys{
-			Hash: k.Hash,
-			Keys: k.Keys,
-		}
-	}
-	return &pb.Change{
-		Snapshot: &pb.ChangeSnapshot{
-			Data: &model.SmartBlockSnapshotBase{
-				Blocks:         blocks,
-				Details:        details,
-				ExtraRelations: relations,
-				ObjectTypes:    objectTypes,
-			},
-			FileKeys: fkeys,
-		},
-		Timestamp: time.Now().Unix(),
-	}
 }
 
 func (ch *Change) MarshalJSON() ([]byte, error) {

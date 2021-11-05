@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -822,6 +823,34 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 	})
 }
 
+func (s *service) CreateObjectInWorkspace(ctx context.Context, workspaceId string, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
+	err = s.DoWithContext(ctx, workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		csm, err = workspace.CreateObject(sbType)
+		if err != nil {
+			return fmt.Errorf("anytype.CreateBlock error: %v", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return csm, nil
+}
+
+func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string) error {
+	return s.Do(workspaceId, func(b smartblock.SmartBlock) error {
+		workspace, ok := b.(*editor.Workspaces)
+		if !ok {
+			return fmt.Errorf("incorrect object with workspace id")
+		}
+		return workspace.DeleteObject(objectId)
+	})
+}
+
 func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error) {
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
@@ -830,22 +859,18 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 			return
 		}
 	}
+	var workspaceId string
+	if req.ContextId != "" {
+		workspaceId, _ = s.anytype.GetWorkspaceIdForObject(req.ContextId)
+	} else {
+		workspaceId = s.anytype.PredefinedBlocks().Account
+	}
+	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
+	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, coresb.SmartBlockTypeSet)
+	if err != nil {
+		return "", "", err
+	}
 
-	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
-	if err != nil {
-		threads.WorkspaceLogger.Errorf("failed to get workspaceId for object: %v", err)
-	}
-	if workspaceId == "" {
-		workspaceId, err = s.anytype.ObjectStore().GetCurrentWorkspaceId()
-		if err != nil {
-			threads.WorkspaceLogger.Errorf("failed to get current workspaceId: %v", err)
-		}
-	}
-	csm, err := s.anytype.CreateBlock(coresb.SmartBlockTypeSet, workspaceId)
-	if err != nil {
-		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
-		return
-	}
 	setId = csm.ID()
 
 	state := state.NewDoc(csm.ID(), nil).NewState()

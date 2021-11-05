@@ -2,6 +2,8 @@ package state
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -11,6 +13,14 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func makeStoreWithTwoKeysAndValue(first, second, value string) *types.Struct {
+	return &types.Struct{
+		Fields: map[string]*types.Value{
+			first: {Kind: &types.Value_StructValue{
+				StructValue: &types.Struct{Fields: map[string]*types.Value{second: pbtypes.String(value)}},
+			}}}}
+}
 
 func TestState_ChangesCreate_MoveAdd(t *testing.T) {
 	d := NewDoc("root", map[string]simple.Block{
@@ -41,6 +51,42 @@ func TestState_ChangesCreate_MoveAdd(t *testing.T) {
 		newMoveChange("3.1", model.Block_Bottom, "4", "5"),
 		newRemoveChange("3"),
 	}, changes)
+}
+
+func TestState_ChangesCreate_Collection_Set(t *testing.T) {
+	d := NewDoc("root", nil)
+	s := d.NewState()
+	s.SetInStore([]string{"coll1", "key1"}, pbtypes.String("1"))
+	_, _, err := ApplyState(s, true)
+	require.NoError(t, err)
+	changes := d.(*State).GetChanges()
+	require.Len(t, changes, 1)
+	assert.Equal(t, (&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfStoreKeySet{
+			StoreKeySet: &pb.ChangeStoreKeySet{
+				Path:  []string{"coll1", "key1"},
+				Value: pbtypes.String("1"),
+			},
+		},
+	}).String(), changes[0].String())
+}
+
+func TestState_ChangesCreate_Collection_Unset(t *testing.T) {
+	d := NewDoc("root", nil)
+	d.(*State).store = makeStoreWithTwoKeysAndValue("coll1", "key1", "1")
+	s := d.NewState()
+	s.RemoveFromStore([]string{"coll1", "key1"})
+	_, _, err := ApplyState(s, true)
+	require.NoError(t, err)
+	changes := d.(*State).GetChanges()
+	require.Len(t, changes, 1)
+	assert.Equal(t, (&pb.ChangeContent{
+		Value: &pb.ChangeContentValueOfStoreKeyUnset{
+			StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+				Path: []string{"coll1", "key1"},
+			},
+		},
+	}).String(), changes[0].String())
 }
 
 func TestState_ChangesCreate_MoveAdd_Wrap(t *testing.T) {
@@ -410,6 +456,37 @@ func Test_ApplyChange(t *testing.T) {
 			},
 		}))
 		assert.Len(t, s.ObjectTypes(), 0)
+	})
+
+	t.Run("collection set/unset key", func(t *testing.T) {
+		root := NewDoc("root", nil)
+
+		s := root.NewState()
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreKeySet{
+				StoreKeySet: &pb.ChangeStoreKeySet{
+					Path:   []string{"coll1", "key1"},
+					Value: pbtypes.String("1"),
+				},
+			},
+		}))
+		assert.Equal(t, makeStoreWithTwoKeysAndValue("coll1", "key1", "1"), s.Store())
+
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreKeyUnset{
+				StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+					Path: []string{"coll1", "key1"},
+				},
+			},
+		}))
+		require.NoError(t, s.ApplyChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreKeyUnset{
+				StoreKeyUnset: &pb.ChangeStoreKeyUnset{
+					Path: []string{"coll1", "key1"},
+				},
+			},
+		}))
+		assert.Equal(t, &types.Struct{Fields: map[string]*types.Value{}}, s.Store())
 	})
 }
 

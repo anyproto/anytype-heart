@@ -112,7 +112,7 @@ func (m *ObjectInfo) GetObjectType() SmartBlockType {
 	if m != nil {
 		return m.ObjectType
 	}
-	return SmartBlockType_Breadcrumbs
+	return SmartBlockType_AccountOld
 }
 
 type ObjectDetails struct {

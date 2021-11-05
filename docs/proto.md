@@ -31,6 +31,8 @@
     - [Change.RelationUpdate.ObjectTypes](#anytype.Change.RelationUpdate.ObjectTypes)
     - [Change.Snapshot](#anytype.Change.Snapshot)
     - [Change.Snapshot.LogHeadsEntry](#anytype.Change.Snapshot.LogHeadsEntry)
+    - [Change.StoreKeySet](#anytype.Change.StoreKeySet)
+    - [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset)
   
   
   
@@ -1346,6 +1348,8 @@ the element of change tree used to store and internal apply smartBlock history
 | relationUpdate | [Change.RelationUpdate](#anytype.Change.RelationUpdate) |  |  |
 | objectTypeAdd | [Change.ObjectTypeAdd](#anytype.Change.ObjectTypeAdd) |  |  |
 | objectTypeRemove | [Change.ObjectTypeRemove](#anytype.Change.ObjectTypeRemove) |  |  |
+| storeKeySet | [Change.StoreKeySet](#anytype.Change.StoreKeySet) |  |  |
+| storeKeyUnset | [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset) |  |  |
 
 
 
@@ -1553,6 +1557,37 @@ the element of change tree used to store and internal apply smartBlock history
 | ----- | ---- | ----- | ----------- |
 | key | [string](#string) |  |  |
 | value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.StoreKeySet"></a>
+
+### Change.StoreKeySet
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) | repeated |  |
+| value | [google.protobuf.Value](#google.protobuf.Value) |  |  |
+
+
+
+
+
+
+<a name="anytype.Change.StoreKeyUnset"></a>
+
+### Change.StoreKeyUnset
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) | repeated |  |
 
 
 
@@ -15744,6 +15779,7 @@ scope from which this relation have been aggregated |
 | fileKeys | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 | extraRelations | [Relation](#anytype.model.Relation) | repeated |  |
 | objectTypes | [string](#string) | repeated |  |
+| collections | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
 
@@ -16172,7 +16208,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Breadcrumbs | 0 |  |
+| AccountOld | 0 |  |
+| Breadcrumbs | 1 |  |
 | Page | 16 |  |
 | ProfilePage | 17 |  |
 | Home | 32 |  |
@@ -16191,7 +16228,8 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | BundledObjectType | 514 |  |
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
-| Workspace | 517 |  |
+| WorkspaceOld | 517 | deprecated thread-based workspace |
+| Workspace | 279 |  |
 
 
  
