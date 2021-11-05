@@ -28,6 +28,7 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/hsanjuan/ipfs-lite v1.1.20
+	github.com/huandu/skiplist v1.2.0 // indirect
 	github.com/improbable-eng/grpc-web v0.14.0
 	github.com/ipfs/go-cid v0.0.7
 	github.com/ipfs/go-datastore v0.4.5

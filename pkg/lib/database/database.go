@@ -89,7 +89,6 @@ func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	if f.hasOrders() {
 		qq.Orders = []query.Order{f}
 	}
-	qq.String()
 	return
 }
 
@@ -201,7 +200,7 @@ func (f filterGetter) Get(key string) *types.Value {
 }
 
 type sortGetter struct {
-	curEl    *types.Struct
+	curEl *types.Struct
 }
 
 func (f sortGetter) Get(key string) *types.Value {
