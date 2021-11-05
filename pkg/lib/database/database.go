@@ -262,7 +262,17 @@ func (f *filters) hasOrders() bool {
 }
 
 func (f *filters) String() string {
-	return fmt.Sprintf("WHERE %v ORDER BY %v", f.filter.String(), f.order.String())
+	var filterString string
+	var orderString string
+	var separator string
+	if f.filter != nil {
+		filterString = fmt.Sprintf("WHERE %v", f.filter.String())
+		separator = " "
+	}
+	if f.order != nil {
+		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.order.String())
+	}
+	return fmt.Sprintf("%s%s", filterString, orderString)
 }
 
 func dateOnly(v *types.Value) *types.Value {

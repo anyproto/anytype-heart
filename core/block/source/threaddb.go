@@ -220,7 +220,8 @@ func (v *threadDB) processThreadActions(buffer []threadsDb.Action) {
 			if action.Type == threadsDb.ActionCreate {
 				val, err := v.threadInfoValue(action.ID)
 				if err != nil {
-					return nil, err
+					log.With("thread id", action.ID.String()).Errorf("failed to load thread info")
+					continue
 				}
 				s.SetInStore([]string{WorkspaceCollection, action.ID.String()}, val)
 			} else if action.Type == threadsDb.ActionDelete {
