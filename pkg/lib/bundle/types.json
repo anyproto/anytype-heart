@@ -75,12 +75,12 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "time",
       "servings",
       "ingredients",
       "instructions",
-      "difficulty",
-      "workspaceId"
+      "difficulty"
     ],
     "types": [
       "Page"
@@ -156,14 +156,14 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "candidate",
       "job",
       "phone",
       "email",
       "location",
       "website",
-      "socialProfile",
-      "workspaceId"
+      "socialProfile"
     ],
     "types": [
       "Page"
@@ -201,6 +201,7 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "phone",
       "email",
       "dateOfBirth",
@@ -212,8 +213,7 @@
       "occupation",
       "instagram",
       "gender",
-      "facebook",
-      "workspaceId"
+      "facebook"
     ],
     "types": [
       "Page"
@@ -251,10 +251,10 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "notes",
       "events",
-      "tasks",
-      "workspaceId"
+      "tasks"
     ],
     "types": [
       "Page"
@@ -330,6 +330,7 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "company",
       "address",
       "billTo",
@@ -338,8 +339,7 @@
       "shipToAddress",
       "dueDate",
       "total",
-      "number",
-      "workspaceId"
+      "number"
     ],
     "types": [
       "Page"
@@ -377,10 +377,10 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "problem",
       "solution",
-      "alternative",
-      "workspaceId"
+      "alternative"
     ],
     "types": [
       "Page"
@@ -388,7 +388,7 @@
   },
   {
     "description": "A piece of work to be done or undertaken",
-    "emoji": "📮",
+    "emoji": "✅",
     "id": "task",
     "layout": "todo",
     "name": "Task",
@@ -418,6 +418,7 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "assignee",
       "dueDate",
       "attachments",
@@ -425,8 +426,7 @@
       "done",
       "priority",
       "tasks",
-      "linkedProjects",
-      "workspaceId"
+      "linkedProjects"
     ],
     "types": [
       "Page"
@@ -493,11 +493,11 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "author",
       "category",
       "rating",
-      "status",
-      "workspaceId"
+      "status"
     ],
     "types": [
       "Page"
@@ -534,6 +534,7 @@
       "isArchived",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "durationInSeconds",
       "sizeInBytes",
       "fileMimeType",
@@ -545,8 +546,7 @@
       "aperture",
       "exposure",
       "addedDate",
-      "fileExt",
-      "workspaceId"
+      "fileExt"
     ],
     "types": [
       "File"
@@ -584,6 +584,7 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "story",
       "founded",
       "ceo",
@@ -596,8 +597,7 @@
       "stockprice",
       "tickerSymbol",
       "address",
-      "subsidiaries",
-      "workspaceId"
+      "subsidiaries"
     ],
     "types": [
       "Page"
@@ -670,10 +670,10 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "notes",
       "tasks",
-      "events",
-      "workspaceId"
+      "events"
     ],
     "types": [
       "Page"
@@ -711,10 +711,10 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "participants",
       "agenda",
-      "tasks",
-      "workspaceId"
+      "tasks"
     ],
     "types": [
       "Page"
@@ -752,6 +752,7 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "director",
       "stars",
       "genre",
@@ -759,8 +760,7 @@
       "rating",
       "imdbRating",
       "rottenTomatoesRating",
-      "status",
-      "workspaceId"
+      "status"
     ],
     "types": [
       "Page"
@@ -847,6 +847,45 @@
     ]
   },
   {
+    "description": "Space for sharing",
+    "emoji": "🌎",
+    "hidden": true,
+    "id": "space",
+    "layout": "space",
+    "name": "Space",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
+    ],
+    "types": [
+      "Workspace"
+    ]
+  },
+  {
     "description": "Sample object that has already some details in place and used to create objects from",
     "hidden": true,
     "id": "template",
@@ -877,9 +916,9 @@
       "isArchived",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "targetObjectType",
-      "templateIsBundled",
-      "workspaceId"
+      "templateIsBundled"
     ],
     "types": [
       "Template"
@@ -917,19 +956,19 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "running",
       "meditation",
       "7hourssleep",
       "journaling",
-      "healthyEating",
-      "workspaceId"
+      "healthyEating"
     ],
     "types": [
       "Page"
     ]
   },
   {
-    "description": "Collection of objects sharing one characteristic",
+    "description": "Collection of objects with equal types and relations. Database experience based on all objects in Anytype",
     "emoji": "🗂️",
     "id": "set",
     "layout": "set",
@@ -959,9 +998,9 @@
       "isArchived",
       "tag",
       "isFavorite",
-      "setOf",
+      "isDraft",
       "workspaceId",
-      "isDraft"
+      "setOf"
     ],
     "types": [
       "Set"
@@ -999,14 +1038,14 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "class",
       "classType",
       "records",
       "questions",
       "materials",
       "tasks",
-      "reflection",
-      "workspaceId"
+      "reflection"
     ],
     "types": [
       "Page"
@@ -1090,42 +1129,6 @@
     ]
   },
   {
-    "description": "Space for sharing",
-    "emoji": "🌎",
-    "id": "space",
-    "layout": "space",
-    "name": "Space",
-    "relations": [
-      "id",
-      "name",
-      "description",
-      "type",
-      "creator",
-      "createdDate",
-      "layout",
-      "lastModifiedBy",
-      "iconImage",
-      "iconEmoji",
-      "coverId",
-      "lastModifiedDate",
-      "lastOpenedDate",
-      "coverX",
-      "coverY",
-      "coverScale",
-      "toBeDeletedDate",
-      "featuredRelations",
-      "coverType",
-      "layoutAlign",
-      "isHidden",
-      "isArchived",
-      "tag",
-      "isFavorite"
-    ],
-    "types": [
-      "Workspace"
-    ]
-  },
-  {
     "description": "Auto-generated object from .jpg & .png files added to Anytype. A representation of the external form of a person or thing in art",
     "emoji": "🏞",
     "id": "image",
@@ -1156,6 +1159,7 @@
       "isArchived",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "fileMimeType",
       "widthInPixels",
       "camera",
@@ -1166,8 +1170,7 @@
       "exposure",
       "addedDate",
       "focalRatio",
-      "fileExt",
-      "workspaceId"
+      "fileExt"
     ],
     "types": [
       "File"
@@ -1205,14 +1208,14 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "howToReproduce",
       "result",
       "additional",
       "attachments",
       "assignee",
       "dueDate",
-      "priority",
-      "workspaceId"
+      "priority"
     ],
     "types": [
       "Page"
@@ -1287,6 +1290,7 @@
       "isArchived",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "artist",
       "audioAlbum",
       "audioAlbumTrackNumber",
@@ -1300,8 +1304,7 @@
       "addedDate",
       "fileExt",
       "audioArtist",
-      "audioLyrics",
-      "workspaceId"
+      "audioLyrics"
     ],
     "types": [
       "File"
@@ -1339,12 +1342,12 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "tasks",
       "resources",
       "result",
       "dueDate",
-      "responsible",
-      "workspaceId"
+      "responsible"
     ],
     "types": [
       "Page"
@@ -1382,11 +1385,11 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "progress",
       "status",
       "dueDate",
-      "tasks",
-      "workspaceId"
+      "tasks"
     ],
     "types": [
       "Page"
@@ -1424,6 +1427,7 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "hypothesisAssumptions",
       "problem",
       "userStories",
@@ -1432,8 +1436,7 @@
       "attachments",
       "assignee",
       "dueDate",
-      "priority",
-      "workspaceId"
+      "priority"
     ],
     "types": [
       "Page"
@@ -1508,11 +1511,11 @@
       "isArchived",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "fileMimeType",
       "sizeInBytes",
       "addedDate",
-      "fileExt",
-      "workspaceId"
+      "fileExt"
     ],
     "types": [
       "File"
@@ -1550,13 +1553,13 @@
       "tag",
       "isFavorite",
       "isDraft",
+      "workspaceId",
       "objectives",
       "scope",
       "timeframe",
       "budget",
       "stakeholders",
-      "tasks",
-      "workspaceId"
+      "tasks"
     ],
     "types": [
       "Page"
