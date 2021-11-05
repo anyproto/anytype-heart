@@ -848,13 +848,41 @@
   },
   {
     "description": "Space for sharing",
+    "emoji": "🌎",
     "hidden": true,
     "id": "space",
     "layout": "space",
     "name": "Space",
     "relations": [
       "id",
-      "name"
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "isFavorite",
+      "isDraft",
+      "workspaceId"
+    ],
+    "types": [
+      "Workspace"
     ]
   },
   {

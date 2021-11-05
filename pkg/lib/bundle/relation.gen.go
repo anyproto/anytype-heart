@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "21486fc346a5af79471e07ebaa4075ddee240a663348ffc926e7852d8b6ec4af"
+const RelationChecksum = "c0cae151a0cd595255597836babbc88e96a0cbc981ce293e58e52e50ee398cea"
 
 type RelationKey string
 
@@ -29,6 +29,7 @@ const (
 	RelationKeyTemplateIsBundled         RelationKey = "templateIsBundled"
 	RelationKeyShipTo                    RelationKey = "shipTo"
 	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
+	RelationKeyIsHighlighted             RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            RelationKey = "thumbnailImage"
 	RelationKeyAttachments               RelationKey = "attachments"
 	RelationKeyAudioArtist               RelationKey = "audioArtist"
@@ -109,7 +110,6 @@ const (
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
-	RelationKeyIsHighlighted             RelationKey = "isHighlighted"
 	RelationKeyStars                     RelationKey = "stars"
 	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyJournaling                RelationKey = "journaling"
@@ -1114,6 +1114,7 @@ var (
 			DataSource:       model.Relation_details,
 			Description:      "",
 			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
 			Key:              "job",
 			MaxCount:         1,
 			Name:             "Job",

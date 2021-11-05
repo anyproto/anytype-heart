@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "99f6631d0f74e46af26d86b83a4e7b869c5a9b5e7bd623495e676691cc5e3237"
+const TypeChecksum = "2b77f9846dac7b665c3419b7f3fe8cbf10e69926a6d74767e61249447290c012"
 
 type TypeKey string
 
@@ -420,10 +420,12 @@ var (
 
 			Description: "Space for sharing",
 			Hidden:      true,
+			IconEmoji:   "🌎",
 			Layout:      model.ObjectType_space,
 			Name:        "Space",
 			Readonly:    true,
-			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName]},
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Workspace},
 			Url:         TypePrefix + "space",
 		},
 		TypeKeyTask: {
