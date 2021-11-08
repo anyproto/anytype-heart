@@ -1023,8 +1023,9 @@ func (s *State) InjectDerivedDetails() {
 		if b := s.Get("dataview"); b != nil {
 			source := b.Model().GetDataview().GetSource()
 			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		} else {
+			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList([]string{}))
 		}
-
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 	if ot := s.ObjectType(); ot != "" {
@@ -1479,7 +1480,7 @@ func (s *State) setInStore(path []string, value *types.Value) {
 	}
 	delete(store.Fields, path[len(path)-1])
 	// cleaning empty structs from collection to avoid empty pb values
-	idx := len(path)-2
+	idx := len(path) - 2
 	for len(store.Fields) == 0 && idx >= 0 {
 		delete(storeStack[idx].Fields, path[idx])
 		store = storeStack[idx]

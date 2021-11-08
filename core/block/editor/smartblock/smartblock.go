@@ -1235,6 +1235,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	if err != nil {
 		return err
 	}
+	s.InjectDerivedDetails()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err
@@ -1257,6 +1258,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 }
 
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
+	d.(*state.State).InjectDerivedDetails()
 	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
 	sb.Doc = d
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
