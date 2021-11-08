@@ -351,6 +351,9 @@ func (s *service) ThreadQueue() ThreadQueue {
 }
 
 func (s *service) GetAllWorkspaces() ([]string, error) {
+	if s.logstore == nil {
+		return nil, fmt.Errorf("logstore not available")
+	}
 	threads, err := s.logstore.Threads()
 	if err != nil {
 		return nil, fmt.Errorf("could not get all workspace threads: %w", err)
