@@ -771,6 +771,10 @@ func (m *dsObjectStore) QueryByIdAndSubscribeForChanges(ids []string, sub databa
 	m.l.Lock()
 	defer m.l.Unlock()
 
+	if sub == nil {
+		err = fmt.Errorf("subscription func is nil")
+		return
+	}
 	sub.Subscribe(ids)
 	records, err = m.QueryById(ids)
 

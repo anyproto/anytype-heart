@@ -881,7 +881,6 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 	if err != nil {
 		log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
 	}
-	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 
 func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.State, dvBlock dataview.Block, rel *model.Relation) error {
