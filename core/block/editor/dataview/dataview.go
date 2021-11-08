@@ -130,19 +130,15 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 		dvContent.Dataview.ActiveView = dvContent.Dataview.Views[0].Id
 	}
 	blockNew := simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
+	d.fillAggregatedOptions(blockNew)
 	s.Set(blockNew)
 	if block == nil {
 		s.InsertTo("", 0, blockId)
 	}
 
 	dv := d.getDataviewImpl(blockNew)
-	dv.activeViewId = blockNew.Model().GetDataview().ActiveView
+	dv.activeViewId = ""
 
-	msgs, err := d.fetchAndGetEventsMessages(dv, blockNew)
-	if err != nil {
-		return err
-	}
-	ctx.SetMessages(d.SmartBlock.Id(), msgs)
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 	return d.Apply(s)
 }
@@ -505,13 +501,7 @@ func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataview
 		}
 	}
 
-	var activeViewId string
-	if len(block.Model().GetDataview().Views) > 0 {
-		activeViewId = block.Model().GetDataview().Views[0].Id
-		block.SetActiveView(activeViewId)
-	}
-
-	dv := &dataviewImpl{blockId: block.Model().Id, activeViewId: activeViewId, offset: 0, limit: defaultLimit}
+	dv := &dataviewImpl{blockId: block.Model().Id, activeViewId: "", offset: 0, limit: defaultLimit}
 	d.dataviews = append(d.dataviews, dv)
 	return dv
 }
@@ -568,6 +558,7 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 	} else if !pbtypes.DataviewSortsEqualSorted(oldView.Sorts, view.Sorts) {
 		needRecordRefresh = true
 	}
+	d.fillAggregatedOptions(dvBlock)
 	if err = dvBlock.SetView(viewId, view); err != nil {
 		return err
 	}
@@ -613,9 +604,12 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 	if err != nil {
 		return err
 	}
-	ctx.SetMessages(d.SmartBlock.Id(), msgs)
+	err = d.FillAggregatedOptions(ctx)
+	if err != nil {
+		return err
+	}
 	d.SmartBlock.CheckSubscriptions()
-
+	ctx.SetMessages(d.SmartBlock.Id(), msgs)
 	return nil
 }
 
