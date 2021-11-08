@@ -156,6 +156,7 @@ type Service interface {
 	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (pb.RpcBlockUndoRedoCounter, error)
 
 	SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error
+	SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error
 	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) error
 	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) error
 
@@ -534,6 +535,36 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 			}
 			if err != nil {
 				log.Errorf("failed to archive %s: %s", blockId, err.Error())
+			} else {
+				anySucceed = true
+			}
+		}
+
+		if !anySucceed {
+			return err
+		}
+
+		return nil
+	})
+}
+
+// SetPagesIsFavorite is deprecated
+func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) (err error) {
+	return s.Do(s.anytype.PredefinedBlocks().Home, func(b smartblock.SmartBlock) error {
+		fav, ok := b.(collection.Collection)
+		if !ok {
+			return fmt.Errorf("unexpected home block type: %T", b)
+		}
+
+		anySucceed := false
+		for _, blockId := range req.ObjectIds {
+			if req.IsFavorite {
+				err = fav.AddObject(blockId)
+			} else {
+				err = fav.RemoveObject(blockId)
+			}
+			if err != nil {
+				log.Errorf("failed to favorite object %s: %s", blockId, err.Error())
 			} else {
 				anySucceed = true
 			}

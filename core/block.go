@@ -560,6 +560,22 @@ func (mw *Middleware) ObjectListSetIsArchived(req *pb.RpcObjectListSetIsArchived
 	}
 	return response(pb.RpcObjectListSetIsArchivedResponseError_NULL, nil)
 }
+func (mw *Middleware) ObjectListSetIsFavorite(req *pb.RpcObjectListSetIsFavoriteRequest) *pb.RpcObjectListSetIsFavoriteResponse {
+	response := func(code pb.RpcObjectListSetIsFavoriteResponseErrorCode, err error) *pb.RpcObjectListSetIsFavoriteResponse {
+		m := &pb.RpcObjectListSetIsFavoriteResponse{Error: &pb.RpcObjectListSetIsFavoriteResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetPagesIsFavorite(*req)
+	})
+	if err != nil {
+		return response(pb.RpcObjectListSetIsFavoriteResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcObjectListSetIsFavoriteResponseError_NULL, nil)
+}
 
 func (mw *Middleware) BlockReplace(req *pb.RpcBlockReplaceRequest) *pb.RpcBlockReplaceResponse {
 	ctx := state.NewContext(nil)
