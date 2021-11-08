@@ -126,16 +126,23 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 		return
 	}
 
-	if block != nil {
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Source = dvContent.Dataview.Source
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Views = dvContent.Dataview.Views
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Relations = dvContent.Dataview.Relations
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.ActiveView = dvContent.Dataview.ActiveView
-	} else {
-		block = simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
-		s.Set(block)
+	if len(dvContent.Dataview.Views) > 0 {
+		dvContent.Dataview.ActiveView = dvContent.Dataview.Views[0].Id
+	}
+	blockNew := simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
+	s.Set(blockNew)
+	if block == nil {
 		s.InsertTo("", 0, blockId)
 	}
+
+	dv := d.getDataviewImpl(blockNew)
+	dv.activeViewId = blockNew.Model().GetDataview().ActiveView
+
+	msgs, err := d.fetchAndGetEventsMessages(dv, blockNew)
+	if err != nil {
+		return err
+	}
+	ctx.SetMessages(d.SmartBlock.Id(), msgs)
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 	return d.Apply(s)
 }
