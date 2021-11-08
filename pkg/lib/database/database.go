@@ -95,17 +95,28 @@ func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
-	var hasArchivedFilter bool
+	var (
+		hasArchivedFilter bool
+		hasDeletedFilter  bool
+	)
 	for _, filter := range filters {
 		// include archived objects if we have explicit filter about it
 		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
 			hasArchivedFilter = true
 			break
 		}
+
+		if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
+			hasDeletedFilter = true
+			break
+		}
 	}
 
 	if !hasArchivedFilter {
 		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
+	if !hasDeletedFilter {
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsDeleted.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
 	}
 	return filters
 }
@@ -202,7 +213,7 @@ func (f filterGetter) Get(key string) *types.Value {
 }
 
 type sortGetter struct {
-	curEl    *types.Struct
+	curEl *types.Struct
 }
 
 func (f sortGetter) Get(key string) *types.Value {
