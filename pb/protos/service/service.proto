@@ -157,6 +157,7 @@ service ClientCommands {
 
     rpc ObjectListDelete (anytype.Rpc.ObjectList.Delete.Request) returns (anytype.Rpc.ObjectList.Delete.Response);
     rpc ObjectListSetIsArchived (anytype.Rpc.ObjectList.Set.IsArchived.Request) returns (anytype.Rpc.ObjectList.Set.IsArchived.Response); // deprecated
+    rpc ObjectListSetIsFavorite (anytype.Rpc.ObjectList.Set.IsFavorite.Request) returns (anytype.Rpc.ObjectList.Set.IsFavorite.Response);
 
     // TODO: rename BlockSetDetails -> ObjectSetDetails
     rpc BlockSetDetails (anytype.Rpc.Block.Set.Details.Request) returns (anytype.Rpc.Block.Set.Details.Response);
