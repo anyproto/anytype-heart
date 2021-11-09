@@ -297,7 +297,13 @@ func (s *service) initPredefinedBlocks() {
 		sb, err := s.newSmartBlock(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
-				log.Errorf("can't init predefined block: %v", err)
+				if id == s.anytype.PredefinedBlocks().Account {
+					log.With("thread", id).Errorf("can't init predefined account thread: %v", err)
+				}
+				if id == s.anytype.PredefinedBlocks().AccountOld {
+					log.With("thread", id).Errorf("can't init predefined old account thread: %v", err)
+				}
+				log.With("thread", id).Errorf("can't init predefined block: %v", err)
 			}
 		} else {
 			sb.Close()
