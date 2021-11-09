@@ -369,7 +369,7 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 		}
 
 		// TODO: we need to move it to another service, but now it is what it is
-		go func(id string) {
+		go func(id string, params WorkspaceParameters) {
 			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
@@ -383,7 +383,7 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 			}); err != nil {
 				log.Errorf("workspace: can't set detail to object: %v", err)
 			}
-		}(id)
+		}(id, *params)
 	}
 }
 
