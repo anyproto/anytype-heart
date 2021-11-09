@@ -17,7 +17,7 @@ var testOrder = filter.KeyOrder{
 }
 
 func genEntries(n int, backord bool) (res []*entry) {
-	for i := 0; i < n; i++ {
+	for i := 1; i <= n; i++ {
 		id := fmt.Sprintf("id%d", i)
 		ord := i
 		if backord {
@@ -39,17 +39,17 @@ func TestSubscription_Internal(t *testing.T) {
 	t.Run("fill", func(t *testing.T) {
 		t.Run("afterId err", func(t *testing.T) {
 			sub := &subscription{
-				order: testOrder,
-				cache: newCache(),
-				afterId: "id100",
+				order:   testOrder,
+				cache:   newCache(),
+				afterId: "id101",
 			}
 			require.Equal(t, ErrAfterId, sub.fill(genEntries(100, false)))
 		})
 		t.Run("beforeId err", func(t *testing.T) {
 			sub := &subscription{
-				order: testOrder,
-				cache: newCache(),
-				beforeId: "id100",
+				order:    testOrder,
+				cache:    newCache(),
+				beforeId: "id101",
 			}
 			require.Equal(t, ErrBeforeId, sub.fill(genEntries(100, false)))
 		})
@@ -61,7 +61,7 @@ func TestSubscription_Internal(t *testing.T) {
 				cache: newCache(),
 			}
 			require.NoError(t, sub.fill(genEntries(100, false)))
-			inSet, inActive := sub.lookup(sub.cache.pick("id50"))
+			inSet, inActive := sub.lookup("id50")
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 		})
@@ -72,10 +72,10 @@ func TestSubscription_Internal(t *testing.T) {
 				limit: 10,
 			}
 			require.NoError(t, sub.fill(genEntries(100, false)))
-			inSet, inActive := sub.lookup(sub.cache.pick("id10"))
+			inSet, inActive := sub.lookup("id11")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
-			inSet, inActive = sub.lookup(sub.cache.pick("id9"))
+			inSet, inActive = sub.lookup("id10")
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 		})
@@ -87,32 +87,32 @@ func TestSubscription_Internal(t *testing.T) {
 			}
 			require.NoError(t, sub.fill(genEntries(100, false)))
 
-			inSet, inActive := sub.lookup(sub.cache.pick("id49"))
+			inSet, inActive := sub.lookup("id49")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
-			inSet, inActive = sub.lookup(sub.cache.pick("id50"))
+			inSet, inActive = sub.lookup("id50")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
-			inSet, inActive = sub.lookup(sub.cache.pick("id51"))
+			inSet, inActive = sub.lookup("id51")
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 		})
 		t.Run("beforeId no limit", func(t *testing.T) {
 			sub := &subscription{
-				order:   testOrder,
-				cache:   newCache(),
+				order:    testOrder,
+				cache:    newCache(),
 				beforeId: "id50",
 			}
 			require.NoError(t, sub.fill(genEntries(100, false)))
-			inSet, inActive := sub.lookup(sub.cache.pick("id51"))
+			inSet, inActive := sub.lookup("id51")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id50"))
+			inSet, inActive = sub.lookup("id50")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id49"))
+			inSet, inActive = sub.lookup("id49")
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 		})
@@ -121,42 +121,159 @@ func TestSubscription_Internal(t *testing.T) {
 				order:   testOrder,
 				cache:   newCache(),
 				afterId: "id50",
-				limit: 10,
+				limit:   10,
 			}
 			require.NoError(t, sub.fill(genEntries(100, false)))
 
-			inSet, inActive := sub.lookup(sub.cache.pick("id49"))
+			inSet, inActive := sub.lookup("id49")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id60"))
+			inSet, inActive = sub.lookup("id60")
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id61"))
+			inSet, inActive = sub.lookup("id61")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 		})
 		t.Run("beforeId limit", func(t *testing.T) {
 			sub := &subscription{
-				order:   testOrder,
-				cache:   newCache(),
+				order:    testOrder,
+				cache:    newCache(),
 				beforeId: "id50",
-				limit: 10,
+				limit:    10,
 			}
 			require.NoError(t, sub.fill(genEntries(100, false)))
 
-			inSet, inActive := sub.lookup(sub.cache.pick("id51"))
+			inSet, inActive := sub.lookup("id51")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id40"))
+			inSet, inActive = sub.lookup("id40")
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id39"))
+			inSet, inActive = sub.lookup("id39")
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 		})
 	})
+	t.Run("counters", func(t *testing.T) {
+		t.Run("no limits", func(t *testing.T) {
+			sub := &subscription{
+				order: testOrder,
+				cache: newCache(),
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 0, prev, "prevCount")
+			assert.Equal(t, 0, next, "nextCount")
+		})
+		t.Run("limit only", func(t *testing.T) {
+			sub := &subscription{
+				order: testOrder,
+				cache: newCache(),
+				limit: 2,
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 0, prev, "prevCount")
+			assert.Equal(t, 4, next, "nextCount")
+		})
+		t.Run("afterId no limit", func(t *testing.T) {
+			sub := &subscription{
+				order:   testOrder,
+				cache:   newCache(),
+				afterId: "id2",
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 2, prev, "prevCount")
+			assert.Equal(t, 0, next, "nextCount")
+		})
+		t.Run("beforeId no limit", func(t *testing.T) {
+			sub := &subscription{
+				order:    testOrder,
+				cache:    newCache(),
+				beforeId: "id3",
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 0, prev, "prevCount")
+			assert.Equal(t, 4, next, "nextCount")
+		})
+		t.Run("afterId with limit", func(t *testing.T) {
+			sub := &subscription{
+				order:   testOrder,
+				cache:   newCache(),
+				afterId: "id2",
+				limit:   2,
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 2, prev, "prevCount")
+			assert.Equal(t, 2, next, "nextCount")
+		})
+		t.Run("beforeId with limit", func(t *testing.T) {
+			sub := &subscription{
+				order:    testOrder,
+				cache:    newCache(),
+				beforeId: "id5",
+				limit:    2,
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 2, prev, "prevCount")
+			assert.Equal(t, 2, next, "nextCount")
+		})
+		t.Run("limit only - big limit", func(t *testing.T) {
+			sub := &subscription{
+				order: testOrder,
+				cache: newCache(),
+				limit: 20,
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 0, prev, "prevCount")
+			assert.Equal(t, 0, next, "nextCount")
+		})
+		t.Run("afterId - big limit", func(t *testing.T) {
+			sub := &subscription{
+				order:   testOrder,
+				cache:   newCache(),
+				limit:   20,
+				afterId: "id2",
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 2, prev, "prevCount")
+			assert.Equal(t, 0, next, "nextCount")
+		})
+		t.Run("beforeId - big limit", func(t *testing.T) {
+			sub := &subscription{
+				order:    testOrder,
+				cache:    newCache(),
+				limit:    20,
+				beforeId: "id5",
+			}
+			require.NoError(t, sub.fill(genEntries(6, false)))
+			prev, next := sub.counters()
+			assert.Equal(t, 0, prev, "prevCount")
+			assert.Equal(t, 2, next, "nextCount")
+		})
+	})
+}
+
+func BenchmarkSubscription_fill(b *testing.B) {
+	entries := genEntries(100000, true)
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		sub := &subscription{
+			order: testOrder,
+			cache: newCache(),
+		}
+		sub.fill(entries)
+	}
 }

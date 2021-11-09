@@ -1,7 +1,6 @@
 package subscription
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -19,7 +18,7 @@ type entry struct {
 }
 
 func (e *entry) Get(key string) *types.Value {
-	return pbtypes.Get(e.data, key)
+	return e.data.Fields[key]
 }
 
 type cache struct {

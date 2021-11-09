@@ -62,7 +62,39 @@ func (s *subscription) fill(entries []*entry) (err error) {
 	return nil
 }
 
-func (s *subscription) onChange(ctx *opCtx, old, new *entry) {
+func (s *subscription) onChangeBatch(ctx *opCtx, entries ...*entry) {
+	var countersChanged bool
+	for _, e := range entries {
+		if s.onChange(ctx, e) {
+			countersChanged = true
+		}
+	}
+	if countersChanged {
+		prev, next := s.counters()
+		ctx.counters = append(ctx.counters, opCounter{
+			subId:     s.id,
+			total:     s.skl.Len(),
+			prevCount: prev,
+			nextCount: next,
+		})
+	}
+}
+
+func (s *subscription) onChange(ctx *opCtx, e *entry) (countersChange bool) {
+	afterInSet := true
+	if s.filter != nil {
+		afterInSet = s.filter.FilterObject(e)
+	}
+	inSet, inActive := s.lookup(e.id)
+
+	if inSet && !afterInSet {
+		s.remove(ctx, inActive)
+		return true
+	}
+	if !inSet && afterInSet {
+		s.add(ctx)
+		return true
+	}
 
 	return
 }
@@ -71,7 +103,19 @@ func (s *subscription) onRemove(events []*pb.EventMessage, id string) []*pb.Even
 	return events
 }
 
-func (s *subscription) lookup(e *entry) (inSet, inActive bool) {
+func (s *subscription) remove(ctx *opCtx, active bool) {
+
+}
+
+func (s *subscription) add(ctx *opCtx) {
+
+}
+
+func (s *subscription) lookup(id string) (inSet, inActive bool) {
+	e := s.cache.pick(id)
+	if e == nil {
+		return
+	}
 	el := s.skl.Get(e)
 	if el == nil {
 		return
@@ -109,6 +153,57 @@ func (s *subscription) lookup(e *entry) (inSet, inActive bool) {
 		}
 	} else {
 		inActive = true
+	}
+	return
+}
+
+func (s *subscription) counters() (prev, next int) {
+	if s.beforeEl == nil && s.afterEl == nil && s.limit <= 0 {
+		// no pagination - no counters
+		return 0, 0
+	}
+	getStartEl := func() *skiplist.Element {
+		if s.afterEl != nil {
+			return s.afterEl
+		} else {
+			return s.beforeEl
+		}
+	}
+	el := getStartEl()
+	for el != nil {
+		next++
+		el = el.Next()
+	}
+	el = getStartEl()
+	for el != nil {
+		prev++
+		el = el.Prev()
+	}
+	if s.afterEl != nil {
+		if s.limit > 0 {
+			next--
+			next -= s.limit
+			if next < 0 {
+				next = 0
+			}
+		} else {
+			next = 0
+		}
+	} else if s.beforeEl != nil {
+		if s.limit > 0 {
+			prev--
+			prev -= s.limit
+			if prev < 0 {
+				prev = 0
+			}
+		} else {
+			prev = 0
+		}
+	} else if s.limit > 0 {
+		next = s.skl.Len() - s.limit
+		if next < 0 {
+			next = 0
+		}
 	}
 	return
 }
