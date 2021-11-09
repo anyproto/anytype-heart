@@ -679,6 +679,7 @@ func (s *service) DeleteObject(id string) (err error) {
 		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
 			return err
 		}
+		b.SetIsDeleted()
 		return nil
 	})
 

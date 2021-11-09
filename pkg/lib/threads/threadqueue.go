@@ -280,6 +280,9 @@ func (p *threadQueue) processDeletedObject(id, workspaceId string) {
 }
 
 func (p *threadQueue) finishDeleteOperation(id, workspaceId string) {
+	// we leave it here instead of moving to block service
+	// because if this operation fails we would want to retry it
+	// and we can do that only if we still have the entry in threadStore not removed
 	err := p.threadsService.objectStoreDeleter.DeleteObject(id)
 	if err != nil {
 		log.Errorf("error deleting object from store %s %s %v", id, workspaceId, err.Error())
