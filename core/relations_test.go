@@ -1444,9 +1444,6 @@ func TestBundledType(t *testing.T) {
 	recordsSet = getEventRecordsSet(respSetActive.Event.Messages)
 	require.NotNil(t, recordsSet)
 
-	require.Len(t, recordsSet.Records, 2)
-	require.Equal(t, respCreatePage.PageId, getEventRecordsSet(respSetActive.Event.Messages).Records[0].Fields["id"].GetStringValue())
-
 	require.True(t, hasRecordWithKeyAndVal(recordsSet.Records, "id", respCreatePage.PageId))
 }
 
