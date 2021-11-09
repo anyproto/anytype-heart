@@ -600,14 +600,12 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 
 	dv.limit = limit
 	dv.offset = offset
+	d.fillAggregatedOptions(dvBlock)
 	msgs, err := d.fetchAndGetEventsMessages(dv, dvBlock)
 	if err != nil {
 		return err
 	}
-	err = d.FillAggregatedOptions(ctx)
-	if err != nil {
-		return err
-	}
+
 	d.SmartBlock.CheckSubscriptions()
 	ctx.SetMessages(d.SmartBlock.Id(), msgs)
 	return nil
