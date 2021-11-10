@@ -264,6 +264,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
 			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
+		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
+			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, false),
 		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, false),
