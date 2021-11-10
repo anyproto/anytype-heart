@@ -728,7 +728,7 @@ func (sb *smartBlock) Anytype() core.Service {
 
 func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
-	detCopy := pbtypes.CopyStruct(s.Details())
+	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
 	if detCopy == nil || detCopy.Fields == nil {
 		detCopy = &types.Struct{
 			Fields: make(map[string]*types.Value),
