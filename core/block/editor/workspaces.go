@@ -159,6 +159,10 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 
 func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 	// TODO: this should be removed probably in the future?
+	if p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
+		return fmt.Errorf("highlighting not supported for the account space")
+	}
+
 	st := p.NewState()
 	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
 	return p.Apply(st)
