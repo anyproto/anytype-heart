@@ -159,6 +159,10 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 
 func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 	// TODO: this should be removed probably in the future?
+	if p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
+		return fmt.Errorf("highlighting not supported for the account space")
+	}
+
 	st := p.NewState()
 	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
 	return p.Apply(st)
@@ -264,6 +268,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
 			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
+		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
+			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, false),
 		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, false),

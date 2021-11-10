@@ -675,7 +675,7 @@ func (s *service) DeleteObject(id string) (err error) {
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
 		workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
-		if err == core.ErrObjectDoesNotBelongToWorkspace {
+		if workspaceId == "" {
 			workspaceId = s.anytype.PredefinedBlocks().Account
 		}
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())

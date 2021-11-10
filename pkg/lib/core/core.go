@@ -244,7 +244,7 @@ func (a *Anytype) GetWorkspaceIdForObject(objectId string) (string, error) {
 	}
 
 	workspaceIds := a.threadService.ThreadQueue().GetWorkspacesForThread(objectId)
-	if len(workspaceIds) != 0 && !a.predefinedBlockIds.IsAccount(workspaceIds[0]) {
+	if len(workspaceIds) != 0 {
 		return workspaceIds[0], nil
 	}
 
