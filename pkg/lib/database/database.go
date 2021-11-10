@@ -98,12 +98,17 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	var (
 		hasArchivedFilter bool
 		hasDeletedFilter  bool
+		hasTypeFilter     bool
 	)
+
 	for _, filter := range filters {
 		// include archived objects if we have explicit filter about it
 		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
 			hasArchivedFilter = true
-			break
+		}
+
+		if filter.RelationKey == bundle.RelationKeyType.String() {
+			hasTypeFilter = true
 		}
 
 		if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
@@ -117,6 +122,10 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	}
 	if !hasDeletedFilter {
 		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsDeleted.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
+	if !hasTypeFilter {
+		// temporarily exclude Space objects from search if we don't have explicit type filter
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{bundle.TypeKeySpace.URL()})})
 	}
 	return filters
 }
