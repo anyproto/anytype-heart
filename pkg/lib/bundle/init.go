@@ -38,6 +38,7 @@ var RequiredInternalRelations = []RelationKey{
 	RelationKeyIsHidden,
 	RelationKeyIsArchived,
 	RelationKeyIsFavorite,
+	RelationKeyWorkspaceId,
 }
 
 var FormatFilePossibleTargetObjectTypes = []string{
