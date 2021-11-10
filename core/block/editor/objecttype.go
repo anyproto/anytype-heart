@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
-	"github.com/google/uuid"
 )
 
 type ObjectType struct {
@@ -32,7 +31,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			Source: []string{p.Id()},
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:   uuid.New().String(),
+					Id:   "_view1_1",
 					Type: model.BlockContentDataviewView_Table,
 					Name: "All",
 					Sorts: []*model.BlockContentDataviewSort{
@@ -53,7 +52,7 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 			Source: []string{bundle.TypeKeyTemplate.URL()},
 			Views: []*model.BlockContentDataviewView{
 				{
-					Id:   uuid.New().String(),
+					Id:   "_view2_1",
 					Type: model.BlockContentDataviewView_Table,
 					Name: "All",
 					Sorts: []*model.BlockContentDataviewSort{

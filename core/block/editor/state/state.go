@@ -82,7 +82,7 @@ type State struct {
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
-	collections map[string]map[string]interface{}
+	store       *types.Struct
 	objectTypes []string
 
 	changesStructureIgnoreIds []string
@@ -572,7 +572,7 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 
-	if len(msgs) == 0 && action.IsEmpty() {
+	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
 		// revert lastModified update if we don't have any actual changes being made
 		prevModifiedDate := pbtypes.Get(s.parent.LocalDetails(), bundle.RelationKeyLastModifiedDate.String())
 		if s.localDetails != nil {
@@ -600,6 +600,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
 	}
 
+	if s.parent != nil && s.store != nil {
+		s.parent.store = s.store
+	}
+
 	log.Infof("middle: state apply: %d affected; %d for remove; %d copied; %d changes; for a %v", len(affectedIds), len(toRemove), len(s.blocks), len(s.changes), time.Since(st))
 	return
 }
@@ -625,6 +629,9 @@ func (s *State) intermediateApply() {
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
+	}
+	if s.store != nil {
+		s.parent.store = s.store
 	}
 	if len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
@@ -1016,8 +1023,9 @@ func (s *State) InjectDerivedDetails() {
 		if b := s.Get("dataview"); b != nil {
 			source := b.Model().GetDataview().GetSource()
 			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
+		} else {
+			s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList([]string{}))
 		}
-
 	}
 	s.SetDetailAndBundledRelation(bundle.RelationKeyId, pbtypes.String(s.RootId()))
 	if ot := s.ObjectType(); ot != "" {
@@ -1094,7 +1102,7 @@ func (s *State) ObjectType() string {
 
 func (s *State) Snippet() (snippet string) {
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title {
+		if text := b.Model().GetText(); text != nil && text.Style != model.BlockContentText_Title && text.Style != model.BlockContentText_Description {
 			nextText := strings.TrimSpace(text.Text)
 			if snippet != "" && nextText != "" {
 				snippet += "\n"
@@ -1310,15 +1318,6 @@ func (s *State) Copy() *State {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
 	}
 
-	collections := s.GetCollections()
-	newCollections := make(map[string]map[string]interface{})
-	for name, coll := range collections {
-		newCollections[name] = make(map[string]interface{})
-		for k, v := range coll {
-			newCollections[name][k] = v
-		}
-	}
-
 	copy := &State{
 		ctx:                         s.ctx,
 		blocks:                      blocks,
@@ -1329,7 +1328,7 @@ func (s *State) Copy() *State {
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,
 		noObjectType:                s.noObjectType,
-		collections:                 newCollections,
+		store:                       pbtypes.CopyStruct(s.Store()),
 	}
 	return copy
 }
@@ -1405,68 +1404,168 @@ func (s *State) RemoveLocalDetail(keys ...string) (ok bool) {
 	return
 }
 
-func (s *State) createOrCopyCollectionsFromParent() {
-	// for simplicity each time we are copying collections in their entirety
-	// the benefit of this is that you are sure that you will not have collections on different levels
+func (s *State) createOrCopyStoreFromParent() {
+	// for simplicity each time we are copying store in their entirety
+	// the benefit of this is that you are sure that you will not have store on different levels
 	// this may not be very good performance/memory wise, but it is simple, so it can stay for now
-	if s.collections != nil {
+	if s.store != nil {
 		return
 	}
-	s.collections = make(map[string]map[string]interface{})
-	iterState := s
-	for iterState != nil && iterState.collections == nil {
-		iterState = iterState.parent
+	s.store = pbtypes.CopyStruct(s.Store())
+	if s.store == nil {
+		s.store = &types.Struct{Fields: map[string]*types.Value{}}
 	}
-	// if we need to copy collection from some state
-	if iterState != nil && iterState.collections != nil {
-		for name, coll := range iterState.collections {
-			s.collections[name] = make(map[string]interface{})
-			for k, v := range coll {
-				s.collections[name][k] = v
+}
+
+func (s *State) SetInStore(path []string, value *types.Value) {
+	s.setInStore(path, value)
+	if value != nil {
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreKeySet{
+				StoreKeySet: &pb.ChangeStoreKeySet{Path: path, Value: value},
+			},
+		})
+	} else {
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreKeyUnset{
+				StoreKeyUnset: &pb.ChangeStoreKeyUnset{Path: path},
+			},
+		})
+	}
+}
+
+func (s *State) setInStore(path []string, value *types.Value) {
+	if len(path) == 0 {
+		return
+	}
+	// todo: optimize to not copy all collection values, but only the map reusing existing values pointers
+	s.createOrCopyStoreFromParent()
+	store := s.store
+	nested := path[:len(path)-1]
+	storeStack := []*types.Struct{store}
+	for _, key := range nested {
+		if store.Fields == nil {
+			store.Fields = map[string]*types.Value{}
+		}
+		_, ok := store.Fields[key]
+		// TODO: refactor this with pbtypes
+		if !ok {
+			store.Fields[key] = &types.Value{
+				Kind: &types.Value_StructValue{
+					StructValue: &types.Struct{
+						Fields: map[string]*types.Value{},
+					},
+				},
 			}
 		}
+		_, ok = store.Fields[key].Kind.(*types.Value_StructValue)
+		if !ok {
+			store.Fields[key] = &types.Value{
+				Kind: &types.Value_StructValue{
+					StructValue: &types.Struct{
+						Fields: map[string]*types.Value{},
+					},
+				},
+			}
+		}
+		store = store.Fields[key].Kind.(*types.Value_StructValue).StructValue
+		storeStack = append(storeStack, store)
 	}
-}
-
-func (s *State) SetInCollection(collectionName string, key string, value interface{}) {
-	s.createOrCopyCollectionsFromParent()
-	if s.collections[collectionName] == nil {
-		s.collections[collectionName] = make(map[string]interface{})
+	if store.Fields == nil {
+		store.Fields = map[string]*types.Value{}
 	}
-	s.collections[collectionName][key] = value
-}
-
-func (s *State) RemoveFromCollection(collectionName string, key string) {
-	collection := s.GetCollection(collectionName)
-	if collection == nil || collection[key] == nil {
+	if value != nil {
+		store.Fields[path[len(path)-1]] = value
 		return
 	}
-
-	s.createOrCopyCollectionsFromParent()
-	delete(s.collections[collectionName], key)
+	delete(store.Fields, path[len(path)-1])
+	// cleaning empty structs from collection to avoid empty pb values
+	idx := len(path) - 2
+	for len(store.Fields) == 0 && idx >= 0 {
+		delete(storeStack[idx].Fields, path[idx])
+		store = storeStack[idx]
+		idx--
+	}
 }
 
-func (s *State) GetCollection(collectionName string) map[string]interface{} {
-	iterState := s
-	for iterState != nil && (iterState.collections == nil || iterState.collections[collectionName] == nil) {
-		iterState = iterState.parent
+func (s *State) ContainsInStore(path []string) bool {
+	if len(path) == 0 {
+		return false
 	}
-	if iterState == nil || iterState.collections == nil || iterState.collections[collectionName] == nil {
+	store := s.Store()
+	if store == nil {
+		return false
+	}
+	nested := path[:len(path)-1]
+	for _, key := range nested {
+		if store.Fields == nil {
+			return false
+		}
+		// TODO: refactor this with pbtypes
+		_, ok := store.Fields[key]
+		if !ok {
+			return false
+		}
+		_, ok = store.Fields[key].Kind.(*types.Value_StructValue)
+		if !ok {
+			return false
+		}
+		store = store.Fields[key].Kind.(*types.Value_StructValue).StructValue
+	}
+	if store.Fields == nil {
+		return false
+	}
+	return store.Fields[path[len(path)-1]] != nil
+}
+
+func (s *State) RemoveFromStore(path []string) bool {
+	res := s.removeFromStore(path)
+	if res {
+		s.changes = append(s.changes, &pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfStoreKeyUnset{
+				StoreKeyUnset: &pb.ChangeStoreKeyUnset{Path: path},
+			},
+		})
+	}
+	return res
+}
+
+func (s *State) removeFromStore(path []string) bool {
+	if len(path) == 0 {
+		return false
+	}
+	if !s.ContainsInStore(path) {
+		return false
+	}
+	s.setInStore(path, nil)
+	return true
+}
+
+func (s *State) GetCollection(collectionName string) *types.Struct {
+	coll := s.Store()
+	if coll == nil {
 		return nil
 	}
-
-	return iterState.collections[collectionName]
+	_, ok := coll.Fields[collectionName]
+	if !ok {
+		return nil
+	}
+	_, ok = coll.Fields[collectionName].Kind.(*types.Value_StructValue)
+	if !ok {
+		return nil
+	}
+	return coll.Fields[collectionName].Kind.(*types.Value_StructValue).StructValue
 }
 
-func (s *State) GetCollections() map[string]map[string]interface{} {
+func (s *State) Store() *types.Struct {
 	iterState := s
-	for iterState != nil && iterState.collections == nil {
+	for iterState != nil && iterState.store == nil {
 		iterState = iterState.parent
 	}
 	if iterState == nil {
 		return nil
 	}
-	return iterState.collections
+	return iterState.store
 }
 
 func (s *State) Layout() (model.ObjectTypeLayout, bool) {

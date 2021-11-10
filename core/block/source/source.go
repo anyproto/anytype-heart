@@ -78,8 +78,8 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 		return &bundledObjectType{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledRelation, smartblock.SmartBlockTypeIndexedRelation:
 		return &bundledRelation{a: s.anytype}, nil
-	case smartblock.SmartBlockTypeWorkspace:
-		return &workspaces{a: s.anytype}, nil
+	case smartblock.SmartBlockTypeWorkspaceOld:
+		return &threadDB{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
 		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
 	default:
@@ -349,6 +349,7 @@ func (s *source) PushChange(params PushChangeParams) (id string, err error) {
 				Details:        params.State.Details(),
 				ExtraRelations: params.State.ExtraRelations(),
 				ObjectTypes:    params.State.ObjectTypes(),
+				Collections:    params.State.Store(),
 			},
 			FileKeys: s.getFileHashesForSnapshot(params.FileChangedHashes),
 		}
@@ -377,7 +378,7 @@ func (v *source) ListIds() ([]string, error) {
 		return nil, err
 	}
 	ids = slice.Filter(ids, func(id string) bool {
-		if id == v.Anytype().PredefinedBlocks().Account {
+		if v.Anytype().PredefinedBlocks().IsAccount(id) {
 			return false
 		}
 		t, err := smartblock.SmartBlockTypeFromID(id)

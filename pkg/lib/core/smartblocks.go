@@ -29,19 +29,6 @@ func (a *Anytype) GetBlockCtx(ctx context.Context, id string) (SmartBlock, error
 	return smartBlock, nil
 }
 
-func (a *Anytype) DeleteBlock(id, workspaceId string) error {
-	err := a.threadService.DeleteThread(id, workspaceId)
-	if err != nil {
-		return err
-	}
-
-	if err = a.objectStore.DeleteObject(id); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (a *Anytype) GetSmartBlock(id string) (*smartBlock, error) {
 	return a.GetSmartBlockCtx(context.Background(), id)
 }

@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -47,7 +48,7 @@ type Writer interface {
 	// Creating record involves some additional operations that may change
 	// the record. So we return potentially modified record as a result.
 	// in case subscription is not nil it will be subscribed to the record updates
-	Create(relations []*model.Relation, rec Record, sub Subscription, templateId string) (Record, error)
+	Create(ctx context.Context, relations []*model.Relation, rec Record, sub Subscription, templateId string) (Record, error)
 
 	Update(id string, relations []*model.Relation, rec Record) error
 	DeleteRelationOption(id string, relKey string, optionId string) error
@@ -96,6 +97,7 @@ func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
 	var (
 		hasArchivedFilter bool
+		hasDeletedFilter  bool
 		hasTypeFilter     bool
 	)
 
@@ -108,14 +110,19 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 		if filter.RelationKey == bundle.RelationKeyType.String() {
 			hasTypeFilter = true
 		}
+
+		if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
+			hasDeletedFilter = true
+			break
+		}
 	}
 
 	if !hasArchivedFilter {
 		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
 	}
-	// always filter-out deleted objects
-	filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsDeleted.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
-
+	if !hasDeletedFilter {
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsDeleted.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
 	if !hasTypeFilter {
 		// temporarily exclude Space objects from search if we don't have explicit type filter
 		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{bundle.TypeKeySpace.URL()})})
@@ -208,10 +215,18 @@ type filterGetter struct {
 
 func (f filterGetter) Get(key string) *types.Value {
 	res := pbtypes.Get(f.curEl, key)
-	if slice.FindPos(f.dateKeys, key) != -1 {
+	if res != nil && slice.FindPos(f.dateKeys, key) != -1 {
 		res = dateOnly(res)
 	}
 	return res
+}
+
+type sortGetter struct {
+	curEl *types.Struct
+}
+
+func (f sortGetter) Get(key string) *types.Value {
+	return pbtypes.Get(f.curEl, key)
 }
 
 type filters struct {
@@ -221,7 +236,7 @@ type filters struct {
 }
 
 func (f *filters) Filter(e query.Entry) bool {
-	g := f.unmarshal(e)
+	g := f.unmarshalFilter(e)
 	if g == nil {
 		return false
 	}
@@ -233,25 +248,33 @@ func (f *filters) Compare(a, b query.Entry) int {
 	if f.order == nil {
 		return 0
 	}
-	ag := f.unmarshal(a)
+	ag := f.unmarshalSort(a)
 	if ag == nil {
 		return 0
 	}
-	bg := f.unmarshal(b)
+	bg := f.unmarshalSort(b)
 	if bg == nil {
 		return 0
 	}
 	return f.order.Compare(ag, bg)
 }
 
-func (f *filters) unmarshal(e query.Entry) filter.Getter {
+func (f *filters) unmarshalFilter(e query.Entry) filter.Getter {
+	return filterGetter{dateKeys: f.dateKeys, curEl: f.unmarshal(e)}
+}
+
+func (f *filters) unmarshalSort(e query.Entry) filter.Getter {
+	return sortGetter{curEl: f.unmarshal(e)}
+}
+
+func (f *filters) unmarshal(e query.Entry) *types.Struct {
 	var details model.ObjectDetails
 	err := proto.Unmarshal(e.Value, &details)
 	if err != nil {
 		log.Errorf("query filters decode error: %s", err.Error())
 		return nil
 	}
-	return filterGetter{dateKeys: f.dateKeys, curEl: details.Details}
+	return details.Details
 }
 
 func (f *filters) hasOrders() bool {
@@ -259,12 +282,17 @@ func (f *filters) hasOrders() bool {
 }
 
 func (f *filters) String() string {
-	var fs string
+	var filterString string
+	var orderString string
+	var separator string
 	if f.filter != nil {
-		fs = fmt.Sprintf("WHERE %v", f.filter.String())
+		filterString = fmt.Sprintf("WHERE %v", f.filter.String())
+		separator = " "
 	}
-	// TODO: order to string
-	return fs
+	if f.order != nil {
+		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.order.String())
+	}
+	return fmt.Sprintf("%s%s", filterString, orderString)
 }
 
 func dateOnly(v *types.Value) *types.Value {

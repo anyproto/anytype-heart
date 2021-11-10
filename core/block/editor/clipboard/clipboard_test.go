@@ -486,7 +486,7 @@ func TestCommonSmart_TextSlot_CommonCases(t *testing.T) {
 	})
 }
 
-func TestClipboard_PasteToTitle(t *testing.T) {
+func TestClipboard_TitleOps(t *testing.T) {
 	newTextBlock := func(text string) simple.Block {
 		return simple.New(&model.Block{
 			Content: &model.BlockContentOfText{
@@ -602,6 +602,25 @@ func TestClipboard_PasteToTitle(t *testing.T) {
 		assert.Equal(t, "first", st.Doc.Pick(rootChild[1]).Model().GetText().Text)
 		assert.Equal(t, "second", st.Doc.Pick(rootChild[2]).Model().GetText().Text)
 		assert.Equal(t, "third", st.Doc.Pick(rootChild[3]).Model().GetText().Text)
+	})
+
+	t.Run("cut from title", func(t *testing.T) {
+		st := withTitle(t, "title")
+		cb := NewClipboard(st, nil)
+		req := pb.RpcBlockCutRequest{
+			Blocks: []*model.Block{
+				st.Doc.NewState().Get("title").Model(),
+			},
+			SelectedTextRange: &model.Range{From: 1, To: 3},
+		}
+		textSlot, htmlSlot, anySlot, err := cb.Cut(nil, req)
+		require.NoError(t, err)
+		assert.Equal(t, "tle", st.Doc.Pick(template.TitleBlockId).Model().GetText().Text)
+		assert.Equal(t, "it", textSlot)
+		assert.NotContains(t, htmlSlot, ">title<")
+		assert.Contains(t, htmlSlot, ">it<")
+		require.Len(t, anySlot, 1)
+		assert.Equal(t, "it", anySlot[0].GetText().Text)
 	})
 }
 

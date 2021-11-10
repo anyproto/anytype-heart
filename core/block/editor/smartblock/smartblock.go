@@ -39,6 +39,7 @@ var (
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
 	ErrRelationOptionNotFound                      = errors.New("relation option not found")
 	ErrRelationNotFound                            = errors.New("relation not found")
+	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
 const (
@@ -58,6 +59,10 @@ const (
 	HookOnClose
 	HookOnBlockClose
 )
+
+type key int
+
+const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
 
@@ -98,6 +103,8 @@ type SmartBlock interface {
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
+	SetIsDeleted()
+	IsDeleted() bool
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
@@ -143,6 +150,7 @@ type smartBlock struct {
 	lastDepDetails map[string]*pb.EventObjectDetailsSet
 	restrictions   restriction.Restrictions
 	objectStore    objectstore.ObjectStore
+	isDeleted      bool
 
 	disableLayouts bool
 
@@ -247,6 +255,14 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
 	sb.restrictions = r
+}
+
+func (sb *smartBlock) SetIsDeleted() {
+	sb.isDeleted = true
+}
+
+func (sb *smartBlock) IsDeleted() bool {
+	return sb.isDeleted
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
@@ -565,6 +581,9 @@ func (sb *smartBlock) DisableLayouts() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
+	if sb.IsDeleted() {
+		return ErrIsDeleted
+	}
 	var sendEvent, addHistory, doSnapshot, checkRestrictions = true, true, false, true
 	for _, f := range flags {
 		switch f {
@@ -600,11 +619,9 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	}
 
 	st := sb.Doc.(*state.State)
-	if !act.IsEmpty() {
-		changes := st.GetChanges()
-		if len(changes) == 0 && !doSnapshot {
-			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
-		}
+
+	changes := st.GetChanges()
+	pushChange := func() {
 		fileDetailsKeys := st.FileRelationKeys()
 		fileDetailsKeysFiltered := fileDetailsKeys[:0]
 		for _, ch := range changes {
@@ -626,11 +643,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			return
 		}
 		sb.Doc.(*state.State).SetChangeId(id)
-
+	}
+	if !act.IsEmpty() {
+		if len(changes) == 0 && !doSnapshot {
+			log.Errorf("apply 0 changes %s: %v", st.RootId(), msgs)
+		}
+		pushChange()
 		if sb.undo != nil && addHistory {
 			act.Group = s.GroupId()
 			sb.undo.Add(act)
 		}
+	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
+		pushChange()
 	}
 	if sendEvent {
 		events := msgsToEvents(msgs)
@@ -1222,10 +1246,14 @@ func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey 
 }
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
+	if sb.IsDeleted() {
+		return ErrIsDeleted
+	}
 	s, err := f(sb.Doc)
 	if err != nil {
 		return err
 	}
+	s.InjectDerivedDetails()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err
@@ -1248,6 +1276,10 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 }
 
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
+	if sb.IsDeleted() {
+		return ErrIsDeleted
+	}
+	d.(*state.State).InjectDerivedDetails()
 	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
 	sb.Doc = d
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
@@ -1587,4 +1619,13 @@ func ApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTra
 		return
 	}
 	return sb.Apply(s, NoHistory, NoEvent, NoRestrictions, SkipIfNoChanges)
+}
+
+func hasStoreChanges(changes []*pb.ChangeContent) bool {
+	for _, ch := range changes {
+		if ch.GetStoreKeySet() != nil || ch.GetStoreKeyUnset() != nil {
+			return true
+		}
+	}
+	return false
 }

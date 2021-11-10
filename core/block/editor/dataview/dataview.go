@@ -126,16 +126,19 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 		return
 	}
 
-	if block != nil {
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Source = dvContent.Dataview.Source
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Views = dvContent.Dataview.Views
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.Relations = dvContent.Dataview.Relations
-		block.Model().GetContent().(*model.BlockContentOfDataview).Dataview.ActiveView = dvContent.Dataview.ActiveView
-	} else {
-		block = simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
-		s.Set(block)
+	if len(dvContent.Dataview.Views) > 0 {
+		dvContent.Dataview.ActiveView = dvContent.Dataview.Views[0].Id
+	}
+	blockNew := simple.New(&model.Block{Content: &dvContent, Id: blockId}).(dataview.Block)
+	d.fillAggregatedOptions(blockNew)
+	s.Set(blockNew)
+	if block == nil {
 		s.InsertTo("", 0, blockId)
 	}
+
+	dv := d.getDataviewImpl(blockNew)
+	dv.activeViewId = ""
+
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
 	return d.Apply(s)
 }
@@ -498,13 +501,7 @@ func (d *dataviewCollectionImpl) getDataviewImpl(block dataview.Block) *dataview
 		}
 	}
 
-	var activeViewId string
-	if len(block.Model().GetDataview().Views) > 0 {
-		activeViewId = block.Model().GetDataview().Views[0].Id
-		block.SetActiveView(activeViewId)
-	}
-
-	dv := &dataviewImpl{blockId: block.Model().Id, activeViewId: activeViewId, offset: 0, limit: defaultLimit}
+	dv := &dataviewImpl{blockId: block.Model().Id, activeViewId: "", offset: 0, limit: defaultLimit}
 	d.dataviews = append(d.dataviews, dv)
 	return dv
 }
@@ -561,6 +558,7 @@ func (d *dataviewCollectionImpl) UpdateView(ctx *state.Context, blockId string, 
 	} else if !pbtypes.DataviewSortsEqualSorted(oldView.Sorts, view.Sorts) {
 		needRecordRefresh = true
 	}
+	d.fillAggregatedOptions(dvBlock)
 	if err = dvBlock.SetView(viewId, view); err != nil {
 		return err
 	}
@@ -602,13 +600,14 @@ func (d *dataviewCollectionImpl) SetActiveView(ctx *state.Context, id string, ac
 
 	dv.limit = limit
 	dv.offset = offset
+	d.fillAggregatedOptions(dvBlock)
 	msgs, err := d.fetchAndGetEventsMessages(dv, dvBlock)
 	if err != nil {
 		return err
 	}
-	ctx.SetMessages(d.SmartBlock.Id(), msgs)
-	d.SmartBlock.CheckSubscriptions()
 
+	d.SmartBlock.CheckSubscriptions()
+	ctx.SetMessages(d.SmartBlock.Id(), msgs)
 	return nil
 }
 
@@ -723,7 +722,8 @@ func (d *dataviewCollectionImpl) CreateRecord(ctx *state.Context, blockId string
 			}
 		}
 	}
-	created, err := db.Create(dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
+	callerCtx := context.WithValue(context.Background(), smartblock.CallerKey, d.Id())
+	created, err := db.Create(callerCtx, dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, dv.recordsUpdatesSubscription, templateId)
 	if err != nil {
 		return nil, err
 	}
@@ -879,7 +879,6 @@ func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
 	if err != nil {
 		log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
 	}
-	d.fetchAllDataviewsRecordsAndSendEvents(ctx)
 }
 
 func (d *dataviewCollectionImpl) updateAggregatedOptionsForRelation(st *state.State, dvBlock dataview.Block, rel *model.Relation) error {
