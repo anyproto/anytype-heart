@@ -205,10 +205,12 @@ func TestBasic_InternalCut(t *testing.T) {
 	sb.AddBlock(simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}))
 	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
 	b := NewBasic(sb)
-	blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveRequest{
+	apply, blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveRequest{
 		BlockIds: []string{"1", "1.1", "1.1.1"},
 	})
 	require.NoError(t, err)
+	require.NoError(t, apply())
+
 	assert.Len(t, blocks, 3)
 }
 

@@ -405,7 +405,7 @@ var WithFirstTextBlockContent = func(text string) StateTransformer {
 			for i, chId := range root.Model().ChildrenIds {
 				if child := s.Pick(chId); child != nil {
 					if exText := child.Model().GetText(); exText != nil {
-						if text != "" &&  i == len(root.Model().ChildrenIds)-1 && exText.Text != text{
+						if text != "" && i == len(root.Model().ChildrenIds)-1 && exText.Text != text {
 							s.Get(chId).Model().GetText().Text = text
 						}
 						return
@@ -420,7 +420,6 @@ var WithFirstTextBlockContent = func(text string) StateTransformer {
 		}
 	}
 }
-
 
 var WithNoDescription = StateTransformer(func(s *state.State) {
 	s.Unlink(DescriptionBlockId)
@@ -475,6 +474,24 @@ var WithAllBlocksEditsRestricted = StateTransformer(func(s *state.State) {
 		return true
 	})
 })
+
+var WithBlockEditRestricted = func(id string) StateTransformer {
+	return StateTransformer(func(s *state.State) {
+		s.Iterate(func(b simple.Block) (isContinue bool) {
+			if b.Model().Id != id {
+				return true
+			}
+			b.Model().Restrictions = &model.BlockRestrictions{
+				Read:   false,
+				Edit:   true,
+				Remove: true,
+				Drag:   true,
+				DropOn: true,
+			}
+			return false
+		})
+	})
+}
 
 var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 	return func(s *state.State) {
@@ -618,4 +635,3 @@ func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 
 	return
 }
-
