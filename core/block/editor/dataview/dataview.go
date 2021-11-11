@@ -118,7 +118,7 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 
 		d.dataviews = filtered
 		s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-		return d.Apply(s)
+		return d.Apply(s, smartblock.NoRestrictions)
 	}
 
 	dvContent, _, err := DataviewBlockBySource(d.Anytype().ObjectStore(), source)
@@ -140,7 +140,7 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 	dv.activeViewId = ""
 
 	s.SetLocalDetail(bundle.RelationKeySetOf.String(), pbtypes.StringList(source))
-	return d.Apply(s)
+	return d.Apply(s, smartblock.NoRestrictions)
 }
 
 func (d *dataviewCollectionImpl) SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error {

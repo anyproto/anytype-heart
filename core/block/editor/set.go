@@ -68,6 +68,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyDescription.String(), bundle.RelationKeyType.String(), bundle.RelationKeySetOf.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDescription,
 		template.WithFeaturedRelations,
+		template.WithBlockEditRestricted(p.Id()),
 	}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages && p.Pick(template.DataviewBlockId) == nil {
 		dataview := model.BlockContentOfDataview{

@@ -29,7 +29,7 @@ type Basic interface {
 	SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
-	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error)
+	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (apply func() error, blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
@@ -41,7 +41,8 @@ type Basic interface {
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (blocks []simple.Block, err error) {
+// InternalCut will only unlink blocks you've cut after you call apply()
+func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (apply func() error, blocks []simple.Block, err error) {
 	s := bs.NewStateCtx(ctx)
 	var uniqMap = make(map[string]struct{})
 	for _, bId := range req.BlockIds {
@@ -53,12 +54,7 @@ func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 		}
 	}
 
-	err = bs.Apply(s)
-	if err != nil {
-		return blocks, err
-	}
-
-	return blocks, err
+	return func() error { return bs.Apply(s) }, blocks, err
 }
 
 func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {

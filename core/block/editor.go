@@ -103,11 +103,16 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 	}
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return s.DoBasic(req.TargetContextId, func(tb basic.Basic) error {
-			blocks, err := b.InternalCut(ctx, req)
+			apply, blocks, err := b.InternalCut(ctx, req)
 			if err != nil {
 				return err
 			}
-			return tb.InternalPaste(blocks)
+
+			err = tb.InternalPaste(blocks)
+			if err != nil {
+				return err
+			}
+			return apply()
 		})
 	})
 }
