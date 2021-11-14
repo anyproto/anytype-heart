@@ -3,7 +3,9 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -835,12 +837,20 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateObjectInWorkspace(ctx context.Context, workspaceId string, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
+	startTime := time.Now()
+	ev, exists := ctx.Value(ObjectCreateEvent).(*metrics.CreateObjectEvent)
 	err = s.DoWithContext(ctx, workspaceId, func(b smartblock.SmartBlock) error {
+		if exists {
+			ev.GetWorkspaceBlockWaitMs = time.Now().Sub(startTime).Milliseconds()
+		}
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
 		csm, err = workspace.CreateObject(sbType)
+		if exists {
+			ev.WorkspaceCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.GetWorkspaceBlockWaitMs
+		}
 		if err != nil {
 			return fmt.Errorf("anytype.CreateBlock error: %v", err)
 		}

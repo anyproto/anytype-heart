@@ -101,24 +101,6 @@ func (c RecordCreateEvent) ToEvent() Event {
 	}
 }
 
-type TextSmartblockEvent struct {
-	PickBlockMs int64
-	LockWaitMs  int64
-	ActionMs    int64
-}
-
-func (c TextSmartblockEvent) ToEvent() Event {
-	return Event{
-		EventType: "text_smartblock",
-		EventData: map[string]interface{}{
-			"lock_wait_time_ms": int(c.LockWaitMs),
-			"action_ms":         int(c.ActionMs),
-			"pick_block_ms":     int(c.PickBlockMs),
-			"total_ms":          int(c.LockWaitMs + c.ActionMs + c.PickBlockMs),
-		},
-	}
-}
-
 type BlockSplit struct {
 	AlgorithmMs int64
 	ApplyMs     int64
@@ -147,6 +129,48 @@ func (c BlockMerge) ToEvent() Event {
 			"algorithm_ms": int(c.AlgorithmMs),
 			"apply_ms":     int(c.ApplyMs),
 			"total_ms":     int(c.AlgorithmMs + c.ApplyMs),
+		},
+	}
+}
+
+type CreateObjectEvent struct {
+	SetDetailsMs            int64
+	GetWorkspaceBlockWaitMs int64
+	WorkspaceCreateMs       int64
+	SmartblockCreateMs      int64
+}
+
+func (c CreateObjectEvent) ToEvent() Event {
+	return Event{
+		EventType: "create_object",
+		EventData: map[string]interface{}{
+			"set_details_ms":              int(c.SetDetailsMs),
+			"get_workspace_block_wait_ms": int(c.GetWorkspaceBlockWaitMs),
+			"workspace_create_ms":         int(c.WorkspaceCreateMs),
+			"smartblock_create_ms":        int(c.SmartblockCreateMs),
+			"total_ms":                    int(c.SetDetailsMs + c.GetWorkspaceBlockWaitMs + c.WorkspaceCreateMs + c.SmartblockCreateMs),
+		},
+	}
+}
+
+type OpenBlockEvent struct {
+	GetBlockMs    int64
+	DataviewMs    int64
+	ApplyMs       int64
+	ShowMs        int64
+	FileWatcherMs int64
+}
+
+func (c OpenBlockEvent) ToEvent() Event {
+	return Event{
+		EventType: "open_block",
+		EventData: map[string]interface{}{
+			"get_block_ms":       int(c.GetBlockMs),
+			"dataview_notify_ms": int(c.DataviewMs),
+			"apply_ms":           int(c.ApplyMs),
+			"show_ms":            int(c.ShowMs),
+			"file_watchers_ms":   int(c.FileWatcherMs),
+			"total_ms":           int(c.GetBlockMs + c.DataviewMs + c.ApplyMs + c.ShowMs + c.FileWatcherMs),
 		},
 	}
 }
