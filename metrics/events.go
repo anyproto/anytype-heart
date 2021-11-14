@@ -140,6 +140,7 @@ type CreateObjectEvent struct {
 	GetWorkspaceBlockWaitMs int64
 	WorkspaceCreateMs       int64
 	SmartblockCreateMs      int64
+	SmartblockType          int
 }
 
 func (c CreateObjectEvent) ToEvent() Event {
@@ -151,6 +152,7 @@ func (c CreateObjectEvent) ToEvent() Event {
 			"workspace_create_ms":         c.WorkspaceCreateMs,
 			"smartblock_create_ms":        c.SmartblockCreateMs,
 			"total_ms":                    c.SetDetailsMs + c.GetWorkspaceBlockWaitMs + c.WorkspaceCreateMs + c.SmartblockCreateMs,
+			"smartblock_type":             c.SmartblockType,
 		},
 	}
 }

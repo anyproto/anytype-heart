@@ -854,6 +854,7 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		return id, nil, err
 	}
 	ev.SmartblockCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
+	ev.SmartblockType = int(sbType)
 	metrics.SharedClient.RecordEvent(*ev)
 	defer sb.Close()
 	return id, sb.CombinedDetails(), nil
