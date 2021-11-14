@@ -83,6 +83,87 @@ func (c ReindexEvent) ToEvent() Event {
 	}
 }
 
+type RecordCreateEvent struct {
+	NewRecordMs     int
+	LocalEventBusMs int
+	PushMs          int
+}
+
+func (c RecordCreateEvent) ToEvent() Event {
+	return Event{
+		EventType: "record_create",
+		EventData: map[string]interface{}{
+			"new_record_ms": c.NewRecordMs,
+			"local_ms":      c.LocalEventBusMs,
+			"push_ms":       c.PushMs,
+			"total_ms":      c.NewRecordMs + c.LocalEventBusMs + c.PushMs,
+		},
+	}
+}
+
+type TextSmartblockEvent struct {
+	PickBlockMs int64
+	LockWaitMs  int64
+	ActionMs    int64
+}
+
+func (c TextSmartblockEvent) ToEvent() Event {
+	return Event{
+		EventType: "text_smartblock",
+		EventData: map[string]interface{}{
+			"lock_wait_time_ms": int(c.LockWaitMs),
+			"action_ms":         int(c.ActionMs),
+			"pick_block_ms":     int(c.PickBlockMs),
+			"total_ms":          int(c.LockWaitMs + c.ActionMs + c.PickBlockMs),
+		},
+	}
+}
+
+type BlockSplit struct {
+	AlgorithmMs int64
+	ApplyMs     int64
+}
+
+func (c BlockSplit) ToEvent() Event {
+	return Event{
+		EventType: "block_merge",
+		EventData: map[string]interface{}{
+			"algorithm_ms": int(c.AlgorithmMs),
+			"apply_ms":     int(c.ApplyMs),
+			"total_ms":     int(c.AlgorithmMs + c.ApplyMs),
+		},
+	}
+}
+
+type BlockMerge struct {
+	AlgorithmMs int64
+	ApplyMs     int64
+}
+
+func (c BlockMerge) ToEvent() Event {
+	return Event{
+		EventType: "block_split",
+		EventData: map[string]interface{}{
+			"algorithm_ms": int(c.AlgorithmMs),
+			"apply_ms":     int(c.ApplyMs),
+			"total_ms":     int(c.AlgorithmMs + c.ApplyMs),
+		},
+	}
+}
+
+type ProcessThreadsEvent struct {
+	WaitTimeMs int64
+}
+
+func (c ProcessThreadsEvent) ToEvent() Event {
+	return Event{
+		EventType: "process_threads",
+		EventData: map[string]interface{}{
+			"wait_time_ms": int(c.WaitTimeMs),
+		},
+	}
+}
+
 type AccountRecoverEvent struct {
 	SpentMs              int
 	TotalThreads         int

@@ -2,6 +2,7 @@ package stext
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"sort"
 	"strings"
 	"time"
@@ -63,6 +64,7 @@ func (t *textImpl) UpdateTextBlocks(ctx *state.Context, ids []string, showEvent 
 }
 
 func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error) {
+	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 	tb, err := getText(s, req.BlockId)
 	if err != nil {
@@ -137,13 +139,20 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 			return
 		}
 	}
+	algorithmMs := time.Now().Sub(startTime).Milliseconds()
 	if err = t.Apply(s); err != nil {
 		return
 	}
+	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
+	metrics.SharedClient.RecordEvent(metrics.BlockSplit{
+		AlgorithmMs: algorithmMs,
+		ApplyMs:     applyMs,
+	})
 	return
 }
 
 func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err error) {
+	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 	first, err := getText(s, firstId)
 	if err != nil {
@@ -158,7 +167,16 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	}
 	s.Unlink(second.Model().Id)
 	first.Model().ChildrenIds = append(first.Model().ChildrenIds, second.Model().ChildrenIds...)
-	return t.Apply(s)
+	algorithmMs := time.Now().Sub(startTime).Milliseconds()
+	if err = t.Apply(s); err != nil {
+		return
+	}
+	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
+	metrics.SharedClient.RecordEvent(metrics.BlockMerge{
+		AlgorithmMs: algorithmMs,
+		ApplyMs:     applyMs,
+	})
+	return
 }
 
 func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) (err error) {

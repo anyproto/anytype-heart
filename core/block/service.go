@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/gogo/protobuf/proto"
 	"net/url"
 	"strings"
@@ -1057,15 +1058,25 @@ func (s *service) DoClipboard(id string, apply func(b clipboard.Clipboard) error
 }
 
 func (s *service) DoText(id string, apply func(b stext.Text) error) error {
+	startTime := time.Now()
 	sb, release, err := s.pickBlock(context.TODO(), id)
+	pickBlockMs := time.Now().Sub(startTime).Milliseconds()
 	if err != nil {
 		return err
 	}
 	defer release()
 	if bb, ok := sb.(stext.Text); ok {
 		sb.Lock()
+		lockWaitMs := time.Now().Sub(startTime).Milliseconds() - pickBlockMs
 		defer sb.Unlock()
-		return apply(bb)
+		err = apply(bb)
+		applyMs := time.Now().Sub(startTime).Milliseconds() - pickBlockMs - lockWaitMs
+		metrics.SharedClient.RecordEvent(metrics.TextSmartblockEvent{
+			PickBlockMs: pickBlockMs,
+			LockWaitMs:  lockWaitMs,
+			ActionMs:    applyMs,
+		})
+		return err
 	}
 	return fmt.Errorf("text operation not available for this block type: %T", sb)
 }

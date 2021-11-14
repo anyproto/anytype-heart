@@ -41,6 +41,14 @@ func (t *threadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
 	})
 }
 
+func (t *threadsMetrics) CreateRecord(beforeMs int, busMs int, pushMs int) {
+	t.client.RecordEvent(RecordCreateEvent{
+		NewRecordMs:     beforeMs,
+		LocalEventBusMs: busMs,
+		PushMs:          pushMs,
+	})
+}
+
 var (
 	Enabled       bool
 	once          sync.Once
