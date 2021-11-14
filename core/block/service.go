@@ -361,12 +361,14 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		}
 	}
 	afterHashesTime := time.Now()
+	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
-		GetBlockMs:    afterSmartBlockTime.Sub(startTime).Milliseconds(),
-		DataviewMs:    afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
-		ApplyMs:       afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
-		ShowMs:        afterShowTime.Sub(afterApplyTime).Milliseconds(),
-		FileWatcherMs: afterHashesTime.Sub(afterShowTime).Milliseconds(),
+		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
+		DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
+		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
+		ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
+		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
+		SmartblockType: int(tp),
 	})
 	return nil
 }

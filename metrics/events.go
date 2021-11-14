@@ -77,26 +77,28 @@ func (c ReindexEvent) ToEvent() Event {
 			"spent_ms":   c.SpentMs,
 			"total":      c.Total,
 			"failed":     c.Total - c.Success,
-			"type":       int(c.ReindexType),
+			"type":       c.ReindexType,
 			"ix_removed": c.IndexesRemoved,
 		},
 	}
 }
 
 type RecordCreateEvent struct {
-	NewRecordMs     int
-	LocalEventBusMs int
-	PushMs          int
+	PrepareMs       int64
+	NewRecordMs     int64
+	LocalEventBusMs int64
+	PushMs          int64
 }
 
 func (c RecordCreateEvent) ToEvent() Event {
 	return Event{
 		EventType: "record_create",
 		EventData: map[string]interface{}{
+			"prepare_ms":    c.PrepareMs,
 			"new_record_ms": c.NewRecordMs,
 			"local_ms":      c.LocalEventBusMs,
 			"push_ms":       c.PushMs,
-			"total_ms":      c.NewRecordMs + c.LocalEventBusMs + c.PushMs,
+			"total_ms":      c.PrepareMs + c.NewRecordMs + c.LocalEventBusMs + c.PushMs,
 		},
 	}
 }
@@ -110,9 +112,9 @@ func (c BlockSplit) ToEvent() Event {
 	return Event{
 		EventType: "block_merge",
 		EventData: map[string]interface{}{
-			"algorithm_ms": int(c.AlgorithmMs),
-			"apply_ms":     int(c.ApplyMs),
-			"total_ms":     int(c.AlgorithmMs + c.ApplyMs),
+			"algorithm_ms": c.AlgorithmMs,
+			"apply_ms":     c.ApplyMs,
+			"total_ms":     c.AlgorithmMs + c.ApplyMs,
 		},
 	}
 }
@@ -126,9 +128,9 @@ func (c BlockMerge) ToEvent() Event {
 	return Event{
 		EventType: "block_split",
 		EventData: map[string]interface{}{
-			"algorithm_ms": int(c.AlgorithmMs),
-			"apply_ms":     int(c.ApplyMs),
-			"total_ms":     int(c.AlgorithmMs + c.ApplyMs),
+			"algorithm_ms": c.AlgorithmMs,
+			"apply_ms":     c.ApplyMs,
+			"total_ms":     c.AlgorithmMs + c.ApplyMs,
 		},
 	}
 }
@@ -144,33 +146,35 @@ func (c CreateObjectEvent) ToEvent() Event {
 	return Event{
 		EventType: "create_object",
 		EventData: map[string]interface{}{
-			"set_details_ms":              int(c.SetDetailsMs),
-			"get_workspace_block_wait_ms": int(c.GetWorkspaceBlockWaitMs),
-			"workspace_create_ms":         int(c.WorkspaceCreateMs),
-			"smartblock_create_ms":        int(c.SmartblockCreateMs),
-			"total_ms":                    int(c.SetDetailsMs + c.GetWorkspaceBlockWaitMs + c.WorkspaceCreateMs + c.SmartblockCreateMs),
+			"set_details_ms":              c.SetDetailsMs,
+			"get_workspace_block_wait_ms": c.GetWorkspaceBlockWaitMs,
+			"workspace_create_ms":         c.WorkspaceCreateMs,
+			"smartblock_create_ms":        c.SmartblockCreateMs,
+			"total_ms":                    c.SetDetailsMs + c.GetWorkspaceBlockWaitMs + c.WorkspaceCreateMs + c.SmartblockCreateMs,
 		},
 	}
 }
 
 type OpenBlockEvent struct {
-	GetBlockMs    int64
-	DataviewMs    int64
-	ApplyMs       int64
-	ShowMs        int64
-	FileWatcherMs int64
+	GetBlockMs     int64
+	DataviewMs     int64
+	ApplyMs        int64
+	ShowMs         int64
+	FileWatcherMs  int64
+	SmartblockType int
 }
 
 func (c OpenBlockEvent) ToEvent() Event {
 	return Event{
 		EventType: "open_block",
 		EventData: map[string]interface{}{
-			"get_block_ms":       int(c.GetBlockMs),
-			"dataview_notify_ms": int(c.DataviewMs),
-			"apply_ms":           int(c.ApplyMs),
-			"show_ms":            int(c.ShowMs),
-			"file_watchers_ms":   int(c.FileWatcherMs),
-			"total_ms":           int(c.GetBlockMs + c.DataviewMs + c.ApplyMs + c.ShowMs + c.FileWatcherMs),
+			"get_block_ms":       c.GetBlockMs,
+			"dataview_notify_ms": c.DataviewMs,
+			"apply_ms":           c.ApplyMs,
+			"show_ms":            c.ShowMs,
+			"file_watchers_ms":   c.FileWatcherMs,
+			"total_ms":           c.GetBlockMs + c.DataviewMs + c.ApplyMs + c.ShowMs + c.FileWatcherMs,
+			"smartblock_type":    c.SmartblockType,
 		},
 	}
 }
@@ -183,7 +187,7 @@ func (c ProcessThreadsEvent) ToEvent() Event {
 	return Event{
 		EventType: "process_threads",
 		EventData: map[string]interface{}{
-			"wait_time_ms": int(c.WaitTimeMs),
+			"wait_time_ms": c.WaitTimeMs,
 		},
 	}
 }
