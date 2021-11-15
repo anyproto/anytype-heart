@@ -14510,7 +14510,6 @@ Adds new document to subscriptions
 | id | [string](#string) |  | object id |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | object details |
 | afterId | [string](#string) |  | id of previous doc in order, empty means first |
-| counters | [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters) |  |  |
 
 
 
@@ -14559,7 +14558,6 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
-| counters | [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters) |  |  |
 
 
 
@@ -16229,7 +16227,7 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | AnytypeProfile | 515 |  |
 | Date | 516 |  |
 | WorkspaceOld | 517 | deprecated thread-based workspace |
-| Workspace | 279 |  |
+| Workspace | 518 |  |
 
 
  

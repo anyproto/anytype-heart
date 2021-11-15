@@ -2,8 +2,8 @@ package subscription
 
 import (
 	"errors"
+	"sort"
 
-	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/huandu/skiplist"
 )
@@ -41,6 +41,9 @@ type subscription struct {
 
 func (s *subscription) fill(entries []*entry) (err error) {
 	s.skl = skiplist.New(s)
+
+	// sort list for faster adding to skiplist - x3 boost for fill op
+	sort.Sort(entrySorter{s: s, entries: entries})
 
 	for _, e := range entries {
 		s.cache.set(e)
@@ -81,38 +84,163 @@ func (s *subscription) onChangeBatch(ctx *opCtx, entries ...*entry) {
 }
 
 func (s *subscription) onChange(ctx *opCtx, e *entry) (countersChange bool) {
-	afterInSet := true
+	newInSet := true
 	if s.filter != nil {
-		afterInSet = s.filter.FilterObject(e)
+		newInSet = s.filter.FilterObject(e)
 	}
-	inSet, inActive := s.lookup(e.id)
-
-	if inSet && !afterInSet {
-		s.remove(ctx, inActive)
+	curInSet, currInActive := s.lookup(s.cache.pick(e.id))
+	if !curInSet && !newInSet {
+		return false
+	}
+	if curInSet && !newInSet {
+		if currInActive {
+			s.removeActive(ctx, e)
+		} else {
+			s.removeNonActive(e.id)
+		}
 		return true
 	}
-	if !inSet && afterInSet {
-		s.add(ctx)
-		return true
+	if !curInSet && newInSet {
+		return s.add(ctx, e)
 	}
+	if curInSet && newInSet {
+		return s.change(ctx, e, currInActive)
+	}
+	panic("subscription: check algo")
+}
 
+func (s *subscription) removeNonActive(id string) {
+	e := s.cache.pick(id)
+	if s.afterEl != nil {
+		if comp := s.Compare(s.afterEl.Key(), s.skl.Get(e).Key()); comp <= 0 {
+			if comp == 0 {
+				s.afterEl = s.afterEl.Prev()
+				if s.afterEl != nil {
+					s.afterId = s.afterEl.Key().(*entry).id
+				}
+			}
+		}
+	} else if s.beforeEl != nil {
+		if comp := s.Compare(s.beforeEl.Key(), s.skl.Get(e).Key()); comp >= 0 {
+			if comp == 0 {
+				s.beforeEl = s.beforeEl.Next()
+				if s.beforeEl != nil {
+					s.beforeId = s.beforeEl.Key().(*entry).id
+				}
+			}
+		}
+	}
+	s.skl.Remove(e)
+	s.cache.release(e.id)
+}
+
+func (s *subscription) removeActive(ctx *opCtx, e *entry) {
+	s.skl.Remove(s.cache.pick(e.id))
+	s.cache.release(e.id)
+	ctx.remove = append(ctx.remove, opRemove{
+		id:    e.id,
+		subId: s.id,
+	})
+	s.alignAdd(ctx)
+}
+
+func (s *subscription) add(ctx *opCtx, e *entry) (countersChange bool) {
+	s.skl.Set(e, nil)
+	s.cache.get(e.id)
+	_, inActive := s.lookup(e)
+	if inActive {
+		var afterId string
+		if prev := s.skl.Get(e).Prev(); prev != nil {
+			afterId = prev.Key().(*entry).id
+		}
+		ctx.add = append(ctx.add, opChange{
+			id:      e.id,
+			subId:   s.id,
+			keys:    s.keys,
+			afterId: afterId,
+		})
+		return false
+	}
+	return true
+}
+
+func (s *subscription) change(ctx *opCtx, e *entry, currInActive bool) (countersChange bool) {
+	var currAfterId string
+	if currInActive {
+		if prev := s.skl.Get(s.cache.pick(e.id)).Prev(); prev != nil {
+			currAfterId = prev.Key().(*entry).id
+		}
+	}
+	s.skl.Remove(s.cache.pick(e.id))
+	s.skl.Set(e, nil)
+	_, newInActive := s.lookup(e)
+	if newInActive {
+		var newAfterId string
+		if prev := s.skl.Get(e).Prev(); prev != nil {
+			newAfterId = prev.Key().(*entry).id
+		}
+		if currAfterId != newAfterId {
+			ctx.position = append(ctx.position, opPosition{
+				id:      e.id,
+				subId:   s.id,
+				afterId: newAfterId,
+			})
+		}
+		if !currInActive {
+			countersChange = true
+		}
+		ctx.change = append(ctx.change, opChange{
+			id:    e.id,
+			subId: s.id,
+			keys:  s.keys,
+		})
+	} else {
+		if currInActive {
+			ctx.remove = append(ctx.remove, opRemove{
+				id:    e.id,
+				subId: s.id,
+			})
+			s.alignAdd(ctx)
+		}
+		countersChange = true
+	}
 	return
 }
 
-func (s *subscription) onRemove(events []*pb.EventMessage, id string) []*pb.EventMessage {
-	return events
+func (s *subscription) alignAdd(ctx *opCtx) {
+	if s.limit > 0 {
+		if s.afterEl != nil {
+			var i int
+			var next = s.afterEl
+			for {
+				next = next.Next()
+				if next == nil || i == s.limit {
+					break
+				}
+				i++
+			}
+			if next != nil {
+				ctx.add = append(ctx.add, opChange{
+					id:    next.Key().(*entry).id,
+					subId: s.id,
+					keys:  s.keys,
+				})
+			}
+		} else if s.beforeEl != nil {
+			ctx.add = append(ctx.add, opChange{
+				id:    s.beforeEl.Key().(*entry).id,
+				subId: s.id,
+				keys:  s.keys,
+			})
+			s.beforeEl = s.beforeEl.Next()
+			if s.beforeEl != nil {
+				s.beforeId = s.beforeEl.Key().(*entry).id
+			}
+		}
+	}
 }
 
-func (s *subscription) remove(ctx *opCtx, active bool) {
-
-}
-
-func (s *subscription) add(ctx *opCtx) {
-
-}
-
-func (s *subscription) lookup(id string) (inSet, inActive bool) {
-	e := s.cache.pick(id)
+func (s *subscription) lookup(e *entry) (inSet, inActive bool) {
 	if e == nil {
 		return
 	}
@@ -259,4 +387,21 @@ func (s *subscription) close() {
 		s.cache.release(el.Key().(*entry).id)
 		el = el.Next()
 	}
+}
+
+type entrySorter struct {
+	entries []*entry
+	s       *subscription
+}
+
+func (e entrySorter) Len() int {
+	return len(e.entries)
+}
+
+func (e entrySorter) Less(i, j int) bool {
+	return e.s.Compare(e.entries[i], e.entries[j]) == -1
+}
+
+func (e entrySorter) Swap(i, j int) {
+	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
 }

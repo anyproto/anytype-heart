@@ -1,14 +1,15 @@
 package subscription
 
 type opChange struct {
-	id    string
-	subId string
-	keys  []string
+	id      string
+	subId   string
+	keys    []string
+	afterId string
 }
 
 type opRemove struct {
-	opCounter
-	id string
+	id    string
+	subId string
 }
 
 type opPosition struct {

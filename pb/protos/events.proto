@@ -133,13 +133,11 @@ message Event {
                 string id = 1; // object id
                 google.protobuf.Struct details = 2; // object details
                 string afterId = 3; // id of previous doc in order, empty means first
-                Counters counters = 4;
             }
 
             // Removes document from subscription
             message Remove {
                 string id = 1; // object id
-                Counters counters = 2;
             }
 
             // Indicates new position of document
