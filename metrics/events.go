@@ -123,6 +123,45 @@ func (c BlockSplit) ToEvent() Event {
 	}
 }
 
+type TreeBuild struct {
+	TimeMs   int64
+	ObjectId string
+}
+
+func (c TreeBuild) ToEvent() Event {
+	return Event{
+		EventType: "tree_build",
+		EventData: map[string]interface{}{
+			"object_id": c.ObjectId,
+			"time_ms":   c.TimeMs,
+		},
+	}
+}
+
+type StateApply struct {
+	BeforeApplyMs  int64
+	StateApplyMs   int64
+	PushChangeMs   int64
+	ReportChangeMs int64
+	ApplyHookMs    int64
+	ObjectId       string
+}
+
+func (c StateApply) ToEvent() Event {
+	return Event{
+		EventType: "state_apply",
+		EventData: map[string]interface{}{
+			"before_ms": c.BeforeApplyMs,
+			"apply_ms":  c.StateApplyMs,
+			"push_ms":   c.PushChangeMs,
+			"report_ms": c.ReportChangeMs,
+			"hook_ms":   c.ApplyHookMs,
+			"object_id": c.ObjectId,
+			"total_ms":  c.StateApplyMs + c.PushChangeMs + c.BeforeApplyMs + c.ApplyHookMs + c.ReportChangeMs,
+		},
+	}
+}
+
 type BlockMerge struct {
 	AlgorithmMs int64
 	ApplyMs     int64
