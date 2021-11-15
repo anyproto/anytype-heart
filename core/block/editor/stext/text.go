@@ -145,6 +145,7 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 	}
 	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
 	metrics.SharedClient.RecordEvent(metrics.BlockSplit{
+		ObjectId:    t.Id(),
 		AlgorithmMs: algorithmMs,
 		ApplyMs:     applyMs,
 	})
@@ -173,6 +174,7 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	}
 	applyMs := time.Now().Sub(startTime).Milliseconds() - algorithmMs
 	metrics.SharedClient.RecordEvent(metrics.BlockMerge{
+		ObjectId:    t.Id(),
 		AlgorithmMs: algorithmMs,
 		ApplyMs:     applyMs,
 	})

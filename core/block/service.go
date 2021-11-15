@@ -363,6 +363,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	afterHashesTime := time.Now()
 	tp, _ := coresb.SmartBlockTypeFromID(id)
 	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
+		ObjectId:       id,
 		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
 		DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
 		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
@@ -855,6 +856,7 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	}
 	ev.SmartblockCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
 	ev.SmartblockType = int(sbType)
+	ev.ObjectId = id
 	metrics.SharedClient.RecordEvent(*ev)
 	defer sb.Close()
 	return id, sb.CombinedDetails(), nil

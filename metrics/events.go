@@ -88,12 +88,14 @@ type RecordCreateEvent struct {
 	NewRecordMs     int64
 	LocalEventBusMs int64
 	PushMs          int64
+	ThreadId        string
 }
 
 func (c RecordCreateEvent) ToEvent() Event {
 	return Event{
 		EventType: "record_create",
 		EventData: map[string]interface{}{
+			"thread_id":     c.ThreadId,
 			"prepare_ms":    c.PrepareMs,
 			"new_record_ms": c.NewRecordMs,
 			"local_ms":      c.LocalEventBusMs,
@@ -106,12 +108,14 @@ func (c RecordCreateEvent) ToEvent() Event {
 type BlockSplit struct {
 	AlgorithmMs int64
 	ApplyMs     int64
+	ObjectId    string
 }
 
 func (c BlockSplit) ToEvent() Event {
 	return Event{
 		EventType: "block_merge",
 		EventData: map[string]interface{}{
+			"object_id":    c.ObjectId,
 			"algorithm_ms": c.AlgorithmMs,
 			"apply_ms":     c.ApplyMs,
 			"total_ms":     c.AlgorithmMs + c.ApplyMs,
@@ -122,12 +126,14 @@ func (c BlockSplit) ToEvent() Event {
 type BlockMerge struct {
 	AlgorithmMs int64
 	ApplyMs     int64
+	ObjectId    string
 }
 
 func (c BlockMerge) ToEvent() Event {
 	return Event{
 		EventType: "block_split",
 		EventData: map[string]interface{}{
+			"object_id":    c.ObjectId,
 			"algorithm_ms": c.AlgorithmMs,
 			"apply_ms":     c.ApplyMs,
 			"total_ms":     c.AlgorithmMs + c.ApplyMs,
@@ -141,6 +147,7 @@ type CreateObjectEvent struct {
 	WorkspaceCreateMs       int64
 	SmartblockCreateMs      int64
 	SmartblockType          int
+	ObjectId                string
 }
 
 func (c CreateObjectEvent) ToEvent() Event {
@@ -153,6 +160,7 @@ func (c CreateObjectEvent) ToEvent() Event {
 			"smartblock_create_ms":        c.SmartblockCreateMs,
 			"total_ms":                    c.SetDetailsMs + c.GetWorkspaceBlockWaitMs + c.WorkspaceCreateMs + c.SmartblockCreateMs,
 			"smartblock_type":             c.SmartblockType,
+			"object_id":                   c.ObjectId,
 		},
 	}
 }
@@ -164,12 +172,14 @@ type OpenBlockEvent struct {
 	ShowMs         int64
 	FileWatcherMs  int64
 	SmartblockType int
+	ObjectId       string
 }
 
 func (c OpenBlockEvent) ToEvent() Event {
 	return Event{
 		EventType: "open_block",
 		EventData: map[string]interface{}{
+			"object_id":          c.ObjectId,
 			"get_block_ms":       c.GetBlockMs,
 			"dataview_notify_ms": c.DataviewMs,
 			"apply_ms":           c.ApplyMs,
