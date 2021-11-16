@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/gogo/protobuf/types"
 
@@ -115,7 +116,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}
 	case *pb.EventMessageValueOfBlockDataviewViewOrder:
 		if err = apply(o.BlockDataviewViewOrder.Id, func(b simple.Block) error {
-			if f, ok := b.(dataview.Block); ok  {
+			if f, ok := b.(dataview.Block); ok {
 				f.SetViewOrder(o.BlockDataviewViewOrder.ViewIds)
 				return nil
 			}
@@ -189,8 +190,12 @@ func WrapEventMessages(virtual bool, msgs []*pb.EventMessage) []simple.EventMess
 	return wmsgs
 }
 
-// StructDiffIntoEvents converts map into events. nil map value converts to Remove event
 func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.EventMessage) {
+	return StructDiffIntoEventsWithSubIds(contextId, diff, nil, nil)
+}
+
+// StructDiffIntoEvents converts map into events. nil map value converts to Remove event
+func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys []string, subIds []string) (msgs []*pb.EventMessage) {
 	if diff == nil || len(diff.Fields) == 0 {
 		return nil
 	}
@@ -200,6 +205,9 @@ func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.Even
 	)
 
 	for k, v := range diff.Fields {
+		if len(keys) > 0 && slice.FindPos(keys, k) == -1 {
+			continue
+		}
 		if v == nil {
 			removed = append(removed, k)
 			continue
@@ -212,6 +220,7 @@ func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.Even
 				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
 					Id:      contextId,
 					Details: details,
+					SubIds: subIds,
 				},
 			},
 		})
@@ -222,6 +231,7 @@ func StructDiffIntoEvents(contextId string, diff *types.Struct) (msgs []*pb.Even
 				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
 					Id:   contextId,
 					Keys: removed,
+					SubIds: subIds,
 				},
 			},
 		})

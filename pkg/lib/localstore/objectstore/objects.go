@@ -334,6 +334,8 @@ type dsObjectStore struct {
 	// serializing page updates
 	l sync.Mutex
 
+	onChangeCallback func(record database.Record)
+
 	subscriptions    []database.Subscription
 	depSubscriptions []database.Subscription
 }
@@ -860,6 +862,48 @@ func (m *dsObjectStore) Query(sch schema.Schema, q database.Query) (records []da
 	}
 
 	return results, total, nil
+}
+
+func (m *dsObjectStore) QueryRaw(dsq query.Query) (records []database.Record, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	dsq.Prefix = pagesDetailsBase.String() + "/"
+
+	res, err := txn.Query(dsq)
+	if err != nil {
+		return nil, fmt.Errorf("error when querying ds: %w", err)
+	}
+
+	for rec := range res.Next() {
+		var details model.ObjectDetails
+		if err = proto.Unmarshal(rec.Value, &details); err != nil {
+			log.Errorf("failed to unmarshal: %s", err.Error())
+			continue
+		}
+
+		key := ds.NewKey(rec.Key)
+		keyList := key.List()
+		id := keyList[len(keyList)-1]
+
+		if details.Details == nil || details.Details.Fields == nil {
+			details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		} else {
+			pb.StructDeleteEmptyFields(details.Details)
+		}
+
+		details.Details.Fields[database.RecordIDField] = pb.ToValue(id)
+		records = append(records, database.Record{Details: details.Details})
+	}
+	return
+}
+
+func (m *dsObjectStore) SubscribeForAll(callback func(rec database.Record)) {
+	m.l.Lock()
+	m.onChangeCallback = callback
+	m.l.Unlock()
 }
 
 func (m *dsObjectStore) QueryObjectInfo(q database.Query, objectTypes []smartblock.SmartBlockType) (results []*model.ObjectInfo, total int, err error) {
@@ -1676,6 +1720,11 @@ func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.
 func (m *dsObjectStore) sendUpdatesToSubscriptions(id string, details *types.Struct) {
 	detCopy := pbtypes.CopyStruct(details)
 	detCopy.Fields[database.RecordIDField] = pb.ToValue(id)
+	if m.onChangeCallback != nil {
+		m.onChangeCallback(database.Record{
+			Details: detCopy,
+		})
+	}
 	for i := range m.subscriptions {
 		go func(sub database.Subscription) {
 			_ = sub.Publish(id, detCopy)

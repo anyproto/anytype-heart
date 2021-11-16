@@ -2,9 +2,9 @@ package subscription
 
 import (
 	"errors"
-	"sort"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
 )
 
@@ -41,9 +41,6 @@ type subscription struct {
 
 func (s *subscription) fill(entries []*entry) (err error) {
 	s.skl = skiplist.New(s)
-
-	// sort list for faster adding to skiplist - x3 boost for fill op
-	sort.Sort(entrySorter{s: s, entries: entries})
 
 	for _, e := range entries {
 		s.cache.set(e)
@@ -159,6 +156,7 @@ func (s *subscription) add(ctx *opCtx, e *entry) (countersChange bool) {
 			keys:    s.keys,
 			afterId: afterId,
 		})
+		s.alignRemove(ctx)
 		return false
 	}
 	return true
@@ -209,24 +207,7 @@ func (s *subscription) change(ctx *opCtx, e *entry, currInActive bool) (counters
 
 func (s *subscription) alignAdd(ctx *opCtx) {
 	if s.limit > 0 {
-		if s.afterEl != nil {
-			var i int
-			var next = s.afterEl
-			for {
-				next = next.Next()
-				if next == nil || i == s.limit {
-					break
-				}
-				i++
-			}
-			if next != nil {
-				ctx.add = append(ctx.add, opChange{
-					id:    next.Key().(*entry).id,
-					subId: s.id,
-					keys:  s.keys,
-				})
-			}
-		} else if s.beforeEl != nil {
+		if s.beforeEl != nil {
 			ctx.add = append(ctx.add, opChange{
 				id:    s.beforeEl.Key().(*entry).id,
 				subId: s.id,
@@ -235,6 +216,70 @@ func (s *subscription) alignAdd(ctx *opCtx) {
 			s.beforeEl = s.beforeEl.Next()
 			if s.beforeEl != nil {
 				s.beforeId = s.beforeEl.Key().(*entry).id
+			}
+		} else {
+			var i int
+			var next = s.afterEl
+			if next == nil {
+				next = s.skl.Front()
+			} else {
+				next = next.Next()
+			}
+			for next != nil {
+				i++
+				if i == s.limit {
+					break
+				}
+				next = next.Next()
+			}
+			if next != nil {
+				afterId := ""
+				prev := next.Prev()
+				if prev != nil {
+					afterId = prev.Key().(*entry).id
+				}
+				ctx.add = append(ctx.add, opChange{
+					id:      next.Key().(*entry).id,
+					afterId: afterId,
+					subId:   s.id,
+					keys:    s.keys,
+				})
+			}
+		}
+	}
+}
+
+func (s *subscription) alignRemove(ctx *opCtx) {
+	if s.limit > 0 {
+		if s.beforeEl != nil {
+			ctx.remove = append(ctx.remove, opRemove{
+				id:    s.beforeEl.Key().(*entry).id,
+				subId: s.id,
+			})
+			s.beforeEl = s.beforeEl.Prev()
+			if s.beforeEl != nil {
+				s.beforeId = s.beforeEl.Key().(*entry).id
+			}
+		} else {
+			var i int
+			var next = s.afterEl
+			if next == nil {
+				next = s.skl.Front()
+			} else {
+				next = next.Next()
+			}
+			for next != nil {
+				if i == s.limit {
+					break
+				}
+				next = next.Next()
+				i++
+			}
+			if next != nil {
+				ctx.remove = append(ctx.remove, opRemove{
+					id:    next.Key().(*entry).id,
+					subId: s.id,
+				})
 			}
 		}
 	}
@@ -353,6 +398,35 @@ func (s *subscription) inDistance(el *skiplist.Element, id string, distance int,
 		}
 	}
 	return false
+}
+
+func (s *subscription) getActiveRecords() (res []*types.Struct) {
+	if s.beforeEl != nil {
+		var el = s.beforeEl.Prev()
+		for el != nil {
+			res = append(res, el.Key().(*entry).data)
+			if s.limit > 0 && len(res) >= s.limit {
+				break
+			}
+			el = el.Prev()
+		}
+		for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+			res[i], res[j] = res[j], res[i]
+		}
+	} else {
+		var el = s.skl.Front()
+		if s.afterEl != nil {
+			el = s.afterEl.Next()
+		}
+		for el != nil {
+			res = append(res, el.Key().(*entry).data)
+			if s.limit > 0 && len(res) >= s.limit {
+				break
+			}
+			el = el.Next()
+		}
+	}
+	return
 }
 
 // Compare implements sliplist.Comparable

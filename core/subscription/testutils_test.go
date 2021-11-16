@@ -49,6 +49,17 @@ func assertCtxAdd(t *testing.T, ctx *opCtx, id, afterId string) {
 	assert.True(t, found, fmt.Sprintf("add id %v not found", id))
 }
 
+func assertCtxPosition(t *testing.T, ctx *opCtx, id, afterId string) {
+	var found bool
+	for _, pos := range ctx.position {
+		if pos.id == id {
+			found = true
+			assert.Equal(t, afterId, pos.afterId, "pos after id not equal")
+		}
+	}
+	assert.True(t, found, fmt.Sprintf("pos id %v not found", id))
+}
+
 func assertCtxCounters(t *testing.T, ctx *opCtx, counter opCounter) {
 	for _, c := range ctx.counters {
 		assert.Equal(t, counter, c)
@@ -65,5 +76,18 @@ func assertCtxRemove(t *testing.T, ctx *opCtx, ids ...string) {
 			}
 		}
 		assert.True(t, found, fmt.Sprintf("remove id %v not found", id))
+	}
+}
+
+func assertCtxChange(t *testing.T, ctx *opCtx, ids ...string) {
+	for _, id := range ids {
+		var found bool
+		for _, change := range ctx.change {
+			if change.id == id {
+				found = true
+				break
+			}
+		}
+		assert.True(t, found, fmt.Sprintf("change id %v not found", id))
 	}
 }

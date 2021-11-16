@@ -3,6 +3,10 @@ package subscription
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -254,12 +258,74 @@ func TestSubscription_Add(t *testing.T) {
 			genEntry("afterId2", 10),
 		}
 
-		ctx := &opCtx{}
+		ctx := newOpCtx()
+		defer ctx.close()
 		sub.onChangeBatch(ctx, newEntries...)
 		assertCtxAdd(t, ctx, "newActiveId1", "id3")
 		assertCtxAdd(t, ctx, "newActiveId2", "newActiveId1")
 		assertCtxRemove(t, ctx, "id5", "id6")
 		assertCtxCounters(t, ctx, opCounter{total: 14, prevCount: 4, nextCount: 7})
+		t.Logf("%#v", ctx)
+	})
+}
+
+func TestSubscription_Remove(t *testing.T) {
+	newSub := func() *subscription {
+		return &subscription{
+			order:   testOrder,
+			cache:   newCache(),
+			limit:   3,
+			afterId: "id3",
+			filter: filter.Not{filter.Eq{
+				Key:   "order",
+				Cond:  model.BlockContentDataviewFilter_Equal,
+				Value: pbtypes.Int64(100),
+			}},
+		}
+	}
+	t.Run("remove active", func(t *testing.T) {
+		sub := newSub()
+		require.NoError(t, sub.fill(genEntries(9, false)))
+		ctx := newOpCtx()
+		defer ctx.close()
+		sub.onChangeBatch(ctx, &entry{
+			id:   "id4",
+			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
+		})
+		assertCtxRemove(t, ctx, "id4")
+		assertCtxCounters(t, ctx, opCounter{total: 8, prevCount: 3, nextCount: 2})
+		assertCtxAdd(t, ctx, "id7", "id6")
+	})
+	t.Run("remove non active", func(t *testing.T) {
+		sub := newSub()
+		require.NoError(t, sub.fill(genEntries(9, false)))
+		ctx := newOpCtx()
+		defer ctx.close()
+		sub.onChangeBatch(ctx, &entry{
+			id:   "id1",
+			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
+		})
+		assertCtxCounters(t, ctx, opCounter{total: 8, prevCount: 2, nextCount: 3})
+	})
+}
+
+func TestSubscription_Change(t *testing.T) {
+	t.Run("change active order", func(t *testing.T) {
+		sub := &subscription{
+			order:   testOrder,
+			cache:   newCache(),
+			limit:   3,
+			afterId: "id3",
+		}
+		require.NoError(t, sub.fill(genEntries(9, false)))
+		ctx := newOpCtx()
+		defer ctx.close()
+		sub.onChangeBatch(ctx, &entry{
+			id:   "id4",
+			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(6)}},
+		})
+		assertCtxPosition(t, ctx, "id4", "id5")
+		assertCtxChange(t, ctx, "id4")
 	})
 }
 

@@ -30,6 +30,11 @@ message Event {
             Object.Remove objectRemove = 54;
             Object.Show objectShow = 30;
 
+            Object.Subscription.Add subscriptionAdd = 60;
+            Object.Subscription.Remove subscriptionRemove = 61;
+            Object.Subscription.Position subscriptionPosition = 62;
+            Object.Subscription.Counters subscriptionCounters = 63;
+
             Block.Add blockAdd = 2;
             Block.Delete blockDelete = 3;
             Block.FilesUpload filesUpload = 4;
@@ -131,8 +136,7 @@ message Event {
             // Adds new document to subscriptions
             message Add {
                 string id = 1; // object id
-                google.protobuf.Struct details = 2; // object details
-                string afterId = 3; // id of previous doc in order, empty means first
+                string afterId = 2; // id of previous doc in order, empty means first
             }
 
             // Removes document from subscription
