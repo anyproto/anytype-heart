@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -15,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -159,6 +161,10 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 
 func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 	// TODO: this should be removed probably in the future?
+	if p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
+		return fmt.Errorf("highlighting not supported for the account space")
+	}
+
 	st := p.NewState()
 	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
 	return p.Apply(st)
@@ -264,6 +270,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithFeaturedRelations,
 		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
 			template.WithDetail(bundle.RelationKeyIsHidden, pbtypes.Bool(true))),
+		template.WithCondition(p.Anytype().PredefinedBlocks().IsAccount(p.Id()),
+			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, false),
 		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, false),
@@ -280,7 +288,9 @@ func (p *Workspaces) updateObjects() {
 	st := p.NewState()
 
 	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
+	startTime := time.Now()
 	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
+	metrics.SharedClient.RecordEvent(metrics.ProcessThreadsEvent{WaitTimeMs: time.Now().Sub(startTime).Milliseconds()})
 	if !p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
 		storedParameters := p.workspaceParametersFromRecords(p.storedRecordsForWorkspace())
 		// we ignore the workspace object itself
@@ -369,7 +379,7 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 		}
 
 		// TODO: we need to move it to another service, but now it is what it is
-		go func(id string) {
+		go func(id string, params WorkspaceParameters) {
 			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
@@ -383,7 +393,7 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 			}); err != nil {
 				log.Errorf("workspace: can't set detail to object: %v", err)
 			}
-		}(id)
+		}(id, *params)
 	}
 }
 

@@ -37,7 +37,8 @@ type SmartTest struct {
 	TestRestrictions restriction.Restrictions
 	sync.Mutex
 	state.Doc
-	os *testMock.MockObjectStore
+	isDeleted bool
+	os        *testMock.MockObjectStore
 }
 
 func (st *SmartTest) DocService() doc.Service {
@@ -46,6 +47,14 @@ func (st *SmartTest) DocService() doc.Service {
 
 func (st *SmartTest) ObjectStore() objectstore.ObjectStore {
 	return st.os
+}
+
+func (st *SmartTest) SetIsDeleted() {
+	st.isDeleted = true
+}
+
+func (st *SmartTest) IsDeleted() bool {
+	return st.isDeleted
 }
 
 func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {

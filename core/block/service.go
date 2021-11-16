@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/gogo/protobuf/proto"
 	"net/url"
 	"strings"
@@ -75,6 +76,10 @@ func init() {
 		uploadFilesLimiter <- struct{}{}
 	}
 }
+
+type EventKey int
+
+const ObjectCreateEvent EventKey = 0
 
 type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
@@ -156,6 +161,7 @@ type Service interface {
 	Redo(ctx *state.Context, req pb.RpcBlockRedoRequest) (pb.RpcBlockUndoRedoCounter, error)
 
 	SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) error
+	SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) error
 	SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) error
 	SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) error
 
@@ -296,7 +302,13 @@ func (s *service) initPredefinedBlocks() {
 		sb, err := s.newSmartBlock(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
-				log.Errorf("can't init predefined block: %v", err)
+				if id == s.anytype.PredefinedBlocks().Account {
+					log.With("thread", id).Errorf("can't init predefined account thread: %v", err)
+				}
+				if id == s.anytype.PredefinedBlocks().AccountOld {
+					log.With("thread", id).Errorf("can't init predefined old account thread: %v", err)
+				}
+				log.With("thread", id).Errorf("can't init predefined block: %v", err)
 			}
 		} else {
 			sb.Close()
@@ -309,10 +321,12 @@ func (s *service) Anytype() core.Service {
 }
 
 func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
+	startTime := time.Now()
 	ob, err := s.getSmartblock(context.TODO(), id)
 	if err != nil {
 		return
 	}
+	afterSmartBlockTime := time.Now()
 	defer s.cache.Release(id)
 	ob.Lock()
 	defer ob.Unlock()
@@ -320,16 +334,17 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
 	}
-
+	afterDataviewTime := time.Now()
 	st := ob.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
-
+	afterApplyTime := time.Now()
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
+	afterShowTime := time.Now()
 	s.cache.Lock(id)
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
@@ -345,6 +360,17 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 			ob.AddHook(func() { s.status.Unwatch(tid) }, smartblock.HookOnClose)
 		}
 	}
+	afterHashesTime := time.Now()
+	tp, _ := coresb.SmartBlockTypeFromID(id)
+	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
+		ObjectId:       id,
+		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
+		DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
+		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
+		ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
+		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
+		SmartblockType: int(tp),
+	})
 	return nil
 }
 
@@ -547,6 +573,36 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 	})
 }
 
+// SetPagesIsFavorite is deprecated
+func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) (err error) {
+	return s.Do(s.anytype.PredefinedBlocks().Home, func(b smartblock.SmartBlock) error {
+		fav, ok := b.(collection.Collection)
+		if !ok {
+			return fmt.Errorf("unexpected home block type: %T", b)
+		}
+
+		anySucceed := false
+		for _, blockId := range req.ObjectIds {
+			if req.IsFavorite {
+				err = fav.AddObject(blockId)
+			} else {
+				err = fav.RemoveObject(blockId)
+			}
+			if err != nil {
+				log.Errorf("failed to favorite object %s: %s", blockId, err.Error())
+			} else {
+				anySucceed = true
+			}
+		}
+
+		if !anySucceed {
+			return err
+		}
+
+		return nil
+	})
+}
+
 func (s *service) objectLinksCollectionModify(collectionId string, objectId string, value bool) error {
 	return s.Do(collectionId, func(b smartblock.SmartBlock) error {
 		coll, ok := b.(collection.Collection)
@@ -638,7 +694,7 @@ func (s *service) DeleteObject(id string) (err error) {
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
 		workspaceId, err = s.anytype.GetWorkspaceIdForObject(id)
-		if err == core.ErrObjectDoesNotBelongToWorkspace {
+		if workspaceId == "" {
 			workspaceId = s.anytype.PredefinedBlocks().Account
 		}
 		isFavorite = pbtypes.GetBool(st.LocalDetails(), bundle.RelationKeyIsFavorite.String())
@@ -648,6 +704,7 @@ func (s *service) DeleteObject(id string) (err error) {
 		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
 			return err
 		}
+		b.SetIsDeleted()
 		return nil
 	})
 
@@ -718,6 +775,7 @@ func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 }
 
 func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
+	startTime := time.Now()
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {
 		objectTypes = createState.ObjectTypes()
@@ -776,6 +834,10 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
+	ev := &metrics.CreateObjectEvent{
+		SetDetailsMs: time.Now().Sub(startTime).Milliseconds(),
+	}
+	ctx = context.WithValue(ctx, ObjectCreateEvent, ev)
 	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -792,6 +854,10 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	if sb, err = s.newSmartBlock(id, initCtx); err != nil {
 		return id, nil, err
 	}
+	ev.SmartblockCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
+	ev.SmartblockType = int(sbType)
+	ev.ObjectId = id
+	metrics.SharedClient.RecordEvent(*ev)
 	defer sb.Close()
 	return id, sb.CombinedDetails(), nil
 }

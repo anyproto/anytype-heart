@@ -26,16 +26,30 @@ func validateRelationFormat(rel *model.Relation, v *types.Value) error {
 			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
 		}
 		return nil
-	case model.RelationFormat_status, model.RelationFormat_tag:
+	case model.RelationFormat_status:
+		if _, ok := v.Kind.(*types.Value_StringValue); ok {
+
+		} else if _, ok := v.Kind.(*types.Value_ListValue); !ok {
+			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
+		}
+
+		vals := pbtypes.GetStringListValue(v)
+		if len(vals) > 1 {
+			return fmt.Errorf("status should not contain more than one value")
+		}
+		return validateOptions(rel.SelectDict, vals)
+
+	case model.RelationFormat_tag:
 		if _, ok := v.Kind.(*types.Value_ListValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of list", v.Kind)
 		}
 
-		if rel.MaxCount > 0 && len(v.GetListValue().Values) > int(rel.MaxCount) {
+		vals := pbtypes.GetStringListValue(v)
+		if rel.MaxCount > 0 && len(vals) > int(rel.MaxCount) {
 			return fmt.Errorf("maxCount exceeded")
 		}
 
-		return validateOptions(rel.SelectDict, v.GetListValue().Values)
+		return validateOptions(rel.SelectDict, vals)
 	case model.RelationFormat_date:
 		if _, ok := v.Kind.(*types.Value_NumberValue); !ok {
 			return fmt.Errorf("incorrect type: %T instead of number", v.Kind)
@@ -118,14 +132,12 @@ func validateRelationFormat(rel *model.Relation, v *types.Value) error {
 	}
 }
 
-func validateOptions(opts []*model.RelationOption, vals []*types.Value) error {
-	for i, lv := range vals {
-		if optId, ok := lv.Kind.(*types.Value_StringValue); !ok {
-			return fmt.Errorf("incorrect list item value at index %d: %T", i, lv.Kind)
-		} else if optId.StringValue == "" {
+func validateOptions(opts []*model.RelationOption, vals []string) error {
+	for i, v := range vals {
+		if v == "" {
 			return fmt.Errorf("empty option at index %d", i)
-		} else if opt := pbtypes.GetOption(opts, optId.StringValue); opt == nil {
-			return fmt.Errorf("option with id %s not found", optId.StringValue)
+		} else if opt := pbtypes.GetOption(opts, v); opt == nil {
+			return fmt.Errorf("option with id %s not found", v)
 		}
 	}
 

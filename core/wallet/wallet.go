@@ -3,6 +3,7 @@ package wallet
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"io/ioutil"
@@ -74,6 +75,9 @@ func (r *wallet) Init(a *app.App) (err error) {
 
 	if r.deviceKeypair != nil {
 		logging.SetHost(r.deviceKeypair.Address())
+	}
+	if r.accountKeypair != nil {
+		metrics.SharedClient.SetUserId(r.accountKeypair.Address())
 	}
 	return nil
 }

@@ -134,6 +134,16 @@
     "source": "details"
   },
   {
+    "description": "Adds the object to the highlighted dataview in space",
+    "format": "checkbox",
+    "hidden": true,
+    "key": "isHighlighted",
+    "maxCount": 1,
+    "name": "Highlighted",
+    "readonly": false,
+    "source": "account"
+  },
+  {
     "format": "file",
     "hidden": false,
     "key": "thumbnailImage",
@@ -906,16 +916,6 @@
     "source": "account"
   },
   {
-    "description": "Adds the object to the highlighted dataview in space",
-    "format": "checkbox",
-    "hidden": true,
-    "key": "isHighlighted",
-    "maxCount": 1,
-    "name": "Highlighted",
-    "readonly": false,
-    "source": "account"
-  },
-  {
     "format": "object",
     "hidden": false,
     "key": "stars",
@@ -1467,7 +1467,7 @@
   },
   {
     "format": "longtext",
-    "hidden": false,
+    "hidden": true,
     "key": "job",
     "maxCount": 1,
     "name": "Job",

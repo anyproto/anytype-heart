@@ -97,17 +97,37 @@ func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 }
 
 func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.BlockContentDataviewFilter {
-	var hasArchivedFilter bool
+	var (
+		hasArchivedFilter bool
+		hasDeletedFilter  bool
+		hasTypeFilter     bool
+	)
+
 	for _, filter := range filters {
 		// include archived objects if we have explicit filter about it
 		if filter.RelationKey == bundle.RelationKeyIsArchived.String() {
 			hasArchivedFilter = true
+		}
+
+		if filter.RelationKey == bundle.RelationKeyType.String() {
+			hasTypeFilter = true
+		}
+
+		if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
+			hasDeletedFilter = true
 			break
 		}
 	}
 
 	if !hasArchivedFilter {
 		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsArchived.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
+	if !hasDeletedFilter {
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyIsDeleted.String(), Condition: model.BlockContentDataviewFilter_NotEqual, Value: pbtypes.Bool(true)})
+	}
+	if !hasTypeFilter {
+		// temporarily exclude Space objects from search if we don't have explicit type filter
+		filters = append(filters, &model.BlockContentDataviewFilter{RelationKey: bundle.RelationKeyType.String(), Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{bundle.TypeKeySpace.URL()})})
 	}
 	return filters
 }
@@ -264,7 +284,17 @@ func (f *Filters) hasOrders() bool {
 }
 
 func (f *Filters) String() string {
-	return fmt.Sprintf("WHERE %v ORDER BY %v", f.FilterObj.String(), f.Order.String())
+	var filterString string
+	var orderString string
+	var separator string
+	if f.FilterObj != nil {
+		filterString = fmt.Sprintf("WHERE %v", f.FilterObj.String())
+		separator = " "
+	}
+	if f.Order != nil {
+		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.Order.String())
+	}
+	return fmt.Sprintf("%s%s", filterString, orderString)
 }
 
 func dateOnly(v *types.Value) *types.Value {

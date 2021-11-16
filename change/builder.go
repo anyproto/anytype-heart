@@ -45,6 +45,7 @@ type stateBuilder struct {
 	tree            *Tree
 	smartblock      core.SmartBlock
 	qt              time.Duration
+	qr              int64
 	onlyMeta        bool
 	beforeId        string
 	includeBeforeId bool
@@ -367,11 +368,19 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 		return nil, fmt.Errorf("no smarblock in builder")
 	}
 	st := time.Now()
-	sr, err := sb.smartblock.GetRecord(context.Background(), id)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
+	defer cancel()
+	sr, err := sb.smartblock.GetRecord(ctx, id)
+	s := time.Since(st)
 	if err != nil {
+		log.With("thread", sb.smartblock.ID()).Errorf("failed to loadChange %s after %.1fs. Total %.1f(%d records were loaded)", id, s.Seconds(), sb.qt.Seconds(), sb.qr)
 		return
 	}
-	sb.qt += time.Since(st)
+	sb.qt += s
+	sb.qr++
+	if sb.qt.Seconds() > 3 {
+		log.With("thread", sb.smartblock.ID()).Debugf("long loadChange %.1fs for %s. Total %.1f(%d records)", s.Seconds(), id, sb.qt.Seconds(), sb.qr)
+	}
 	chp := new(pb.Change)
 	if err = sr.Unmarshal(chp); err != nil {
 		return

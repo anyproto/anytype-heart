@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -39,6 +40,7 @@ var (
 	ErrCantInitExistingSmartblockWithNonEmptyState = errors.New("can't init existing smartblock with non-empty state")
 	ErrRelationOptionNotFound                      = errors.New("relation option not found")
 	ErrRelationNotFound                            = errors.New("relation not found")
+	ErrIsDeleted                                   = errors.New("smartblock is deleted")
 )
 
 const (
@@ -102,6 +104,8 @@ type SmartBlock interface {
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
+	SetIsDeleted()
+	IsDeleted() bool
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
@@ -147,6 +151,7 @@ type smartBlock struct {
 	lastDepDetails map[string]*pb.EventObjectDetailsSet
 	restrictions   restriction.Restrictions
 	objectStore    objectstore.ObjectStore
+	isDeleted      bool
 
 	disableLayouts bool
 
@@ -251,6 +256,14 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
 	sb.restrictions = r
+}
+
+func (sb *smartBlock) SetIsDeleted() {
+	sb.isDeleted = true
+}
+
+func (sb *smartBlock) IsDeleted() bool {
+	return sb.isDeleted
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
@@ -569,6 +582,10 @@ func (sb *smartBlock) DisableLayouts() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
+	startTime := time.Now()
+	if sb.IsDeleted() {
+		return ErrIsDeleted
+	}
 	var sendEvent, addHistory, doSnapshot, checkRestrictions = true, true, false, true
 	for _, f := range flags {
 		switch f {
@@ -598,11 +615,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
+	beforeApplyStateTime := time.Now()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
 	}
-
+	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
 	changes := st.GetChanges()
@@ -641,6 +659,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
 		pushChange()
 	}
+	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
@@ -658,8 +677,21 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
-
+	afterReportChangeTime := time.Now()
 	sb.execHooks(HookAfterApply)
+	afterApplyHookTime := time.Now()
+
+	// if apply takes to long we want to record it
+	if afterApplyHookTime.Sub(startTime).Milliseconds() > 100 {
+		metrics.SharedClient.RecordEvent(metrics.StateApply{
+			BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
+			StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
+			PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
+			ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
+			ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
+			ObjectId:       sb.Id(),
+		})
+	}
 	return
 }
 
@@ -713,7 +745,7 @@ func (sb *smartBlock) Anytype() core.Service {
 
 func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
-	detCopy := pbtypes.CopyStruct(s.Details())
+	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
 	if detCopy == nil || detCopy.Fields == nil {
 		detCopy = &types.Struct{
 			Fields: make(map[string]*types.Value),
@@ -1231,10 +1263,14 @@ func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey 
 }
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {
+	if sb.IsDeleted() {
+		return ErrIsDeleted
+	}
 	s, err := f(sb.Doc)
 	if err != nil {
 		return err
 	}
+	s.InjectDerivedDetails()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err
@@ -1257,6 +1293,10 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 }
 
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
+	if sb.IsDeleted() {
+		return ErrIsDeleted
+	}
+	d.(*state.State).InjectDerivedDetails()
 	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
 	sb.Doc = d
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
