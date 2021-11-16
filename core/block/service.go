@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/gogo/protobuf/proto"
 	"net/url"
 	"strings"
@@ -75,6 +76,10 @@ func init() {
 		uploadFilesLimiter <- struct{}{}
 	}
 }
+
+type EventKey int
+
+const ObjectCreateEvent EventKey = 0
 
 type Service interface {
 	Do(id string, apply func(b smartblock.SmartBlock) error) error
@@ -316,10 +321,12 @@ func (s *service) Anytype() core.Service {
 }
 
 func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
+	startTime := time.Now()
 	ob, err := s.getSmartblock(context.TODO(), id)
 	if err != nil {
 		return
 	}
+	afterSmartBlockTime := time.Now()
 	defer s.cache.Release(id)
 	ob.Lock()
 	defer ob.Unlock()
@@ -327,16 +334,17 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	if v, hasOpenListner := ob.SmartBlock.(smartblock.SmartblockOpenListner); hasOpenListner {
 		v.SmartblockOpened(ctx)
 	}
-
+	afterDataviewTime := time.Now()
 	st := ob.NewState()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
 	}
-
+	afterApplyTime := time.Now()
 	if err = ob.Show(ctx); err != nil {
 		return
 	}
+	afterShowTime := time.Now()
 	s.cache.Lock(id)
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
@@ -352,6 +360,17 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 			ob.AddHook(func() { s.status.Unwatch(tid) }, smartblock.HookOnClose)
 		}
 	}
+	afterHashesTime := time.Now()
+	tp, _ := coresb.SmartBlockTypeFromID(id)
+	metrics.SharedClient.RecordEvent(metrics.OpenBlockEvent{
+		ObjectId:       id,
+		GetBlockMs:     afterSmartBlockTime.Sub(startTime).Milliseconds(),
+		DataviewMs:     afterDataviewTime.Sub(afterSmartBlockTime).Milliseconds(),
+		ApplyMs:        afterApplyTime.Sub(afterDataviewTime).Milliseconds(),
+		ShowMs:         afterShowTime.Sub(afterApplyTime).Milliseconds(),
+		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
+		SmartblockType: int(tp),
+	})
 	return nil
 }
 
@@ -756,6 +775,7 @@ func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 }
 
 func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
+	startTime := time.Now()
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {
 		objectTypes = createState.ObjectTypes()
@@ -814,6 +834,10 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Int64(time.Now().Unix()))
 	createState.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(s.anytype.ProfileID()))
 
+	ev := &metrics.CreateObjectEvent{
+		SetDetailsMs: time.Now().Sub(startTime).Milliseconds(),
+	}
+	ctx = context.WithValue(ctx, ObjectCreateEvent, ev)
 	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
@@ -830,6 +854,10 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	if sb, err = s.newSmartBlock(id, initCtx); err != nil {
 		return id, nil, err
 	}
+	ev.SmartblockCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.SetDetailsMs - ev.WorkspaceCreateMs - ev.GetWorkspaceBlockWaitMs
+	ev.SmartblockType = int(sbType)
+	ev.ObjectId = id
+	metrics.SharedClient.RecordEvent(*ev)
 	defer sb.Close()
 	return id, sb.CombinedDetails(), nil
 }

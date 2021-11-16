@@ -191,11 +191,21 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 			}
 		}()
 	}
+	startTime := time.Now()
 	if s.metaOnly {
 		s.tree, s.logHeads, err = change.BuildMetaTree(s.sb)
 	} else {
 		s.tree, s.logHeads, err = change.BuildTree(s.sb)
 	}
+	treeBuildTime := time.Now().Sub(startTime).Milliseconds()
+	// if the build time is large enough we should record it
+	if treeBuildTime > 100 {
+		metrics.SharedClient.RecordEvent(metrics.TreeBuild{
+			TimeMs:   treeBuildTime,
+			ObjectId: s.id,
+		})
+	}
+
 	if allowEmpty && err == change.ErrEmpty {
 		err = nil
 		s.tree = new(change.Tree)

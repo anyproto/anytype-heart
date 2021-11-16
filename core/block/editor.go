@@ -3,7 +3,9 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -103,11 +105,16 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 	}
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return s.DoBasic(req.TargetContextId, func(tb basic.Basic) error {
-			blocks, err := b.InternalCut(ctx, req)
+			apply, blocks, err := b.InternalCut(ctx, req)
 			if err != nil {
 				return err
 			}
-			return tb.InternalPaste(blocks)
+
+			err = tb.InternalPaste(blocks)
+			if err != nil {
+				return err
+			}
+			return apply()
 		})
 	})
 }
@@ -305,9 +312,15 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 }
 
 func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (rec *types.Struct, err error) {
-	workspaceId, err := s.anytype.GetWorkspaceIdForObject(req.ContextId)
-	if err != nil {
-		threads.WorkspaceLogger.Debugf("cannot get workspace id for object: %v", err)
+	var workspaceId string
+	sbt, err := coresb.SmartBlockTypeFromID(req.ContextId)
+	if err == nil && sbt == coresb.SmartBlockTypeWorkspace {
+		workspaceId = req.ContextId
+	} else {
+		workspaceId, err = s.anytype.GetWorkspaceIdForObject(req.ContextId)
+		if err != nil {
+			threads.WorkspaceLogger.Debugf("cannot get workspace id for object: %v", err)
+		}
 	}
 	if workspaceId != "" {
 		if req.Record == nil {
@@ -824,12 +837,20 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 }
 
 func (s *service) CreateObjectInWorkspace(ctx context.Context, workspaceId string, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
+	startTime := time.Now()
+	ev, exists := ctx.Value(ObjectCreateEvent).(*metrics.CreateObjectEvent)
 	err = s.DoWithContext(ctx, workspaceId, func(b smartblock.SmartBlock) error {
+		if exists {
+			ev.GetWorkspaceBlockWaitMs = time.Now().Sub(startTime).Milliseconds()
+		}
 		workspace, ok := b.(*editor.Workspaces)
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
 		csm, err = workspace.CreateObject(sbType)
+		if exists {
+			ev.WorkspaceCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.GetWorkspaceBlockWaitMs
+		}
 		if err != nil {
 			return fmt.Errorf("anytype.CreateBlock error: %v", err)
 		}

@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
@@ -15,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -286,7 +288,9 @@ func (p *Workspaces) updateObjects() {
 	st := p.NewState()
 
 	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
+	startTime := time.Now()
 	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
+	metrics.SharedClient.RecordEvent(metrics.ProcessThreadsEvent{WaitTimeMs: time.Now().Sub(startTime).Milliseconds()})
 	if !p.Anytype().PredefinedBlocks().IsAccount(p.Id()) {
 		storedParameters := p.workspaceParametersFromRecords(p.storedRecordsForWorkspace())
 		// we ignore the workspace object itself

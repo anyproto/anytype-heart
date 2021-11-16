@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -581,6 +582,7 @@ func (sb *smartBlock) DisableLayouts() {
 }
 
 func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
+	startTime := time.Now()
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
@@ -613,11 +615,12 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		// this one will be reverted in case we don't have any actual change being made
 		s.SetLastModified(time.Now().Unix(), sb.Anytype().Account())
 	}
+	beforeApplyStateTime := time.Now()
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return
 	}
-
+	afterApplyStateTime := time.Now()
 	st := sb.Doc.(*state.State)
 
 	changes := st.GetChanges()
@@ -656,6 +659,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	} else if hasStoreChanges(changes) { // TODO: change to len(changes) > 0
 		pushChange()
 	}
+	afterPushChangeTime := time.Now()
 	if sendEvent {
 		events := msgsToEvents(msgs)
 		if ctx := s.Context(); ctx != nil {
@@ -673,8 +677,21 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
-
+	afterReportChangeTime := time.Now()
 	sb.execHooks(HookAfterApply)
+	afterApplyHookTime := time.Now()
+
+	// if apply takes to long we want to record it
+	if afterApplyHookTime.Sub(startTime).Milliseconds() > 100 {
+		metrics.SharedClient.RecordEvent(metrics.StateApply{
+			BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
+			StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
+			PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
+			ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
+			ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
+			ObjectId:       sb.Id(),
+		})
+	}
 	return
 }
 
@@ -728,7 +745,7 @@ func (sb *smartBlock) Anytype() core.Service {
 
 func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
-	detCopy := pbtypes.CopyStruct(s.Details())
+	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
 	if detCopy == nil || detCopy.Fields == nil {
 		detCopy = &types.Struct{
 			Fields: make(map[string]*types.Value),
