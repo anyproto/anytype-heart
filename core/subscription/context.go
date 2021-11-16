@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 var ctxPool = &sync.Pool{New: func() interface{} {
@@ -153,10 +154,14 @@ func (ctx *opCtx) detailsEvents(c *cache, entries []*entry) (msgs []*pb.EventMes
 		curr := getEntry(info.id)
 		if curr == nil {
 			log.Errorf("entry present in changes but not in list: %v", info.id)
-			break
+			continue
 		}
 		prev := c.pick(info.id)
-		diff := pbtypes.StructDiff(prev.data, curr.data)
+		var prevData *types.Struct
+		if prev != nil {
+			prevData = prev.data
+		}
+		diff := pbtypes.StructDiff(prevData, curr.data)
 		msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
 	}
 	return
