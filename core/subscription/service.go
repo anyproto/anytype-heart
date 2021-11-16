@@ -172,6 +172,7 @@ func (s *service) onChange(entries []*entry) {
 	for _, sub := range s.subscriptions {
 		sub.onChangeBatch(ctx, entries...)
 	}
+	log.Debugf("handle %d etries; ctx: %#v", len(entries), ctx)
 	events := ctx.apply(s.cache, entries)
 	for _, e := range events {
 		s.sendEvent(e)

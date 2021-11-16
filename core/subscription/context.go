@@ -129,6 +129,14 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	for _, e := range entries {
 		c.set(e)
 	}
+
+	events = make([]*pb.Event, 0, len(byEventsContext))
+	for contextId, messages := range byEventsContext {
+		events = append(events, &pb.Event{
+			Messages:  messages,
+			ContextId: contextId,
+		})
+	}
 	return
 }
 
