@@ -258,8 +258,7 @@ func TestSubscription_Add(t *testing.T) {
 			genEntry("afterId2", 10),
 		}
 
-		ctx := newOpCtx()
-		defer ctx.close()
+		ctx := &opCtx{}
 		sub.onChangeBatch(ctx, newEntries...)
 		assertCtxAdd(t, ctx, "newActiveId1", "id3")
 		assertCtxAdd(t, ctx, "newActiveId2", "newActiveId1")
@@ -286,8 +285,7 @@ func TestSubscription_Remove(t *testing.T) {
 	t.Run("remove active", func(t *testing.T) {
 		sub := newSub()
 		require.NoError(t, sub.fill(genEntries(9, false)))
-		ctx := newOpCtx()
-		defer ctx.close()
+		ctx := &opCtx{}
 		sub.onChangeBatch(ctx, &entry{
 			id:   "id4",
 			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
@@ -299,8 +297,7 @@ func TestSubscription_Remove(t *testing.T) {
 	t.Run("remove non active", func(t *testing.T) {
 		sub := newSub()
 		require.NoError(t, sub.fill(genEntries(9, false)))
-		ctx := newOpCtx()
-		defer ctx.close()
+		ctx := &opCtx{}
 		sub.onChangeBatch(ctx, &entry{
 			id:   "id1",
 			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
@@ -318,8 +315,7 @@ func TestSubscription_Change(t *testing.T) {
 			afterId: "id3",
 		}
 		require.NoError(t, sub.fill(genEntries(9, false)))
-		ctx := newOpCtx()
-		defer ctx.close()
+		ctx := &opCtx{}
 		sub.onChangeBatch(ctx, &entry{
 			id:   "id4",
 			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(6)}},

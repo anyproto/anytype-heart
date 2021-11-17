@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 	"github.com/huandu/skiplist"
 )
@@ -404,7 +405,7 @@ func (s *subscription) getActiveRecords() (res []*types.Struct) {
 	if s.beforeEl != nil {
 		var el = s.beforeEl.Prev()
 		for el != nil {
-			res = append(res, el.Key().(*entry).data)
+			res = append(res, pbtypes.StructFilterKeys(el.Key().(*entry).data, s.keys))
 			if s.limit > 0 && len(res) >= s.limit {
 				break
 			}
@@ -419,7 +420,7 @@ func (s *subscription) getActiveRecords() (res []*types.Struct) {
 			el = s.afterEl.Next()
 		}
 		for el != nil {
-			res = append(res, el.Key().(*entry).data)
+			res = append(res, pbtypes.StructFilterKeys(el.Key().(*entry).data, s.keys))
 			if s.limit > 0 && len(res) >= s.limit {
 				break
 			}

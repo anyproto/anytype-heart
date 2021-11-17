@@ -3278,7 +3278,6 @@ message Rpc {
                 repeated string objectTypeFilter = 6; // deprecated, to be removed
                 // needed keys in details for return, when empty - will return all
                 repeated string keys = 7;
-                bool ignoreWorkspace = 8;
             }
 
             message Response {
@@ -3367,8 +3366,6 @@ message Rpc {
                 int32 limit = 5;
                 // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
                 repeated string keys = 6;
-
-                bool ignoreWorkspace = 8;
 
                 // (optional) pagination: middleware will return results after given id
                 string afterId = 9;

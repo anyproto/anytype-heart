@@ -1,22 +1,12 @@
 package subscription
 
 import (
-	"sync"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
-
-var ctxPool = &sync.Pool{New: func() interface{} {
-	return &opCtx{}
-}}
-
-func newOpCtx() *opCtx {
-	return ctxPool.Get().(*opCtx)
-}
 
 type opChange struct {
 	id      string
@@ -60,7 +50,7 @@ type opCtx struct {
 
 func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	var byEventsContext = make(map[string][]*pb.EventMessage)
-	var appentToContext = func(contextId string, msg ...*pb.EventMessage) {
+	var appendToContext = func(contextId string, msg ...*pb.EventMessage) {
 		msgs, ok := byEventsContext[contextId]
 		if ok {
 			byEventsContext[contextId] = append(msgs, msg...)
@@ -72,7 +62,7 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	// adds
 	for _, add := range ctx.add {
 		ctx.collectKeys(add.id, add.subId, add.keys)
-		appentToContext(add.subId, &pb.EventMessage{
+		appendToContext(add.subId, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionAdd{
 				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
 					Id:      add.id,
@@ -88,11 +78,11 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	}
 
 	// details events
-	appentToContext("", ctx.detailsEvents(c, entries)...)
+	appendToContext("", ctx.detailsEvents(c, entries)...)
 
 	// positions
 	for _, pos := range ctx.position {
-		appentToContext(pos.subId, &pb.EventMessage{
+		appendToContext(pos.subId, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionPosition{
 				SubscriptionPosition: &pb.EventObjectSubscriptionPosition{
 					Id:      pos.id,
@@ -104,7 +94,7 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 
 	// removes
 	for _, rem := range ctx.remove {
-		appentToContext(rem.subId, &pb.EventMessage{
+		appendToContext(rem.subId, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionRemove{
 				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
 					Id: rem.id,
@@ -115,7 +105,7 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 
 	// counters
 	for _, count := range ctx.counters {
-		appentToContext(count.subId, &pb.EventMessage{
+		appendToContext(count.subId, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionCounters{
 				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 					Total:     int64(count.total),
@@ -132,6 +122,15 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	}
 
 	events = make([]*pb.Event, 0, len(byEventsContext))
+
+	// event with details must be first to send
+	if messages, ok := byEventsContext[""]; ok {
+		events = append(events, &pb.Event{
+			Messages: messages,
+		})
+		delete(byEventsContext, "")
+	}
+
 	for contextId, messages := range byEventsContext {
 		events = append(events, &pb.Event{
 			Messages:  messages,
@@ -194,12 +193,11 @@ func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
 	}
 }
 
-func (ctx *opCtx) close() {
+func (ctx *opCtx) reset() {
 	ctx.remove = ctx.remove[:0]
 	ctx.change = ctx.change[:0]
 	ctx.add = ctx.add[:0]
 	ctx.position = ctx.position[:0]
 	ctx.counters = ctx.counters[:0]
 	ctx.keysBuf = ctx.keysBuf[:0]
-	ctxPool.Put(ctx)
 }

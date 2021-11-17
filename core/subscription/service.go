@@ -41,7 +41,8 @@ type service struct {
 	objectStore objectstore.ObjectStore
 	sendEvent   func(e *pb.Event)
 
-	m sync.Mutex
+	m      sync.Mutex
+	ctxBuf *opCtx
 }
 
 func (s *service) Init(a *app.App) (err error) {
@@ -50,6 +51,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
+	s.ctxBuf = &opCtx{}
 	return
 }
 
@@ -75,7 +77,6 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		Sorts:             req.Sorts,
 		Limit:             int(req.Limit),
 		FullText:          req.FullText,
-		SearchInWorkspace: !req.IgnoreWorkspace,
 	}
 
 	filter, err := database.NewFilters(q, nil)
@@ -167,13 +168,12 @@ func (s *service) recordsHandler() {
 func (s *service) onChange(entries []*entry) {
 	s.m.Lock()
 	defer s.m.Unlock()
-	ctx := newOpCtx()
-	defer ctx.close()
+	s.ctxBuf.reset()
 	for _, sub := range s.subscriptions {
-		sub.onChangeBatch(ctx, entries...)
+		sub.onChangeBatch(s.ctxBuf, entries...)
 	}
-	log.Debugf("handle %d etries; ctx: %#v", len(entries), ctx)
-	events := ctx.apply(s.cache, entries)
+	log.Debugf("handle %d etries; ctx: %#v", len(entries), s.ctxBuf)
+	events := s.ctxBuf.apply(s.cache, entries)
 	for _, e := range events {
 		s.sendEvent(e)
 	}

@@ -8796,7 +8796,6 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 deprecated, to be removed |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
-| ignoreWorkspace | [bool](#bool) |  |  |
 
 
 
@@ -8859,7 +8858,6 @@ deprecated, to be removed |
 | fullText | [string](#string) |  | fulltext query (optional) |
 | limit | [int32](#int32) |  | results limit |
 | keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
-| ignoreWorkspace | [bool](#bool) |  |  |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 
