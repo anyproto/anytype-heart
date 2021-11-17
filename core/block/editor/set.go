@@ -70,10 +70,11 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithBlockEditRestricted(p.Id()),
 	}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages && p.Pick(template.DataviewBlockId) == nil {
+		rels := pbtypes.MergeRelations(bundle.MustGetType(bundle.TypeKeyNote).Relations, bundle.MustGetRelations(dataview.DefaultDataviewRelations))
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
 				Source:    []string{bundle.TypeKeyNote.URL()},
-				Relations: bundle.MustGetType(bundle.TypeKeyNote).Relations,
+				Relations: rels,
 				Views: []*model.BlockContentDataviewView{
 					{
 						Id:   bson.NewObjectId().Hex(),
@@ -85,7 +86,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
-						Relations: getDefaultViewRelations(bundle.MustGetType(bundle.TypeKeyNote).Relations),
+						Relations: getDefaultViewRelations(rels),
 						Filters:   nil,
 					},
 				},

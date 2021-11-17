@@ -35,7 +35,7 @@ const defaultLimit = 50
 
 var log = logging.Logger("anytype-mw-editor")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
-var defaultDataviewRelations = append(bundle.RequiredInternalRelations, bundle.RelationKeyDone)
+var DefaultDataviewRelations = append(bundle.RequiredInternalRelations, bundle.RelationKeyDone)
 
 type Dataview interface {
 	SetSource(ctx *state.Context, blockId string, source []string) (err error)
@@ -1354,7 +1354,7 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
 	}
 
-	for _, relKey := range defaultDataviewRelations {
+	for _, relKey := range DefaultDataviewRelations {
 		if pbtypes.HasRelation(relations, relKey.String()) {
 			continue
 		}
