@@ -230,6 +230,7 @@ func (p *threadQueue) processAddedThread(ti ThreadInfo, workspaceId string) {
 	if err == nil {
 		// just to be on the safe side saving this to db
 		p.finishAddOperation(id.String(), workspaceId)
+		p.removeFromOperations(id.String())
 		return
 	}
 
