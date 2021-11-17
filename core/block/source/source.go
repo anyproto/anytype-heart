@@ -232,6 +232,7 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 }
 
 func (s *source) buildState() (doc state.Doc, err error) {
+	store := s.Anytype().ObjectStore()
 	root := s.tree.Root()
 	if root == nil || root.GetSnapshot() == nil {
 		return nil, fmt.Errorf("root missing or not a snapshot")
@@ -250,7 +251,19 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		}
 	}
 	st.BlocksInit(st)
-	storedDetails, _ := s.Anytype().ObjectStore().GetDetails(s.Id())
+	storedDetails, _ := store.GetDetails(s.Id())
+	if pbtypes.StructIsEmpty(storedDetails.GetDetails()) {
+		pendingDetails, err := store.GetPendingLocalDetails(s.Id())
+		if err == nil {
+			storedDetails = pendingDetails
+			err = store.UpdatePendingLocalDetails(s.Id(), nil)
+			if err != nil {
+				log.With("thread", s.id).
+					With("sbType", s.sb.Type()).
+					Errorf("failed to update pending details: %v", err)
+			}
+		}
+	}
 
 	// inject also derived keys, because it may be a good idea to have created date and creator cached so we don't need to traverse changes every time
 	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)))

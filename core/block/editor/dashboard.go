@@ -90,7 +90,7 @@ func (p *Dashboard) updateObjects() {
 	removedIds, addedIds := slice.DifferenceRemovedAdded(storeFavoritedIds, favoritedIds)
 	for _, removedId := range removedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},
@@ -105,7 +105,7 @@ func (p *Dashboard) updateObjects() {
 	}
 	for _, addedId := range addedIds {
 		go func(id string) {
-			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},

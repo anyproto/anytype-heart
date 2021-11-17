@@ -289,6 +289,10 @@ func StructToMap(s *types.Struct) map[string]interface{} {
 	return m
 }
 
+func StructIsEmpty(s *types.Struct) bool {
+	return s == nil || len(s.Fields) == 0
+}
+
 func GetMapOfKeysAndValuesFromStruct(collection *types.Struct) map[string]*types.Value {
 	keyMap := map[string]*types.Value{}
 	if collection == nil {

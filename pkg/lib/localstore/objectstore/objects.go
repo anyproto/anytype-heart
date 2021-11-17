@@ -38,6 +38,7 @@ var (
 	// ObjectInfo is stored in db key pattern:
 	pagesPrefix        = "pages"
 	pagesDetailsBase   = ds.NewKey("/" + pagesPrefix + "/details")
+	pendingDetailsBase = ds.NewKey("/" + pagesPrefix + "/pending")
 	pagesRelationsBase = ds.NewKey("/" + pagesPrefix + "/relations")     // store the list of full relation model for /objectId
 	setRelationsBase   = ds.NewKey("/" + pagesPrefix + "/set/relations") // store the list of full relation model for /setId
 
@@ -220,6 +221,8 @@ type ObjectStore interface {
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
+	UpdatePendingLocalDetails(id string, details *types.Struct) error
+	GetPendingLocalDetails(id string) (*model.ObjectDetails, error)
 
 	DeleteObject(id string) error
 	DeleteDetails(id string) error
@@ -1503,6 +1506,44 @@ func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 	return txn.Commit()
 }
 
+func (m *dsObjectStore) GetPendingLocalDetails(id string) (*model.ObjectDetails, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return m.getPendingLocalDetails(txn, id)
+}
+
+func (m *dsObjectStore) UpdatePendingLocalDetails(id string, details *types.Struct) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	key := pendingDetailsBase.ChildString(id)
+
+	if details == nil {
+		err = txn.Delete(key)
+		if err != nil {
+			return err
+		}
+		return txn.Commit()
+	}
+
+	b, err := proto.Marshal(details)
+	if err != nil {
+		return err
+	}
+	err = txn.Put(key, b)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
 func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -2171,6 +2212,16 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			delete(details.Details.Fields, k)
 		}
+	}
+	return &details, nil
+}
+
+func (m *dsObjectStore) getPendingLocalDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
+	var details model.ObjectDetails
+	if val, err := txn.Get(pendingDetailsBase.ChildString(id)); err != nil {
+		return nil, err
+	} else if err := proto.Unmarshal(val, &details); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
 	return &details, nil
 }

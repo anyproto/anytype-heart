@@ -380,7 +380,7 @@ func (p *Workspaces) updateDetailsIfParametersChanged(
 
 		// TODO: we need to move it to another service, but now it is what it is
 		go func(id string, params WorkspaceParameters) {
-			if err := p.DetailsModifier.ModifyDetails(id, func(current *types.Struct) (*types.Struct, error) {
+			if err := p.DetailsModifier.ModifyLocalDetails(id, func(current *types.Struct) (*types.Struct, error) {
 				if current == nil || current.Fields == nil {
 					current = &types.Struct{
 						Fields: map[string]*types.Value{},

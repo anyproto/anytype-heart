@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
+	ds "github.com/ipfs/go-datastore"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -747,8 +749,42 @@ func (s *service) ModifyExtraRelations(ctx *state.Context, objectId string, modi
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
 func (s *service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
+	if modifier == nil { 	
+		return fmt.Errorf("modifier is nil")
+	}
+	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+		dets, err := modifier(b.CombinedDetails())
+		if err != nil {
+			return err
+		}
+
+		return b.Apply(b.NewState().SetDetails(dets))
+	})
+}
+
+// ModifyLocalDetails modifies local details of the object in cache, and if it is not found, sets pending details in object store
+func (s *service) ModifyLocalDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
+	}
+	err = s.cache.DoLockedIfNotExists(objectId, func() error {
+		objectDetails, err := s.objectStore.GetPendingLocalDetails(objectId)
+		if err != nil && err != ds.ErrNotFound {
+			return err
+		}
+		var details *types.Struct
+		if objectDetails != nil {
+			details = objectDetails.GetDetails()
+		}
+		modifiedDetails, err := modifier(details)
+		if err != nil {
+			return err
+		}
+		return s.objectStore.UpdatePendingLocalDetails(objectId, modifiedDetails)
+	})
+	// if we got no error we should also return
+	if err != ocache.ErrExists {
+		return err
 	}
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
 		dets, err := modifier(b.CombinedDetails())
