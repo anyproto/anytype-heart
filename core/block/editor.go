@@ -749,7 +749,7 @@ func (s *service) ModifyExtraRelations(ctx *state.Context, objectId string, modi
 
 // ModifyDetails performs details get and update under the sb lock to make sure no modifications are done in the middle
 func (s *service) ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) {
-	if modifier == nil { 	
+	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {

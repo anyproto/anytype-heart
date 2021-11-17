@@ -1532,7 +1532,7 @@ func (m *dsObjectStore) UpdatePendingLocalDetails(id string, details *types.Stru
 		return txn.Commit()
 	}
 
-	b, err := proto.Marshal(details)
+	b, err := proto.Marshal(&model.ObjectDetails{Details: details})
 	if err != nil {
 		return err
 	}
