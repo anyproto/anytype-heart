@@ -253,13 +253,12 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	st.BlocksInit(st)
 	st.InjectDerivedDetails()
 
-	// TODO: check if the fact that we don't have creator can affect this call in a negative way
-	// though it seems that this call is redundant as we will anyway do state.Apply in smartblock
+	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
 		return
 	}
 
-	// TODO: check if we need to call it here
+	// TODO: check if we can use apply fast one
 	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
 	}

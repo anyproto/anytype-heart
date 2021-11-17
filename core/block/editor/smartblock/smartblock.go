@@ -906,6 +906,9 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	}
 
 	s.InjectLocalDetails(storedLocalScopeDetails)
+	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
+		return nil
+	}
 
 	provider, conforms := sb.source.(source.CreationInfoProvider)
 	if !conforms {
