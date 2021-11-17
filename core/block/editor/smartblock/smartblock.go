@@ -915,24 +915,21 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return nil
 	}
 
-	// retained logic from how it was in source
-	defer func() {
-		if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreator.String()) {
-			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreator))
-		}
-		if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreatedDate.String()) {
-			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreatedDate))
-		}
-	}()
-
 	creator, createdDate, err := provider.GetCreationInfo()
 	if err != nil {
 		return err
 	}
 
-	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	if creator != "" {
 		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+		if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreator.String()) {
+			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreator))
+		}
+	}
+
+	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+	if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreatedDate.String()) {
+		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreatedDate))
 	}
 
 	return nil
