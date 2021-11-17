@@ -2,7 +2,6 @@ package editor
 
 import (
 	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -99,7 +98,10 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 			template.WithDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{bundle.TypeKeyNote.URL()})),
 			template.WithDetailIconEmoji("⚪"))
 	} else if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
-		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(dvBlock.Model().GetDataview().Source)))
+		setOf := dvBlock.Model().GetDataview().Source
+		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(setOf)))
+		// add missing done relation
+		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))
 	}
 	templates = append(templates, template.WithTitle)
 	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
@@ -129,6 +131,7 @@ func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, ico
 			template.WithDataview(*blockContent, false),
 		)
 	}
+
 	if err := smartblock.ApplyTemplate(p, s, tmpls...); err != nil {
 		return err
 	}
