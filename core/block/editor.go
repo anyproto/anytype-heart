@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
@@ -767,6 +768,9 @@ func (s *service) ModifyLocalDetails(objectId string, modifier func(current *typ
 	if modifier == nil {
 		return fmt.Errorf("modifier is nil")
 	}
+	// we set pending details if object is not in cache
+	// we do this under lock to prevent races if the object is created in parallel
+	// because in that case we can lose changes
 	err = s.cache.DoLockedIfNotExists(objectId, func() error {
 		objectDetails, err := s.objectStore.GetPendingLocalDetails(objectId)
 		if err != nil && err != ds.ErrNotFound {
@@ -782,11 +786,10 @@ func (s *service) ModifyLocalDetails(objectId string, modifier func(current *typ
 		}
 		return s.objectStore.UpdatePendingLocalDetails(objectId, modifiedDetails)
 	})
-	// if we got no error we should also return
-	if err != ocache.ErrExists {
+	if err != nil && err != ocache.ErrExists {
 		return err
 	}
-	return s.Do(objectId, func(b smartblock.SmartBlock) error {
+	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
 		dets, err := modifier(b.CombinedDetails())
 		if err != nil {
 			return err
@@ -794,6 +797,11 @@ func (s *service) ModifyLocalDetails(objectId string, modifier func(current *typ
 
 		return b.Apply(b.NewState().SetDetails(dets))
 	})
+	// that means that we will apply the change later
+	if err == source.ErrObjectNotFound {
+		return nil
+	}
+	return err
 }
 
 func (s *service) UpdateExtraRelations(ctx *state.Context, objectId string, relations []*model.Relation, createIfMissing bool) (err error) {

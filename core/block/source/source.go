@@ -252,16 +252,14 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	}
 	st.BlocksInit(st)
 	storedDetails, _ := store.GetDetails(s.Id())
-	if pbtypes.StructIsEmpty(storedDetails.GetDetails()) {
-		pendingDetails, err := store.GetPendingLocalDetails(s.Id())
-		if err == nil {
-			storedDetails = pendingDetails
-			err = store.UpdatePendingLocalDetails(s.Id(), nil)
-			if err != nil {
-				log.With("thread", s.id).
-					With("sbType", s.sb.Type()).
-					Errorf("failed to update pending details: %v", err)
-			}
+	pendingDetails, err := store.GetPendingLocalDetails(s.Id())
+	if err == nil {
+		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pendingDetails.GetDetails(), false)
+		err = store.UpdatePendingLocalDetails(s.Id(), nil)
+		if err != nil {
+			log.With("thread", s.id).
+				With("sbType", s.sb.Type()).
+				Errorf("failed to update pending details: %v", err)
 		}
 	}
 
