@@ -401,7 +401,6 @@ func (s *State) NormalizeRelations() {
 			continue
 		}
 		s.SetExtraRelation(normalized)
-
 	}
 }
 

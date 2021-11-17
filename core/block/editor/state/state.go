@@ -1034,6 +1034,21 @@ func (s *State) InjectDerivedDetails() {
 	s.SetDetailAndBundledRelation(bundle.RelationKeySnippet, pbtypes.String(s.Snippet()))
 }
 
+func (s *State) InjectLocalDetails(localDetails *types.Struct) {
+	for key, v := range localDetails.GetFields() {
+		if v == nil {
+			continue
+		}
+		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
+			continue
+		}
+		s.SetLocalDetail(key, v)
+		if !pbtypes.HasRelation(s.ExtraRelations(), key) {
+			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
+		}
+	}
+}
+
 func (s *State) LocalDetails() *types.Struct {
 	if s.localDetails == nil && s.parent != nil {
 		return s.parent.LocalDetails()

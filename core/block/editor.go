@@ -790,6 +790,12 @@ func (s *service) ModifyLocalDetails(objectId string, modifier func(current *typ
 		return err
 	}
 	err = s.Do(objectId, func(b smartblock.SmartBlock) error {
+		// we just need to invoke the smartblock so it reads from pending details
+		// no need to call modify twice
+		if err == nil {
+			return nil
+		}
+
 		dets, err := modifier(b.CombinedDetails())
 		if err != nil {
 			return err
@@ -797,7 +803,7 @@ func (s *service) ModifyLocalDetails(objectId string, modifier func(current *typ
 
 		return b.Apply(b.NewState().SetDetails(dets))
 	})
-	// that means that we will apply the change later
+	// that means that we will apply the change later as soon as the block is loaded by thread queue
 	if err == source.ErrObjectNotFound {
 		return nil
 	}
