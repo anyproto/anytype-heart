@@ -125,6 +125,10 @@ func (fx *fixture) init(blocks []*model.Block) {
 	fx.store.EXPECT().GetDetails(id).Return(&model.ObjectDetails{
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}, nil)
+	fx.store.EXPECT().GetPendingLocalDetails(id).Return(&model.ObjectDetails{
+		Details: &types.Struct{Fields: map[string]*types.Value{}},
+	}, nil)
+	fx.store.EXPECT().UpdatePendingLocalDetails(id, nil).Return(nil)
 	err := fx.Init(&InitContext{Source: fx.source, Restriction: restriction.New(), ObjectStore: fx.store})
 	require.NoError(fx.t, err)
 }

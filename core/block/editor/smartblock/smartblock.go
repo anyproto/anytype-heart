@@ -886,13 +886,52 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 		return err
 	}
 
-	storedLocalScopeDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), bundle.LocalRelationsKeys)
-	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), bundle.LocalRelationsKeys)
+	pendingDetails, err := sb.objectStore.GetPendingLocalDetails(sb.Id())
+	if err == nil {
+		storedDetails.Details = pbtypes.StructMerge(storedDetails.GetDetails(), pendingDetails.GetDetails(), false)
+		err = sb.objectStore.UpdatePendingLocalDetails(sb.Id(), nil)
+		if err != nil {
+			log.With("thread", sb.Id()).
+				With("sbType", sb.Type()).
+				Errorf("failed to update pending details: %v", err)
+		}
+	}
+	// inject also derived keys, because it may be a good idea to have created date and creator cached,
+	// so we don't need to traverse changes every time
+	keys := append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)
+	storedLocalScopeDetails := pbtypes.StructFilterKeys(storedDetails.GetDetails(), keys)
+	sbLocalScopeDetails := pbtypes.StructFilterKeys(s.LocalDetails(), keys)
 	if pbtypes.StructEqualIgnore(sbLocalScopeDetails, storedLocalScopeDetails, nil) {
 		return nil
 	}
 
-	source.InjectLocalDetails(s, storedLocalScopeDetails)
+	s.InjectLocalDetails(storedLocalScopeDetails)
+	if pbtypes.HasField(s.LocalDetails(), bundle.RelationKeyCreator.String()) {
+		return nil
+	}
+
+	provider, conforms := sb.source.(source.CreationInfoProvider)
+	if !conforms {
+		return nil
+	}
+
+	creator, createdDate, err := provider.GetCreationInfo()
+	if err != nil {
+		return err
+	}
+
+	if creator != "" {
+		s.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(creator))
+		if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreator.String()) {
+			s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreator))
+		}
+	}
+
+	s.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
+	if !pbtypes.HasRelation(s.ExtraRelations(), bundle.RelationKeyCreatedDate.String()) {
+		s.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreatedDate))
+	}
+
 	return nil
 }
 
