@@ -580,7 +580,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 
 	var curDetails *types.Struct
 	curDetailsO, _ := i.store.GetDetails(id)
-	if curDetailsO != nil {
+	if curDetailsO.GetDetails().GetFields() != nil {
 		curDetails = curDetailsO.Details
 	}
 	// compare only real object scoped details

@@ -3,6 +3,7 @@ package objectstore
 import (
 	"encoding/binary"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -1986,6 +1987,15 @@ func (m *dsObjectStore) updateSnippet(txn ds.Txn, id string, snippet string) err
 }
 
 func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
+	t, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
+		return fmt.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
+	} else if indexdetails, _ := t.Indexable(); !indexdetails {
+		log.Errorf("updateDetails: trying to index non-indexable sb %s(%d): %s", id, t, string(debug.Stack()))
+		return fmt.Errorf("updateDetails: trying to index non-indexable sb %s(%d)", id, t)
+	}
+
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
 
@@ -2163,6 +2173,11 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 		return &details, nil
 	} else if err := proto.Unmarshal(val, &details); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
+	}
+
+	if details.GetDetails().GetFields() == nil {
+		log.Errorf("getObjectDetails got nil record for %s", id)
+		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
 	}
 	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
