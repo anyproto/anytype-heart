@@ -106,6 +106,14 @@ func MustGetRelation(rk RelationKey) *model.Relation {
 	panic(ErrNotFound)
 }
 
+func MustGetRelations(rks []RelationKey) []*model.Relation {
+	rels := make([]*model.Relation, 0, len(rks))
+	for _, rk := range rks {
+		rels = append(rels, MustGetRelation(rk))
+	}
+	return rels
+}
+
 func GetRelation(rk RelationKey) (*model.Relation, error) {
 	if v, exists := relations[rk]; exists {
 		return pbtypes.CopyRelation(v), nil
@@ -225,4 +233,50 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) ([]*model.Relation
 		rels = append(rels, MustGetRelation(RelationKey(k)))
 	}
 	return rels, d
+}
+
+func MergeRelationsKeys(rels1 []RelationKey, rels2 []RelationKey) []RelationKey {
+	if rels1 == nil {
+		return rels2
+	}
+	if rels2 == nil {
+		return rels1
+	}
+
+	rels := make([]RelationKey, 0, len(rels2)+len(rels1))
+	for _, rel := range rels2 {
+		rels = append(rels, rel)
+	}
+
+	for _, rel := range rels1 {
+		if HasRelationKey(rels, rel) {
+			continue
+		}
+		rels = append(rels, rel)
+	}
+
+	return rels
+}
+
+func GetRelationsKeys(rels []*model.Relation) []RelationKey {
+	if rels == nil {
+		return nil
+	}
+
+	relsKeys := make([]RelationKey, 0, len(rels))
+	for _, rel := range rels {
+		relsKeys = append(relsKeys, RelationKey(rel.Key))
+	}
+
+	return relsKeys
+}
+
+func HasRelationKey(rels []RelationKey, rel RelationKey) bool {
+	for _, rel1 := range rels {
+		if rel1 == rel {
+			return true
+		}
+	}
+
+	return false
 }

@@ -2348,6 +2348,12 @@ func (m *dsObjectStore) getObjectsInfo(txn ds.Txn, ids []string) ([]*model.Objec
 			}
 			return nil, err
 		}
+		if f := info.GetDetails().GetFields(); f != nil {
+			// skip deleted objects
+			if v := f[bundle.RelationKeyIsDeleted.String()]; v != nil && v.GetBoolValue() {
+				continue
+			}
+		}
 		objects = append(objects, info)
 	}
 

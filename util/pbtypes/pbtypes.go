@@ -166,6 +166,29 @@ func HasRelation(rels []*model.Relation, key string) bool {
 	return false
 }
 
+func MergeRelations(rels1 []*model.Relation, rels2 []*model.Relation) []*model.Relation {
+	if rels1 == nil {
+		return rels2
+	}
+	if rels2 == nil {
+		return rels1
+	}
+
+	rels := make([]*model.Relation, 0, len(rels2)+len(rels1))
+	for _, rel := range rels2 {
+		rels = append(rels, rel)
+	}
+
+	for _, rel := range rels1 {
+		if HasRelation(rels, rel.Key) {
+			continue
+		}
+		rels = append(rels, rel)
+	}
+
+	return rels
+}
+
 func GetObjectType(ots []*model.ObjectType, url string) *model.ObjectType {
 	for i, ot := range ots {
 		if ot.Url == url {
