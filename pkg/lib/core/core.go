@@ -298,8 +298,11 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) (er
 			cancel()
 		}
 	}()
+	a.lock.Lock()
+	a.predefinedBlockIds, err = a.threadService.DerivePredefinedThreadIds()
+	a.lock.Unlock()
 
-	a.predefinedBlockIds, err = a.threadService.EnsurePredefinedThreads(cctx, newAccount)
+	_, err = a.threadService.EnsurePredefinedThreads(cctx, newAccount)
 	if err != nil {
 		return err
 	}
@@ -454,10 +457,13 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				}
 				go a.addCreatorData(val, &creatorInfoMx, checkedThreads, checkedWorkspaces)
 				id := val.ThreadID().String()
+				a.lock.Lock()
 				if a.predefinedBlockIds.IsAccount(id) {
+					a.lock.Unlock()
 					// todo: not working on the early start
 					continue
 				}
+				a.lock.Unlock()
 				if !isWorkspaceEventSent && isWorkspace(id) {
 					go a.sendUpdatedAccountConfigEvent()
 					isWorkspaceEventSent = true

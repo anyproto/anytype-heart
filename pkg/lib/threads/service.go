@@ -332,6 +332,7 @@ type Service interface {
 	GetThreadInfo(id thread.ID) (thread.Info, error)
 	PresubscribedNewRecords() (<-chan net.ThreadRecord, error)
 	EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error)
+	DerivePredefinedThreadIds() (DerivedSmartblockIds, error)
 }
 
 type ThreadsGetter interface {
