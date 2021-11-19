@@ -206,7 +206,7 @@ func (s *service) processNewExternalThread(tid thread.ID, ti ThreadInfo, pullAsy
 		// add replicator for own logs
 		go func() {
 			<-s.newReplicatorProcessingLimiter
-			_, err = s.t.AddReplicator(s.ctx, tid, s.replicatorAddr)
+			_, err := s.t.AddReplicator(s.ctx, tid, s.replicatorAddr)
 			if err != nil {
 				log.Errorf("processNewExternalThread failed to add the replicator: %s", err.Error())
 			}
