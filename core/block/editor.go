@@ -648,6 +648,12 @@ func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
 	})
 }
 
+func (s *service) SetFileStyle(ctx *state.Context, req pb.RpcBlockSetFileStyleRequest) error {
+	return s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
+		return b.(file.File).SetFileStyle(ctx, req)
+	})
+}
+
 func (s *service) Undo(ctx *state.Context, req pb.RpcBlockUndoRequest) (counters pb.RpcBlockUndoRedoCounter, err error) {
 	err = s.DoHistory(req.ContextId, func(b basic.IHistory) error {
 		counters, err = b.Undo(ctx)

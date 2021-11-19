@@ -948,6 +948,26 @@ func (mw *Middleware) BlockSetFileName(req *pb.RpcBlockSetFileNameRequest) *pb.R
 	return response(pb.RpcBlockSetFileNameResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockSetFileStyle(req *pb.RpcBlockSetFileStyleRequest) *pb.RpcBlockSetFileStyleResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockSetFileStyleResponseErrorCode, err error) *pb.RpcBlockSetFileStyleResponse {
+		m := &pb.RpcBlockSetFileStyleResponse{Error: &pb.RpcBlockSetFileStyleResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetFileStyle(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockSetFileStyleResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(pb.RpcBlockSetFileStyleResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockSetImageName(req *pb.RpcBlockSetImageNameRequest) *pb.RpcBlockSetImageNameResponse {
 	response := func(code pb.RpcBlockSetImageNameResponseErrorCode, err error) *pb.RpcBlockSetImageNameResponse {
 		m := &pb.RpcBlockSetImageNameResponse{Error: &pb.RpcBlockSetImageNameResponseError{Code: code}}

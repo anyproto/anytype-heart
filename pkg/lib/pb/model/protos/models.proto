@@ -233,8 +233,9 @@ message Block {
             }
 
             enum Style {
-                Link = 0;
-                Embed = 1;
+                Auto = 0; // all types expect File and None has Embed style by default
+                Link = 1;
+                Embed = 2;
             }
 
             enum State {

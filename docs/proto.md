@@ -234,6 +234,10 @@
     - [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request)
     - [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response)
     - [Rpc.Block.Set.File.Name.Response.Error](#anytype.Rpc.Block.Set.File.Name.Response.Error)
+    - [Rpc.Block.Set.File.Style](#anytype.Rpc.Block.Set.File.Style)
+    - [Rpc.Block.Set.File.Style.Request](#anytype.Rpc.Block.Set.File.Style.Request)
+    - [Rpc.Block.Set.File.Style.Response](#anytype.Rpc.Block.Set.File.Style.Response)
+    - [Rpc.Block.Set.File.Style.Response.Error](#anytype.Rpc.Block.Set.File.Style.Response.Error)
     - [Rpc.Block.Set.Image](#anytype.Rpc.Block.Set.Image)
     - [Rpc.Block.Set.Image.Name](#anytype.Rpc.Block.Set.Image.Name)
     - [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request)
@@ -697,6 +701,7 @@
     - [Rpc.Block.Set.Details.Response.Error.Code](#anytype.Rpc.Block.Set.Details.Response.Error.Code)
     - [Rpc.Block.Set.Fields.Response.Error.Code](#anytype.Rpc.Block.Set.Fields.Response.Error.Code)
     - [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code)
+    - [Rpc.Block.Set.File.Style.Response.Error.Code](#anytype.Rpc.Block.Set.File.Style.Response.Error.Code)
     - [Rpc.Block.Set.Image.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Name.Response.Error.Code)
     - [Rpc.Block.Set.Image.Width.Response.Error.Code](#anytype.Rpc.Block.Set.Image.Width.Response.Error.Code)
     - [Rpc.Block.Set.Latex.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Latex.Text.Response.Error.Code)
@@ -1108,6 +1113,7 @@
 | BlockExport | [Rpc.Block.Export.Request](#anytype.Rpc.Block.Export.Request) | [Rpc.Block.Export.Response](#anytype.Rpc.Block.Export.Response) |  |
 | BlockImportMarkdown | [Rpc.Block.ImportMarkdown.Request](#anytype.Rpc.Block.ImportMarkdown.Request) | [Rpc.Block.ImportMarkdown.Response](#anytype.Rpc.Block.ImportMarkdown.Response) |  |
 | BlockSetFileName | [Rpc.Block.Set.File.Name.Request](#anytype.Rpc.Block.Set.File.Name.Request) | [Rpc.Block.Set.File.Name.Response](#anytype.Rpc.Block.Set.File.Name.Response) |  |
+| BlockSetFileStyle | [Rpc.Block.Set.File.Style.Request](#anytype.Rpc.Block.Set.File.Style.Request) | [Rpc.Block.Set.File.Style.Response](#anytype.Rpc.Block.Set.File.Style.Response) |  |
 | BlockSetImageName | [Rpc.Block.Set.Image.Name.Request](#anytype.Rpc.Block.Set.Image.Name.Request) | [Rpc.Block.Set.Image.Name.Response](#anytype.Rpc.Block.Set.Image.Name.Response) |  |
 | BlockSetImageWidth | [Rpc.Block.Set.Image.Width.Request](#anytype.Rpc.Block.Set.Image.Width.Request) | [Rpc.Block.Set.Image.Width.Response](#anytype.Rpc.Block.Set.Image.Width.Response) |  |
 | BlockSetVideoName | [Rpc.Block.Set.Video.Name.Request](#anytype.Rpc.Block.Set.Video.Name.Request) | [Rpc.Block.Set.Video.Name.Response](#anytype.Rpc.Block.Set.Video.Name.Response) |  |
@@ -4576,6 +4582,65 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.File.Name.Response.Error.Code](#anytype.Rpc.Block.Set.File.Name.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Style"></a>
+
+### Rpc.Block.Set.File.Style
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Style.Request"></a>
+
+### Rpc.Block.Set.File.Style.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| style | [model.Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Style.Response"></a>
+
+### Rpc.Block.Set.File.Style.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.File.Style.Response.Error](#anytype.Rpc.Block.Set.File.Style.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.File.Style.Response.Error"></a>
+
+### Rpc.Block.Set.File.Style.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.File.Style.Response.Error.Code](#anytype.Rpc.Block.Set.File.Style.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11185,6 +11250,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Set.File.Style.Response.Error.Code"></a>
+
+### Rpc.Block.Set.File.Style.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Set.Image.Name.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Image.Name.Response.Error.Code
@@ -15707,8 +15785,9 @@ scope from which this relation have been aggregated |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Link | 0 |  |
-| Embed | 1 |  |
+| Auto | 0 | all types expect File and None has Embed style by default |
+| Link | 1 |  |
+| Embed | 2 |  |
 
 
 
