@@ -60,7 +60,7 @@ type Service interface {
 	IsStarted() bool
 	BecameOnline(ch chan<- error)
 
-	InitPredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
+	EnsurePredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
 	GetBlock(blockId string) (SmartBlock, error)
 	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
@@ -207,7 +207,7 @@ func (a *Anytype) Run() (err error) {
 		return
 	}
 
-	return a.InitPredefinedBlocks(context.TODO(), a.config.NewAccount)
+	return a.EnsurePredefinedBlocks(context.TODO(), a.config.NewAccount)
 }
 
 func (a *Anytype) IsStarted() bool {
@@ -278,6 +278,12 @@ func (a *Anytype) start() error {
 		return nil
 	}
 
+	var err error
+	a.predefinedBlockIds, err = a.threadService.DerivePredefinedThreadIds()
+	if err != nil {
+		return err
+	}
+
 	if err := a.subscribeForNewRecords(); err != nil {
 		return err
 	}
@@ -286,7 +292,7 @@ func (a *Anytype) start() error {
 	return nil
 }
 
-func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
+func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (err error) {
 	cctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -298,9 +304,6 @@ func (a *Anytype) InitPredefinedBlocks(ctx context.Context, newAccount bool) (er
 			cancel()
 		}
 	}()
-	a.lock.Lock()
-	a.predefinedBlockIds, err = a.threadService.DerivePredefinedThreadIds()
-	a.lock.Unlock()
 
 	_, err = a.threadService.EnsurePredefinedThreads(cctx, newAccount)
 	if err != nil {
@@ -457,13 +460,9 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 				}
 				go a.addCreatorData(val, &creatorInfoMx, checkedThreads, checkedWorkspaces)
 				id := val.ThreadID().String()
-				a.lock.Lock()
 				if a.predefinedBlockIds.IsAccount(id) {
-					a.lock.Unlock()
-					// todo: not working on the early start
 					continue
 				}
-				a.lock.Unlock()
 				if !isWorkspaceEventSent && isWorkspace(id) {
 					go a.sendUpdatedAccountConfigEvent()
 					isWorkspaceEventSent = true
