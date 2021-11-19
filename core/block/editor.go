@@ -628,6 +628,8 @@ func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err erro
 	if req.DisableEncryption {
 		upl.AddOptions(files.WithPlaintext(true))
 	}
+
+	upl.SetStyle(req.Style)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	} else {

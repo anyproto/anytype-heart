@@ -998,6 +998,7 @@
     - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
+    - [Block.Content.File.Style](#anytype.model.Block.Content.File.Style)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
     - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
@@ -9970,7 +9971,8 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
-| disableEncryption | [bool](#bool) |  |  |
+| disableEncryption | [bool](#bool) |  | deprecated, has no affect |
+| style | [model.Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
 
 
 
@@ -15115,6 +15117,7 @@ Divider: block, that contains only one horizontal thin line
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
 | state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| style | [Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
 
 
 
@@ -15697,6 +15700,18 @@ scope from which this relation have been aggregated |
 
 
 
+<a name="anytype.model.Block.Content.File.Style"></a>
+
+### Block.Content.File.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Link | 0 |  |
+| Embed | 1 |  |
+
+
+
 <a name="anytype.model.Block.Content.File.Type"></a>
 
 ### Block.Content.File.Type
@@ -15709,6 +15724,7 @@ scope from which this relation have been aggregated |
 | Image | 2 |  |
 | Video | 3 |  |
 | Audio | 4 |  |
+| PDF | 5 |  |
 
 
 

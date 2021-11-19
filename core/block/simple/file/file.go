@@ -32,6 +32,7 @@ type Block interface {
 	SetName(name string) Block
 	SetState(state model.BlockContentFileState) Block
 	SetType(tp model.BlockContentFileType) Block
+	SetStyle(tp model.BlockContentFileStyle) Block
 	SetSize(size int64) Block
 	SetMIME(mime string) Block
 	SetTime(tm time.Time) Block
@@ -65,6 +66,11 @@ func (f *File) SetState(state model.BlockContentFileState) Block {
 
 func (f *File) SetType(tp model.BlockContentFileType) Block {
 	f.content.Type = tp
+	return f
+}
+
+func (f *File) SetStyle(tp model.BlockContentFileStyle) Block {
+	f.content.Style = tp
 	return f
 }
 
