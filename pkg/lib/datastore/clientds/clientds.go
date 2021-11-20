@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
+	badger3 "github.com/anytypeio/go-ds-badger3"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
 	badger "github.com/ipfs/go-ds-badger"
@@ -19,31 +20,35 @@ import (
 )
 
 const (
-	CName          = "datastore"
-	liteDSDir      = "ipfslite"
-	logstoreDSDir  = "logstore"
-	threadsDbDSDir = "collection" + string(os.PathSeparator) + "eventstore"
+	CName           = "datastore"
+	liteDSDir       = "ipfslite"
+	logstoreDSDir   = "logstore"
+	localstoreDSDir = "localstore"
+	threadsDbDSDir  = "collection" + string(os.PathSeparator) + "eventstore"
 )
 
 type clientds struct {
-	running     bool
-	litestoreDS *badger.Datastore
-	logstoreDS  *badger.Datastore
-	threadsDbDS *textileBadger.Datastore
-	cfg         Config
-	repoPath    string
+	running      bool
+	litestoreDS  *badger.Datastore
+	logstoreDS   *badger.Datastore
+	localstoreDS *badger3.Datastore
+	threadsDbDS  *textileBadger.Datastore
+	cfg          Config
+	repoPath     string
 }
 
 type Config struct {
-	Litestore badger.Options
-	Logstore  badger.Options
-	TextileDb badger.Options
+	Litestore  badger.Options
+	Logstore   badger.Options
+	Localstore badger3.Options
+	TextileDb  badger.Options
 }
 
 var DefaultConfig = Config{
-	Litestore: badger.DefaultOptions,
-	Logstore:  badger.DefaultOptions,
-	TextileDb: badger.DefaultOptions,
+	Litestore:  badger.DefaultOptions,
+	Logstore:   badger.DefaultOptions,
+	TextileDb:  badger.DefaultOptions,
+	Localstore: badger3.DefaultOptions,
 }
 
 type DSConfigGetter interface {
@@ -58,6 +63,15 @@ func init() {
 	DefaultConfig.Logstore.GcSleep = time.Second * 5           // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
 	DefaultConfig.Logstore.ValueThreshold = 1024               // store up to 1KB of value within the LSM tree itself to speed-up details filter queries
 	DefaultConfig.Logstore.Logger = logging.Logger("badger-logstore")
+
+	DefaultConfig.Localstore.ValueLogFileSize = 64 * 1024 * 1024 // Badger will rotate value log files after 64MB. GC only works starting from the 2nd value log file
+	DefaultConfig.Localstore.GcDiscardRatio = 0.2                // allow up to 20% value log overhead
+	DefaultConfig.Localstore.GcInterval = time.Minute * 10       // run GC every 10 minutes
+	DefaultConfig.Localstore.GcSleep = time.Second * 5           // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
+	DefaultConfig.Localstore.ValueThreshold = 1024               // store up to 1KB of value within the LSM tree itself to speed-up details filter queries
+	DefaultConfig.Localstore.Logger = logging.Logger("badger-localstore")
+	DefaultConfig.Localstore.SyncWrites = false
+
 	DefaultConfig.Litestore.Logger = logging.Logger("badger-litestore")
 	DefaultConfig.Litestore.ValueLogFileSize = 64 * 1024 * 1024
 	DefaultConfig.Litestore.GcDiscardRatio = 0.1
@@ -89,6 +103,11 @@ func (r *clientds) Run() error {
 	}
 
 	r.logstoreDS, err = badger.NewDatastore(filepath.Join(r.repoPath, logstoreDSDir), &r.cfg.Logstore)
+	if err != nil {
+		return err
+	}
+
+	r.localstoreDS, err = badger3.NewDatastore(filepath.Join(r.repoPath, localstoreDSDir), &r.cfg.Localstore)
 	if err != nil {
 		return err
 	}
