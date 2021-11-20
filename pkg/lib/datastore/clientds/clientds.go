@@ -159,7 +159,7 @@ func (r *clientds) LocalstoreDS() (ds.TxnDatastore, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
-	return r.logstoreDS, nil
+	return r.localstoreDS, nil
 }
 
 func (r *clientds) Name() (name string) {
