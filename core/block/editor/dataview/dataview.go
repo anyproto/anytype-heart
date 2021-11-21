@@ -681,6 +681,21 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 		}}
 	}
 
+	sbType, err := smartblock2.SmartBlockTypeFromID(d.Id())
+	if err != nil {
+		return nil, err
+	}
+	if sbType == smartblock2.SmartBlockTypeWorkspace {
+		view.Filters = []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyWorkspaceId.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(d.Id()),
+		}, {
+			RelationKey: bundle.RelationKeyId.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String(d.Id()),
+		}}
+	}
 	tb.AddView(view)
 	return &view, d.Apply(s)
 }
