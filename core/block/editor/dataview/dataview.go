@@ -685,7 +685,7 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	if err != nil {
 		return nil, err
 	}
-	if sbType == smartblock2.SmartBlockTypeWorkspace {
+	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.Anytype().PredefinedBlocks().Account {
 		view.Filters = []*model.BlockContentDataviewFilter{{
 			RelationKey: bundle.RelationKeyWorkspaceId.String(),
 			Condition:   model.BlockContentDataviewFilter_Equal,
