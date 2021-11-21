@@ -116,9 +116,10 @@ func (r *clientds) Run() error {
 	if err != nil {
 		return err
 	}
-	err = r.Migrate()
+
+	err = r.migrateIfNeeded()
 	if err != nil {
-		return err
+		return fmt.Errorf("migrateIfNeeded failed: %w", err)
 	}
 
 	threadsDbOpts := textileBadger.Options(r.cfg.TextileDb)
@@ -136,7 +137,24 @@ func (r *clientds) Run() error {
 	return nil
 }
 
-func (r *clientds) Migrate() error {
+func (r *clientds) migrateIfNeeded() error {
+	migrationKey := ds.NewKey("/migration/localstore/badgerv3")
+	_, err := r.localstoreDS.Get(migrationKey)
+	if err == nil {
+		return nil
+	}
+	if err != nil && err != ds.ErrNotFound {
+		return err
+	}
+
+	err = r.migrate()
+	if err != nil {
+		return fmt.Errorf("failed to migrate the keys from old db: %w", err)
+	}
+	return r.localstoreDS.Put(migrationKey, nil)
+}
+
+func (r *clientds) migrate() error {
 	s := r.logstoreDS.DB.NewStream()
 	s.ChooseKey = func(item *dgraphbadgerv1.Item) bool {
 		keyString := string(item.Key())
