@@ -234,6 +234,13 @@ func (r *clientds) Close() (err error) {
 		}
 	}
 
+	if r.localstoreDS != nil {
+		err2 := r.localstoreDS.Close()
+		if err2 != nil {
+			err = multierror.Append(err, err2)
+		}
+	}
+
 	if r.threadsDbDS != nil {
 		err2 := r.threadsDbDS.Close()
 		if err2 != nil {
