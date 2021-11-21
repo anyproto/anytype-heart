@@ -64,7 +64,8 @@ func init() {
 	DefaultConfig.Logstore.ValueThreshold = 1024               // store up to 1KB of value within the LSM tree itself to speed-up details filter queries
 	DefaultConfig.Logstore.Logger = logging.Logger("badger-logstore")
 
-	DefaultConfig.Localstore.ValueLogFileSize = 64 * 1024 * 1024 // Badger will rotate value log files after 64MB. GC only works starting from the 2nd value log file
+	DefaultConfig.Localstore.MemTableSize = 16 * 1024 * 1024
+	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Badger will rotate value log files after 64MB. GC only works starting from the 2nd value log file
 	DefaultConfig.Localstore.GcDiscardRatio = 0.2                // allow up to 20% value log overhead
 	DefaultConfig.Localstore.GcInterval = time.Minute * 10       // run GC every 10 minutes
 	DefaultConfig.Localstore.GcSleep = time.Second * 5           // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
