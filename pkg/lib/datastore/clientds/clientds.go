@@ -1,16 +1,20 @@
 package clientds
 
 import (
+	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
-	badger3 "github.com/anytypeio/go-ds-badger3"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	dsbadgerv3 "github.com/anytypeio/go-ds-badger3"
+	dgraphbadgerv1 "github.com/dgraph-io/badger"
+	dgraphbadgerv1pb "github.com/dgraph-io/badger/pb"
 	"github.com/hashicorp/go-multierror"
 	ds "github.com/ipfs/go-datastore"
-	badger "github.com/ipfs/go-ds-badger"
+	dsbadgerv1 "github.com/ipfs/go-ds-badger"
 	textileBadger "github.com/textileio/go-ds-badger"
 	"github.com/textileio/go-threads/db/keytransform"
 
@@ -29,26 +33,26 @@ const (
 
 type clientds struct {
 	running      bool
-	litestoreDS  *badger.Datastore
-	logstoreDS   *badger.Datastore
-	localstoreDS *badger3.Datastore
+	litestoreDS  *dsbadgerv1.Datastore
+	logstoreDS   *dsbadgerv1.Datastore
+	localstoreDS *dsbadgerv3.Datastore
 	threadsDbDS  *textileBadger.Datastore
 	cfg          Config
 	repoPath     string
 }
 
 type Config struct {
-	Litestore  badger.Options
-	Logstore   badger.Options
-	Localstore badger3.Options
-	TextileDb  badger.Options
+	Litestore  dsbadgerv1.Options
+	Logstore   dsbadgerv1.Options
+	Localstore dsbadgerv3.Options
+	TextileDb  dsbadgerv1.Options
 }
 
 var DefaultConfig = Config{
-	Litestore:  badger.DefaultOptions,
-	Logstore:   badger.DefaultOptions,
-	TextileDb:  badger.DefaultOptions,
-	Localstore: badger3.DefaultOptions,
+	Litestore:  dsbadgerv1.DefaultOptions,
+	Logstore:   dsbadgerv1.DefaultOptions,
+	TextileDb:  dsbadgerv1.DefaultOptions,
+	Localstore: dsbadgerv3.DefaultOptions,
 }
 
 type DSConfigGetter interface {
@@ -64,8 +68,8 @@ func init() {
 	DefaultConfig.Logstore.ValueThreshold = 1024               // store up to 1KB of value within the LSM tree itself to speed-up details filter queries
 	DefaultConfig.Logstore.Logger = logging.Logger("badger-logstore")
 
-	DefaultConfig.Localstore.MemTableSize = 16 * 1024 * 1024
-	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Badger will rotate value log files after 64MB. GC only works starting from the 2nd value log file
+	DefaultConfig.Localstore.MemTableSize = 16 * 1024 * 1024     // Memtable saves all values below value threshold + write ahead log, actual file size is 2x the amount, the size is preallocated
+	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
 	DefaultConfig.Localstore.GcDiscardRatio = 0.2                // allow up to 20% value log overhead
 	DefaultConfig.Localstore.GcInterval = time.Minute * 10       // run GC every 10 minutes
 	DefaultConfig.Localstore.GcSleep = time.Second * 5           // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
@@ -98,17 +102,21 @@ func (r *clientds) Init(a *app.App) (err error) {
 
 func (r *clientds) Run() error {
 	var err error
-	r.litestoreDS, err = badger.NewDatastore(filepath.Join(r.repoPath, liteDSDir), &r.cfg.Litestore)
+	r.litestoreDS, err = dsbadgerv1.NewDatastore(filepath.Join(r.repoPath, liteDSDir), &r.cfg.Litestore)
 	if err != nil {
 		return err
 	}
 
-	r.logstoreDS, err = badger.NewDatastore(filepath.Join(r.repoPath, logstoreDSDir), &r.cfg.Logstore)
+	r.logstoreDS, err = dsbadgerv1.NewDatastore(filepath.Join(r.repoPath, logstoreDSDir), &r.cfg.Logstore)
 	if err != nil {
 		return err
 	}
 
-	r.localstoreDS, err = badger3.NewDatastore(filepath.Join(r.repoPath, localstoreDSDir), &r.cfg.Localstore)
+	r.localstoreDS, err = dsbadgerv3.NewDatastore(filepath.Join(r.repoPath, localstoreDSDir), &r.cfg.Localstore)
+	if err != nil {
+		return err
+	}
+	err = r.Migrate()
 	if err != nil {
 		return err
 	}
@@ -126,6 +134,32 @@ func (r *clientds) Run() error {
 	}
 	r.running = true
 	return nil
+}
+
+func (r *clientds) Migrate() error {
+	s := r.logstoreDS.DB.NewStream()
+	s.ChooseKey = func(item *dgraphbadgerv1.Item) bool {
+		keyString := string(item.Key())
+		res := strings.HasPrefix(keyString, "/pages") ||
+			strings.HasPrefix(keyString, "/workspaces") ||
+			strings.HasPrefix(keyString, "/relations")
+		return res
+	}
+	s.Send = func(list *dgraphbadgerv1pb.KVList) error {
+		txn, err := r.localstoreDS.NewTransaction(false)
+		if err != nil {
+			return err
+		}
+		defer txn.Discard()
+		for _, kv := range list.Kv {
+			err := txn.Put(ds.NewKey(string(kv.Key)), kv.Value)
+			if err != nil {
+				return err
+			}
+		}
+		return txn.Commit()
+	}
+	return s.Orchestrate(context.Background())
 }
 
 func (r *clientds) PeerstoreDS() (ds.Batching, error) {
