@@ -11,6 +11,7 @@ const (
 )
 
 type Operation interface {
+	Type() string
 	Id() string
 	IsRetriable() bool
 	Run() error

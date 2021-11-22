@@ -49,11 +49,11 @@ func (p *limiterPool) AddOperations(ops []Operation, priority int) {
 	for _, op := range ops {
 		it, exists := p.m[op.Id()]
 		if exists {
-			if it.index != -1 {
+			// we don't deal with running operations
+			if it.index != -1 && it.value.(Operation).Type() != op.Type() {
 				it.value = op
 				p.tasks.UpdatePriority(it, priority)
 			}
-			// we don't deal with running operations
 			continue
 		}
 		it = &Item{
@@ -76,9 +76,22 @@ func (p *limiterPool) AddOperation(op Operation, priority int) {
 	p.addItem(it)
 }
 
+func (p *limiterPool) UpdatePriorities(ids []string, priority int) {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+
+	for _, id := range ids {
+		p.updatePriority(id, priority)
+	}
+}
+
 func (p *limiterPool) UpdatePriority(id string, priority int) {
 	p.mx.Lock()
 	defer p.mx.Unlock()
+	p.UpdatePriority(id, priority)
+}
+
+func (p *limiterPool) updatePriority(id string, priority int) {
 	it, exists := p.m[id]
 	if !exists {
 		return

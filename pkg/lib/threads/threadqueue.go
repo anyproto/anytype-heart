@@ -33,6 +33,7 @@ type ThreadQueue interface {
 	DeleteThreadSync(id, workspaceId string) error
 	GetWorkspacesForThread(threadId string) []string
 	GetThreadsForWorkspace(workspaceId string) []string
+	UpdatePriority(ids []string, priority int)
 }
 
 type ThreadOperation struct {
@@ -130,6 +131,10 @@ func (p *threadQueue) CreateThreadSync(blockType smartblock.SmartBlockType, work
 	}
 	p.finishAddOperation(info.ID.String(), workspaceId)
 	return info, nil
+}
+
+func (p *threadQueue) UpdatePriority(ids []string, priority int) {
+	p.l.UpdatePriorities(ids, priority)
 }
 
 func (p *threadQueue) DeleteThreadSync(id, workspaceId string) error {
@@ -328,6 +333,10 @@ func (o threadAddOperation) OnFinish(err error) {
 	log.Errorf("could not add object with object id %s : %v", o.ID, err)
 }
 
+func (o threadAddOperation) Type() string {
+	return "add"
+}
+
 type threadDeleteOperation struct {
 	ID             string
 	WorkspaceId    string
@@ -369,4 +378,8 @@ func (o threadDeleteOperation) OnFinish(err error) {
 			log.Errorf("could not delete object with object id %s : %v", o.ID, err)
 		}
 	}
+}
+
+func (o threadDeleteOperation) Type() string {
+	return "delete"
 }
