@@ -320,7 +320,7 @@ func (o threadAddOperation) Run() (err error) {
 }
 
 func (o threadAddOperation) OnFinish(err error) {
-	o.queue.logOperation(o, err == nil, o.WorkspaceId)
+	defer o.queue.logOperation(o, err == nil, o.WorkspaceId)
 	if err == nil {
 		o.queue.finishAddOperation(o.ID, o.WorkspaceId)
 		return

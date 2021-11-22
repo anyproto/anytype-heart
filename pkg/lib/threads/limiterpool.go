@@ -116,6 +116,11 @@ func (p *limiterPool) runTask(task *Item) {
 	priority := task.priority
 	p.mx.Unlock()
 
+	select {
+	case p.limiter <- struct{}{}:
+	default:
+	}
+
 	if err != nil {
 		err = fmt.Errorf("operation failed with attempt: %d, %w", attempt, err)
 	}
