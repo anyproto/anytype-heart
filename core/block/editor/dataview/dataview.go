@@ -667,9 +667,21 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 	}
 
 	if len(view.Relations) == 0 {
+		relsM := make(map[string]struct{}, len(view.Relations))
 		// by default use list of relations from the schema
 		for _, rel := range sch.ListRelations() {
+			relsM[rel.Key] = struct{}{}
 			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: !rel.Hidden})
+		}
+		for _, relKey := range DefaultDataviewRelations {
+			if _, exists := relsM[relKey.String()]; exists {
+				continue
+			}
+			rel := bundle.MustGetRelation(relKey)
+			if rel.Hidden {
+				continue
+			}
+			view.Relations = append(view.Relations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
 		}
 	}
 
