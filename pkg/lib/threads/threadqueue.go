@@ -45,13 +45,13 @@ type ThreadOperation struct {
 
 type threadQueue struct {
 	sync.Mutex
-	workspaceThreads  map[string]map[string]struct{}
-	threadWorkspaces  map[string]map[string]struct{}
-	threadsService    *service
-	threadStore       ThreadWorkspaceStore
-	operationsBuffer  []Operation
-	wakeupChan        chan struct{}
-	l                 *limiterPool
+	workspaceThreads map[string]map[string]struct{}
+	threadWorkspaces map[string]map[string]struct{}
+	threadsService   *service
+	threadStore      ThreadWorkspaceStore
+	operationsBuffer []Operation
+	wakeupChan       chan struct{}
+	l                *limiterPool
 }
 
 func (p *threadQueue) GetWorkspacesForThread(threadId string) []string {
