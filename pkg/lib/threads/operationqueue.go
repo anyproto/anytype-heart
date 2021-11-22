@@ -4,6 +4,12 @@ import (
 	"container/heap"
 )
 
+const (
+	DefaultPriority = iota
+	HighPriority
+	MaxPriority
+)
+
 type Operation interface {
 	Id() string
 	IsRetriable() bool

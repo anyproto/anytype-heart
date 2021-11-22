@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	ma "github.com/multiformats/go-multiaddr"
@@ -63,37 +62,6 @@ func (m *MetaInfo) WorkspaceName() string {
 
 func (m *MetaInfo) Account() string {
 	return m.AccountPubKey
-}
-
-// processNewExternalThreadUntilSuccess tries to add the new thread from remote peer until success
-// supposed to be run in goroutine
-func (s *service) processNewExternalThreadUntilSuccess(tid thread.ID, ti ThreadInfo) error {
-	log := log.With("thread", tid.String())
-	log.With("threadAddrs", ti.Addrs).Info("got new thread")
-	start := time.Now()
-	var attempt int
-	for {
-		metrics.ExternalThreadHandlingAttempts.Inc()
-		attempt++
-		<-s.newThreadProcessingLimiter
-		err := s.processNewExternalThread(tid, ti, false)
-		if err != nil {
-			s.newThreadProcessingLimiter <- struct{}{}
-			log.Errorf("processNewExternalThread failed after %d attempt: %s", attempt, err.Error())
-		} else {
-			s.newThreadProcessingLimiter <- struct{}{}
-			metrics.ServedThreads.Inc()
-			metrics.ExternalThreadHandlingDuration.Observe(time.Since(start).Seconds())
-			log.Debugf("processNewExternalThread succeed after %d attempt", attempt)
-			return nil
-		}
-		select {
-		case <-s.ctx.Done():
-			return context.Canceled
-		case <-time.After(time.Duration(5*attempt) * time.Second):
-			continue
-		}
-	}
 }
 
 func (s *service) processNewExternalThread(tid thread.ID, ti ThreadInfo, pullAsync bool) error {

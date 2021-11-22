@@ -2,6 +2,7 @@ package threads
 
 import (
 	"context"
+	"fmt"
 	"sync"
 	"time"
 )
@@ -29,12 +30,49 @@ func newLimiterPool(ctx context.Context, limit int) *limiterPool {
 	}
 }
 
+func (p *limiterPool) IsPending(id string) bool {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+	_, exists := p.m[id]
+	return exists
+}
+
+func (p *limiterPool) PendingOperations() int {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+	return len(p.m)
+}
+
+func (p *limiterPool) AddOperations(ops []Operation, priority int) {
+	p.mx.Lock()
+	defer p.mx.Unlock()
+	for _, op := range ops {
+		it, exists := p.m[op.Id()]
+		if exists {
+			if it.index != -1 {
+				it.value = op
+				p.tasks.UpdatePriority(it, priority)
+			}
+			// we don't deal with running operations
+			continue
+		}
+		it = &Item{
+			value:    op,
+			priority: priority,
+			index:    0,
+		}
+		p.addItem(it)
+	}
+}
+
 func (p *limiterPool) AddOperation(op Operation, priority int) {
 	it := &Item{
 		value:    op,
 		priority: priority,
 		index:    0,
 	}
+	p.mx.Lock()
+	defer p.mx.Unlock()
 	p.addItem(it)
 }
 
@@ -54,8 +92,6 @@ func (p *limiterPool) UpdatePriority(id string, priority int) {
 }
 
 func (p *limiterPool) addItem(it *Item) {
-	p.mx.Lock()
-	defer p.mx.Unlock()
 	if p.isDone() {
 		return
 	}
@@ -63,15 +99,10 @@ func (p *limiterPool) addItem(it *Item) {
 	p.m[it.value.(Operation).Id()] = it
 	p.tasks.Push(it)
 
-	if !p.started {
-		go p.startProcessing()
-	}
-
 	select {
 	case p.limiter <- struct{}{}:
 	default:
 	}
-	p.started = true
 }
 
 func (p *limiterPool) runTask(task *Item) {
@@ -80,17 +111,22 @@ func (p *limiterPool) runTask(task *Item) {
 
 	p.mx.Lock()
 	p.runningTasks--
+	task.attempt++
+	attempt := task.attempt
+	priority := task.priority
 	p.mx.Unlock()
 
+	if err != nil {
+		err = fmt.Errorf("operation failed with attempt: %d, %w", attempt, err)
+	}
+
+	op.OnFinish(err)
 	if err == nil {
-		op.OnFinish(nil)
 		p.mx.Lock()
 		defer p.mx.Unlock()
 		delete(p.m, op.Id())
 		return
 	}
-
-	log.With("id", op.Id()).Errorf("failed to run operation")
 
 	if !op.IsRetriable() {
 		p.mx.Lock()
@@ -98,12 +134,14 @@ func (p *limiterPool) runTask(task *Item) {
 		delete(p.m, op.Id())
 		return
 	}
-	task.attempt++
-	<-time.After(5 * time.Second * time.Duration(task.attempt) / time.Duration(task.priority))
+
+	<-time.After(5 * time.Second * time.Duration(attempt) / time.Duration(priority))
+	p.mx.Lock()
+	defer p.mx.Unlock()
 	p.addItem(task)
 }
 
-func (p *limiterPool) startProcessing() {
+func (p *limiterPool) run() {
 Loop:
 	for {
 		select {
@@ -122,9 +160,6 @@ Loop:
 			go p.runTask(newTask)
 		}
 	}
-	p.mx.Lock()
-	p.started = false
-	p.mx.Unlock()
 }
 
 func (p *limiterPool) isDone() bool {
