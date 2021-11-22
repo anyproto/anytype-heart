@@ -15,6 +15,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
+	ma "github.com/multiformats/go-multiaddr"
+	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/textileio/go-threads/core/thread"
 	"time"
 
@@ -155,8 +157,19 @@ func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error
 	if err != nil {
 		return "", nil, fmt.Errorf("failed to get info on the thread %s: %w", objectId, err)
 	}
+	var publicAddrs []ma.Multiaddr
+	for _, adr := range threadInfo.Addrs {
+		// ignore cafe addr if it is there because we will add this anyway
+		if manet.IsPublicAddr(adr) && adr.String() != p.threadService.CafePeer().String() {
+			publicAddrs = append(publicAddrs, adr)
+		}
+	}
+	if len(publicAddrs) > 2 {
+		publicAddrs = publicAddrs[len(publicAddrs)-2:]
+	}
+	publicAddrs = append(publicAddrs, p.threadService.CafePeer())
 
-	return threadInfo.Key.String(), util.MultiAddressesToStrings(threadInfo.Addrs), nil
+	return threadInfo.Key.String(), util.MultiAddressesToStrings(publicAddrs), nil
 }
 
 func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
