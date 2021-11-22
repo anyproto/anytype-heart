@@ -153,7 +153,7 @@ func (p *limiterPool) runTask(task *Item) {
 		return
 	}
 
-	<-time.After(5 * time.Second * time.Duration(attempt) / time.Duration(priority))
+	<-time.After(5 * time.Second * time.Duration(attempt) / time.Duration(priority + 1))
 	p.mx.Lock()
 	defer p.mx.Unlock()
 	p.addItem(task)
