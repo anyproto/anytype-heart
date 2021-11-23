@@ -553,10 +553,14 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 
 		anySucceed := false
 		for _, blockId := range req.ObjectIds {
-			if req.IsArchived {
-				err = archive.AddObject(blockId)
+			if restrErr := s.restriction.CheckRestrictions(blockId, model.Restrictions_Delete); restrErr != nil {
+				err = restrErr
 			} else {
-				err = archive.RemoveObject(blockId)
+				if req.IsArchived {
+					err = archive.AddObject(blockId)
+				} else {
+					err = archive.RemoveObject(blockId)
+				}
 			}
 			if err != nil {
 				log.Errorf("failed to archive %s: %s", blockId, err.Error())
@@ -608,6 +612,9 @@ func (s *service) objectLinksCollectionModify(collectionId string, objectId stri
 		coll, ok := b.(collection.Collection)
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
+		}
+		if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); err != nil {
+			return err
 		}
 		if value {
 			return coll.AddObject(objectId)
@@ -690,6 +697,9 @@ func (s *service) DeleteObject(id string) (err error) {
 		isFavorite  bool
 	)
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
+			return err
+		}
 		b.BlockClose()
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())
