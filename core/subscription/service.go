@@ -119,7 +119,13 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	if exists, ok := s.subscriptions[req.SubId]; ok {
 		exists.close()
 	}
-	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order)
+	if req.Offset < 0 {
+		req.Offset = 0
+	}
+	if req.Limit < 0 {
+		req.Limit = 0
+	}
+	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{

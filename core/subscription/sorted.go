@@ -12,9 +12,10 @@ import (
 var (
 	ErrAfterId  = errors.New("after id not in set")
 	ErrBeforeId = errors.New("before id not in set")
+	ErrNoRecords = errors.New("no records with given offset")
 )
 
-func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, order filter.Order) *sortedSub {
+func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, order filter.Order, limit, offset int) *sortedSub {
 	sub := &sortedSub{
 		id:     id,
 		keys:   keys,
@@ -22,6 +23,8 @@ func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, o
 		order:  order,
 		cache:  s.cache,
 		ds:     s.ds,
+		limit:  limit,
+		offset: offset,
 	}
 	return sub
 }
@@ -33,7 +36,7 @@ type sortedSub struct {
 	order  filter.Order
 
 	afterId, beforeId string
-	limit             int
+	limit, offset     int
 
 	skl               *skiplist.SkipList
 	afterEl, beforeEl *skiplist.Element
@@ -65,7 +68,24 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 			return ErrBeforeId
 		}
 		s.beforeEl = s.skl.Get(e)
+	} else if s.offset > 0 {
+		el := s.skl.Front()
+		i := 0
+		for el != nil {
+			i++
+			if i == s.offset {
+				s.afterId = el.Key().(*entry).id
+				s.afterEl = el
+			}
+			el = el.Next()
+		}
+		if s.afterEl == nil {
+			return ErrNoRecords
+		}
 	}
+
+
+
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 {

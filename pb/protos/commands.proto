@@ -3364,15 +3364,17 @@ message Rpc {
                 string fullText = 4;
                 // results limit
                 int32 limit = 5;
+                // initial offset; middleware will find afterId
+                int32 offset = 6;
                 // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
-                repeated string keys = 6;
+                repeated string keys = 7;
 
                 // (optional) pagination: middleware will return results after given id
-                string afterId = 9;
+                string afterId = 8;
                 // (optional) pagination: middleware will return results before given id
-                string beforeId = 10;
+                string beforeId = 9;
 
-                repeated string source = 11;
+                repeated string source = 10;
 
                 string ignoreWorkspace = 12;
             }
