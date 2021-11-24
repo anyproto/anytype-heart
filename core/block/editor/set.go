@@ -2,7 +2,6 @@ package editor
 
 import (
 	"fmt"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -71,10 +70,11 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithBlockEditRestricted(p.Id()),
 	}
 	if p.Id() == p.Anytype().PredefinedBlocks().SetPages && p.Pick(template.DataviewBlockId) == nil {
+		rels := pbtypes.MergeRelations(bundle.MustGetType(bundle.TypeKeyNote).Relations, bundle.MustGetRelations(dataview.DefaultDataviewRelations))
 		dataview := model.BlockContentOfDataview{
 			Dataview: &model.BlockContentDataview{
 				Source:    []string{bundle.TypeKeyNote.URL()},
-				Relations: bundle.MustGetType(bundle.TypeKeyNote).Relations,
+				Relations: rels,
 				Views: []*model.BlockContentDataviewView{
 					{
 						Id:   bson.NewObjectId().Hex(),
@@ -86,7 +86,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
-						Relations: getDefaultViewRelations(bundle.MustGetType(bundle.TypeKeyNote).Relations),
+						Relations: getDefaultViewRelations(rels),
 						Filters:   nil,
 					},
 				},
@@ -99,7 +99,10 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 			template.WithDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{bundle.TypeKeyNote.URL()})),
 			template.WithDetailIconEmoji("⚪"))
 	} else if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
-		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(dvBlock.Model().GetDataview().Source)))
+		setOf := dvBlock.Model().GetDataview().Source
+		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(setOf)))
+		// add missing done relation
+		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))
 	}
 	templates = append(templates, template.WithTitle)
 	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
@@ -129,6 +132,7 @@ func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, ico
 			template.WithDataview(*blockContent, false),
 		)
 	}
+
 	if err := smartblock.ApplyTemplate(p, s, tmpls...); err != nil {
 		return err
 	}

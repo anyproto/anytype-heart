@@ -81,6 +81,10 @@ type entry struct {
 }
 
 type OCache interface {
+	// DoLockedIfNotExists does an action if the object with id is not in cache
+	// under a global lock, this will prevent a race which otherwise occurs
+	// when object is created in parallel with action
+	DoLockedIfNotExists(id string, action func() error) error
 	// Get gets an object from cache or create a new one via 'loadFunc'
 	// Increases the object refs counter on successful
 	// When 'loadFunc' returns a non-nil error, an object will not be stored to cache
@@ -232,6 +236,18 @@ func (c *oCache) Lock(id string) bool {
 		return true
 	}
 	return false
+}
+
+func (c *oCache) DoLockedIfNotExists(id string, action func() error) error {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.closed {
+		return ErrClosed
+	}
+	if _, ok := c.data[id]; ok {
+		return ErrExists
+	}
+	return action()
 }
 
 func (c *oCache) Unlock(id string) bool {

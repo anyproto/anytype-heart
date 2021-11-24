@@ -510,6 +510,50 @@ var WithRootBlocks = func(blocks []*model.Block) StateTransformer {
 	}
 }
 
+var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) StateTransformer {
+	return func(s *state.State) {
+		rel := bundle.MustGetRelation(key)
+		b := s.Get(id)
+		if b == nil {
+			return
+		}
+		var blockNeedToUpdate bool
+		if dvBlock, ok := b.(simpleDataview.Block); !ok {
+			log.Errorf("WithDataviewRequiredRelation got not dataview block")
+			return
+		} else {
+			dv := dvBlock.Model().GetDataview()
+			if dv == nil {
+				return
+			}
+			if exRel := pbtypes.GetRelation(dv.Relations, key.String()); exRel == nil {
+				dv.Relations = append(dv.Relations, rel)
+				blockNeedToUpdate = true
+			}
+			for i, view := range dv.Views {
+				if view.Relations == nil {
+					continue
+				}
+				var found bool
+				for _, rel := range view.Relations {
+					if rel.Key == bundle.RelationKeyDone.String() {
+						found = true
+						break
+					}
+				}
+				if !found {
+					blockNeedToUpdate = true
+					dv.Views[i].Relations = append(dv.Views[i].Relations, &model.BlockContentDataviewRelation{Key: key.String(), IsVisible: false})
+				}
+			}
+			if blockNeedToUpdate {
+				log.Errorf("add missing done relation for set")
+				s.Set(simple.New(&model.Block{Content: &model.BlockContentOfDataview{Dataview: dv}, Id: id}))
+			}
+		}
+	}
+}
+
 var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
 		// remove old dataview

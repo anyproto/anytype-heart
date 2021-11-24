@@ -15,13 +15,11 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/status"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
 	"github.com/textileio/go-threads/core/thread"
@@ -49,6 +47,10 @@ type Source interface {
 	PushChange(params PushChangeParams) (id string, err error)
 	FindFirstChange(ctx context.Context) (c *change.Change, err error)
 	Close() (err error)
+}
+
+type CreationInfoProvider interface {
+	GetCreationInfo() (creator string, createdDate int64, err error)
 }
 
 type SourceIdEndodedDetails interface {
@@ -210,7 +212,6 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 		err = nil
 		s.tree = new(change.Tree)
 		doc = state.NewDoc(s.id, nil)
-		InjectCreationInfo(s, doc.(*state.State))
 		doc.(*state.State).InjectDerivedDetails()
 	} else if err != nil {
 		log.With("thread", s.id).Errorf("buildTree failed: %s", err.Error())
@@ -250,16 +251,14 @@ func (s *source) buildState() (doc state.Doc, err error) {
 		}
 	}
 	st.BlocksInit(st)
-	storedDetails, _ := s.Anytype().ObjectStore().GetDetails(s.Id())
-
-	// inject also derived keys, because it may be a good idea to have created date and creator cached so we don't need to traverse changes every time
-	InjectLocalDetails(st, pbtypes.StructFilterKeys(storedDetails.GetDetails(), append(bundle.LocalRelationsKeys, bundle.DerivedRelationsKeys...)))
-	InjectCreationInfo(s, st)
 	st.InjectDerivedDetails()
+
+	// TODO: check if we can leave only removeDuplicates instead of Normalize
 	if err = st.Normalize(false); err != nil {
 		return
 	}
 
+	// TODO: check if we can use apply fast one
 	if _, _, err = state.ApplyState(st, false); err != nil {
 		return
 	}
@@ -267,29 +266,14 @@ func (s *source) buildState() (doc state.Doc, err error) {
 	return
 }
 
-func InjectCreationInfo(s Source, st *state.State) (err error) {
+func (s *source) GetCreationInfo() (creator string, createdDate int64, err error) {
 	if s.Anytype() == nil {
-		return fmt.Errorf("anytype is nil")
+		return "", 0, fmt.Errorf("anytype is nil")
 	}
 
-	defer func() {
-		if !pbtypes.HasRelation(st.ExtraRelations(), bundle.RelationKeyCreator.String()) {
-			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreator))
-		}
-		if !pbtypes.HasRelation(st.ExtraRelations(), bundle.RelationKeyCreatedDate.String()) {
-			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKeyCreatedDate))
-		}
-	}()
+	createdDate = time.Now().Unix()
+	createdBy := s.Anytype().Account()
 
-	if pbtypes.HasField(st.LocalDetails(), bundle.RelationKeyCreator.String()) {
-		return nil
-	}
-
-	var (
-		createdDate = time.Now().Unix()
-		// todo: remove this default
-		createdBy = s.Anytype().Account()
-	)
 	// protect from the big documents with a large trees
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
@@ -300,7 +284,7 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 		createdBy = s.Anytype().Account()
 		log.Debugf("InjectCreationInfo set for the empty object")
 	} else if err != nil {
-		return fmt.Errorf("failed to find first change to derive creation info")
+		return "", 0, fmt.Errorf("failed to find first change to derive creation info")
 	} else {
 		createdDate = fc.Timestamp
 		createdBy = fc.Account
@@ -310,26 +294,10 @@ func InjectCreationInfo(s Source, st *state.State) (err error) {
 		log.Warnf("Calculate creation info %s: %.2fs", s.Id(), time.Since(start).Seconds())
 	}
 
-	st.SetDetailAndBundledRelation(bundle.RelationKeyCreatedDate, pbtypes.Float64(float64(createdDate)))
 	if profileId, e := threads.ProfileThreadIDFromAccountAddress(createdBy); e == nil {
-		st.SetDetailAndBundledRelation(bundle.RelationKeyCreator, pbtypes.String(profileId.String()))
+		creator = profileId.String()
 	}
 	return
-}
-
-func InjectLocalDetails(st *state.State, localDetails *types.Struct) {
-	for key, v := range localDetails.GetFields() {
-		if v == nil {
-			continue
-		}
-		if _, isNull := v.Kind.(*types.Value_NullValue); isNull {
-			continue
-		}
-		st.SetLocalDetail(key, v)
-		if !pbtypes.HasRelation(st.ExtraRelations(), key) {
-			st.SetExtraRelation(bundle.MustGetRelation(bundle.RelationKey(key)))
-		}
-	}
 }
 
 type PushChangeParams struct {

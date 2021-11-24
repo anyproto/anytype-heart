@@ -35,6 +35,7 @@ const defaultLimit = 50
 
 var log = logging.Logger("anytype-mw-editor")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
+var DefaultDataviewRelations = append(bundle.RequiredInternalRelations, bundle.RelationKeyDone)
 
 type Dataview interface {
 	SetSource(ctx *state.Context, blockId string, source []string) (err error)
@@ -680,6 +681,21 @@ func (d *dataviewCollectionImpl) CreateView(ctx *state.Context, id string, view 
 		}}
 	}
 
+	sbType, err := smartblock2.SmartBlockTypeFromID(d.Id())
+	if err != nil {
+		return nil, err
+	}
+	if sbType == smartblock2.SmartBlockTypeWorkspace && d.Id() != d.Anytype().PredefinedBlocks().Account {
+		view.Filters = []*model.BlockContentDataviewFilter{{
+			RelationKey: bundle.RelationKeyWorkspaceId.String(),
+			Condition:   model.BlockContentDataviewFilter_Equal,
+			Value:       pbtypes.String(d.Id()),
+		}, {
+			RelationKey: bundle.RelationKeyId.String(),
+			Condition:   model.BlockContentDataviewFilter_NotEqual,
+			Value:       pbtypes.String(d.Id()),
+		}}
+	}
 	tb.AddView(view)
 	return &view, d.Apply(s)
 }
@@ -1353,8 +1369,7 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 		schemaRelations = append([]*model.Relation{bundle.MustGetRelation(bundle.RelationKeyName)}, schemaRelations...)
 	}
 
-	for _, relKey := range bundle.RequiredInternalRelations {
-		// add all non-hidden system-wide internal relations just in case
+	for _, relKey := range DefaultDataviewRelations {
 		if pbtypes.HasRelation(relations, relKey.String()) {
 			continue
 		}
@@ -1364,7 +1379,6 @@ func DataviewBlockBySource(store objectstore.ObjectStore, source []string) (res 
 		}
 		relations = append(relations, rel)
 		viewRelations = append(viewRelations, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: false})
-
 	}
 
 	res = model.BlockContentOfDataview{
