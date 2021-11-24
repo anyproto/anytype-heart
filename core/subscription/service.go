@@ -1,12 +1,16 @@
 package subscription
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -90,13 +94,21 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		FullText: req.FullText,
 	}
 
-	filter, err := database.NewFilters(q, nil)
+	f, err := database.NewFilters(q, nil)
 	if err != nil {
 		return
 	}
 
+	if len(req.Source) > 0 {
+		sourceFilter, err := s.filtersFromSource(req.Source)
+		if err != nil {
+			return nil, err
+		}
+		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
+	}
+
 	records, err := s.objectStore.QueryRaw(query.Query{
-		Filters: []query.Filter{filter},
+		Filters: []query.Filter{f},
 	})
 	if err != nil {
 		return
@@ -107,7 +119,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	if exists, ok := s.subscriptions[req.SubId]; ok {
 		exists.close()
 	}
-	sub := s.newSortedSub(req.SubId, req.Keys, filter.FilterObj, filter.Order)
+	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order)
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
@@ -206,6 +218,42 @@ func (s *service) onChange(entries []*entry) {
 	for _, e := range events {
 		s.sendEvent(e)
 	}
+}
+
+func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
+	var objTypeIds, relTypeKeys []string
+
+	for _, source := range sources {
+		sbt, err := smartblock.SmartBlockTypeFromID(source)
+		if err != nil {
+			return nil, err
+		}
+		if sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType {
+			objTypeIds = append(objTypeIds, source)
+		} else {
+			relKey, err := pbtypes.RelationIdToKey(source)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get relation key from id %s: %s", relKey, err.Error())
+			}
+			relTypeKeys = append(relTypeKeys, relKey)
+		}
+	}
+
+	var relTypeFilter filter.OrFilters
+
+	if len(objTypeIds) > 0 {
+		relTypeFilter = append(relTypeFilter, filter.In{
+			Key:   bundle.RelationKeyType.String(),
+			Value: pbtypes.StringList(objTypeIds).GetListValue(),
+		})
+	}
+
+	for _, key := range relTypeKeys {
+		relTypeFilter = append(relTypeFilter, filter.Exists{
+			Key: key,
+		})
+	}
+	return relTypeFilter, nil
 }
 
 func (s *service) Close() (err error) {
