@@ -33,9 +33,18 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+type subscription interface {
+	init(entries []*entry) (err error)
+	counters() (prev, next int)
+	onChangeBatch(ctx *opCtx, entries ...*entry)
+	getActiveRecords() (res []*types.Struct)
+	close()
+}
+
 type service struct {
 	cache         *cache
-	subscriptions map[string]*subscription
+	ds            *dependencyService
+	subscriptions map[string]subscription
 	recBatch      *mb.MB
 
 	objectStore objectstore.ObjectStore
@@ -47,7 +56,8 @@ type service struct {
 
 func (s *service) Init(a *app.App) (err error) {
 	s.cache = newCache()
-	s.subscriptions = make(map[string]*subscription)
+	s.ds = newDependencyService(s)
+	s.subscriptions = make(map[string]subscription)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
@@ -73,10 +83,10 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	}
 
 	q := database.Query{
-		Filters:           req.Filters,
-		Sorts:             req.Sorts,
-		Limit:             int(req.Limit),
-		FullText:          req.FullText,
+		Filters:  req.Filters,
+		Sorts:    req.Sorts,
+		Limit:    int(req.Limit),
+		FullText: req.FullText,
 	}
 
 	filter, err := database.NewFilters(q, nil)
@@ -96,7 +106,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	if exists, ok := s.subscriptions[req.SubId]; ok {
 		exists.close()
 	}
-	sub := s.newSubscription(req.SubId, req.Keys, filter.FilterObj, filter.Order)
+	sub := s.newSortedSub(req.SubId, req.Keys, filter.FilterObj, filter.Order)
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
@@ -104,14 +114,23 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 			data: r.Details,
 		})
 	}
-	if err = sub.fill(entries); err != nil {
+	if err = sub.init(entries); err != nil {
 		return
 	}
 	s.subscriptions[sub.id] = sub
 	prev, next := sub.counters()
+
+	var depRecords, subRecords []*types.Struct
+	subRecords = sub.getActiveRecords()
+
+	if sub.depSub != nil {
+		depRecords = sub.depSub.getActiveRecords()
+	}
+
 	resp = &pb.RpcObjectSearchSubscribeResponse{
-		Records: sub.getActiveRecords(),
-		SubId:   sub.id,
+		Records:      subRecords,
+		Dependencies: depRecords,
+		SubId:        sub.id,
 		Counters: &pb.EventObjectSubscriptionCounters{
 			Total:     int64(sub.skl.Len()),
 			NextCount: int64(prev),
@@ -143,7 +162,7 @@ func (s *service) UnsubscribeAll() (err error) {
 	for _, sub := range s.subscriptions {
 		sub.close()
 	}
-	s.subscriptions = make(map[string]*subscription)
+	s.subscriptions = make(map[string]subscription)
 	return
 }
 

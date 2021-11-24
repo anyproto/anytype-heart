@@ -91,3 +91,11 @@ func assertCtxChange(t *testing.T, ctx *opCtx, ids ...string) {
 		assert.True(t, found, fmt.Sprintf("change id %v not found", id))
 	}
 }
+
+func assertCtxEmpty(t *testing.T, ctx *opCtx) {
+	assert.Len(t, ctx.add, 0, "add not empty")
+	assert.Len(t, ctx.remove, 0, "remove not empty")
+	assert.Len(t, ctx.counters, 0, "counters not empty")
+	assert.Len(t, ctx.change, 0, "change not empty")
+	assert.Len(t, ctx.position, 0, "position not empty")
+}

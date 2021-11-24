@@ -35,11 +35,12 @@ type opCounter struct {
 
 type opCtx struct {
 	// subIds for remove
-	remove   []opRemove
-	change   []opChange
-	add      []opChange
-	position []opPosition
-	counters []opCounter
+	remove     []opRemove
+	change     []opChange
+	add        []opChange
+	position   []opPosition
+	counters   []opCounter
+	depEntries []*entry
 
 	keysBuf []struct {
 		id     string
@@ -147,6 +148,11 @@ func (ctx *opCtx) detailsEvents(c *cache, entries []*entry) (msgs []*pb.EventMes
 				return e
 			}
 		}
+		for _, e := range ctx.depEntries {
+			if e.id == id {
+				return e
+			}
+		}
 		return nil
 	}
 	for _, info := range ctx.keysBuf {
@@ -200,4 +206,5 @@ func (ctx *opCtx) reset() {
 	ctx.position = ctx.position[:0]
 	ctx.counters = ctx.counters[:0]
 	ctx.keysBuf = ctx.keysBuf[:0]
+	ctx.depEntries = ctx.depEntries[:0]
 }

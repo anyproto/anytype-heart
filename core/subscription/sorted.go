@@ -14,18 +14,19 @@ var (
 	ErrBeforeId = errors.New("before id not in set")
 )
 
-func (s *service) newSubscription(id string, keys []string, filter filter.Filter, order filter.Order) *subscription {
-	sub := &subscription{
+func (s *service) newSortedSub(id string, keys []string, filter filter.Filter, order filter.Order) *sortedSub {
+	sub := &sortedSub{
 		id:     id,
 		keys:   keys,
 		filter: filter,
 		order:  order,
 		cache:  s.cache,
+		ds:     s.ds,
 	}
 	return sub
 }
 
-type subscription struct {
+type sortedSub struct {
 	id     string
 	keys   []string
 	filter filter.Filter
@@ -37,10 +38,15 @@ type subscription struct {
 	skl               *skiplist.SkipList
 	afterEl, beforeEl *skiplist.Element
 
+	depSub           *simpleSub
+	depKeys          []string
+	activeEntriesBuf []*entry
+
 	cache *cache
+	ds    *dependencyService
 }
 
-func (s *subscription) fill(entries []*entry) (err error) {
+func (s *sortedSub) init(entries []*entry) (err error) {
 	s.skl = skiplist.New(s)
 
 	for _, e := range entries {
@@ -60,14 +66,24 @@ func (s *subscription) fill(entries []*entry) (err error) {
 		}
 		s.beforeEl = s.skl.Get(e)
 	}
+	if s.ds != nil {
+		s.depKeys = s.ds.depKeys(s.keys)
+		if len(s.depKeys) > 0 {
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.getActiveEntries(), s.keys, s.depKeys)
+		}
+	}
 	return nil
 }
 
-func (s *subscription) onChangeBatch(ctx *opCtx, entries ...*entry) {
-	var countersChanged bool
+func (s *sortedSub) onChangeBatch(ctx *opCtx, entries ...*entry) {
+	var countersChanged, activeChanged bool
 	for _, e := range entries {
-		if s.onChange(ctx, e) {
+		ch, ac := s.onChange(ctx, e)
+		if ch {
 			countersChanged = true
+		}
+		if ac {
+			activeChanged = true
 		}
 	}
 	if countersChanged {
@@ -79,24 +95,28 @@ func (s *subscription) onChangeBatch(ctx *opCtx, entries ...*entry) {
 			nextCount: next,
 		})
 	}
+	if activeChanged && s.depSub != nil {
+		s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
+	}
 }
 
-func (s *subscription) onChange(ctx *opCtx, e *entry) (countersChange bool) {
+func (s *sortedSub) onChange(ctx *opCtx, e *entry) (countersChanged, activeChanged bool) {
 	newInSet := true
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e)
 	}
 	curInSet, currInActive := s.lookup(s.cache.pick(e.id))
 	if !curInSet && !newInSet {
-		return false
+		return false, false
 	}
 	if curInSet && !newInSet {
 		if currInActive {
 			s.removeActive(ctx, e)
+			activeChanged = true
 		} else {
 			s.removeNonActive(e.id)
 		}
-		return true
+		return true, activeChanged
 	}
 	if !curInSet && newInSet {
 		return s.add(ctx, e)
@@ -107,7 +127,7 @@ func (s *subscription) onChange(ctx *opCtx, e *entry) (countersChange bool) {
 	panic("subscription: check algo")
 }
 
-func (s *subscription) removeNonActive(id string) {
+func (s *sortedSub) removeNonActive(id string) {
 	e := s.cache.pick(id)
 	if s.afterEl != nil {
 		if comp := s.Compare(s.afterEl.Key(), s.skl.Get(e).Key()); comp <= 0 {
@@ -132,7 +152,7 @@ func (s *subscription) removeNonActive(id string) {
 	s.cache.release(e.id)
 }
 
-func (s *subscription) removeActive(ctx *opCtx, e *entry) {
+func (s *sortedSub) removeActive(ctx *opCtx, e *entry) {
 	s.skl.Remove(s.cache.pick(e.id))
 	s.cache.release(e.id)
 	ctx.remove = append(ctx.remove, opRemove{
@@ -142,7 +162,7 @@ func (s *subscription) removeActive(ctx *opCtx, e *entry) {
 	s.alignAdd(ctx)
 }
 
-func (s *subscription) add(ctx *opCtx, e *entry) (countersChange bool) {
+func (s *sortedSub) add(ctx *opCtx, e *entry) (countersChanged, activeChanged bool) {
 	s.skl.Set(e, nil)
 	s.cache.get(e.id)
 	_, inActive := s.lookup(e)
@@ -158,12 +178,12 @@ func (s *subscription) add(ctx *opCtx, e *entry) (countersChange bool) {
 			afterId: afterId,
 		})
 		s.alignRemove(ctx)
-		return false
+		return false, true
 	}
-	return true
+	return true, false
 }
 
-func (s *subscription) change(ctx *opCtx, e *entry, currInActive bool) (countersChange bool) {
+func (s *sortedSub) change(ctx *opCtx, e *entry, currInActive bool) (countersChanged, activeChanged bool) {
 	var currAfterId string
 	if currInActive {
 		if prev := s.skl.Get(s.cache.pick(e.id)).Prev(); prev != nil {
@@ -186,7 +206,9 @@ func (s *subscription) change(ctx *opCtx, e *entry, currInActive bool) (counters
 			})
 		}
 		if !currInActive {
-			countersChange = true
+			countersChanged = true
+		} else {
+			activeChanged = true
 		}
 		ctx.change = append(ctx.change, opChange{
 			id:    e.id,
@@ -200,13 +222,14 @@ func (s *subscription) change(ctx *opCtx, e *entry, currInActive bool) (counters
 				subId: s.id,
 			})
 			s.alignAdd(ctx)
+			activeChanged = true
 		}
-		countersChange = true
+		countersChanged = true
 	}
 	return
 }
 
-func (s *subscription) alignAdd(ctx *opCtx) {
+func (s *sortedSub) alignAdd(ctx *opCtx) {
 	if s.limit > 0 {
 		if s.beforeEl != nil {
 			ctx.add = append(ctx.add, opChange{
@@ -250,7 +273,7 @@ func (s *subscription) alignAdd(ctx *opCtx) {
 	}
 }
 
-func (s *subscription) alignRemove(ctx *opCtx) {
+func (s *sortedSub) alignRemove(ctx *opCtx) {
 	if s.limit > 0 {
 		if s.beforeEl != nil {
 			ctx.remove = append(ctx.remove, opRemove{
@@ -286,7 +309,7 @@ func (s *subscription) alignRemove(ctx *opCtx) {
 	}
 }
 
-func (s *subscription) lookup(e *entry) (inSet, inActive bool) {
+func (s *sortedSub) lookup(e *entry) (inSet, inActive bool) {
 	if e == nil {
 		return
 	}
@@ -331,7 +354,7 @@ func (s *subscription) lookup(e *entry) (inSet, inActive bool) {
 	return
 }
 
-func (s *subscription) counters() (prev, next int) {
+func (s *sortedSub) counters() (prev, next int) {
 	if s.beforeEl == nil && s.afterEl == nil && s.limit <= 0 {
 		// no pagination - no counters
 		return 0, 0
@@ -382,7 +405,7 @@ func (s *subscription) counters() (prev, next int) {
 	return
 }
 
-func (s *subscription) inDistance(el *skiplist.Element, id string, distance int, backward bool) bool {
+func (s *sortedSub) inDistance(el *skiplist.Element, id string, distance int, backward bool) bool {
 	var i int
 	for el != nil {
 		if el.Key().(*entry).id == id {
@@ -401,27 +424,49 @@ func (s *subscription) inDistance(el *skiplist.Element, id string, distance int,
 	return false
 }
 
-func (s *subscription) getActiveRecords() (res []*types.Struct) {
+func (s *sortedSub) getActiveRecords() (res []*types.Struct) {
+	reverse := s.iterateActive(func(e *entry) {
+		res = append(res, pbtypes.StructFilterKeys(e.data, s.keys))
+	})
+	if reverse {
+		for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
+			res[i], res[j] = res[j], res[i]
+		}
+	}
+	return
+}
+
+func (s *sortedSub) getActiveEntries() (entries []*entry) {
+	s.activeEntriesBuf = s.activeEntriesBuf[:0]
+	s.iterateActive(func(e *entry) {
+		s.activeEntriesBuf = append(s.activeEntriesBuf, e)
+	})
+	return s.activeEntriesBuf
+}
+
+func (s *sortedSub) iterateActive(f func(e *entry)) (reverse bool) {
 	if s.beforeEl != nil {
 		var el = s.beforeEl.Prev()
+		var i int
 		for el != nil {
-			res = append(res, pbtypes.StructFilterKeys(el.Key().(*entry).data, s.keys))
-			if s.limit > 0 && len(res) >= s.limit {
+			f(el.Key().(*entry))
+			i++
+			if s.limit > 0 && i >= s.limit {
 				break
 			}
 			el = el.Prev()
 		}
-		for i, j := 0, len(res)-1; i < j; i, j = i+1, j-1 {
-			res[i], res[j] = res[j], res[i]
-		}
+		reverse = true
 	} else {
 		var el = s.skl.Front()
 		if s.afterEl != nil {
 			el = s.afterEl.Next()
 		}
+		var i int
 		for el != nil {
-			res = append(res, pbtypes.StructFilterKeys(el.Key().(*entry).data, s.keys))
-			if s.limit > 0 && len(res) >= s.limit {
+			f(el.Key().(*entry))
+			i++
+			if s.limit > 0 && i >= s.limit {
 				break
 			}
 			el = el.Next()
@@ -431,7 +476,7 @@ func (s *subscription) getActiveRecords() (res []*types.Struct) {
 }
 
 // Compare implements sliplist.Comparable
-func (s *subscription) Compare(lhs, rhs interface{}) (comp int) {
+func (s *sortedSub) Compare(lhs, rhs interface{}) (comp int) {
 	le := lhs.(*entry)
 	re := rhs.(*entry)
 	// we need always identify records by id
@@ -452,31 +497,17 @@ func (s *subscription) Compare(lhs, rhs interface{}) (comp int) {
 	return comp
 }
 
-func (s *subscription) CalcScore(key interface{}) float64 {
+func (s *sortedSub) CalcScore(key interface{}) float64 {
 	return 0
 }
 
-func (s *subscription) close() {
+func (s *sortedSub) close() {
 	el := s.skl.Front()
 	for el != nil {
 		s.cache.release(el.Key().(*entry).id)
 		el = el.Next()
 	}
-}
-
-type entrySorter struct {
-	entries []*entry
-	s       *subscription
-}
-
-func (e entrySorter) Len() int {
-	return len(e.entries)
-}
-
-func (e entrySorter) Less(i, j int) bool {
-	return e.s.Compare(e.entries[i], e.entries[j]) == -1
-}
-
-func (e entrySorter) Swap(i, j int) {
-	e.entries[i], e.entries[j] = e.entries[j], e.entries[i]
+	if s.depSub != nil {
+		s.depSub.close()
+	}
 }
