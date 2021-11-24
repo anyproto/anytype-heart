@@ -649,8 +649,8 @@ func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
 }
 
 func (s *service) SetFileStyle(ctx *state.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string) error {
-	return s.Do(contextId, func(b smartblock.SmartBlock) error {
-		return b.(file.File).SetFileStyle(ctx, style, blockIds...)
+	return s.DoFile(contextId, func(b file.File) error {
+		return b.SetFileStyle(ctx, style, blockIds...)
 	})
 }
 

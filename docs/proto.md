@@ -843,6 +843,7 @@
  * [Event.Block.Fill.File.Name](#anytype.Event.Block.Fill.File.Name)
  * [Event.Block.Fill.File.Size](#anytype.Event.Block.Fill.File.Size)
  * [Event.Block.Fill.File.State](#anytype.Event.Block.Fill.File.State)
+ * [Event.Block.Fill.File.Style](#anytype.Event.Block.Fill.File.Style)
  * [Event.Block.Fill.File.Type](#anytype.Event.Block.Fill.File.Type)
  * [Event.Block.Fill.File.Width](#anytype.Event.Block.Fill.File.Width)
  * [Event.Block.Fill.Link](#anytype.Event.Block.Fill.Link)
@@ -877,6 +878,7 @@
  * [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name)
  * [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size)
  * [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
+ * [Event.Block.Set.File.Style](#anytype.Event.Block.Set.File.Style)
  * [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type)
  * [Event.Block.Set.File.Width](#anytype.Event.Block.Set.File.Width)
  * [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex)
@@ -9392,6 +9394,7 @@ Precondition: user A opened a block
 | hash | [Event.Block.Fill.File.Hash](#anytype.Event.Block.Fill.File.Hash) | optional |  |
 | name | [Event.Block.Fill.File.Name](#anytype.Event.Block.Fill.File.Name) | optional |  |
 | size | [Event.Block.Fill.File.Size](#anytype.Event.Block.Fill.File.Size) | optional |  |
+| style | [Event.Block.Fill.File.Style](#anytype.Event.Block.Fill.File.Style) | optional |  |
 
 
 <a name="anytype.Event.Block.Fill.File.Hash"/>
@@ -9437,6 +9440,15 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [Block.Content.File.State](#anytype.model.Block.Content.File.State) | optional |  |
+
+
+<a name="anytype.Event.Block.Fill.File.Style"/>
+### Event.Block.Fill.File.Style
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [Block.Content.File.Style](#anytype.model.Block.Content.File.Style) | optional |  |
 
 
 <a name="anytype.Event.Block.Fill.File.Type"/>
@@ -9723,6 +9735,7 @@ Precondition: user A opened a block
 | hash | [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash) | optional |  |
 | name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) | optional |  |
 | size | [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size) | optional |  |
+| style | [Event.Block.Set.File.Style](#anytype.Event.Block.Set.File.Style) | optional |  |
 
 
 <a name="anytype.Event.Block.Set.File.Hash"/>
@@ -9768,6 +9781,15 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [Block.Content.File.State](#anytype.model.Block.Content.File.State) | optional |  |
+
+
+<a name="anytype.Event.Block.Set.File.Style"/>
+### Event.Block.Set.File.Style
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [Block.Content.File.Style](#anytype.model.Block.Content.File.Style) | optional |  |
 
 
 <a name="anytype.Event.Block.Set.File.Type"/>

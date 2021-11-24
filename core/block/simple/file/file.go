@@ -95,6 +95,7 @@ func (f *File) SetModel(m *model.BlockContentFile) Block {
 	f.content.Name = m.Name
 	f.content.AddedAt = m.AddedAt
 	f.content.Mime = m.Mime
+	f.content.Style = m.Style
 	f.content.Size_ = m.Size_
 	f.content.State = m.State
 	return f
@@ -145,6 +146,10 @@ func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 		hasChanges = true
 		changes.Mime = &pb.EventBlockSetFileMime{Value: file.content.Mime}
 	}
+	if f.content.Style != file.content.Style {
+		hasChanges = true
+		changes.Style = &pb.EventBlockSetFileStyle{Value: file.content.Style}
+	}
 
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetFile{BlockSetFile: changes}}})
@@ -167,6 +172,9 @@ func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	}
 	if e.Mime != nil {
 		f.content.Mime = e.Mime.GetValue()
+	}
+	if e.Style != nil {
+		f.content.Style = e.Style.GetValue()
 	}
 	if e.Size_ != nil {
 		f.content.Size_ = e.Size_.GetValue()
