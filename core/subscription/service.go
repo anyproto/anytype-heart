@@ -160,10 +160,44 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 }
 
 func (s *service) SubscribeIdsReq(req pb.RpcObjectIdsSubscribeRequest) (resp *pb.RpcObjectIdsSubscribeResponse, err error) {
+	records, err := s.objectStore.QueryById(req.Ids)
+	if err != nil {
+		return
+	}
+
+	if req.SubId == "" {
+		req.SubId = bson.NewObjectId().Hex()
+	}
+
+	s.m.Lock()
+	defer s.m.Unlock()
+
+
+	sub := s.newSimpleSub(req.SubId, req.Keys, false)
+
+	entries := make([]*entry, 0, len(records))
+	for _, r := range records {
+		entries = append(entries, &entry{
+			id:   pbtypes.GetString(r.Details, "id"),
+			data: r.Details,
+		})
+	}
+	if err = sub.init(entries); err != nil {
+		return
+	}
+	s.subscriptions[sub.id] = sub
+
+	var depRecords, subRecords []*types.Struct
+	subRecords = sub.getActiveRecords()
+
+	if sub.depSub != nil {
+		depRecords = sub.depSub.getActiveRecords()
+	}
+
 	return &pb.RpcObjectIdsSubscribeResponse{
 		Error:        &pb.RpcObjectIdsSubscribeResponseError{},
-		Records:      nil,
-		Dependencies: nil,
+		Records:      subRecords,
+		Dependencies: depRecords,
 		SubId:        req.SubId,
 	}, nil
 }
