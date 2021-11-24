@@ -1,8 +1,10 @@
 package subscription
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func newDependencyService(s *service) *dependencyService {
@@ -22,7 +24,7 @@ func (ds *dependencyService) makeSubscriptionByEntries(subId string, entries []*
 	depSub := ds.s.newSimpleSub(subId, keys, true)
 	depEntries := ds.depEntriesByEntries(entries, depKeys)
 	depSub.init(depEntries)
-	return nil
+	return depSub
 }
 
 func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []string) {
@@ -37,7 +39,9 @@ func (ds *dependencyService) depEntriesByEntries(entries []*entry, depKeys []str
 	for _, e := range entries {
 		for _, k := range depKeys {
 			for _, depId := range pbtypes.GetStringList(e.data, k) {
-				depIds = append(depIds, depId)
+				if slice.FindPos(depIds, depId) == -1 {
+					depIds = append(depIds, depId)
+				}
 			}
 		}
 	}
@@ -70,6 +74,9 @@ func (ds *dependencyService) isRelationObject(key string) bool {
 
 func (ds *dependencyService) depKeys(keys []string) (depKeys []string) {
 	for _, key := range keys {
+		if key == bundle.RelationKeyId.String() {
+			continue
+		}
 		if ds.isRelationObject(key) {
 			depKeys = append(depKeys, key)
 		}

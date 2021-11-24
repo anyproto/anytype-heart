@@ -1,6 +1,9 @@
 package subscription
 
-import "github.com/gogo/protobuf/types"
+import (
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/gogo/protobuf/types"
+)
 
 func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub {
 	sub := &simpleSub{
@@ -105,7 +108,7 @@ func (s *simpleSub) getActiveEntries() (res []*entry) {
 
 func (s *simpleSub) getActiveRecords() (res []*types.Struct) {
 	for id := range s.set {
-		res = append(res, s.cache.pick(id).data)
+		res = append(res, pbtypes.StructFilterKeys(s.cache.pick(id).data, s.keys))
 	}
 	return
 }
