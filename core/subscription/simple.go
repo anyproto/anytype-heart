@@ -111,5 +111,8 @@ func (s *simpleSub) close() {
 	for id := range s.set {
 		s.cache.release(id)
 	}
+	if s.depSub != nil {
+		s.depSub.close()
+	}
 	return
 }

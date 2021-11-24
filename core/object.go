@@ -142,6 +142,36 @@ func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequ
 	return resp
 }
 
+func (mw *Middleware) ObjectIdsSubscribe(req *pb.RpcObjectIdsSubscribeRequest) *pb.RpcObjectIdsSubscribeResponse {
+	errResponse := func(err error) *pb.RpcObjectIdsSubscribeResponse {
+		r := &pb.RpcObjectIdsSubscribeResponse{
+			Error: &pb.RpcObjectIdsSubscribeResponseError{
+				Code: pb.RpcObjectIdsSubscribeResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(fmt.Errorf("account must be started"))
+	}
+
+	subService := mw.app.MustComponent(subscription.CName).(subscription.Service)
+
+	resp, err := subService.SubscribeIdsReq(*req)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return resp
+}
+
 func (mw *Middleware) ObjectSearchUnsubscribe(req *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse {
 	response := func(err error) *pb.RpcObjectSearchUnsubscribeResponse {
 		r := &pb.RpcObjectSearchUnsubscribeResponse{

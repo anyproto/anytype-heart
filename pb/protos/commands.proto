@@ -3371,6 +3371,10 @@ message Rpc {
                 string afterId = 9;
                 // (optional) pagination: middleware will return results before given id
                 string beforeId = 10;
+
+                repeated string source = 11;
+
+                string ignoreWorkspace = 12;
             }
 
             message Response {
@@ -3382,6 +3386,43 @@ message Rpc {
                 string subId = 4;
 
                 Event.Object.Subscription.Counters counters = 5;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+
+        message IdsSubscribe {
+            message Request {
+                // (optional) subscription identifier
+                // client can provide some string or middleware will generate it automatically
+                // if subId is already registered on middleware, the new query will replace previous subscription
+                string subId = 1;
+                // ids for subscribe
+                repeated string ids = 2;
+                // sorts
+                // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
+                repeated string keys = 3;
+
+                string ignoreWorkspace = 11;
+            }
+
+            message Response {
+                Error error = 1;
+
+                repeated google.protobuf.Struct records = 2;
+                repeated google.protobuf.Struct dependencies = 3;
+
+                string subId = 4;
 
                 message Error {
                     Code code = 1;

@@ -26,6 +26,7 @@ func New() Service {
 
 type Service interface {
 	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
+	SubscribeIdsReq(req pb.RpcObjectIdsSubscribeRequest) (resp *pb.RpcObjectIdsSubscribeResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
@@ -138,6 +139,15 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		},
 	}
 	return
+}
+
+func (s *service) SubscribeIdsReq(req pb.RpcObjectIdsSubscribeRequest) (resp *pb.RpcObjectIdsSubscribeResponse, err error) {
+	return &pb.RpcObjectIdsSubscribeResponse{
+		Error:        &pb.RpcObjectIdsSubscribeResponseError{},
+		Records:      nil,
+		Dependencies: nil,
+		SubId:        req.SubId,
+	}, nil
 }
 
 func (s *service) SubscribeIds(subId string, ids []string) (records []*types.Struct, err error) {

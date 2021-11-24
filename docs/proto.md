@@ -499,6 +499,10 @@
     - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
     - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
     - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
+    - [Rpc.Object.IdsSubscribe](#anytype.Rpc.Object.IdsSubscribe)
+    - [Rpc.Object.IdsSubscribe.Request](#anytype.Rpc.Object.IdsSubscribe.Request)
+    - [Rpc.Object.IdsSubscribe.Response](#anytype.Rpc.Object.IdsSubscribe.Response)
+    - [Rpc.Object.IdsSubscribe.Response.Error](#anytype.Rpc.Object.IdsSubscribe.Response.Error)
     - [Rpc.Object.RelationAdd](#anytype.Rpc.Object.RelationAdd)
     - [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request)
     - [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response)
@@ -776,6 +780,7 @@
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code)
+    - [Rpc.Object.IdsSubscribe.Response.Error.Code](#anytype.Rpc.Object.IdsSubscribe.Response.Error.Code)
     - [Rpc.Object.RelationAdd.Response.Error.Code](#anytype.Rpc.Object.RelationAdd.Response.Error.Code)
     - [Rpc.Object.RelationDelete.Response.Error.Code](#anytype.Rpc.Object.RelationDelete.Response.Error.Code)
     - [Rpc.Object.RelationListAvailable.Response.Error.Code](#anytype.Rpc.Object.RelationListAvailable.Response.Error.Code)
@@ -1175,6 +1180,7 @@
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request) | [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype.Rpc.Object.SearchSubscribe.Request) | [Rpc.Object.SearchSubscribe.Response](#anytype.Rpc.Object.SearchSubscribe.Response) |  |
+| ObjectIdsSubscribe | [Rpc.Object.IdsSubscribe.Request](#anytype.Rpc.Object.IdsSubscribe.Request) | [Rpc.Object.IdsSubscribe.Response](#anytype.Rpc.Object.IdsSubscribe.Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype.Rpc.Object.SearchUnsubscribe.Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype.Rpc.Object.SearchUnsubscribe.Response) |  |
 | ObjectRelationAdd | [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request) | [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response) |  |
 | ObjectRelationUpdate | [Rpc.Object.RelationUpdate.Request](#anytype.Rpc.Object.RelationUpdate.Request) | [Rpc.Object.RelationUpdate.Response](#anytype.Rpc.Object.RelationUpdate.Response) |  |
@@ -8356,6 +8362,68 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object.IdsSubscribe"></a>
+
+### Rpc.Object.IdsSubscribe
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.IdsSubscribe.Request"></a>
+
+### Rpc.Object.IdsSubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
+| ids | [string](#string) | repeated | ids for subscribe |
+| keys | [string](#string) | repeated | sorts (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
+| ignoreWorkspace | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.IdsSubscribe.Response"></a>
+
+### Rpc.Object.IdsSubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.IdsSubscribe.Response.Error](#anytype.Rpc.Object.IdsSubscribe.Response.Error) |  |  |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| dependencies | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.IdsSubscribe.Response.Error"></a>
+
+### Rpc.Object.IdsSubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.IdsSubscribe.Response.Error.Code](#anytype.Rpc.Object.IdsSubscribe.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.RelationAdd"></a>
 
 ### Rpc.Object.RelationAdd
@@ -8860,6 +8928,8 @@ deprecated, to be removed |
 | keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
+| source | [string](#string) | repeated |  |
+| ignoreWorkspace | [string](#string) |  |  |
 
 
 
@@ -12168,6 +12238,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.Graph.Response.Error.Code"></a>
 
 ### Rpc.Object.Graph.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.IdsSubscribe.Response.Error.Code"></a>
+
+### Rpc.Object.IdsSubscribe.Response.Error.Code
 
 
 | Name | Number | Description |
