@@ -133,28 +133,34 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err 
 }
 
 func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string, err error) {
-	if len(reqIds) > 0 {
-		return reqIds, nil
-	}
-	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+	if len(reqIds) == 0 {
+		var res []*model.ObjectInfo
+		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
 			},
-		},
-	}, []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeHome,
-		smartblock.SmartBlockTypeProfilePage,
-		smartblock.SmartBlockTypePage,
-	})
-	if err != nil {
-		return
+		}, []smartblock.SmartBlockType{
+			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeProfilePage,
+			smartblock.SmartBlockTypePage,
+		})
+		if err != nil {
+			return
+		}
+
+		for _, r := range res {
+			ids = append(ids, r.Id)
+		}
+		return ids, nil
 	}
+
 	var m map[string]struct{}
 	if includeNested {
-		m = make(map[string]struct{}, len(res)*2)
+		m = make(map[string]struct{}, len(reqIds)*10)
 	}
 	var getNested func(id string)
 	getNested = func(id string) {
@@ -165,6 +171,14 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 		}
 		for _, link := range links {
 			if _, exists := m[link]; !exists {
+				sbt, err2 := smartblock.SmartBlockTypeFromID(link)
+				if err2 != nil {
+					log.Errorf("failed to get smartblocktype of id %s", link)
+					continue
+				}
+				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
+					continue
+				}
 				ids = append(ids, link)
 				m[link] = struct{}{}
 				getNested(link)
@@ -172,16 +186,14 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 		}
 	}
 
-	for _, r := range res {
-		if _, exists := m[r.Id]; !exists {
-			ids = append(ids, r.Id)
-			m[r.Id] = struct{}{}
-			if includeNested {
-				getNested(r.Id)
-			}
+	for _, id := range reqIds {
+		if _, exists := m[id]; !exists {
+			ids = append(ids, id)
+			m[id] = struct{}{}
+			getNested(id)
 		}
-
 	}
+
 	return
 }
 
