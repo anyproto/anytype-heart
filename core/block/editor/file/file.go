@@ -96,7 +96,7 @@ func (sf *sfile) SetFileStyle(ctx *state.Context, style model.BlockContentFileSt
 
 	}
 
-	return sf.Apply(s, smartblock.NoEvent)
+	return sf.Apply(s)
 }
 
 func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
