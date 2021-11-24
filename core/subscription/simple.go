@@ -2,13 +2,16 @@ package subscription
 
 import "github.com/gogo/protobuf/types"
 
-func (s *service) newSimpleSub(id string, keys []string) *simpleSub {
-	return &simpleSub{
+func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub {
+	sub := &simpleSub{
 		id:    id,
 		keys:  keys,
 		cache: s.cache,
-		ds:    s.ds,
 	}
+	if !isDep {
+		sub.ds = s.ds
+	}
+	return sub
 }
 
 type simpleSub struct {

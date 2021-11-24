@@ -19,7 +19,7 @@ type dependencyService struct {
 }
 
 func (ds *dependencyService) makeSubscriptionByEntries(subId string, entries []*entry, keys, depKeys []string) *simpleSub {
-	depSub := ds.s.newSimpleSub(subId, keys)
+	depSub := ds.s.newSimpleSub(subId, keys, true)
 	depEntries := ds.depEntriesByEntries(entries, depKeys)
 	depSub.init(depEntries)
 	return nil
