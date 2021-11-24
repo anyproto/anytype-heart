@@ -72,6 +72,7 @@ service ClientCommands {
     rpc BlockListSetBackgroundColor (anytype.Rpc.BlockList.Set.BackgroundColor.Request) returns (anytype.Rpc.BlockList.Set.BackgroundColor.Response);
     rpc BlockListSetAlign (anytype.Rpc.BlockList.Set.Align.Request) returns (anytype.Rpc.BlockList.Set.Align.Response);
     rpc BlockListSetDivStyle (anytype.Rpc.BlockList.Set.Div.Style.Request) returns (anytype.Rpc.BlockList.Set.Div.Style.Response);
+    rpc BlockListSetFileStyle (anytype.Rpc.BlockList.Set.File.Style.Request) returns (anytype.Rpc.BlockList.Set.File.Style.Response);
 
     rpc BlockListTurnInto (anytype.Rpc.BlockList.TurnInto.Request) returns (anytype.Rpc.BlockList.TurnInto.Response);
 
@@ -94,7 +95,6 @@ service ClientCommands {
     rpc BlockImportMarkdown (anytype.Rpc.Block.ImportMarkdown.Request) returns (anytype.Rpc.Block.ImportMarkdown.Response);
 
     rpc BlockSetFileName (anytype.Rpc.Block.Set.File.Name.Request) returns (anytype.Rpc.Block.Set.File.Name.Response);
-    rpc BlockSetFileStyle (anytype.Rpc.Block.Set.File.Style.Request) returns (anytype.Rpc.Block.Set.File.Style.Response);
     rpc BlockSetImageName (anytype.Rpc.Block.Set.Image.Name.Request) returns (anytype.Rpc.Block.Set.Image.Name.Response);
     rpc BlockSetImageWidth (anytype.Rpc.Block.Set.Image.Width.Request) returns (anytype.Rpc.Block.Set.Image.Width.Response);
     rpc BlockSetVideoName (anytype.Rpc.Block.Set.Video.Name.Request) returns (anytype.Rpc.Block.Set.Video.Name.Response);
