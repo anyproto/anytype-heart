@@ -954,6 +954,8 @@ func (mw *Middleware) BlockListSetFileStyle(req *pb.RpcBlockListSetFileStyleRequ
 		m := &pb.RpcBlockListSetFileStyleResponse{Error: &pb.RpcBlockListSetFileStyleResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 
 		return m
