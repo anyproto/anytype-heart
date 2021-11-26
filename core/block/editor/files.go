@@ -31,6 +31,10 @@ func detectFileType(mime string) model.BlockContentFileType {
 	if strings.HasPrefix(mime, "audio") {
 		return model.BlockContentFile_Audio
 	}
+	if strings.HasPrefix(mime, "application/pdf") {
+		return model.BlockContentFile_PDF
+	}
+
 	return model.BlockContentFile_File
 }
 

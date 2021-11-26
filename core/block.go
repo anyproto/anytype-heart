@@ -948,24 +948,26 @@ func (mw *Middleware) BlockSetFileName(req *pb.RpcBlockSetFileNameRequest) *pb.R
 	return response(pb.RpcBlockSetFileNameResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockSetFileStyle(req *pb.RpcBlockSetFileStyleRequest) *pb.RpcBlockSetFileStyleResponse {
+func (mw *Middleware) BlockListSetFileStyle(req *pb.RpcBlockListSetFileStyleRequest) *pb.RpcBlockListSetFileStyleResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockSetFileStyleResponseErrorCode, err error) *pb.RpcBlockSetFileStyleResponse {
-		m := &pb.RpcBlockSetFileStyleResponse{Error: &pb.RpcBlockSetFileStyleResponseError{Code: code}}
+	response := func(code pb.RpcBlockListSetFileStyleResponseErrorCode, err error) *pb.RpcBlockListSetFileStyleResponse {
+		m := &pb.RpcBlockListSetFileStyleResponse{Error: &pb.RpcBlockListSetFileStyleResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.SetFileStyle(ctx, *req)
+		return bs.SetFileStyle(ctx, req.ContextId, req.Style, req.BlockIds...)
 	})
 	if err != nil {
-		return response(pb.RpcBlockSetFileStyleResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcBlockListSetFileStyleResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(pb.RpcBlockSetFileStyleResponseError_NULL, nil)
+	return response(pb.RpcBlockListSetFileStyleResponseError_NULL, nil)
 }
 
 func (mw *Middleware) BlockSetImageName(req *pb.RpcBlockSetImageNameRequest) *pb.RpcBlockSetImageNameResponse {

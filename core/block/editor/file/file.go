@@ -47,7 +47,7 @@ type File interface {
 	UploadState(s *state.State, id string, source FileSource, isSync bool) (err error)
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
 	CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (string, error)
-	SetFileStyle(ctx *state.Context, req pb.RpcBlockSetFileStyleRequest) error
+	SetFileStyle(ctx *state.Context, style model.BlockContentFileStyle, blockIds ...string) (err error)
 
 	dropFilesHandler
 }
@@ -80,20 +80,23 @@ func (sf *sfile) UploadState(s *state.State, id string, source FileSource, isSyn
 	return sf.upload(s, id, source, isSync)
 }
 
-func (sf *sfile) SetFileStyle(ctx *state.Context, req pb.RpcBlockSetFileStyleRequest) (err error) {
+func (sf *sfile) SetFileStyle(ctx *state.Context, style model.BlockContentFileStyle, blockIds ...string) (err error) {
 	s := sf.NewStateCtx(ctx)
-	b := s.Get(req.BlockId)
-	if b == nil {
-		return smartblock.ErrSimpleBlockNotFound
+	for _, id := range blockIds {
+		b := s.Get(id)
+		if b == nil {
+			return smartblock.ErrSimpleBlockNotFound
+		}
+
+		if rel, ok := b.(file.Block); ok {
+			rel.SetStyle(style)
+		} else {
+			return fmt.Errorf("unexpected block type: %T (want file)", b)
+		}
+
 	}
 
-	if rel, ok := b.(file.Block); ok {
-		rel.SetStyle(req.Style)
-	} else {
-		return fmt.Errorf("unexpected block type: %T (want file)", b)
-	}
-	return sf.Apply(s, smartblock.NoEvent)
-	return
+	return sf.Apply(s)
 }
 
 func (sf *sfile) CreateAndUpload(ctx *state.Context, req pb.RpcBlockFileCreateAndUploadRequest) (newId string, err error) {
