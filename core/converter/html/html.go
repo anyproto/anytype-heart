@@ -323,6 +323,13 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.buf.WriteString(goToAnytypeMsg)
 		h.renderChilds(b)
 		h.buf.WriteString("</div>")
+	case model.BlockContentFile_PDF:
+		h.buf.WriteString(`<div class="pdf"><div class="name">`)
+		h.buf.WriteString(html.EscapeString(file.Name))
+		h.buf.WriteString(`</div>`)
+		h.buf.WriteString(goToAnytypeMsg)
+		h.renderChilds(b)
+		h.buf.WriteString("</div>")
 	}
 }
 

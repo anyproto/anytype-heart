@@ -701,6 +701,7 @@ func (imp *importImpl) convertTextToFile(block *model.Block) {
 	imageFormats := []string{"jpg", "jpeg", "png", "gif", "webp"}
 	videoFormats := []string{"mp4", "m4v"}
 	audioFormats := []string{"mp3", "ogg", "wav", "m4a", "flac"}
+	pdfFormat := "pdf"
 
 	fileType := model.BlockContentFile_File
 	fileExt := filepath.Ext(block.GetText().Marks.Marks[0].Param)
@@ -725,6 +726,10 @@ func (imp *importImpl) convertTextToFile(block *model.Block) {
 				fileType = model.BlockContentFile_Audio
 				break
 			}
+		}
+
+		if strings.EqualFold(fileExt, pdfFormat) {
+			fileType = model.BlockContentFile_PDF
 		}
 	}
 
