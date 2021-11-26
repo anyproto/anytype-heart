@@ -39,11 +39,14 @@ func (ds *dependencyService) depEntriesByEntries(entries []*entry, depKeys []str
 	for _, e := range entries {
 		for _, k := range depKeys {
 			for _, depId := range pbtypes.GetStringList(e.data, k) {
-				if slice.FindPos(depIds, depId) == -1 {
+				if depId != "" && slice.FindPos(depIds, depId) == -1 {
 					depIds = append(depIds, depId)
 				}
 			}
 		}
+	}
+	if len(depIds) == 0 {
+		return
 	}
 	depRecords, err := ds.s.objectStore.QueryById(depIds)
 	if err != nil {

@@ -13,7 +13,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
@@ -99,21 +98,13 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	if err != nil {
 		return
 	}
-
-	isRemove := filter.Eq{
-		Key:   bundle.RelationKeyIsDeleted.String(),
-		Cond:  model.BlockContentDataviewFilter_NotEqual,
-		Value: pbtypes.Bool(true),
-	}
-	andFilter := filter.AndFilters{f.FilterObj, isRemove}
 	if len(req.Source) > 0 {
 		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
 			return nil, err
 		}
-		andFilter = append(andFilter, sourceFilter)
+		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
 	}
-	f.FilterObj = andFilter
 
 	records, err := s.objectStore.QueryRaw(query.Query{
 		Filters: []query.Filter{f},

@@ -61,8 +61,7 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 				subId: s.id,
 				keys:  s.keys,
 			})
-			s.cache.set(e)
-			s.cache.get(e.id)
+			e.refs++
 		}
 		newSet[e.id] = struct{}{}
 	}
