@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -18,6 +19,7 @@ import (
 )
 
 const localstoreDir string = "localstore"
+const objectType string = "_otobject_type"
 
 type options struct {
 	isV3 bool
@@ -76,10 +78,11 @@ func initBadgerV1(o *options) (*dsbadgerv1.Datastore, error) {
 }
 
 var (
-	sync = flag.Bool("s", false, "sync mode")
-	path = flag.String("p", "", "path to localstore")
-	isV3 = flag.Bool("isv3", true, "are we using badger v3")
-	keys = flag.Int("keys", 100000, "the number of different keys to be used")
+	relationsCount = flag.Int("rel_count", 10, "the number of relations of each object")
+	sync           = flag.Bool("s", false, "sync mode")
+	path           = flag.String("p", "", "path to localstore")
+	isV3           = flag.Bool("isv3", true, "are we using badger v3")
+	keys           = flag.Int("keys", 100000, "the number of different keys to be used")
 )
 
 func init() {
@@ -135,12 +138,16 @@ func genRandomDetails(randomStrings []string) *types.Struct {
 	}
 }
 
-func genRandomRelations(randomStrings []string) *model.Relations {
+func genRandomRelations(randomStrings []string, count int) *model.Relations {
 	var rels []*model.Relation
-	for _, l := range letterBytes {
+	min := count
+	if count > len(randomStrings) {
+		min = len(randomStrings)
+	}
+	for i := 0; i < min; i++ {
 		rels = append(rels, []*model.Relation{
 			{
-				Key:          string(l) + string(l),
+				Key:          randomStrings[i],
 				Format:       model.RelationFormat_status,
 				Name:         getRandomString(randomStrings),
 				DefaultValue: nil,
@@ -151,7 +158,7 @@ func genRandomRelations(randomStrings []string) *model.Relations {
 				},
 			},
 			{
-				Key:          string(l),
+				Key:          randomStrings[i][:len(randomStrings[i])-1],
 				Format:       model.RelationFormat_shorttext,
 				Name:         getRandomString(randomStrings),
 				DefaultValue: nil,
@@ -161,13 +168,13 @@ func genRandomRelations(randomStrings []string) *model.Relations {
 	return &model.Relations{Relations: rels}
 }
 
-func createObjects(store objectstore.ObjectStore, ids []string) error {
+func createObjects(store objectstore.ObjectStore, ids []string, relationsCount int) error {
 	avg := float32(0)
 	i := float32(0)
 	for _, id := range ids {
 		start := time.Now()
 		details := genRandomDetails(ids)
-		relations := genRandomRelations(ids)
+		relations := genRandomRelations(ids, relationsCount)
 		err := store.CreateObject(id, details, relations, nil, "snippet")
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
@@ -181,20 +188,20 @@ func createObjects(store objectstore.ObjectStore, ids []string) error {
 	return nil
 }
 
-func updateDetails(store objectstore.ObjectStore, ids []string) error {
+func updateDetails(store objectstore.ObjectStore, ids []string, relationsCount int) error {
 	avg := float32(0)
 	i := float32(0)
 	creatorId := genRandomIds(1, 60)[0]
 	for _, id := range ids {
 		details := genRandomDetails(ids)
-		relations := genRandomRelations(ids)
+		relations := genRandomRelations(ids, relationsCount)
 		start := time.Now()
 		err := store.UpdateObjectDetails(id, details, relations, false)
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
 			return err
 		}
-		err = store.UpdateRelationsInSetByObjectType(id, objectType, creatorId, genRandomRelations(ids).Relations)
+		err = store.UpdateRelationsInSetByObjectType(id, objectType, creatorId, relations.Relations)
 		if err != nil {
 			fmt.Println("updating relationships failed", err.Error())
 			return err
@@ -226,12 +233,12 @@ func main() {
 	}
 	defer closer()
 	ids := genRandomIds(*keys, 64)
-	err = createObjects(objectstore, ids)
+	err = createObjects(objectstore, ids, *relationsCount)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = updateDetails(objectstore, ids)
+	err = updateDetails(objectstore, ids, *relationsCount)
 	if err != nil {
 		fmt.Println(err)
 		return
