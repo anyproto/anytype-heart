@@ -79,7 +79,7 @@ var (
 	sync = flag.Bool("s", false, "sync mode")
 	path = flag.String("p", "", "path to localstore")
 	isV3 = flag.Bool("isv3", true, "are we using badger v3")
-	keys = flag.Int("keys", 1000000, "the number of different keys to be used")
+	keys = flag.Int("keys", 100000, "the number of different keys to be used")
 )
 
 func init() {
@@ -129,31 +129,36 @@ func genRandomDetails(randomStrings []string) *types.Struct {
 	for _, letter := range letterBytes {
 		f[string(letter)] = pbtypes.String(getRandomString(randomStrings))
 	}
+	f[bundle.RelationKeySetOf.String()] = pbtypes.String(objectType)
 	return &types.Struct{
 		Fields: f,
 	}
 }
 
 func genRandomRelations(randomStrings []string) *model.Relations {
-	return &model.Relations{Relations: []*model.Relation{
-		{
-			Key:          getRandomString(randomStrings),
-			Format:       model.RelationFormat_status,
-			Name:         getRandomString(randomStrings),
-			DefaultValue: nil,
-			SelectDict: []*model.RelationOption{
-				{"id1", "option1", "red", model.RelationOption_local},
-				{"id2", "option2", "red", model.RelationOption_local},
-				{"id3", "option3", "red", model.RelationOption_local},
+	var rels []*model.Relation
+	for _, l := range letterBytes {
+		rels = append(rels, []*model.Relation{
+			{
+				Key:          string(l) + string(l),
+				Format:       model.RelationFormat_status,
+				Name:         getRandomString(randomStrings),
+				DefaultValue: nil,
+				SelectDict: []*model.RelationOption{
+					{"id1", "option1", "red", model.RelationOption_local},
+					{"id2", "option2", "red", model.RelationOption_local},
+					{"id3", "option3", "red", model.RelationOption_local},
+				},
 			},
-		},
-		{
-			Key:          getRandomString(randomStrings),
-			Format:       model.RelationFormat_shorttext,
-			Name:         getRandomString(randomStrings),
-			DefaultValue: nil,
-		},
-	}}
+			{
+				Key:          string(l),
+				Format:       model.RelationFormat_shorttext,
+				Name:         getRandomString(randomStrings),
+				DefaultValue: nil,
+			},
+		}...)
+	}
+	return &model.Relations{Relations: rels}
 }
 
 func createObjects(store objectstore.ObjectStore, ids []string) error {
@@ -179,13 +184,19 @@ func createObjects(store objectstore.ObjectStore, ids []string) error {
 func updateDetails(store objectstore.ObjectStore, ids []string) error {
 	avg := float32(0)
 	i := float32(0)
+	creatorId := genRandomIds(1, 60)[0]
 	for _, id := range ids {
-		start := time.Now()
 		details := genRandomDetails(ids)
 		relations := genRandomRelations(ids)
+		start := time.Now()
 		err := store.UpdateObjectDetails(id, details, relations, false)
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
+			return err
+		}
+		err = store.UpdateRelationsInSetByObjectType(id, objectType, creatorId, genRandomRelations(ids).Relations)
+		if err != nil {
+			fmt.Println("updating relationships failed", err.Error())
 			return err
 		}
 		taken := float32(time.Now().Sub(start).Nanoseconds())
