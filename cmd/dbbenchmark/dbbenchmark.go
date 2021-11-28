@@ -220,6 +220,9 @@ func updateDetails(store objectstore.ObjectStore, ids []string, detailsCount int
 }
 
 func main() {
+	// go run dbbenchmark.go -p localstore -keys 3000 -det_count 200 -rel_count 10 -isv3 false -s false
+	// this should be read as total keys 3000, entries in details struct - 200, entries in relations - 10
+	// using badger v3 - false, sync writes - false
 	flag.Parse()
 	if *path == "" {
 		flag.PrintDefaults()
