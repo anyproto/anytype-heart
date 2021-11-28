@@ -78,6 +78,7 @@ func initBadgerV1(o *options) (*dsbadgerv1.Datastore, error) {
 }
 
 var (
+	detailsCount   = flag.Int("det_count", 10, "the number of details of each object")
 	relationsCount = flag.Int("rel_count", 10, "the number of relations of each object")
 	sync           = flag.Bool("s", false, "sync mode")
 	path           = flag.String("p", "", "path to localstore")
@@ -127,10 +128,14 @@ func getRandomString(randomStrings []string) string {
 	return randomStrings[rand.Int63()%int64(len(randomStrings))]
 }
 
-func genRandomDetails(randomStrings []string) *types.Struct {
+func genRandomDetails(randomStrings []string, count int) *types.Struct {
 	f := make(map[string]*types.Value)
-	for _, letter := range letterBytes {
-		f[string(letter)] = pbtypes.String(getRandomString(randomStrings))
+	min := count
+	if count > len(randomStrings) {
+		min = len(randomStrings)
+	}
+	for i := 0; i < min; i++ {
+		f[randomStrings[i]] = pbtypes.String(getRandomString(randomStrings))
 	}
 	f[bundle.RelationKeySetOf.String()] = pbtypes.String(objectType)
 	return &types.Struct{
@@ -168,13 +173,13 @@ func genRandomRelations(randomStrings []string, count int) *model.Relations {
 	return &model.Relations{Relations: rels}
 }
 
-func createObjects(store objectstore.ObjectStore, ids []string, relationsCount int) error {
+func createObjects(store objectstore.ObjectStore, ids []string, detailsCount int, relationsCount int) error {
 	avg := float32(0)
 	i := float32(0)
 	for _, id := range ids {
-		start := time.Now()
-		details := genRandomDetails(ids)
+		details := genRandomDetails(ids, detailsCount)
 		relations := genRandomRelations(ids, relationsCount)
+		start := time.Now()
 		err := store.CreateObject(id, details, relations, nil, "snippet")
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
@@ -184,16 +189,16 @@ func createObjects(store objectstore.ObjectStore, ids []string, relationsCount i
 		avg = (avg*i + taken) / (i + 1)
 		i += 1.0
 	}
-	fmt.Println("avg create operation time ms", avg)
+	fmt.Println("avg create operation time ms", avg/1000000)
 	return nil
 }
 
-func updateDetails(store objectstore.ObjectStore, ids []string, relationsCount int) error {
+func updateDetails(store objectstore.ObjectStore, ids []string, detailsCount int, relationsCount int) error {
 	avg := float32(0)
 	i := float32(0)
 	creatorId := genRandomIds(1, 60)[0]
 	for _, id := range ids {
-		details := genRandomDetails(ids)
+		details := genRandomDetails(ids, detailsCount)
 		relations := genRandomRelations(ids, relationsCount)
 		start := time.Now()
 		err := store.UpdateObjectDetails(id, details, relations, false)
@@ -210,7 +215,7 @@ func updateDetails(store objectstore.ObjectStore, ids []string, relationsCount i
 		avg = (avg*i + taken) / (i + 1)
 		i += 1.0
 	}
-	fmt.Println("avg update operation time ms", avg)
+	fmt.Println("avg update operation time ms", avg/1000000)
 	return nil
 }
 
@@ -233,12 +238,12 @@ func main() {
 	}
 	defer closer()
 	ids := genRandomIds(*keys, 64)
-	err = createObjects(objectstore, ids, *relationsCount)
+	err = createObjects(objectstore, ids, *detailsCount, *relationsCount)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = updateDetails(objectstore, ids, *relationsCount)
+	err = updateDetails(objectstore, ids, *detailsCount, *relationsCount)
 	if err != nil {
 		fmt.Println(err)
 		return
