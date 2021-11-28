@@ -124,18 +124,14 @@ func genRandomIds(count, size int) []string {
 	return buf
 }
 
-func getRandomString(randomStrings []string) string {
-	return randomStrings[rand.Int63()%int64(len(randomStrings))]
-}
-
-func genRandomDetails(randomStrings []string, count int) *types.Struct {
+func genRandomDetails(strings []string, count int) *types.Struct {
 	f := make(map[string]*types.Value)
 	min := count
-	if count > len(randomStrings) {
-		min = len(randomStrings)
+	if count > len(strings) {
+		min = len(strings)
 	}
 	for i := 0; i < min; i++ {
-		f[randomStrings[i]] = pbtypes.String(getRandomString(randomStrings))
+		f[strings[i]] = pbtypes.String(randString(60))
 	}
 	f[bundle.RelationKeySetOf.String()] = pbtypes.String(objectType)
 	return &types.Struct{
@@ -143,18 +139,18 @@ func genRandomDetails(randomStrings []string, count int) *types.Struct {
 	}
 }
 
-func genRandomRelations(randomStrings []string, count int) *model.Relations {
+func genRandomRelations(strings []string, count int) *model.Relations {
 	var rels []*model.Relation
 	min := count
-	if count > len(randomStrings) {
-		min = len(randomStrings)
+	if count > len(strings) {
+		min = len(strings)
 	}
 	for i := 0; i < min; i++ {
 		rels = append(rels, []*model.Relation{
 			{
-				Key:          randomStrings[i],
+				Key:          strings[i],
 				Format:       model.RelationFormat_status,
-				Name:         getRandomString(randomStrings),
+				Name:         randString(60),
 				DefaultValue: nil,
 				SelectDict: []*model.RelationOption{
 					{"id1", "option1", "red", model.RelationOption_local},
@@ -163,9 +159,9 @@ func genRandomRelations(randomStrings []string, count int) *model.Relations {
 				},
 			},
 			{
-				Key:          randomStrings[i][:len(randomStrings[i])-1],
+				Key:          strings[i][:len(strings[i])-1],
 				Format:       model.RelationFormat_shorttext,
-				Name:         getRandomString(randomStrings),
+				Name:         randString(60),
 				DefaultValue: nil,
 			},
 		}...)
@@ -234,19 +230,19 @@ func main() {
 		path: *path,
 		sync: *sync,
 	}
-	objectstore, closer, err := initObjecStore(o)
+	store, closeDb, err := initObjecStore(o)
 	if err != nil {
 		fmt.Println("error occurred when opening object store", err.Error())
 		return
 	}
-	defer closer()
+	defer closeDb()
 	ids := genRandomIds(*keys, 64)
-	err = createObjects(objectstore, ids, *detailsCount, *relationsCount)
+	err = createObjects(store, ids, *detailsCount, *relationsCount)
 	if err != nil {
 		fmt.Println(err)
 		return
 	}
-	err = updateDetails(objectstore, ids, *detailsCount, *relationsCount)
+	err = updateDetails(store, ids, *detailsCount, *relationsCount)
 	if err != nil {
 		fmt.Println(err)
 		return
