@@ -89,7 +89,7 @@ replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/htm
 
 replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20211115194740-a18380ab8047
 
-replace github.com/msingleton/amplitude-go => github.com/anytypeio/amplitude-go v0.0.0-20211130172358-e8854c0b85fe
+replace github.com/msingleton/amplitude-go => github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 

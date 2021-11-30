@@ -2,7 +2,6 @@ package metrics
 
 import (
 	"context"
-	"fmt"
 	"github.com/cheggaaa/mb"
 	"sync"
 	"time"
@@ -61,7 +60,7 @@ type client struct {
 	ctx              context.Context
 	cancel           context.CancelFunc
 	batcher          *mb.MB
-	closeChannel chan struct{}
+	closeChannel     chan struct{}
 }
 
 func NewClient() Client {
@@ -178,7 +177,7 @@ func (c *client) startSendingBatchMessages() {
 		}
 		msgs := b.WaitMax(100)
 		c.SendNextBatch(b, msgs)
-		<-time.After(time.Second*2)
+		<-time.After(time.Second * 2)
 	}
 }
 
@@ -201,7 +200,7 @@ func (c *client) SendNextBatch(b *mb.MB, msgs []interface{}) {
 			With("unsent messages", len(msgs)+c.batcher.Len()).
 			Error("failed to send messages")
 		if b != nil {
-			b.Add(msgs)
+			b.Add(msgs...)
 		}
 	} else {
 		clientMetricsLog.
