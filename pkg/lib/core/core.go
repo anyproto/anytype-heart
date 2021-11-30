@@ -314,7 +314,7 @@ func (a *Anytype) EnsurePredefinedBlocks(ctx context.Context, newAccount bool) (
 }
 
 func (a *Anytype) Close() (err error) {
-	metrics.SharedClient.StopAggregating()
+	metrics.SharedClient.Close()
 	return a.Stop()
 }
 

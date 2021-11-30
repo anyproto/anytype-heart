@@ -55,7 +55,7 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 		return
 	}
 	metrics.SharedClient.SetAppVersion(a.Version())
-	metrics.SharedClient.StartAggregating()
+	metrics.SharedClient.Run()
 	return a, nil
 }
 
@@ -75,7 +75,7 @@ func StartNewApp(components ...app.Component) (a *app.App, err error) {
 		return
 	}
 	metrics.SharedClient.SetAppVersion(a.Version())
-	metrics.SharedClient.StartAggregating()
+	metrics.SharedClient.Run()
 	return
 }
 

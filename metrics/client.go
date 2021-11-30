@@ -2,6 +2,8 @@ package metrics
 
 import (
 	"context"
+	"fmt"
+	"github.com/cheggaaa/mb"
 	"sync"
 	"time"
 
@@ -43,8 +45,8 @@ type Client interface {
 	RecordEvent(ev EventRepresentable)
 	AggregateEvent(ev EventAggregatable)
 
-	StartAggregating()
-	StopAggregating()
+	Run()
+	Close()
 }
 
 type client struct {
@@ -58,6 +60,8 @@ type client struct {
 	aggregatableChan chan EventAggregatable
 	ctx              context.Context
 	cancel           context.CancelFunc
+	batcher          *mb.MB
+	closeChannel chan struct{}
 }
 
 func NewClient() Client {
@@ -102,17 +106,27 @@ func (c *client) SetAppVersion(version string) {
 }
 
 func (c *client) sendAggregatedData() {
+	var events []EventAggregatable
 	c.lock.RLock()
-	defer c.lock.RUnlock()
 	for k, ev := range c.aggregatableMap {
-		c.RecordEvent(ev)
+		events = append(events, ev)
 		delete(c.aggregatableMap, k)
+	}
+	c.lock.RUnlock()
+	for _, ev := range events {
+		c.RecordEvent(ev)
 	}
 }
 
-func (c *client) StartAggregating() {
+func (c *client) Run() {
+	c.batcher = mb.New(0)
+	c.closeChannel = make(chan struct{})
+	go c.startAggregating()
+	go c.startSendingBatchMessages()
+}
+
+func (c *client) startAggregating() {
 	c.lock.Lock()
-	c.StopAggregating()
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 	c.lock.Unlock()
 	go func() {
@@ -142,8 +156,59 @@ func (c *client) StartAggregating() {
 	}()
 }
 
-func (c *client) StopAggregating() {
+func (c *client) startSendingBatchMessages() {
+	for {
+		c.lock.Lock()
+		b := c.batcher
+		c.lock.Unlock()
+		if b == nil {
+			return
+		}
+		select {
+		case <-c.ctx.Done():
+			err := b.Close()
+			if err != nil {
+				clientMetricsLog.Errorf("failed to close batcher")
+				return
+			}
+			c.SendNextBatch(nil, b.GetAll())
+			close(c.closeChannel)
+			return
+		default:
+		}
+		msgs := b.WaitMax(100)
+		c.SendNextBatch(b, msgs)
+		<-time.After(time.Second*2)
+	}
+}
+
+func (c *client) Close() {
 	c.cancel()
+	<-c.closeChannel
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.batcher = nil
+}
+
+func (c *client) SendNextBatch(b *mb.MB, msgs []interface{}) {
+	var events []amplitude.Event
+	for _, ev := range msgs {
+		events = append(events, ev.(amplitude.Event))
+	}
+	err := c.amplitude.Events(events)
+	if err != nil {
+		clientMetricsLog.
+			With("unsent messages", len(msgs)+c.batcher.Len()).
+			Error("failed to send messages")
+		if b != nil {
+			b.Add(msgs)
+		}
+	} else {
+		clientMetricsLog.
+			With("user-id", c.userId).
+			With("messages sent", len(msgs)).
+			Debug("events sent to amplitude")
+	}
 }
 
 func (c *client) RecordEvent(ev EventRepresentable) {
@@ -159,21 +224,19 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 		EventType:       e.EventType,
 		EventProperties: e.EventData,
 		AppVersion:      c.appVersion,
+		Time:            time.Now().Unix() * 1000,
 	}
+	b := c.batcher
 	c.lock.RUnlock()
-
-	go func() {
-		err := c.amplitude.Event(ampEvent)
-		if err != nil {
-			clientMetricsLog.Errorf("error logging event %s", err)
-			return
-		}
-		clientMetricsLog.
-			With("event-type", e.EventType).
-			With("event-data", e.EventData).
-			With("user-id", c.userId).
-			Debugf("event sent")
-	}()
+	if b == nil {
+		return
+	}
+	b.Add(ampEvent)
+	clientMetricsLog.
+		With("event-type", e.EventType).
+		With("event-data", e.EventData).
+		With("user-id", c.userId).
+		Debug("event added to batcher")
 }
 
 func (c *client) AggregateEvent(ev EventAggregatable) {
