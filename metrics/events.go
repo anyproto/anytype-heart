@@ -62,6 +62,31 @@ const (
 	ReindexTypeOutdatedHeads
 )
 
+type IndexEvent struct {
+	ObjectId                string
+	IndexLinksTimeMs        int64
+	IndexDetailsTimeMs      int64
+	IndexSetRelationsTimeMs int64
+	RelationsCount          int
+	DetailsCount            int
+	SetRelationsCount       int
+}
+
+func (c IndexEvent) ToEvent() Event {
+	return Event{
+		EventType: "index",
+		EventData: map[string]interface{}{
+			"object_id":     c.ObjectId,
+			"links_ms":      c.IndexLinksTimeMs,
+			"details_ms":    c.IndexDetailsTimeMs,
+			"set_ms":        c.IndexSetRelationsTimeMs,
+			"rel_count":     c.RelationsCount,
+			"det_count":     c.DetailsCount,
+			"set_rel_count": c.SetRelationsCount,
+		},
+	}
+}
+
 type ReindexEvent struct {
 	ReindexType    ReindexType
 	Total          int
