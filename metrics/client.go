@@ -118,6 +118,9 @@ func (c *client) sendAggregatedData() {
 }
 
 func (c *client) Run() {
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.ctx, c.cancel = context.WithCancel(context.Background())
 	c.batcher = mb.New(0)
 	c.closeChannel = make(chan struct{})
 	go c.startAggregating()
@@ -125,9 +128,6 @@ func (c *client) Run() {
 }
 
 func (c *client) startAggregating() {
-	c.lock.Lock()
-	c.ctx, c.cancel = context.WithCancel(context.Background())
-	c.lock.Unlock()
 	go func() {
 		ticker := time.NewTicker(sendInterval)
 		for {
@@ -163,19 +163,12 @@ func (c *client) startSendingBatchMessages() {
 		if b == nil {
 			return
 		}
-		select {
-		case <-c.ctx.Done():
-			err := b.Close()
-			if err != nil {
-				clientMetricsLog.Errorf("failed to close batcher")
-				return
-			}
+		msgs := b.WaitMinMax(10, 100)
+		if len(msgs) == 0 {
 			c.SendNextBatch(nil, b.GetAll())
 			close(c.closeChannel)
 			return
-		default:
 		}
-		msgs := b.WaitMax(100)
 		c.SendNextBatch(b, msgs)
 		<-time.After(time.Second * 2)
 	}
@@ -183,6 +176,12 @@ func (c *client) startSendingBatchMessages() {
 
 func (c *client) Close() {
 	c.cancel()
+	c.lock.Lock()
+	err := c.batcher.Close()
+	if err != nil {
+		clientMetricsLog.Errorf("failed to close batcher")
+	}
+	c.lock.Unlock()
 	<-c.closeChannel
 	c.lock.Lock()
 	defer c.lock.Unlock()
