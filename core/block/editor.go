@@ -628,6 +628,8 @@ func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err erro
 	if req.DisableEncryption {
 		upl.AddOptions(files.WithPlaintext(true))
 	}
+
+	upl.SetStyle(req.Style)
 	if req.Type != model.BlockContentFile_None {
 		upl.SetType(req.Type)
 	} else {
@@ -643,6 +645,12 @@ func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err erro
 func (s *service) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
 	return s.DoFileNonLock(req.ContextId, func(b file.File) error {
 		return b.DropFiles(req)
+	})
+}
+
+func (s *service) SetFileStyle(ctx *state.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string) error {
+	return s.DoFile(contextId, func(b file.File) error {
+		return b.SetFileStyle(ctx, style, blockIds...)
 	})
 }
 

@@ -151,6 +151,7 @@ type Service interface {
 
 	SetDivStyle(ctx *state.Context, contextId string, style model.BlockContentDivStyle, ids ...string) (err error)
 
+	SetFileStyle(ctx *state.Context, contextId string, style model.BlockContentFileStyle, blockIds ...string) error
 	UploadFile(req pb.RpcUploadFileRequest) (hash string, err error)
 	UploadBlockFile(ctx *state.Context, req pb.RpcBlockUploadRequest, groupId string) error
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) (err error)
@@ -553,10 +554,14 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 
 		anySucceed := false
 		for _, blockId := range req.ObjectIds {
-			if req.IsArchived {
-				err = archive.AddObject(blockId)
+			if restrErr := s.checkArchivedRestriction(req.IsArchived, blockId); restrErr != nil {
+				err = restrErr
 			} else {
-				err = archive.RemoveObject(blockId)
+				if req.IsArchived {
+					err = archive.AddObject(blockId)
+				} else {
+					err = archive.RemoveObject(blockId)
+				}
 			}
 			if err != nil {
 				log.Errorf("failed to archive %s: %s", blockId, err.Error())
@@ -622,7 +627,17 @@ func (s *service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err e
 }
 
 func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
+	if err := s.checkArchivedRestriction(req.IsArchived, req.ContextId); err != nil {
+		return err
+	}
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
+}
+
+func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
+	if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); isArchived && err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err error) {
@@ -690,6 +705,9 @@ func (s *service) DeleteObject(id string) (err error) {
 		isFavorite  bool
 	)
 	err = s.Do(id, func(b smartblock.SmartBlock) error {
+		if err = b.Restrictions().Object.Check(model.Restrictions_Delete); err != nil {
+			return err
+		}
 		b.BlockClose()
 		st := b.NewState()
 		fileHashes = st.GetAllFileHashes(st.FileRelationKeys())

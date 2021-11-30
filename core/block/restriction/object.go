@@ -34,6 +34,7 @@ var (
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
 		},
+		model.SmartBlockType_Workspace:           objRestrictAll,
 		model.SmartBlockType_File:                objRestrictAll,
 		model.SmartBlockType_MarketplaceRelation: objRestrictAll,
 		model.SmartBlockType_MarketplaceTemplate: objRestrictAll,
