@@ -66,6 +66,10 @@ github.com/andybalholm/cascadia v1.2.0 h1:vuRCkM5Ozh/BfmsaTm26kbjm0mIOM3yS5Ek/F5
 github.com/andybalholm/cascadia v1.2.0/go.mod h1:YCyR8vOZT9aZ1CHEd8ap0gMVm2aFgxBp0T0eFw1RUQY=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239 h1:kFOfPq6dUM1hTo4JG6LR5AXSUEsOjtdm0kw0FtQtMJA=
 github.com/anmitsu/go-shlex v0.0.0-20161002113705-648efa622239/go.mod h1:2FmKhYUyUczH0OGQWaF5ceTx0UBShxjsH6f8oGKYe2c=
+github.com/anytypeio/amplitude-go v0.0.0-20211130164028-26cf66f2c004 h1:h08xeajhw5tVOlFlIElb4b/JpL5d5aRqHymkCZjgOCo=
+github.com/anytypeio/amplitude-go v0.0.0-20211130164028-26cf66f2c004/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
+github.com/anytypeio/amplitude-go v0.0.0-20211130172358-e8854c0b85fe h1:heGGw+hlGvK1+cF7pQrWR4Wh7qR54S/7x11t7+BruWw=
+github.com/anytypeio/amplitude-go v0.0.0-20211130172358-e8854c0b85fe/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
 github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:YBmcug6mOdwjJcmzA/Fpjtl2oo78+fMlr5Xj0dzwg78=
 github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7/go.mod h1:EuPAem8b51iulSY3wBQJc0Shz+A2DmyREddzDt0fywM=
 github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f h1:aeyycLTPbhwjW2x/EkmuAgRzdX0bdwy+RStmevhQbhM=
