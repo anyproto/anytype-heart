@@ -81,6 +81,10 @@ func (p *limiterPool) UpdatePriorities(ids []string, priority int) {
 	defer p.mx.Unlock()
 
 	for _, id := range ids {
+		queueLog.
+			With("object id", id).
+			With("priority", priority).
+			Debug("trying to update priority for object")
 		p.updatePriority(id, priority)
 	}
 }
@@ -173,6 +177,12 @@ Loop:
 				break
 			}
 			newTask := p.tasks.Pop()
+			queueLog.
+				With("priority", newTask.priority).
+				With("object id", newTask.value.(Operation).Id()).
+				With("operation type", newTask.value.(Operation).Type()).
+				Debug("start operation")
+
 			p.runningTasks++
 			p.mx.Unlock()
 
