@@ -253,14 +253,15 @@ func (p *threadQueue) finishAddOperation(id, workspaceId string) {
 	p.Unlock()
 }
 
-func (p *threadQueue) logOperation(op Operation, success bool, workspaceId string) {
+func (p *threadQueue) logOperation(op Operation, success bool, workspaceId string, pendingOperations int) {
 	p.Lock()
 	defer p.Unlock()
 	threadsInWorkspace, exists := p.workspaceThreads[workspaceId]
 	if !exists {
 		return
 	}
-	totalThreadsOverall := len(p.threadWorkspaces) + p.l.PendingOperations()
+
+	totalThreadsOverall := len(p.threadWorkspaces) + pendingOperations
 	l := queueLog.With("thread id", op.Id()).With("workspace id", workspaceId)
 
 	if success {
@@ -325,7 +326,8 @@ func (o threadAddOperation) Run() (err error) {
 }
 
 func (o threadAddOperation) OnFinish(err error) {
-	defer o.queue.logOperation(o, err == nil, o.WorkspaceId)
+	// at the time of this function call the operation is still pending
+	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.l.PendingOperations() - 1)
 	if err == nil {
 		o.queue.finishAddOperation(o.ID, o.WorkspaceId)
 		return

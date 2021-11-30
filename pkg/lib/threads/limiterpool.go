@@ -153,6 +153,7 @@ func (p *limiterPool) runTask(task *Item) {
 		return
 	}
 
+	// we don't remove retriable operations from pending, so we won't be able to add them from outside
 	<-time.After(5 * time.Second * time.Duration(attempt) / time.Duration(priority + 1))
 	p.mx.Lock()
 	defer p.mx.Unlock()
