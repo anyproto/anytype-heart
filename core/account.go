@@ -119,7 +119,6 @@ func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
 		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
 		Extra:                      cfg.Extra,
 		EnableSpaces:               cfg.EnableSpaces,
-		DeviceId:                   cfg.DeviceId,
 	}
 }
 

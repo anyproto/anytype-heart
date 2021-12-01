@@ -1637,7 +1637,6 @@ Namespace, that agregates subtopics and actions, that relates to account.
 | enableDebug | [bool](#bool) |  |  |
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
-| deviceId | [string](#string) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
@@ -6735,6 +6734,7 @@ commands acceptable only for text blocks, others will be ignored
 | marketplaceTypeId | [string](#string) |  | marketplace type id |
 | marketplaceRelationId | [string](#string) |  | marketplace relation id |
 | marketplaceTemplateId | [string](#string) |  | marketplace template id |
+| deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
@@ -15121,7 +15121,6 @@ Avatar of a user&#39;s account. It could be an image or color
 | enableDebug | [bool](#bool) |  |  |
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
-| deviceId | [string](#string) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
