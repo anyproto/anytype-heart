@@ -198,7 +198,7 @@ func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) {
 	if len(msgs) == 0 {
 		return
 	}
-	
+
 	var events []amplitude.Event
 	for _, ev := range msgs {
 		events = append(events, ev.(amplitude.Event))

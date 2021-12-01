@@ -83,6 +83,7 @@ func (c IndexEvent) ToEvent() Event {
 			"rel_count":     c.RelationsCount,
 			"det_count":     c.DetailsCount,
 			"set_rel_count": c.SetRelationsCount,
+			"total_ms":      c.IndexLinksTimeMs + c.IndexDetailsTimeMs + c.IndexSetRelationsTimeMs,
 		},
 	}
 }
