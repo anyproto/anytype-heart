@@ -8,7 +8,7 @@ import (
 )
 
 type limiterPool struct {
-	limiter      chan struct{}
+	notifier     chan struct{}
 	tasks        *operationPriorityQueue
 	m            map[string]*Item
 	ctx          context.Context
@@ -20,13 +20,13 @@ type limiterPool struct {
 
 func newLimiterPool(ctx context.Context, limit int) *limiterPool {
 	return &limiterPool{
-		limiter: make(chan struct{}, limit),
-		tasks:   newOperationPriorityQueue(),
-		m:       map[string]*Item{},
-		ctx:     ctx,
-		mx:      sync.Mutex{},
-		started: false,
-		limit:   limit,
+		notifier: make(chan struct{}, 1),
+		tasks:    newOperationPriorityQueue(),
+		m:        map[string]*Item{},
+		ctx:      ctx,
+		mx:       sync.Mutex{},
+		started:  false,
+		limit:    limit,
 	}
 }
 
@@ -116,10 +116,7 @@ func (p *limiterPool) addItem(it *Item) {
 	p.m[it.value.(Operation).Id()] = it
 	p.tasks.Push(it)
 
-	select {
-	case p.limiter <- struct{}{}:
-	default:
-	}
+	p.notifyPool()
 }
 
 func (p *limiterPool) runTask(task *Item) {
@@ -133,10 +130,7 @@ func (p *limiterPool) runTask(task *Item) {
 	priority := task.priority
 	p.mx.Unlock()
 
-	select {
-	case p.limiter <- struct{}{}:
-	default:
-	}
+	p.notifyPool()
 
 	if err != nil {
 		err = fmt.Errorf("operation failed with attempt: %d, %w", attempt, err)
@@ -158,7 +152,7 @@ func (p *limiterPool) runTask(task *Item) {
 	}
 
 	// we don't remove retriable operations from pending, so we won't be able to add them from outside
-	<-time.After(5 * time.Second * time.Duration(attempt) / time.Duration(priority + 1))
+	<-time.After(5 * time.Second * time.Duration(attempt) / time.Duration(priority+1))
 	p.mx.Lock()
 	defer p.mx.Unlock()
 	p.addItem(task)
@@ -170,7 +164,7 @@ Loop:
 		select {
 		case <-p.ctx.Done():
 			break Loop
-		case _ = <-p.limiter:
+		case _ = <-p.notifier:
 			p.mx.Lock()
 			if p.tasks.Size() == 0 || p.runningTasks >= p.limit {
 				p.mx.Unlock()
@@ -187,7 +181,16 @@ Loop:
 			p.mx.Unlock()
 
 			go p.runTask(newTask)
+
+			p.notifyPool()
 		}
+	}
+}
+
+func (p *limiterPool) notifyPool() {
+	select {
+	case p.notifier <- struct{}{}:
+	default:
 	}
 }
 
