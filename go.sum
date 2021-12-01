@@ -72,10 +72,6 @@ github.com/anytypeio/amplitude-go v0.0.0-20211130172358-e8854c0b85fe h1:heGGw+hl
 github.com/anytypeio/amplitude-go v0.0.0-20211130172358-e8854c0b85fe/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31 h1:fCXBjRAxXq4pKyfH8xmYPfjL/E6v5zTTxYrIKDz8ufw=
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
-github.com/anytypeio/amplitude-go v0.0.0-20211201194501-dfa307c76f34 h1:wPAUVDs36KVyVnDdIq7mjBAXQuaz901IuslWX8NddqM=
-github.com/anytypeio/amplitude-go v0.0.0-20211201194501-dfa307c76f34/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
-github.com/anytypeio/amplitude-go v0.0.0-20211201195402-8e3139e99155 h1:sIVNfWEmtTJAWK2Rfk09Jtg8IJVvJCZfI96MEE+vwgQ=
-github.com/anytypeio/amplitude-go v0.0.0-20211201195402-8e3139e99155/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
 github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:YBmcug6mOdwjJcmzA/Fpjtl2oo78+fMlr5Xj0dzwg78=
 github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7/go.mod h1:EuPAem8b51iulSY3wBQJc0Shz+A2DmyREddzDt0fywM=
 github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f h1:aeyycLTPbhwjW2x/EkmuAgRzdX0bdwy+RStmevhQbhM=
