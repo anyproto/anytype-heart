@@ -131,6 +131,44 @@ func (c RecordCreateEvent) ToEvent() Event {
 	}
 }
 
+type DifferentAddresses struct {
+	LocalEdge  uint64
+	RemoteEdge uint64
+	PeerId     string
+	ThreadId   string
+}
+
+func (c DifferentAddresses) ToEvent() Event {
+	return Event{
+		EventType: "exchange_edges_addr_diff",
+		EventData: map[string]interface{}{
+			"local":     c.LocalEdge,
+			"remote":    c.RemoteEdge,
+			"peer_id":   c.PeerId,
+			"thread_id": c.ThreadId,
+		},
+	}
+}
+
+type DifferentHeads struct {
+	LocalEdge  uint64
+	RemoteEdge uint64
+	PeerId     string
+	ThreadId   string
+}
+
+func (c DifferentHeads) ToEvent() Event {
+	return Event{
+		EventType: "exchange_edges_addr_diff",
+		EventData: map[string]interface{}{
+			"local":     c.LocalEdge,
+			"remote":    c.RemoteEdge,
+			"peer_id":   c.PeerId,
+			"thread_id": c.ThreadId,
+		},
+	}
+}
+
 type BlockSplit struct {
 	AlgorithmMs int64
 	ApplyMs     int64
