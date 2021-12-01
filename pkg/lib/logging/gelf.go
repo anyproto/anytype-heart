@@ -20,6 +20,7 @@ type gelfSink struct {
 	batch       *mb.MB
 	gelfWriter  gelf.Writer
 	version     string
+	account     string
 	host        string
 	lastErrorAt time.Time
 }
@@ -69,7 +70,7 @@ func (gs *gelfSink) Write(b []byte) (int, error) {
 		Short:    string(b),
 		TimeUnix: float64(time.Now().UnixNano()) / float64(time.Second),
 		Level:    0,
-		Extra:    map[string]interface{}{"_mwver": gs.version},
+		Extra:    map[string]interface{}{"_mwver": gs.version, "_account": gs.account},
 	}
 
 	err := gs.batch.TryAdd(msg)
@@ -105,4 +106,10 @@ func (gs *gelfSink) SetVersion(version string) {
 	gs.Lock()
 	defer gs.Unlock()
 	gs.version = version
+}
+
+func (gs *gelfSink) SetAccount(account string) {
+	gs.Lock()
+	defer gs.Unlock()
+	gs.account = account
 }

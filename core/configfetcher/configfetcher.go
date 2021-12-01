@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	cafeClient "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -39,6 +40,7 @@ type ConfigFetcher interface {
 
 type configFetcher struct {
 	store           objectstore.ObjectStore
+	wallet          wallet.Wallet
 	cafe            cafeClient.Client
 	workspaceGetter WorkspaceGetter
 
@@ -55,6 +57,11 @@ func (c *configFetcher) GetAccountConfig(ctx context.Context) *model.AccountConf
 	if err == nil && len(workspaces) != 0 {
 		enableSpaces = true
 	}
+	var deviceId string
+	deviceKey, err := c.wallet.GetDevicePrivkey()
+	if err == nil {
+		deviceId = deviceKey.Address()
+	}
 
 	return &model.AccountConfig{
 		EnableDataview:             cafeConfig.EnableDataview,
@@ -62,6 +69,7 @@ func (c *configFetcher) GetAccountConfig(ctx context.Context) *model.AccountConf
 		EnableReleaseChannelSwitch: cafeConfig.EnableReleaseChannelSwitch,
 		Extra:                      cafeConfig.Extra,
 		EnableSpaces:               enableSpaces,
+		DeviceId:                   deviceId,
 	}
 }
 
@@ -109,6 +117,7 @@ func (c *configFetcher) GetCafeConfig(ctx context.Context) *pb.GetConfigResponse
 func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.cafe = a.MustComponent(cafeClient.CName).(cafeClient.Client)
+	c.wallet = a.MustComponent(wallet.CName).(wallet.Wallet)
 	c.workspaceGetter = a.MustComponent("threads").(WorkspaceGetter)
 	c.fetched = make(chan struct{})
 	return nil

@@ -19,8 +19,7 @@ message Rpc {
     message Metrics {
         message SetParameters {
             message Request {
-                string deviceId = 1;
-                string platform = 2;
+                string platform = 1;
             }
 
             message Response {
@@ -2307,6 +2306,7 @@ message Rpc {
             bool enableDebug = 2;
             bool enableReleaseChannelSwitch = 3;
             bool enableSpaces = 4;
+            string deviceId = 5;
 
             google.protobuf.Struct extra = 100;
         }

@@ -396,6 +396,7 @@ message Account {
         bool enableDebug = 2;
         bool enableReleaseChannelSwitch = 3;
         bool enableSpaces = 4;
+        string deviceId = 5;
 
         google.protobuf.Struct extra = 100;
     }

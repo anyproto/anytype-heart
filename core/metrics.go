@@ -14,8 +14,6 @@ func (mw *Middleware) MetricsSetParameters(req *pb.RpcMetricsSetParametersReques
 
 		return m
 	}
-
-	metrics.SharedClient.SetDeviceId(req.DeviceId)
 	metrics.SharedClient.SetPlatform(req.Platform)
 
 	return response(pb.RpcMetricsSetParametersResponseError_NULL, nil)

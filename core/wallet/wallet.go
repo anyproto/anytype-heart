@@ -75,8 +75,10 @@ func (r *wallet) Init(a *app.App) (err error) {
 
 	if r.deviceKeypair != nil {
 		logging.SetHost(r.deviceKeypair.Address())
+		metrics.SharedClient.SetDeviceId(r.deviceKeypair.Address())
 	}
 	if r.accountKeypair != nil {
+		logging.SetAccount(r.accountKeypair.Address())
 		metrics.SharedClient.SetUserId(r.accountKeypair.Address())
 	}
 	return nil
