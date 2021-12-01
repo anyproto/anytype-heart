@@ -165,30 +165,40 @@ func (c *client) startSendingBatchMessages() {
 		}
 		msgs := b.WaitMinMax(10, 100)
 		if len(msgs) == 0 {
-			c.SendNextBatch(nil, b.GetAll())
+			c.sendNextBatch(nil, b.GetAll())
 			close(c.closeChannel)
 			return
 		}
-		c.SendNextBatch(b, msgs)
+		c.sendNextBatch(b, msgs)
 		<-time.After(time.Second * 2)
 	}
 }
 
 func (c *client) Close() {
-	c.cancel()
 	c.lock.Lock()
+	if c.batcher == nil {
+		c.lock.Unlock()
+		return
+	}
 	err := c.batcher.Close()
 	if err != nil {
 		clientMetricsLog.Errorf("failed to close batcher")
 	}
 	c.lock.Unlock()
+
+	c.cancel()
 	<-c.closeChannel
+
 	c.lock.Lock()
 	defer c.lock.Unlock()
 	c.batcher = nil
 }
 
-func (c *client) SendNextBatch(b *mb.MB, msgs []interface{}) {
+func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) {
+	if len(msgs) == 0 {
+		return
+	}
+	
 	var events []amplitude.Event
 	for _, ev := range msgs {
 		events = append(events, ev.(amplitude.Event))

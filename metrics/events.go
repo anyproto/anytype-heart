@@ -187,6 +187,36 @@ func (c StateApply) ToEvent() Event {
 	}
 }
 
+type InitPredefinedBlocks struct {
+	TimeMs int64
+}
+
+func (c InitPredefinedBlocks) ToEvent() Event {
+	return Event{
+		EventType: "init_predefined_blocks",
+		EventData: map[string]interface{}{
+			"time_ms": c.TimeMs,
+		},
+	}
+}
+
+type InitPredefinedBlock struct {
+	SbType   int
+	TimeMs   int64
+	ObjectId string
+}
+
+func (c InitPredefinedBlock) ToEvent() Event {
+	return Event{
+		EventType: "init_predefined_block",
+		EventData: map[string]interface{}{
+			"time_ms":   c.TimeMs,
+			"sb_type":   c.SbType,
+			"object_id": c.ObjectId,
+		},
+	}
+}
+
 type BlockMerge struct {
 	AlgorithmMs int64
 	ApplyMs     int64
