@@ -36,9 +36,9 @@ type Event struct {
 type Client interface {
 	InitWithKey(k string)
 
-	SetOSVersion(v string)
 	SetAppVersion(v string)
-	SetDeviceType(t string)
+	SetDeviceId(t string)
+	SetPlatform(p string)
 	SetUserId(id string)
 
 	RecordEvent(ev EventRepresentable)
@@ -50,10 +50,10 @@ type Client interface {
 
 type client struct {
 	lock             sync.RWMutex
-	osVersion        string
 	appVersion       string
 	userId           string
-	deviceType       string
+	deviceId         string
+	platform         string
 	amplitude        *amplitude.Client
 	aggregatableMap  map[string]EventAggregatable
 	aggregatableChan chan EventAggregatable
@@ -80,16 +80,16 @@ func (c *client) InitWithKey(k string) {
 	c.amplitude = amplitude.New(k)
 }
 
-func (c *client) SetOSVersion(v string) {
+func (c *client) SetDeviceId(t string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.osVersion = v
+	c.deviceId = t
 }
 
-func (c *client) SetDeviceType(t string) {
+func (c *client) SetPlatform(p string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.deviceType = t
+	c.platform = p
 }
 
 func (c *client) SetUserId(id string) {
@@ -227,8 +227,8 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 	c.lock.RLock()
 	ampEvent := amplitude.Event{
 		UserId:          c.userId,
-		OsVersion:       c.osVersion,
-		DeviceType:      c.deviceType,
+		Platform:        c.platform,
+		DeviceId:        c.deviceId,
 		EventType:       e.EventType,
 		EventProperties: e.EventData,
 		AppVersion:      c.appVersion,
@@ -244,6 +244,8 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 		With("event-type", e.EventType).
 		With("event-data", e.EventData).
 		With("user-id", c.userId).
+		With("platform", c.platform).
+		With("device-id", c.deviceId).
 		Debug("event added to batcher")
 }
 
