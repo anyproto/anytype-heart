@@ -164,18 +164,17 @@ func (r *clientds) migrate() error {
 		return res
 	}
 	s.Send = func(list *dgraphbadgerv1pb.KVList) error {
-		txn, err := r.localstoreDS.NewTransaction(false)
+		batch, err := r.localstoreDS.Batch()
 		if err != nil {
 			return err
 		}
-		defer txn.Discard()
 		for _, kv := range list.Kv {
-			err := txn.Put(ds.NewKey(string(kv.Key)), kv.Value)
+			err := batch.Put(ds.NewKey(string(kv.Key)), kv.Value)
 			if err != nil {
 				return err
 			}
 		}
-		return txn.Commit()
+		return batch.Commit()
 	}
 	return s.Orchestrate(context.Background())
 }
