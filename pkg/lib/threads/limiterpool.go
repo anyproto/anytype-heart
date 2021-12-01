@@ -7,6 +7,7 @@ import (
 	"time"
 )
 
+// limiterPool limits number of simultaneous tasks, it also acts as a priority queue for these tasks
 type limiterPool struct {
 	notifier     chan struct{}
 	tasks        *operationPriorityQueue
