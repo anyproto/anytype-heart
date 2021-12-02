@@ -169,6 +169,7 @@ service ClientCommands {
     // SetCreate just creates the new set, without adding the link to it from some other page
     rpc SetCreate (anytype.Rpc.Set.Create.Request) returns (anytype.Rpc.Set.Create.Response);
 
+    rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
     // ## ObjectType
     rpc ObjectTypeCreate (anytype.Rpc.ObjectType.Create.Request) returns (anytype.Rpc.ObjectType.Create.Response);
     // ObjectTypeList lists all object types both bundled and created by user

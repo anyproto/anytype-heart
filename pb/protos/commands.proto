@@ -16,6 +16,29 @@ import "google/protobuf/struct.proto";
 */
 message Rpc {
 
+    message Metrics {
+        message SetParameters {
+            message Request {
+                string platform = 1;
+            }
+
+            message Response {
+                Error error = 1;
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
+
     message ExternalDrop {
         message Files {
             message Request {
@@ -2596,6 +2619,7 @@ message Rpc {
                 string marketplaceTypeId = 5; // marketplace type id
                 string marketplaceRelationId = 6; // marketplace relation id
                 string marketplaceTemplateId = 7; // marketplace template id
+                string deviceId = 8;
                 string gatewayUrl = 101; // gateway url for fetching static files
                 message Error {
                     Code code = 1;

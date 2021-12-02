@@ -294,12 +294,14 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 	}
+	startTime := time.Now()
 	for _, id := range ids {
 		ctx := &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)}
 		// this is needed so that old account will create its state successfully on first launch
 		if id == s.anytype.PredefinedBlocks().AccountOld {
 			ctx = nil
 		}
+		initTime := time.Now()
 		sb, err := s.newSmartBlock(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
@@ -314,7 +316,15 @@ func (s *service) initPredefinedBlocks() {
 		} else {
 			sb.Close()
 		}
+		sbType, _ := coresb.SmartBlockTypeFromID(id)
+		metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlock{
+			SbType:   int(sbType),
+			TimeMs:   time.Now().Sub(initTime).Milliseconds(),
+			ObjectId: id,
+		})
 	}
+	metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlocks{
+		TimeMs: time.Now().Sub(startTime).Milliseconds()})
 }
 
 func (s *service) Anytype() core.Service {
