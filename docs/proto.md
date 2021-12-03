@@ -415,6 +415,10 @@
     - [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request)
     - [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response)
     - [Rpc.ExportTemplates.Response.Error](#anytype.Rpc.ExportTemplates.Response.Error)
+    - [Rpc.ExportWorkspace](#anytype.Rpc.ExportWorkspace)
+    - [Rpc.ExportWorkspace.Request](#anytype.Rpc.ExportWorkspace.Request)
+    - [Rpc.ExportWorkspace.Response](#anytype.Rpc.ExportWorkspace.Response)
+    - [Rpc.ExportWorkspace.Response.Error](#anytype.Rpc.ExportWorkspace.Response.Error)
     - [Rpc.ExternalDrop](#anytype.Rpc.ExternalDrop)
     - [Rpc.ExternalDrop.Content](#anytype.Rpc.ExternalDrop.Content)
     - [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request)
@@ -750,6 +754,7 @@
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
     - [Rpc.ExportLocalstore.Response.Error.Code](#anytype.Rpc.ExportLocalstore.Response.Error.Code)
     - [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code)
+    - [Rpc.ExportWorkspace.Response.Error.Code](#anytype.Rpc.ExportWorkspace.Response.Error.Code)
     - [Rpc.ExternalDrop.Content.Response.Error.Code](#anytype.Rpc.ExternalDrop.Content.Response.Error.Code)
     - [Rpc.ExternalDrop.Files.Response.Error.Code](#anytype.Rpc.ExternalDrop.Files.Response.Error.Code)
     - [Rpc.File.Offload.Response.Error.Code](#anytype.Rpc.File.Offload.Response.Error.Code)
@@ -1168,7 +1173,7 @@
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request) | [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response) | ObjectToSet creates new set from given object and removes object |
 | ObjectListDelete | [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request) | [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response) |  |
-| ObjectListSetIsArchived | [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request) | [Rpc.ObjectList.Set.IsArchived.Response](#anytype.Rpc.ObjectList.Set.IsArchived.Response) | deprecated |
+| ObjectListSetIsArchived | [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request) | [Rpc.ObjectList.Set.IsArchived.Response](#anytype.Rpc.ObjectList.Set.IsArchived.Response) |  |
 | ObjectListSetIsFavorite | [Rpc.ObjectList.Set.IsFavorite.Request](#anytype.Rpc.ObjectList.Set.IsFavorite.Request) | [Rpc.ObjectList.Set.IsFavorite.Response](#anytype.Rpc.ObjectList.Set.IsFavorite.Response) |  |
 | BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | TODO: rename BlockSetDetails -&gt; ObjectSetDetails |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page TODO: rename PageCreate -&gt; ObjectCreate |
@@ -1186,6 +1191,7 @@
 | HistoryVersions | [Rpc.History.Versions.Request](#anytype.Rpc.History.Versions.Request) | [Rpc.History.Versions.Response](#anytype.Rpc.History.Versions.Response) |  |
 | HistorySetVersion | [Rpc.History.SetVersion.Request](#anytype.Rpc.History.SetVersion.Request) | [Rpc.History.SetVersion.Response](#anytype.Rpc.History.SetVersion.Response) |  |
 | Export | [Rpc.Export.Request](#anytype.Rpc.Export.Request) | [Rpc.Export.Response](#anytype.Rpc.Export.Response) |  |
+| ExportWorkspace | [Rpc.ExportWorkspace.Request](#anytype.Rpc.ExportWorkspace.Request) | [Rpc.ExportWorkspace.Response](#anytype.Rpc.ExportWorkspace.Response) |  |
 | ExportTemplates | [Rpc.ExportTemplates.Request](#anytype.Rpc.ExportTemplates.Request) | [Rpc.ExportTemplates.Response](#anytype.Rpc.ExportTemplates.Response) |  |
 | ExportLocalstore | [Rpc.ExportLocalstore.Request](#anytype.Rpc.ExportLocalstore.Request) | [Rpc.ExportLocalstore.Response](#anytype.Rpc.ExportLocalstore.Response) |  |
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
@@ -7082,6 +7088,7 @@ commands acceptable only for text blocks, others will be ignored
 | docIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
 | format | [Rpc.Export.Format](#anytype.Rpc.Export.Format) |  | export format |
 | zip | [bool](#bool) |  | save as zip file |
+| includeNested | [bool](#bool) |  | include all nested |
 
 
 
@@ -7098,6 +7105,7 @@ commands acceptable only for text blocks, others will be ignored
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Export.Response.Error](#anytype.Rpc.Export.Response.Error) |  |  |
 | path | [string](#string) |  |  |
+| succeed | [int32](#int32) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
@@ -7231,6 +7239,65 @@ commands acceptable only for text blocks, others will be ignored
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ExportTemplates.Response.Error.Code](#anytype.Rpc.ExportTemplates.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportWorkspace"></a>
+
+### Rpc.ExportWorkspace
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportWorkspace.Request"></a>
+
+### Rpc.ExportWorkspace.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  | the path where export files will place |
+| workspaceId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportWorkspace.Response"></a>
+
+### Rpc.ExportWorkspace.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ExportWorkspace.Response.Error](#anytype.Rpc.ExportWorkspace.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ExportWorkspace.Response.Error"></a>
+
+### Rpc.ExportWorkspace.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ExportWorkspace.Response.Error.Code](#anytype.Rpc.ExportWorkspace.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11895,6 +11962,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.ExportTemplates.Response.Error.Code"></a>
 
 ### Rpc.ExportTemplates.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ExportWorkspace.Response.Error.Code"></a>
+
+### Rpc.ExportWorkspace.Response.Error.Code
 
 
 | Name | Number | Description |

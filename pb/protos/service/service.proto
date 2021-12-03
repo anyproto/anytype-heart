@@ -157,7 +157,7 @@ service ClientCommands {
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
 
     rpc ObjectListDelete (anytype.Rpc.ObjectList.Delete.Request) returns (anytype.Rpc.ObjectList.Delete.Response);
-    rpc ObjectListSetIsArchived (anytype.Rpc.ObjectList.Set.IsArchived.Request) returns (anytype.Rpc.ObjectList.Set.IsArchived.Response); // deprecated
+    rpc ObjectListSetIsArchived (anytype.Rpc.ObjectList.Set.IsArchived.Request) returns (anytype.Rpc.ObjectList.Set.IsArchived.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.ObjectList.Set.IsFavorite.Request) returns (anytype.Rpc.ObjectList.Set.IsFavorite.Response);
 
     // TODO: rename BlockSetDetails -> ObjectSetDetails
@@ -188,6 +188,7 @@ service ClientCommands {
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
 
     rpc Export (anytype.Rpc.Export.Request) returns (anytype.Rpc.Export.Response);
+    rpc ExportWorkspace (anytype.Rpc.ExportWorkspace.Request) returns (anytype.Rpc.ExportWorkspace.Response);
     rpc ExportTemplates (anytype.Rpc.ExportTemplates.Request) returns (anytype.Rpc.ExportTemplates.Response);
     rpc ExportLocalstore (anytype.Rpc.ExportLocalstore.Request) returns (anytype.Rpc.ExportLocalstore.Response);
 
