@@ -75,6 +75,57 @@ var threadDerivedIndexToSmartblockType = map[threadDerivedIndex]smartblock.Smart
 }
 var ErrAddReplicatorsAttemptsExceeded = fmt.Errorf("add replicatorAddr attempts exceeded")
 
+func (s *service) DerivePredefinedThreadIds() (DerivedSmartblockIds, error) {
+	profile, err := s.derivedThreadIdByIndex(threadDerivedIndexProfilePage)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	account, err := s.derivedThreadIdByIndex(threadDerivedIndexAccount)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	accountOld, err := s.derivedThreadIdByIndex(threadDerivedIndexAccountOld)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	home, err := s.derivedThreadIdByIndex(threadDerivedIndexHome)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	archive, err := s.derivedThreadIdByIndex(threadDerivedIndexArchive)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	setPages, err := s.derivedThreadIdByIndex(threadDerivedIndexSetPages)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	mpType, err := s.derivedThreadIdByIndex(threadDerivedIndexMarketplaceType)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	mpRelation, err := s.derivedThreadIdByIndex(threadDerivedIndexMarketplaceRelation)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+	mpTemplate, err := s.derivedThreadIdByIndex(threadDerivedIndexMarketplaceTemplate)
+	if err != nil {
+		return DerivedSmartblockIds{}, err
+	}
+
+	return DerivedSmartblockIds{
+		AccountOld:          accountOld.String(),
+		Account:             account.String(),
+		Profile:             profile.String(),
+		Home:                home.String(),
+		Archive:             archive.String(),
+		SetPages:            setPages.String(),
+		MarketplaceType:     mpType.String(),
+		MarketplaceRelation: mpRelation.String(),
+		MarketplaceTemplate: mpTemplate.String(),
+	}, nil
+}
+
 func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) (DerivedSmartblockIds, error) {
 	s.Lock()
 	defer s.Unlock()

@@ -2,6 +2,7 @@ package restriction
 
 import (
 	"errors"
+	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -18,6 +19,30 @@ var ErrRestricted = errors.New("restricted")
 
 var log = logging.Logger("anytype-mw-restrictions")
 
+type simpleObject struct {
+	id string
+	tp model.SmartBlockType
+}
+
+func newSimpleObject(id string) (Object, error) {
+	tp, err := smartblock2.SmartBlockTypeFromID(id)
+	if err != nil {
+		return nil, err
+	}
+	return &simpleObject{
+		id: id,
+		tp: tp.ToProto(),
+	}, nil
+}
+
+func (s *simpleObject) Id() string {
+	return s.id
+}
+
+func (s *simpleObject) Type() model.SmartBlockType {
+	return s.tp
+}
+
 type Object interface {
 	Id() string
 	Type() model.SmartBlockType
@@ -26,6 +51,8 @@ type Object interface {
 type Service interface {
 	ObjectRestrictionsByObj(obj Object) (r ObjectRestrictions)
 	RestrictionsByObj(obj Object) (r Restrictions)
+	RestrictionsById(id string) (r Restrictions, err error)
+	CheckRestrictions(id string, cr ...model.RestrictionsObjectRestriction) error
 	app.Component
 }
 
@@ -44,6 +71,25 @@ func (s *service) RestrictionsByObj(obj Object) (r Restrictions) {
 		Object:   s.ObjectRestrictionsByObj(obj),
 		Dataview: s.DataviewRestrictionsByObj(obj),
 	}
+}
+
+func (s *service) CheckRestrictions(id string, cr ...model.RestrictionsObjectRestriction) error {
+	r, err := s.RestrictionsById(id)
+	if err != nil {
+		return err
+	}
+	if err = r.Object.Check(cr...); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *service) RestrictionsById(id string) (r Restrictions, err error) {
+	obj, err := newSimpleObject(id)
+	if err != nil {
+		return Restrictions{}, err
+	}
+	return s.RestrictionsByObj(obj), nil
 }
 
 type Restrictions struct {

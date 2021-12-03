@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"context"
+	"github.com/cheggaaa/mb"
 	"sync"
 	"time"
 
@@ -35,29 +36,31 @@ type Event struct {
 type Client interface {
 	InitWithKey(k string)
 
-	SetOSVersion(v string)
 	SetAppVersion(v string)
-	SetDeviceType(t string)
+	SetDeviceId(t string)
+	SetPlatform(p string)
 	SetUserId(id string)
 
 	RecordEvent(ev EventRepresentable)
 	AggregateEvent(ev EventAggregatable)
 
-	StartAggregating()
-	StopAggregating()
+	Run()
+	Close()
 }
 
 type client struct {
 	lock             sync.RWMutex
-	osVersion        string
 	appVersion       string
 	userId           string
-	deviceType       string
+	deviceId         string
+	platform         string
 	amplitude        *amplitude.Client
 	aggregatableMap  map[string]EventAggregatable
 	aggregatableChan chan EventAggregatable
 	ctx              context.Context
 	cancel           context.CancelFunc
+	batcher          *mb.MB
+	closeChannel     chan struct{}
 }
 
 func NewClient() Client {
@@ -77,16 +80,16 @@ func (c *client) InitWithKey(k string) {
 	c.amplitude = amplitude.New(k)
 }
 
-func (c *client) SetOSVersion(v string) {
+func (c *client) SetDeviceId(t string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.osVersion = v
+	c.deviceId = t
 }
 
-func (c *client) SetDeviceType(t string) {
+func (c *client) SetPlatform(p string) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
-	c.deviceType = t
+	c.platform = p
 }
 
 func (c *client) SetUserId(id string) {
@@ -102,19 +105,29 @@ func (c *client) SetAppVersion(version string) {
 }
 
 func (c *client) sendAggregatedData() {
+	var events []EventAggregatable
 	c.lock.RLock()
-	defer c.lock.RUnlock()
 	for k, ev := range c.aggregatableMap {
-		c.RecordEvent(ev)
+		events = append(events, ev)
 		delete(c.aggregatableMap, k)
+	}
+	c.lock.RUnlock()
+	for _, ev := range events {
+		c.RecordEvent(ev)
 	}
 }
 
-func (c *client) StartAggregating() {
+func (c *client) Run() {
 	c.lock.Lock()
-	c.StopAggregating()
+	defer c.lock.Unlock()
 	c.ctx, c.cancel = context.WithCancel(context.Background())
-	c.lock.Unlock()
+	c.batcher = mb.New(0)
+	c.closeChannel = make(chan struct{})
+	go c.startAggregating()
+	go c.startSendingBatchMessages()
+}
+
+func (c *client) startAggregating() {
 	go func() {
 		ticker := time.NewTicker(sendInterval)
 		for {
@@ -142,8 +155,68 @@ func (c *client) StartAggregating() {
 	}()
 }
 
-func (c *client) StopAggregating() {
+func (c *client) startSendingBatchMessages() {
+	for {
+		c.lock.Lock()
+		b := c.batcher
+		c.lock.Unlock()
+		if b == nil {
+			return
+		}
+		msgs := b.WaitMinMax(10, 100)
+		if len(msgs) == 0 {
+			c.sendNextBatch(nil, b.GetAll())
+			close(c.closeChannel)
+			return
+		}
+		c.sendNextBatch(b, msgs)
+		<-time.After(time.Second * 2)
+	}
+}
+
+func (c *client) Close() {
+	c.lock.Lock()
+	if c.batcher == nil {
+		c.lock.Unlock()
+		return
+	}
+	err := c.batcher.Close()
+	if err != nil {
+		clientMetricsLog.Errorf("failed to close batcher")
+	}
+	c.lock.Unlock()
+
 	c.cancel()
+	<-c.closeChannel
+
+	c.lock.Lock()
+	defer c.lock.Unlock()
+	c.batcher = nil
+}
+
+func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) {
+	if len(msgs) == 0 {
+		return
+	}
+
+	var events []amplitude.Event
+	for _, ev := range msgs {
+		events = append(events, ev.(amplitude.Event))
+	}
+	err := c.amplitude.Events(events)
+	if err != nil {
+		clientMetricsLog.
+			With("unsent messages", len(msgs)+c.batcher.Len()).
+			Error("failed to send messages")
+		if b != nil {
+			b.Add(msgs...)
+		}
+	} else {
+		clientMetricsLog.
+			With("user-id", c.userId).
+			With("messages sent", len(msgs)).
+			Debug("events sent to amplitude")
+	}
 }
 
 func (c *client) RecordEvent(ev EventRepresentable) {
@@ -154,26 +227,26 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 	c.lock.RLock()
 	ampEvent := amplitude.Event{
 		UserId:          c.userId,
-		OsVersion:       c.osVersion,
-		DeviceType:      c.deviceType,
+		Platform:        c.platform,
+		DeviceId:        c.deviceId,
 		EventType:       e.EventType,
 		EventProperties: e.EventData,
 		AppVersion:      c.appVersion,
+		Time:            time.Now().Unix() * 1000,
 	}
+	b := c.batcher
 	c.lock.RUnlock()
-
-	go func() {
-		err := c.amplitude.Event(ampEvent)
-		if err != nil {
-			clientMetricsLog.Errorf("error logging event %s", err)
-			return
-		}
-		clientMetricsLog.
-			With("event-type", e.EventType).
-			With("event-data", e.EventData).
-			With("user-id", c.userId).
-			Debugf("event sent")
-	}()
+	if b == nil {
+		return
+	}
+	b.Add(ampEvent)
+	clientMetricsLog.
+		With("event-type", e.EventType).
+		With("event-data", e.EventData).
+		With("user-id", c.userId).
+		With("platform", c.platform).
+		With("device-id", c.deviceId).
+		Debug("event added to batcher")
 }
 
 func (c *client) AggregateEvent(ev EventAggregatable) {
