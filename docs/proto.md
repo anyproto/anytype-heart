@@ -353,6 +353,11 @@
     - [Rpc.BlockList.Set.Fields.Request.BlockField](#anytype.Rpc.BlockList.Set.Fields.Request.BlockField)
     - [Rpc.BlockList.Set.Fields.Response](#anytype.Rpc.BlockList.Set.Fields.Response)
     - [Rpc.BlockList.Set.Fields.Response.Error](#anytype.Rpc.BlockList.Set.Fields.Response.Error)
+    - [Rpc.BlockList.Set.File](#anytype.Rpc.BlockList.Set.File)
+    - [Rpc.BlockList.Set.File.Style](#anytype.Rpc.BlockList.Set.File.Style)
+    - [Rpc.BlockList.Set.File.Style.Request](#anytype.Rpc.BlockList.Set.File.Style.Request)
+    - [Rpc.BlockList.Set.File.Style.Response](#anytype.Rpc.BlockList.Set.File.Style.Response)
+    - [Rpc.BlockList.Set.File.Style.Response.Error](#anytype.Rpc.BlockList.Set.File.Style.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
     - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
     - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
@@ -466,6 +471,11 @@
     - [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request)
     - [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response)
     - [Rpc.MakeTemplateByObjectType.Response.Error](#anytype.Rpc.MakeTemplateByObjectType.Response.Error)
+    - [Rpc.Metrics](#anytype.Rpc.Metrics)
+    - [Rpc.Metrics.SetParameters](#anytype.Rpc.Metrics.SetParameters)
+    - [Rpc.Metrics.SetParameters.Request](#anytype.Rpc.Metrics.SetParameters.Request)
+    - [Rpc.Metrics.SetParameters.Response](#anytype.Rpc.Metrics.SetParameters.Response)
+    - [Rpc.Metrics.SetParameters.Response.Error](#anytype.Rpc.Metrics.SetParameters.Response.Error)
     - [Rpc.Navigation](#anytype.Rpc.Navigation)
     - [Rpc.Navigation.GetObjectInfoWithLinks](#anytype.Rpc.Navigation.GetObjectInfoWithLinks)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request)
@@ -729,6 +739,7 @@
     - [Rpc.BlockList.Set.BackgroundColor.Response.Error.Code](#anytype.Rpc.BlockList.Set.BackgroundColor.Response.Error.Code)
     - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
+    - [Rpc.BlockList.Set.File.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.File.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
@@ -757,6 +768,7 @@
     - [Rpc.Log.Send.Response.Error.Code](#anytype.Rpc.Log.Send.Response.Error.Code)
     - [Rpc.MakeTemplate.Response.Error.Code](#anytype.Rpc.MakeTemplate.Response.Error.Code)
     - [Rpc.MakeTemplateByObjectType.Response.Error.Code](#anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code)
+    - [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype.Rpc.Metrics.SetParameters.Response.Error.Code)
     - [Rpc.Navigation.Context](#anytype.Rpc.Navigation.Context)
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype.Rpc.Navigation.ListObjects.Response.Error.Code)
@@ -847,6 +859,7 @@
     - [Event.Block.Fill.File.Name](#anytype.Event.Block.Fill.File.Name)
     - [Event.Block.Fill.File.Size](#anytype.Event.Block.Fill.File.Size)
     - [Event.Block.Fill.File.State](#anytype.Event.Block.Fill.File.State)
+    - [Event.Block.Fill.File.Style](#anytype.Event.Block.Fill.File.Style)
     - [Event.Block.Fill.File.Type](#anytype.Event.Block.Fill.File.Type)
     - [Event.Block.Fill.File.Width](#anytype.Event.Block.Fill.File.Width)
     - [Event.Block.Fill.Link](#anytype.Event.Block.Fill.Link)
@@ -881,6 +894,7 @@
     - [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name)
     - [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size)
     - [Event.Block.Set.File.State](#anytype.Event.Block.Set.File.State)
+    - [Event.Block.Set.File.Style](#anytype.Event.Block.Set.File.Style)
     - [Event.Block.Set.File.Type](#anytype.Event.Block.Set.File.Type)
     - [Event.Block.Set.File.Width](#anytype.Event.Block.Set.File.Width)
     - [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex)
@@ -1003,6 +1017,7 @@
     - [Block.Content.Dataview.View.Type](#anytype.model.Block.Content.Dataview.View.Type)
     - [Block.Content.Div.Style](#anytype.model.Block.Content.Div.Style)
     - [Block.Content.File.State](#anytype.model.Block.Content.File.State)
+    - [Block.Content.File.Style](#anytype.model.Block.Content.File.Style)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
     - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
@@ -1096,6 +1111,7 @@
 | BlockListSetBackgroundColor | [Rpc.BlockList.Set.BackgroundColor.Request](#anytype.Rpc.BlockList.Set.BackgroundColor.Request) | [Rpc.BlockList.Set.BackgroundColor.Response](#anytype.Rpc.BlockList.Set.BackgroundColor.Response) |  |
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
+| BlockListSetFileStyle | [Rpc.BlockList.Set.File.Style.Request](#anytype.Rpc.BlockList.Set.File.Style.Request) | [Rpc.BlockList.Set.File.Style.Response](#anytype.Rpc.BlockList.Set.File.Style.Response) |  |
 | BlockListTurnInto | [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request) | [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response) |  |
 | BlockSetLatexText | [Rpc.Block.Set.Latex.Text.Request](#anytype.Rpc.Block.Set.Latex.Text.Request) | [Rpc.Block.Set.Latex.Text.Response](#anytype.Rpc.Block.Set.Latex.Text.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
@@ -1162,6 +1178,7 @@
 | BlockSetDetails | [Rpc.Block.Set.Details.Request](#anytype.Rpc.Block.Set.Details.Request) | [Rpc.Block.Set.Details.Response](#anytype.Rpc.Block.Set.Details.Response) | TODO: rename BlockSetDetails -&gt; ObjectSetDetails |
 | PageCreate | [Rpc.Page.Create.Request](#anytype.Rpc.Page.Create.Request) | [Rpc.Page.Create.Response](#anytype.Rpc.Page.Create.Response) | PageCreate just creates the new page, without adding the link to it from some other page TODO: rename PageCreate -&gt; ObjectCreate |
 | SetCreate | [Rpc.Set.Create.Request](#anytype.Rpc.Set.Create.Request) | [Rpc.Set.Create.Response](#anytype.Rpc.Set.Create.Response) | SetCreate just creates the new set, without adding the link to it from some other page |
+| MetricsSetParameters | [Rpc.Metrics.SetParameters.Request](#anytype.Rpc.Metrics.SetParameters.Request) | [Rpc.Metrics.SetParameters.Response](#anytype.Rpc.Metrics.SetParameters.Response) |  |
 | ObjectTypeCreate | [Rpc.ObjectType.Create.Request](#anytype.Rpc.ObjectType.Create.Request) | [Rpc.ObjectType.Create.Response](#anytype.Rpc.ObjectType.Create.Response) | ## ObjectType |
 | ObjectTypeList | [Rpc.ObjectType.List.Request](#anytype.Rpc.ObjectType.List.Request) | [Rpc.ObjectType.List.Response](#anytype.Rpc.ObjectType.List.Response) | ObjectTypeList lists all object types both bundled and created by user |
 | ObjectTypeRelationList | [Rpc.ObjectType.Relation.List.Request](#anytype.Rpc.ObjectType.Relation.List.Request) | [Rpc.ObjectType.Relation.List.Response](#anytype.Rpc.ObjectType.Relation.List.Response) |  |
@@ -6306,6 +6323,75 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype.Rpc.BlockList.Set.File"></a>
+
+### Rpc.BlockList.Set.File
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.File.Style"></a>
+
+### Rpc.BlockList.Set.File.Style
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.File.Style.Request"></a>
+
+### Rpc.BlockList.Set.File.Style.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| style | [model.Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.File.Style.Response"></a>
+
+### Rpc.BlockList.Set.File.Style.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.File.Style.Response.Error](#anytype.Rpc.BlockList.Set.File.Style.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.File.Style.Response.Error"></a>
+
+### Rpc.BlockList.Set.File.Style.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.File.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.File.Style.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text"></a>
 
 ### Rpc.BlockList.Set.Text
@@ -6654,6 +6740,7 @@ commands acceptable only for text blocks, others will be ignored
 | marketplaceTypeId | [string](#string) |  | marketplace type id |
 | marketplaceRelationId | [string](#string) |  | marketplace relation id |
 | marketplaceTemplateId | [string](#string) |  | marketplace template id |
+| deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
@@ -7953,6 +8040,72 @@ Usage: send request with topic (Level) and description (message) from client to 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.MakeTemplateByObjectType.Response.Error.Code](#anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Metrics"></a>
+
+### Rpc.Metrics
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Metrics.SetParameters"></a>
+
+### Rpc.Metrics.SetParameters
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Metrics.SetParameters.Request"></a>
+
+### Rpc.Metrics.SetParameters.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| platform | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Metrics.SetParameters.Response"></a>
+
+### Rpc.Metrics.SetParameters.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Metrics.SetParameters.Response.Error](#anytype.Rpc.Metrics.SetParameters.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Metrics.SetParameters.Response.Error"></a>
+
+### Rpc.Metrics.SetParameters.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Metrics.SetParameters.Response.Error.Code](#anytype.Rpc.Metrics.SetParameters.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -10037,7 +10190,8 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | url | [string](#string) |  |  |
 | localPath | [string](#string) |  |  |
 | type | [model.Block.Content.File.Type](#anytype.model.Block.Content.File.Type) |  |  |
-| disableEncryption | [bool](#bool) |  |  |
+| disableEncryption | [bool](#bool) |  | deprecated, has no affect |
+| style | [model.Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
 
 
 
@@ -11618,6 +11772,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Set.File.Style.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.File.Style.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Text.Color.Response.Error.Code
@@ -11985,6 +12152,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.MakeTemplateByObjectType.Response.Error.Code"></a>
 
 ### Rpc.MakeTemplateByObjectType.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Metrics.SetParameters.Response.Error.Code"></a>
+
+### Rpc.Metrics.SetParameters.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -13205,6 +13385,7 @@ Precondition: user A opened a block
 | hash | [Event.Block.Fill.File.Hash](#anytype.Event.Block.Fill.File.Hash) |  |  |
 | name | [Event.Block.Fill.File.Name](#anytype.Event.Block.Fill.File.Name) |  |  |
 | size | [Event.Block.Fill.File.Size](#anytype.Event.Block.Fill.File.Size) |  |  |
+| style | [Event.Block.Fill.File.Style](#anytype.Event.Block.Fill.File.Style) |  |  |
 
 
 
@@ -13280,6 +13461,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Fill.File.Style"></a>
+
+### Event.Block.Fill.File.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
 
 
 
@@ -13736,6 +13932,7 @@ Precondition: user A opened a block
 | hash | [Event.Block.Set.File.Hash](#anytype.Event.Block.Set.File.Hash) |  |  |
 | name | [Event.Block.Set.File.Name](#anytype.Event.Block.Set.File.Name) |  |  |
 | size | [Event.Block.Set.File.Size](#anytype.Event.Block.Set.File.Size) |  |  |
+| style | [Event.Block.Set.File.Style](#anytype.Event.Block.Set.File.Style) |  |  |
 
 
 
@@ -13811,6 +14008,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [model.Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.File.Style"></a>
+
+### Event.Block.Set.File.Style
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
 
 
 
@@ -15195,6 +15407,7 @@ Divider: block, that contains only one horizontal thin line
 | size | [int64](#int64) |  |  |
 | addedAt | [int64](#int64) |  |  |
 | state | [Block.Content.File.State](#anytype.model.Block.Content.File.State) |  |  |
+| style | [Block.Content.File.Style](#anytype.model.Block.Content.File.Style) |  |  |
 
 
 
@@ -15777,6 +15990,19 @@ scope from which this relation have been aggregated |
 
 
 
+<a name="anytype.model.Block.Content.File.Style"></a>
+
+### Block.Content.File.Style
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Auto | 0 | all types expect File and None has Embed style by default |
+| Link | 1 |  |
+| Embed | 2 |  |
+
+
+
 <a name="anytype.model.Block.Content.File.Type"></a>
 
 ### Block.Content.File.Type
@@ -15789,6 +16015,7 @@ scope from which this relation have been aggregated |
 | Image | 2 |  |
 | Video | 3 |  |
 | Audio | 4 |  |
+| PDF | 5 |  |
 
 
 

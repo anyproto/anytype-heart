@@ -46,6 +46,7 @@ type Uploader interface {
 	SetBlock(block file.Block) Uploader
 	SetName(name string) Uploader
 	SetType(tp model.BlockContentFileType) Uploader
+	SetStyle(tp model.BlockContentFileStyle) Uploader
 	SetBytes(b []byte) Uploader
 	SetUrl(url string) Uploader
 	SetFile(path string) Uploader
@@ -98,6 +99,7 @@ type uploader struct {
 	forceType    bool
 	smartBlockId string
 	fileType     model.BlockContentFileType
+	fileStyle    model.BlockContentFileStyle
 	opts         []files.AddOption
 	groupId      string
 }
@@ -140,6 +142,11 @@ func (u *uploader) SetName(name string) Uploader {
 func (u *uploader) SetType(tp model.BlockContentFileType) Uploader {
 	u.fileType = tp
 	u.forceType = true
+	return u
+}
+
+func (u *uploader) SetStyle(tp model.BlockContentFileStyle) Uploader {
+	u.fileStyle = tp
 	return u
 }
 
@@ -274,6 +281,16 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			u.fileType = u.detectType(buf)
 		}
 	}
+	if u.block != nil {
+		u.fileStyle = u.block.Model().GetFile().GetStyle()
+	}
+	if u.fileStyle == model.BlockContentFile_Auto {
+		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
+			u.fileStyle = model.BlockContentFile_Link
+		} else {
+			u.fileStyle = model.BlockContentFile_Embed
+		}
+	}
 	var opts = []files.AddOption{
 		files.WithName(u.name),
 		files.WithReader(buf),
@@ -313,6 +330,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			SetState(model.BlockContentFile_Done).
 			SetType(u.fileType).SetHash(result.Hash).
 			SetSize(result.Size).
+			SetStyle(u.fileStyle).
 			SetMIME(result.MIME)
 		u.updateBlock()
 	}
@@ -338,6 +356,10 @@ func (u *uploader) detectTypeByMIME(mime string) model.BlockContentFileType {
 	if strings.HasPrefix(mime, "audio") {
 		return model.BlockContentFile_Audio
 	}
+	if strings.HasPrefix(mime, "application/pdf") {
+		return model.BlockContentFile_PDF
+	}
+
 	return model.BlockContentFile_File
 }
 

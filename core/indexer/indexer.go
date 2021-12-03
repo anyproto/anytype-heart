@@ -580,7 +580,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 
 	var curDetails *types.Struct
 	curDetailsO, _ := i.store.GetDetails(id)
-	if curDetailsO != nil {
+	if curDetailsO.GetDetails().GetFields() != nil {
 		curDetails = curDetailsO.Details
 	}
 	// compare only real object scoped details
@@ -633,6 +633,7 @@ func (i *indexer) reindexIdsIgnoreErr(ctx context.Context, indexRemoved bool, id
 }
 
 func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
+	startTime := time.Now()
 	sbType, err := smartblock.SmartBlockTypeFromID(info.Id)
 	if err != nil {
 		sbType = smartblock.SmartBlockTypePage
@@ -677,7 +678,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 			}
 		}
 	}
-
+	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
 		if err = i.store.UpdateObjectLinks(info.Id, info.Links); err != nil {
@@ -686,6 +687,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		}
 	}
 
+	indexLinksTime := time.Now()
 	if indexDetails {
 		if err := i.store.UpdateObjectDetails(info.Id, details, &model.Relations{Relations: info.State.ExtraRelations()}, false); err != nil {
 			hasError = true
@@ -699,10 +701,25 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	} else {
 		_ = i.store.DeleteDetails(info.Id)
 	}
+	indexDetailsTime := time.Now()
+	detailsCount := 0
+	if details.GetFields() != nil {
+		detailsCount = len(details.GetFields())
+	}
 
 	if !hasError {
 		saveIndexedHash()
 	}
+
+	metrics.SharedClient.RecordEvent(metrics.IndexEvent{
+		ObjectId:                info.Id,
+		IndexLinksTimeMs:        indexLinksTime.Sub(indexSetTime).Milliseconds(),
+		IndexDetailsTimeMs:      indexDetailsTime.Sub(indexLinksTime).Milliseconds(),
+		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
+		RelationsCount:          len(info.State.ExtraRelations()),
+		DetailsCount:            detailsCount,
+		SetRelationsCount:       len(info.SetRelations),
+	})
 
 	return nil
 }

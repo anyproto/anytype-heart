@@ -4,12 +4,15 @@ import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/thread"
 	"strings"
 	"sync"
 	"time"
 )
+
+var queueLog = logging.Logger("anytype-threadqueue")
 
 type ThreadQueueState struct {
 	workspaceThreads map[string]map[string]struct{}
@@ -48,7 +51,6 @@ type threadQueue struct {
 	threadStore       ThreadWorkspaceStore
 	operationsBuffer  []ThreadOperation
 	currentOperations map[string]ThreadOperation
-	operationsMutex   sync.Mutex
 	wakeupChan        chan struct{}
 }
 
@@ -169,9 +171,7 @@ func (p *threadQueue) ProcessThreadsAsync(threadsFromState []ThreadInfo, workspa
 			}
 		}
 	}
-	p.Unlock()
 
-	p.operationsMutex.Lock()
 	for _, info := range addedThreads {
 		if _, exists := p.currentOperations[info.ID]; exists {
 			continue
@@ -193,7 +193,7 @@ func (p *threadQueue) ProcessThreadsAsync(threadsFromState []ThreadInfo, workspa
 			WorkspaceId:    workspaceId,
 		})
 	}
-	p.operationsMutex.Unlock()
+	p.Unlock()
 	select {
 	case p.wakeupChan <- struct{}{}:
 	default:
@@ -201,14 +201,14 @@ func (p *threadQueue) ProcessThreadsAsync(threadsFromState []ThreadInfo, workspa
 }
 
 func (p *threadQueue) processBufferedEvents() {
-	p.operationsMutex.Lock()
+	p.Lock()
 	var operationsCopy []ThreadOperation
 	for _, op := range p.operationsBuffer {
 		operationsCopy = append(operationsCopy, op)
 		p.currentOperations[op.ID] = op
 	}
 	p.operationsBuffer = nil
-	p.operationsMutex.Unlock()
+	p.Unlock()
 
 	for _, op := range operationsCopy {
 		if op.IsAddOperation {
@@ -224,33 +224,36 @@ func (p *threadQueue) processAddedThread(ti ThreadInfo, workspaceId string) {
 	if err != nil {
 		return
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	info, err := p.threadsService.t.GetThread(ctx, id)
+	_, err = p.threadsService.t.GetThread(ctx, id)
 	cancel()
 	if err == nil {
 		// just to be on the safe side saving this to db
-		p.finishAddOperation(id.String(), workspaceId)
+		p.finishAddOperation(ti.ID, workspaceId)
+		p.removeFromOperations(ti.ID, true)
 		return
 	}
 
 	if err != nil && err != logstore.ErrThreadNotFound {
-		log.With("thread", info.ID.String()).
+		log.With("thread", ti.ID).
 			Errorf("error getting thread while processing: %v", err)
-		p.removeFromOperations(id.String())
+		p.removeFromOperations(ti.ID, false)
 		return
 	}
 
 	metrics.ExternalThreadReceivedCounter.Inc()
 	// TODO: check if we still need to have separate goroutine logic
 	go func() {
-		defer p.removeFromOperations(id.String())
-		err := p.threadsService.processNewExternalThreadUntilSuccess(id, ti)
+		var err error
+		defer p.removeFromOperations(ti.ID, err == nil)
+		err = p.threadsService.processNewExternalThreadUntilSuccess(id, ti)
 		if err != nil {
-			log.With("thread", info.ID.String()).
+			log.With("thread", ti.ID).
 				Errorf("error processing thread: %v", err)
 			return
 		}
-		p.finishAddOperation(id.String(), workspaceId)
+		p.finishAddOperation(ti.ID, workspaceId)
 	}()
 }
 
@@ -265,11 +268,12 @@ func (p *threadQueue) processDeletedObject(id, workspaceId string) {
 			return
 		default:
 		}
-		defer p.removeFromOperations(id)
+		var err error
+		defer p.removeFromOperations(id, err == nil)
 		// TODO: this looks strange to call upper level service, consider refactoring
-		err := p.threadsService.blockServiceObjectDeleter.DeleteObject(id)
+		err = p.threadsService.blockServiceObjectDeleter.DeleteObject(id)
 		if err != nil {
-		    if strings.Contains(err.Error(), "block not found") {
+			if strings.Contains(err.Error(), "block not found") {
 				// we still want to update the database even if the thread is not there
 				p.finishDeleteOperation(id, workspaceId)
 			} else {
@@ -330,8 +334,35 @@ func (p *threadQueue) finishAddOperation(id, workspaceId string) {
 	p.Unlock()
 }
 
-func (p *threadQueue) removeFromOperations(id string) {
-	p.operationsMutex.Lock()
-	delete(p.currentOperations, id)
-	p.operationsMutex.Unlock()
+func (p *threadQueue) removeFromOperations(id string, success bool) {
+	p.Lock()
+	defer p.Unlock()
+	if op, exists := p.currentOperations[id]; exists {
+		delete(p.currentOperations, id)
+		p.logOperation(op, success)
+	}
+}
+
+func (p *threadQueue) logOperation(op ThreadOperation, success bool) {
+	if !op.IsAddOperation {
+		return
+	}
+	threadsInWorkspace, exists := p.workspaceThreads[op.WorkspaceId]
+	if !exists {
+		return
+	}
+	totalThreadsOverall := len(p.threadWorkspaces) + len(p.currentOperations)
+	l := queueLog.With("thread id", op.ID).With("workspace id", op.WorkspaceId)
+
+	if success {
+		l.Infof("downloaded new thread to workspace (now %d, including user profiles), %d of %d threads downloaded",
+			len(threadsInWorkspace),
+			len(p.threadWorkspaces),
+			totalThreadsOverall)
+	} else {
+		l.Errorf("failed to download new thread to workspace (now %d, including user profiles), %d of %d threads downloaded",
+			len(threadsInWorkspace),
+			len(p.threadWorkspaces),
+			totalThreadsOverall)
+	}
 }

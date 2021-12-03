@@ -3,6 +3,7 @@ package objectstore
 import (
 	"encoding/binary"
 	"fmt"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -38,6 +39,7 @@ var (
 	// ObjectInfo is stored in db key pattern:
 	pagesPrefix        = "pages"
 	pagesDetailsBase   = ds.NewKey("/" + pagesPrefix + "/details")
+	pendingDetailsBase = ds.NewKey("/" + pagesPrefix + "/pending")
 	pagesRelationsBase = ds.NewKey("/" + pagesPrefix + "/relations")     // store the list of full relation model for /objectId
 	setRelationsBase   = ds.NewKey("/" + pagesPrefix + "/set/relations") // store the list of full relation model for /setId
 
@@ -220,6 +222,8 @@ type ObjectStore interface {
 	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
+	UpdatePendingLocalDetails(id string, details *types.Struct) error
+	GetPendingLocalDetails(id string) (*model.ObjectDetails, error)
 
 	DeleteObject(id string) error
 	DeleteDetails(id string) error
@@ -1503,6 +1507,44 @@ func (m *dsObjectStore) UpdateObjectSnippet(id string, snippet string) error {
 	return txn.Commit()
 }
 
+func (m *dsObjectStore) GetPendingLocalDetails(id string) (*model.ObjectDetails, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	return m.getPendingLocalDetails(txn, id)
+}
+
+func (m *dsObjectStore) UpdatePendingLocalDetails(id string, details *types.Struct) error {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	key := pendingDetailsBase.ChildString(id)
+
+	if details == nil {
+		err = txn.Delete(key)
+		if err != nil {
+			return err
+		}
+		return txn.Commit()
+	}
+
+	b, err := proto.Marshal(&model.ObjectDetails{Details: details})
+	if err != nil {
+		return err
+	}
+	err = txn.Put(key, b)
+	if err != nil {
+		return err
+	}
+
+	return txn.Commit()
+}
+
 func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error {
 	m.l.Lock()
 	defer m.l.Unlock()
@@ -1986,6 +2028,15 @@ func (m *dsObjectStore) updateSnippet(txn ds.Txn, id string, snippet string) err
 }
 
 func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
+	t, err := smartblock.SmartBlockTypeFromID(id)
+	if err != nil {
+		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
+		return fmt.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
+	} else if indexdetails, _ := t.Indexable(); !indexdetails {
+		log.Errorf("updateDetails: trying to index non-indexable sb %s(%d): %s", id, t, string(debug.Stack()))
+		return fmt.Errorf("updateDetails: trying to index non-indexable sb %s(%d)", id, t)
+	}
+
 	metrics.ObjectDetailsUpdatedCounter.Inc()
 	detailsKey := pagesDetailsBase.ChildString(id)
 
@@ -2164,6 +2215,11 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	} else if err := proto.Unmarshal(val, &details); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
+
+	if details.GetDetails().GetFields() == nil {
+		log.Errorf("getObjectDetails got nil record for %s", id)
+		details.Details = &types.Struct{Fields: map[string]*types.Value{}}
+	}
 	details.Details.Fields[bundle.RelationKeyId.String()] = pbtypes.String(id)
 
 	for k, v := range details.GetDetails().GetFields() {
@@ -2171,6 +2227,16 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 		if _, isNull := v.GetKind().(*types.Value_NullValue); v == nil || isNull {
 			delete(details.Details.Fields, k)
 		}
+	}
+	return &details, nil
+}
+
+func (m *dsObjectStore) getPendingLocalDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
+	var details model.ObjectDetails
+	if val, err := txn.Get(pendingDetailsBase.ChildString(id)); err != nil {
+		return nil, err
+	} else if err := proto.Unmarshal(val, &details); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal details: %w", err)
 	}
 	return &details, nil
 }
@@ -2296,6 +2362,12 @@ func (m *dsObjectStore) getObjectsInfo(txn ds.Txn, ids []string) ([]*model.Objec
 				continue
 			}
 			return nil, err
+		}
+		if f := info.GetDetails().GetFields(); f != nil {
+			// skip deleted objects
+			if v := f[bundle.RelationKeyIsDeleted.String()]; v != nil && v.GetBoolValue() {
+				continue
+			}
 		}
 		objects = append(objects, info)
 	}

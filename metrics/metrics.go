@@ -24,6 +24,24 @@ func NewThreadsMetrics() metrics.Metrics {
 	return &threadsMetrics{client: SharedClient}
 }
 
+func (t *threadsMetrics) DifferentAddressEdges(localEdgeHash uint64, remoteEdgeHash uint64, peerId string, threadId string) {
+	t.client.RecordEvent(DifferentAddresses{
+		LocalEdge:  localEdgeHash,
+		RemoteEdge: remoteEdgeHash,
+		PeerId:     peerId,
+		ThreadId:   threadId,
+	})
+}
+
+func (t *threadsMetrics) DifferentHeadEdges(localEdgeHash uint64, remoteEdgeHash uint64, peerId string, threadId string) {
+	t.client.RecordEvent(DifferentHeads{
+		LocalEdge:  localEdgeHash,
+		RemoteEdge: remoteEdgeHash,
+		PeerId:     peerId,
+		ThreadId:   threadId,
+	})
+}
+
 func (t *threadsMetrics) AcceptRecord(tp metrics.RecordType, isNAT bool) {
 	var recordType string
 	switch tp {

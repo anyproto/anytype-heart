@@ -211,3 +211,7 @@ func SetVersion(version string) {
 func SetHost(host string) {
 	gelfSinkWrapper.SetHost(host)
 }
+
+func SetAccount(account string) {
+	gelfSinkWrapper.SetAccount(account)
+}

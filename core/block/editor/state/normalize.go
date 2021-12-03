@@ -394,14 +394,13 @@ func normalizeRelation(rel *model.Relation, creator string) (normalized *model.R
 }
 
 func (s *State) NormalizeRelations() {
-	creator := pbtypes.GetString(s.Details(), bundle.RelationKeyCreator.String())
+	creator := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String())
 	for _, r := range s.ExtraRelations() {
 		normalized, changed := normalizeRelation(r, creator)
 		if !changed {
 			continue
 		}
 		s.SetExtraRelation(normalized)
-
 	}
 }
 
@@ -411,7 +410,7 @@ func (s *State) normalizeDvRelations(b simple.Block) {
 		return
 	}
 
-	creator := pbtypes.GetString(s.Details(), bundle.RelationKeyCreator.String())
+	creator := pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyCreator.String())
 
 	var relationsFiltered = make(map[string]int, len(b.Model().GetDataview().Relations))
 	for i, r := range b.Model().GetDataview().Relations {
