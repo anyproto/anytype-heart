@@ -3,12 +3,6 @@ package core
 import (
 	"context"
 	"fmt"
-	"io"
-	"os"
-	"path/filepath"
-	"sync"
-	"time"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
@@ -32,6 +26,10 @@ import (
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
 	"github.com/libp2p/go-libp2p/p2p/discovery"
 	"github.com/textileio/go-threads/core/net"
+	"io"
+	"os"
+	"path/filepath"
+	"sync"
 )
 
 var log = logging.Logger("anytype-core")
@@ -464,7 +462,7 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 					continue
 				}
 				if !isWorkspaceEventSent && isWorkspace(id) {
-					go a.sendUpdatedAccountConfigEvent()
+					go a.fetcher.SendAccountConfig()
 					isWorkspaceEventSent = true
 				}
 
@@ -486,25 +484,4 @@ func (a *Anytype) subscribeForNewRecords() (err error) {
 	}()
 
 	return nil
-}
-
-func (a *Anytype) sendUpdatedAccountConfigEvent() {
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	currentConfig := a.fetcher.GetAccountConfig(ctx)
-	cancel()
-
-	event := &pb.Event{
-		Messages: []*pb.EventMessage{
-			&pb.EventMessage{
-				Value: &pb.EventMessageValueOfAccountConfigUpdate{
-					AccountConfigUpdate: &pb.EventAccountConfigUpdate{
-						Config: currentConfig,
-					},
-				},
-			},
-		},
-	}
-	if a.sendEvent != nil {
-		a.sendEvent(event)
-	}
 }

@@ -38,6 +38,17 @@ func (p *limiterPool) IsPending(id string) bool {
 	return exists
 }
 
+func (p *limiterPool) UpdateLimit(limit int) error {
+	if limit <= 0 {
+		return fmt.Errorf("number of simultaneous requests is too small: %d", limit)
+	}
+	p.mx.Lock()
+	p.limit = limit
+	p.mx.Unlock()
+	p.notifyPool()
+	return nil
+}
+
 func (p *limiterPool) PendingOperations() int {
 	p.mx.Lock()
 	defer p.mx.Unlock()

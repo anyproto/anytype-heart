@@ -67,6 +67,36 @@ func TestLimiterPool_NotExceedMaxSimultaneousOperations(t *testing.T) {
 	cancel()
 }
 
+func TestLimiterPool_UpdateSimultaneousOperationsCausesMoreToBeTaken(t *testing.T) {
+	doneChannel := make(chan struct{})
+	ctx, cancel := context.WithCancel(context.Background())
+	limit := 10
+	l := newLimiterPool(ctx, limit)
+	sharedVar := 0
+	m := sync.Mutex{}
+	go l.run()
+	for i := 0; i < limit*2; i++ {
+		l.AddOperation(testOperation{
+			doneChannel: doneChannel,
+			id:          strconv.Itoa(i),
+			m:           &m,
+			sharedVar:   &sharedVar,
+			increase:    1,
+		}, 1)
+	}
+	<-time.After(1 * time.Second)
+	if sharedVar != limit {
+		t.Fatalf("expected %d, but got %d", limit, sharedVar)
+	}
+	l.UpdateLimit(limit * 2)
+	<-time.After(1 * time.Second)
+	if sharedVar != limit*2 {
+		t.Fatalf("expected %d, but got %d", limit*2, sharedVar)
+	}
+	close(doneChannel)
+	cancel()
+}
+
 func TestLimiterPool_FirstCallsWithPriority(t *testing.T) {
 	doneChannel := make(chan struct{})
 	ctx := context.Background()

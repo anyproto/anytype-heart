@@ -34,6 +34,7 @@ type ThreadQueue interface {
 	GetWorkspacesForThread(threadId string) []string
 	GetThreadsForWorkspace(workspaceId string) []string
 	UpdatePriority(ids []string, priority int)
+	UpdateSimultaneousRequestsLimit(requests int) error
 }
 
 type ThreadOperation struct {
@@ -66,6 +67,10 @@ func (p *threadQueue) GetWorkspacesForThread(threadId string) []string {
 		objects = append(objects, id)
 	}
 	return objects
+}
+
+func (p *threadQueue) UpdateSimultaneousRequestsLimit(requests int) error {
+	return p.l.UpdateLimit(requests)
 }
 
 func (p *threadQueue) GetThreadsForWorkspace(workspaceId string) []string {

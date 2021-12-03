@@ -6,6 +6,8 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
+	pbMiddle "github.com/anytypeio/go-anytype-middleware/pb"
 	cafeClient "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
@@ -35,12 +37,19 @@ type ConfigFetcher interface {
 	// GetCafeConfig fetches the config or returns default after context is done
 	GetCafeConfig(ctx context.Context) *pb.GetConfigResponseConfig
 	GetAccountConfig(ctx context.Context) *model.AccountConfig
+	SendAccountConfig()
+}
+
+type SimultaneousRequestsUpdater interface {
+	UpdateSimultaneousRequests(requests int) error
 }
 
 type configFetcher struct {
 	store           objectstore.ObjectStore
 	cafe            cafeClient.Client
 	workspaceGetter WorkspaceGetter
+	eventSender     func(event *pbMiddle.Event)
+	requestsUpdater SimultaneousRequestsUpdater
 
 	fetched chan struct{}
 	ctx     context.Context
@@ -82,6 +91,12 @@ func (c *configFetcher) Run() error {
 			err := c.fetchConfig()
 			if err == nil {
 				close(c.fetched)
+				cfg := c.GetCafeConfig(context.Background())
+				err = c.requestsUpdater.UpdateSimultaneousRequests(int(cfg.SimultaneousRequests))
+				if err != nil {
+					log.Errorf("failed to update simultaneous requests: %v", err)
+				}
+				c.SendAccountConfig()
 				return
 			}
 
@@ -110,6 +125,8 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.store = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	c.cafe = a.MustComponent(cafeClient.CName).(cafeClient.Client)
 	c.workspaceGetter = a.MustComponent("threads").(WorkspaceGetter)
+	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
+	c.requestsUpdater = a.MustComponent("threads").(SimultaneousRequestsUpdater)
 	c.fetched = make(chan struct{})
 	return nil
 }
@@ -138,4 +155,24 @@ func (c *configFetcher) fetchConfig() (err error) {
 func (c *configFetcher) Close() (err error) {
 	c.cancel()
 	return nil
+}
+
+func (c *configFetcher) SendAccountConfig() {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	currentConfig := c.GetAccountConfig(ctx)
+	cancel()
+	event := &pbMiddle.Event{
+		Messages: []*pbMiddle.EventMessage{
+			&pbMiddle.EventMessage{
+				Value: &pbMiddle.EventMessageValueOfAccountConfigUpdate{
+					AccountConfigUpdate: &pbMiddle.EventAccountConfigUpdate{
+						Config: currentConfig,
+					},
+				},
+			},
+		},
+	}
+	if c.eventSender != nil {
+		c.eventSender(event)
+	}
 }

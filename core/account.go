@@ -108,7 +108,7 @@ func checkInviteCode(code string, account string) error {
 
 func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()
 	cfg := fetcher.GetAccountConfig(ctx)
 

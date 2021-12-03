@@ -297,6 +297,10 @@ func (s *service) Logstore() tlcore.Logstore {
 	return s.logstore
 }
 
+func (s *service) UpdateSimultaneousRequests(requests int) error {
+	return s.threadQueue.UpdateSimultaneousRequestsLimit(requests)
+}
+
 func (s *service) PresubscribedNewRecords() (<-chan net.ThreadRecord, error) {
 	if s.presubscribedChangesChan == nil {
 		return nil, fmt.Errorf("presubscribed channel is nil")
@@ -324,6 +328,7 @@ type Service interface {
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string) error
 	DeleteThread(id string) error
+	UpdateSimultaneousRequests(requests int) error
 
 	GetCreatorInfo(workspaceId string) (CreatorInfo, error)
 	GetAllWorkspaces() ([]string, error)
