@@ -14,6 +14,7 @@ var (
 	SharedClient     = NewClient()
 	clientMetricsLog = logging.Logger("client-metrics")
 	sendInterval     = 10.0 * time.Second
+	maxTimeout       = 30 * time.Second
 	bufferSize       = 500
 )
 
@@ -167,6 +168,7 @@ func (c *client) startSendingBatchMessages() {
 	c.lock.RLock()
 	ctx := c.ctx
 	c.lock.RUnlock()
+	attempt := 0
 	for {
 		c.lock.Lock()
 		b := c.batcher
@@ -184,7 +186,13 @@ func (c *client) startSendingBatchMessages() {
 		timeout := time.Second * 2
 		err := c.sendNextBatch(b, msgs)
 		if err != nil {
-			timeout = time.Second * 10
+			timeout = time.Second * 5 * time.Duration(attempt+1)
+			if timeout > maxTimeout {
+				timeout = maxTimeout
+			}
+			attempt++
+		} else {
+			attempt = 0
 		}
 		select {
 		// this is needed for early continue
