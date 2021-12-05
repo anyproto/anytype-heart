@@ -34,9 +34,10 @@ var defaultConfigResponse = &pb.GetConfigResponseConfig{
 
 type ConfigFetcher interface {
 	app.ComponentRunnable
-	// GetCafeConfig fetches the config or returns default after context is done
-	GetCafeConfig(ctx context.Context) *pb.GetConfigResponseConfig
-	GetAccountConfig(ctx context.Context) *model.AccountConfig
+	GetCafeConfigWithContext(ctx context.Context) *pb.GetConfigResponseConfig
+	GetCafeConfig() *pb.GetConfigResponseConfig
+	GetAccountConfigWithContext(ctx context.Context) *model.AccountConfig
+	GetAccountConfig() *model.AccountConfig
 	SendAccountConfig()
 }
 
@@ -56,8 +57,14 @@ type configFetcher struct {
 	cancel  context.CancelFunc
 }
 
-func (c *configFetcher) GetAccountConfig(ctx context.Context) *model.AccountConfig {
-	cafeConfig := c.GetCafeConfig(ctx)
+func (c *configFetcher) GetAccountConfig() *model.AccountConfig {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return c.GetAccountConfigWithContext(ctx)
+}
+
+func (c *configFetcher) GetAccountConfigWithContext(ctx context.Context) *model.AccountConfig {
+	cafeConfig := c.GetCafeConfigWithContext(ctx)
 	// we could have cached this, but for now it is not needed, because we call this rarely
 	enableSpaces := cafeConfig.GetEnableSpaces()
 	workspaces, err := c.workspaceGetter.GetAllWorkspaces()
@@ -91,7 +98,7 @@ func (c *configFetcher) Run() error {
 			err := c.fetchConfig()
 			if err == nil {
 				close(c.fetched)
-				cfg := c.GetCafeConfig(context.Background())
+				cfg := c.GetCafeConfig()
 				err = c.requestsUpdater.UpdateSimultaneousRequests(int(cfg.SimultaneousRequests))
 				if err != nil {
 					log.Errorf("failed to update simultaneous requests: %v", err)
@@ -107,7 +114,13 @@ func (c *configFetcher) Run() error {
 	return nil
 }
 
-func (c *configFetcher) GetCafeConfig(ctx context.Context) *pb.GetConfigResponseConfig {
+func (c *configFetcher) GetCafeConfig() *pb.GetConfigResponseConfig {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	return c.GetCafeConfigWithContext(ctx)
+}
+
+func (c *configFetcher) GetCafeConfigWithContext(ctx context.Context) *pb.GetConfigResponseConfig {
 	select {
 	case <-c.fetched:
 	case <-ctx.Done():
@@ -158,15 +171,12 @@ func (c *configFetcher) Close() (err error) {
 }
 
 func (c *configFetcher) SendAccountConfig() {
-	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
-	currentConfig := c.GetAccountConfig(ctx)
-	cancel()
 	event := &pbMiddle.Event{
 		Messages: []*pbMiddle.EventMessage{
 			&pbMiddle.EventMessage{
 				Value: &pbMiddle.EventMessageValueOfAccountConfigUpdate{
 					AccountConfigUpdate: &pbMiddle.EventAccountConfigUpdate{
-						Config: currentConfig,
+						Config: c.GetAccountConfig(),
 					},
 				},
 			},

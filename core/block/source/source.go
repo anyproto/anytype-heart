@@ -194,7 +194,7 @@ func (s *source) readDoc(receiver ChangeReceiver, allowEmpty bool) (doc state.Do
 		}()
 	}
 	startTime := time.Now()
-	log.With("object id", s.id).
+	log.With("thread", s.id).
 		Debug("start building tree")
 	if s.metaOnly {
 		s.tree, s.logHeads, err = change.BuildMetaTree(s.sb)

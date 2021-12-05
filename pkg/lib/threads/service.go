@@ -174,7 +174,7 @@ func (s *service) Init(a *app.App) (err error) {
 
 func (s *service) Run() (err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	cafeCfg := s.fetcher.GetCafeConfig(ctx)
+	cafeCfg := s.fetcher.GetCafeConfig()
 	cancel()
 	if cafeCfg.SimultaneousRequests != 0 {
 		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
