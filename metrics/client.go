@@ -104,7 +104,7 @@ func (c *client) SetAppVersion(version string) {
 	c.appVersion = version
 }
 
-func (c *client) sendAggregatedData() {
+func (c *client) recordAggregatedData() {
 	var events []EventAggregatable
 	c.lock.RLock()
 	for k, ev := range c.aggregatableMap {
@@ -128,12 +128,15 @@ func (c *client) Run() {
 }
 
 func (c *client) startAggregating() {
+	c.lock.RLock()
+	ctx := c.ctx
+	c.lock.RUnlock()
 	go func() {
 		ticker := time.NewTicker(sendInterval)
 		for {
 			select {
 			case <-ticker.C:
-				c.sendAggregatedData()
+				c.recordAggregatedData()
 			case ev := <-c.aggregatableChan:
 				c.lock.Lock()
 
@@ -147,8 +150,13 @@ func (c *client) startAggregating() {
 				c.aggregatableMap[ev.Key()] = newEv
 
 				c.lock.Unlock()
-			case <-c.ctx.Done():
-				c.sendAggregatedData()
+			case <-ctx.Done():
+				c.recordAggregatedData()
+				// we close here so that we are sure that we don't lose the aggregated data
+				err := c.batcher.Close()
+				if err != nil {
+					clientMetricsLog.Errorf("failed to close batcher")
+				}
 				return
 			}
 		}
@@ -156,6 +164,9 @@ func (c *client) startAggregating() {
 }
 
 func (c *client) startSendingBatchMessages() {
+	c.lock.RLock()
+	ctx := c.ctx
+	c.lock.RUnlock()
 	for {
 		c.lock.Lock()
 		b := c.batcher
@@ -164,13 +175,22 @@ func (c *client) startSendingBatchMessages() {
 			return
 		}
 		msgs := b.WaitMinMax(10, 100)
+		// if batcher is closed
 		if len(msgs) == 0 {
 			c.sendNextBatch(nil, b.GetAll())
 			close(c.closeChannel)
 			return
 		}
-		c.sendNextBatch(b, msgs)
-		<-time.After(time.Second * 2)
+		timeout := time.Second * 2
+		err := c.sendNextBatch(b, msgs)
+		if err != nil {
+			timeout = time.Second * 10
+		}
+		select {
+		// this is needed for early continue
+		case <-ctx.Done():
+		case <-time.After(timeout):
+		}
 	}
 }
 
@@ -180,13 +200,9 @@ func (c *client) Close() {
 		c.lock.Unlock()
 		return
 	}
-	err := c.batcher.Close()
-	if err != nil {
-		clientMetricsLog.Errorf("failed to close batcher")
-	}
 	c.lock.Unlock()
-
 	c.cancel()
+
 	<-c.closeChannel
 
 	c.lock.Lock()
@@ -194,7 +210,7 @@ func (c *client) Close() {
 	c.batcher = nil
 }
 
-func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) {
+func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) (err error) {
 	if len(msgs) == 0 {
 		return
 	}
@@ -203,7 +219,7 @@ func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) {
 	for _, ev := range msgs {
 		events = append(events, ev.(amplitude.Event))
 	}
-	err := c.amplitude.Events(events)
+	err = c.amplitude.Events(events)
 	if err != nil {
 		clientMetricsLog.
 			With("unsent messages", len(msgs)+c.batcher.Len()).
@@ -217,6 +233,7 @@ func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) {
 			With("messages sent", len(msgs)).
 			Debug("events sent to amplitude")
 	}
+	return
 }
 
 func (c *client) RecordEvent(ev EventRepresentable) {
