@@ -72,6 +72,7 @@ service ClientCommands {
     rpc BlockListSetBackgroundColor (anytype.Rpc.BlockList.Set.BackgroundColor.Request) returns (anytype.Rpc.BlockList.Set.BackgroundColor.Response);
     rpc BlockListSetAlign (anytype.Rpc.BlockList.Set.Align.Request) returns (anytype.Rpc.BlockList.Set.Align.Response);
     rpc BlockListSetDivStyle (anytype.Rpc.BlockList.Set.Div.Style.Request) returns (anytype.Rpc.BlockList.Set.Div.Style.Response);
+    rpc BlockListSetFileStyle (anytype.Rpc.BlockList.Set.File.Style.Request) returns (anytype.Rpc.BlockList.Set.File.Style.Response);
 
     rpc BlockListTurnInto (anytype.Rpc.BlockList.TurnInto.Request) returns (anytype.Rpc.BlockList.TurnInto.Response);
 
@@ -156,7 +157,7 @@ service ClientCommands {
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
 
     rpc ObjectListDelete (anytype.Rpc.ObjectList.Delete.Request) returns (anytype.Rpc.ObjectList.Delete.Response);
-    rpc ObjectListSetIsArchived (anytype.Rpc.ObjectList.Set.IsArchived.Request) returns (anytype.Rpc.ObjectList.Set.IsArchived.Response); // deprecated
+    rpc ObjectListSetIsArchived (anytype.Rpc.ObjectList.Set.IsArchived.Request) returns (anytype.Rpc.ObjectList.Set.IsArchived.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.ObjectList.Set.IsFavorite.Request) returns (anytype.Rpc.ObjectList.Set.IsFavorite.Response);
 
     // TODO: rename BlockSetDetails -> ObjectSetDetails
@@ -168,6 +169,7 @@ service ClientCommands {
     // SetCreate just creates the new set, without adding the link to it from some other page
     rpc SetCreate (anytype.Rpc.Set.Create.Request) returns (anytype.Rpc.Set.Create.Response);
 
+    rpc MetricsSetParameters (anytype.Rpc.Metrics.SetParameters.Request) returns (anytype.Rpc.Metrics.SetParameters.Response);
     // ## ObjectType
     rpc ObjectTypeCreate (anytype.Rpc.ObjectType.Create.Request) returns (anytype.Rpc.ObjectType.Create.Response);
     // ObjectTypeList lists all object types both bundled and created by user
@@ -186,6 +188,7 @@ service ClientCommands {
     rpc HistorySetVersion (anytype.Rpc.History.SetVersion.Request) returns (anytype.Rpc.History.SetVersion.Response);
 
     rpc Export (anytype.Rpc.Export.Request) returns (anytype.Rpc.Export.Response);
+    rpc ExportWorkspace (anytype.Rpc.ExportWorkspace.Request) returns (anytype.Rpc.ExportWorkspace.Response);
     rpc ExportTemplates (anytype.Rpc.ExportTemplates.Request) returns (anytype.Rpc.ExportTemplates.Response);
     rpc ExportLocalstore (anytype.Rpc.ExportLocalstore.Request) returns (anytype.Rpc.ExportLocalstore.Response);
 

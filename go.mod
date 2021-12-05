@@ -6,12 +6,14 @@ require (
 	github.com/HdrHistogram/hdrhistogram-go v1.1.0 // indirect
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.7.1
+	github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211120000032-ecc01a4b2cc7
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
 	github.com/blevesearch/bleve v1.0.14
 	github.com/cheggaaa/mb v1.0.3
 	github.com/dave/jennifer v1.4.1
+	github.com/dgraph-io/badger v1.6.2
 	github.com/dgtony/collections v0.1.6
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
 	github.com/disintegration/imaging v1.6.2
@@ -87,7 +89,9 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20211115194740-a18380ab8047
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20211201121237-e27ec0f0019f
+
+replace github.com/msingleton/amplitude-go => github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31
 
 replace github.com/ipfs/go-log/v2 => github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f
 

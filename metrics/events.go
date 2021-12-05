@@ -62,6 +62,32 @@ const (
 	ReindexTypeOutdatedHeads
 )
 
+type IndexEvent struct {
+	ObjectId                string
+	IndexLinksTimeMs        int64
+	IndexDetailsTimeMs      int64
+	IndexSetRelationsTimeMs int64
+	RelationsCount          int
+	DetailsCount            int
+	SetRelationsCount       int
+}
+
+func (c IndexEvent) ToEvent() Event {
+	return Event{
+		EventType: "index",
+		EventData: map[string]interface{}{
+			"object_id":     c.ObjectId,
+			"links_ms":      c.IndexLinksTimeMs,
+			"details_ms":    c.IndexDetailsTimeMs,
+			"set_ms":        c.IndexSetRelationsTimeMs,
+			"rel_count":     c.RelationsCount,
+			"det_count":     c.DetailsCount,
+			"set_rel_count": c.SetRelationsCount,
+			"total_ms":      c.IndexLinksTimeMs + c.IndexDetailsTimeMs + c.IndexSetRelationsTimeMs,
+		},
+	}
+}
+
 type ReindexEvent struct {
 	ReindexType    ReindexType
 	Total          int
@@ -101,6 +127,44 @@ func (c RecordCreateEvent) ToEvent() Event {
 			"local_ms":      c.LocalEventBusMs,
 			"push_ms":       c.PushMs,
 			"total_ms":      c.PrepareMs + c.NewRecordMs + c.LocalEventBusMs + c.PushMs,
+		},
+	}
+}
+
+type DifferentAddresses struct {
+	LocalEdge  uint64
+	RemoteEdge uint64
+	PeerId     string
+	ThreadId   string
+}
+
+func (c DifferentAddresses) ToEvent() Event {
+	return Event{
+		EventType: "exchange_edges_addr_diff",
+		EventData: map[string]interface{}{
+			"local":     c.LocalEdge,
+			"remote":    c.RemoteEdge,
+			"peer_id":   c.PeerId,
+			"thread_id": c.ThreadId,
+		},
+	}
+}
+
+type DifferentHeads struct {
+	LocalEdge  uint64
+	RemoteEdge uint64
+	PeerId     string
+	ThreadId   string
+}
+
+func (c DifferentHeads) ToEvent() Event {
+	return Event{
+		EventType: "exchange_edges_addr_diff",
+		EventData: map[string]interface{}{
+			"local":     c.LocalEdge,
+			"remote":    c.RemoteEdge,
+			"peer_id":   c.PeerId,
+			"thread_id": c.ThreadId,
 		},
 	}
 }
@@ -158,6 +222,36 @@ func (c StateApply) ToEvent() Event {
 			"hook_ms":   c.ApplyHookMs,
 			"object_id": c.ObjectId,
 			"total_ms":  c.StateApplyMs + c.PushChangeMs + c.BeforeApplyMs + c.ApplyHookMs + c.ReportChangeMs,
+		},
+	}
+}
+
+type InitPredefinedBlocks struct {
+	TimeMs int64
+}
+
+func (c InitPredefinedBlocks) ToEvent() Event {
+	return Event{
+		EventType: "init_predefined_blocks",
+		EventData: map[string]interface{}{
+			"time_ms": c.TimeMs,
+		},
+	}
+}
+
+type InitPredefinedBlock struct {
+	SbType   int
+	TimeMs   int64
+	ObjectId string
+}
+
+func (c InitPredefinedBlock) ToEvent() Event {
+	return Event{
+		EventType: "init_predefined_block",
+		EventData: map[string]interface{}{
+			"time_ms":   c.TimeMs,
+			"sb_type":   c.SbType,
+			"object_id": c.ObjectId,
 		},
 	}
 }

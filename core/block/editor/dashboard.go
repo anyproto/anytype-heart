@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
@@ -65,9 +66,11 @@ func (p *Dashboard) init(s *state.State) (err error) {
 func (p *Dashboard) updateObjects() {
 	favoritedIds, err := p.GetIds()
 	if err != nil {
-		log.Errorf("archive: can't get archived ids: %v", err)
+		log.Errorf("archive: can't get favorite ids: %v", err)
 		return
 	}
+
+	p.Anytype().ThreadsService().ThreadQueue().UpdatePriority(favoritedIds, threads.HighPriority)
 
 	records, _, err := p.ObjectStore().Query(nil, database.Query{
 		Filters: []*model.BlockContentDataviewFilter{

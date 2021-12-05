@@ -7,7 +7,7 @@ import (
 )
 
 func (mw *Middleware) Export(req *pb.RpcExportRequest) *pb.RpcExportResponse {
-	response := func(path string, err error) (res *pb.RpcExportResponse) {
+	response := func(path string, succeed int, err error) (res *pb.RpcExportResponse) {
 		res = &pb.RpcExportResponse{
 			Error: &pb.RpcExportResponseError{
 				Code: pb.RpcExportResponseError_NULL,
@@ -19,17 +19,19 @@ func (mw *Middleware) Export(req *pb.RpcExportRequest) *pb.RpcExportResponse {
 			return
 		} else {
 			res.Path = path
+			res.Succeed = int32(succeed)
 		}
 		return res
 	}
 	var (
-		path string
-		err  error
+		path    string
+		succeed int
+		err     error
 	)
 	err = mw.doBlockService(func(_ block.Service) error {
 		es := mw.app.MustComponent(export.CName).(export.Export)
-		path, err = es.Export(*req)
+		path, succeed, err = es.Export(*req)
 		return err
 	})
-	return response(path, err)
+	return response(path, succeed, err)
 }

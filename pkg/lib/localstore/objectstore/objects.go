@@ -187,6 +187,12 @@ func New() ObjectStore {
 	return &dsObjectStore{}
 }
 
+func NewWithLocalstore(ds ds.TxnDatastore) ObjectStore {
+	return &dsObjectStore{
+		ds: ds,
+	}
+}
+
 type SourceIdEncodedDetails interface {
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 }
