@@ -1,7 +1,6 @@
 package threads
 
 import (
-	"context"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
@@ -12,7 +11,7 @@ const (
 )
 
 type CafeConfigFetcher interface {
-	GetCafeConfig(ctx context.Context) *cafePb.GetConfigResponseConfig
+	GetCafeConfig() *cafePb.GetConfigResponseConfig
 }
 
 type CurrentWorkspaceThreadGetter interface {
