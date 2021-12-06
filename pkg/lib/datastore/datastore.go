@@ -12,6 +12,7 @@ type Datastore interface {
 	app.ComponentRunnable
 	PeerstoreDS() (ds.Batching, error)
 	BlockstoreDS() (ds.Batching, error)
+	RunBlockstoreGC() (freed int64, err error)
 	LogstoreDS() (DSTxnBatching, error)
 	LocalstoreDS() (ds.TxnDatastore, error)
 	ThreadsDbDS() (keytransform.TxnDatastoreExtended, error)

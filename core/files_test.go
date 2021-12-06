@@ -6,7 +6,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/ipfs/go-cid"
 	"github.com/stretchr/testify/require"
 	"math/rand"
 	"os"
@@ -51,13 +53,23 @@ func TestFile(t *testing.T) {
 		i, err := coreService.ImageAdd(context.Background(), files.WithReader(f))
 		require.NoError(t, err)
 
-		bytesRemoved, err := coreService.FileOffload(i.Hash())
+		ipfs := mw.app.MustComponent(ipfs.CName).(ipfs.IPFS)
+		fileCid, err := cid.Parse(i.Hash())
 		require.NoError(t, err)
-		require.Equal(t, uint64(168368), bytesRemoved)
 
-		bytesRemoved, err = coreService.FileOffload(i.Hash())
+		hasFile, err := ipfs.HasBlock(fileCid)
 		require.NoError(t, err)
-		require.Equal(t, uint64(0), bytesRemoved)
+		require.True(t, hasFile)
+
+		_, err = coreService.FileOffload(i.Hash())
+		require.NoError(t, err)
+
+		hasFile, err = ipfs.HasBlock(fileCid)
+		require.NoError(t, err)
+		require.False(t, hasFile)
+
+		_, err = coreService.FileOffload(i.Hash())
+		require.NoError(t, err)
 	})
 
 	t.Run("offload_all", func(t *testing.T) {
