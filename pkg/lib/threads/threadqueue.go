@@ -2,7 +2,6 @@ package threads
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/textileio/go-threads/core/logstore"
@@ -34,6 +33,8 @@ type ThreadQueue interface {
 	DeleteThreadSync(id, workspaceId string) error
 	GetWorkspacesForThread(threadId string) []string
 	GetThreadsForWorkspace(workspaceId string) []string
+	UpdatePriority(ids []string, priority int)
+	UpdateSimultaneousRequestsLimit(requests int) error
 }
 
 type ThreadOperation struct {
@@ -45,13 +46,13 @@ type ThreadOperation struct {
 
 type threadQueue struct {
 	sync.Mutex
-	workspaceThreads  map[string]map[string]struct{}
-	threadWorkspaces  map[string]map[string]struct{}
-	threadsService    *service
-	threadStore       ThreadWorkspaceStore
-	operationsBuffer  []ThreadOperation
-	currentOperations map[string]ThreadOperation
-	wakeupChan        chan struct{}
+	workspaceThreads map[string]map[string]struct{}
+	threadWorkspaces map[string]map[string]struct{}
+	threadsService   *service
+	threadStore      ThreadWorkspaceStore
+	operationsBuffer []Operation
+	wakeupChan       chan struct{}
+	l                *limiterPool
 }
 
 func (p *threadQueue) GetWorkspacesForThread(threadId string) []string {
@@ -66,6 +67,10 @@ func (p *threadQueue) GetWorkspacesForThread(threadId string) []string {
 		objects = append(objects, id)
 	}
 	return objects
+}
+
+func (p *threadQueue) UpdateSimultaneousRequestsLimit(requests int) error {
+	return p.l.UpdateLimit(requests)
 }
 
 func (p *threadQueue) GetThreadsForWorkspace(workspaceId string) []string {
@@ -84,10 +89,10 @@ func (p *threadQueue) GetThreadsForWorkspace(workspaceId string) []string {
 
 func NewThreadQueue(s *service, store ThreadWorkspaceStore) ThreadQueue {
 	return &threadQueue{
-		threadsService:    s,
-		threadStore:       store,
-		wakeupChan:        make(chan struct{}, 1),
-		currentOperations: map[string]ThreadOperation{},
+		threadsService: s,
+		threadStore:    store,
+		wakeupChan:     make(chan struct{}, 1),
+		l:              newLimiterPool(s.ctx, s.simultaneousRequests),
 	}
 }
 
@@ -102,11 +107,12 @@ func (p *threadQueue) Init() error {
 }
 
 func (p *threadQueue) Run() {
+	go p.l.run()
 	go func() {
 		for {
 			select {
 			case <-p.wakeupChan:
-				go p.processBufferedEvents()
+				p.processBufferedEvents()
 			case <-p.threadsService.ctx.Done():
 				return
 			}
@@ -130,6 +136,10 @@ func (p *threadQueue) CreateThreadSync(blockType smartblock.SmartBlockType, work
 	}
 	p.finishAddOperation(info.ID.String(), workspaceId)
 	return info, nil
+}
+
+func (p *threadQueue) UpdatePriority(ids []string, priority int) {
+	p.l.UpdatePriorities(ids, priority)
 }
 
 func (p *threadQueue) DeleteThreadSync(id, workspaceId string) error {
@@ -173,25 +183,10 @@ func (p *threadQueue) ProcessThreadsAsync(threadsFromState []ThreadInfo, workspa
 	}
 
 	for _, info := range addedThreads {
-		if _, exists := p.currentOperations[info.ID]; exists {
-			continue
-		}
-		p.operationsBuffer = append(p.operationsBuffer, ThreadOperation{
-			IsAddOperation: true,
-			ID:             info.ID,
-			info:           info,
-			WorkspaceId:    workspaceId,
-		})
+		p.operationsBuffer = append(p.operationsBuffer, p.NewThreadAddOperation(info.ID, workspaceId, info))
 	}
 	for _, id := range deletedThreads {
-		if _, exists := p.currentOperations[id]; exists {
-			continue
-		}
-		p.operationsBuffer = append(p.operationsBuffer, ThreadOperation{
-			IsAddOperation: false,
-			ID:             id,
-			WorkspaceId:    workspaceId,
-		})
+		p.operationsBuffer = append(p.operationsBuffer, p.NewThreadDeleteOperation(id, workspaceId))
 	}
 	p.Unlock()
 	select {
@@ -202,85 +197,14 @@ func (p *threadQueue) ProcessThreadsAsync(threadsFromState []ThreadInfo, workspa
 
 func (p *threadQueue) processBufferedEvents() {
 	p.Lock()
-	var operationsCopy []ThreadOperation
+	var operationsCopy []Operation
 	for _, op := range p.operationsBuffer {
 		operationsCopy = append(operationsCopy, op)
-		p.currentOperations[op.ID] = op
 	}
 	p.operationsBuffer = nil
 	p.Unlock()
 
-	for _, op := range operationsCopy {
-		if op.IsAddOperation {
-			p.processAddedThread(op.info, op.WorkspaceId)
-		} else {
-			p.processDeletedObject(op.ID, op.WorkspaceId)
-		}
-	}
-}
-
-func (p *threadQueue) processAddedThread(ti ThreadInfo, workspaceId string) {
-	id, err := thread.Decode(ti.ID)
-	if err != nil {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	_, err = p.threadsService.t.GetThread(ctx, id)
-	cancel()
-	if err == nil {
-		// just to be on the safe side saving this to db
-		p.finishAddOperation(ti.ID, workspaceId)
-		p.removeFromOperations(ti.ID, true)
-		return
-	}
-
-	if err != nil && err != logstore.ErrThreadNotFound {
-		log.With("thread", ti.ID).
-			Errorf("error getting thread while processing: %v", err)
-		p.removeFromOperations(ti.ID, false)
-		return
-	}
-
-	metrics.ExternalThreadReceivedCounter.Inc()
-	// TODO: check if we still need to have separate goroutine logic
-	go func() {
-		var err error
-		defer p.removeFromOperations(ti.ID, err == nil)
-		err = p.threadsService.processNewExternalThreadUntilSuccess(id, ti)
-		if err != nil {
-			log.With("thread", ti.ID).
-				Errorf("error processing thread: %v", err)
-			return
-		}
-		p.finishAddOperation(ti.ID, workspaceId)
-	}()
-}
-
-// this is more than just deleting a thread as opposed to DeleteThreadSync
-// because we are calling DeleteThreadSync from blockService :-)
-// and here we are calling blockService so that it will do a bunch of stuff and then call DeleteThreadSync
-// it's confusing I know
-func (p *threadQueue) processDeletedObject(id, workspaceId string) {
-	go func() {
-		select {
-		case <-p.threadsService.ctx.Done():
-			return
-		default:
-		}
-		var err error
-		defer p.removeFromOperations(id, err == nil)
-		// TODO: this looks strange to call upper level service, consider refactoring
-		err = p.threadsService.blockServiceObjectDeleter.DeleteObject(id)
-		if err != nil {
-			if strings.Contains(err.Error(), "block not found") {
-				// we still want to update the database even if the thread is not there
-				p.finishDeleteOperation(id, workspaceId)
-			} else {
-				log.With("object id", id).Errorf("could not delete object: %v", err)
-			}
-		}
-	}()
+	p.l.AddOperations(operationsCopy, DefaultPriority)
 }
 
 func (p *threadQueue) finishDeleteOperation(id, workspaceId string) {
@@ -334,25 +258,16 @@ func (p *threadQueue) finishAddOperation(id, workspaceId string) {
 	p.Unlock()
 }
 
-func (p *threadQueue) removeFromOperations(id string, success bool) {
+func (p *threadQueue) logOperation(op Operation, success bool, workspaceId string, pendingOperations int) {
 	p.Lock()
 	defer p.Unlock()
-	if op, exists := p.currentOperations[id]; exists {
-		delete(p.currentOperations, id)
-		p.logOperation(op, success)
-	}
-}
-
-func (p *threadQueue) logOperation(op ThreadOperation, success bool) {
-	if !op.IsAddOperation {
-		return
-	}
-	threadsInWorkspace, exists := p.workspaceThreads[op.WorkspaceId]
+	threadsInWorkspace, exists := p.workspaceThreads[workspaceId]
 	if !exists {
 		return
 	}
-	totalThreadsOverall := len(p.threadWorkspaces) + len(p.currentOperations)
-	l := queueLog.With("thread id", op.ID).With("workspace id", op.WorkspaceId)
+
+	totalThreadsOverall := len(p.threadWorkspaces) + pendingOperations
+	l := queueLog.With("thread id", op.Id()).With("workspace id", workspaceId)
 
 	if success {
 		l.Infof("downloaded new thread to workspace (now %d, including user profiles), %d of %d threads downloaded",
@@ -365,4 +280,113 @@ func (p *threadQueue) logOperation(op ThreadOperation, success bool) {
 			len(p.threadWorkspaces),
 			totalThreadsOverall)
 	}
+}
+
+type threadAddOperation struct {
+	ID             string
+	WorkspaceId    string
+	info           ThreadInfo
+	threadsService *service
+	queue          *threadQueue
+}
+
+func (p *threadQueue) NewThreadAddOperation(id string, workspaceId string, info ThreadInfo) Operation {
+	return threadAddOperation{
+		ID:             id,
+		WorkspaceId:    workspaceId,
+		info:           info,
+		threadsService: p.threadsService,
+		queue:          p,
+	}
+}
+
+func (o threadAddOperation) Id() string {
+	return o.ID
+}
+
+func (o threadAddOperation) IsRetriable() bool {
+	return true
+}
+
+func (o threadAddOperation) Run() (err error) {
+	id, err := thread.Decode(o.ID)
+	if err != nil {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	_, err = o.threadsService.t.GetThread(ctx, id)
+	cancel()
+	if err == nil {
+		return
+	}
+
+	if err != nil && err != logstore.ErrThreadNotFound {
+		log.With("thread", o.ID).
+			Errorf("error getting thread while processing: %v", err)
+		return
+	}
+
+	return o.threadsService.processNewExternalThread(id, o.info, false)
+}
+
+func (o threadAddOperation) OnFinish(err error) {
+	// at the time of this function call the operation is still pending
+	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.l.PendingOperations() - 1)
+	if err == nil {
+		o.queue.finishAddOperation(o.ID, o.WorkspaceId)
+		return
+	}
+	log.Errorf("could not add object with object id %s : %v", o.ID, err)
+}
+
+func (o threadAddOperation) Type() string {
+	return "add"
+}
+
+type threadDeleteOperation struct {
+	ID             string
+	WorkspaceId    string
+	threadsService *service
+	queue          *threadQueue
+}
+
+func (p *threadQueue) NewThreadDeleteOperation(id string, workspaceId string) Operation {
+	return threadDeleteOperation{
+		ID:             id,
+		WorkspaceId:    workspaceId,
+		threadsService: p.threadsService,
+		queue:          p,
+	}
+}
+
+func (o threadDeleteOperation) Id() string {
+	return o.ID
+}
+
+func (o threadDeleteOperation) IsRetriable() bool {
+	return false
+}
+
+func (o threadDeleteOperation) Run() (err error) {
+	// this is more than just deleting a thread as opposed to DeleteThreadSync
+	// because we are calling DeleteThreadSync from blockService :-)
+	// and here we are calling blockService so that it will do a bunch of stuff and then call DeleteThreadSync
+	// it's confusing I know
+	err = o.threadsService.blockServiceObjectDeleter.DeleteObject(o.ID)
+	return
+}
+
+func (o threadDeleteOperation) OnFinish(err error) {
+	if err != nil {
+		if strings.Contains(err.Error(), "block not found") {
+			return
+		} else {
+			log.Errorf("could not delete object with object id %s : %v", o.ID, err)
+		}
+	}
+}
+
+func (o threadDeleteOperation) Type() string {
+	return "delete"
 }

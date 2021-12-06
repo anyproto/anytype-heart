@@ -294,12 +294,14 @@ func (s *service) initPredefinedBlocks() {
 		s.anytype.PredefinedBlocks().MarketplaceRelation,
 		s.anytype.PredefinedBlocks().MarketplaceTemplate,
 	}
+	startTime := time.Now()
 	for _, id := range ids {
 		ctx := &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)}
 		// this is needed so that old account will create its state successfully on first launch
 		if id == s.anytype.PredefinedBlocks().AccountOld {
 			ctx = nil
 		}
+		initTime := time.Now()
 		sb, err := s.newSmartBlock(id, ctx)
 		if err != nil {
 			if err != smartblock.ErrCantInitExistingSmartblockWithNonEmptyState {
@@ -314,7 +316,15 @@ func (s *service) initPredefinedBlocks() {
 		} else {
 			sb.Close()
 		}
+		sbType, _ := coresb.SmartBlockTypeFromID(id)
+		metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlock{
+			SbType:   int(sbType),
+			TimeMs:   time.Now().Sub(initTime).Milliseconds(),
+			ObjectId: id,
+		})
 	}
+	metrics.SharedClient.RecordEvent(metrics.InitPredefinedBlocks{
+		TimeMs: time.Now().Sub(startTime).Milliseconds()})
 }
 
 func (s *service) Anytype() core.Service {
@@ -554,7 +564,7 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 
 		anySucceed := false
 		for _, blockId := range req.ObjectIds {
-			if restrErr := s.restriction.CheckRestrictions(blockId, model.Restrictions_Delete); restrErr != nil {
+			if restrErr := s.checkArchivedRestriction(req.IsArchived, blockId); restrErr != nil {
 				err = restrErr
 			} else {
 				if req.IsArchived {
@@ -614,9 +624,6 @@ func (s *service) objectLinksCollectionModify(collectionId string, objectId stri
 		if !ok {
 			return fmt.Errorf("unsupported sb block type: %T", b)
 		}
-		if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); err != nil {
-			return err
-		}
 		if value {
 			return coll.AddObject(objectId)
 		} else {
@@ -630,7 +637,17 @@ func (s *service) SetPageIsFavorite(req pb.RpcObjectSetIsFavoriteRequest) (err e
 }
 
 func (s *service) SetPageIsArchived(req pb.RpcObjectSetIsArchivedRequest) (err error) {
+	if err := s.checkArchivedRestriction(req.IsArchived, req.ContextId); err != nil {
+		return err
+	}
 	return s.objectLinksCollectionModify(s.anytype.PredefinedBlocks().Archive, req.ContextId, req.IsArchived)
+}
+
+func (s *service) checkArchivedRestriction(isArchived bool, objectId string) error {
+	if err := s.restriction.CheckRestrictions(objectId, model.Restrictions_Delete); isArchived && err != nil {
+		return err
+	}
+	return nil
 }
 
 func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err error) {

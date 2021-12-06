@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
-	badger "github.com/ipfs/go-ds-badger"
 )
 
 func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.RpcFileListOffloadResponse {
@@ -43,11 +42,6 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 		totalFilesOffloaded int32
 	)
 	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
-	blockDs, err := ds.BlockstoreDS()
-	if err != nil {
-		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
-	}
-
 	for _, fileId := range files {
 		if st, exists := pinStatus[fileId]; (!exists || st.Status != pb2.PinStatus_Done) && !req.IncludeNotPinned {
 			continue
@@ -63,23 +57,12 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 		}
 	}
 
-	var total int
-	var maxErrors = 1
-	for {
-		// set the discard ratio to the lowest value means we want to rewrite value log if we have any values removed
-		err = blockDs.(*badger.Datastore).DB.RunValueLogGC(0.000000000001)
-		if err != nil && err.Error() == "Value log GC attempt didn't result in any cleanup" {
-			maxErrors--
-			if maxErrors == 0 {
-				log.Errorf("badger gc exit on %d attempt", total)
-				break
-			}
-			continue
-		}
-		total++
+	freed, err := ds.RunBlockstoreGC()
+	if err != nil {
+		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
 
-	return response(totalFilesOffloaded, totalBytesOffloaded, pb.RpcFileListOffloadResponseError_NULL, nil)
+	return response(totalFilesOffloaded, uint64(freed), pb.RpcFileListOffloadResponseError_NULL, nil)
 }
 
 func (mw *Middleware) FileOffload(req *pb.RpcFileOffloadRequest) *pb.RpcFileOffloadResponse {

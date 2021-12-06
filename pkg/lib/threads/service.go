@@ -173,9 +173,7 @@ func (s *service) Init(a *app.App) (err error) {
 }
 
 func (s *service) Run() (err error) {
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second*3)
-	cafeCfg := s.fetcher.GetCafeConfig(ctx)
-	cancel()
+	cafeCfg := s.fetcher.GetCafeConfig()
 	if cafeCfg.SimultaneousRequests != 0 {
 		s.simultaneousRequests = int(cafeCfg.SimultaneousRequests)
 	} else {
@@ -218,7 +216,7 @@ func (s *service) Run() (err error) {
 		syncBook = s.logstore
 	}
 
-	ctx = context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
+	ctx := context.WithValue(s.ctx, threadsMetrics.ContextKey{}, metrics.NewThreadsMetrics())
 
 	s.t, err = threadsNet.NewNetwork(ctx, s.ipfsNode.GetHost(), s.ipfsNode.BlockStore(), s.ipfsNode, s.logstore, threadsNet.Config{
 		Debug:        s.Debug,
@@ -297,6 +295,10 @@ func (s *service) Logstore() tlcore.Logstore {
 	return s.logstore
 }
 
+func (s *service) UpdateSimultaneousRequests(requests int) error {
+	return s.threadQueue.UpdateSimultaneousRequestsLimit(requests)
+}
+
 func (s *service) PresubscribedNewRecords() (<-chan net.ThreadRecord, error) {
 	if s.presubscribedChangesChan == nil {
 		return nil, fmt.Errorf("presubscribed channel is nil")
@@ -324,6 +326,7 @@ type Service interface {
 	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string) error
 	DeleteThread(id string) error
+	UpdateSimultaneousRequests(requests int) error
 
 	GetCreatorInfo(workspaceId string) (CreatorInfo, error)
 	GetAllWorkspaces() ([]string, error)

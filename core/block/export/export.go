@@ -39,7 +39,7 @@ func New() Export {
 }
 
 type Export interface {
-	Export(req pb.RpcExportRequest) (path string, err error)
+	Export(req pb.RpcExportRequest) (path string, succeed int, err error)
 	app.Component
 }
 
@@ -58,7 +58,7 @@ func (e *export) Name() (name string) {
 	return CName
 }
 
-func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
+func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err error) {
 	queue := e.bs.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
@@ -71,7 +71,7 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
 	}
 	defer queue.Stop(err)
 
-	docIds, err := e.idsForExport(req.DocIds)
+	docIds, err := e.idsForExport(req.DocIds, req.IncludeNested)
 	if err != nil {
 		return
 	}
@@ -97,13 +97,15 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
 		}
 		mc := dot.NewMultiConverter(format)
 		mc.SetKnownLinks(docIds)
-		if werr := e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
+		var werr error
+		if succeed, werr = e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter()
 		mc.SetKnownLinks(docIds)
-		if werr := e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
+		var werr error
+		if succeed, werr = e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
@@ -113,46 +115,89 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, err error) {
 				log.With("threadId", did).Debugf("write doc")
 				if werr := e.writeDoc(req.Format, wr, docIds, queue, did); werr != nil {
 					log.With("threadId", did).Warnf("can't export doc: %v", werr)
+				} else {
+					succeed++
 				}
 			}); err != nil {
+				succeed = 0
 				return
 			}
 		}
 	}
 	queue.SetMessage("export files")
 	if err = queue.Finalize(); err != nil {
+		succeed = 0
 		return
 	}
-	return wr.Path(), nil
+	return wr.Path(), succeed, nil
 }
 
-func (e *export) idsForExport(reqIds []string) (ids []string, err error) {
-	if len(reqIds) > 0 {
-		return reqIds, nil
-	}
-	res, _, err := e.a.ObjectStore().QueryObjectInfo(database.Query{
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				RelationKey: bundle.RelationKeyIsArchived.String(),
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				Value:       pbtypes.Bool(false),
+func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string, err error) {
+	if len(reqIds) == 0 {
+		var res []*model.ObjectInfo
+		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
 			},
-		},
-	}, []smartblock.SmartBlockType{
-		smartblock.SmartBlockTypeHome,
-		smartblock.SmartBlockTypeProfilePage,
-		smartblock.SmartBlockTypePage,
-	})
-	if err != nil {
-		return
+		}, []smartblock.SmartBlockType{
+			smartblock.SmartBlockTypeHome,
+			smartblock.SmartBlockTypeProfilePage,
+			smartblock.SmartBlockTypePage,
+		})
+		if err != nil {
+			return
+		}
+
+		for _, r := range res {
+			ids = append(ids, r.Id)
+		}
+		return ids, nil
 	}
-	for _, r := range res {
-		ids = append(ids, r.Id)
+
+	var m map[string]struct{}
+	if includeNested {
+		m = make(map[string]struct{}, len(reqIds)*10)
 	}
+	var getNested func(id string)
+	getNested = func(id string) {
+		links, err := e.a.ObjectStore().GetOutboundLinksById(id)
+		if err != nil {
+			log.Errorf("export failed to get outbound links for id: %s", err.Error())
+			return
+		}
+		for _, link := range links {
+			if _, exists := m[link]; !exists {
+				sbt, err2 := smartblock.SmartBlockTypeFromID(link)
+				if err2 != nil {
+					log.Errorf("failed to get smartblocktype of id %s", link)
+					continue
+				}
+				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
+					continue
+				}
+				ids = append(ids, link)
+				m[link] = struct{}{}
+				getNested(link)
+			}
+		}
+	}
+
+	for _, id := range reqIds {
+		if _, exists := m[id]; !exists {
+			ids = append(ids, id)
+			m[id] = struct{}{}
+			getNested(id)
+		}
+	}
+
 	return
 }
 
-func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []string, queue process.Queue) (err error) {
+func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []string, queue process.Queue) (succeed int, err error) {
 	for _, did := range docIds {
 		if err = queue.Wait(func() {
 			log.With("threadId", did).Debugf("write doc")
@@ -161,6 +206,8 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []
 			})
 			if err != nil {
 				log.With("threadId", did).Warnf("can't export doc: %v", werr)
+			} else {
+				succeed++
 			}
 
 		}); err != nil {
@@ -169,7 +216,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []
 	}
 
 	if err = wr.WriteFile("export"+mw.Ext(), bytes.NewReader(mw.Convert())); err != nil {
-		return err
+		return 0, err
 	}
 
 	for _, fh := range mw.FileHashes() {
@@ -179,7 +226,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []
 				log.With("hash", fileHash).Warnf("can't save file: %v", werr)
 			}
 		}); err != nil {
-			return err
+			return
 		}
 	}
 	for _, fh := range mw.ImageHashes() {
@@ -189,10 +236,12 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []
 				log.With("hash", fileHash).Warnf("can't save image: %v", werr)
 			}
 		}); err != nil {
-			return err
+			return
 		}
 	}
-	return nil
+
+	err = nil
+	return
 }
 
 func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string, queue process.Queue, docId string) (err error) {

@@ -133,11 +133,70 @@ func (mw *Middleware) ExportTemplates(req *pb.RpcExportTemplatesRequest) *pb.Rpc
 		if len(docIds) == 0 {
 			return fmt.Errorf("no templates")
 		}
-		path, err = es.Export(pb.RpcExportRequest{
+		path, _, err = es.Export(pb.RpcExportRequest{
 			Path:   req.Path,
 			DocIds: docIds,
 			Format: pb.RpcExport_Protobuf,
 			Zip:    true,
+		})
+		return err
+	})
+	return response(path, err)
+}
+
+func (mw *Middleware) ExportWorkspace(req *pb.RpcExportWorkspaceRequest) *pb.RpcExportWorkspaceResponse {
+	response := func(path string, err error) (res *pb.RpcExportWorkspaceResponse) {
+		res = &pb.RpcExportWorkspaceResponse{
+			Error: &pb.RpcExportWorkspaceResponseError{
+				Code: pb.RpcExportWorkspaceResponseError_NULL,
+			},
+		}
+		if err != nil {
+			res.Error.Code = pb.RpcExportWorkspaceResponseError_UNKNOWN_ERROR
+			res.Error.Description = err.Error()
+			return
+		} else {
+			res.Path = path
+		}
+		return res
+	}
+	var (
+		path string
+		err  error
+	)
+	err = mw.doBlockService(func(_ block.Service) error {
+		es := mw.app.MustComponent(export.CName).(export.Export)
+		ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+		res, _, err := ds.QueryObjectInfo(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+				{
+					RelationKey: bundle.RelationKeyWorkspaceId.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.String(req.WorkspaceId),
+				},
+			},
+		}, []smartblock.SmartBlockType{})
+		if err != nil {
+			return err
+		}
+		var docIds []string
+		for _, r := range res {
+			docIds = append(docIds, r.Id)
+		}
+		if len(docIds) == 0 {
+			return fmt.Errorf("no objects in workspace")
+		}
+		path, _, err = es.Export(pb.RpcExportRequest{
+			Path:          req.Path,
+			DocIds:        docIds,
+			Format:        pb.RpcExport_Protobuf,
+			Zip:           true,
+			IncludeNested: false,
 		})
 		return err
 	})
