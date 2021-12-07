@@ -3368,6 +3368,7 @@ message Rpc {
                 string iconEmoji = 7;
                 bool done = 8;
                 int32 relationFormat = 9;
+                string snippet = 10;
             }
 
             message Edge {
@@ -3382,6 +3383,7 @@ message Rpc {
                 string description = 5;
                 string iconImage = 6;
                 string iconEmoji = 7;
+                bool hidden = 8;
             }
 
             message Response {
