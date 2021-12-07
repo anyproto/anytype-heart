@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -126,5 +127,9 @@ func (v *bundledObjectType) Close() (err error) {
 }
 
 func (v *bundledObjectType) LogHeads() map[string]string {
+	return nil
+}
+
+func (s *bundledObjectType) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }

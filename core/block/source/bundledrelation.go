@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/change"
@@ -106,5 +107,9 @@ func (v *bundledRelation) Close() (err error) {
 }
 
 func (v *bundledRelation) LogHeads() map[string]string {
+	return nil
+}
+
+func (s *bundledRelation) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }

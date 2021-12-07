@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"strings"
 	"time"
@@ -119,6 +120,10 @@ func (v *date) Close() (err error) {
 }
 
 func (v *date) LogHeads() map[string]string {
+	return nil
+}
+
+func (s *date) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
 

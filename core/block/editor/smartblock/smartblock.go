@@ -179,6 +179,20 @@ func (sb *smartBlock) Id() string {
 	return sb.source.Id()
 }
 
+func (s *smartBlock) GetFileKeys() (keys []pb.ChangeFileKeys) {
+	keys2 := s.source.GetFileKeysSnapshot()
+	for _, key := range keys2 {
+		if key == nil {
+			continue
+		}
+		keys = append(keys, pb.ChangeFileKeys{
+			Hash: key.Hash,
+			Keys: key.Keys,
+		})
+	}
+	return
+}
+
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{
 		ObjectTypes: sb.ObjectTypes(),
