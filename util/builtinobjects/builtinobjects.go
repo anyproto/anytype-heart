@@ -109,6 +109,12 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	if err = snapshot.Unmarshal(data); err != nil {
 		return
 	}
+
+	isFavorite := pbtypes.GetBool(snapshot.Data.Details, bundle.RelationKeyIsFavorite.String())
+	isArchived := pbtypes.GetBool(snapshot.Data.Details, bundle.RelationKeyIsArchived.String())
+	if isArchived {
+		return fmt.Errorf("object has isarchived == true")
+	}
 	st := state.NewDocFromSnapshot("", snapshot).(*state.State)
 	oldId := st.RootId()
 	newId, exists := b.idsMap[oldId]
@@ -183,7 +189,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	}
 
 	_, _, err = b.service.CreateSmartBlockFromState(ctx, sbt, nil, nil, st)
-	if pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsFavorite.String()) {
+	if isFavorite {
 		err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
 		if err != nil {
 			log.Errorf("failed to set isFavorite when importing object %s(originally %s): %s", newId, oldId, err.Error())
