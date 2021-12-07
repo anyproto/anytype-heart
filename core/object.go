@@ -262,6 +262,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 			IconEmoji:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
 			Done:           pbtypes.GetBool(rec.Details, bundle.RelationKeyDone.String()),
 			RelationFormat: int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyRelationFormat.String())),
+			Snippet:        pbtypes.GetString(rec.Details, bundle.RelationKeySnippet.String()),
 		})
 
 		var outgoingRelationLink = make(map[string]struct{}, 10)
@@ -296,6 +297,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 						Name:        rel.Name,
 						Type:        pb.RpcObjectGraphEdge_Relation,
 						Description: rel.Description,
+						Hidden:      rel.Hidden,
 					})
 					outgoingRelationLink[l] = struct{}{}
 				}

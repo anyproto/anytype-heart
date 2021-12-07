@@ -8503,6 +8503,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | description | [string](#string) |  |  |
 | iconImage | [string](#string) |  |  |
 | iconEmoji | [string](#string) |  |  |
+| hidden | [bool](#bool) |  |  |
 
 
 
@@ -8526,6 +8527,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | iconEmoji | [string](#string) |  |  |
 | done | [bool](#bool) |  |  |
 | relationFormat | [int32](#int32) |  |  |
+| snippet | [string](#string) |  |  |
 
 
 
