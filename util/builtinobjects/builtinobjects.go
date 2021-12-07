@@ -128,12 +128,11 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	}
 
 	st.SetRootId(newId)
-	st = st.Copy()
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.InjectDerivedDetails()
-	if err = b.validate(st.Copy()); err != nil {
+	if err = b.validate(st); err != nil {
 		return
 	}
 
