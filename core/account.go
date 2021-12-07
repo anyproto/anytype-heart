@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -184,11 +185,18 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	comps = append(comps, mw.EventSender)
+	comps = append(comps, builtinobjects.New())
+
 	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
+	err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).Inject(context.Background())
+	if err != nil {
+		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
+	}
+
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
 	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
