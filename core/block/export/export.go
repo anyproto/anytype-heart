@@ -161,6 +161,8 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 	var m map[string]struct{}
 	if includeNested {
 		m = make(map[string]struct{}, len(reqIds)*10)
+	} else {
+		m = make(map[string]struct{}, len(reqIds))
 	}
 	var getNested func(id string)
 	getNested = func(id string) {
@@ -190,7 +192,9 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 		if _, exists := m[id]; !exists {
 			ids = append(ids, id)
 			m[id] = struct{}{}
-			getNested(id)
+			if includeNested {
+				getNested(id)
+			}
 		}
 	}
 
