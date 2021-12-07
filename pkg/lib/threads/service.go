@@ -323,7 +323,7 @@ type Service interface {
 
 	CafePeer() ma.Multiaddr
 
-	CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error)
+	CreateThread(id thread.ID) (thread.Info, error)
 	AddThread(threadId string, key string, addrs []string) error
 	DeleteThread(id string) error
 	UpdateSimultaneousRequests(requests int) error
@@ -473,11 +473,7 @@ func (s *service) GetThreadInfo(id thread.ID) (thread.Info, error) {
 	return ti, nil
 }
 
-func (s *service) CreateThread(blockType smartblock.SmartBlockType) (thread.Info, error) {
-	thrdId, err := ThreadCreateID(thread.AccessControlled, blockType)
-	if err != nil {
-		return thread.Info{}, err
-	}
+func (s *service) CreateThread(thrdId thread.ID) (thread.Info, error) {
 	followKey, err := symmetric.NewRandom()
 	if err != nil {
 		return thread.Info{}, err

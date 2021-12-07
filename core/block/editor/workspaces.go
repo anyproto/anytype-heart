@@ -56,9 +56,16 @@ func (wp *WorkspaceParameters) Equal(other *WorkspaceParameters) bool {
 	return wp.IsHighlighted == other.IsHighlighted
 }
 
-func (p *Workspaces) CreateObject(sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
+func (p *Workspaces) CreateObject(id thread.ID, sbType smartblock2.SmartBlockType) (core.SmartBlock, error) {
 	st := p.NewState()
-	threadInfo, err := p.threadQueue.CreateThreadSync(sbType, p.Id())
+	if !id.Defined() {
+		var err error
+		id, err = threads.ThreadCreateID(thread.AccessControlled, sbType)
+		if err != nil {
+			return nil, err
+		}
+	}
+	threadInfo, err := p.threadQueue.CreateThreadSync(id, p.Id())
 	if err != nil {
 		return nil, err
 	}
