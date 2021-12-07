@@ -155,8 +155,11 @@ func enableCors(w http.ResponseWriter) {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
-	fileHash := r.URL.Path[len("/file/"):]
+	fileHashAndPath := r.URL.Path[len("/file/"):]
 	enableCors(w)
+	var fileHash string
+	parts := strings.Split(fileHashAndPath, "/")
+	fileHash = parts[0]
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	file, err := g.Node.FileByHash(ctx, fileHash)
