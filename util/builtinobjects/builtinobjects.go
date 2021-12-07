@@ -48,12 +48,11 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
-	cancel           func()
-	l                sync.Mutex
-	source           source.Service
-	service          block.Service
-	idsMap           map[string]string
-	hasIncomingLinks map[string]struct{}
+	cancel  func()
+	l       sync.Mutex
+	source  source.Service
+	service block.Service
+	idsMap  map[string]string
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
@@ -76,7 +75,6 @@ func (b *builtinObjects) Inject(ctx context.Context) (err error) {
 	if err != nil {
 		return
 	}
-	b.hasIncomingLinks = make(map[string]struct{}, len(zr.File))
 	b.idsMap = make(map[string]string, len(zr.File))
 	for _, zf := range zr.File {
 		id := strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))
@@ -101,15 +99,6 @@ func (b *builtinObjects) Inject(ctx context.Context) (err error) {
 		}
 	}
 
-	for _, zf := range zr.File {
-		newId := b.idsMap[strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))]
-		if _, exists := b.hasIncomingLinks[newId]; !exists {
-			err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
-			if err != nil {
-				log.Errorf("failed to set page as favorite: %s", err.Error())
-			}
-		}
-	}
 	return
 }
 
@@ -145,8 +134,6 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 				log.Errorf("cant find target id for link: %s", a.Model().GetLink().TargetBlockId)
 				return true
 			}
-			b.hasIncomingLinks[newTarget] = struct {
-			}{}
 
 			a.Model().GetLink().TargetBlockId = newTarget
 			st.Set(simple.New(a.Model()))
@@ -160,8 +147,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 					log.Errorf("cant find target id for mentrion: %s", mark.Param)
 					continue
 				}
-				b.hasIncomingLinks[newTarget] = struct {
-				}{}
+
 				a.Model().GetText().GetMarks().GetMarks()[i].Param = newTarget
 			}
 			st.Set(simple.New(a.Model()))
@@ -187,8 +173,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 				continue
 			}
 			vals[i] = newTarget
-			b.hasIncomingLinks[newTarget] = struct {
-			}{}
+
 		}
 	}
 
@@ -199,7 +184,10 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 
 	_, _, err = b.service.CreateSmartBlockFromState(ctx, sbt, nil, nil, st)
 	if pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsFavorite.String()) {
-		b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
+		err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
+		if err != nil {
+			log.Errorf("failed to set isFavorite when importing object %s(originally %s): %s", newId, oldId, err.Error())
+		}
 	}
 	return err
 }

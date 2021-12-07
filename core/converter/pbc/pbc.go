@@ -20,7 +20,7 @@ func (p *pbc) Convert() (result []byte) {
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
 			Blocks:         st.BlocksToSave(),
-			Details:        st.Details(),
+			Details:        st.CombinedDetails(),
 			ExtraRelations: st.ExtraRelations(),
 			ObjectTypes:    st.ObjectTypes(),
 			Collections:    st.Store(),
