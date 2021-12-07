@@ -14,6 +14,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"strings"
+	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -47,6 +48,8 @@ type BuiltinObjects interface {
 }
 
 type builtinObjects struct {
+	cancel           func()
+	l                sync.Mutex
 	source           source.Service
 	service          block.Service
 	idsMap           map[string]string
@@ -56,7 +59,7 @@ type builtinObjects struct {
 func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.service = a.MustComponent(block.CName).(block.Service)
-
+	b.cancel = func() {}
 	return
 }
 
@@ -65,6 +68,10 @@ func (b *builtinObjects) Name() (name string) {
 }
 
 func (b *builtinObjects) Inject(ctx context.Context) (err error) {
+	var ctx2 context.Context
+	b.l.Lock()
+	ctx2, b.cancel = context.WithCancel(ctx)
+	b.l.Unlock()
 	zr, err := zip.NewReader(bytes.NewReader(objectsZip), int64(len(objectsZip)))
 	if err != nil {
 		return
@@ -89,7 +96,7 @@ func (b *builtinObjects) Inject(ctx context.Context) (err error) {
 		if e != nil {
 			return e
 		}
-		if err = b.createObject(ctx, rd); err != nil {
+		if err = b.createObject(ctx2, rd); err != nil {
 			return
 		}
 	}
@@ -97,7 +104,10 @@ func (b *builtinObjects) Inject(ctx context.Context) (err error) {
 	for _, zf := range zr.File {
 		newId := b.idsMap[strings.TrimSuffix(zf.Name, filepath.Ext(zf.Name))]
 		if _, exists := b.hasIncomingLinks[newId]; !exists {
-			b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
+			err = b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
+			if err != nil {
+				log.Errorf("failed to set page as favorite: %s", err.Error())
+			}
 		}
 	}
 	return
@@ -188,16 +198,22 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 		return err
 	}
 
-	id, _, err := b.service.CreateSmartBlockFromState(ctx, sbt, nil, nil, st)
+	_, _, err = b.service.CreateSmartBlockFromState(ctx, sbt, nil, nil, st)
 	if pbtypes.GetBool(st.CombinedDetails(), bundle.RelationKeyIsFavorite.String()) {
 		b.service.SetPageIsFavorite(pb.RpcObjectSetIsFavoriteRequest{ContextId: newId, IsFavorite: true})
 	}
-	log.Infof("%s -> %s, %s imported", oldId, newId, id)
 	return err
 }
 
 func (b *builtinObjects) validate(st *state.State) (err error) {
 	var relKeys []string
+	for _, rel := range st.ExtraRelations() {
+		if !bundle.HasRelation(rel.Key) {
+			// todo: temporarily, make this as error
+			log.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+			//return fmt.Errorf("builtin objects should not contain custom relations, got %s in %s(%s)", rel.Name, st.RootId(), pbtypes.GetString(st.Details(), bundle.RelationKeyName.String()))
+		}
+	}
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if rb, ok := b.(relation.Block); ok {
 			relKeys = append(relKeys, rb.Model().GetRelation().Key)

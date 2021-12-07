@@ -192,10 +192,12 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
-	err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).Inject(context.Background())
-	if err != nil {
-		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
-	}
+	go func() {
+		err = mw.app.MustComponent(builtinobjects.CName).(builtinobjects.BuiltinObjects).Inject(context.Background())
+		if err != nil {
+			log.Errorf("failed to import get builtin objects: %s", err.Error())
+		}
+	}()
 
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
