@@ -260,7 +260,6 @@ func (s *service) Run() (err error) {
 func (s *service) Close() (err error) {
 	s.Lock()
 	defer s.Unlock()
-	log.Errorf("threadService.Close()")
 	if s.stopped {
 		return nil
 	}
