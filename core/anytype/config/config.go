@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/kelseyhightower/envconfig"
 
@@ -111,7 +112,7 @@ func (cfg *Config) initFromFileAndEnv(repoPath string) error {
 			}
 		}
 
-		if cfg.HostAddr == "" && configFileNotExists {
+		saveRandomHostAddr := func() error {
 			port, err := getRandomPort()
 			if err != nil {
 				port = 4006
@@ -137,7 +138,36 @@ func (cfg *Config) initFromFileAndEnv(repoPath string) error {
 			if err != nil {
 				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
 			}
+			return nil
 		}
+		if cfg.HostAddr == "" && configFileNotExists {
+			err = saveRandomHostAddr()
+			if err != nil {
+				return err
+			}
+		} else {
+			parts := strings.Split(cfg.HostAddr, "/")
+			if len(parts) == 0 {
+				log.Errorf("failed to parse cfg.HostAddr: %s", cfg.HostAddr)
+			} else {
+				// lets test the existing port in config
+				addr, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+parts[len(parts)-1])
+				if err == nil {
+					l, err := net.ListenTCP("tcp4", addr)
+					if err != nil {
+						// the port from config is no longer available. It may be used by other app or blocked by the OS(e.g. port exclusion range on windows)
+						// lets find another available port and save it to config
+						err = saveRandomHostAddr()
+						if err != nil {
+							return err
+						}
+					} else {
+						_ = l.Close()
+					}
+				}
+			}
+		}
+
 	}
 
 	err := envconfig.Process("ANYTYPE", cfg)
@@ -161,7 +191,7 @@ func (c *Config) ThreadsConfig() threads.Config {
 }
 
 func getRandomPort() (int, error) {
-	addr, err := net.ResolveTCPAddr("tcp", "localhost:0")
+	addr, err := net.ResolveTCPAddr("tcp", "0.0.0.0:0")
 	if err != nil {
 		return 0, err
 	}

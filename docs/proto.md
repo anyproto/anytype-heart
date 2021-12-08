@@ -7089,7 +7089,7 @@ commands acceptable only for text blocks, others will be ignored
 | format | [Rpc.Export.Format](#anytype.Rpc.Export.Format) |  | export format |
 | zip | [bool](#bool) |  | save as zip file |
 | includeNested | [bool](#bool) |  | include all nested |
-| includeFiles | [bool](#bool) |  | include all nested |
+| includeFiles | [bool](#bool) |  | include all files |
 
 
 
@@ -8460,6 +8460,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | description | [string](#string) |  |  |
 | iconImage | [string](#string) |  |  |
 | iconEmoji | [string](#string) |  |  |
+| hidden | [bool](#bool) |  |  |
 
 
 
@@ -8483,6 +8484,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | iconEmoji | [string](#string) |  |  |
 | done | [bool](#bool) |  |  |
 | relationFormat | [int32](#int32) |  |  |
+| snippet | [string](#string) |  |  |
 
 
 

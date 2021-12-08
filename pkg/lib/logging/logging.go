@@ -136,9 +136,9 @@ func RefreshSubsystemLevels() {
 	m.Unlock()
 }
 
-func setClientSpecificLogLevels() error {
-	// put here specific log levels that should be present on all clients
-	return logging.SetLogLevel("anytype-threadqueue", "info")
+func setClientSpecificLogLevels() {
+	// intentionally ignore errors here, cause some subsystem may be not ready yet
+	_ = logging.SetLogLevel("anytype-threadqueue", "info")
 }
 
 func setSubsystemLevels() {
@@ -171,9 +171,7 @@ func setSubsystemLevels() {
 
 	if len(logLevels) == 0 {
 		logging.SetAllLoggers(DefaultLogLevel)
-		if err := setClientSpecificLogLevels(); err != nil {
-			log.Errorf("failed to set log level: %v", err)
-		}
+		setClientSpecificLogLevels()
 		return
 	}
 
