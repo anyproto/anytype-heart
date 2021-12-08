@@ -131,7 +131,6 @@ func (g *gateway) Run() error {
 
 // Close stops the gateway
 func (g *gateway) Close() error {
-	log.Debugf("gateway.Close: %s", g.addr)
 	if g.server == nil {
 		// not running
 		return nil
@@ -139,7 +138,6 @@ func (g *gateway) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	err := g.server.Shutdown(ctx)
-	defer log.Errorf("gateway.Close finished: %s: %v", g.addr, err)
 	return err
 }
 

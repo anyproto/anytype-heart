@@ -77,6 +77,7 @@ func StartNewApp(components ...app.Component) (a *app.App, err error) {
 	metrics.SharedClient.Run()
 	if err = a.Start(); err != nil {
 		metrics.SharedClient.Close()
+		a = nil
 		return
 	}
 	return
