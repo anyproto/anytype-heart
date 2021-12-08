@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/gogo/protobuf/types"
 	"github.com/textileio/go-threads/core/thread"
 	"io"
 	"io/ioutil"
@@ -37,6 +38,10 @@ const CName = "builtinobjects"
 var objectsZip []byte
 
 var log = logging.Logger("anytype-mw-builtinobjects")
+
+const (
+	analyticsContext = "get-started"
+)
 
 func New() BuiltinObjects {
 	return new(builtinObjects)
@@ -123,6 +128,18 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 	}
 
 	st.SetRootId(newId)
+	a := st.Get(newId)
+	m := a.Model()
+	f := m.GetFields().GetFields()
+	if f == nil {
+		f = make(map[string]*types.Value)
+	}
+	m.Fields = &types.Struct{Fields: f}
+	f["analyticsContext"] = pbtypes.String(analyticsContext)
+	f["analyticsOriginalId"] = pbtypes.String(oldId)
+
+	st.Set(simple.New(m))
+
 	st.RemoveDetail(bundle.RelationKeyCreator.String(), bundle.RelationKeyLastModifiedBy.String())
 	st.SetLocalDetail(bundle.RelationKeyCreator.String(), pbtypes.String(addr.AnytypeProfileId))
 	st.SetLocalDetail(bundle.RelationKeyLastModifiedBy.String(), pbtypes.String(addr.AnytypeProfileId))
