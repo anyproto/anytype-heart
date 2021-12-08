@@ -141,6 +141,9 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
 	c.requestsUpdater = a.MustComponent("threads").(SimultaneousRequestsUpdater)
 	c.fetched = make(chan struct{})
+	c.cancel = func() {
+
+	}
 	return nil
 }
 
