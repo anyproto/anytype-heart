@@ -379,7 +379,7 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	sb.qt += s
 	sb.qr++
 	if sb.qt.Seconds() > 3 {
-		log.With("thread", sb.smartblock.ID()).Debugf("long loadChange %.1fs for %s. Total %.1f(%d records)", s.Seconds(), id, sb.qt.Seconds(), sb.qr)
+		log.With("thread", sb.smartblock.ID()).With("logid", sr.LogID).Debugf("long loadChange %.1fs for %s. Total %.1f(%d records)", s.Seconds(), id, sb.qt.Seconds(), sb.qr)
 	}
 	chp := new(pb.Change)
 	if err = sr.Unmarshal(chp); err != nil {
