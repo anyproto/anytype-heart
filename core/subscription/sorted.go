@@ -136,7 +136,8 @@ func (s *sortedSub) onChange(ctx *opCtx, e *entry) (countersChanged, activeChang
 		} else {
 			s.removeNonActive(e.id)
 		}
-		return true, activeChanged
+		countersChanged = true
+		return
 	}
 	if !curInSet && newInSet {
 		return s.add(ctx, e)
@@ -198,7 +199,7 @@ func (s *sortedSub) add(ctx *opCtx, e *entry) (countersChanged, activeChanged bo
 			afterId: afterId,
 		})
 		s.alignRemove(ctx)
-		return false, true
+		return true, true
 	}
 	return true, false
 }
