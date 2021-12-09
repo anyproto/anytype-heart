@@ -43,6 +43,11 @@ func (l *Relation) Copy() simple.Block {
 	}
 }
 
+// Validate TODO: add validation rules
+func (l *Relation) Validate() error {
+	return nil
+}
+
 func (l *Relation) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	relation, ok := b.(*Relation)
 	if !ok {

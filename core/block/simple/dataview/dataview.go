@@ -73,6 +73,11 @@ func (d *Dataview) Copy() simple.Block {
 	}
 }
 
+// Validate TODO: add validation rules
+func (d *Dataview) Validate() error {
+	return nil
+}
+
 func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	dv, ok := b.(*Dataview)
 	if !ok {

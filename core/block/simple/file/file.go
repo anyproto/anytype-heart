@@ -109,6 +109,13 @@ func (f *File) Copy() simple.Block {
 	}
 }
 
+func (f *File) Validate() error {
+	if f.content.State == model.BlockContentFile_Done && f.content.Size_ == 0 {
+		return fmt.Errorf("empty file size and content State is Done")
+	}
+	return nil
+}
+
 func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	file, ok := b.(*File)
 	if !ok {

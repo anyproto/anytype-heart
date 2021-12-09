@@ -16,7 +16,7 @@ func TestLink_Diff(t *testing.T) {
 	testBlock := func() *Link {
 		return NewLink(&model.Block{
 			Restrictions: &model.BlockRestrictions{},
-			Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{}},
+			Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: "some target"}},
 		}).(*Link)
 	}
 	t.Run("type error", func(t *testing.T) {
@@ -87,5 +87,16 @@ func TestLink_ToText(t *testing.T) {
 		require.Len(t, textModel.Marks.Marks, 1)
 		assert.Equal(t, "targetId", textModel.Marks.Marks[0].Param)
 		assert.Equal(t, &model.Range{0, 8}, textModel.Marks.Marks[0].Range)
+	})
+}
+
+func TestLink_Validate(t *testing.T) {
+	t.Run("not validated", func(t *testing.T) {
+		b := NewLink(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content:      &model.BlockContentOfLink{Link: &model.BlockContentLink{TargetBlockId: ""}},
+		}).(*Link)
+		err := b.Validate()
+		assert.Error(t, err)
 	})
 }

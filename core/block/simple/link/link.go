@@ -48,6 +48,13 @@ func (l *Link) Copy() simple.Block {
 	}
 }
 
+func (l *Link) Validate() error {
+	if l.content.TargetBlockId == "" {
+		return fmt.Errorf("targetBlockId is empty")
+	}
+	return nil
+}
+
 func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	link, ok := b.(*Link)
 	if !ok {
