@@ -58,7 +58,7 @@ func TestService_Search(t *testing.T) {
 		assert.Len(t, resp.Records, 1)
 		assert.Len(t, resp.Dependencies, 1)
 
-		fx.store.EXPECT().QueryById([]string{"author2", "author3"}).Return([]database.Record{
+		fx.store.EXPECT().QueryById([]string{"author2", "author3", "1"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("author2"),
 				"name": pbtypes.String("author2"),
@@ -67,22 +67,49 @@ func TestService_Search(t *testing.T) {
 				"id":   pbtypes.String("author3"),
 				"name": pbtypes.String("author3"),
 			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("1"),
+				"name": pbtypes.String("one"),
+				"author": pbtypes.StringList([]string{"author2", "author3", "1"}),
+			}}},
 		}, nil)
 
 		fx.Service.(*service).onChange([]*entry{
 			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
 				"id":     pbtypes.String("1"),
 				"name":   pbtypes.String("one"),
-				"author": pbtypes.StringList([]string{"author2", "author3"}),
+				"author": pbtypes.StringList([]string{"author2", "author3", "1"}),
 			}}},
 		})
 
+		assert.Len(t, fx.Service.(*service).cache.entries, 3)
+		assert.Equal(t, 2,  fx.Service.(*service).cache.entries["1"].refs)
+		assert.Equal(t, 1,  fx.Service.(*service).cache.entries["author2"].refs)
+		assert.Equal(t, 1,  fx.Service.(*service).cache.entries["author3"].refs)
+
+
+		fx.events = fx.events[:0]
+
+		fx.Service.(*service).onChange([]*entry{
+			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
+				"id":     pbtypes.String("1"),
+				"name":   pbtypes.String("one"),
+			}}},
+		})
+
+		/*
 		for _, e := range fx.events {
 			t.Log(pbtypes.Sprint(e))
 		}
 		for _, e := range fx.Service.(*service).cache.entries {
 			t.Log(e.id, e.refs)
-		}
+		}*/
+
+		assert.Len(t, fx.Service.(*service).cache.entries, 1)
+		assert.Equal(t, 1,  fx.Service.(*service).cache.entries["1"].refs)
+
+		assert.NoError(t, fx.Unsubscribe("test"))
+		assert.Len(t, fx.Service.(*service).cache.entries, 0)
 	})
 }
 

@@ -122,9 +122,7 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 		c.set(e)
 	}
 	for _, e := range ctx.depEntries {
-		if c.pick(e.id) == nil {
-			c.set(e)
-		}
+		c.set(e)
 	}
 
 	events = make([]*pb.Event, 0, len(byEventsContext))

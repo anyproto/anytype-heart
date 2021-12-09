@@ -33,9 +33,8 @@ type simpleSub struct {
 func (s *simpleSub) init(entries []*entry) (err error) {
 	s.set = make(map[string]struct{})
 	for _, e := range entries {
-		s.cache.set(e)
+		e = s.cache.getOrSet(e)
 		s.set[e.id] = struct{}{}
-		s.cache.get(e.id)
 	}
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
@@ -49,6 +48,7 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 	var newSet = make(map[string]struct{})
 	for _, e := range entries {
+		e = s.cache.getOrSet(e)
 		if _, inSet := s.set[e.id]; inSet {
 			ctx.change = append(ctx.change, opChange{
 				id:    e.id,
@@ -61,7 +61,6 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 				subId: s.id,
 				keys:  s.keys,
 			})
-			e.refs++
 		}
 		newSet[e.id] = struct{}{}
 	}
@@ -74,6 +73,7 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 			s.cache.release(oldId)
 		}
 	}
+	s.set = newSet
 }
 
 func (s *simpleSub) counters() (prev, next int) {

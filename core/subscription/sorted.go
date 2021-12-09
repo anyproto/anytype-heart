@@ -53,8 +53,8 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	s.skl = skiplist.New(s)
 
 	for _, e := range entries {
-		s.cache.set(e)
-		s.skl.Set(s.cache.get(e.id), nil)
+		e = s.cache.getOrSet(e)
+		s.skl.Set(e, nil)
 	}
 	if s.afterId != "" {
 		e := s.cache.pick(s.afterId)

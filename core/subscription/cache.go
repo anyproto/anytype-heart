@@ -46,8 +46,19 @@ func (c *cache) pick(id string) *entry {
 	return c.entries[id]
 }
 
+func (c *cache) exists(id string) bool {
+	_, ok := c.entries[id]
+	return ok
+}
+
+func (c *cache) getOrSet(e *entry) *entry {
+	if !c.exists(e.id) {
+		c.set(e)
+	}
+	return c.get(e.id)
+}
+
 func (c *cache) set(e *entry) {
-	// if entry exists - update only data
 	if ex, ok := c.entries[e.id]; ok {
 		ex.data = e.data
 	} else {
