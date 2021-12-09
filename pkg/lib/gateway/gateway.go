@@ -131,7 +131,6 @@ func (g *gateway) Run() error {
 
 // Close stops the gateway
 func (g *gateway) Close() error {
-	log.Debugf("gateway.Close: %s", g.addr)
 	if g.server == nil {
 		// not running
 		return nil
@@ -139,7 +138,6 @@ func (g *gateway) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	err := g.server.Shutdown(ctx)
-	defer log.Errorf("gateway.Close finished: %s: %v", g.addr, err)
 	return err
 }
 
@@ -155,8 +153,11 @@ func enableCors(w http.ResponseWriter) {
 
 // fileHandler gets file meta from the DB, gets the corresponding data from the IPFS and decrypts it
 func (g *gateway) fileHandler(w http.ResponseWriter, r *http.Request) {
-	fileHash := r.URL.Path[len("/file/"):]
+	fileHashAndPath := r.URL.Path[len("/file/"):]
 	enableCors(w)
+	var fileHash string
+	parts := strings.Split(fileHashAndPath, "/")
+	fileHash = parts[0]
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 	file, err := g.Node.FileByHash(ctx, fileHash)
