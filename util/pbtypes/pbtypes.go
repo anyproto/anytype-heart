@@ -83,6 +83,16 @@ func GetString(s *types.Struct, name string) string {
 	return ""
 }
 
+func GetStruct(s *types.Struct, name string) *types.Struct {
+	if s == nil || s.Fields == nil {
+		return nil
+	}
+	if v, ok := s.Fields[name]; ok {
+		return v.GetStructValue()
+	}
+	return nil
+}
+
 func GetBool(s *types.Struct, name string) bool {
 	if s == nil || s.Fields == nil {
 		return false
