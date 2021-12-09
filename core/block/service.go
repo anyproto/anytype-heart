@@ -755,12 +755,13 @@ func (s *service) DeleteObject(id string) (err error) {
 			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
 			}
-			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
-				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
-			}
+			// space will be reclaimed on the next GC cycle
 			if _, err = s.Anytype().FileOffload(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
 				continue
+			}
+			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
 			}
 
 		}

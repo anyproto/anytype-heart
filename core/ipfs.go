@@ -40,10 +40,12 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 	var (
 		totalBytesOffloaded uint64
 		totalFilesOffloaded int32
+		totalFilesSkipped   int
 	)
 	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
 	for _, fileId := range files {
 		if st, exists := pinStatus[fileId]; (!exists || st.Status != pb2.PinStatus_Done) && !req.IncludeNotPinned {
+			totalFilesSkipped++
 			continue
 		}
 		bytesRemoved, err := at.FileOffload(fileId)
@@ -61,6 +63,8 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 	if err != nil {
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
+
+	log.With("files_offloaded", totalFilesOffloaded).With().With("files_offloaded_b", totalBytesOffloaded).With("gc_freed_b", freed).With("files_skipped", totalFilesSkipped).Errorf("filelistoffload results")
 
 	return response(totalFilesOffloaded, uint64(freed), pb.RpcFileListOffloadResponseError_NULL, nil)
 }
@@ -83,6 +87,7 @@ func (mw *Middleware) FileOffload(req *pb.RpcFileOffloadRequest) *pb.RpcFileOffl
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	pin := mw.app.MustComponent(pin.CName).(pin.FilePinService)
+	ds := mw.app.MustComponent(datastore.CName).(datastore.Datastore)
 
 	if !at.IsStarted() {
 		response(0, pb.RpcFileOffloadResponseError_NODE_NOT_STARTED, fmt.Errorf("anytype node not started"))
@@ -104,5 +109,10 @@ func (mw *Middleware) FileOffload(req *pb.RpcFileOffloadRequest) *pb.RpcFileOffl
 		totalBytesOffloaded += bytesRemoved
 	}
 
-	return response(totalBytesOffloaded, pb.RpcFileOffloadResponseError_NULL, nil)
+	freed, err := ds.RunBlockstoreGC()
+	if err != nil {
+		return response(0, pb.RpcFileOffloadResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(uint64(freed), pb.RpcFileOffloadResponseError_NULL, nil)
 }

@@ -103,12 +103,7 @@ func (a *Anytype) FileOffload(hash string) (totalSize uint64, err error) {
 		}
 	}
 
-	freed, err := a.ds.RunBlockstoreGC()
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(freed), nil
+	return uint64(totalSize), nil
 }
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {

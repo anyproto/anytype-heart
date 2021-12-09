@@ -266,9 +266,9 @@ func (r *clientds) RunBlockstoreGC() (freed int64, err error) {
 	}
 
 	if totalSizeAfter > keysTotalSize /* + DefaultConfig.Litestore.ValueLogFileSize*/ {
-		log.With("vlogs_count", len(vlogsAfter)).With("keys_size_b", keysTotalSize).With("vlog_overhead_b", totalSizeAfter-keysTotalSize).With("vlogs", vlogsAfter).Errorf("Badger GC: got badger value logs overhead after GC")
+		log.With("vlogs_count", len(vlogsAfter)).With("vlogs_freed_b", totalSizeBefore-totalSizeAfter).With("keys_size_b", keysTotalSize).With("vlog_overhead_b", totalSizeAfter-keysTotalSize).With("vlogs", vlogsAfter).Errorf("Badger GC: got badger value logs overhead after GC")
 	}
-	return totalSizeAfter - totalSizeBefore, nil
+	return totalSizeBefore - totalSizeAfter, nil
 }
 
 func (r *clientds) PeerstoreDS() (ds.Batching, error) {
