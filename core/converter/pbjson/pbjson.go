@@ -28,7 +28,7 @@ func (p *pbj) Convert() []byte {
 		},
 	}
 	for _, fk := range p.s.GetFileKeys() {
-		snapshot.FileKeys = append(snapshot.FileKeys, &fk)
+		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
 	m := jsonpb.Marshaler{Indent: " "}
 	result, _ := m.MarshalToString(snapshot)

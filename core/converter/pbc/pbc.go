@@ -27,7 +27,7 @@ func (p *pbc) Convert() (result []byte) {
 		},
 	}
 	for _, fk := range p.s.GetFileKeys() {
-		snapshot.FileKeys = append(snapshot.FileKeys, &fk)
+		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
 	result, _ = snapshot.Marshal()
 	return
