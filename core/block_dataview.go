@@ -156,47 +156,6 @@ func (mw *Middleware) BlockDataviewRecordCreate(req *pb.RpcBlockDataviewRecordCr
 	return response(details, pb.RpcBlockDataviewRecordCreateResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockDataviewRecordUpdate(req *pb.RpcBlockDataviewRecordUpdateRequest) *pb.RpcBlockDataviewRecordUpdateResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockDataviewRecordUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewRecordUpdateResponse {
-		m := &pb.RpcBlockDataviewRecordUpdateResponse{Error: &pb.RpcBlockDataviewRecordUpdateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		}
-		// no events generated
-		return m
-	}
-
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateDataviewRecord(ctx, *req)
-	}); err != nil {
-		return response(pb.RpcBlockDataviewRecordUpdateResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcBlockDataviewRecordUpdateResponseError_NULL, nil)
-}
-
-func (mw *Middleware) BlockDataviewRecordDelete(req *pb.RpcBlockDataviewRecordDeleteRequest) *pb.RpcBlockDataviewRecordDeleteResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockDataviewRecordDeleteResponseErrorCode, err error) *pb.RpcBlockDataviewRecordDeleteResponse {
-		m := &pb.RpcBlockDataviewRecordDeleteResponse{Error: &pb.RpcBlockDataviewRecordDeleteResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DeleteDataviewRecord(ctx, *req)
-	}); err != nil {
-		return response(pb.RpcBlockDataviewRecordDeleteResponseError_UNKNOWN_ERROR, err)
-	}
-
-	return response(pb.RpcBlockDataviewRecordDeleteResponseError_NULL, nil)
-}
-
 func (mw *Middleware) BlockDataviewRelationAdd(req *pb.RpcBlockDataviewRelationAddRequest) *pb.RpcBlockDataviewRelationAddResponse {
 	ctx := state.NewContext(nil)
 	response := func(relation *model.Relation, code pb.RpcBlockDataviewRelationAddResponseErrorCode, err error) *pb.RpcBlockDataviewRelationAddResponse {

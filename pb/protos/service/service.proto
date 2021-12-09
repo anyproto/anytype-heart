@@ -126,8 +126,6 @@ service ClientCommands {
 
     // # Record
     rpc BlockDataviewRecordCreate (anytype.Rpc.Block.Dataview.RecordCreate.Request) returns (anytype.Rpc.Block.Dataview.RecordCreate.Response);
-    rpc BlockDataviewRecordUpdate (anytype.Rpc.Block.Dataview.RecordUpdate.Request) returns (anytype.Rpc.Block.Dataview.RecordUpdate.Response);
-    rpc BlockDataviewRecordDelete (anytype.Rpc.Block.Dataview.RecordDelete.Request) returns (anytype.Rpc.Block.Dataview.RecordDelete.Response);
     rpc BlockDataviewRecordRelationOptionAdd (anytype.Rpc.Block.Dataview.RecordRelationOptionAdd.Request) returns (anytype.Rpc.Block.Dataview.RecordRelationOptionAdd.Response);
     rpc BlockDataviewRecordRelationOptionUpdate (anytype.Rpc.Block.Dataview.RecordRelationOptionUpdate.Request) returns (anytype.Rpc.Block.Dataview.RecordRelationOptionUpdate.Response);
     rpc BlockDataviewRecordRelationOptionDelete (anytype.Rpc.Block.Dataview.RecordRelationOptionDelete.Request) returns (anytype.Rpc.Block.Dataview.RecordRelationOptionDelete.Response);

@@ -54,11 +54,6 @@ message Event {
             Block.Set.Relation blockSetRelation = 21;
             Block.Set.Latex blockSetLatex = 25;
 
-            Block.Dataview.RecordsSet blockDataviewRecordsSet = 18;
-            Block.Dataview.RecordsUpdate blockDataviewRecordsUpdate = 26;
-            Block.Dataview.RecordsInsert blockDataviewRecordsInsert = 27;
-            Block.Dataview.RecordsDelete blockDataviewRecordsDelete = 28;
-
             Block.Dataview.SourceSet blockDataviewSourceSet = 35;
             Block.Dataview.ViewSet blockDataviewViewSet = 19;
             Block.Dataview.ViewDelete blockDataviewViewDelete = 20;
@@ -653,36 +648,6 @@ message Event {
                 string id = 1; // dataview block's id
                 string relationKey = 2; // relation key to update
                 anytype.model.Relation relation = 3;
-            }
-
-            // sent when the active view's visible records should be replaced
-            message RecordsSet {
-                string id = 1; // dataview block's id
-                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                repeated google.protobuf.Struct records = 3;
-                uint32 total = 7; // total number of records
-            }
-
-            // sent when client should insert new records on the active view
-            message RecordsInsert {
-                string id = 1; // dataview block's id
-                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                repeated google.protobuf.Struct records = 3;
-                uint32 insertPosition = 5; // position to insert
-            }
-
-            // sent when client should update existing records on the active view
-            message RecordsUpdate {
-                string id = 1; // dataview block's id
-                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                repeated google.protobuf.Struct records = 4; // records to update. Use 'id' field to get records ids
-            }
-
-            // sent when client should remove existing records on the active view
-            message RecordsDelete {
-                string id = 1; // dataview block's id
-                string viewId = 2; // view id, client should double check this to make sure client doesn't switch the active view in the middle
-                repeated string removed = 6;
             }
         }
     }

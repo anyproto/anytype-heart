@@ -57,8 +57,6 @@ type Dataview interface {
 	FillAggregatedOptions(ctx *state.Context) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
-	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
-	DeleteRecord(ctx *state.Context, blockId string, recID string) error
 
 	WithSystemObjects(yes bool)
 	SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error
