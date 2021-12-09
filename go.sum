@@ -50,10 +50,6 @@ github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31 h1:fCXBjRAx
 github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31/go.mod h1:uX6FcwR+wTQWzFszLXQxeKfNeittg1408V7pVAtLKqQ=
 github.com/anytypeio/badger/v3 v3.2103.3-0.20211208214531-90d37368c220 h1:Re2YR8w2xLuQisVfEqLQP2aqAbKsVUnsgBCWcJXfQeY=
 github.com/anytypeio/badger/v3 v3.2103.3-0.20211208214531-90d37368c220/go.mod h1:/7Bz+MdP5VAvsg5XmFieHsCgj9P689gBq8ho0Cv/WiE=
-github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211120000032-ecc01a4b2cc7 h1:WiuhxcCENNNNZ28GaYV2G8k/kdo5UVe7dSdL8fEEGrc=
-github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211120000032-ecc01a4b2cc7/go.mod h1:7KkVZdUNZoLXHxVD7VTFkrIAntfHGlRGwjzcAfB5ubU=
-github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211208213314-64123d63cdec h1:rtcppyVjxNkGEuneSXyMhvUpWV9F0zpz4IbR+OGh6VM=
-github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211208213314-64123d63cdec/go.mod h1:ft0uZc9u6Wy9efQ88Sg7GyhbYSWEv9izMjlOlFv0DE8=
 github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211208232951-e452447f05c6 h1:XJyExPcF1Zq4Fx5vi7/g8EdMfBKKIJXzUSbfDUSyC/I=
 github.com/anytypeio/go-ds-badger3 v0.2.8-0.20211208232951-e452447f05c6/go.mod h1:Xv0XbZm3cAt74F2bz0/XrrpJpsDnkBJ4TM8gpim6oH4=
 github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:YBmcug6mOdwjJcmzA/Fpjtl2oo78+fMlr5Xj0dzwg78=
@@ -206,7 +202,6 @@ github.com/dgraph-io/badger v1.6.2/go.mod h1:JW2yswe3V058sS0kZ2h/AXeDSqFjxnZcRrV
 github.com/dgraph-io/badger/v3 v3.2103.2 h1:dpyM5eCJAtQCBcMCZcT4UBZchuTJgCywerHHgmxfxM8=
 github.com/dgraph-io/badger/v3 v3.2103.2/go.mod h1:RHo4/GmYcKKh5Lxu63wLEMHJ70Pac2JqZRYGhlyAo2M=
 github.com/dgraph-io/ristretto v0.0.2/go.mod h1:KPxhHT9ZxKefz+PCeOGsrHpl1qZ7i70dGTu2u+Ahh6E=
-github.com/dgraph-io/ristretto v0.1.0 h1:Jv3CGQHp9OjuMBSne1485aDpUkTKEcUqF+jm/LuerPI=
 github.com/dgraph-io/ristretto v0.1.0/go.mod h1:fux0lOrBhrVCJd3lcTHsIJhq1T2rokOu6v9Vcb3Q9ug=
 github.com/dgraph-io/ristretto v0.1.1-0.20211108053508-297c39e6640f h1:NBGp2JpfMtXmanFWt6f3gEdBtnLO5LupRvm3w4TXrvs=
 github.com/dgraph-io/ristretto v0.1.1-0.20211108053508-297c39e6640f/go.mod h1:fux0lOrBhrVCJd3lcTHsIJhq1T2rokOu6v9Vcb3Q9ug=
