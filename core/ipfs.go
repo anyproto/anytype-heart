@@ -64,7 +64,11 @@ func (mw *Middleware) FileListOffload(req *pb.RpcFileListOffloadRequest) *pb.Rpc
 		return response(0, 0, pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, err)
 	}
 
-	log.With("files_offloaded", totalFilesOffloaded).With().With("files_offloaded_b", totalBytesOffloaded).With("gc_freed_b", freed).With("files_skipped", totalFilesSkipped).Errorf("filelistoffload results")
+	log.With("files_offloaded", totalFilesOffloaded).
+		With("files_offloaded_b", totalBytesOffloaded).
+		With("gc_freed_b", freed).
+		With("files_skipped", totalFilesSkipped).
+		Errorf("filelistoffload results")
 
 	return response(totalFilesOffloaded, uint64(freed), pb.RpcFileListOffloadResponseError_NULL, nil)
 }
