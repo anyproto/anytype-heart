@@ -296,6 +296,11 @@ func (s *service) initPredefinedBlocks() {
 	}
 	startTime := time.Now()
 	for _, id := range ids {
+		headsHash, _ := s.anytype.ObjectStore().GetLastIndexedHeadsHash(id)
+		if headsHash != "" {
+			// skip object that has been already indexed before
+			continue
+		}
 		ctx := &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)}
 		// this is needed so that old account will create its state successfully on first launch
 		if id == s.anytype.PredefinedBlocks().AccountOld {
