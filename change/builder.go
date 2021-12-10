@@ -373,13 +373,30 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	sr, err := sb.smartblock.GetRecord(ctx, id)
 	s := time.Since(st)
 	if err != nil {
-		log.With("thread", sb.smartblock.ID()).Errorf("failed to loadChange %s after %.1fs. Total %.1f(%d records were loaded)", id, s.Seconds(), sb.qt.Seconds(), sb.qr)
+		log.With("thread", sb.smartblock.ID()).
+			Errorf("failed to loadChange %s after %.2fs. Total %.2f(%d records were loaded)", id, s.Seconds(), sb.qt.Seconds(), sb.qr)
 		return
 	}
 	sb.qt += s
 	sb.qr++
-	if sb.qt.Seconds() > 3 {
-		log.With("thread", sb.smartblock.ID()).With("logid", sr.LogID).Debugf("long loadChange %.1fs for %s. Total %.1f(%d records)", s.Seconds(), id, sb.qt.Seconds(), sb.qr)
+	if s.Seconds() > 0.1 {
+		// this means we got this record through bitswap, so lets log some details
+		lg, _ := sb.smartblock.GetLog(sr.LogID)
+		var (
+			logHead    string
+			logCounter int64
+		)
+
+		if lg != nil {
+			logHead = lg.Head
+			logCounter = lg.HeadCounter
+		}
+
+		log.With("thread", sb.smartblock.ID()).
+			With("logid", sr.LogID).
+			With("logHead", logHead).
+			With("logCounter", logCounter).
+			Errorf("long loadChange %.2fs for %s. Total %.2f(%d records)", s.Seconds(), id, sb.qt.Seconds(), sb.qr)
 	}
 	chp := new(pb.Change)
 	if err = sr.Unmarshal(chp); err != nil {
