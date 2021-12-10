@@ -15,7 +15,10 @@ func TestCache(t *testing.T) {
 		assert.NotNil(t, c.get(e.id))
 	}
 	for _, e := range entries {
-		c.set(e)
+		c.set(&entry{
+			id: e.id,
+			data: e.data,
+		})
 		assert.NotNil(t, c.pick(e.id))
 	}
 	for _, e := range entries {

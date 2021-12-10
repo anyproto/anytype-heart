@@ -61,6 +61,7 @@ func (c *cache) getOrSet(e *entry) *entry {
 func (c *cache) set(e *entry) {
 	if ex, ok := c.entries[e.id]; ok {
 		ex.data = e.data
+		ex.refs += e.refs
 	} else {
 		c.entries[e.id] = e
 	}

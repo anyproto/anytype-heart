@@ -18,11 +18,8 @@ import (
 )
 
 func TestService_Search(t *testing.T) {
-	t.Run("dependencies", func(t *testing.T) {
-		fx := newFixture(t)
-		defer fx.a.Close()
-		defer fx.ctrl.Finish()
 
+	var newSub = func(fx *fixture, subId string) {
 		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
 			[]database.Record{
 				{Details: &types.Struct{Fields: map[string]*types.Value{
@@ -36,11 +33,11 @@ func TestService_Search(t *testing.T) {
 		fx.store.EXPECT().GetRelation(bundle.RelationKeyName.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyName.String(),
 			Format: model.RelationFormat_shorttext,
-		}, nil)
+		}, nil).AnyTimes()
 		fx.store.EXPECT().GetRelation(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
 			Key:    bundle.RelationKeyAuthor.String(),
 			Format: model.RelationFormat_object,
-		}, nil)
+		}, nil).AnyTimes()
 
 		fx.store.EXPECT().QueryById([]string{"author1"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
@@ -50,13 +47,21 @@ func TestService_Search(t *testing.T) {
 		}, nil)
 
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
-			SubId: "test",
+			SubId: subId,
 			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
 		})
 		require.NoError(t, err)
 
 		assert.Len(t, resp.Records, 1)
 		assert.Len(t, resp.Dependencies, 1)
+	}
+
+	t.Run("dependencies", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close()
+		defer fx.ctrl.Finish()
+
+		newSub(fx, "test")
 
 		fx.store.EXPECT().QueryById([]string{"author2", "author3", "1"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
@@ -68,8 +73,8 @@ func TestService_Search(t *testing.T) {
 				"name": pbtypes.String("author3"),
 			}}},
 			{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":   pbtypes.String("1"),
-				"name": pbtypes.String("one"),
+				"id":     pbtypes.String("1"),
+				"name":   pbtypes.String("one"),
 				"author": pbtypes.StringList([]string{"author2", "author3", "1"}),
 			}}},
 		}, nil)
@@ -82,34 +87,50 @@ func TestService_Search(t *testing.T) {
 			}}},
 		})
 
-		assert.Len(t, fx.Service.(*service).cache.entries, 3)
-		assert.Equal(t, 2,  fx.Service.(*service).cache.entries["1"].refs)
-//		assert.Equal(t, 1,  fx.Service.(*service).cache.entries["author2"].refs)
-//		assert.Equal(t, 1,  fx.Service.(*service).cache.entries["author3"].refs)
-
+		require.Len(t, fx.Service.(*service).cache.entries, 3)
+		assert.Equal(t, 2, fx.Service.(*service).cache.entries["1"].refs)
+		assert.Equal(t, 1, fx.Service.(*service).cache.entries["author2"].refs)
+		assert.Equal(t, 1, fx.Service.(*service).cache.entries["author3"].refs)
 
 		fx.events = fx.events[:0]
 
 		fx.Service.(*service).onChange([]*entry{
 			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
-				"id":     pbtypes.String("1"),
-				"name":   pbtypes.String("one"),
+				"id":   pbtypes.String("1"),
+				"name": pbtypes.String("one"),
 			}}},
 		})
 
 		/*
-		for _, e := range fx.events {
-			t.Log(pbtypes.Sprint(e))
-		}
-		for _, e := range fx.Service.(*service).cache.entries {
-			t.Log(e.id, e.refs)
-		}*/
+			for _, e := range fx.events {
+				t.Log(pbtypes.Sprint(e))
+			}
+			for _, e := range fx.Service.(*service).cache.entries {
+				t.Log(e.id, e.refs)
+			}*/
 
 		assert.Len(t, fx.Service.(*service).cache.entries, 1)
-		assert.Equal(t, 1,  fx.Service.(*service).cache.entries["1"].refs)
+		assert.Equal(t, 1, fx.Service.(*service).cache.entries["1"].refs)
 
 		assert.NoError(t, fx.Unsubscribe("test"))
 		assert.Len(t, fx.Service.(*service).cache.entries, 0)
+	})
+	t.Run("cache ref counter", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close()
+		defer fx.ctrl.Finish()
+
+		newSub(fx, "test")
+
+		require.Len(t, fx.Service.(*service).cache.entries, 2)
+		assert.Equal(t, 1, fx.Service.(*service).cache.entries["1"].refs)
+		assert.Equal(t, 1, fx.Service.(*service).cache.entries["author1"].refs)
+
+		newSub(fx, "test1")
+
+		require.Len(t, fx.Service.(*service).cache.entries, 2)
+		assert.Equal(t, 2, fx.Service.(*service).cache.entries["1"].refs)
+		assert.Equal(t, 2, fx.Service.(*service).cache.entries["author1"].refs)
 	})
 }
 

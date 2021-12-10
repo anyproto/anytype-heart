@@ -48,7 +48,6 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 	var newSet = make(map[string]struct{})
 	for _, e := range entries {
-		e = s.cache.getOrSet(e)
 		if _, inSet := s.set[e.id]; inSet {
 			ctx.change = append(ctx.change, opChange{
 				id:    e.id,
@@ -61,6 +60,7 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 				subId: s.id,
 				keys:  s.keys,
 			})
+			e.refs++
 		}
 		newSet[e.id] = struct{}{}
 	}

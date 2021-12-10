@@ -20,6 +20,7 @@ func TestSubscription_Internal(t *testing.T) {
 				afterId: "id101",
 			}
 			require.Equal(t, ErrAfterId, sub.init(genEntries(100, false)))
+			assert.Len(t, sub.cache.entries, 0)
 		})
 		t.Run("beforeId err", func(t *testing.T) {
 			sub := &sortedSub{
@@ -28,6 +29,7 @@ func TestSubscription_Internal(t *testing.T) {
 				beforeId: "id101",
 			}
 			require.Equal(t, ErrBeforeId, sub.init(genEntries(100, false)))
+			assert.Len(t, sub.cache.entries, 0)
 		})
 	})
 	t.Run("lookup", func(t *testing.T) {
@@ -40,6 +42,11 @@ func TestSubscription_Internal(t *testing.T) {
 			inSet, inActive := sub.lookup(sub.cache.pick("id50"))
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
+
+			assert.Len(t, sub.cache.entries, 100)
+			for _, e := range sub.cache.entries {
+				assert.Equal(t, 1, e.refs)
+			}
 		})
 		t.Run("with limit", func(t *testing.T) {
 			sub := &sortedSub{
@@ -258,13 +265,20 @@ func TestSubscription_Add(t *testing.T) {
 			genEntry("afterId2", 10),
 		}
 
+		assert.Len(t, sub.cache.entries, 9)
+
 		ctx := &opCtx{}
 		sub.onChangeBatch(ctx, newEntries...)
 		assertCtxAdd(t, ctx, "newActiveId1", "id3")
 		assertCtxAdd(t, ctx, "newActiveId2", "newActiveId1")
 		assertCtxRemove(t, ctx, "id5", "id6")
 		assertCtxCounters(t, ctx, opCounter{total: 14, prevCount: 4, nextCount: 7})
-		t.Logf("%#v", ctx)
+
+		ctx.apply(sub.cache, newEntries)
+		assert.Len(t, sub.cache.entries, 9+len(newEntries))
+		for _, e := range sub.cache.entries {
+			assert.Equal(t, 1, e.refs, e.id)
+		}
 	})
 }
 

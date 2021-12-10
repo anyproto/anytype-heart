@@ -10,8 +10,8 @@ import (
 )
 
 var (
-	ErrAfterId  = errors.New("after id not in set")
-	ErrBeforeId = errors.New("before id not in set")
+	ErrAfterId   = errors.New("after id not in set")
+	ErrBeforeId  = errors.New("before id not in set")
 	ErrNoRecords = errors.New("no records with given offset")
 )
 
@@ -52,6 +52,12 @@ type sortedSub struct {
 func (s *sortedSub) init(entries []*entry) (err error) {
 	s.skl = skiplist.New(s)
 
+	defer func() {
+		if err != nil {
+			s.close()
+		}
+	}()
+
 	for _, e := range entries {
 		e = s.cache.getOrSet(e)
 		s.skl.Set(e, nil)
@@ -59,20 +65,24 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	if s.afterId != "" {
 		e := s.cache.pick(s.afterId)
 		if e == nil {
-			return ErrAfterId
+			err = ErrAfterId
+			return
 		}
 		s.afterEl = s.skl.Get(e)
 		if s.afterEl == nil {
-			return ErrAfterId
+			err = ErrAfterId
+			return
 		}
 	} else if s.beforeId != "" {
 		e := s.cache.pick(s.beforeId)
 		if e == nil {
-			return ErrBeforeId
+			err = ErrBeforeId
+			return
 		}
 		s.beforeEl = s.skl.Get(e)
 		if s.beforeEl == nil {
-			return ErrBeforeId
+			err = ErrBeforeId
+			return
 		}
 	} else if s.offset > 0 {
 		el := s.skl.Front()
@@ -87,7 +97,8 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 			el = el.Next()
 		}
 		if s.afterEl == nil {
-			return ErrNoRecords
+			err = ErrNoRecords
+			return
 		}
 	}
 
@@ -190,7 +201,7 @@ func (s *sortedSub) removeActive(ctx *opCtx, e *entry) {
 
 func (s *sortedSub) add(ctx *opCtx, e *entry) (countersChanged, activeChanged bool) {
 	s.skl.Set(e, nil)
-	s.cache.get(e.id)
+	e.refs++
 	_, inActive := s.lookup(e)
 	if inActive {
 		var afterId string
