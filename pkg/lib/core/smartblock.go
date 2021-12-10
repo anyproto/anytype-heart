@@ -90,7 +90,6 @@ type SmartBlock interface {
 	Creator() (string, error)
 
 	GetLogs() ([]SmartblockLog, error)
-	GetLog(logId string) (*SmartblockLog, error)
 	GetRecord(ctx context.Context, recordID string) (*SmartblockRecordEnvelope, error)
 	PushRecord(payload proto.Marshaler) (id string, err error)
 
@@ -349,36 +348,13 @@ func (block *smartBlock) PublishClientEvent(event proto.Message) error {
 	return fmt.Errorf("not implemented")
 }
 
-func (block *smartBlock) GetLog(logID string) (*SmartblockLog, error) {
-	thrd, err := block.node.ThreadService().Threads().GetThread(context.Background(), block.thread.ID)
-	if err != nil {
-		return nil, err
-	}
-
-	for _, l := range thrd.Logs {
-		if l.ID.String() == logID {
-			var head string
-			if l.Head.ID.Defined() {
-				head = l.Head.ID.String()
-			}
-			return &SmartblockLog{
-				ID:          l.ID.String(),
-				Head:        head,
-				HeadCounter: l.Head.Counter,
-			}, nil
-		}
-	}
-
-	return nil, fmt.Errorf("not found")
-}
-
 func (block *smartBlock) GetLogs() ([]SmartblockLog, error) {
 	thrd, err := block.node.ThreadService().Threads().GetThread(context.Background(), block.thread.ID)
 	if err != nil {
 		return nil, err
 	}
 
-	var logs []SmartblockLog
+	var logs = make([]SmartblockLog, 0, len(thrd.Logs))
 	for _, l := range thrd.Logs {
 		var head string
 		if l.Head.ID.Defined() {

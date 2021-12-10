@@ -381,15 +381,22 @@ func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	sb.qr++
 	if s.Seconds() > 0.1 {
 		// this means we got this record through bitswap, so lets log some details
-		lg, _ := sb.smartblock.GetLog(sr.LogID)
+		lgs, _ := sb.smartblock.GetLogs()
+		var sbLog *core.SmartblockLog
+		for _, lg := range lgs {
+			if lg.ID == sr.LogID {
+				sbLog = &lg
+				break
+			}
+		}
 		var (
 			logHead    string
 			logCounter int64
 		)
 
-		if lg != nil {
-			logHead = lg.Head
-			logCounter = lg.HeadCounter
+		if sbLog != nil {
+			logHead = sbLog.Head
+			logCounter = sbLog.HeadCounter
 		}
 
 		log.With("thread", sb.smartblock.ID()).
