@@ -62,12 +62,18 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 			return ErrAfterId
 		}
 		s.afterEl = s.skl.Get(e)
+		if s.afterEl == nil {
+			return ErrAfterId
+		}
 	} else if s.beforeId != "" {
 		e := s.cache.pick(s.beforeId)
 		if e == nil {
 			return ErrBeforeId
 		}
 		s.beforeEl = s.skl.Get(e)
+		if s.beforeEl == nil {
+			return ErrBeforeId
+		}
 	} else if s.offset > 0 {
 		el := s.skl.Front()
 		i := 0
@@ -76,6 +82,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 			if i == s.offset {
 				s.afterId = el.Key().(*entry).id
 				s.afterEl = el
+				break
 			}
 			el = el.Next()
 		}
@@ -83,8 +90,6 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 			return ErrNoRecords
 		}
 	}
-
-
 
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
