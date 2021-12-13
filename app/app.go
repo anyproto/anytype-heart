@@ -159,6 +159,7 @@ func (app *App) Start() (err error) {
 
 	for i, s := range app.components {
 		if serviceRun, ok := s.(ComponentRunnable); ok {
+			start := time.Now()
 			if err = serviceRun.Run(); err != nil {
 				closeServices(i)
 				return fmt.Errorf("can't run service '%s': %v", serviceRun.Name(), err)
