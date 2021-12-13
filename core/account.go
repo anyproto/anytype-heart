@@ -184,11 +184,13 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	}
 
 	comps = append(comps, mw.EventSender)
+
 	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
+
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
 	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}

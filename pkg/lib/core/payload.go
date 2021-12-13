@@ -12,8 +12,9 @@ import (
 const payloadVersion = 1
 
 type SmartblockLog struct {
-	ID   string
-	Head string
+	ID          string
+	Head        string
+	HeadCounter int64
 }
 
 type SmartblockRecordEnvelope struct {

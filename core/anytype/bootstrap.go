@@ -31,6 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
@@ -111,6 +112,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(linkpreview.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
-		Register(doc.New())
+		Register(doc.New()).
+		Register(builtinobjects.New())
 	return
 }

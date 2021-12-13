@@ -2,6 +2,7 @@ package source
 
 import (
 	"context"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -95,5 +96,9 @@ func (v *anytypeProfile) Close() (err error) {
 }
 
 func (v *anytypeProfile) LogHeads() map[string]string {
+	return nil
+}
+
+func (s *anytypeProfile) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }
