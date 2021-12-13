@@ -80,6 +80,7 @@ func StartNewApp(components ...app.Component) (a *app.App, err error) {
 		a = nil
 		return
 	}
+
 	return
 }
 

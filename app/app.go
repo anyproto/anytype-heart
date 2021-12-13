@@ -46,6 +46,7 @@ type ComponentRunnable interface {
 type App struct {
 	components []Component
 	mu         sync.RWMutex
+	startStat  StartStat
 }
 
 // Name returns app name
@@ -56,6 +57,18 @@ func (app *App) Name() string {
 // Version return app version
 func (app *App) Version() string {
 	return GitSummary
+}
+
+type StartStat struct {
+	SpentMsPerComp map[string]int64
+	SpentMsTotal   int64
+}
+
+// StartStat returns total time spent per comp
+func (app *App) StartStat() StartStat {
+	app.mu.Lock()
+	defer app.mu.Unlock()
+	return app.startStat
 }
 
 // VersionDescription return the full info about the build
@@ -123,6 +136,7 @@ func (app *App) ComponentNames() (names []string) {
 func (app *App) Start() (err error) {
 	app.mu.RLock()
 	defer app.mu.RUnlock()
+	app.startStat.SpentMsPerComp = make(map[string]int64)
 
 	closeServices := func(idx int) {
 		for i := idx; i >= 0; i-- {
@@ -149,6 +163,9 @@ func (app *App) Start() (err error) {
 				closeServices(i)
 				return fmt.Errorf("can't run service '%s': %v", serviceRun.Name(), err)
 			}
+			spent := time.Since(start).Milliseconds()
+			app.startStat.SpentMsTotal += spent
+			app.startStat.SpentMsPerComp[s.Name()] = spent
 		}
 	}
 	log.Debugf("All components started")

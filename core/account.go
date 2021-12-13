@@ -17,6 +17,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -187,6 +188,16 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
+
+	stat := mw.app.StartStat()
+	if stat.SpentMsTotal > 300 {
+		log.Errorf("AccountCreate app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
+	}
+
+	metrics.SharedClient.RecordEvent(metrics.AppStart{
+		Type:      "create",
+		TotalMs:   stat.SpentMsTotal,
+		PerCompMs: stat.SpentMsPerComp})
 
 	coreService := mw.app.MustComponent(core.CName).(core.Service)
 	newAcc.Name = req.Name
@@ -475,6 +486,16 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 
 		return response(nil, pb.RpcAccountSelectResponseError_FAILED_TO_RUN_NODE, err)
 	}
+
+	stat := mw.app.StartStat()
+	if stat.SpentMsTotal > 300 {
+		log.Errorf("AccountSelect app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
+	}
+
+	metrics.SharedClient.RecordEvent(metrics.AppStart{
+		Type:      "select",
+		TotalMs:   stat.SpentMsTotal,
+		PerCompMs: stat.SpentMsPerComp})
 
 	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
 }
