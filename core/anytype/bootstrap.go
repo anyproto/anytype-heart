@@ -52,10 +52,7 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 		Register(profilefinder.New()).
 		Register(eventSender)
 
-	metrics.SharedClient.SetAppVersion(a.Version())
-	metrics.SharedClient.Run()
 	if err = a.Start(); err != nil {
-		metrics.SharedClient.Close()
 		return
 	}
 
