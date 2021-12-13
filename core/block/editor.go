@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	ds "github.com/ipfs/go-datastore"
+	"github.com/textileio/go-threads/core/thread"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -894,7 +895,9 @@ func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectType
 	})
 }
 
-func (s *service) CreateObjectInWorkspace(ctx context.Context, workspaceId string, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
+// todo: rewrite with options
+// withId may me empty
+func (s *service) CreateObjectInWorkspace(ctx context.Context, workspaceId string, withId thread.ID, sbType coresb.SmartBlockType) (csm core.SmartBlock, err error) {
 	startTime := time.Now()
 	ev, exists := ctx.Value(ObjectCreateEvent).(*metrics.CreateObjectEvent)
 	err = s.DoWithContext(ctx, workspaceId, func(b smartblock.SmartBlock) error {
@@ -905,7 +908,7 @@ func (s *service) CreateObjectInWorkspace(ctx context.Context, workspaceId strin
 		if !ok {
 			return fmt.Errorf("incorrect object with workspace id")
 		}
-		csm, err = workspace.CreateObject(sbType)
+		csm, err = workspace.CreateObject(withId, sbType)
 		if exists {
 			ev.WorkspaceCreateMs = time.Now().Sub(startTime).Milliseconds() - ev.GetWorkspaceBlockWaitMs
 		}
@@ -945,7 +948,7 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		workspaceId = s.anytype.PredefinedBlocks().Account
 	}
 	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
-	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, coresb.SmartBlockTypeSet)
+	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
 	if err != nil {
 		return "", "", err
 	}

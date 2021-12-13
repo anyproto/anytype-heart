@@ -113,7 +113,7 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err 
 			did := docId
 			if err = queue.Wait(func() {
 				log.With("threadId", did).Debugf("write doc")
-				if werr := e.writeDoc(req.Format, wr, docIds, queue, did); werr != nil {
+				if werr := e.writeDoc(req.Format, wr, docIds, queue, did, req.IncludeFiles); werr != nil {
 					log.With("threadId", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
@@ -161,6 +161,8 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 	var m map[string]struct{}
 	if includeNested {
 		m = make(map[string]struct{}, len(reqIds)*10)
+	} else {
+		m = make(map[string]struct{}, len(reqIds))
 	}
 	var getNested func(id string)
 	getNested = func(id string) {
@@ -190,7 +192,9 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 		if _, exists := m[id]; !exists {
 			ids = append(ids, id)
 			m[id] = struct{}{}
-			getNested(id)
+			if includeNested {
+				getNested(id)
+			}
 		}
 	}
 
@@ -202,7 +206,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []
 		if err = queue.Wait(func() {
 			log.With("threadId", did).Debugf("write doc")
 			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
-				return mw.Add(b.NewState())
+				return mw.Add(b.NewState().Copy())
 			})
 			if err != nil {
 				log.With("threadId", did).Warnf("can't export doc: %v", werr)
@@ -244,17 +248,20 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []
 	return
 }
 
-func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string, queue process.Queue, docId string) (err error) {
+func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string, queue process.Queue, docId string, exportFiles bool) (err error) {
 
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
+		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
+			return nil
+		}
 		var conv converter.Converter
 		switch format {
 		case pb.RpcExport_Markdown:
 			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
 		case pb.RpcExport_Protobuf:
-			conv = pbc.NewConverter(b.NewState())
+			conv = pbc.NewConverter(b)
 		case pb.RpcExport_JSON:
-			conv = pbjson.NewConverter(b.NewState())
+			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownLinks(docIds)
 		result := conv.Convert()
@@ -264,6 +271,9 @@ func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string,
 		}
 		if err = wr.WriteFile(filename, bytes.NewReader(result)); err != nil {
 			return err
+		}
+		if !exportFiles {
+			return nil
 		}
 		for _, fh := range conv.FileHashes() {
 			fileHash := fh

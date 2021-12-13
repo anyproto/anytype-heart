@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/gogo/protobuf/proto"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -872,7 +873,15 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		SetDetailsMs: time.Now().Sub(startTime).Milliseconds(),
 	}
 	ctx = context.WithValue(ctx, ObjectCreateEvent, ev)
-	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, sbType)
+	var tid = thread.Undef
+	if id := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); id != "" {
+		tid, err = thread.Decode(id)
+		if err != nil {
+			log.Errorf("failed to decode thread id from the state: %s", err.Error())
+		}
+	}
+
+	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, tid, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -1303,6 +1312,9 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
 		ts.InjectDerivedDetails()
+		// preserve localDetails from the original object
+		ts.SetLocalDetails(orig.LocalDetails())
+
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
 }

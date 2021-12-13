@@ -1,5 +1,5 @@
 // +build linux darwin
-// +build !android,!ios
+// +build !android,!ios,!nographviz
 // +build amd64 arm64
 
 package change

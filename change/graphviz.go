@@ -1,4 +1,4 @@
-// +build !linux,!darwin android ios
+// +build !linux,!darwin android ios nographviz
 // +build !amd64
 
 package change

@@ -1,4 +1,4 @@
-// +build gomobile windows
+// +build gomobile windows nographviz
 
 package dot
 
