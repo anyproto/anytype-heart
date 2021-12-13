@@ -255,5 +255,8 @@ func (b *builtinObjects) validate(st *state.State) (err error) {
 }
 
 func (b *builtinObjects) Close() (err error) {
+	if b.cancel != nil {
+		b.cancel()
+	}
 	return
 }
