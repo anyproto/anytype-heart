@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/gogo/protobuf/proto"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -1311,6 +1312,9 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
 		ts.InjectDerivedDetails()
+		// preserve localDetails from the original object
+		ts.SetLocalDetails(orig.LocalDetails())
+
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
 }
