@@ -61,3 +61,14 @@ func TestFile_Diff(t *testing.T) {
 		assert.NotNil(t, change.Mime)
 	})
 }
+
+func TestFile_Validate(t *testing.T) {
+	t.Run("not validated", func(t *testing.T) {
+		b := NewFile(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content:      &model.BlockContentOfFile{File: &model.BlockContentFile{State: model.BlockContentFile_Done, Size_: 0}},
+		}).(*File)
+		err := b.Validate()
+		assert.Error(t, err)
+	})
+}

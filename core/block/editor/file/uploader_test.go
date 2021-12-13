@@ -84,6 +84,7 @@ func TestUploader_Upload(t *testing.T) {
 		require.NoError(t, res.Err)
 		assert.Equal(t, res.Hash, "123")
 		assert.Equal(t, res.Name, "unnamed.jpg")
+		res.Size = 1
 		b := res.ToBlock()
 		assert.Equal(t, b.Model().GetFile().Name, "unnamed.jpg")
 	})

@@ -24,7 +24,7 @@ func TestBasic_Create(t *testing.T) {
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 		b := NewBasic(sb)
 		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
-			Block: &model.Block{},
+			Block: &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "ll"}}},
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, id)
@@ -38,7 +38,7 @@ func TestBasic_Create(t *testing.T) {
 		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
 			Position: model.Block_Top,
-			Block:    &model.Block{},
+			Block:    &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "ll"}}},
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, id)
@@ -120,14 +120,14 @@ func TestBasic_Move(t *testing.T) {
 		id1, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
 			Position: model.Block_Bottom,
-			Block:    &model.Block{},
+			Block:    &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "ll"}}},
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, id1)
 		id0, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
 			Position: model.Block_Bottom,
-			Block:    &model.Block{},
+			Block:    &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "ll"}}},
 		})
 		require.NoError(t, err)
 		require.NotEmpty(t, id0)
@@ -148,7 +148,7 @@ func TestBasic_Replace(t *testing.T) {
 	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
 		AddBlock(simple.New(&model.Block{Id: "2"}))
 	b := NewBasic(sb)
-	newId, err := b.Replace(nil, "2", &model.Block{})
+	newId, err := b.Replace(nil, "2", &model.Block{Content: &model.BlockContentOfText{Text: &model.BlockContentText{Text: "l"}}})
 	require.NoError(t, err)
 	require.NotEmpty(t, newId)
 }
