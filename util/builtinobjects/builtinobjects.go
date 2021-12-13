@@ -6,6 +6,7 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
@@ -48,21 +49,23 @@ func New() BuiltinObjects {
 }
 
 type BuiltinObjects interface {
-	Inject(ctx context.Context) error
-	app.Component
+	app.ComponentRunnable
 }
 
 type builtinObjects struct {
-	cancel  func()
-	l       sync.Mutex
-	source  source.Service
-	service block.Service
-	idsMap  map[string]string
+	cancel     func()
+	l          sync.Mutex
+	source     source.Service
+	service    block.Service
+	newAccount bool
+	idsMap     map[string]string
 }
 
 func (b *builtinObjects) Init(a *app.App) (err error) {
 	b.source = a.MustComponent(source.CName).(source.Service)
 	b.service = a.MustComponent(block.CName).(block.Service)
+	b.newAccount = a.MustComponent(config.CName).(*config.Config).NewAccount
+
 	b.cancel = func() {}
 	return
 }
@@ -71,11 +74,25 @@ func (b *builtinObjects) Name() (name string) {
 	return CName
 }
 
-func (b *builtinObjects) Inject(ctx context.Context) (err error) {
-	var ctx2 context.Context
-	b.l.Lock()
-	ctx2, b.cancel = context.WithCancel(ctx)
-	b.l.Unlock()
+func (b *builtinObjects) Run() (err error) {
+	if !b.newAccount {
+		// import only for new accounts
+		return
+	}
+
+	var ctx context.Context
+	ctx, b.cancel = context.WithCancel(context.Background())
+	go func() {
+		err = b.inject(ctx)
+		if err != nil {
+			log.Errorf("failed to import builtinObjects: %s", err.Error())
+		}
+	}()
+
+	return
+}
+
+func (b *builtinObjects) inject(ctx context.Context) (err error) {
 	zr, err := zip.NewReader(bytes.NewReader(objectsZip), int64(len(objectsZip)))
 	if err != nil {
 		return
@@ -99,12 +116,11 @@ func (b *builtinObjects) Inject(ctx context.Context) (err error) {
 		if e != nil {
 			return e
 		}
-		if err = b.createObject(ctx2, rd); err != nil {
+		if err = b.createObject(ctx, rd); err != nil {
 			return
 		}
 	}
-
-	return
+	return nil
 }
 
 func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (err error) {
