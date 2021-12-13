@@ -1299,12 +1299,9 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
 		ts.InjectDerivedDetails()
-		for _, key := range []string{
-			bundle.RelationKeyCreator.String(),
-			bundle.RelationKeyCreatedDate.String(),
-		} {
-			ts.SetDetail(key, pbtypes.Get(orig.CombinedDetails(), key))
-		}
+		// preserve localDetails from the original object
+		ts.SetLocalDetails(orig.LocalDetails())
+
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
 }
