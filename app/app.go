@@ -143,27 +143,13 @@ func (app *App) Start() (err error) {
 
 	logging.RefreshSubsystemLevels() // to make sure we know about all logging subsystems that were externally-created, e.g. in the libp2p
 
-	var (
-		spentPerComp = make(map[string]int64)
-		spentTotal   int64
-	)
-
 	for i, s := range app.components {
 		if serviceRun, ok := s.(ComponentRunnable); ok {
-			start := time.Now()
 			if err = serviceRun.Run(); err != nil {
 				closeServices(i)
 				return fmt.Errorf("can't run service '%s': %v", serviceRun.Name(), err)
 			}
-			spent := time.Since(start).Milliseconds()
-			spentTotal += spent
-			if spent > 50 {
-				spentPerComp[s.Name()] = spent
-			}
 		}
-	}
-	if spentTotal > 500 {
-		log.Errorf("app long start; spent %dms: %v", spentTotal, spentPerComp)
 	}
 	log.Debugf("All components started")
 	return
