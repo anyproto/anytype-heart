@@ -179,6 +179,20 @@ func (sb *smartBlock) Id() string {
 	return sb.source.Id()
 }
 
+func (s *smartBlock) GetFileKeys() (keys []pb.ChangeFileKeys) {
+	keys2 := s.source.GetFileKeysSnapshot()
+	for _, key := range keys2 {
+		if key == nil {
+			continue
+		}
+		keys = append(keys, pb.ChangeFileKeys{
+			Hash: key.Hash,
+			Keys: key.Keys,
+		})
+	}
+	return
+}
+
 func (sb *smartBlock) Meta() *core.SmartBlockMeta {
 	return &core.SmartBlockMeta{
 		ObjectTypes: sb.ObjectTypes(),
@@ -207,7 +221,10 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.objectStore = ctx.ObjectStore
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 
-	sb.storeFileKeys()
+	if ctx.State != nil {
+		// need to store file keys in case we have some new files in the state
+		sb.storeFileKeys(ctx.State)
+	}
 	sb.Doc.BlocksInit(sb.Doc.(simple.DetailsService))
 
 	if ctx.State == nil {
@@ -1321,7 +1338,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 			ContextId: sb.Id(),
 		})
 	}
-	sb.storeFileKeys()
+	sb.storeFileKeys(s)
 	if hasDepIds(&act) {
 		sb.CheckSubscriptions()
 	}
@@ -1350,7 +1367,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 			})
 		}
 	}
-	sb.storeFileKeys()
+	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.reportChange(sb.Doc.(*state.State))
 	sb.execHooks(HookAfterApply)
@@ -1436,8 +1453,11 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 	return
 }
 
-func (sb *smartBlock) storeFileKeys() {
-	keys := sb.Doc.GetFileKeys()
+func (sb *smartBlock) storeFileKeys(doc state.Doc) {
+	if doc == nil {
+		return
+	}
+	keys := doc.GetFileKeys()
 	if len(keys) == 0 {
 		return
 	}

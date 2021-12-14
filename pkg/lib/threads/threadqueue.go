@@ -2,7 +2,6 @@ package threads
 
 import (
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/textileio/go-threads/core/logstore"
 	"github.com/textileio/go-threads/core/thread"
@@ -29,7 +28,7 @@ type ThreadQueue interface {
 	Run()
 	ProcessThreadsAsync(threadsFromState []ThreadInfo, workspaceId string)
 	AddThreadSync(info ThreadInfo, workspaceId string) error
-	CreateThreadSync(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error)
+	CreateThreadSync(id thread.ID, workspaceId string) (thread.Info, error)
 	DeleteThreadSync(id, workspaceId string) error
 	GetWorkspacesForThread(threadId string) []string
 	GetThreadsForWorkspace(workspaceId string) []string
@@ -129,8 +128,8 @@ func (p *threadQueue) AddThreadSync(info ThreadInfo, workspaceId string) error {
 	return err
 }
 
-func (p *threadQueue) CreateThreadSync(blockType smartblock.SmartBlockType, workspaceId string) (thread.Info, error) {
-	info, err := p.threadsService.CreateThread(blockType)
+func (p *threadQueue) CreateThreadSync(threadId thread.ID, workspaceId string) (thread.Info, error) {
+	info, err := p.threadsService.CreateThread(threadId)
 	if err != nil {
 		return thread.Info{}, err
 	}
@@ -332,7 +331,7 @@ func (o threadAddOperation) Run() (err error) {
 
 func (o threadAddOperation) OnFinish(err error) {
 	// at the time of this function call the operation is still pending
-	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.l.PendingOperations() - 1)
+	defer o.queue.logOperation(o, err == nil, o.WorkspaceId, o.queue.l.PendingOperations()-1)
 	if err == nil {
 		o.queue.finishAddOperation(o.ID, o.WorkspaceId)
 		return

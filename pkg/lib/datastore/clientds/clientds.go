@@ -201,7 +201,7 @@ func (r *clientds) RunBlockstoreGC() (freed int64, err error) {
 			ext := filepath.Ext(info.Name())
 			switch ext {
 			case ".vlog":
-				index, err := strconv.ParseInt(info.Name(), 10, 64)
+				index, err := strconv.ParseInt(strings.TrimSuffix(info.Name(), ext), 10, 64)
 				if err != nil {
 					return nil
 				}
@@ -265,10 +265,14 @@ func (r *clientds) RunBlockstoreGC() (freed int64, err error) {
 		keysTotalSize += int64(result.Size)
 	}
 
-	if keysTotalSize > totalSizeAfter /* + DefaultConfig.Litestore.ValueLogFileSize*/ {
-		log.With("vlogs_count", len(vlogsAfter)).With("keys_size_b", keysTotalSize).With("vlog_overhead_b", totalSizeAfter-keysTotalSize).With("vlogs", vlogsAfter).Errorf("Badger GC: got badger value logs overhead after GC")
+	freed = totalSizeBefore - totalSizeAfter
+	if totalSizeAfter > keysTotalSize {
+		log.With("vlogs_count", len(vlogsAfter)).With("vlogs_freed_b", freed).With("keys_size_b", keysTotalSize).With("vlog_overhead_b", totalSizeAfter-keysTotalSize).With("vlogs", vlogsAfter).Errorf("Badger GC: got badger value logs overhead after GC")
 	}
-	return totalSizeAfter - totalSizeBefore, nil
+	if freed < 0 {
+		freed = 0
+	}
+	return freed, nil
 }
 
 func (r *clientds) PeerstoreDS() (ds.Batching, error) {

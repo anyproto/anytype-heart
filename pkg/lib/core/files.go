@@ -103,12 +103,7 @@ func (a *Anytype) FileOffload(hash string) (totalSize uint64, err error) {
 		}
 	}
 
-	freed, err := a.ds.RunBlockstoreGC()
-	if err != nil {
-		return 0, err
-	}
-
-	return uint64(freed), nil
+	return uint64(totalSize), nil
 }
 
 func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
@@ -121,7 +116,7 @@ func (a *Anytype) FileByHash(ctx context.Context, hash string) (File, error) {
 		// info from ipfs
 		fileList, err = a.files.FileIndexInfo(ctx, hash, false)
 		if err != nil {
-			log.Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
+			log.With("cid", hash).Errorf("FileByHash: failed to retrieve from IPFS: %s", err.Error())
 			return nil, ErrFileNotFound
 		}
 	}

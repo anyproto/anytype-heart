@@ -40,7 +40,7 @@ type Source interface {
 	Type() model.SmartBlockType
 	Virtual() bool
 	LogHeads() map[string]string
-
+	GetFileKeysSnapshot() []*pb.ChangeFileKeys
 	ReadOnly() bool
 	ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error)
 	ReadMeta(receiver ChangeReceiver) (doc state.Doc, err error)
@@ -458,6 +458,10 @@ func (s *source) applyRecords(records []core.SmartblockRecordEnvelope) error {
 	default:
 		return fmt.Errorf("unsupported tree mode")
 	}
+}
+
+func (s *source) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
+	return s.getFileHashesForSnapshot(nil)
 }
 
 func (s *source) getFileHashesForSnapshot(changeHashes []string) []*pb.ChangeFileKeys {

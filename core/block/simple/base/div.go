@@ -58,6 +58,11 @@ func (b *Div) SetStyle(style model.BlockContentDivStyle) {
 	b.content.Style = style
 }
 
+// Validate TODO: add validation rules
+func (b *Div) Validate() error {
+	return nil
+}
+
 func (d *Div) ApplyEvent(e *pb.EventBlockSetDiv) (err error) {
 	if e.Style != nil {
 		d.content.Style = e.Style.GetValue()

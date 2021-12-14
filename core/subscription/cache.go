@@ -1,6 +1,7 @@
 package subscription
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -14,7 +15,29 @@ type entry struct {
 	id   string
 	data *types.Struct
 
-	refs int
+	subIds   []string
+	isActive bool
+}
+
+func (e *entry) AddSubId(subId string, isActive bool) {
+	if slice.FindPos(e.subIds, subId) == -1 {
+		e.subIds = append(e.subIds, subId)
+	}
+	if isActive {
+		e.isActive = true
+	}
+}
+
+func (e *entry) IsActive() bool {
+	return e.isActive
+}
+
+func (e *entry) RemoveSubId(subId string) {
+	e.subIds = slice.Remove(e.subIds, subId)
+}
+
+func (e *entry) SubIds() []string {
+	return e.subIds
 }
 
 func (e *entry) Get(key string) *types.Value {
@@ -25,43 +48,31 @@ type cache struct {
 	entries map[string]*entry
 }
 
-func (c *cache) get(id string) *entry {
-	if e := c.entries[id]; e != nil {
-		e.refs++
-		return e
-	}
-	return nil
-}
-
-func (c *cache) release(id string) {
-	if e := c.entries[id]; e != nil {
-		e.refs--
-		if e.refs == 0 {
-			delete(c.entries, id)
-		}
-	}
-}
-
-func (c *cache) pick(id string) *entry {
+func (c *cache) Get(id string) *entry {
 	return c.entries[id]
 }
 
-func (c *cache) exists(id string) bool {
-	_, ok := c.entries[id]
-	return ok
-}
-
-func (c *cache) getOrSet(e *entry) *entry {
-	if !c.exists(e.id) {
-		c.set(e)
+func (c *cache) GetOrSet(e *entry) *entry {
+	if res, ok := c.entries[e.id]; ok {
+		return res
 	}
-	return c.get(e.id)
+	c.entries[e.id] = e
+	return e
 }
 
-func (c *cache) set(e *entry) {
-	if ex, ok := c.entries[e.id]; ok {
-		ex.data = e.data
-	} else {
-		c.entries[e.id] = e
+func (c *cache) Set(e *entry) {
+	c.entries[e.id] = e
+}
+
+func (c *cache) Remove(id string) {
+	delete(c.entries, id)
+}
+
+func (c *cache) RemoveSubId(id, subId string) {
+	if e := c.Get(id); e != nil {
+		e.RemoveSubId(subId)
+		if len(e.SubIds()) == 0 {
+			c.Remove(id)
+		}
 	}
 }

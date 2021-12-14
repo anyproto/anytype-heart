@@ -90,6 +90,10 @@ func (b *Base) Copy() simple.Block {
 	return NewBase(pbtypes.CopyBlock(b.Model()))
 }
 
+func (b *Base) Validate() error {
+	return nil
+}
+
 func (b *Base) String() string {
 	return fmt.Sprintf("%s: %T (%d)", b.Id, b.Content, len(b.ChildrenIds))
 }

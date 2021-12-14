@@ -5,11 +5,12 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
-	"github.com/gogo/protobuf/proto"
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
+	"github.com/gogo/protobuf/proto"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -296,6 +297,11 @@ func (s *service) initPredefinedBlocks() {
 	}
 	startTime := time.Now()
 	for _, id := range ids {
+		headsHash, _ := s.anytype.ObjectStore().GetLastIndexedHeadsHash(id)
+		if headsHash != "" {
+			// skip object that has been already indexed before
+			continue
+		}
 		ctx := &smartblock.InitContext{State: state.NewDoc(id, nil).(*state.State)}
 		// this is needed so that old account will create its state successfully on first launch
 		if id == s.anytype.PredefinedBlocks().AccountOld {
@@ -755,12 +761,13 @@ func (s *service) DeleteObject(id string) (err error) {
 			if err = s.Anytype().FileStore().DeleteByHash(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to delete file from filestore: %s", err.Error())
 			}
-			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
-				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
-			}
+			// space will be reclaimed on the next GC cycle
 			if _, err = s.Anytype().FileOffload(fileHash); err != nil {
 				log.With("file", fileHash).Errorf("failed to offload file: %s", err.Error())
 				continue
+			}
+			if err = s.Anytype().FileStore().DeleteFileKeys(fileHash); err != nil {
+				log.With("file", fileHash).Errorf("failed to delete file keys: %s", err.Error())
 			}
 
 		}
@@ -866,7 +873,15 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		SetDetailsMs: time.Now().Sub(startTime).Milliseconds(),
 	}
 	ctx = context.WithValue(ctx, ObjectCreateEvent, ev)
-	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, sbType)
+	var tid = thread.Undef
+	if id := pbtypes.GetString(createState.CombinedDetails(), bundle.RelationKeyId.String()); id != "" {
+		tid, err = thread.Decode(id)
+		if err != nil {
+			log.Errorf("failed to decode thread id from the state: %s", err.Error())
+		}
+	}
+
+	csm, err := s.CreateObjectInWorkspace(ctx, workspaceId, tid, sbType)
 	if err != nil {
 		err = fmt.Errorf("anytype.CreateBlock error: %v", err)
 		return
@@ -1297,6 +1312,9 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
 		ts.InjectDerivedDetails()
+		// preserve localDetails from the original object
+		ts.SetLocalDetails(orig.LocalDetails())
+
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
 }

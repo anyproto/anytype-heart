@@ -108,7 +108,17 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 			req.TargetId = template.HeaderLayoutId
 		}
 	}
+	if req.Block.GetContent() == nil {
+		err = fmt.Errorf("no block content")
+		return
+	}
+	req.Block.Id = ""
 	block := simple.New(req.Block)
+	block.Model().ChildrenIds = nil
+	err = block.Validate()
+	if err != nil {
+		return
+	}
 	s.Add(block)
 	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
 		return
@@ -205,8 +215,17 @@ func (bs *basic) Replace(ctx *state.Context, id string, block *model.Block) (new
 	}
 
 	s := bs.NewStateCtx(ctx)
+	if block.GetContent() == nil {
+		err = fmt.Errorf("no block content")
+		return
+	}
 	new := simple.New(block)
 	newId = new.Model().Id
+	new.Model().ChildrenIds = nil
+	err = new.Validate()
+	if err != nil {
+		return
+	}
 	s.Add(new)
 	if err = s.InsertTo(id, model.Block_Replace, newId); err != nil {
 		return

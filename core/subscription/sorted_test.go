@@ -20,6 +20,7 @@ func TestSubscription_Internal(t *testing.T) {
 				afterId: "id101",
 			}
 			require.Equal(t, ErrAfterId, sub.init(genEntries(100, false)))
+			assert.Len(t, sub.cache.entries, 0)
 		})
 		t.Run("beforeId err", func(t *testing.T) {
 			sub := &sortedSub{
@@ -28,6 +29,7 @@ func TestSubscription_Internal(t *testing.T) {
 				beforeId: "id101",
 			}
 			require.Equal(t, ErrBeforeId, sub.init(genEntries(100, false)))
+			assert.Len(t, sub.cache.entries, 0)
 		})
 	})
 	t.Run("lookup", func(t *testing.T) {
@@ -37,9 +39,14 @@ func TestSubscription_Internal(t *testing.T) {
 				cache: newCache(),
 			}
 			require.NoError(t, sub.init(genEntries(100, false)))
-			inSet, inActive := sub.lookup(sub.cache.pick("id50"))
+			inSet, inActive := sub.lookup(sub.cache.Get("id50"))
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
+
+			assert.Len(t, sub.cache.entries, 100)
+			for _, e := range sub.cache.entries {
+				assert.Len(t, e.SubIds(), 1)
+			}
 		})
 		t.Run("with limit", func(t *testing.T) {
 			sub := &sortedSub{
@@ -48,10 +55,10 @@ func TestSubscription_Internal(t *testing.T) {
 				limit: 10,
 			}
 			require.NoError(t, sub.init(genEntries(100, false)))
-			inSet, inActive := sub.lookup(sub.cache.pick("id11"))
+			inSet, inActive := sub.lookup(sub.cache.Get("id11"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
-			inSet, inActive = sub.lookup(sub.cache.pick("id10"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id10"))
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 		})
@@ -63,13 +70,13 @@ func TestSubscription_Internal(t *testing.T) {
 			}
 			require.NoError(t, sub.init(genEntries(100, false)))
 
-			inSet, inActive := sub.lookup(sub.cache.pick("id49"))
+			inSet, inActive := sub.lookup(sub.cache.Get("id49"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
-			inSet, inActive = sub.lookup(sub.cache.pick("id50"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id50"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
-			inSet, inActive = sub.lookup(sub.cache.pick("id51"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id51"))
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 		})
@@ -80,15 +87,15 @@ func TestSubscription_Internal(t *testing.T) {
 				beforeId: "id50",
 			}
 			require.NoError(t, sub.init(genEntries(100, false)))
-			inSet, inActive := sub.lookup(sub.cache.pick("id51"))
+			inSet, inActive := sub.lookup(sub.cache.Get("id51"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id50"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id50"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id49"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id49"))
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 		})
@@ -101,15 +108,15 @@ func TestSubscription_Internal(t *testing.T) {
 			}
 			require.NoError(t, sub.init(genEntries(100, false)))
 
-			inSet, inActive := sub.lookup(sub.cache.pick("id49"))
+			inSet, inActive := sub.lookup(sub.cache.Get("id49"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id60"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id60"))
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id61"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id61"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 		})
@@ -122,15 +129,15 @@ func TestSubscription_Internal(t *testing.T) {
 			}
 			require.NoError(t, sub.init(genEntries(100, false)))
 
-			inSet, inActive := sub.lookup(sub.cache.pick("id51"))
+			inSet, inActive := sub.lookup(sub.cache.Get("id51"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id40"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id40"))
 			assert.True(t, inSet, "inSet")
 			assert.True(t, inActive, "inActive")
 
-			inSet, inActive = sub.lookup(sub.cache.pick("id39"))
+			inSet, inActive = sub.lookup(sub.cache.Get("id39"))
 			assert.True(t, inSet, "inSet")
 			assert.False(t, inActive, "inActive")
 		})
@@ -244,6 +251,7 @@ func TestSubscription_Internal(t *testing.T) {
 func TestSubscription_Add(t *testing.T) {
 	t.Run("add", func(t *testing.T) {
 		sub := &sortedSub{
+			id:      "test",
 			order:   testOrder,
 			cache:   newCache(),
 			limit:   3,
@@ -258,13 +266,20 @@ func TestSubscription_Add(t *testing.T) {
 			genEntry("afterId2", 10),
 		}
 
-		ctx := &opCtx{}
-		sub.onChangeBatch(ctx, newEntries...)
+		assert.Len(t, sub.cache.entries, 9)
+
+		ctx := &opCtx{c: sub.cache, entries: newEntries}
+		sub.onChange(ctx)
 		assertCtxAdd(t, ctx, "newActiveId1", "id3")
 		assertCtxAdd(t, ctx, "newActiveId2", "newActiveId1")
 		assertCtxRemove(t, ctx, "id5", "id6")
-		assertCtxCounters(t, ctx, opCounter{total: 14, prevCount: 4, nextCount: 7})
-		t.Logf("%#v", ctx)
+		assertCtxCounters(t, ctx, opCounter{subId: "test", total: 14, prevCount: 4, nextCount: 7})
+
+		ctx.apply()
+		assert.Len(t, sub.cache.entries, 9+len(newEntries))
+		for _, e := range sub.cache.entries {
+			assert.Equal(t, []string{"test"}, e.SubIds())
+		}
 	})
 }
 
@@ -285,11 +300,12 @@ func TestSubscription_Remove(t *testing.T) {
 	t.Run("remove active", func(t *testing.T) {
 		sub := newSub()
 		require.NoError(t, sub.init(genEntries(9, false)))
-		ctx := &opCtx{}
-		sub.onChangeBatch(ctx, &entry{
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, &entry{
 			id:   "id4",
 			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
 		})
+		sub.onChange(ctx)
 		assertCtxRemove(t, ctx, "id4")
 		assertCtxCounters(t, ctx, opCounter{total: 8, prevCount: 3, nextCount: 2})
 		assertCtxAdd(t, ctx, "id7", "id6")
@@ -297,11 +313,12 @@ func TestSubscription_Remove(t *testing.T) {
 	t.Run("remove non active", func(t *testing.T) {
 		sub := newSub()
 		require.NoError(t, sub.init(genEntries(9, false)))
-		ctx := &opCtx{}
-		sub.onChangeBatch(ctx, &entry{
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, &entry{
 			id:   "id1",
 			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(100)}},
 		})
+		sub.onChange(ctx)
 		assertCtxCounters(t, ctx, opCounter{total: 8, prevCount: 2, nextCount: 3})
 	})
 }
@@ -315,11 +332,12 @@ func TestSubscription_Change(t *testing.T) {
 			afterId: "id3",
 		}
 		require.NoError(t, sub.init(genEntries(9, false)))
-		ctx := &opCtx{}
-		sub.onChangeBatch(ctx, &entry{
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, &entry{
 			id:   "id4",
 			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(6)}},
 		})
+		sub.onChange(ctx)
 		assertCtxPosition(t, ctx, "id4", "id5")
 		assertCtxChange(t, ctx, "id4")
 	})

@@ -32,6 +32,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/profilefinder"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
+	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 )
@@ -52,10 +53,7 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 		Register(profilefinder.New()).
 		Register(eventSender)
 
-	metrics.SharedClient.SetAppVersion(a.Version())
-	metrics.SharedClient.Run()
 	if err = a.Start(); err != nil {
-		metrics.SharedClient.Close()
 		return
 	}
 
@@ -81,6 +79,7 @@ func StartNewApp(components ...app.Component) (a *app.App, err error) {
 		a = nil
 		return
 	}
+
 	return
 }
 
@@ -113,6 +112,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(restriction.New()).
 		Register(debug.New()).
 		Register(doc.New()).
-		Register(subscription.New())
+		Register(subscription.New()).
+		Register(builtinobjects.New())
 	return
 }

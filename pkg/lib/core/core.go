@@ -63,7 +63,7 @@ type Service interface {
 	GetBlock(blockId string) (SmartBlock, error)
 	GetBlockCtx(ctx context.Context, blockId string) (SmartBlock, error)
 
-	// FileOffload removes file blocks ercursively, but leave details
+	// FileOffload removes file blocks recursively, but leave details
 	FileOffload(id string) (bytesRemoved uint64, err error)
 
 	FileByHash(ctx context.Context, hash string) (File, error)

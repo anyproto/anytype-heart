@@ -35,21 +35,23 @@ type opCounter struct {
 
 type opCtx struct {
 	// subIds for remove
-	remove     []opRemove
-	change     []opChange
-	add        []opChange
-	position   []opPosition
-	counters   []opCounter
-	depEntries []*entry
+	remove   []opRemove
+	change   []opChange
+	add      []opChange
+	position []opPosition
+	counters []opCounter
+	entries  []*entry
 
 	keysBuf []struct {
 		id     string
 		subIds []string
 		keys   []string
 	}
+
+	c *cache
 }
 
-func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
+func (ctx *opCtx) apply() (events []*pb.Event) {
 	var byEventsContext = make(map[string][]*pb.EventMessage)
 	var appendToContext = func(contextId string, msg ...*pb.EventMessage) {
 		msgs, ok := byEventsContext[contextId]
@@ -79,7 +81,7 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	}
 
 	// details events
-	appendToContext("", ctx.detailsEvents(c, entries)...)
+	appendToContext("", ctx.detailsEvents()...)
 
 	// positions
 	for _, pos := range ctx.position {
@@ -118,11 +120,12 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	}
 
 	// apply to cache
-	for _, e := range entries {
-		c.set(e)
-	}
-	for _, e := range ctx.depEntries {
-		c.set(e)
+	for _, e := range ctx.entries {
+		if len(e.SubIds()) > 0 {
+			ctx.c.Set(e)
+		} else {
+			ctx.c.Remove(e.id)
+		}
 	}
 
 	events = make([]*pb.Event, 0, len(byEventsContext))
@@ -144,14 +147,9 @@ func (ctx *opCtx) apply(c *cache, entries []*entry) (events []*pb.Event) {
 	return
 }
 
-func (ctx *opCtx) detailsEvents(c *cache, entries []*entry) (msgs []*pb.EventMessage) {
+func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
 	var getEntry = func(id string) *entry {
-		for _, e := range entries {
-			if e.id == id {
-				return e
-			}
-		}
-		for _, e := range ctx.depEntries {
+		for _, e := range ctx.entries {
 			if e.id == id {
 				return e
 			}
@@ -164,9 +162,9 @@ func (ctx *opCtx) detailsEvents(c *cache, entries []*entry) (msgs []*pb.EventMes
 			log.Errorf("entry present in changes but not in list: %v", info.id)
 			continue
 		}
-		prev := c.pick(info.id)
+		prev := ctx.c.Get(info.id)
 		var prevData *types.Struct
-		if prev != nil {
+		if prev != nil && prev.IsActive() {
 			prevData = prev.data
 		}
 		diff := pbtypes.StructDiff(prevData, curr.data)
@@ -202,6 +200,16 @@ func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
 	}
 }
 
+func (ctx *opCtx) getEntry(id string) *entry {
+	for _, e := range ctx.entries {
+		if e.id == id {
+			return e
+		}
+	}
+	return nil
+}
+
+
 func (ctx *opCtx) reset() {
 	ctx.remove = ctx.remove[:0]
 	ctx.change = ctx.change[:0]
@@ -209,5 +217,6 @@ func (ctx *opCtx) reset() {
 	ctx.position = ctx.position[:0]
 	ctx.counters = ctx.counters[:0]
 	ctx.keysBuf = ctx.keysBuf[:0]
-	ctx.depEntries = ctx.depEntries[:0]
+	ctx.entries = ctx.entries[:0]
 }
+

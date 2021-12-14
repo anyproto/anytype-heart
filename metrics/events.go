@@ -226,6 +226,23 @@ func (c StateApply) ToEvent() Event {
 	}
 }
 
+type AppStart struct {
+	Type      string
+	TotalMs   int64
+	PerCompMs map[string]int64
+}
+
+func (c AppStart) ToEvent() Event {
+	return Event{
+		EventType: "app_start",
+		EventData: map[string]interface{}{
+			"type":     c.Type,
+			"time_ms":  c.TotalMs,
+			"per_comp": c.PerCompMs,
+		},
+	}
+}
+
 type InitPredefinedBlocks struct {
 	TimeMs int64
 }

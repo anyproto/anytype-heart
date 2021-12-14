@@ -86,6 +86,11 @@ func (td *textDetails) Copy() simple.Block {
 	}
 }
 
+// Validate TODO: add validation rules
+func (td *textDetails) Validate() error {
+	return nil
+}
+
 func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err error) {
 	sd, ok := s.(*textDetails)
 	if !ok {
