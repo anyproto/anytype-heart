@@ -209,7 +209,7 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 		}
 		ok := s.Unlink(b.Id)
 		if !ok {
-			return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block with id: %s", b.Id)
+			return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block")
 		}
 	}
 
