@@ -41,7 +41,7 @@ type Service interface {
 type subscription interface {
 	init(entries []*entry) (err error)
 	counters() (prev, next int)
-	onChangeBatch(ctx *opCtx, entries ...*entry)
+	onChange(ctx *opCtx)
 	getActiveRecords() (res []*types.Struct)
 	close()
 }
@@ -66,7 +66,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.recBatch = mb.New(0)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
-	s.ctxBuf = &opCtx{}
+	s.ctxBuf = &opCtx{c: s.cache}
 	return
 }
 
@@ -248,11 +248,12 @@ func (s *service) onChange(entries []*entry) {
 	s.m.Lock()
 	defer s.m.Unlock()
 	s.ctxBuf.reset()
+	s.ctxBuf.entries = entries
 	for _, sub := range s.subscriptions {
-		sub.onChangeBatch(s.ctxBuf, entries...)
+		sub.onChange(s.ctxBuf)
 	}
 	log.Debugf("handle %d etries; ctx: %#v", len(entries), s.ctxBuf)
-	events := s.ctxBuf.apply(s.cache, entries)
+	events := s.ctxBuf.apply()
 	for _, e := range events {
 		s.sendEvent(e)
 	}

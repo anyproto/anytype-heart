@@ -88,9 +88,9 @@ func TestService_Search(t *testing.T) {
 		})
 
 		require.Len(t, fx.Service.(*service).cache.entries, 3)
-		assert.Equal(t, 2, fx.Service.(*service).cache.entries["1"].refs)
-		assert.Equal(t, 1, fx.Service.(*service).cache.entries["author2"].refs)
-		assert.Equal(t, 1, fx.Service.(*service).cache.entries["author3"].refs)
+		assert.Len(t, fx.Service.(*service).cache.entries["1"].SubIds(), 2)
+		assert.Len(t, fx.Service.(*service).cache.entries["author2"].SubIds(), 1)
+		assert.Len(t, fx.Service.(*service).cache.entries["author3"].SubIds(), 1)
 
 		fx.events = fx.events[:0]
 
@@ -101,16 +101,7 @@ func TestService_Search(t *testing.T) {
 			}}},
 		})
 
-		/*
-			for _, e := range fx.events {
-				t.Log(pbtypes.Sprint(e))
-			}
-			for _, e := range fx.Service.(*service).cache.entries {
-				t.Log(e.id, e.refs)
-			}*/
-
 		assert.Len(t, fx.Service.(*service).cache.entries, 1)
-		assert.Equal(t, 1, fx.Service.(*service).cache.entries["1"].refs)
 
 		assert.NoError(t, fx.Unsubscribe("test"))
 		assert.Len(t, fx.Service.(*service).cache.entries, 0)
@@ -123,14 +114,14 @@ func TestService_Search(t *testing.T) {
 		newSub(fx, "test")
 
 		require.Len(t, fx.Service.(*service).cache.entries, 2)
-		assert.Equal(t, 1, fx.Service.(*service).cache.entries["1"].refs)
-		assert.Equal(t, 1, fx.Service.(*service).cache.entries["author1"].refs)
+		assert.Equal(t, []string{"test"}, fx.Service.(*service).cache.entries["1"].SubIds())
+		assert.Equal(t, []string{"test/dep"}, fx.Service.(*service).cache.entries["author1"].SubIds())
 
 		newSub(fx, "test1")
 
 		require.Len(t, fx.Service.(*service).cache.entries, 2)
-		assert.Equal(t, 2, fx.Service.(*service).cache.entries["1"].refs)
-		assert.Equal(t, 2, fx.Service.(*service).cache.entries["author1"].refs)
+		assert.Len(t, fx.Service.(*service).cache.entries["1"].SubIds(), 2)
+		assert.Len(t, fx.Service.(*service).cache.entries["author1"].SubIds(), 2)
 	})
 }
 

@@ -9,30 +9,32 @@ import (
 func TestSimpleSub_Changes(t *testing.T) {
 	t.Run("add to set", func(t *testing.T) {
 		sub := &simpleSub{
-			keys:             []string{"id", "order"},
-			cache:            newCache(),
+			keys:  []string{"id", "order"},
+			cache: newCache(),
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
-		ctx := &opCtx{}
-		sub.onChangeBatch(ctx, genEntry("id5", 109))
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, genEntry("id5", 109))
+		sub.onChange(ctx)
 		assertCtxChange(t, ctx, "id5")
 	})
 	t.Run("miss set", func(t *testing.T) {
 		sub := &simpleSub{
-			keys:             []string{"id", "order"},
-			cache:            newCache(),
+			keys:  []string{"id", "order"},
+			cache: newCache(),
 		}
 		require.NoError(t, sub.init(genEntries(10, false)))
-		ctx := &opCtx{}
-		sub.onChangeBatch(ctx, genEntry("id50", 100))
+		ctx := &opCtx{c: sub.cache}
+		ctx.entries = append(ctx.entries, genEntry("id50", 100))
+		sub.onChange(ctx)
 		assertCtxEmpty(t, ctx)
 	})
 }
 
 func TestSimpleSub_Refill(t *testing.T) {
 	sub := &simpleSub{
-		keys:             []string{"id", "order"},
-		cache:            newCache(),
+		keys:  []string{"id", "order"},
+		cache: newCache(),
 	}
 	require.NoError(t, sub.init(genEntries(3, false)))
 	ctx := &opCtx{}

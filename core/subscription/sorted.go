@@ -58,12 +58,14 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 		}
 	}()
 
-	for _, e := range entries {
-		e = s.cache.getOrSet(e)
+	for i, e := range entries {
+		e = s.cache.GetOrSet(e)
+		entries[i] = e
+		e.AddSubId(s.id, true)
 		s.skl.Set(e, nil)
 	}
 	if s.afterId != "" {
-		e := s.cache.pick(s.afterId)
+		e := s.cache.Get(s.afterId)
 		if e == nil {
 			err = ErrAfterId
 			return
@@ -74,7 +76,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 			return
 		}
 	} else if s.beforeId != "" {
-		e := s.cache.pick(s.beforeId)
+		e := s.cache.Get(s.beforeId)
 		if e == nil {
 			err = ErrBeforeId
 			return
@@ -102,19 +104,24 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 		}
 	}
 
+	activeEntries := s.getActiveEntries()
+	for _, ae := range activeEntries {
+		ae.AddSubId(s.id, true)
+	}
+
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", s.getActiveEntries(), s.keys, s.depKeys)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys)
 		}
 	}
 	return nil
 }
 
-func (s *sortedSub) onChangeBatch(ctx *opCtx, entries ...*entry) {
+func (s *sortedSub) onChange(ctx *opCtx) {
 	var countersChanged, activeChanged bool
-	for _, e := range entries {
-		ch, ac := s.onChange(ctx, e)
+	for _, e := range ctx.entries {
+		ch, ac := s.onEntryChange(ctx, e)
 		if ch {
 			countersChanged = true
 		}
@@ -136,12 +143,12 @@ func (s *sortedSub) onChangeBatch(ctx *opCtx, entries ...*entry) {
 	}
 }
 
-func (s *sortedSub) onChange(ctx *opCtx, e *entry) (countersChanged, activeChanged bool) {
+func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (countersChanged, activeChanged bool) {
 	newInSet := true
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e)
 	}
-	curInSet, currInActive := s.lookup(s.cache.pick(e.id))
+	curInSet, currInActive := s.lookup(s.cache.Get(e.id))
 	if !curInSet && !newInSet {
 		return false, false
 	}
@@ -165,7 +172,7 @@ func (s *sortedSub) onChange(ctx *opCtx, e *entry) (countersChanged, activeChang
 }
 
 func (s *sortedSub) removeNonActive(id string) {
-	e := s.cache.pick(id)
+	e := s.cache.Get(id)
 	if s.afterEl != nil {
 		if comp := s.Compare(s.afterEl.Key(), s.skl.Get(e).Key()); comp <= 0 {
 			if comp == 0 {
@@ -186,12 +193,10 @@ func (s *sortedSub) removeNonActive(id string) {
 		}
 	}
 	s.skl.Remove(e)
-	s.cache.release(e.id)
 }
 
 func (s *sortedSub) removeActive(ctx *opCtx, e *entry) {
-	s.skl.Remove(s.cache.pick(e.id))
-	s.cache.release(e.id)
+	s.skl.Remove(s.cache.Get(e.id))
 	ctx.remove = append(ctx.remove, opRemove{
 		id:    e.id,
 		subId: s.id,
@@ -201,7 +206,6 @@ func (s *sortedSub) removeActive(ctx *opCtx, e *entry) {
 
 func (s *sortedSub) add(ctx *opCtx, e *entry) (countersChanged, activeChanged bool) {
 	s.skl.Set(e, nil)
-	e.refs++
 	_, inActive := s.lookup(e)
 	if inActive {
 		var afterId string
@@ -215,19 +219,21 @@ func (s *sortedSub) add(ctx *opCtx, e *entry) (countersChanged, activeChanged bo
 			afterId: afterId,
 		})
 		s.alignRemove(ctx)
+		e.AddSubId(s.id, true)
 		return true, true
 	}
+	e.AddSubId(s.id, false)
 	return true, false
 }
 
 func (s *sortedSub) change(ctx *opCtx, e *entry, currInActive bool) (countersChanged, activeChanged bool) {
 	var currAfterId string
 	if currInActive {
-		if prev := s.skl.Get(s.cache.pick(e.id)).Prev(); prev != nil {
+		if prev := s.skl.Get(s.cache.Get(e.id)).Prev(); prev != nil {
 			currAfterId = prev.Key().(*entry).id
 		}
 	}
-	s.skl.Remove(s.cache.pick(e.id))
+	s.skl.Remove(s.cache.Get(e.id))
 	s.skl.Set(e, nil)
 	_, newInActive := s.lookup(e)
 	if newInActive {
@@ -252,6 +258,7 @@ func (s *sortedSub) change(ctx *opCtx, e *entry, currInActive bool) (countersCha
 			subId: s.id,
 			keys:  s.keys,
 		})
+		e.AddSubId(s.id, true)
 	} else {
 		if currInActive {
 			ctx.remove = append(ctx.remove, opRemove{
@@ -262,6 +269,7 @@ func (s *sortedSub) change(ctx *opCtx, e *entry, currInActive bool) (countersCha
 			activeChanged = true
 		}
 		countersChanged = true
+		e.AddSubId(s.id, false)
 	}
 	return
 }
@@ -541,7 +549,7 @@ func (s *sortedSub) CalcScore(key interface{}) float64 {
 func (s *sortedSub) close() {
 	el := s.skl.Front()
 	for el != nil {
-		s.cache.release(el.Key().(*entry).id)
+		s.cache.RemoveSubId(el.Key().(*entry).id, s.id)
 		el = el.Next()
 	}
 	if s.depSub != nil {

@@ -20,21 +20,20 @@ type dependencyService struct {
 	isRelationObjMap map[string]bool
 }
 
-func (ds *dependencyService) makeSubscriptionByEntries(subId string, entries []*entry, keys, depKeys []string) *simpleSub {
+func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries, activeEntries []*entry, keys, depKeys []string) *simpleSub {
 	depSub := ds.s.newSimpleSub(subId, keys, true)
-	depEntries := ds.depEntriesByEntries(entries, depKeys)
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, activeEntries, depKeys)
 	depSub.init(depEntries)
 	return depSub
 }
 
 func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []string) {
-	depEntries := ds.depEntriesByEntries(entries, depKeys)
+	depEntries := ds.depEntriesByEntries(ctx, entries, depKeys)
 	sub.refill(ctx, depEntries)
-	ctx.depEntries = append(ctx.depEntries, depEntries...)
 	return
 }
 
-func (ds *dependencyService) depEntriesByEntries(entries []*entry, depKeys []string) (depEntries []*entry) {
+func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, entries []*entry, depKeys []string) (depEntries []*entry) {
 	var depIds []string
 	for _, e := range entries {
 		for _, k := range depKeys {
@@ -54,10 +53,26 @@ func (ds *dependencyService) depEntriesByEntries(entries []*entry, depKeys []str
 	}
 	depEntries = make([]*entry, 0, len(depRecords))
 	for _, r := range depRecords {
-		depEntries = append(depEntries, &entry{
-			id:   pbtypes.GetString(r.Details, "id"),
-			data: r.Details,
-		})
+		var e *entry
+		id := pbtypes.GetString(r.Details, "id")
+
+		// priority: ctx.entries, cache, objectStore
+		if e = ctx.getEntry(id); e == nil {
+			if e = ds.s.cache.Get(id); e == nil {
+				e = &entry{
+					id:   id,
+					data: r.Details,
+				}
+			} else {
+				e = &entry{
+					id:     id,
+					data:   e.data,
+					subIds: e.subIds,
+				}
+			}
+			ctx.entries = append(ctx.entries, e)
+		}
+		depEntries = append(depEntries, e)
 	}
 	return
 }
