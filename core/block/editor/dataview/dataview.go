@@ -111,7 +111,9 @@ func (d *dataviewCollectionImpl) SetSource(ctx *state.Context, blockId string, s
 		filtered := d.dataviews[:0]
 		for _, dv := range d.dataviews {
 			if dv.blockId == blockId {
-				dv.recordsUpdatesCancel()
+				if dv.recordsUpdatesCancel != nil {
+					dv.recordsUpdatesCancel()
+				}
 				continue
 			}
 			filtered = append(filtered, dv)
