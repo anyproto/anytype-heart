@@ -3,6 +3,7 @@ package source
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/textileio/go-threads/core/db"
 	"github.com/textileio/go-threads/core/thread"
 	threadsUtil "github.com/textileio/go-threads/util"
@@ -325,4 +326,8 @@ func (v *threadDB) createState() (*state.State, error) {
 	s.SetDetails(v.getDetails())
 
 	return s, nil
+}
+
+func (s *threadDB) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
+	return nil
 }

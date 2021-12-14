@@ -89,6 +89,11 @@ func (t *Text) Copy() simple.Block {
 	return NewText(pbtypes.CopyBlock(t.Model()))
 }
 
+// Validate TODO: add validation rules
+func (t *Text) Validate() error {
+	return nil
+}
+
 func (t *Text) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	text, ok := b.(*Text)
 	if !ok {
@@ -564,7 +569,7 @@ func (t *Text) String() string {
 func (t *Text) FillSmartIds(ids []string) []string {
 	if t.content.Marks != nil {
 		for _, m := range t.content.Marks.Marks {
-			if (m.Type == model.BlockContentTextMark_Mention || 
+			if (m.Type == model.BlockContentTextMark_Mention ||
 				m.Type == model.BlockContentTextMark_Object) && m.Param != "" {
 				ids = append(ids, m.Param)
 			}

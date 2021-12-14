@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -70,5 +71,9 @@ func (v *virtual) Close() (err error) {
 }
 
 func (v *virtual) LogHeads() map[string]string {
+	return nil
+}
+
+func (s *virtual) GetFileKeysSnapshot() []*pb.ChangeFileKeys {
 	return nil
 }

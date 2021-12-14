@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -1157,6 +1158,14 @@ func (s *State) GetAllFileHashes(detailsKeys []string) (hashes []string) {
 	}
 
 	for _, key := range detailsKeys {
+		if key == bundle.RelationKeyCoverId.String() {
+			v := pbtypes.GetString(det, key)
+			_, err := cid.Decode(v)
+			if err != nil {
+				// this is an exception cause coverId can contains not a file hash but color
+				continue
+			}
+		}
 		if v := pbtypes.GetStringList(det, key); v != nil {
 			for _, hash := range v {
 				if hash == "" {

@@ -28,6 +28,7 @@ type Block interface {
 	Diff(block Block) (msgs []EventMessage, err error)
 	String() string
 	Copy() Block
+	Validate() error
 }
 
 type FileHashes interface {

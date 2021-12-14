@@ -8,26 +8,27 @@ import (
 	"github.com/gogo/protobuf/jsonpb"
 )
 
-func NewConverter(s *state.State) converter.Converter {
+func NewConverter(s state.Doc) converter.Converter {
 	return &pbj{s}
 }
 
 type pbj struct {
-	s *state.State
+	s state.Doc
 }
 
 func (p *pbj) Convert() []byte {
+	st := p.s.NewState()
 	snapshot := &pb.ChangeSnapshot{
 		Data: &model.SmartBlockSnapshotBase{
-			Blocks:         p.s.BlocksToSave(),
-			Details:        p.s.Details(),
-			ExtraRelations: p.s.ExtraRelations(),
-			ObjectTypes:    p.s.ObjectTypes(),
-			Collections:    p.s.Store(),
+			Blocks:         st.BlocksToSave(),
+			Details:        st.CombinedDetails(),
+			ExtraRelations: st.ExtraRelations(),
+			ObjectTypes:    st.ObjectTypes(),
+			Collections:    st.Store(),
 		},
 	}
 	for _, fk := range p.s.GetFileKeys() {
-		snapshot.FileKeys = append(snapshot.FileKeys, &fk)
+		snapshot.FileKeys = append(snapshot.FileKeys, &pb.ChangeFileKeys{Hash: fk.Hash, Keys: fk.Keys})
 	}
 	m := jsonpb.Marshaler{Indent: " "}
 	result, _ := m.MarshalToString(snapshot)

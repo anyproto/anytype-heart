@@ -93,6 +93,11 @@ func (f *Bookmark) Copy() simple.Block {
 	}
 }
 
+// Validate TODO: add validation rules
+func (f *Bookmark) Validate() error {
+	return nil
+}
+
 func (f *Bookmark) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	bookmark, ok := b.(*Bookmark)
 	if !ok {

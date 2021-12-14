@@ -45,6 +45,11 @@ func (l *Latex) Copy() simple.Block {
 	}
 }
 
+// Validate TODO: add validation rules
+func (l *Latex) Validate() error {
+	return nil
+}
+
 func (l *Latex) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	latex, ok := b.(*Latex)
 	if !ok {
