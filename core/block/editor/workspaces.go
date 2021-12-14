@@ -2,7 +2,10 @@ package editor
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -18,7 +21,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
 	"github.com/textileio/go-threads/core/thread"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -284,7 +286,8 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	err = smartblock.ApplyTemplate(p, ctx.State,
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
+	return smartblock.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,
@@ -294,13 +297,9 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 			template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String("Personal space"))),
 		template.WithForcedDetail(bundle.RelationKeyFeaturedRelations, pbtypes.StringList([]string{bundle.RelationKeyType.String(), bundle.RelationKeyCreator.String()})),
 		template.WithDataviewID("highlighted", dataviewAllHighlightedObjects, false),
-		template.WithDataviewID("dataview", dataviewAllWorkspaceObjects, false),
+		template.WithDataviewID(template.DataviewBlockId, dataviewAllWorkspaceObjects, false),
+		template.WithBlockField(template.DataviewBlockId, dataview.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
 	)
-	if err != nil {
-		return err
-	}
-	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
-	return p.Set.SetNewRecordDefaultFields("dataview", defaultValue)
 }
 
 // TODO: try to save results from processing of previous state and get changes from apply for performance

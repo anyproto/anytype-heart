@@ -3,6 +3,7 @@ package editor
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -78,13 +79,14 @@ func (p *MarketplaceType) Init(ctx *smartblock.InitContext) (err error) {
 			},
 		},
 	}
-	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Types"), template.WithDetailIconEmoji("📒"), template.WithRequiredRelations())
+	templates = append(templates,
+		template.WithDataview(dataview, true),
+		template.WithDetailName("Types"),
+		template.WithDetailIconEmoji("📒"),
+		template.WithRequiredRelations(),
+	)
 
-	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
-		return
-	}
-	p.WithSystemObjects(true)
-	return p.FillAggregatedOptions(nil)
+	return smartblock.ApplyTemplate(p, ctx.State, templates...)
 }
 
 type MarketplaceRelation struct {
@@ -148,11 +150,7 @@ func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"), template.WithRequiredRelations())
 
-	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
-		return
-	}
-
-	return p.FillAggregatedOptions(nil)
+	return smartblock.ApplyTemplate(p, ctx.State, templates...)
 }
 
 type MarketplaceTemplate struct {
@@ -214,11 +212,14 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 			},
 		},
 	}
-	templates = append(templates, template.WithDataview(dataview, true), template.WithDetailName("Relations"), template.WithDetailIconEmoji("📒"))
+	templates = append(templates,
+		template.WithDataview(dataview, true),
+		template.WithDetailName("Relations"),
+		template.WithDetailIconEmoji("📒"),
+		func(s *state.State) {
+			p.FillAggregatedOptionsState(s)
+		},
+	)
 
-	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
-		return
-	}
-
-	return p.FillAggregatedOptions(nil)
+	return smartblock.ApplyTemplate(p, ctx.State, templates...)
 }

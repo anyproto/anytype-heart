@@ -36,6 +36,12 @@ func String(v string) *types.Value {
 	}
 }
 
+func Struct(v *types.Struct) *types.Value {
+	return &types.Value{
+		Kind: &types.Value_StructValue{StructValue: v},
+	}
+}
+
 func StringList(s []string) *types.Value {
 	var vals = make([]*types.Value, 0, len(s))
 	for _, str := range s {

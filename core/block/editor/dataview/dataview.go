@@ -27,7 +27,7 @@ import (
 	"github.com/google/uuid"
 )
 
-const defaultLimit = 50
+const DefaultDetailsFieldName = "_defaultRecordFields"
 
 var log = logging.Logger("anytype-mw-editor")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
@@ -51,6 +51,7 @@ type Dataview interface {
 	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
 	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
+	FillAggregatedOptionsState(s *state.State) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
 }
@@ -591,7 +592,7 @@ func (d *sdataview) CreateRecord(ctx *state.Context, blockId string, rec model.O
 	if err != nil {
 		return nil, err
 	}
-	if defaultRecordFields := pbtypes.GetStruct(dvBlock.Model().Fields, "_defaultRecordFields"); defaultRecordFields != nil && defaultRecordFields.Fields != nil {
+	if defaultRecordFields := pbtypes.GetStruct(dvBlock.Model().Fields, DefaultDetailsFieldName); defaultRecordFields != nil && defaultRecordFields.Fields != nil {
 		if rec.Details == nil || rec.Details.Fields == nil {
 			rec.Details = defaultRecordFields
 		} else {
@@ -635,17 +636,22 @@ func (d *sdataview) getDatabase(blockId string) (dataview.Block, database.Databa
 
 func (d *sdataview) FillAggregatedOptions(ctx *state.Context) error {
 	st := d.NewStateCtx(ctx)
-	st.Iterate(func(b simple.Block) (isContinue bool) {
+	if err := d.FillAggregatedOptionsState(st); err != nil {
+		return err
+	}
+	return d.Apply(st)
+}
+
+func (d *sdataview) FillAggregatedOptionsState(s *state.State) error {
+	return s.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {
 			return true
 		} else {
-			dvBlock = b.Copy().(dataview.Block)
+			b = s.Get(b.Model().Id)
 			d.fillAggregatedOptions(dvBlock)
-			st.Set(dvBlock)
 			return true
 		}
 	})
-	return d.Apply(st)
 }
 
 func (d *sdataview) fillAggregatedOptions(b dataview.Block) {

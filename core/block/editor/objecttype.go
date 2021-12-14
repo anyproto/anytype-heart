@@ -2,7 +2,9 @@ package editor
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -127,7 +129,9 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		})
 	}
 
-	err = smartblock.ApplyTemplate(p, ctx.State,
+	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
+
+	return smartblock.ApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyObjectType.URL()}),
 		template.WithEmpty,
 		template.WithTitle,
@@ -147,11 +151,9 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypeRecommendedRelationsMigration(recommendedRelations),
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
+		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
+		func(s *state.State) {
+			p.FillAggregatedOptionsState(s)
+		},
 	)
-	if err != nil {
-		return err
-	}
-
-	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyTargetObjectType.String(): pbtypes.String(p.RootId())}}
-	return p.Set.SetNewRecordDefaultFields("templates", defaultValue)
 }

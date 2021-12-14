@@ -3,13 +3,14 @@ package block
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -344,22 +345,6 @@ func (s *service) CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDatavi
 		}
 		rec = cr.Details
 		return nil
-	})
-
-	return
-}
-
-func (s *service) UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRequest) (err error) {
-	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateRecord(ctx, req.BlockId, req.RecordId, model.ObjectDetails{Details: req.Record})
-	})
-
-	return
-}
-
-func (s *service) DeleteDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordDeleteRequest) (err error) {
-	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.DeleteRecord(ctx, req.BlockId, req.RecordId)
 	})
 
 	return

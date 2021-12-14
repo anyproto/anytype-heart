@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
@@ -104,12 +105,13 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		// add missing done relation
 		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))
 	}
-	templates = append(templates, template.WithTitle)
-	if err = smartblock.ApplyTemplate(p, ctx.State, templates...); err != nil {
-		return
-	}
-	p.applyRestrictions(ctx.State)
-	return p.FillAggregatedOptions(nil)
+	templates = append(templates,
+		template.WithTitle,
+		p.applyRestrictions,
+		func(s *state.State) {
+			p.FillAggregatedOptionsState(s)
+		})
+	return smartblock.ApplyTemplate(p, ctx.State, templates...)
 }
 
 func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, icon string) error {

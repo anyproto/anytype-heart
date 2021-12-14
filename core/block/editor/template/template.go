@@ -672,6 +672,19 @@ var WithNoRootLink = func(targetBlockId string) StateTransformer {
 	}
 }
 
+func WithBlockField(blockId, fieldName string, value *types.Value) StateTransformer {
+	return func(s *state.State) {
+		if b := s.Get(blockId); b != nil {
+			fields := b.Model().Fields
+			if fields == nil || fields.Fields == nil {
+				fields = &types.Struct{Fields: map[string]*types.Value{}}
+			}
+			fields.Fields[fieldName] = value
+			b.Model().Fields = fields
+		}
+	}
+}
+
 func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	for _, template := range templates {
 		template(s)
