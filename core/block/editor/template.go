@@ -50,11 +50,13 @@ func (t *Template) Init(ctx *smartblock.InitContext) (err error) {
 	return
 }
 
+// GetNewPageState returns state that can be safely used to create the new document
+// it has not localDetails set
 func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
 	st.SetObjectType(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
-	// clean-up local details from the template
 	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
+	// clean-up local details from the template state
 	st.SetLocalDetails(nil)
 
 	st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))

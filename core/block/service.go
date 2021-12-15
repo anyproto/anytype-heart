@@ -1290,6 +1290,7 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 		}
 		st = b.NewState().Copy()
 		st.RemoveDetail(bundle.RelationKeyTemplateIsBundled.String())
+		st.SetLocalDetails(nil)
 		return nil
 	}); err != nil {
 		return
@@ -1311,9 +1312,9 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
 		ts.BlocksInit(orig)
-		ts.InjectDerivedDetails()
-		// preserve localDetails from the original object
-		ts.SetLocalDetails(orig.LocalDetails())
+		objType := ts.ObjectType()
+		// stateFromTemplate returns state without the localdetails, so they will be taken from the orig state
+		ts.SetObjectType(objType)
 
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
