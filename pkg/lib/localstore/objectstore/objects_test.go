@@ -36,6 +36,8 @@ func TestDsObjectStore_UpdateLocalDetails(t *testing.T) {
 	tmpDir, _ := ioutil.TempDir("", "")
 	defer os.RemoveAll(tmpDir)
 	app := testapp.New()
+	defer app.Close()
+
 	ds := New()
 
 	id, err := threads.ThreadCreateID(thread.AccessControlled, smartblock.SmartBlockTypePage)
@@ -83,6 +85,8 @@ func TestDsObjectStore_IndexQueue(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	app := testapp.New()
+	defer app.Close()
+
 	ds := New()
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ds).Start()
 	require.NoError(t, err)
@@ -138,6 +142,8 @@ func TestDsObjectStore_Query(t *testing.T) {
 	defer os.RemoveAll(tmpDir)
 
 	app := testapp.New()
+	defer app.Close()
+
 	ds := New()
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
 	require.NoError(t, err)
@@ -254,6 +260,7 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 
 	logging.ApplyLevelsFromEnv()
 	app := testapp.New()
+	defer app.Close()
 	ds := New()
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
 	require.NoError(t, err)
@@ -351,6 +358,7 @@ func Test_removeByPrefix(t *testing.T) {
 
 	logging.ApplyLevelsFromEnv()
 	app := testapp.New()
+	defer app.Close()
 	ds := New()
 	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
 	require.NoError(t, err)
