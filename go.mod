@@ -100,3 +100,5 @@ replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-2021
 replace github.com/hsanjuan/ipfs-lite => github.com/anytypeio/ipfs-lite v1.1.20-0.20210428105030-fc5b3446abae
 
 replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-20210806203422-f82c8742c9f8 // use a fork to support dd.mm.yyyy date format
+
+replace github.com/multiformats/go-multiaddr => github.com/anytypeio/go-multiaddr v0.3.4-0.20211215113257-4c68dbbfce09
