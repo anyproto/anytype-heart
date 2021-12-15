@@ -371,6 +371,11 @@ func Test_removeByPrefix(t *testing.T) {
 		}
 		require.NoError(t, ds.CreateObject(objId, nil, nil, links, ""))
 	}
+	tx, err := ds2.ds.NewTransaction(false)
+	_, err = removeByPrefixInTx(tx, pagesInboundLinksBase.String())
+	require.NotNil(t, err)
+	tx.Discard()
+
 	got, err := removeByPrefix(ds2.ds, pagesInboundLinksBase.String())
 	require.NoError(t, err)
 	require.Equal(t, 10*8000, got)
