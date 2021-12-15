@@ -187,7 +187,7 @@ func New() ObjectStore {
 	return &dsObjectStore{}
 }
 
-func NewWithLocalstore(ds ds.TxnDatastore) ObjectStore {
+func NewWithLocalstore(ds datastore.DSTxnBatching) ObjectStore {
 	return &dsObjectStore{
 		ds: ds,
 	}
@@ -335,7 +335,7 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 
 type dsObjectStore struct {
 	// underlying storage
-	ds            ds.TxnDatastore
+	ds            datastore.DSTxnBatching
 	dsIface       datastore.Datastore
 	sourceService SourceIdEncodedDetails
 
@@ -601,25 +601,20 @@ func (m *dsObjectStore) eraseStoredRelations() (err error) {
 }
 
 func (m *dsObjectStore) eraseLinks() (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return err
-	}
-	defer txn.Discard()
-	n, err := removeByPrefix(txn, pagesOutboundLinksBase.String())
+	n, err := removeByPrefix(m.ds, pagesOutboundLinksBase.String())
 	if err != nil {
 		return err
 	}
 
 	log.Infof("eraseLinks: removed %d outbound links", n)
-	n, err = removeByPrefix(txn, pagesInboundLinksBase.String())
+	n, err = removeByPrefix(m.ds, pagesInboundLinksBase.String())
 	if err != nil {
 		return err
 	}
 
 	log.Infof("eraseLinks: removed %d inbound links", n)
 
-	return txn.Commit()
+	return nil
 }
 
 func (m *dsObjectStore) Run() (err error) {
@@ -1264,12 +1259,12 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 		}
 	}
 
-	_, err = removeByPrefix(txn, pagesInboundLinksBase.String()+"/"+id+"/")
+	_, err = removeByPrefixInTx(txn, pagesInboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
 
-	_, err = removeByPrefix(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
+	_, err = removeByPrefixInTx(txn, pagesOutboundLinksBase.String()+"/"+id+"/")
 	if err != nil {
 		return err
 	}
@@ -2419,7 +2414,36 @@ func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
 	return localstore.GetLeavesFromResults(results)
 }
 
-func removeByPrefix(txn ds.Txn, prefix string) (int, error) {
+// removeByPrefix query prefix and then remove keys in multiple TXs
+func removeByPrefix(d datastore.DSTxnBatching, prefix string) (int, error) {
+	results, err := d.Query(query.Query{
+		Prefix:   prefix,
+		KeysOnly: true,
+	})
+	if err != nil {
+		return 0, err
+	}
+	var keys []ds.Key
+	for res := range results.Next() {
+		keys = append(keys, ds.NewKey(res.Key))
+	}
+	b, err := d.Batch()
+	if err != nil {
+		return 0, err
+	}
+	var removed int
+	for _, key := range keys {
+		err := b.Delete(key)
+		if err != nil {
+			return removed, err
+		}
+		removed++
+	}
+
+	return removed, b.Commit()
+}
+
+func removeByPrefixInTx(txn ds.Txn, prefix string) (int, error) {
 	results, err := txn.Query(query.Query{
 		Prefix:   prefix,
 		KeysOnly: true,
@@ -2432,6 +2456,7 @@ func removeByPrefix(txn ds.Txn, prefix string) (int, error) {
 	for res := range results.Next() {
 		err := txn.Delete(ds.NewKey(res.Key))
 		if err != nil {
+			_ = results.Close()
 			return removed, err
 		}
 		removed++

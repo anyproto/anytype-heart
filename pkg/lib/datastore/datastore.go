@@ -14,7 +14,7 @@ type Datastore interface {
 	BlockstoreDS() (ds.Batching, error)
 	RunBlockstoreGC() (freed int64, err error)
 	LogstoreDS() (DSTxnBatching, error)
-	LocalstoreDS() (ds.TxnDatastore, error)
+	LocalstoreDS() (DSTxnBatching, error)
 	ThreadsDbDS() (keytransform.TxnDatastoreExtended, error)
 }
 
