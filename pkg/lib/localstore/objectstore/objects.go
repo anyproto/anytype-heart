@@ -2440,7 +2440,7 @@ func removeByPrefix(d datastore.DSTxnBatching, prefix string) (int, error) {
 		removed++
 	}
 
-	return removed, nil
+	return removed, b.Commit()
 }
 
 func removeByPrefixInTx(txn ds.Txn, prefix string) (int, error) {

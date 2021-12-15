@@ -192,7 +192,7 @@ func EraseIndex(index Index, datastore datastore2.DSTxnBatching) error {
 			return err
 		}
 	}
-	return nil
+	return b.Commit()
 }
 
 func RemoveIndexWithTxn(index Index, txn ds.Txn, val interface{}, valPrimary string) error {
