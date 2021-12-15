@@ -303,7 +303,7 @@ func (r *clientds) ThreadsDbDS() (keytransform.TxnDatastoreExtended, error) {
 	return r.threadsDbDS, nil
 }
 
-func (r *clientds) LocalstoreDS() (ds.TxnDatastore, error) {
+func (r *clientds) LocalstoreDS() (datastore.DSTxnBatching, error) {
 	if !r.running {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}

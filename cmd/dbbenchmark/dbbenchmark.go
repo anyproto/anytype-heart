@@ -4,13 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	dsbadgerv3 "github.com/anytypeio/go-ds-badger3"
 	"github.com/gogo/protobuf/types"
-	ds "github.com/ipfs/go-datastore"
 	dsbadgerv1 "github.com/ipfs/go-ds-badger"
 	"math/rand"
 	"os"
@@ -38,7 +38,7 @@ func (o *options) withDatastorePath(path string) *options {
 }
 
 func initObjecStore(o *options) (os objectstore.ObjectStore, closer func(), err error) {
-	var ds ds.TxnDatastore
+	var ds datastore.DSTxnBatching
 	if o.isV3 {
 		ds, err = initBadgerV3(o)
 		closer = func() {

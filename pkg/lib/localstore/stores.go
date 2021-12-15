@@ -3,6 +3,7 @@ package localstore
 import (
 	"crypto/sha256"
 	"fmt"
+	datastore2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"strings"
 
@@ -167,23 +168,26 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 	return nil
 }
 
-func EraseIndex(index Index, datastore ds.TxnDatastore) error {
-	return RunLargeOperationWithinMultipleTxs(datastore, func(txn ds.Txn) error {
-		return EraseIndexWithTxn(index, txn)
-	})
-}
-
-// EraseIndexWithTxn deletes the whole index
-func EraseIndexWithTxn(index Index, txn ds.Txn) error {
+// EraseIndex deletes the whole index
+func EraseIndex(index Index, datastore datastore2.DSTxnBatching) error {
 	key := IndexBase.ChildString(index.Prefix).ChildString(index.Name)
+	txn, err := datastore.NewTransaction(true)
+	if err != nil {
+		return err
+	}
+
 	res, err := GetKeys(txn, key.String(), 0)
 	if err != nil {
 		return err
 	}
 
 	keys, err := ExtractKeysFromResults(res)
+	b, err := datastore.Batch()
+	if err != nil {
+		return err
+	}
 	for _, key := range keys {
-		err = txn.Delete(ds.NewKey(key))
+		err = b.Delete(ds.NewKey(key))
 		if err != nil {
 			return err
 		}
@@ -461,36 +465,4 @@ func GetKeys(tx ds.Txn, prefix string, limit int) (query.Results, error) {
 		Limit:    limit,
 		KeysOnly: true,
 	})
-}
-
-// RunLargeOperationWithinMultipleTxs performs large operations. In case it faces ErrTxnTooBig it commits the txn and runs it again within the new txn
-// underlying op func MUST be aware of ds change from previous retries – e.g. it should rebuild the list of pending operations at start instead of passing the fixed list from outside
-func RunLargeOperationWithinMultipleTxs(datastore ds.TxnDatastore, op func(txn ds.Txn) error) (err error) {
-	var txn ds.Txn
-	for {
-		txn, err = datastore.NewTransaction(false)
-		if err != nil {
-			return err
-		}
-
-		err = op(txn)
-		if err != nil {
-			// lets commit the current TXN and create another one
-			if err.Error() == errTxnTooBig.Error() {
-				err = txn.Commit()
-				if err != nil {
-					return err
-				}
-				continue
-			}
-			txn.Discard()
-			return
-		} else {
-			err = txn.Commit()
-			if err != nil {
-				return err
-			}
-			return
-		}
-	}
 }
