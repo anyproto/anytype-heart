@@ -74,6 +74,7 @@ func SetEventHandlerMobile(eh MessageHandler) {
 			for addr != nil {
 				localP.Print(net.IP(addr.Ip()).String())
 				localP.Print(string(addr.Prefix()))
+				addr = addrs.Next()
 			}
 		}
 		b, err := proto.Marshal(event)
