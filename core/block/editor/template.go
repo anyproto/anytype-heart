@@ -54,6 +54,7 @@ func (t *Template) GetNewPageState(name string) (st *state.State, err error) {
 	st = t.NewState().Copy()
 	st.SetObjectType(pbtypes.GetString(st.Details(), bundle.RelationKeyTargetObjectType.String()))
 	// clean-up local details from the template
+	st.RemoveDetail(bundle.RelationKeyTargetObjectType.String(), bundle.RelationKeyTemplateIsBundled.String())
 	st.SetLocalDetails(nil)
 
 	st.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
