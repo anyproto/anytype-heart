@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"io/ioutil"
+	"math/rand"
 	"os"
 	"testing"
 	"time"
@@ -342,4 +343,39 @@ func TestDsObjectStore_RelationsIndex(t *testing.T) {
 	require.Equal(t, "rel2", rels[1].Key)
 	require.Equal(t, "rel3", rels[2].Key)
 	require.Equal(t, "rel4", rels[3].Key)
+}
+
+func Test_removeByPrefix(t *testing.T) {
+	tmpDir, _ := ioutil.TempDir("", "")
+	defer os.RemoveAll(tmpDir)
+
+	logging.ApplyLevelsFromEnv()
+	app := testapp.New()
+	ds := New()
+	err := app.With(&config.DefaultConfig).With(wallet.NewWithRepoPathAndKeys(tmpDir, nil, nil)).With(clientds.New()).With(ftsearch.New()).With(ds).Start()
+	require.NoError(t, err)
+
+	ds2 := ds.(*dsObjectStore)
+	var key = make([]byte, 32)
+	for i := 0; i < 10; i++ {
+
+		var links []string
+		rand.Seed(time.Now().UnixNano())
+		rand.Read(key)
+		objId := fmt.Sprintf("%x", key)
+
+		for j := 0; j < 8000; j++ {
+			rand.Seed(time.Now().UnixNano())
+			rand.Read(key)
+			links = append(links, fmt.Sprintf("%x", key))
+		}
+		require.NoError(t, ds.CreateObject(objId, nil, nil, links, ""))
+	}
+	got, err := removeByPrefix(ds2.ds, pagesInboundLinksBase.String())
+	require.NoError(t, err)
+	require.Equal(t, 10*8000, got)
+
+	got, err = removeByPrefix(ds2.ds, pagesOutboundLinksBase.String())
+	require.NoError(t, err)
+	require.Equal(t, 10*8000, got)
 }
