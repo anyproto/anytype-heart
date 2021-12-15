@@ -3,7 +3,6 @@ package service
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -34,49 +33,12 @@ func init() {
 	}
 }
 
-type Printer interface {
-	Print(s string)
-}
-
-var localP Printer
-var localGetter InterfaceAddrsGetter
-
-func SetPrinter(p Printer) {
-	localP = p
-}
-
-type InterfaceAddr interface {
-	Ip() []byte
-	Prefix() int
-}
-
-type InterfaceAddrIterator interface {
-	Next() InterfaceAddr
-}
-
-type InterfaceAddrsGetter interface {
-	InterfaceAddrs() InterfaceAddrIterator
-}
-
-func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {
-	localGetter = getter
-}
-
 func SetEventHandler(eh func(event *pb.Event)) {
 	mw.EventSender = event.NewCallbackSender(eh)
 }
 
 func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
-		if localP != nil && localGetter != nil {
-			addrs := localGetter.InterfaceAddrs()
-			addr := addrs.Next()
-			for addr != nil {
-				localP.Print(net.IP(addr.Ip()).String())
-				localP.Print(string(addr.Prefix()))
-				addr = addrs.Next()
-			}
-		}
 		b, err := proto.Marshal(event)
 		if err != nil {
 			log.Errorf("eventHandler failed to marshal error: %s", err.Error())
