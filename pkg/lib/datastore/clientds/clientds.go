@@ -47,6 +47,7 @@ type clientds struct {
 	threadsDbDS  *textileBadger.Datastore
 	cfg          Config
 	repoPath     string
+	migrations   []migration
 }
 
 type Config struct {
@@ -65,6 +66,11 @@ var DefaultConfig = Config{
 
 type DSConfigGetter interface {
 	DSConfig() Config
+}
+
+type migration struct {
+	migrationFunc func() error
+	migrationKey  ds.Key
 }
 
 func init() {
@@ -105,6 +111,16 @@ func (r *clientds) Init(a *app.App) (err error) {
 	}
 
 	r.repoPath = wl.(wallet.Wallet).RepoPath()
+	r.migrations = []migration{
+		{
+			migrationFunc: r.migrateLocalStoreBadger,
+			migrationKey:  ds.NewKey("/migration/localstore/badgerv3"),
+		},
+		{
+			migrationFunc: r.migrateFileStoreAndIndexesBadger,
+			migrationKey:  ds.NewKey("/migration/localstore/badgerv3/filesindexes"),
+		},
+	}
 	return nil
 }
 
@@ -146,31 +162,32 @@ func (r *clientds) Run() error {
 }
 
 func (r *clientds) migrateIfNeeded() error {
-	migrationKey := ds.NewKey("/migration/localstore/badgerv3")
-	_, err := r.localstoreDS.Get(migrationKey)
-	if err == nil {
-		return nil
+	for _, m := range r.migrations {
+		_, err := r.localstoreDS.Get(m.migrationKey)
+		if err == nil {
+			continue
+		}
+		if err != nil && err != ds.ErrNotFound {
+			return err
+		}
+		err = m.migrationFunc()
+		if err != nil {
+			return fmt.Errorf(
+				"migration with key %s failed: failed to migrate the keys from old db: %w",
+				m.migrationKey.String(),
+				err)
+		}
+		err = r.localstoreDS.Put(m.migrationKey, nil)
+		if err != nil {
+			return fmt.Errorf("failed to put %s migration key into db: %w", m.migrationKey.String(), err)
+		}
 	}
-	if err != nil && err != ds.ErrNotFound {
-		return err
-	}
-
-	err = r.migrate()
-	if err != nil {
-		return fmt.Errorf("failed to migrate the keys from old db: %w", err)
-	}
-	return r.localstoreDS.Put(migrationKey, nil)
+	return nil
 }
 
-func (r *clientds) migrate() error {
+func (r *clientds) migrateWithKey(chooseKey func(item *dgraphbadgerv1.Item) bool) error {
 	s := r.logstoreDS.DB.NewStream()
-	s.ChooseKey = func(item *dgraphbadgerv1.Item) bool {
-		keyString := string(item.Key())
-		res := strings.HasPrefix(keyString, "/pages") ||
-			strings.HasPrefix(keyString, "/workspaces") ||
-			strings.HasPrefix(keyString, "/relations")
-		return res
-	}
+	s.ChooseKey = chooseKey
 	s.Send = func(list *dgraphbadgerv1pb.KVList) error {
 		batch, err := r.localstoreDS.Batch()
 		if err != nil {
@@ -185,6 +202,23 @@ func (r *clientds) migrate() error {
 		return batch.Commit()
 	}
 	return s.Orchestrate(context.Background())
+}
+
+func (r *clientds) migrateLocalStoreBadger() error {
+	return r.migrateWithKey(func(item *dgraphbadgerv1.Item) bool {
+		keyString := string(item.Key())
+		res := strings.HasPrefix(keyString, "/pages") ||
+			strings.HasPrefix(keyString, "/workspaces") ||
+			strings.HasPrefix(keyString, "/relations")
+		return res
+	})
+}
+
+func (r *clientds) migrateFileStoreAndIndexesBadger() error {
+	return r.migrateWithKey(func(item *dgraphbadgerv1.Item) bool {
+		keyString := string(item.Key())
+		return strings.HasPrefix(keyString, "/files") || strings.HasPrefix(keyString, "/idx")
+	})
 }
 
 type ValueLogInfo struct {
