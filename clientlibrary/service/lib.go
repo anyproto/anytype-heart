@@ -33,12 +33,25 @@ func init() {
 	}
 }
 
+type Printer interface {
+	Print(s string)
+}
+
+var localP Printer
+
+func SetPrinter(p Printer) {
+	localP = p
+}
+
 func SetEventHandler(eh func(event *pb.Event)) {
 	mw.EventSender = event.NewCallbackSender(eh)
 }
 
 func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
+		if localP != nil {
+			localP.Print("Hello")
+		}
 		b, err := proto.Marshal(event)
 		if err != nil {
 			log.Errorf("eventHandler failed to marshal error: %s", err.Error())
