@@ -117,8 +117,8 @@ func (r *clientds) Init(a *app.App) (err error) {
 			migrationKey:  ds.NewKey("/migration/localstore/badgerv3"),
 		},
 		{
-			migrationFunc: r.migrateFileStoreBadger,
-			migrationKey:  ds.NewKey("/migration/localstore/badgerv3/files"),
+			migrationFunc: r.migrateFileStoreAndIndexesBadger,
+			migrationKey:  ds.NewKey("/migration/localstore/badgerv3/filesindexes"),
 		},
 	}
 	return nil
@@ -214,10 +214,10 @@ func (r *clientds) migrateLocalStoreBadger() error {
 	})
 }
 
-func (r *clientds) migrateFileStoreBadger() error {
+func (r *clientds) migrateFileStoreAndIndexesBadger() error {
 	return r.migrateWithKey(func(item *dgraphbadgerv1.Item) bool {
 		keyString := string(item.Key())
-		return strings.HasPrefix(keyString, "/files")
+		return strings.HasPrefix(keyString, "/files") || strings.HasPrefix(keyString, "/idx")
 	})
 }
 
