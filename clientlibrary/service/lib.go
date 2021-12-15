@@ -3,6 +3,7 @@ package service
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"net"
 	"net/http"
 	_ "net/http/pprof"
 	"os"
@@ -38,9 +39,23 @@ type Printer interface {
 }
 
 var localP Printer
+var localGetter InterfaceAddrsGetter
 
 func SetPrinter(p Printer) {
 	localP = p
+}
+
+type InterfaceAddr interface {
+	Ip() []byte
+	Prefix() int
+}
+
+type InterfaceAddrsGetter interface {
+	InterfaceAddrs() []InterfaceAddr
+}
+
+func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {
+	localGetter = getter
 }
 
 func SetEventHandler(eh func(event *pb.Event)) {
@@ -49,8 +64,12 @@ func SetEventHandler(eh func(event *pb.Event)) {
 
 func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
-		if localP != nil {
-			localP.Print("Hello")
+		if localP != nil && localGetter != nil {
+			addrs := localGetter.InterfaceAddrs()
+			for _, addr := range addrs {
+				localP.Print(net.IP(addr.Ip()).String())
+				localP.Print(string(addr.Prefix()))
+			}
 		}
 		b, err := proto.Marshal(event)
 		if err != nil {
