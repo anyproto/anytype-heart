@@ -50,8 +50,12 @@ type InterfaceAddr interface {
 	Prefix() int
 }
 
+type InterfaceAddrIterator interface {
+	Next() InterfaceAddr
+}
+
 type InterfaceAddrsGetter interface {
-	InterfaceAddrs() []InterfaceAddr
+	InterfaceAddrs() InterfaceAddrIterator
 }
 
 func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {
@@ -66,7 +70,8 @@ func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
 		if localP != nil && localGetter != nil {
 			addrs := localGetter.InterfaceAddrs()
-			for _, addr := range addrs {
+			addr := addrs.Next()
+			for addr != nil {
 				localP.Print(net.IP(addr.Ip()).String())
 				localP.Print(string(addr.Prefix()))
 			}
