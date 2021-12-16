@@ -214,6 +214,7 @@ func (b *builtinObjects) createObject(ctx context.Context, rd io.ReadCloser) (er
 			vals[i] = newTarget
 
 		}
+		st.SetDetail(k, pbtypes.StringList(vals))
 	}
 
 	sbt, err := smartblock.SmartBlockTypeFromID(newId)
