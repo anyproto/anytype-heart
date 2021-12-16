@@ -38,7 +38,7 @@ func (i *interfaceGetterAdapter) InterfaceAddrs() []ma.InterfaceAddr {
 }
 
 func SetInterfaceAddrsGetter(getter InterfaceAddrsGetter) {
-	ma.SetInterfaceAddrGetter(&interfaceGetterAdapter{
+	ma.SetInterfaceAddrsGetter(&interfaceGetterAdapter{
 		interfaceGetter: getter,
 	})
 }
