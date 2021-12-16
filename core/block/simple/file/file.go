@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -80,6 +81,9 @@ func (f *File) SetSize(size int64) Block {
 }
 
 func (f *File) SetMIME(mime string) Block {
+	if strings.EqualFold(mime, "application/pdf") {
+		f.content.Type = model.BlockContentFile_PDF
+	}
 	f.content.Mime = mime
 	return f
 }
