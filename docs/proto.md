@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -30,6 +34,10 @@
     - [Change.StoreKeySet](#anytype.Change.StoreKeySet)
     - [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -505,6 +513,10 @@
     - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
     - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
     - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
+    - [Rpc.Object.IdsSubscribe](#anytype.Rpc.Object.IdsSubscribe)
+    - [Rpc.Object.IdsSubscribe.Request](#anytype.Rpc.Object.IdsSubscribe.Request)
+    - [Rpc.Object.IdsSubscribe.Response](#anytype.Rpc.Object.IdsSubscribe.Response)
+    - [Rpc.Object.IdsSubscribe.Response.Error](#anytype.Rpc.Object.IdsSubscribe.Response.Error)
     - [Rpc.Object.RelationAdd](#anytype.Rpc.Object.RelationAdd)
     - [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request)
     - [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response)
@@ -537,6 +549,14 @@
     - [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request)
     - [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response)
     - [Rpc.Object.Search.Response.Error](#anytype.Rpc.Object.Search.Response.Error)
+    - [Rpc.Object.SearchSubscribe](#anytype.Rpc.Object.SearchSubscribe)
+    - [Rpc.Object.SearchSubscribe.Request](#anytype.Rpc.Object.SearchSubscribe.Request)
+    - [Rpc.Object.SearchSubscribe.Response](#anytype.Rpc.Object.SearchSubscribe.Response)
+    - [Rpc.Object.SearchSubscribe.Response.Error](#anytype.Rpc.Object.SearchSubscribe.Response.Error)
+    - [Rpc.Object.SearchUnsubscribe](#anytype.Rpc.Object.SearchUnsubscribe)
+    - [Rpc.Object.SearchUnsubscribe.Request](#anytype.Rpc.Object.SearchUnsubscribe.Request)
+    - [Rpc.Object.SearchUnsubscribe.Response](#anytype.Rpc.Object.SearchUnsubscribe.Response)
+    - [Rpc.Object.SearchUnsubscribe.Response.Error](#anytype.Rpc.Object.SearchUnsubscribe.Response.Error)
     - [Rpc.Object.SetIsArchived](#anytype.Rpc.Object.SetIsArchived)
     - [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request)
     - [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response)
@@ -777,6 +797,7 @@
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code)
+    - [Rpc.Object.IdsSubscribe.Response.Error.Code](#anytype.Rpc.Object.IdsSubscribe.Response.Error.Code)
     - [Rpc.Object.RelationAdd.Response.Error.Code](#anytype.Rpc.Object.RelationAdd.Response.Error.Code)
     - [Rpc.Object.RelationDelete.Response.Error.Code](#anytype.Rpc.Object.RelationDelete.Response.Error.Code)
     - [Rpc.Object.RelationListAvailable.Response.Error.Code](#anytype.Rpc.Object.RelationListAvailable.Response.Error.Code)
@@ -785,6 +806,8 @@
     - [Rpc.Object.RelationOptionUpdate.Response.Error.Code](#anytype.Rpc.Object.RelationOptionUpdate.Response.Error.Code)
     - [Rpc.Object.RelationUpdate.Response.Error.Code](#anytype.Rpc.Object.RelationUpdate.Response.Error.Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code)
+    - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchSubscribe.Response.Error.Code)
+    - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchUnsubscribe.Response.Error.Code)
     - [Rpc.Object.SetIsArchived.Response.Error.Code](#anytype.Rpc.Object.SetIsArchived.Response.Error.Code)
     - [Rpc.Object.SetIsFavorite.Response.Error.Code](#anytype.Rpc.Object.SetIsFavorite.Response.Error.Code)
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
@@ -815,6 +838,9 @@
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -929,6 +955,11 @@
     - [Event.Object.Remove](#anytype.Event.Object.Remove)
     - [Event.Object.Show](#anytype.Event.Object.Show)
     - [Event.Object.Show.RelationWithValuePerObject](#anytype.Event.Object.Show.RelationWithValuePerObject)
+    - [Event.Object.Subscription](#anytype.Event.Object.Subscription)
+    - [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add)
+    - [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters)
+    - [Event.Object.Subscription.Position](#anytype.Event.Object.Subscription.Position)
+    - [Event.Object.Subscription.Remove](#anytype.Event.Object.Subscription.Remove)
     - [Event.Ping](#anytype.Event.Ping)
     - [Event.Process](#anytype.Event.Process)
     - [Event.Process.Done](#anytype.Event.Process.Done)
@@ -956,6 +987,9 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -966,6 +1000,10 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
+  
+  
+  
+
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -1034,6 +1072,9 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -1159,6 +1200,9 @@
 | NavigationGetObjectInfoWithLinks | [Rpc.Navigation.GetObjectInfoWithLinks.Request](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) | [Rpc.Navigation.GetObjectInfoWithLinks.Response](#anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response) |  |
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request) | [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
+| ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype.Rpc.Object.SearchSubscribe.Request) | [Rpc.Object.SearchSubscribe.Response](#anytype.Rpc.Object.SearchSubscribe.Response) |  |
+| ObjectIdsSubscribe | [Rpc.Object.IdsSubscribe.Request](#anytype.Rpc.Object.IdsSubscribe.Request) | [Rpc.Object.IdsSubscribe.Response](#anytype.Rpc.Object.IdsSubscribe.Response) |  |
+| ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype.Rpc.Object.SearchUnsubscribe.Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype.Rpc.Object.SearchUnsubscribe.Response) |  |
 | ObjectRelationAdd | [Rpc.Object.RelationAdd.Request](#anytype.Rpc.Object.RelationAdd.Request) | [Rpc.Object.RelationAdd.Response](#anytype.Rpc.Object.RelationAdd.Response) |  |
 | ObjectRelationUpdate | [Rpc.Object.RelationUpdate.Request](#anytype.Rpc.Object.RelationUpdate.Request) | [Rpc.Object.RelationUpdate.Response](#anytype.Rpc.Object.RelationUpdate.Response) |  |
 | ObjectRelationDelete | [Rpc.Object.RelationDelete.Request](#anytype.Rpc.Object.RelationDelete.Request) | [Rpc.Object.RelationDelete.Response](#anytype.Rpc.Object.RelationDelete.Response) |  |
@@ -8541,6 +8585,68 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype.Rpc.Object.IdsSubscribe"></a>
+
+### Rpc.Object.IdsSubscribe
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.IdsSubscribe.Request"></a>
+
+### Rpc.Object.IdsSubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
+| ids | [string](#string) | repeated | ids for subscribe |
+| keys | [string](#string) | repeated | sorts (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
+| ignoreWorkspace | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.IdsSubscribe.Response"></a>
+
+### Rpc.Object.IdsSubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.IdsSubscribe.Response.Error](#anytype.Rpc.Object.IdsSubscribe.Response.Error) |  |  |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| dependencies | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| subId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.IdsSubscribe.Response.Error"></a>
+
+### Rpc.Object.IdsSubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.IdsSubscribe.Response.Error.Code](#anytype.Rpc.Object.IdsSubscribe.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.RelationAdd"></a>
 
 ### Rpc.Object.RelationAdd
@@ -8981,7 +9087,6 @@ RelationOptionAdd may return existing option in case dataview already has one wi
 
 deprecated, to be removed |
 | keys | [string](#string) | repeated | needed keys in details for return, when empty - will return all |
-| ignoreWorkspace | [bool](#bool) |  |  |
 
 
 
@@ -9013,6 +9118,132 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.Search.Response.Error.Code](#anytype.Rpc.Object.Search.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchSubscribe"></a>
+
+### Rpc.Object.SearchSubscribe
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchSubscribe.Request"></a>
+
+### Rpc.Object.SearchSubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
+| filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated | filters |
+| sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated | sorts |
+| fullText | [string](#string) |  | fulltext query (optional) |
+| limit | [int32](#int32) |  | results limit |
+| offset | [int32](#int32) |  | initial offset; middleware will find afterId |
+| keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
+| afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
+| beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
+| source | [string](#string) | repeated |  |
+| ignoreWorkspace | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchSubscribe.Response"></a>
+
+### Rpc.Object.SearchSubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SearchSubscribe.Response.Error](#anytype.Rpc.Object.SearchSubscribe.Response.Error) |  |  |
+| records | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| dependencies | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
+| subId | [string](#string) |  |  |
+| counters | [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchSubscribe.Response.Error"></a>
+
+### Rpc.Object.SearchSubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchSubscribe.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchUnsubscribe"></a>
+
+### Rpc.Object.SearchUnsubscribe
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchUnsubscribe.Request"></a>
+
+### Rpc.Object.SearchUnsubscribe.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| subIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchUnsubscribe.Response"></a>
+
+### Rpc.Object.SearchUnsubscribe.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.SearchUnsubscribe.Response.Error](#anytype.Rpc.Object.SearchUnsubscribe.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.SearchUnsubscribe.Response.Error"></a>
+
+### Rpc.Object.SearchUnsubscribe.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype.Rpc.Object.SearchUnsubscribe.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12281,6 +12512,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Object.IdsSubscribe.Response.Error.Code"></a>
+
+### Rpc.Object.IdsSubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Object.RelationAdd.Response.Error.Code"></a>
 
 ### Rpc.Object.RelationAdd.Response.Error.Code
@@ -12383,6 +12627,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.SearchSubscribe.Response.Error.Code"></a>
+
+### Rpc.Object.SearchSubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.SearchUnsubscribe.Response.Error.Code"></a>
+
+### Rpc.Object.SearchUnsubscribe.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 
@@ -14317,6 +14587,10 @@ Precondition: user A opened a block
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype.Event.Object.Remove) |  |  |
 | objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
+| subscriptionAdd | [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add) |  |  |
+| subscriptionRemove | [Event.Object.Subscription.Remove](#anytype.Event.Object.Subscription.Remove) |  |  |
+| subscriptionPosition | [Event.Object.Subscription.Position](#anytype.Event.Object.Subscription.Position) |  |  |
+| subscriptionCounters | [Event.Object.Subscription.Counters](#anytype.Event.Object.Subscription.Counters) |  |  |
 | blockAdd | [Event.Block.Add](#anytype.Event.Block.Add) |  |  |
 | blockDelete | [Event.Block.Delete](#anytype.Event.Block.Delete) |  |  |
 | filesUpload | [Event.Block.FilesUpload](#anytype.Event.Block.FilesUpload) |  |  |
@@ -14388,6 +14662,7 @@ Amend (i.e. add a new key-value pair or update an existing key-value pair) exist
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
 | details | [Event.Object.Details.Amend.KeyValue](#anytype.Event.Object.Details.Amend.KeyValue) | repeated | slice of changed key-values |
+| subIds | [string](#string) | repeated |  |
 
 
 
@@ -14420,6 +14695,7 @@ Overwrite current state
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | can not be a partial state. Should replace client details state |
+| subIds | [string](#string) | repeated |  |
 
 
 
@@ -14436,6 +14712,7 @@ Unset existing detail keys
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
 | keys | [string](#string) | repeated |  |
+| subIds | [string](#string) | repeated |  |
 
 
 
@@ -14590,6 +14867,80 @@ Dashboard opened, click on a page, Rpc.Block.open, Block.ShowFullscreen(PageBloc
 | ----- | ---- | ----- | ----------- |
 | objectId | [string](#string) |  |  |
 | relations | [model.RelationWithValue](#anytype.model.RelationWithValue) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Subscription"></a>
+
+### Event.Object.Subscription
+
+
+
+
+
+
+
+<a name="anytype.Event.Object.Subscription.Add"></a>
+
+### Event.Object.Subscription.Add
+Adds new document to subscriptions
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | object id |
+| afterId | [string](#string) |  | id of previous doc in order, empty means first |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Subscription.Counters"></a>
+
+### Event.Object.Subscription.Counters
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| total | [int64](#int64) |  | total available records |
+| nextCount | [int64](#int64) |  | how many records available after |
+| prevCount | [int64](#int64) |  | how many records available before |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Subscription.Position"></a>
+
+### Event.Object.Subscription.Position
+Indicates new position of document
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | object id |
+| afterId | [string](#string) |  | id of previous doc in order, empty means first |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Subscription.Remove"></a>
+
+### Event.Object.Subscription.Remove
+Removes document from subscription
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | object id |
 
 
 

@@ -2,13 +2,15 @@ package core
 
 import (
 	"fmt"
+	"strings"
+	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 	"github.com/tj/go-naturaldate"
-	"strings"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -89,11 +91,6 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
 
-	var workspaceId string
-	if !req.IgnoreWorkspace {
-		workspaceId, _ = at.ObjectStore().GetCurrentWorkspaceId()
-	}
-
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:           req.Filters,
 		Sorts:             req.Sorts,
@@ -101,8 +98,6 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		Limit:             int(req.Limit),
 		FullText:          req.FullText,
 		ObjectTypeFilter:  req.ObjectTypeFilter,
-		WorkspaceId:       workspaceId,
-		SearchInWorkspace: !req.IgnoreWorkspace,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
@@ -115,6 +110,96 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
+}
+
+func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {
+	errResponse := func(err error) *pb.RpcObjectSearchSubscribeResponse {
+		r := &pb.RpcObjectSearchSubscribeResponse{
+			Error: &pb.RpcObjectSearchSubscribeResponseError{
+				Code: pb.RpcObjectSearchSubscribeResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(fmt.Errorf("account must be started"))
+	}
+
+	subService := mw.app.MustComponent(subscription.CName).(subscription.Service)
+
+	resp, err := subService.Search(*req)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return resp
+}
+
+func (mw *Middleware) ObjectIdsSubscribe(req *pb.RpcObjectIdsSubscribeRequest) *pb.RpcObjectIdsSubscribeResponse {
+	errResponse := func(err error) *pb.RpcObjectIdsSubscribeResponse {
+		r := &pb.RpcObjectIdsSubscribeResponse{
+			Error: &pb.RpcObjectIdsSubscribeResponseError{
+				Code: pb.RpcObjectIdsSubscribeResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(fmt.Errorf("account must be started"))
+	}
+
+	subService := mw.app.MustComponent(subscription.CName).(subscription.Service)
+
+	resp, err := subService.SubscribeIdsReq(*req)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	return resp
+}
+
+func (mw *Middleware) ObjectSearchUnsubscribe(req *pb.RpcObjectSearchUnsubscribeRequest) *pb.RpcObjectSearchUnsubscribeResponse {
+	response := func(err error) *pb.RpcObjectSearchUnsubscribeResponse {
+		r := &pb.RpcObjectSearchUnsubscribeResponse{
+			Error: &pb.RpcObjectSearchUnsubscribeResponseError{
+				Code: pb.RpcObjectSearchUnsubscribeResponseError_NULL,
+			},
+		}
+		if err != nil {
+			r.Error.Code = pb.RpcObjectSearchUnsubscribeResponseError_UNKNOWN_ERROR
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return response(fmt.Errorf("account must be started"))
+	}
+
+	subService := mw.app.MustComponent(subscription.CName).(subscription.Service)
+
+	err := subService.Unsubscribe(req.SubIds...)
+	if err != nil {
+		return response(err)
+	}
+	return response(nil)
 }
 
 func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {

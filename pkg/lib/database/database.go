@@ -28,6 +28,7 @@ type Record struct {
 type Reader interface {
 	Query(schema schema.Schema, q Query) (records []Record, total int, err error)
 	QueryAndSubscribeForChanges(schema schema.Schema, q Query, subscription Subscription) (records []Record, close func(), total int, err error)
+	QueryRaw(q query.Query) (records []Record, err error)
 
 	QueryById(ids []string) (records []Record, err error)
 	QueryByIdAndSubscribeForChanges(ids []string, subscription Subscription) (records []Record, close func(), err error)
@@ -42,6 +43,8 @@ type Reader interface {
 	AggregateRelationsFromSetsOfType(objType string) (relations []*model.Relation, err error)
 	AggregateObjectIdsByOptionForRelation(relationKey string) (objectsByOptionId map[string][]string, err error)
 	AggregateObjectIdsForOptionAndRelation(relationKey, optionId string) (objIds []string, err error)
+
+	SubscribeForAll(callback func(rec Record))
 }
 
 type Writer interface {
@@ -82,7 +85,7 @@ type Query struct {
 func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	qq.Limit = q.Limit
 	qq.Offset = q.Offset
-	f, err := newFilters(q, sch)
+	f, err := NewFilters(q, sch)
 	if err != nil {
 		return
 	}
@@ -90,7 +93,6 @@ func (q Query) DSQuery(sch schema.Schema) (qq query.Query, err error) {
 	if f.hasOrders() {
 		qq.Orders = []query.Order{f}
 	}
-	qq.String()
 	return
 }
 
@@ -130,9 +132,9 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 	return filters
 }
 
-func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
+func NewFilters(q Query, sch schema.Schema) (f *Filters, err error) {
 	q.Filters = injectDefaultFilters(q.Filters)
-	f = new(filters)
+	f = new(Filters)
 	mainFilter := filter.AndFilters{}
 	if sch != nil {
 		for _, rel := range sch.ListRelations() {
@@ -189,7 +191,7 @@ func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
 	//	threads.WorkspaceLogger.
 	//		Info("searching in all workspaces and account")
 	//}
-	f.filter = mainFilter
+	f.FilterObj = mainFilter
 	if len(q.Sorts) > 0 {
 		ord := filter.SetOrder{}
 		for _, s := range q.Sorts {
@@ -203,7 +205,7 @@ func newFilters(q Query, sch schema.Schema) (f *filters, err error) {
 				EmptyLast: emptyLast,
 			})
 		}
-		f.order = ord
+		f.Order = ord
 	}
 	return
 }
@@ -229,23 +231,23 @@ func (f sortGetter) Get(key string) *types.Value {
 	return pbtypes.Get(f.curEl, key)
 }
 
-type filters struct {
-	filter   filter.Filter
-	order    filter.Order
-	dateKeys []string
+type Filters struct {
+	FilterObj filter.Filter
+	Order     filter.Order
+	dateKeys  []string
 }
 
-func (f *filters) Filter(e query.Entry) bool {
+func (f *Filters) Filter(e query.Entry) bool {
 	g := f.unmarshalFilter(e)
 	if g == nil {
 		return false
 	}
-	res := f.filter.FilterObject(g)
+	res := f.FilterObj.FilterObject(g)
 	return res
 }
 
-func (f *filters) Compare(a, b query.Entry) int {
-	if f.order == nil {
+func (f *Filters) Compare(a, b query.Entry) int {
+	if f.Order == nil {
 		return 0
 	}
 	ag := f.unmarshalSort(a)
@@ -256,18 +258,18 @@ func (f *filters) Compare(a, b query.Entry) int {
 	if bg == nil {
 		return 0
 	}
-	return f.order.Compare(ag, bg)
+	return f.Order.Compare(ag, bg)
 }
 
-func (f *filters) unmarshalFilter(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalFilter(e query.Entry) filter.Getter {
 	return filterGetter{dateKeys: f.dateKeys, curEl: f.unmarshal(e)}
 }
 
-func (f *filters) unmarshalSort(e query.Entry) filter.Getter {
+func (f *Filters) unmarshalSort(e query.Entry) filter.Getter {
 	return sortGetter{curEl: f.unmarshal(e)}
 }
 
-func (f *filters) unmarshal(e query.Entry) *types.Struct {
+func (f *Filters) unmarshal(e query.Entry) *types.Struct {
 	var details model.ObjectDetails
 	err := proto.Unmarshal(e.Value, &details)
 	if err != nil {
@@ -277,20 +279,20 @@ func (f *filters) unmarshal(e query.Entry) *types.Struct {
 	return details.Details
 }
 
-func (f *filters) hasOrders() bool {
-	return f.order != nil
+func (f *Filters) hasOrders() bool {
+	return f.Order != nil
 }
 
-func (f *filters) String() string {
+func (f *Filters) String() string {
 	var filterString string
 	var orderString string
 	var separator string
-	if f.filter != nil {
-		filterString = fmt.Sprintf("WHERE %v", f.filter.String())
+	if f.FilterObj != nil {
+		filterString = fmt.Sprintf("WHERE %v", f.FilterObj.String())
 		separator = " "
 	}
-	if f.order != nil {
-		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.order.String())
+	if f.Order != nil {
+		orderString = fmt.Sprintf("%sORDER BY %v", separator, f.Order.String())
 	}
 	return fmt.Sprintf("%s%s", filterString, orderString)
 }

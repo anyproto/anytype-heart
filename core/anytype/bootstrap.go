@@ -16,6 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
+	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe"
@@ -111,6 +112,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(restriction.New()).
 		Register(debug.New()).
 		Register(doc.New()).
+		Register(subscription.New()).
 		Register(builtinobjects.New())
 	return
 }
