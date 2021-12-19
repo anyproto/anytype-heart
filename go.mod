@@ -101,4 +101,4 @@ replace github.com/hsanjuan/ipfs-lite => github.com/anytypeio/ipfs-lite v1.1.20-
 
 replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-20210806203422-f82c8742c9f8 // use a fork to support dd.mm.yyyy date format
 
-replace github.com/multiformats/go-multiaddr => github.com/anytypeio/go-multiaddr v0.3.4-0.20211216104048-5e48adcd6b47
+replace github.com/multiformats/go-multiaddr => github.com/anytypeio/go-multiaddr v0.3.4-0.20211216092130-ddd80e4d6e9e
