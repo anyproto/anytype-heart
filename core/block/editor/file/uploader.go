@@ -285,11 +285,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		u.fileStyle = u.block.Model().GetFile().GetStyle()
 	}
 	if u.fileStyle == model.BlockContentFile_Auto {
-		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
-			u.fileStyle = model.BlockContentFile_Link
-		} else {
-			u.fileStyle = model.BlockContentFile_Embed
-		}
+		u.fileStyle = model.BlockContentFile_Link
 	}
 	var opts = []files.AddOption{
 		files.WithName(u.name),
