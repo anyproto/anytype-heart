@@ -277,7 +277,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		if u.block != nil {
 			u.fileType = u.block.Model().GetFile().GetType()
 		}
-		if u.typeDetect || u.fileType == model.BlockContentFile_None {
+		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
 			u.fileType = u.detectType(buf)
 		}
 	}
