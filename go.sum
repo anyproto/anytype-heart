@@ -76,6 +76,14 @@ github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7 h1:YBmcug6mOdwjJ
 github.com/anytypeio/go-gelf v0.0.0-20210418191311-774bd5b016e7/go.mod h1:EuPAem8b51iulSY3wBQJc0Shz+A2DmyREddzDt0fywM=
 github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f h1:aeyycLTPbhwjW2x/EkmuAgRzdX0bdwy+RStmevhQbhM=
 github.com/anytypeio/go-log/v2 v2.1.2-0.20200810212702-264b187bb04f/go.mod h1:2v2nsGfZsvvAJz13SyFzf9ObaqwHiHxsPLEHntrv9KM=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211215113257-4c68dbbfce09 h1:ekAFvPz4Nwxe09Fppp57kFRGAC5SCh6re+Rko19IFbY=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211215113257-4c68dbbfce09/go.mod h1:lCKNGP1EQ1eZ35Za2wlqnabm9xQkib3fyB+nZXHLag0=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211215200144-88ad0085ccf9 h1:A38rbte7VTCoG97Z1C/7dfY2q7uDOHyG14e6rBbpUvY=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211215200144-88ad0085ccf9/go.mod h1:lCKNGP1EQ1eZ35Za2wlqnabm9xQkib3fyB+nZXHLag0=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211215201846-cc6cccdc52ed h1:uIAyPOlhgOHHI/GNQx0yJKB1iDMvWx1RBztzh/Bmi88=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211215201846-cc6cccdc52ed/go.mod h1:lCKNGP1EQ1eZ35Za2wlqnabm9xQkib3fyB+nZXHLag0=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211216092130-ddd80e4d6e9e h1:51Svp85/PdIrpxpkkfmTnFQ8IpWZrRXs+wK3CzCWWSM=
+github.com/anytypeio/go-multiaddr v0.3.4-0.20211216092130-ddd80e4d6e9e/go.mod h1:lCKNGP1EQ1eZ35Za2wlqnabm9xQkib3fyB+nZXHLag0=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4 h1:jB5Ke7NVoW52i65PtLFBr5Q5k6RskIY8L70pgnBcnWo=
 github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4/go.mod h1:/8GIEJBE5wmdgcE49JPdupnHNUf7bEn6C+aArfWqvw8=
 github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51 h1:3Y+18zBC8LZgcL3l2dgoTEIzIUzCZa/kN0UV3ZWpbuA=
