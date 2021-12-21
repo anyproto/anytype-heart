@@ -277,15 +277,19 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		if u.block != nil {
 			u.fileType = u.block.Model().GetFile().GetType()
 		}
-		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
-			u.fileType = u.detectType(buf)
-		}
 	}
 	if u.block != nil {
 		u.fileStyle = u.block.Model().GetFile().GetStyle()
 	}
 	if u.fileStyle == model.BlockContentFile_Auto {
-		u.fileStyle = model.BlockContentFile_Link
+		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
+			u.fileStyle = model.BlockContentFile_Link
+		} else {
+			u.fileStyle = model.BlockContentFile_Embed
+		}
+	}
+	if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
+		u.fileType = u.detectType(buf)
 	}
 	var opts = []files.AddOption{
 		files.WithName(u.name),
