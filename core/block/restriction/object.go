@@ -63,6 +63,18 @@ func (or ObjectRestrictions) Check(cr ...model.RestrictionsObjectRestriction) (e
 	return
 }
 
+func (or ObjectRestrictions) Equal(or2 ObjectRestrictions) bool {
+	if len(or) != len(or2) {
+		return false
+	}
+	for _, r := range or {
+		if or2.Check(r) == nil {
+			return false
+		}
+	}
+	return true
+}
+
 func (or ObjectRestrictions) Copy() ObjectRestrictions {
 	obj := make(ObjectRestrictions, len(or))
 	copy(obj, or)

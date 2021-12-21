@@ -271,6 +271,9 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 }
 
 func (sb *smartBlock) SetRestrictions(r restriction.Restrictions) {
+	if sb.restrictions.Equal(r) {
+		return
+	}
 	sb.restrictions = r
 	sb.restrictionsChanged = true
 }
@@ -684,7 +687,13 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		events := msgsToEvents(msgs)
 		if sb.restrictionsChanged {
 			sb.restrictionsChanged = false
-			//events = append(events, &pb.EventMessage{})
+			events = append(events, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectRestrictions{
+					ObjectRestrictions: &pb.EventObjectRestriction{
+						Restrictions: sb.Restrictions().Proto(),
+					},
+				},
+			})
 		}
 		if ctx := s.Context(); ctx != nil {
 			ctx.SetMessages(sb.Id(), events)

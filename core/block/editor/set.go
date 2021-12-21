@@ -105,7 +105,6 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	}
 	templates = append(templates,
 		template.WithTitle,
-		p.applyRestrictions,
 		func(s *state.State) {
 			p.FillAggregatedOptionsState(s)
 		})
@@ -133,13 +132,5 @@ func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, ico
 		)
 	}
 
-	if err := smartblock.ApplyTemplate(p, s, tmpls...); err != nil {
-		return err
-	}
-	p.applyRestrictions(s)
-	return nil
-}
-
-func (p *Set) applyRestrictions(s *state.State) {
-
+	return smartblock.ApplyTemplate(p, s, tmpls...)
 }

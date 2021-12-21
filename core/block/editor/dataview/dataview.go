@@ -29,7 +29,7 @@ import (
 
 const DefaultDetailsFieldName = "_defaultRecordFields"
 
-var log = logging.Logger("anytype-mw-editor")
+var log = logging.Logger("anytype-mw-editor-dataview")
 var ErrMultiupdateWasNotAllowed = fmt.Errorf("multiupdate was not allowed")
 var DefaultDataviewRelations = append(bundle.RequiredInternalRelations, bundle.RelationKeyDone)
 
@@ -797,32 +797,30 @@ func (d *sdataview) dvBuildRestriction(s *state.State) (err error) {
 		bundle.TypeKeySet.URL(),
 		bundle.TypeKeyRelation.URL(),
 	}
-	return s.Iterate(func(b simple.Block) (isContinue bool) {
+	r := d.Restrictions().Copy()
+	r.Dataview = r.Dataview[:0]
+	changed := false
+	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if dv := b.Model().GetDataview(); dv != nil && len(dv.Source) == 1 {
 			if slice.FindPos(restrictedSources, dv.Source[0]) != -1 {
-				br := model.RestrictionsDataviewRestrictions{
+				r.Dataview = append(r.Dataview, model.RestrictionsDataviewRestrictions{
 					BlockId: b.Model().Id,
 					Restrictions: []model.RestrictionsDataviewRestriction{
 						model.Restrictions_DVRelation, model.Restrictions_DVCreateObject,
 					},
-				}
-				r := d.Restrictions().Copy()
-				var found bool
-				for i, dr := range r.Dataview {
-					if dr.BlockId == br.BlockId {
-						r.Dataview[i].Restrictions = br.Restrictions
-						found = true
-						break
-					}
-				}
-				if !found {
-					r.Dataview = append(r.Dataview, br)
-				}
-				d.SetRestrictions(r)
+				})
+				changed = true
+				return true
 			}
+			r.Dataview = append(r.Dataview, model.RestrictionsDataviewRestrictions{BlockId: b.Model().Id})
+			changed = true
 		}
 		return true
 	})
+	if changed {
+		d.SetRestrictions(r)
+	}
+	return
 }
 
 func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {

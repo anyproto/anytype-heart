@@ -29,6 +29,7 @@ message Event {
 
             Object.Remove objectRemove = 54;
             Object.Show objectShow = 30;
+            Object.Restriction objectRestrictions = 70;
 
             Object.Subscription.Add subscriptionAdd = 60;
             Object.Subscription.Remove subscriptionRemove = 61;
@@ -208,6 +209,11 @@ message Event {
         message Remove {
             // notifies that objects were removed
             repeated string ids = 1;
+        }
+
+        message Restriction {
+            string id = 1;
+            anytype.model.Restrictions restrictions = 2;
         }
     }
     message Block {

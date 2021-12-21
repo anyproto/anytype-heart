@@ -949,6 +949,7 @@
     - [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove)
     - [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set)
     - [Event.Object.Remove](#anytype.Event.Object.Remove)
+    - [Event.Object.Restriction](#anytype.Event.Object.Restriction)
     - [Event.Object.Show](#anytype.Event.Object.Show)
     - [Event.Object.Show.RelationWithValuePerObject](#anytype.Event.Object.Show.RelationWithValuePerObject)
     - [Event.Object.Subscription](#anytype.Event.Object.Subscription)
@@ -14511,6 +14512,7 @@ Precondition: user A opened a block
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype.Event.Object.Remove) |  |  |
 | objectShow | [Event.Object.Show](#anytype.Event.Object.Show) |  |  |
+| objectRestrictions | [Event.Object.Restriction](#anytype.Event.Object.Restriction) |  |  |
 | subscriptionAdd | [Event.Object.Subscription.Add](#anytype.Event.Object.Subscription.Add) |  |  |
 | subscriptionRemove | [Event.Object.Subscription.Remove](#anytype.Event.Object.Subscription.Remove) |  |  |
 | subscriptionPosition | [Event.Object.Subscription.Position](#anytype.Event.Object.Subscription.Position) |  |  |
@@ -14749,6 +14751,22 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | ids | [string](#string) | repeated | notifies that objects were removed |
+
+
+
+
+
+
+<a name="anytype.Event.Object.Restriction"></a>
+
+### Event.Object.Restriction
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| restrictions | [model.Restrictions](#anytype.model.Restrictions) |  |  |
 
 
 

@@ -2,6 +2,7 @@ package restriction
 
 import (
 	"errors"
+
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -108,6 +109,10 @@ func (r Restrictions) Proto() *model.Restrictions {
 		}
 	}
 	return res
+}
+
+func (r Restrictions) Equal(r2 Restrictions) bool {
+	return r.Object.Equal(r2.Object) && r.Dataview.Equal(r2.Dataview)
 }
 
 func (r Restrictions) Copy() Restrictions {

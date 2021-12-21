@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -323,8 +324,15 @@ func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	return
 }
 
+// Exists indicate that block exists in state, including parents
 func (s *State) Exists(id string) (ok bool) {
 	return s.Pick(id) != nil
+}
+
+// InState indicate that block was copied into this state, parents not checking
+func (s *State) InState(id string) (ok bool) {
+	_, ok = s.blocks[id]
+	return
 }
 
 func (s *State) SearchText() (text string) {
