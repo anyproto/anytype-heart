@@ -372,7 +372,10 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		)
 
 		if newWatcher := s.status.Watch(tid, fList); newWatcher {
-			ob.AddHook(func() { s.status.Unwatch(tid) }, smartblock.HookOnClose)
+			ob.AddHook(func(_ *state.State) error {
+				s.status.Unwatch(tid)
+				return nil
+			}, smartblock.HookOnClose)
 		}
 	}
 	afterHashesTime := time.Now()

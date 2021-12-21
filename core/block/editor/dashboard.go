@@ -63,10 +63,9 @@ func (p *Dashboard) init(s *state.State) (err error) {
 	return
 }
 
-func (p *Dashboard) updateObjects() {
+func (p *Dashboard) updateObjects(_ *state.State) (err error) {
 	favoritedIds, err := p.GetIds()
 	if err != nil {
-		log.Errorf("archive: can't get favorite ids: %v", err)
 		return
 	}
 
@@ -82,7 +81,6 @@ func (p *Dashboard) updateObjects() {
 		},
 	})
 	if err != nil {
-		log.Errorf("favorite: can't get store favorited ids: %v", err)
 		return
 	}
 	var storeFavoritedIds = make([]string, 0, len(records))
@@ -121,4 +119,5 @@ func (p *Dashboard) updateObjects() {
 			}
 		}(addedId)
 	}
+	return
 }

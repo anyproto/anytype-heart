@@ -57,7 +57,9 @@ type Dataview interface {
 }
 
 func NewDataview(sb smartblock.SmartBlock) Dataview {
-	return &sdataview{SmartBlock: sb}
+	dv := &sdataview{SmartBlock: sb}
+	sb.AddHook(dv.dvBuildRestriction, smartblock.HookBeforeApply)
+	return dv
 }
 
 type sdataview struct {
@@ -783,6 +785,44 @@ func SchemaBySources(sources []string, store objectstore.ObjectStore, optionalRe
 
 func (d *sdataview) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
 	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.Anytype().ObjectStore(), dvBlock.Model().GetDataview().Relations)
+}
+
+func (d *sdataview) dvBuildRestriction(s *state.State) (err error) {
+	var restrictedSources = []string{
+		bundle.TypeKeyFile.URL(),
+		bundle.TypeKeyImage.URL(),
+		bundle.TypeKeyVideo.URL(),
+		bundle.TypeKeyAudio.URL(),
+		bundle.TypeKeyObjectType.URL(),
+		bundle.TypeKeySet.URL(),
+		bundle.TypeKeyRelation.URL(),
+	}
+	return s.Iterate(func(b simple.Block) (isContinue bool) {
+		if dv := b.Model().GetDataview(); dv != nil && len(dv.Source) == 1 {
+			if slice.FindPos(restrictedSources, dv.Source[0]) != -1 {
+				br := model.RestrictionsDataviewRestrictions{
+					BlockId: b.Model().Id,
+					Restrictions: []model.RestrictionsDataviewRestriction{
+						model.Restrictions_DVRelation, model.Restrictions_DVCreateObject,
+					},
+				}
+				r := d.Restrictions().Copy()
+				var found bool
+				for i, dr := range r.Dataview {
+					if dr.BlockId == br.BlockId {
+						r.Dataview[i].Restrictions = br.Restrictions
+						found = true
+						break
+					}
+				}
+				if !found {
+					r.Dataview = append(r.Dataview, br)
+				}
+				d.SetRestrictions(r)
+			}
+		}
+		return true
+	})
 }
 
 func getDataviewBlock(s *state.State, id string) (dataview.Block, error) {

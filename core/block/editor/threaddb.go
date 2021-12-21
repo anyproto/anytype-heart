@@ -2,6 +2,7 @@ package editor
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -44,10 +45,8 @@ func (p *ThreadDB) Init(ctx *smartblock.InitContext) (err error) {
 	)
 }
 
-func (p *ThreadDB) updateObjects() {
-	st := p.NewState()
-
-	objects := p.workspaceObjectsFromState(st)
+func (p *ThreadDB) updateObjects(s *state.State) error {
+	objects := p.workspaceObjectsFromState(s)
 	log.Debugf("threadDB migrate %d objects", len(objects))
 	migrated, err := p.migrator.MigrateMany(objects)
 	if err != nil {
@@ -55,6 +54,7 @@ func (p *ThreadDB) updateObjects() {
 	} else {
 		log.Infof("migrated %d threads", migrated)
 	}
+	return nil
 }
 
 func (p *ThreadDB) workspaceObjectsFromState(st *state.State) []threads.ThreadInfo {

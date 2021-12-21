@@ -2,10 +2,11 @@ package stext
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -222,12 +223,12 @@ func (t *textImpl) newSetTextState(blockId string, ctx *state.Context) *state.St
 		}
 		t.Lock()
 		defer t.Unlock()
-		t.flushSetTextState()
+		t.flushSetTextState(nil)
 	}()
 	return t.lastSetTextState
 }
 
-func (t *textImpl) flushSetTextState() {
+func (t *textImpl) flushSetTextState(_ *state.State) error {
 	if t.lastSetTextState != nil {
 		ctx := state.NewContext(nil)
 		t.lastSetTextState.SetContext(ctx)
@@ -246,6 +247,7 @@ func (t *textImpl) flushSetTextState() {
 		}
 		t.cancelSetTextState()
 	}
+	return nil
 }
 
 func (t *textImpl) cancelSetTextState() {
@@ -298,7 +300,7 @@ func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
 		sort.Strings(afterIds)
 		if !slice.SortedEquals(beforeIds, afterIds) {
 			// mentions changed
-			t.flushSetTextState()
+			t.flushSetTextState(nil)
 		}
 	}
 

@@ -79,7 +79,7 @@ func (st *SmartTest) GetDocInfo() (doc.DocInfo, error) {
 	}, nil
 }
 
-func (st *SmartTest) AddHook(f func(), events ...smartblock.Hook) {
+func (st *SmartTest) AddHook(f smartblock.HookCallback, events ...smartblock.Hook) {
 	return
 }
 

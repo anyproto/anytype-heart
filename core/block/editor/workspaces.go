@@ -303,9 +303,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 }
 
 // TODO: try to save results from processing of previous state and get changes from apply for performance
-func (p *Workspaces) updateObjects() {
-	st := p.NewState()
-
+func (p *Workspaces) updateObjects(st *state.State) error {
 	objects, parameters := p.workspaceObjectsAndParametersFromState(st)
 	startTime := time.Now()
 	p.threadQueue.ProcessThreadsAsync(objects, p.Id())
@@ -316,6 +314,7 @@ func (p *Workspaces) updateObjects() {
 		delete(storedParameters, p.Id())
 		p.updateDetailsIfParametersChanged(storedParameters, parameters)
 	}
+	return nil
 }
 
 func (p *Workspaces) storedRecordsForWorkspace() []database2.Record {

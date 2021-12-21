@@ -10,11 +10,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 )
 
@@ -143,39 +141,5 @@ func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, ico
 }
 
 func (p *Set) applyRestrictions(s *state.State) {
-	var restrictedSources = []string{
-		bundle.TypeKeyFile.URL(),
-		bundle.TypeKeyImage.URL(),
-		bundle.TypeKeyVideo.URL(),
-		bundle.TypeKeyAudio.URL(),
-		bundle.TypeKeyObjectType.URL(),
-		bundle.TypeKeySet.URL(),
-		bundle.TypeKeyRelation.URL(),
-	}
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if dv := b.Model().GetDataview(); dv != nil && len(dv.Source) == 1 {
-			if slice.FindPos(restrictedSources, dv.Source[0]) != -1 {
-				br := model.RestrictionsDataviewRestrictions{
-					BlockId: b.Model().Id,
-					Restrictions: []model.RestrictionsDataviewRestriction{
-						model.Restrictions_DVRelation, model.Restrictions_DVCreateObject,
-					},
-				}
-				r := p.Restrictions().Copy()
-				var found bool
-				for i, dr := range r.Dataview {
-					if dr.BlockId == br.BlockId {
-						r.Dataview[i].Restrictions = br.Restrictions
-						found = true
-						break
-					}
-				}
-				if !found {
-					r.Dataview = append(r.Dataview, br)
-				}
-				p.SetRestrictions(r)
-			}
-		}
-		return true
-	})
+
 }
