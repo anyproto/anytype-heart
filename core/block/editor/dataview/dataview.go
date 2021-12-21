@@ -813,6 +813,7 @@ func (d *sdataview) dvBuildRestriction(s *state.State) (err error) {
 				return true
 			}
 			r.Dataview = append(r.Dataview, model.RestrictionsDataviewRestrictions{BlockId: b.Model().Id})
+			d.fillAggregatedOptions(b.(dataview.Block))
 			changed = true
 		}
 		return true
