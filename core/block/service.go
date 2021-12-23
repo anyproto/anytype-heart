@@ -206,6 +206,7 @@ type Service interface {
 	MakeTemplate(id string) (templateId string, err error)
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
 	CloneTemplate(id string) (templateId string, err error)
+	ObjectDuplicate(id string) (objectId string, err error)
 	ApplyTemplate(contextId, templateId string) error
 
 	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
@@ -1296,6 +1297,22 @@ func (s *service) CloneTemplate(id string) (templateId string, err error) {
 		return
 	}
 	templateId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	if err != nil {
+		return
+	}
+	return
+}
+
+func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
+	var st *state.State
+	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		st = b.NewState().Copy()
+		st.SetLocalDetails(nil)
+		return nil
+	}); err != nil {
+		return
+	}
+	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
 	if err != nil {
 		return
 	}
