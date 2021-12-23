@@ -18,6 +18,12 @@ func TestFile_Diff(t *testing.T) {
 			Content:      &model.BlockContentOfFile{File: &model.BlockContentFile{}},
 		}).(*File)
 	}
+	testBlockPdf := func() *File {
+		return NewFile(&model.Block{
+			Restrictions: &model.BlockRestrictions{},
+			Content:      &model.BlockContentOfFile{File: &model.BlockContentFile{Type: model.BlockContentFile_PDF}},
+		}).(*File)
+	}
 	t.Run("type error", func(t *testing.T) {
 		b1 := testBlock()
 		b2 := base.NewBase(&model.Block{})
@@ -25,8 +31,8 @@ func TestFile_Diff(t *testing.T) {
 		assert.Error(t, err)
 	})
 	t.Run("no diff", func(t *testing.T) {
-		b1 := testBlock()
-		b2 := testBlock()
+		b1 := testBlockPdf()
+		b2 := testBlockPdf()
 		tm := time.Now()
 		b1.SetHash("1").SetMIME("2").SetName("3").SetSize(4).SetTime(tm)
 		b2.SetHash("1").SetMIME("2").SetName("3").SetSize(4).SetTime(tm)
@@ -35,8 +41,8 @@ func TestFile_Diff(t *testing.T) {
 		assert.Len(t, d, 0)
 	})
 	t.Run("base diff", func(t *testing.T) {
-		b1 := testBlock()
-		b2 := testBlock()
+		b1 := testBlockPdf()
+		b2 := testBlockPdf()
 		b2.Restrictions.Read = true
 		d, err := b1.Diff(b2)
 		require.NoError(t, err)

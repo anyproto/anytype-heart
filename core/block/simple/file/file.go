@@ -2,6 +2,7 @@ package file
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -167,6 +168,9 @@ func (f *File) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 func (f *File) ApplyEvent(e *pb.EventBlockSetFile) error {
 	if e.Type != nil {
 		f.content.Type = e.Type.GetValue()
+		if f.content.Type == model.BlockContentFile_File {
+			f.content.Type = f.detectTypeByMIME(f.content.GetMime())
+		}
 	}
 	if e.State != nil {
 		f.content.State = e.State.GetValue()
@@ -194,4 +198,21 @@ func (f *File) FillFileHashes(hashes []string) []string {
 		return append(hashes, f.content.Hash)
 	}
 	return hashes
+}
+
+func (f *File) detectTypeByMIME(mime string) model.BlockContentFileType {
+	if strings.HasPrefix(mime, "image") {
+		return model.BlockContentFile_Image
+	}
+	if strings.HasPrefix(mime, "video") {
+		return model.BlockContentFile_Video
+	}
+	if strings.HasPrefix(mime, "audio") {
+		return model.BlockContentFile_Audio
+	}
+	if strings.HasPrefix(mime, "application/pdf") {
+		return model.BlockContentFile_PDF
+	}
+
+	return model.BlockContentFile_File
 }
