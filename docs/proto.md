@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -34,10 +30,6 @@
     - [Change.StoreKeySet](#anytype.Change.StoreKeySet)
     - [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset)
   
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -577,6 +569,10 @@
     - [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request)
     - [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response)
     - [Rpc.Object.ToSet.Response.Error](#anytype.Rpc.Object.ToSet.Response.Error)
+    - [Rpc.ObjectDuplicate](#anytype.Rpc.ObjectDuplicate)
+    - [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request)
+    - [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response)
+    - [Rpc.ObjectDuplicate.Response.Error](#anytype.Rpc.ObjectDuplicate.Response.Error)
     - [Rpc.ObjectList](#anytype.Rpc.ObjectList)
     - [Rpc.ObjectList.Delete](#anytype.Rpc.ObjectList.Delete)
     - [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request)
@@ -813,6 +809,7 @@
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype.Rpc.Object.ShareByLink.Response.Error.Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
+    - [Rpc.ObjectDuplicate.Response.Error.Code](#anytype.Rpc.ObjectDuplicate.Response.Error.Code)
     - [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsArchived.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsFavorite.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code)
@@ -838,9 +835,6 @@
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -987,9 +981,6 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -1000,10 +991,6 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
-  
-  
-  
-
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -1072,9 +1059,6 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -1241,6 +1225,7 @@
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
 | MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
 | CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
+| ObjectDuplicate | [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request) | [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response) |  |
 | ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
@@ -9540,6 +9525,63 @@ deprecated, to be removed |
 
 
 
+<a name="anytype.Rpc.ObjectDuplicate"></a>
+
+### Rpc.ObjectDuplicate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Request"></a>
+
+### Rpc.ObjectDuplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of template block for cloning |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Response"></a>
+
+### Rpc.ObjectDuplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectDuplicate.Response.Error](#anytype.Rpc.ObjectDuplicate.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Response.Error"></a>
+
+### Rpc.ObjectDuplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectDuplicate.Response.Error.Code](#anytype.Rpc.ObjectDuplicate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ObjectList"></a>
 
 ### Rpc.ObjectList
@@ -12711,6 +12753,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.ToSet.Response.Error.Code"></a>
 
 ### Rpc.Object.ToSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Response.Error.Code"></a>
+
+### Rpc.ObjectDuplicate.Response.Error.Code
 
 
 | Name | Number | Description |
