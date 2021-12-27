@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -40,21 +39,6 @@ type Set struct {
 	stext.Text
 }
 
-func getDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
-	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
-	for _, rel := range rels {
-		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
-			continue
-		}
-		var visible bool
-		if rel.Key == bundle.RelationKeyName.String() {
-			visible = true
-		}
-		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
-	}
-	return viewRels
-}
-
 func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 	err = p.SmartBlock.Init(ctx)
 	if err != nil {
@@ -85,7 +69,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 								Type:        model.BlockContentDataviewSort_Desc,
 							},
 						},
-						Relations: getDefaultViewRelations(rels),
+						Relations: GetDefaultViewRelations(rels),
 						Filters:   nil,
 					},
 				},
@@ -103,34 +87,21 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 		// add missing done relation
 		templates = append(templates, template.WithDataviewRequiredRelation(template.DataviewBlockId, bundle.RelationKeyDone))
 	}
-	templates = append(templates,
-		template.WithTitle,
-		func(s *state.State) {
-			p.FillAggregatedOptionsState(s)
-		})
+	templates = append(templates, template.WithTitle)
 	return smartblock.ApplyTemplate(p, ctx.State, templates...)
 }
 
-func (p *Set) InitDataview(blockContent *model.BlockContentOfDataview, name, icon string) error {
-	s := p.NewState()
-
-	tmpls := []template.StateTransformer{
-		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
-		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
-		template.WithRequiredRelations(),
-		template.WithMaxCountMigration,
-	}
-	if blockContent != nil {
-		for i, view := range blockContent.Dataview.Views {
-			if view.Relations == nil {
-				blockContent.Dataview.Views[i].Relations = getDefaultViewRelations(blockContent.Dataview.Relations)
-			}
+func GetDefaultViewRelations(rels []*model.Relation) []*model.BlockContentDataviewRelation {
+	var viewRels = make([]*model.BlockContentDataviewRelation, 0, len(rels))
+	for _, rel := range rels {
+		if rel.Hidden && rel.Key != bundle.RelationKeyName.String() {
+			continue
 		}
-		tmpls = append(tmpls,
-			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
-			template.WithDataview(*blockContent, false),
-		)
+		var visible bool
+		if rel.Key == bundle.RelationKeyName.String() {
+			visible = true
+		}
+		viewRels = append(viewRels, &model.BlockContentDataviewRelation{Key: rel.Key, IsVisible: visible})
 	}
-
-	return smartblock.ApplyTemplate(p, s, tmpls...)
+	return viewRels
 }

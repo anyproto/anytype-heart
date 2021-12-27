@@ -3,7 +3,6 @@ package editor
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -216,9 +215,6 @@ func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithDataview(dataview, true),
 		template.WithDetailName("Relations"),
 		template.WithDetailIconEmoji("📒"),
-		func(s *state.State) {
-			p.FillAggregatedOptionsState(s)
-		},
 	)
 
 	return smartblock.ApplyTemplate(p, ctx.State, templates...)

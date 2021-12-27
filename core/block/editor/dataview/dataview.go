@@ -51,14 +51,13 @@ type Dataview interface {
 	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
 	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
-	FillAggregatedOptionsState(s *state.State) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
 }
 
 func NewDataview(sb smartblock.SmartBlock) Dataview {
 	dv := &sdataview{SmartBlock: sb}
-	sb.AddHook(dv.dvBuildRestriction, smartblock.HookBeforeApply)
+	sb.AddHook(dv.checkDVBlocks, smartblock.HookBeforeApply)
 	return dv
 }
 
@@ -787,7 +786,15 @@ func (d *sdataview) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
 	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.Anytype().ObjectStore(), dvBlock.Model().GetDataview().Relations)
 }
 
-func (d *sdataview) dvBuildRestriction(s *state.State) (err error) {
+func (d *sdataview) checkDVBlocks(s *state.State) (err error) {
+	var dvChanged bool
+	s.IterateActive(func(b simple.Block) (isContinue bool) {
+		if dv := b.Model().GetDataview(); dv != nil {
+			dvChanged = true
+			return false
+		}
+		return true
+	})
 	var restrictedSources = []string{
 		bundle.TypeKeyFile.URL(),
 		bundle.TypeKeyImage.URL(),
@@ -799,7 +806,6 @@ func (d *sdataview) dvBuildRestriction(s *state.State) (err error) {
 	}
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]
-	changed := false
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if dv := b.Model().GetDataview(); dv != nil && len(dv.Source) == 1 {
 			if slice.FindPos(restrictedSources, dv.Source[0]) != -1 {
@@ -809,18 +815,13 @@ func (d *sdataview) dvBuildRestriction(s *state.State) (err error) {
 						model.Restrictions_DVRelation, model.Restrictions_DVCreateObject,
 					},
 				})
-				changed = true
 				return true
 			}
 			r.Dataview = append(r.Dataview, model.RestrictionsDataviewRestrictions{BlockId: b.Model().Id})
 			d.fillAggregatedOptions(b.(dataview.Block))
-			changed = true
 		}
 		return true
 	})
-	if changed {
-		d.SetRestrictions(r)
-	}
 	return
 }
 

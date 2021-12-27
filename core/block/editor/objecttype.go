@@ -4,7 +4,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -152,8 +151,5 @@ func (p *ObjectType) Init(ctx *smartblock.InitContext) (err error) {
 		template.WithObjectTypeLayoutMigration(),
 		template.WithRequiredRelations(),
 		template.WithBlockField("templates", dataview2.DefaultDetailsFieldName, pbtypes.Struct(defaultValue)),
-		func(s *state.State) {
-			p.FillAggregatedOptionsState(s)
-		},
 	)
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -945,30 +946,40 @@ func (s *service) CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest)
 		state.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
 	}
 
-	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
+	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
+	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
+
+	tmpls := []template.StateTransformer{
+		template.WithForcedDetail(bundle.RelationKeyName, pbtypes.String(name)),
+		template.WithForcedDetail(bundle.RelationKeyIconEmoji, pbtypes.String(icon)),
+		template.WithRequiredRelations(),
+		template.WithMaxCountMigration,
+	}
+	var blockContent *model.BlockContentOfDataview
+	if dvSchema != nil {
+		blockContent = &dvContent
+	}
+	if blockContent != nil {
+		for i, view := range blockContent.Dataview.Views {
+			if view.Relations == nil {
+				blockContent.Dataview.Views[i].Relations = editor.GetDefaultViewRelations(blockContent.Dataview.Relations)
+			}
+		}
+		tmpls = append(tmpls,
+			template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(blockContent.Dataview.Source)),
+			template.WithDataview(*blockContent, false),
+		)
+	}
+
+	if err = template.InitTemplate(state, tmpls...); err != nil {
+		return "", "", err
+	}
+
+	_, err = s.newSmartBlock(setId, &smartblock.InitContext{
 		State: state,
 	})
 	if err != nil {
 		return "", "", err
-	}
-	set, ok := sb.(*editor.Set)
-	if !ok {
-		return "", setId, fmt.Errorf("unexpected set block type: %T", sb)
-	}
-
-	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
-	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
-
-	if name == "" && dvSchema != nil {
-		name = dvSchema.Description() + " set"
-	}
-	if dvSchema != nil {
-		err = set.InitDataview(&dvContent, name, icon)
-	} else {
-		err = set.InitDataview(nil, name, icon)
-	}
-	if err != nil {
-		return "", setId, err
 	}
 
 	if req.ContextId == "" && req.TargetId == "" {

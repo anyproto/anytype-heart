@@ -73,7 +73,7 @@ func (p *Workspaces) CreateObject(id thread.ID, sbType smartblock2.SmartBlockTyp
 	}
 	st.SetInStore([]string{source.WorkspaceCollection, threadInfo.ID.String()}, p.pbThreadInfoValueFromStruct(threadInfo))
 
-	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st)
+	return core.NewSmartBlock(threadInfo, p.Anytype()), p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) DeleteObject(objectId string) error {
@@ -83,7 +83,7 @@ func (p *Workspaces) DeleteObject(objectId string) error {
 		return err
 	}
 	st.RemoveFromStore([]string{source.WorkspaceCollection, objectId})
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) GetAllObjects() []string {
@@ -115,7 +115,7 @@ func (p *Workspaces) AddCreatorInfoIfNeeded() error {
 	}
 	st.SetInStore([]string{source.CreatorCollection, deviceId}, p.pbCreatorInfoValue(info))
 
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) (int, error) {
@@ -132,7 +132,7 @@ func (p *Workspaces) MigrateMany(infos []threads.ThreadInfo) (int, error) {
 		migrated++
 	}
 
-	err := p.Apply(st)
+	err := p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 	if err != nil {
 		return 0, err
 	}
@@ -152,7 +152,7 @@ func (p *Workspaces) AddObject(objectId string, key string, addrs []string) erro
 	}
 	st.SetInStore([]string{source.WorkspaceCollection, objectId}, p.pbThreadInfoValue(objectId, key, addrs))
 
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) GetObjectKeyAddrs(objectId string) (string, []string, error) {
@@ -189,7 +189,7 @@ func (p *Workspaces) SetIsHighlighted(objectId string, value bool) error {
 
 	st := p.NewState()
 	st.SetInStore([]string{source.HighlightedCollection, objectId}, pbtypes.Bool(value))
-	return p.Apply(st)
+	return p.Apply(st, smartblock.NoEvent, smartblock.NoHistory)
 }
 
 func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {

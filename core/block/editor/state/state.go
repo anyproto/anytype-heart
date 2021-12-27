@@ -294,6 +294,14 @@ func (s *State) releaseStringBuf(buf []string) {
 	s.stringBuf = buf[:0]
 }
 
+func (s *State) IterateActive(f func(b simple.Block) (isContinue bool)) {
+	for _, b := range s.blocks {
+		if !f(b) {
+			return
+		}
+	}
+}
+
 func (s *State) Iterate(f func(b simple.Block) (isContinue bool)) (err error) {
 	var iter func(id string) (isContinue bool, err error)
 	var parentIds = s.getStringBuf()

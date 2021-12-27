@@ -556,6 +556,7 @@ var WithDataviewRequiredRelation = func(id string, key bundle.RelationKey) State
 
 var WithDataviewID = func(id string, dataview model.BlockContentOfDataview, forceViews bool) StateTransformer {
 	return func(s *state.State) {
+		WithEmpty(s)
 		// remove old dataview
 		var blockNeedToUpdate bool
 		s.Iterate(func(b simple.Block) (isContinue bool) {
