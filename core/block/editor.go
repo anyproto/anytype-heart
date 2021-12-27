@@ -308,11 +308,13 @@ func (s *service) CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataview
 		if req.View == nil {
 			req.View = &model.BlockContentDataviewView{}
 		}
-		view, err := b.CreateView(ctx, req.BlockId, *req.View)
+		view, e := b.CreateView(ctx, req.BlockId, *req.View)
+		if e != nil {
+			return e
+		}
 		id = view.Id
-		return err
+		return nil
 	})
-
 	return
 }
 
