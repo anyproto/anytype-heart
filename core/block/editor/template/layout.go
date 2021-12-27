@@ -1,6 +1,7 @@
 package template
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
@@ -18,6 +19,10 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		templates = append(templates,
 			WithNoTitle,
 			WithNoDescription,
+		)
+	case model.ObjectType_todo:
+		templates = append(templates,
+			WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
 		)
 	default:
 		templates = append(templates,

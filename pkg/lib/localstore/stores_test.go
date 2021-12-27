@@ -158,10 +158,6 @@ func Test_RunLargeOperationWithRetries(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, 30000, total)
 
-	err = EraseIndexWithTxn(index, tx)
-	require.Error(t, err, errTxnTooBig)
-	tx.Discard()
-
 	err = EraseIndex(index, ds)
 	require.NoError(t, err)
 	tx, err = ds.NewTransaction(false)

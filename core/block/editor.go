@@ -29,7 +29,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
@@ -613,7 +612,7 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
 	upl := file.NewUploader(s)
 	if req.DisableEncryption {
-		upl.AddOptions(files.WithPlaintext(true))
+		log.Errorf("DisableEncryption is deprecated and has no effect")
 	}
 
 	upl.SetStyle(req.Style)

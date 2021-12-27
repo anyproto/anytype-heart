@@ -43,6 +43,26 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
 }
 
+func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
+	response := func(templateId string, err error) *pb.RpcObjectDuplicateResponse {
+		m := &pb.RpcObjectDuplicateResponse{
+			Error: &pb.RpcObjectDuplicateResponseError{Code: pb.RpcObjectDuplicateResponseError_NULL},
+			Id:    templateId,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcObjectDuplicateResponseError_UNKNOWN_ERROR
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	var objectId string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		objectId, err = bs.ObjectDuplicate(req.ContextId)
+		return
+	})
+	return response(objectId, err)
+}
+
 func handleDateSearch(req *pb.RpcObjectSearchRequest, records []database.Record) []database.Record {
 	n := time.Now()
 	f, _ := filter.MakeAndFilter(req.Filters)
@@ -92,12 +112,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	at := mw.app.MustComponent(core.CName).(core.Service)
 
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
-		Filters:           req.Filters,
-		Sorts:             req.Sorts,
-		Offset:            int(req.Offset),
-		Limit:             int(req.Limit),
-		FullText:          req.FullText,
-		ObjectTypeFilter:  req.ObjectTypeFilter,
+		Filters:          req.Filters,
+		Sorts:            req.Sorts,
+		Offset:           int(req.Offset),
+		Limit:            int(req.Limit),
+		FullText:         req.FullText,
+		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)

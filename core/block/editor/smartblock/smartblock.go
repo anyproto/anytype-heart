@@ -1088,6 +1088,7 @@ func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (
 
 func (sb *smartBlock) MakeTemplateState() (*state.State, error) {
 	st := sb.NewState().Copy()
+	st.SetLocalDetails(nil)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
 	st.SetObjectTypes([]string{bundle.TypeKeyTemplate.URL(), st.ObjectType()})
 	for _, rel := range sb.Relations() {

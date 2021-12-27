@@ -2,7 +2,6 @@ package file_test
 
 import (
 	"context"
-	"image"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -58,7 +57,7 @@ func TestUploader_Upload(t *testing.T) {
 			Size:  3,
 			Added: time.Now(),
 		}
-		fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(nil, image.ErrFormat)
+		//fx.anytype.EXPECT().ImageAdd(gomock.Any(), gomock.Any()).Return(nil, image.ErrFormat)
 		fx.anytype.EXPECT().FileAdd(gomock.Any(), gomock.Any()).Return(fx.newFile("123", meta), nil)
 		b := newBlock(model.BlockContentFile_Image)
 		res := fx.Uploader.SetBlock(b).SetFile("./testdata/test.txt").Upload(ctx)

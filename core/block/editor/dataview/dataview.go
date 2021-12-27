@@ -795,6 +795,9 @@ func (d *sdataview) checkDVBlocks(s *state.State) (err error) {
 		}
 		return true
 	})
+	if !dvChanged {
+		return
+	}
 	var restrictedSources = []string{
 		bundle.TypeKeyFile.URL(),
 		bundle.TypeKeyImage.URL(),

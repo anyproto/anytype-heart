@@ -139,9 +139,9 @@ var WithObjectTypeRecommendedRelationsMigration = func(relations []*model.Relati
 	}
 }
 
-var WithRequiredRelations = func() StateTransformer {
+var WithRelations = func(rels []bundle.RelationKey) StateTransformer {
 	return func(s *state.State) {
-		for _, relKey := range bundle.RequiredInternalRelations {
+		for _, relKey := range rels {
 			if s.HasRelation(relKey.String()) {
 				continue
 			}
@@ -149,6 +149,10 @@ var WithRequiredRelations = func() StateTransformer {
 			s.AddRelation(rel)
 		}
 	}
+}
+
+var WithRequiredRelations = func() StateTransformer {
+	return WithRelations(bundle.RequiredInternalRelations)
 }
 
 var WithMaxCountMigration = func(s *state.State) {

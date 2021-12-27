@@ -90,7 +90,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20211201121237-e27ec0f0019f
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20211224084450-be1392aa8d22
 
 replace github.com/msingleton/amplitude-go => github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31
 
@@ -101,3 +101,5 @@ replace gopkg.in/Graylog2/go-gelf.v2 => github.com/anytypeio/go-gelf v0.0.0-2021
 replace github.com/hsanjuan/ipfs-lite => github.com/anytypeio/ipfs-lite v1.1.20-0.20210428105030-fc5b3446abae
 
 replace github.com/araddon/dateparse => github.com/mehanizm/dateparse v0.0.0-20210806203422-f82c8742c9f8 // use a fork to support dd.mm.yyyy date format
+
+replace github.com/multiformats/go-multiaddr => github.com/anytypeio/go-multiaddr v0.3.4-0.20211216092130-ddd80e4d6e9e

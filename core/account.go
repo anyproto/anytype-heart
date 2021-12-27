@@ -205,9 +205,8 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 	if req.GetAvatarLocalPath() != "" {
 		hash, err := bs.UploadFile(pb.RpcUploadFileRequest{
-			LocalPath:         req.GetAvatarLocalPath(),
-			Type:              model.BlockContentFile_Image,
-			DisableEncryption: true,
+			LocalPath: req.GetAvatarLocalPath(),
+			Type:      model.BlockContentFile_Image,
 		})
 		if err != nil {
 			log.Warnf("can't add avatar: %v", err)

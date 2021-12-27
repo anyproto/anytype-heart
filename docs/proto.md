@@ -577,6 +577,10 @@
     - [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request)
     - [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response)
     - [Rpc.Object.ToSet.Response.Error](#anytype.Rpc.Object.ToSet.Response.Error)
+    - [Rpc.ObjectDuplicate](#anytype.Rpc.ObjectDuplicate)
+    - [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request)
+    - [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response)
+    - [Rpc.ObjectDuplicate.Response.Error](#anytype.Rpc.ObjectDuplicate.Response.Error)
     - [Rpc.ObjectList](#anytype.Rpc.ObjectList)
     - [Rpc.ObjectList.Delete](#anytype.Rpc.ObjectList.Delete)
     - [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request)
@@ -813,6 +817,7 @@
     - [Rpc.Object.SetLayout.Response.Error.Code](#anytype.Rpc.Object.SetLayout.Response.Error.Code)
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype.Rpc.Object.ShareByLink.Response.Error.Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
+    - [Rpc.ObjectDuplicate.Response.Error.Code](#anytype.Rpc.ObjectDuplicate.Response.Error.Code)
     - [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsArchived.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsFavorite.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code)
@@ -1236,6 +1241,7 @@
 | MakeTemplate | [Rpc.MakeTemplate.Request](#anytype.Rpc.MakeTemplate.Request) | [Rpc.MakeTemplate.Response](#anytype.Rpc.MakeTemplate.Response) |  |
 | MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
 | CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
+| ObjectDuplicate | [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request) | [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response) |  |
 | ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
@@ -9535,6 +9541,63 @@ deprecated, to be removed |
 
 
 
+<a name="anytype.Rpc.ObjectDuplicate"></a>
+
+### Rpc.ObjectDuplicate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Request"></a>
+
+### Rpc.ObjectDuplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of template block for cloning |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Response"></a>
+
+### Rpc.ObjectDuplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectDuplicate.Response.Error](#anytype.Rpc.ObjectDuplicate.Response.Error) |  |  |
+| id | [string](#string) |  | created template id |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Response.Error"></a>
+
+### Rpc.ObjectDuplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectDuplicate.Response.Error.Code](#anytype.Rpc.ObjectDuplicate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.ObjectList"></a>
 
 ### Rpc.ObjectList
@@ -12706,6 +12769,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.ToSet.Response.Error.Code"></a>
 
 ### Rpc.Object.ToSet.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectDuplicate.Response.Error.Code"></a>
+
+### Rpc.ObjectDuplicate.Response.Error.Code
 
 
 | Name | Number | Description |

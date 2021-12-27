@@ -277,9 +277,6 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 		if u.block != nil {
 			u.fileType = u.block.Model().GetFile().GetType()
 		}
-		if u.typeDetect || u.fileType == model.BlockContentFile_None {
-			u.fileType = u.detectType(buf)
-		}
 	}
 	if u.block != nil {
 		u.fileStyle = u.block.Model().GetFile().GetStyle()
@@ -291,6 +288,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			u.fileStyle = model.BlockContentFile_Embed
 		}
 	}
+	u.fileType = u.detectType(buf)
 	var opts = []files.AddOption{
 		files.WithName(u.name),
 		files.WithReader(buf),
