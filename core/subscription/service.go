@@ -101,7 +101,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	if len(req.Source) > 0 {
 		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("can't make filter from source: %v", err)
 		}
 		f.FilterObj = filter.AndFilters{f.FilterObj, sourceFilter}
 	}
@@ -110,7 +110,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		Filters: []query.Filter{f},
 	})
 	if err != nil {
-		return
+		return nil, fmt.Errorf("objectStore query error: %v", err)
 	}
 
 	s.m.Lock()
@@ -133,7 +133,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		})
 	}
 	if err = sub.init(entries); err != nil {
-		return
+		return nil, fmt.Errorf("subscription init error: %v", err)
 	}
 	s.subscriptions[sub.id] = sub
 	prev, next := sub.counters()
