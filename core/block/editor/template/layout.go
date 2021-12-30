@@ -14,6 +14,7 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		WithRequiredRelations(),
 		WithMaxCountMigration,
 	)
+
 	switch layout {
 	case model.ObjectType_note:
 		templates = append(templates,
@@ -22,6 +23,8 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		)
 	case model.ObjectType_todo:
 		templates = append(templates,
+			WithTitle,
+			WithDescription,
 			WithRelations([]bundle.RelationKey{bundle.RelationKeyDone}),
 		)
 	default:
