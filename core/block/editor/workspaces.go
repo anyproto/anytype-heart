@@ -1,6 +1,7 @@
 package editor
 
 import (
+	"errors"
 	"fmt"
 	"time"
 
@@ -33,6 +34,13 @@ const (
 	collectionKeyAddrs     = "addrs"
 	collectionKeyId        = "id"
 	collectionKeyKey       = "key"
+
+	collectionNameRelations    = "relations"
+	collectionNameRelationOpts = "relationOpts"
+)
+
+var (
+	ErrRelationNotFound = errors.New("relation not found")
 )
 
 func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
@@ -472,4 +480,33 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 		Key:   thread.NewKey(sk, pk).String(),
 		Addrs: pbtypes.GetStringListValue(fields.Fields[collectionKeyAddrs]),
 	}, nil
+}
+
+func (p *Workspaces) SaveRelations(rels ...*model.Relation) (err error) {
+	s := p.NewState()
+	for _, rel := range rels {
+		s.SetInStore([]string{collectionNameRelations, rel.Key}, pbtypes.RelationToValue(rel))
+	}
+	return p.Apply(s, smartblock.NoHistory, smartblock.NoEvent)
+}
+
+func (p *Workspaces) GetRelation(relKey string) (r *model.Relation, err error) {
+	s := p.NewState()
+	v := pbtypes.Get(s.Store(), collectionNameRelations, relKey)
+	if v == nil {
+		return nil, ErrRelationNotFound
+	}
+	r = pbtypes.StructToRelation(v.GetStructValue())
+	if r == nil {
+		err = ErrRelationNotFound
+	}
+	return
+}
+
+func (p *Workspaces) SetRelationOptions(relKey string, opts ...*model.RelationOption) (err error) {
+	s := p.NewState()
+	for _, opt := range opts {
+		s.SetInStore([]string{collectionNameRelationOpts, relKey, opt.Id}, pbtypes.RelationOptionToValue(opt))
+	}
+	return p.Apply(s, smartblock.NoHistory, smartblock.NoEvent)
 }
