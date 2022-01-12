@@ -36,6 +36,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	libcore "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -219,6 +220,9 @@ type Service interface {
 	ObjectShareByLink(req *pb.RpcObjectShareByLinkRequest) (string, error)
 
 	AddCreatorInfoIfNeeded(workspaceId string) error
+
+	UnsplashSearch(request string) (search []map[string]string, err error)
+	ImageUnsplashDownload(request string) (image libcore.Image, err error)
 
 	app.ComponentRunnable
 }
@@ -1316,6 +1320,16 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	if err != nil {
 		return
 	}
+	return
+}
+
+func (s *service) UnsplashSearch(request string) (search []map[string]string, err error) {
+	search, err = libcore.New().ImageUnsplashSearch(context.TODO(), request)
+	return
+}
+
+func (s *service) ImageUnsplashDownload(request string) (image libcore.Image, err error) {
+	image, err = libcore.New().ImageUnsplashDownload(context.TODO(), request)
 	return
 }
 

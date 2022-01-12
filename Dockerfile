@@ -7,6 +7,7 @@ MAINTAINER Anytype <dev@anytype.io>
 ENV SRC_DIR /anytype
 ENV BUILD_DIR /tmp
 
+
 # Download packages first so they can be cached.
 COPY go.mod go.sum $SRC_DIR/
 RUN cd $SRC_DIR \

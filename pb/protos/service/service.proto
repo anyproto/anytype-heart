@@ -199,6 +199,8 @@ service ClientCommands {
     rpc MakeTemplateByObjectType (anytype.Rpc.MakeTemplateByObjectType.Request) returns (anytype.Rpc.MakeTemplateByObjectType.Response);
     rpc CloneTemplate (anytype.Rpc.CloneTemplate.Request) returns (anytype.Rpc.CloneTemplate.Response);
     rpc ObjectDuplicate (anytype.Rpc.ObjectDuplicate.Request) returns (anytype.Rpc.ObjectDuplicate.Response);
+    rpc UnsplashSearch (anytype.Rpc.UnsplashSearch.Request) returns (anytype.Rpc.UnsplashSearch.Response);
+    rpc UnsplashDownload (anytype.Rpc.UnsplashDownload.Request) returns (anytype.Rpc.UnsplashDownload.Response);
     rpc ApplyTemplate (anytype.Rpc.ApplyTemplate.Request) returns (anytype.Rpc.ApplyTemplate.Response);
 
     rpc DebugSync (anytype.Rpc.Debug.Sync.Request) returns (anytype.Rpc.Debug.Sync.Response);

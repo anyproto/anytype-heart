@@ -1264,6 +1264,24 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": true,
+    "key": "artistPhoto",
+    "maxCount": 1,
+    "name": "Artist of Photo",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "format": "longtext",
+    "hidden": true,
+    "key": "artistUrl",
+    "maxCount": 1,
+    "name": "URL Artist",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "cameraIso",

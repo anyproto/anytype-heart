@@ -63,6 +63,72 @@ func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.Rpc
 	return response(objectId, err)
 }
 
+func (mw *Middleware) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
+	response := func(resp []*pb.RpcUnsplashSearchResponseResponseMap, err error) *pb.RpcUnsplashSearchResponse {
+		m := &pb.RpcUnsplashSearchResponse{
+			Error: &pb.RpcUnsplashSearchResponseError{Code: pb.RpcUnsplashSearchResponseError_NULL},
+			Maps:  resp,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcUnsplashSearchResponseError_UNKNOWN_ERROR
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	var mapsResult []map[string]string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		mapsResult, err = bs.UnsplashSearch(req.SearchRequest)
+		return
+	})
+	var mapsResultPb []*pb.RpcUnsplashSearchResponseResponseMap
+	for _, v := range mapsResult {
+		mapsResultPb = append(mapsResultPb, &pb.RpcUnsplashSearchResponseResponseMap{
+			Map: v,
+		})
+	}
+	return response(mapsResultPb, err)
+}
+
+func (mw *Middleware) UnsplashDownload(req *pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse {
+	response := func(image model.BlockContentFile, err error) *pb.RpcUnsplashDownloadResponse {
+		m := &pb.RpcUnsplashDownloadResponse{
+			Error: &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_NULL},
+			Image: &image,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcUnsplashDownloadResponseError_UNKNOWN_ERROR
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	var image core.Image
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		image, err = bs.ImageUnsplashDownload(req.DownloadRequest)
+		if err != nil {
+			return err
+		}
+		return
+	})
+	exif, err := image.Exif()
+	if err != nil {
+		return nil
+	}
+	details, err := image.Details()
+	if err != nil {
+		return nil
+	}
+	responseImage := model.BlockContentFile{
+		Hash:  image.Hash(),
+		Name:  exif.Name,
+		Type:  model.BlockContentFile_Image,
+		Size_: int64(details.Size()),
+		State: model.BlockContentFile_Done,
+		Style: model.BlockContentFile_Embed,
+	}
+	return response(responseImage, err)
+}
+
 func handleDateSearch(req *pb.RpcObjectSearchRequest, records []database.Record) []database.Record {
 	n := time.Now()
 	f, _ := filter.MakeAndFilter(req.Filters)
