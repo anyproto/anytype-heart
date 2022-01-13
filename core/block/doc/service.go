@@ -5,12 +5,13 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/recordsbatcher"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
@@ -28,6 +29,7 @@ type DocInfo struct {
 	FileHashes   []string
 	LogHeads     map[string]string
 	SetRelations []*model.Relation
+	AllRelations []*types.Struct
 	SetSource    []string
 	Creator      string
 	State        *state.State

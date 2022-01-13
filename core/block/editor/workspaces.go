@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
+	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -18,6 +19,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes/pbconvert"
 	"github.com/gogo/protobuf/types"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -485,7 +487,7 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 func (p *Workspaces) SaveRelations(rels ...*model.Relation) (err error) {
 	s := p.NewState()
 	for _, rel := range rels {
-		s.SetInStore([]string{collectionNameRelations, rel.Key}, pbtypes.RelationToValue(rel))
+		s.SetInStore([]string{collectionNameRelations, rel.Key}, pbconvert.RelationToValue(rel))
 	}
 	return p.Apply(s, smartblock.NoHistory, smartblock.NoEvent)
 }
@@ -496,7 +498,7 @@ func (p *Workspaces) GetRelation(relKey string) (r *model.Relation, err error) {
 	if v == nil {
 		return nil, ErrRelationNotFound
 	}
-	r = pbtypes.StructToRelation(v.GetStructValue())
+	r = pbconvert.StructToRelation(v.GetStructValue())
 	if r == nil {
 		err = ErrRelationNotFound
 	}
@@ -506,7 +508,24 @@ func (p *Workspaces) GetRelation(relKey string) (r *model.Relation, err error) {
 func (p *Workspaces) SetRelationOptions(relKey string, opts ...*model.RelationOption) (err error) {
 	s := p.NewState()
 	for _, opt := range opts {
-		s.SetInStore([]string{collectionNameRelationOpts, relKey, opt.Id}, pbtypes.RelationOptionToValue(opt))
+		s.SetInStore([]string{collectionNameRelationOpts, relKey, opt.Id}, pbconvert.RelationOptionToValue(opt))
 	}
 	return p.Apply(s, smartblock.NoHistory, smartblock.NoEvent)
+}
+
+func (p *Workspaces) GetDocInfo() (info doc.DocInfo, err error) {
+	if info, err = p.SmartBlock.GetDocInfo(); err != nil {
+		return
+	}
+	s := p.NewState()
+	rels := pbtypes.Get(s.Store(), collectionNameRelations).GetStructValue()
+	if rels == nil && rels.Fields == nil {
+		return
+	}
+
+	for _, v := range rels.Fields {
+		info.AllRelations = append(info.AllRelations, v.GetStructValue())
+	}
+
+	return
 }
