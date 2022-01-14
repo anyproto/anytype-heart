@@ -30,7 +30,7 @@ func (c *cache) get(k string) []net.IPAddr {
 	c.Lock()
 	defer c.Unlock()
 	e, contains := c.entries[k]
-	if !contains || time.Now().Sub(e.t) < c.ttl {
+	if !contains || time.Now().Sub(e.t) > c.ttl {
 		return nil
 	}
 	return e.addrs
