@@ -72,5 +72,5 @@ func (r *Resolver) LookupIPAddr(ctx context.Context, s string) ([]net.IPAddr, er
 }
 
 func (r *Resolver) LookupTXT(ctx context.Context, s string) ([]string, error) {
-	return r.LookupTXT(ctx, s)
+	return r.r.LookupTXT(ctx, s)
 }
