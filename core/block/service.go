@@ -1323,16 +1323,6 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	return
 }
 
-func (s *service) UnsplashSearch(request string) (search []map[string]string, err error) {
-	search, err = libcore.New().ImageUnsplashSearch(context.TODO(), request)
-	return
-}
-
-func (s *service) ImageUnsplashDownload(request string) (image libcore.Image, err error) {
-	image, err = libcore.New().ImageUnsplashDownload(context.TODO(), request)
-	return
-}
-
 func (s *service) ApplyTemplate(contextId, templateId string) error {
 	return s.Do(contextId, func(b smartblock.SmartBlock) error {
 		orig := b.NewState().ParentState()
