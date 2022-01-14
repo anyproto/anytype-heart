@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/net/resolver"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util/nocloserds"
 	"github.com/ipfs/go-cid"
 	blockstore "github.com/ipfs/go-ipfs-blockstore"
@@ -29,6 +30,7 @@ import (
 	libp2ptls "github.com/libp2p/go-libp2p-tls"
 	"github.com/libp2p/go-tcp-transport"
 	ma "github.com/multiformats/go-multiaddr"
+	madns "github.com/multiformats/go-multiaddr-dns"
 
 	app "github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -105,6 +107,14 @@ func (ln *liteNet) getConfig(a *app.App) (*Config, error) {
 func (ln *liteNet) Init(a *app.App) (err error) {
 	ln.ds = a.MustComponent(datastore.CName).(datastore.Datastore)
 	ln.bootstrapFinished = make(chan struct{})
+
+	res, err := madns.NewResolver(
+		madns.WithDefaultResolver(resolver.NewResolverWithTTL(time.Minute * 30)),
+	)
+	if err != nil {
+		return err
+	}
+	madns.DefaultResolver = res
 
 	ln.cfg, err = ln.getConfig(a)
 	if err != nil {
