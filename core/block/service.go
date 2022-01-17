@@ -221,7 +221,7 @@ type Service interface {
 
 	AddCreatorInfoIfNeeded(workspaceId string) error
 
-	UnsplashSearch(request string) (search []map[string]string, err error)
+	UnsplashSearch(max int) (search []map[string]string, err error)
 	ImageUnsplashDownload(request string) (image libcore.Image, err error)
 
 	app.ComponentRunnable

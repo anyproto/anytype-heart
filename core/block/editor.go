@@ -623,9 +623,9 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 	return
 }
 
-func (s *service) UnsplashSearch(request string) (search []map[string]string, err error) {
+func (s *service) UnsplashSearch(max int) (search []map[string]string, err error) {
 	upl := file.NewUploader(s)
-	return upl.ImageUnsplashSearch(context.TODO(), request)
+	return upl.ImageUnsplashSearch(context.TODO(), max)
 }
 
 func (s *service) ImageUnsplashDownload(request string) (image core.Image, err error) {

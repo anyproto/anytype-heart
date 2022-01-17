@@ -64,10 +64,10 @@ func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.Rpc
 }
 
 func (mw *Middleware) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse {
-	response := func(resp []*pb.RpcUnsplashSearchResponseResponseMap, err error) *pb.RpcUnsplashSearchResponse {
+	response := func(resp []*pb.RpcUnsplashSearchResponsePicture, err error) *pb.RpcUnsplashSearchResponse {
 		m := &pb.RpcUnsplashSearchResponse{
-			Error: &pb.RpcUnsplashSearchResponseError{Code: pb.RpcUnsplashSearchResponseError_NULL},
-			Maps:  resp,
+			Error:    &pb.RpcUnsplashSearchResponseError{Code: pb.RpcUnsplashSearchResponseError_NULL},
+			Pictures: resp,
 		}
 		if err != nil {
 			m.Error.Code = pb.RpcUnsplashSearchResponseError_UNKNOWN_ERROR
@@ -77,13 +77,16 @@ func (mw *Middleware) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUn
 	}
 	var mapsResult []map[string]string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		mapsResult, err = bs.UnsplashSearch(req.SearchRequest)
+		mapsResult, err = bs.UnsplashSearch(int(req.MaxForRandom))
 		return
 	})
-	var mapsResultPb []*pb.RpcUnsplashSearchResponseResponseMap
+	var mapsResultPb []*pb.RpcUnsplashSearchResponsePicture
 	for _, v := range mapsResult {
-		mapsResultPb = append(mapsResultPb, &pb.RpcUnsplashSearchResponseResponseMap{
-			Map: v,
+		mapsResultPb = append(mapsResultPb, &pb.RpcUnsplashSearchResponsePicture{
+			Id:        v["ID"],
+			Url:       v["URL"],
+			Artist:    v["Artist"],
+			ArtistUrl: v["ArtistUrl"],
 		})
 	}
 	return response(mapsResultPb, err)
@@ -104,7 +107,7 @@ func (mw *Middleware) UnsplashDownload(req *pb.RpcUnsplashDownloadRequest) *pb.R
 
 	var image core.Image
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		image, err = bs.ImageUnsplashDownload(req.DownloadRequest)
+		image, err = bs.ImageUnsplashDownload(req.UnsplashPhotoIdRequest)
 		if err != nil {
 			return err
 		}

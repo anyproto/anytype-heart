@@ -58,7 +58,7 @@ type Uploader interface {
 	Upload(ctx context.Context) (result UploadResult)
 	UploadAsync(todo context.Context) (ch chan UploadResult)
 
-	ImageUnsplashSearch(ctx context.Context, request string) ([]map[string]string, error)
+	ImageUnsplashSearch(ctx context.Context, max int) ([]map[string]string, error)
 	ImageUnsplashDownload(ctx context.Context, id string) (core.Image, error)
 }
 
@@ -243,8 +243,8 @@ func (u *uploader) AsyncUpdates(smartBlockId string) Uploader {
 	return u
 }
 
-func (u *uploader) ImageUnsplashSearch(ctx context.Context, request string) ([]map[string]string, error) {
-	return u.anytype.ImageUnsplashSearch(ctx, request)
+func (u *uploader) ImageUnsplashSearch(ctx context.Context, max int) ([]map[string]string, error) {
+	return u.anytype.ImageUnsplashSearch(ctx, max)
 }
 
 func (u *uploader) ImageUnsplashDownload(ctx context.Context, id string) (core.Image, error) {

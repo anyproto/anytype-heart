@@ -31,11 +31,11 @@ func WithReader(r io.ReadSeeker) AddOption {
 	}
 }
 
-func WithReaderAndArtist(r io.ReadSeeker, a string, u string) AddOption {
+func WithArtist(r io.ReadSeeker, s ...string) AddOption {
 	return func(args *AddOptions) {
 		args.Reader = r
-		args.Artist = a
-		args.URl = u
+		args.Artist = s[0]
+		args.URl = s[1]
 	}
 }
 

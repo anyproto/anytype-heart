@@ -3959,15 +3959,18 @@ message Rpc {
 
     message UnsplashSearch {
         message Request {
-            string searchRequest = 1;
+            int32 maxForRandom = 1;
         }
 
         message Response {
             Error error = 1;
-            repeated ResponseMap maps = 2;
+            repeated Picture pictures = 2;
 
-            message ResponseMap {
-                map<string, string> map = 2;
+            message Picture {
+                string id = 1;
+                string url = 2;
+                string artist = 3;
+                string artistUrl = 4;
             }
 
             message Error {
@@ -3986,7 +3989,7 @@ message Rpc {
 
     message UnsplashDownload {
         message Request {
-            string downloadRequest = 1;
+            string unsplashPhotoIdRequest = 1;
         }
 
         message Response {

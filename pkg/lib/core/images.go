@@ -95,23 +95,23 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 	return img, nil
 }
 
-func (a *Anytype) ImageUnsplashSearch(ctx context.Context, request string) ([]map[string]string, error) {
+func (a *Anytype) ImageUnsplashSearch(ctx context.Context, max int) ([]map[string]string, error) {
 	ts := oauth2.StaticTokenSource(
 		&oauth2.Token{AccessToken: UNSPLASH_TOKEN},
 	)
 	client := oauth2.NewClient(oauth2.NoContext, ts)
-	var opt unsplash.SearchOpt
+	var opt unsplash.RandomPhotoOpt
 	unsplashApi := unsplash.New(client)
-	opt.Query = request
-	photos, _, err := unsplashApi.Search.Photos(&opt)
+	opt.Count = max
+	photos, _, err := unsplashApi.Photos.Random(&opt)
 	var photoIds []map[string]string
 
-	for _, v := range *photos.Results {
+	for _, v := range *photos {
 		m := make(map[string]string)
 		m["ID"] = *v.ID
-		m["URL"] = v.Urls.Raw.String()
+		m["URL"] = v.Urls.Full.String()
 		m["Artist"] = *v.Photographer.Name
-		m["ArtistUrl"] = v.Photographer.Links.Self.String()
+		m["ArtistUrl"] = v.Photographer.Links.HTML.String()
 		photoIds = append(photoIds, m)
 	}
 
@@ -132,7 +132,7 @@ func (a *Anytype) ImageUnsplashDownload(ctx context.Context, id string) (img Ima
 	responseDownload, err := http.Get(photoUrl)
 	defer responseDownload.Body.Close()
 	_, _ = io.Copy(out, responseDownload.Body)
-	img, err = a.ImageAdd(ctx, files.WithReaderAndArtist(out, *photo.Photographer.Name, photo.Photographer.Links.Self.String()))
+	img, err = a.ImageAdd(ctx, files.WithArtist(out, *photo.Photographer.Name, photo.Photographer.Links.HTML.String()))
 	if err != nil {
 		return nil, err
 	}

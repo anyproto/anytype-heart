@@ -644,8 +644,7 @@
     - [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request)
     - [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response)
     - [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error)
-    - [Rpc.UnsplashSearch.Response.ResponseMap](#anytype.Rpc.UnsplashSearch.Response.ResponseMap)
-    - [Rpc.UnsplashSearch.Response.ResponseMap.MapEntry](#anytype.Rpc.UnsplashSearch.Response.ResponseMap.MapEntry)
+    - [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture)
     - [Rpc.UploadFile](#anytype.Rpc.UploadFile)
     - [Rpc.UploadFile.Request](#anytype.Rpc.UploadFile.Request)
     - [Rpc.UploadFile.Response](#anytype.Rpc.UploadFile.Response)
@@ -10477,7 +10476,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| downloadRequest | [string](#string) |  |  |
+| unsplashPhotoIdRequest | [string](#string) |  |  |
 
 
 
@@ -10534,7 +10533,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| searchRequest | [string](#string) |  |  |
+| maxForRandom | [int32](#int32) |  |  |
 
 
 
@@ -10550,7 +10549,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error) |  |  |
-| maps | [Rpc.UnsplashSearch.Response.ResponseMap](#anytype.Rpc.UnsplashSearch.Response.ResponseMap) | repeated |  |
+| pictures | [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture) | repeated |  |
 
 
 
@@ -10573,31 +10572,18 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
-<a name="anytype.Rpc.UnsplashSearch.Response.ResponseMap"></a>
+<a name="anytype.Rpc.UnsplashSearch.Response.Picture"></a>
 
-### Rpc.UnsplashSearch.Response.ResponseMap
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| map | [Rpc.UnsplashSearch.Response.ResponseMap.MapEntry](#anytype.Rpc.UnsplashSearch.Response.ResponseMap.MapEntry) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.UnsplashSearch.Response.ResponseMap.MapEntry"></a>
-
-### Rpc.UnsplashSearch.Response.ResponseMap.MapEntry
+### Rpc.UnsplashSearch.Response.Picture
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| value | [string](#string) |  |  |
+| id | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| artist | [string](#string) |  |  |
+| artistUrl | [string](#string) |  |  |
 
 
 

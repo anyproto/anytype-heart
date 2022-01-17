@@ -76,7 +76,7 @@ type Service interface {
 	ImageByHash(ctx context.Context, hash string) (Image, error)
 	ImageAdd(ctx context.Context, opts ...files.AddOption) (Image, error)
 	ImageUnsplashDownload(ctx context.Context, id string) (Image, error)
-	ImageUnsplashSearch(ctx context.Context, request string) ([]map[string]string, error)
+	ImageUnsplashSearch(ctx context.Context, max int) ([]map[string]string, error)
 	ImageAddWithBytes(ctx context.Context, content []byte, filename string) (Image, error)         // deprecated
 	ImageAddWithReader(ctx context.Context, content io.ReadSeeker, filename string) (Image, error) // deprecated
 

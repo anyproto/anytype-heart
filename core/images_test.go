@@ -40,7 +40,7 @@ func TestImages(t *testing.T) {
 	t.Run("image_search_unsplash", func(t *testing.T) {
 		coreService := mw.app.MustComponent(core.CName).(core.Service)
 
-		i, err := coreService.ImageUnsplashSearch(context.Background(), "Москва, Кремль")
+		i, err := coreService.ImageUnsplashSearch(context.Background(), 3)
 		require.NoError(t, err)
 
 		require.True(t, len(i) > 0)
