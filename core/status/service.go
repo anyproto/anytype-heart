@@ -35,7 +35,7 @@ const (
 	cafeLastPullTimeout          = 10 * time.Minute
 
 	// TODO: move to global config component
-	cafePeerId = "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+	cafePeerId = "12D3KooWRNcPvzFigfUZuqvak7vfQGCcvqotjE7R2KBTfnkKyVvj"
 
 	// truncate device names and account IDs to last symbols
 	maxNameLength = 8

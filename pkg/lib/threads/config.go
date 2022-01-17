@@ -7,7 +7,7 @@ import (
 )
 
 const (
-	defaultCafeNodeP2P = "/dns4/cafe1.anytype.io/tcp/4001/p2p/12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw"
+	defaultCafeNodeP2P = "/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWRNcPvzFigfUZuqvak7vfQGCcvqotjE7R2KBTfnkKyVvj"
 )
 
 type CafeConfigFetcher interface {

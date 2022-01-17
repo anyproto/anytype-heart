@@ -23,7 +23,7 @@ var log = logging.Logger("anytype-config")
 const (
 	CName = "config"
 
-	defaultCafeNodeGRPC = "cafe1.anytype.io:3006"
+	defaultCafeNodeGRPC = "127.0.0.1:3006"
 )
 
 type ConfigRequired struct {
@@ -69,7 +69,7 @@ var DefaultConfig = Config{
 		"/dns4/relay1.anytype.io/tcp/4101/p2p/12D3KooWNPqCu4BC5WMBuHmqdiNWwAHGTNKbNy6JP5W1DML2psg1",
 	},
 	CafeAPIHost:     defaultCafeNodeGRPC,
-	CafeAPIInsecure: false,
+	CafeAPIInsecure: true,
 
 	DS:      clientds.DefaultConfig,
 	Threads: threads.DefaultConfig,
