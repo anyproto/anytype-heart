@@ -10476,7 +10476,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| unsplashPhotoIdRequest | [string](#string) |  |  |
+| pictureId | [string](#string) |  |  |
 
 
 
@@ -10533,7 +10533,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| maxForRandom | [int32](#int32) |  |  |
+| limit | [int32](#int32) |  |  |
 
 
 

@@ -77,7 +77,7 @@ func (mw *Middleware) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUn
 	}
 	var mapsResult []map[string]string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		mapsResult, err = bs.UnsplashSearch(int(req.MaxForRandom))
+		mapsResult, err = bs.UnsplashSearch(int(req.Limit))
 		return
 	})
 	var mapsResultPb []*pb.RpcUnsplashSearchResponsePicture
@@ -107,7 +107,7 @@ func (mw *Middleware) UnsplashDownload(req *pb.RpcUnsplashDownloadRequest) *pb.R
 
 	var image core.Image
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		image, err = bs.ImageUnsplashDownload(req.UnsplashPhotoIdRequest)
+		image, err = bs.ImageUnsplashDownload(req.PictureId)
 		if err != nil {
 			return err
 		}

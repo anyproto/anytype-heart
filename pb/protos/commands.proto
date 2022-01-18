@@ -3959,7 +3959,7 @@ message Rpc {
 
     message UnsplashSearch {
         message Request {
-            int32 maxForRandom = 1;
+            int32 limit = 1;
         }
 
         message Response {
@@ -3989,7 +3989,7 @@ message Rpc {
 
     message UnsplashDownload {
         message Request {
-            string unsplashPhotoIdRequest = 1;
+            string pictureId = 1;
         }
 
         message Response {

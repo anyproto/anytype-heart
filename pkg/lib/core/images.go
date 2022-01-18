@@ -46,11 +46,26 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		}
 	}
 
-	return &image{
+	details, err := a.objectStore.GetDetails(hash)
+	if err != nil {
+		return nil, err
+	}
+
+	i := &image{
 		hash:            files[0].Targets[0],
 		variantsByWidth: variantsByWidth,
 		service:         a.files,
-	}, nil
+	}
+
+	if aPhoto, aOk := details.Details.Fields[bundle.RelationKeyArtistPhoto.String()]; aOk {
+		i.artist = aPhoto.GetStringValue()
+	}
+
+	if urlPhoto, urlOk := details.Details.Fields[bundle.RelationKeyArtistUrl.String()]; urlOk {
+		i.Url = urlPhoto.GetStringValue()
+	}
+
+	return i, nil
 }
 
 func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Image, error) {
