@@ -713,7 +713,7 @@ func (s *Service) FileIndexInfo(ctx context.Context, hash string, updateIfExists
 	keys, err := s.store.GetFileKeys(hash)
 	if err != nil {
 		// no keys means file is not encrypted or keys are missing
-		log.Debugf("failed to get file keys from cache: %s", err.Error())
+		log.Errorf("failed to get file keys from filestore %s: %s", hash, err.Error())
 	}
 
 	var files []*storage.FileInfo
