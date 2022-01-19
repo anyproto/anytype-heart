@@ -21,7 +21,7 @@ func New() Debug {
 
 type Debug interface {
 	app.Component
-	DumpTree(blockId, path string) (filename string, err error)
+	DumpTree(blockId, path string, anonymize bool) (filename string, err error)
 	DumpLocalstore(objectIds []string, path string) (filename string, err error)
 }
 
@@ -40,12 +40,12 @@ func (d *debug) Name() (name string) {
 	return CName
 }
 
-func (d *debug) DumpTree(blockId, path string) (filename string, err error) {
+func (d *debug) DumpTree(blockId, path string, anonymize bool) (filename string, err error) {
 	block, err := d.core.GetBlock(blockId)
 	if err != nil {
 		return
 	}
-	builder := &treeBuilder{b: block, s: d.store}
+	builder := &treeBuilder{b: block, s: d.store, anonymized: anonymize}
 	return builder.Build(path)
 }
 

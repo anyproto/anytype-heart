@@ -21,11 +21,12 @@ import (
 )
 
 type treeBuilder struct {
-	log     *log.Logger
-	b       core.SmartBlock
-	changes map[string]struct{}
-	zw      *zip.Writer
-	s       objectstore.ObjectStore
+	log        *log.Logger
+	b          core.SmartBlock
+	changes    map[string]struct{}
+	zw         *zip.Writer
+	s          objectstore.ObjectStore
+	anonymized bool
 }
 
 func (b *treeBuilder) Build(path string) (filename string, err error) {
@@ -122,6 +123,16 @@ func (b *treeBuilder) writeChanges(logs []core.SmartblockLog) (err error) {
 	return
 }
 
+func createFileWithDateInZip(zw *zip.Writer, name string, modified time.Time) (io.Writer, error) {
+	header := &zip.FileHeader{
+		Name:     name,
+		Method:   zip.Deflate,
+		Modified: modified,
+	}
+
+	return zw.CreateHeader(header)
+}
+
 func (b *treeBuilder) writeChange(id string) (nextIds []string) {
 	if _, ok := b.changes[id]; ok {
 		return
@@ -141,9 +152,18 @@ func (b *treeBuilder) writeChange(id string) (nextIds []string) {
 		Id:      id,
 		Account: rec.AccountID,
 		Device:  rec.LogID,
-		Change:  anonymize.Change(chp),
 	}
-	chw, err := b.zw.Create(id + ".json")
+	if b.anonymized {
+		ch.Change = anonymize.Change(chp)
+	} else {
+		ch.Change = chp
+	}
+	chw, err := b.zw.CreateHeader(&zip.FileHeader{
+		Name:     id + ".json",
+		Method:   zip.Deflate,
+		Modified: time.Unix(ch.Timestamp, 0),
+	})
+
 	if err != nil {
 		b.log.Printf("create file in zip error: %v", err)
 		return

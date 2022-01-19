@@ -6947,6 +6947,7 @@ commands acceptable only for text blocks, others will be ignored
 | ----- | ---- | ----- | ----------- |
 | blockId | [string](#string) |  |  |
 | path | [string](#string) |  |  |
+| unanonymized | [bool](#bool) |  | set to true to disable mocking of the actual data inside changes |
 
 
 
