@@ -520,16 +520,31 @@ func (p *Workspaces) GetDocInfo() (info doc.DocInfo, err error) {
 	if info, err = p.SmartBlock.GetDocInfo(); err != nil {
 		return
 	}
+
+	// fetch all relations
 	s := p.NewState()
 	rels := pbtypes.Get(s.Store(), collectionNameRelations).GetStructValue()
-	if rels == nil && rels.Fields == nil {
-		return
+	if rels != nil && rels.Fields != nil {
+		for _, v := range rels.Fields {
+			info.Relations = append(info.Relations, v.GetStructValue())
+		}
 	}
 
-	for _, v := range rels.Fields {
-		info.AllRelations = append(info.AllRelations, v.GetStructValue())
+	opts := pbtypes.Get(s.Store(), collectionNameRelationOpts).GetStructValue()
+	if opts != nil && opts.Fields != nil {
+		for relId, v := range opts.Fields {
+			var optList []*types.Struct
+			if st := v.GetStructValue(); st != nil && st.Fields != nil {
+				for _, op := range st.Fields {
+					optList = append(optList, op.GetStructValue())
+				}
+			}
+			info.RelationOptions = append(info.RelationOptions, doc.RelationOptionsInfo{
+				RelationId: relId,
+				Options:    optList,
+			})
+		}
 	}
-
 	return
 }
 
