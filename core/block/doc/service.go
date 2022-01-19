@@ -30,6 +30,8 @@ type DocInfo struct {
 	LogHeads     map[string]string
 	SetRelations []*model.Relation
 	AllRelations []*types.Struct
+	SetOptions   []*types.Struct
+	AllOptions   []*types.Struct
 	SetSource    []string
 	Creator      string
 	State        *state.State

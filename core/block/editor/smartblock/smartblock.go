@@ -1346,6 +1346,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		return err
 	}
 	s.InjectDerivedDetails()
+	sb.execHooks(HookBeforeApply, s)
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err

@@ -1608,6 +1608,25 @@ func (s *State) Store() *types.Struct {
 	return iterState.store
 }
 
+func (s *State) GetChangedStoreKeys(prefixPath ...string) (paths [][]string) {
+	if s.store == nil || s.parent == nil {
+		return nil
+	}
+	pbtypes.StructIterate(s.store, func(path []string, v *types.Value) {
+		if slice.HasPrefix(path, prefixPath) {
+			parentVal := pbtypes.Get(s.parent.store, path...)
+			if st := v.GetStructValue(); st != nil && parentVal.GetStructValue() != nil {
+				if !pbtypes.StructEqualKeys(st, parentVal.GetStructValue()) {
+					paths = append(paths, path)
+				}
+			} else if !v.Equal(pbtypes.Get(s.parent.store, path...)) {
+				paths = append(paths, path)
+			}
+		}
+	})
+	return
+}
+
 func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 	if det := s.Details(); det != nil && det.Fields != nil {
 		if _, ok := det.Fields[bundle.RelationKeyLayout.String()]; ok {

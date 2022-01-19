@@ -311,3 +311,27 @@ func TestState_IsEmpty(t *testing.T) {
 	s.Pick("emptyText").Model().GetText().Text = "1"
 	assert.False(t, s.IsEmpty())
 }
+
+func TestState_GetChangedStoreKeys(t *testing.T) {
+	p := NewDoc("test", nil).(*State)
+	p.SetInStore([]string{"one", "two", "v1"}, pbtypes.String("val1"))
+	p.SetInStore([]string{"one", "two", "v2"}, pbtypes.String("val2"))
+	p.SetInStore([]string{"one", "two", "v3"}, pbtypes.String("val3"))
+	p.SetInStore([]string{"other"}, pbtypes.String("val42"))
+
+	s := p.NewState()
+	s.SetInStore([]string{"one", "two", "v2"}, pbtypes.String("val2ch"))
+	s.SetInStore([]string{"other"}, pbtypes.String("changed"))
+	s.RemoveFromStore([]string{"one", "two", "v3"})
+
+	changed := s.GetChangedStoreKeys()
+	assert.Len(t, changed, 3)
+	assert.Contains(t, changed, []string{"one", "two", "v2"})
+	assert.Contains(t, changed, []string{"one", "two"})
+	assert.Contains(t, changed, []string{"other"})
+
+	changed = s.GetChangedStoreKeys("one")
+	assert.Len(t, changed, 2)
+	changed = s.GetChangedStoreKeys("one", "two", "v2")
+	assert.Len(t, changed, 1)
+}

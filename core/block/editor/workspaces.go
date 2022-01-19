@@ -57,6 +57,8 @@ type Workspaces struct {
 	DetailsModifier DetailsModifier
 	threadService   threads.Service
 	threadQueue     threads.ThreadQueue
+
+	changedRelationIds, changedRelationIdsOptions []string
 }
 
 type WorkspaceParameters struct {
@@ -296,6 +298,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
+	p.AddHook(p.checkUpdatedRelations, smartblock.HookBeforeApply)
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return smartblock.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
@@ -527,5 +530,21 @@ func (p *Workspaces) GetDocInfo() (info doc.DocInfo, err error) {
 		info.AllRelations = append(info.AllRelations, v.GetStructValue())
 	}
 
+	return
+}
+
+func (p *Workspaces) checkUpdatedRelations(s *state.State) (err error) {
+	paths := s.GetChangedStoreKeys(collectionNameRelations)
+	for _, path := range paths {
+		if len(path) >= 2 {
+			p.changedRelationIds = append(p.changedRelationIds, path[1])
+		}
+	}
+	paths = s.GetChangedStoreKeys(collectionNameRelationOpts)
+	for _, path := range paths {
+		if len(path) >= 2 {
+			p.changedRelationIdsOptions = append(p.changedRelationIdsOptions, path[1])
+		}
+	}
 	return
 }

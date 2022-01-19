@@ -118,3 +118,15 @@ func UnsortedEquals(s1, s2 []string) bool {
 
 	return SortedEquals(s1Sorted, s2Sorted)
 }
+
+func HasPrefix(value, prefix []string) bool {
+	if len(value) < len(prefix) {
+		return false
+	}
+	for i, p := range prefix {
+		if value[i] != p {
+			return false
+		}
+	}
+	return true
+}

@@ -11,22 +11,22 @@ func RelationToValue(rel *model.Relation) *types.Value {
 	return &types.Value{Kind: &types.Value_StructValue{
 		StructValue: &types.Struct{
 			Fields: map[string]*types.Value{
-				bundle.RelationKeyId.String():             pbtypes.String(rel.Key),
-				bundle.RelationKeyRelationFormat.String(): pbtypes.Float64(float64(rel.Format)),
-				bundle.RelationKeyName.String():           pbtypes.String(rel.Name),
-				"defaultValue":                            rel.DefaultValue,
-				"dataSource":                              pbtypes.Int64(int64(rel.DataSource)),
-				bundle.RelationKeyIsHidden.String():       pbtypes.Bool(rel.Hidden),
-				"readOnly":                                pbtypes.Bool(rel.ReadOnly),
-				bundle.RelationKeyIsReadonly.String():     pbtypes.Bool(rel.ReadOnlyRelation),
-				"multi":                                   pbtypes.Bool(rel.Multi),
-				"objectTypes":                             pbtypes.StringList(rel.ObjectTypes),
-				"maxCount":                                pbtypes.Int64(int64(rel.MaxCount)),
-				bundle.RelationKeyDescription.String():    pbtypes.String(rel.Description),
-				"scope":                                   pbtypes.Int64(int64(rel.Scope)),
-				bundle.RelationKeyCreator.String():        pbtypes.String(rel.Creator),
-				bundle.RelationKeyType.String():           pbtypes.String(bundle.TypeKeyRelation.URL()),
-				bundle.RelationKeyLayout.String():         pbtypes.Float64(float64(model.ObjectType_relation)),
+				bundle.RelationKeyId.String():                   pbtypes.String(rel.Key),
+				bundle.RelationKeyRelationFormat.String():       pbtypes.Float64(float64(rel.Format)),
+				bundle.RelationKeyName.String():                 pbtypes.String(rel.Name),
+				bundle.RelationKeyRelationDefaultValue.String(): rel.DefaultValue,
+				"dataSource":                          pbtypes.Int64(int64(rel.DataSource)),
+				bundle.RelationKeyIsHidden.String():   pbtypes.Bool(rel.Hidden),
+				"readOnly":                            pbtypes.Bool(rel.ReadOnly),
+				bundle.RelationKeyIsReadonly.String(): pbtypes.Bool(rel.ReadOnlyRelation),
+				"multi":                               pbtypes.Bool(rel.Multi),
+				bundle.RelationKeyRelationFormatObjectTypes.String(): pbtypes.StringList(rel.ObjectTypes),
+				bundle.RelationKeyRelationMaxCount.String():          pbtypes.Int64(int64(rel.MaxCount)),
+				bundle.RelationKeyDescription.String():               pbtypes.String(rel.Description),
+				bundle.RelationKeyScope.String():                     pbtypes.Int64(int64(rel.Scope)),
+				bundle.RelationKeyCreator.String():                   pbtypes.String(rel.Creator),
+				bundle.RelationKeyType.String():                      pbtypes.String(bundle.TypeKeyRelation.URL()),
+				bundle.RelationKeyLayout.String():                    pbtypes.Float64(float64(model.ObjectType_relation)),
 			},
 		},
 	}}
@@ -40,17 +40,17 @@ func StructToRelation(s *types.Struct) *model.Relation {
 		Key:              pbtypes.GetString(s, bundle.RelationKeyId.String()),
 		Format:           model.RelationFormat(pbtypes.GetInt64(s, bundle.RelationKeyRelationFormat.String())),
 		Name:             pbtypes.GetString(s, bundle.RelationKeyName.String()),
-		DefaultValue:     pbtypes.Get(s, "defaultValue"),
+		DefaultValue:     pbtypes.Get(s, bundle.RelationKeyRelationDefaultValue.String()),
 		DataSource:       model.RelationDataSource(pbtypes.GetInt64(s, "dataSource")),
 		Hidden:           pbtypes.GetBool(s, bundle.RelationKeyIsHidden.String()),
 		ReadOnly:         pbtypes.GetBool(s, "readOnly"),
 		ReadOnlyRelation: pbtypes.GetBool(s, bundle.RelationKeyIsReadonly.String()),
 		Multi:            pbtypes.GetBool(s, "multi"),
-		ObjectTypes:      pbtypes.GetStringList(s, "objectTypes"),
+		ObjectTypes:      pbtypes.GetStringList(s, bundle.RelationKeyRelationFormatObjectTypes.String()),
 		SelectDict:       nil,
-		MaxCount:         int32(pbtypes.GetInt64(s, "maxCount")),
+		MaxCount:         int32(pbtypes.GetInt64(s, bundle.RelationKeyRelationMaxCount.String())),
 		Description:      pbtypes.GetString(s, bundle.RelationKeyDescription.String()),
-		Scope:            model.RelationScope(pbtypes.GetInt64(s, "scope")),
+		Scope:            model.RelationScope(pbtypes.GetInt64(s, bundle.RelationKeyScope.String())),
 		Creator:          pbtypes.GetString(s, bundle.RelationKeyCreator.String()),
 	}
 }
@@ -59,10 +59,10 @@ func RelationOptionToValue(opt *model.RelationOption) *types.Value {
 	return &types.Value{Kind: &types.Value_StructValue{
 		StructValue: &types.Struct{
 			Fields: map[string]*types.Value{
-				"id":    pbtypes.String(opt.Id),
-				"text":  pbtypes.String(opt.Text),
-				"color": pbtypes.String(opt.Color),
-				"scope": pbtypes.Int64(int64(opt.Scope)),
+				bundle.RelationKeyId.String(): pbtypes.String(opt.Id),
+				"text":                        pbtypes.String(opt.Text),
+				"color":                       pbtypes.String(opt.Color),
+				"scope":                       pbtypes.Int64(int64(opt.Scope)),
 			},
 		}}}
 }
@@ -72,7 +72,7 @@ func StructToRelationOption(s *types.Struct) *model.RelationOption {
 		return nil
 	}
 	return &model.RelationOption{
-		Id:    pbtypes.GetString(s, "id"),
+		Id:    pbtypes.GetString(s, bundle.RelationKeyId.String()),
 		Text:  pbtypes.GetString(s, "text"),
 		Color: pbtypes.GetString(s, "color"),
 		Scope: model.RelationOptionScope(pbtypes.GetInt64(s, "scope")),

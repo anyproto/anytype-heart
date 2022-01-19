@@ -485,8 +485,41 @@ func Map(s *types.Struct, keys ...string) *types.Struct {
 	return ns
 }
 
+func StructIterate(st *types.Struct, f func(path []string, v *types.Value)) {
+	var iterate func(s *types.Struct, f func(path []string, v *types.Value), path []string)
+	iterate = func(s *types.Struct, f func(path []string, v *types.Value), path []string) {
+		if s == nil || s.Fields == nil {
+			return
+		}
+		for k, v := range s.Fields {
+			p := append(path, k)
+			f(p, v)
+			iterate(GetStruct(s, k), f, p)
+		}
+	}
+	iterate(st, f, nil)
+}
+
+func StructEqualKeys(st1, st2 *types.Struct) bool {
+	if (st1 == nil) != (st2 == nil) {
+		return false
+	}
+	if (st1.Fields == nil) != (st2.Fields == nil) {
+		return false
+	}
+	if len(st1.Fields) != len(st2.Fields) {
+		return false
+	}
+	for k := range st1.Fields {
+		if _, ok := st2.Fields[k]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func Sprint(p proto.Message) string {
 	m := jsonpb.Marshaler{Indent: " "}
 	result, _ := m.MarshalToString(p)
-	return string(result)
+	return result
 }
