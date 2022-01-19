@@ -64,7 +64,7 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	format := Format(formatStr)
 
 	var created time.Time
-	var model, exposureTime string
+	var model, exposureTime, artist string
 	var lat, lon, fNumber float64
 	var iso int
 
@@ -107,6 +107,10 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		if tag != nil {
 			iso, _ = tag.Int(0)
 		}
+		tag, err = exf.Get(exif.Artist)
+		if tag != nil {
+			artist, _ = tag.StringVal()
+		}
 	}
 
 	_, err = r.Seek(0, io.SeekStart)
@@ -127,6 +131,7 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		Height:       conf.Height,
 		Latitude:     lat,
 		Longitude:    lon,
+		Artist:       artist,
 	}
 
 	b, err := json.Marshal(res)

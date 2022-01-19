@@ -10,7 +10,7 @@ import (
 )
 
 func (s *Service) ImageAdd(ctx context.Context, opts AddOptions) (string, map[int]*storage.FileInfo, error) {
-	dir, err := s.fileBuildDirectory(ctx, opts.Reader, opts.Name, opts.Plaintext, anytype.ImageNode())
+	dir, err := s.fileBuildDirectory(ctx, opts.Reader, opts.Name, opts.Artist, opts.URl, opts.Plaintext, anytype.ImageNode())
 	if err != nil {
 		return "", nil, err
 	}

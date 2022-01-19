@@ -7,19 +7,13 @@ import (
 	"crypto/sha256"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"io"
-	"io/ioutil"
-	"strconv"
-	"strings"
-	"time"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/cfb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/crypto/symmetric/gcm"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/ipfs/helpers"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	m "github.com/anytypeio/go-anytype-middleware/pkg/lib/mill"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/schema"
@@ -28,12 +22,18 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pin"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
 	"github.com/ipfs/go-cid"
 	ipld "github.com/ipfs/go-ipld-format"
 	uio "github.com/ipfs/go-unixfs/io"
 	"github.com/miolini/datacounter"
 	"github.com/multiformats/go-base32"
 	mh "github.com/multiformats/go-multihash"
+	"io"
+	"io/ioutil"
+	"strconv"
+	"strings"
+	"time"
 )
 
 const (
@@ -527,6 +527,22 @@ func (s *Service) FileAddWithConfig(ctx context.Context, mill m.Mill, conf AddOp
 		Size_:    int64(readerWithCounter.Count()),
 	}
 
+	if conf.Artist != "" && conf.URl != "" {
+		if res.Meta == nil {
+			m := make(map[string]interface{})
+			m["Artist"] = conf.Artist
+			m["Url"] = conf.URl
+			fileInfo.Meta = pb.ToStruct(m)
+		} else {
+			fileInfo.Meta.Fields["Artist"] = &types.Value{
+				Kind: &types.Value_StringValue{StringValue: conf.Artist},
+			}
+			fileInfo.Meta.Fields["Url"] = &types.Value{
+				Kind: &types.Value_StringValue{StringValue: conf.URl},
+			}
+		}
+	}
+
 	var (
 		contentReader io.Reader
 		encryptor     symmetric.EncryptorDecryptor
@@ -616,7 +632,7 @@ func (s *Service) fileNode(ctx context.Context, file *storage.FileInfo, dir uio.
 	return helpers.AddLinkToDirectory(ctx, s.ipfs, dir, link, node.Cid().String())
 }
 
-func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
+func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, filename, artist, Url string, plaintext bool, sch *storage.Node) (*storage.Directory, error) {
 	dir := &storage.Directory{
 		Files: make(map[string]*storage.FileInfo),
 	}
@@ -632,6 +648,10 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 			Media:     "",
 			Name:      filename,
 			Plaintext: sch.Plaintext || plaintext,
+		}
+		if artist != "" && Url != "" {
+			opts.Artist = artist
+			opts.URl = Url
 		}
 		err := s.NormalizeOptions(ctx, &opts)
 		if err != nil {
@@ -688,6 +708,11 @@ func (s *Service) fileBuildDirectory(ctx context.Context, reader io.ReadSeeker, 
 				if err != nil {
 					return nil, err
 				}
+			}
+
+			if artist != "" && Url != "" {
+				opts.Artist = artist
+				opts.URl = Url
 			}
 
 			added, err := s.FileAddWithConfig(ctx, stepMill, *opts)

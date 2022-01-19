@@ -1,8 +1,11 @@
 package core
 
 import (
+	"bytes"
 	"context"
 	"fmt"
+	"github.com/dsoprea/go-exif/v3"
+	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/hbagdi/go-unsplash/unsplash"
 	"golang.org/x/oauth2"
 	"io"
@@ -36,7 +39,19 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}
 
 	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
+	var artist string
+	var url string
 	for _, f := range files {
+		if f.Meta != nil {
+			if vArtist, existsArtist := f.Meta.Fields["Artist"]; existsArtist {
+				artist = vArtist.GetStringValue()
+			}
+
+			if vUrl, existsUrl := f.Meta.Fields["Url"]; existsUrl {
+				url = vUrl.GetStringValue()
+			}
+		}
+
 		if f.Mill != "/image/resize" {
 			continue
 		}
@@ -46,23 +61,15 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		}
 	}
 
-	details, err := a.objectStore.GetDetails(hash)
-	if err != nil {
-		return nil, err
-	}
-
 	i := &image{
 		hash:            files[0].Targets[0],
 		variantsByWidth: variantsByWidth,
 		service:         a.files,
 	}
 
-	if aPhoto, aOk := details.Details.Fields[bundle.RelationKeyArtistPhoto.String()]; aOk {
-		i.artist = aPhoto.GetStringValue()
-	}
-
-	if urlPhoto, urlOk := details.Details.Fields[bundle.RelationKeyArtistUrl.String()]; urlOk {
-		i.Url = urlPhoto.GetStringValue()
+	if artist != "" && url != "" {
+		i.artist = artist
+		i.Url = url
 	}
 
 	return i, nil
@@ -147,10 +154,40 @@ func (a *Anytype) ImageUnsplashDownload(ctx context.Context, id string) (img Ima
 	responseDownload, err := http.Get(photoUrl)
 	defer responseDownload.Body.Close()
 	_, _ = io.Copy(out, responseDownload.Body)
-	img, err = a.ImageAdd(ctx, files.WithArtist(out, *photo.Photographer.Name, photo.Photographer.Links.HTML.String()))
+
+	//Adding Exif for Artist
+	jmp := jpegstructure.NewJpegMediaParser()
+	intfc, err := jmp.ParseFile(id)
 	if err != nil {
 		return nil, err
 	}
+	sl := intfc.(*jpegstructure.SegmentList)
+	rootIb, err := sl.ConstructExifBuilder()
+	if err != nil {
+		return nil, err
+	}
+	ifdPath := "IFD0"
+	ifdIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
+	//Artist key in decimal - 315
+	err = ifdIb.SetStandard(315, fmt.Sprintf("%s; %s", *photo.Photographer.Name, photo.Photographer.Links.HTML.String()))
+	err = sl.SetExif(rootIb)
+	//Rewrite bytes for file
+	b := new(bytes.Buffer)
+	err = sl.Write(b)
+	d := b.Bytes()
+	intfcNew, err := jmp.ParseBytes(d)
+	slNew := intfcNew.(*jpegstructure.SegmentList)
+	_, _, _, err = slNew.DumpExif()
+	//Rewrite file with bytes
+	os.WriteFile(id, d, 0666)
+	openWithExif, _ := os.Open(id)
+
+	//Send file to image Add method
+	img, err = a.ImageAdd(ctx, files.WithArtist(openWithExif, *photo.Photographer.Name, photo.Photographer.Links.HTML.String()))
+	if err != nil {
+		return nil, err
+	}
+	defer openWithExif.Close()
 	defer os.Remove(id)
 	return
 }
