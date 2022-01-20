@@ -39,19 +39,7 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 	}
 
 	var variantsByWidth = make(map[int]*storage.FileInfo, len(files))
-	var artist string
-	var url string
 	for _, f := range files {
-		if f.Meta != nil {
-			if vArtist, existsArtist := f.Meta.Fields["Artist"]; existsArtist {
-				artist = vArtist.GetStringValue()
-			}
-
-			if vUrl, existsUrl := f.Meta.Fields["Url"]; existsUrl {
-				url = vUrl.GetStringValue()
-			}
-		}
-
 		if f.Mill != "/image/resize" {
 			continue
 		}
@@ -65,11 +53,6 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		hash:            files[0].Targets[0],
 		variantsByWidth: variantsByWidth,
 		service:         a.files,
-	}
-
-	if artist != "" && url != "" {
-		i.artist = artist
-		i.Url = url
 	}
 
 	return i, nil

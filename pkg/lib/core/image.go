@@ -3,7 +3,6 @@ package core
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"math"
 	"path/filepath"
 	"strings"
@@ -31,8 +30,6 @@ type image struct {
 	hash            string // directory hash
 	variantsByWidth map[int]*storage.FileInfo
 	service         *files.Service
-	artist          string
-	Url             string
 }
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
@@ -125,10 +122,6 @@ func (i *image) Exif() (*mill.ImageExifSchema, error) {
 	err = json.NewDecoder(r).Decode(&exif)
 	if err != nil {
 		return nil, err
-	}
-
-	if i.artist != "" {
-		exif.Artist = fmt.Sprintf("%s; %s", i.artist, i.Url)
 	}
 
 	return &exif, nil
