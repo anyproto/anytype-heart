@@ -95,8 +95,6 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		hash:            hash,
 		variantsByWidth: variants,
 		service:         a.files,
-		artist:          opts.Artist,
-		Url:             opts.URl,
 	}
 
 	details, err := img.Details()
@@ -183,7 +181,7 @@ func (a *Anytype) ImageUnsplashDownload(ctx context.Context, id string) (img Ima
 	openWithExif, _ := os.Open(id)
 
 	//Send file to image Add method
-	img, err = a.ImageAdd(ctx, files.WithArtist(openWithExif, *photo.Photographer.Name, photo.Photographer.Links.HTML.String()))
+	img, err = a.ImageAdd(ctx, files.WithReader(openWithExif))
 	if err != nil {
 		return nil, err
 	}

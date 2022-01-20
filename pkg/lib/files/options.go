@@ -21,21 +21,11 @@ type AddOptions struct {
 	Media     string
 	Name      string
 	Plaintext bool
-	Artist    string
-	URl       string
 }
 
 func WithReader(r io.ReadSeeker) AddOption {
 	return func(args *AddOptions) {
 		args.Reader = r
-	}
-}
-
-func WithArtist(r io.ReadSeeker, s ...string) AddOption {
-	return func(args *AddOptions) {
-		args.Reader = r
-		args.Artist = s[0]
-		args.URl = s[1]
 	}
 }
 
