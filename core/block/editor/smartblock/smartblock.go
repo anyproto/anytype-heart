@@ -178,7 +178,7 @@ func (sb *smartBlock) Id() string {
 	return sb.source.Id()
 }
 
-func (s *smartBlock) GetFileKeys() (keys []pb.ChangeFileKeys) {
+func (s *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	keys2 := s.source.GetFileKeysSnapshot()
 	for _, key := range keys2 {
 		if key == nil {
@@ -219,7 +219,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 	sb.doc = ctx.Doc
 	sb.objectStore = ctx.ObjectStore
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
-
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
 		sb.storeFileKeys(ctx.State)
@@ -228,6 +227,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 	if ctx.State == nil {
 		ctx.State = sb.NewState()
+		sb.storeFileKeys(sb.Doc)
 	} else {
 		if !sb.Doc.(*state.State).IsEmpty() {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
@@ -1477,7 +1477,7 @@ func (sb *smartBlock) storeFileKeys(doc state.Doc) {
 	if doc == nil {
 		return
 	}
-	keys := doc.GetFileKeys()
+	keys := doc.GetAndUnsetFileKeys()
 	if len(keys) == 0 {
 		return
 	}

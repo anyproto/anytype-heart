@@ -53,7 +53,7 @@ type Doc interface {
 
 	Iterate(f func(b simple.Block) (isContinue bool)) (err error)
 	Snippet() (snippet string)
-	GetFileKeys() []pb.ChangeFileKeys
+	GetAndUnsetFileKeys() []pb.ChangeFileKeys
 	BlocksInit(ds simple.DetailsService)
 	SearchText() string
 }

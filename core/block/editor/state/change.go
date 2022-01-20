@@ -84,9 +84,10 @@ func (s *State) AddFileKeys(keys ...*pb.ChangeFileKeys) {
 	}
 }
 
-func (s *State) GetFileKeys() (keys []pb.ChangeFileKeys) {
+// GetAndUnsetFileKeys returns file keys from the current set and unset them, so they will no longer pop up
+func (s *State) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 	if s.parent != nil {
-		keys = s.parent.GetFileKeys()
+		keys = s.parent.GetAndUnsetFileKeys()
 	}
 	if len(s.fileKeys) > 0 {
 		keys = append(keys, s.fileKeys...)
@@ -144,6 +145,10 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		}
 	case ch.GetObjectTypeAdd() != nil:
 		if err = s.changeObjectTypeAdd(ch.GetObjectTypeAdd()); err != nil {
+			return
+		}
+	case ch.GetObjectTypeRemove() != nil:
+		if err = s.changeObjectTypeRemove(ch.GetObjectTypeRemove()); err != nil {
 			return
 		}
 	case ch.GetObjectTypeRemove() != nil:

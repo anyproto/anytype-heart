@@ -90,6 +90,7 @@ type FileStore interface {
 	Count() (int, error)
 	DeleteByHash(hash string) error
 	DeleteFileKeys(hash string) error
+	ListFileKeys() ([]string, error)
 	List() ([]*storage.FileInfo, error)
 }
 
@@ -219,6 +220,20 @@ func (m *dsFileStore) AddFileKeys(fileKeys ...FileKeys) error {
 	}
 
 	return txn.Commit()
+}
+
+func (m *dsFileStore) ListFileKeys() ([]string, error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error when creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+	res, err := localstore.GetKeys(txn, filesKeysBase.String(), 0)
+	if err != nil {
+		return nil, err
+	}
+
+	return localstore.ExtractKeysFromResults(res)
 }
 
 func (m *dsFileStore) DeleteFileKeys(hash string) error {

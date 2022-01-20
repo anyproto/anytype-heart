@@ -134,7 +134,7 @@ func (mw *Middleware) DebugTree(req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeRes
 	}
 
 	dbg := app.MustComponent(debug.CName).(debug.Debug)
-	filename, err := dbg.DumpTree(req.BlockId, req.Path)
+	filename, err := dbg.DumpTree(req.BlockId, req.Path, !req.Unanonymized)
 	return response(err, filename)
 }
 
