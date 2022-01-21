@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "dc782441a7249ae489e94a2353c19273be75a6e6ba4d99bfc59aee1b7ee1d3e3"
+const RelationChecksum = "1ba92c1a2fc9e1981ea2905bc37f97cd80b7a613113722bca61ee46781b5e50c"
 
 type RelationKey string
 
@@ -146,8 +146,8 @@ const (
 	RelationKeyId                        RelationKey = "id"
 	RelationKeyStockprice                RelationKey = "stockprice"
 	RelationKeyObjectives                RelationKey = "objectives"
-	RelationKeyArtistPhoto               RelationKey = "artistPhoto"
-	RelationKeyArtistUrl                 RelationKey = "artistUrl"
+	RelationKeyMediaArtistName           RelationKey = "mediaArtistName"
+	RelationKeyMediaArtistURL            RelationKey = "mediaArtistURL"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
 	RelationKeyIsDeleted                 RelationKey = "isDeleted"
@@ -270,32 +270,6 @@ var (
 			Key:              "artist",
 			MaxCount:         1,
 			Name:             "Artist",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyArtistPhoto: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
-			Key:              "artistPhoto",
-			MaxCount:         1,
-			Name:             "Artist of Photo",
-			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyArtistUrl: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
-			Key:              "artistUrl",
-			MaxCount:         1,
-			Name:             "URL Artist",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1292,6 +1266,32 @@ var (
 			MaxCount:         1,
 			Name:             "Measure of success",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMediaArtistName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Key:              "mediaArtistName",
+			MaxCount:         1,
+			Name:             "Media artist name",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMediaArtistURL: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_url,
+			Hidden:           true,
+			Key:              "mediaArtistURL",
+			MaxCount:         1,
+			Name:             "Media artist URL",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

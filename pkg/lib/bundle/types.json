@@ -1171,8 +1171,8 @@
       "addedDate",
       "focalRatio",
       "fileExt",
-      "artistPhoto",
-      "artistUrl"
+      "mediaArtistName",
+      "mediaArtistURL"
     ],
     "types": [
       "File"

@@ -1266,19 +1266,19 @@
   {
     "format": "longtext",
     "hidden": true,
-    "key": "artistPhoto",
+    "key": "mediaArtistName",
     "maxCount": 1,
-    "name": "Artist of Photo",
-    "readonly": false,
+    "name": "Media artist name",
+    "readonly": true,
     "source": "details"
   },
   {
-    "format": "longtext",
+    "format": "url",
     "hidden": true,
-    "key": "artistUrl",
+    "key": "mediaArtistURL",
     "maxCount": 1,
-    "name": "URL Artist",
-    "readonly": false,
+    "name": "Media artist URL",
+    "readonly": true,
     "source": "details"
   },
   {
