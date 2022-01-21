@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"math"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 
@@ -31,6 +32,10 @@ type image struct {
 	variantsByWidth map[int]*storage.FileInfo
 	service         *files.Service
 }
+
+// exitArtistWithUrl matches and extracts additional information we store in the Artist field – the URL of the author page.
+// We use it within the Unsplash integration
+var exitArtistWithUrl = regexp.MustCompile(`(.*?); (http.*?)`)
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
 	if i.variantsByWidth != nil {
@@ -197,13 +202,12 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	if exif.Artist != "" {
-		if pbtypes.String(exif.Artist) != nil {
-			if strings.Contains(exif.Artist, "; ") && len(strings.Split(exif.Artist, "; ")) > 1 {
-				details.Fields[bundle.RelationKeyArtistPhoto.String()] = pbtypes.String(strings.Split(exif.Artist, "; ")[0])
-				details.Fields[bundle.RelationKeyArtistUrl.String()] = pbtypes.String(strings.Split(exif.Artist, "; ")[1])
-			} else {
-				details.Fields[bundle.RelationKeyArtistPhoto.String()] = pbtypes.String(exif.Artist)
-			}
+		artistParts := exitArtistWithUrl.FindStringSubmatch(exif.Artist)
+		if len(artistParts) == 3 {
+			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistParts[1])
+			details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistParts[2])
+		} else {
+			details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(exif.Artist)
 		}
 	}
 
