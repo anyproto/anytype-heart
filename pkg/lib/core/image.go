@@ -198,8 +198,12 @@ func (i *image) Details() (*types.Struct, error) {
 
 	if exif.Artist != "" {
 		if pbtypes.String(exif.Artist) != nil {
-			details.Fields[bundle.RelationKeyArtistPhoto.String()] = pbtypes.String(strings.Split(exif.Artist, "; ")[0])
-			details.Fields[bundle.RelationKeyArtistUrl.String()] = pbtypes.String(strings.Split(exif.Artist, "; ")[1])
+			if strings.Contains(exif.Artist, "; ") && len(strings.Split(exif.Artist, "; ")) > 1 {
+				details.Fields[bundle.RelationKeyArtistPhoto.String()] = pbtypes.String(strings.Split(exif.Artist, "; ")[0])
+				details.Fields[bundle.RelationKeyArtistUrl.String()] = pbtypes.String(strings.Split(exif.Artist, "; ")[1])
+			} else {
+				details.Fields[bundle.RelationKeyArtistPhoto.String()] = pbtypes.String(exif.Artist)
+			}
 		}
 	}
 
