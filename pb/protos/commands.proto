@@ -707,6 +707,7 @@ message Rpc {
                 string blockId = 2;
                 string filePath = 3;
                 string url = 4;
+                string unsplashId = 5;
             }
 
             message Response {
@@ -3959,7 +3960,8 @@ message Rpc {
 
     message UnsplashSearch {
         message Request {
-            int32 limit = 1;
+            string query = 1; // empty means random images
+            int32 limit = 2; // 0 means default limit
         }
 
         message Response {
@@ -3981,6 +3983,8 @@ message Rpc {
                     NULL = 0;
                     UNKNOWN_ERROR = 1;
                     BAD_INPUT = 2;
+
+                    RATE_LIMIT_EXCEEDED = 100;
                     // ...
                 }
             }
@@ -3994,7 +3998,7 @@ message Rpc {
 
         message Response {
             Error error = 1;
-            anytype.model.Block.Content.File image = 2;
+            string hash = 2;
 
             message Error {
                 Code code = 1;
@@ -4004,6 +4008,8 @@ message Rpc {
                     NULL = 0;
                     UNKNOWN_ERROR = 1;
                     BAD_INPUT = 2;
+
+                    RATE_LIMIT_EXCEEDED = 100;
                     // ...
                 }
             }

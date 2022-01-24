@@ -200,6 +200,8 @@ service ClientCommands {
     rpc CloneTemplate (anytype.Rpc.CloneTemplate.Request) returns (anytype.Rpc.CloneTemplate.Response);
     rpc ObjectDuplicate (anytype.Rpc.ObjectDuplicate.Request) returns (anytype.Rpc.ObjectDuplicate.Response);
     rpc UnsplashSearch (anytype.Rpc.UnsplashSearch.Request) returns (anytype.Rpc.UnsplashSearch.Response);
+    // UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
+    // The artist info is available in the object details
     rpc UnsplashDownload (anytype.Rpc.UnsplashDownload.Request) returns (anytype.Rpc.UnsplashDownload.Response);
     rpc ApplyTemplate (anytype.Rpc.ApplyTemplate.Request) returns (anytype.Rpc.ApplyTemplate.Response);
 

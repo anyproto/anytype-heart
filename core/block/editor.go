@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
+	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
 	"time"
@@ -623,14 +624,26 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 	return
 }
 
-func (s *service) UnsplashSearch(max int) (search []map[string]string, err error) {
-	upl := file.NewUploader(s)
-	return upl.ImageUnsplashSearch(context.TODO(), max)
+func (s *service) UnsplashSearch(request string, max int) (pictures []*pb.RpcUnsplashSearchResponsePicture, err error) {
+	results, err := unsplash.Search(context.TODO(), request, max)
+	if err != nil {
+		return nil, err
+	}
+
+	pictures = make([]*pb.RpcUnsplashSearchResponsePicture, 0, len(results))
+	for _, res := range results {
+		pictures = append(pictures, &pb.RpcUnsplashSearchResponsePicture{
+			Id:        res.ID,
+			Url:       res.PictureThumbUrl,
+			Artist:    res.Artist,
+			ArtistUrl: res.ArtistURL,
+		})
+	}
+	return pictures, nil
 }
 
-func (s *service) ImageUnsplashDownload(request string) (image core.Image, err error) {
-	upl := file.NewUploader(s)
-	return upl.ImageUnsplashDownload(context.TODO(), request)
+func (s *service) UnsplashDownload(id string) (filePath string, err error) {
+	return unsplash.Download(context.TODO(), id)
 }
 
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {

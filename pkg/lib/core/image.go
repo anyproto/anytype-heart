@@ -3,9 +3,9 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 	"math"
 	"path/filepath"
-	"regexp"
 	"strings"
 	"time"
 
@@ -32,10 +32,6 @@ type image struct {
 	variantsByWidth map[int]*storage.FileInfo
 	service         *files.Service
 }
-
-// exitArtistWithUrl matches and extracts additional information we store in the Artist field – the URL of the author page.
-// We use it within the Unsplash integration
-var exitArtistWithUrl = regexp.MustCompile(`(.*?); (http.*?)`)
 
 func (i *image) GetFileForWidth(ctx context.Context, wantWidth int) (File, error) {
 	if i.variantsByWidth != nil {
@@ -202,12 +198,11 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 
 	if exif.Artist != "" {
-		artistParts := exitArtistWithUrl.FindStringSubmatch(exif.Artist)
-		if len(artistParts) == 3 {
-			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistParts[1])
-			details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistParts[2])
-		} else {
-			details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(exif.Artist)
+		artistName, artistUrl := unsplash.UnpackArtist(exif.Artist)
+		details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistName)
+
+		if artistUrl != "" {
+			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistUrl)
 		}
 	}
 

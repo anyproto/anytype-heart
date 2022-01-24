@@ -1238,7 +1238,7 @@
 | CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
 | ObjectDuplicate | [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request) | [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response) |  |
 | UnsplashSearch | [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request) | [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response) |  |
-| UnsplashDownload | [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request) | [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response) |  |
+| UnsplashDownload | [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request) | [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
 | ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
@@ -5803,6 +5803,7 @@ Remove blocks from the childrenIds of its parents
 | blockId | [string](#string) |  |  |
 | filePath | [string](#string) |  |  |
 | url | [string](#string) |  |  |
+| unsplashId | [string](#string) |  |  |
 
 
 
@@ -10492,7 +10493,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.UnsplashDownload.Response.Error](#anytype.Rpc.UnsplashDownload.Response.Error) |  |  |
-| image | [model.Block.Content.File](#anytype.model.Block.Content.File) |  |  |
+| hash | [string](#string) |  |  |
 
 
 
@@ -10533,7 +10534,8 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| limit | [int32](#int32) |  |  |
+| query | [string](#string) |  | empty means random images |
+| limit | [int32](#int32) |  | 0 means default limit |
 
 
 
@@ -13122,7 +13124,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
 
 
 
@@ -13135,7 +13138,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
 
 
 

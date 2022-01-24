@@ -36,7 +36,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	libcore "github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -221,8 +220,8 @@ type Service interface {
 
 	AddCreatorInfoIfNeeded(workspaceId string) error
 
-	UnsplashSearch(max int) (search []map[string]string, err error)
-	ImageUnsplashDownload(request string) (image libcore.Image, err error)
+	UnsplashSearch(request string, max int) (search []*pb.RpcUnsplashSearchResponsePicture, err error)
+	UnsplashDownload(id string) (filePath string, err error)
 
 	app.ComponentRunnable
 }

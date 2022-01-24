@@ -391,6 +391,8 @@ type ClientCommandsClient interface {
 	CloneTemplate(ctx context.Context, in *pb.RpcCloneTemplateRequest, opts ...grpc.CallOption) (*pb.RpcCloneTemplateResponse, error)
 	ObjectDuplicate(ctx context.Context, in *pb.RpcObjectDuplicateRequest, opts ...grpc.CallOption) (*pb.RpcObjectDuplicateResponse, error)
 	UnsplashSearch(ctx context.Context, in *pb.RpcUnsplashSearchRequest, opts ...grpc.CallOption) (*pb.RpcUnsplashSearchResponse, error)
+	// UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
+	// The artist info is available in the object details
 	UnsplashDownload(ctx context.Context, in *pb.RpcUnsplashDownloadRequest, opts ...grpc.CallOption) (*pb.RpcUnsplashDownloadResponse, error)
 	ApplyTemplate(ctx context.Context, in *pb.RpcApplyTemplateRequest, opts ...grpc.CallOption) (*pb.RpcApplyTemplateResponse, error)
 	DebugSync(ctx context.Context, in *pb.RpcDebugSyncRequest, opts ...grpc.CallOption) (*pb.RpcDebugSyncResponse, error)
@@ -1942,6 +1944,8 @@ type ClientCommandsServer interface {
 	CloneTemplate(*pb.RpcCloneTemplateRequest) *pb.RpcCloneTemplateResponse
 	ObjectDuplicate(*pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse
 	UnsplashSearch(*pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse
+	// UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
+	// The artist info is available in the object details
 	UnsplashDownload(*pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse
 	ApplyTemplate(*pb.RpcApplyTemplateRequest) *pb.RpcApplyTemplateResponse
 	DebugSync(*pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse

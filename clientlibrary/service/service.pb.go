@@ -384,6 +384,8 @@ type ClientCommandsHandler interface {
 	CloneTemplate(*pb.RpcCloneTemplateRequest) *pb.RpcCloneTemplateResponse
 	ObjectDuplicate(*pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse
 	UnsplashSearch(*pb.RpcUnsplashSearchRequest) *pb.RpcUnsplashSearchResponse
+	// UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
+	// The artist info is available in the object details
 	UnsplashDownload(*pb.RpcUnsplashDownloadRequest) *pb.RpcUnsplashDownloadResponse
 	ApplyTemplate(*pb.RpcApplyTemplateRequest) *pb.RpcApplyTemplateResponse
 	DebugSync(*pb.RpcDebugSyncRequest) *pb.RpcDebugSyncResponse
