@@ -73,7 +73,7 @@ var DefaultConfig = Config{
 	},
 	CafeAPIInsecure: false,
 	CafeAddr:        "cafe1.anytype.io",
-	CafeP2PPort:     5001,
+	CafeP2PPort:     4001,
 	CafeGrpcPort:    3006,
 	CafePeerId:      "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw",
 
