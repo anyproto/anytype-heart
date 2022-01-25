@@ -84,7 +84,7 @@ func main() {
 		fmt.Printf("Smarblock type:\t%v\n", sbt.ToProto())
 		if *fileHashes {
 			fmt.Println("File keys:")
-			for _, fk := range s.GetFileKeys() {
+			for _, fk := range s.GetAndUnsetFileKeys() {
 				fmt.Printf("\t%s: %d\n", fk.Hash, len(fk.Keys))
 			}
 		}
