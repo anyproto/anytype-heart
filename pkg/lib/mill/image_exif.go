@@ -15,6 +15,7 @@ import (
 type ImageExifSchema struct {
 	Created      time.Time `json:"created,omitempty"`
 	Name         string    `json:"name"`
+	Description  string    `json:"description"`
 	Ext          string    `json:"extension"`
 	Width        int       `json:"width"`
 	Height       int       `json:"height"`
@@ -64,7 +65,7 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 	format := Format(formatStr)
 
 	var created time.Time
-	var model, exposureTime, artist string
+	var model, exposureTime, artist, description string
 	var lat, lon, fNumber float64
 	var iso int
 
@@ -111,6 +112,10 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		if tag != nil {
 			artist, _ = tag.StringVal()
 		}
+		tag, err = exf.Get(exif.ImageDescription)
+		if tag != nil {
+			description, _ = tag.StringVal()
+		}
 	}
 
 	_, err = r.Seek(0, io.SeekStart)
@@ -132,6 +137,7 @@ func (m *ImageExif) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		Latitude:     lat,
 		Longitude:    lon,
 		Artist:       artist,
+		Description:  description,
 	}
 
 	b, err := json.Marshal(res)

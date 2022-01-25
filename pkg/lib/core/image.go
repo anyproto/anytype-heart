@@ -196,7 +196,10 @@ func (i *image) Details() (*types.Struct, error) {
 	if exif.ISO != 0 {
 		details.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Float64(float64(exif.ISO))
 	}
-
+	if exif.Description != "" {
+		// use non-empty image description as an image name, because it much uglier to use file names for objects
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(exif.Description)
+	}
 	if exif.Artist != "" {
 		artistName, artistUrl := unsplash.UnpackArtist(exif.Artist)
 		details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistName)

@@ -24,10 +24,11 @@ var queryCache = newCacheWithTTL(time.Minute * 60)
 
 // exitArtistWithUrl matches and extracts additional information we store in the Artist field – the URL of the author page.
 // We use it within the Unsplash integration
-var exitArtistWithUrl = regexp.MustCompile(`(.*?); (http.*?)`)
+var exitArtistWithUrl = regexp.MustCompile(`(.*?); (http.*)`)
 
 type Result struct {
 	ID              string
+	Description     string
 	PictureThumbUrl string
 	PictureSmallUrl string
 	PictureFullUrl  string
@@ -42,6 +43,11 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 	res := Result{ID: *v.ID}
 	if v.Urls.Thumb != nil {
 		res.PictureThumbUrl = v.Urls.Thumb.String()
+	}
+	if v.Description != nil && *v.Description != "" {
+		res.Description = *v.Description
+	} else if v.AltDescription != nil {
+		res.Description = *v.AltDescription
 	}
 	if v.Urls.Small != nil {
 		res.PictureSmallUrl = v.Urls.Small.String()
@@ -126,14 +132,14 @@ func Download(ctx context.Context, id string) (imgPath string, err error) {
 		return "", fmt.Errorf("failed to download file from unsplash: %s", err.Error())
 	}
 	defer responseDownload.Body.Close()
-	tmpfile, err := ioutil.TempFile(os.TempDir(), "anytype-unsplash")
+	tmpfile, err := ioutil.TempFile(os.TempDir(), picture.ID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %s", err.Error())
 	}
 	_, _ = io.Copy(tmpfile, responseDownload.Body)
 	tmpfile.Close()
 
-	err = injectArtistIntoExif(tmpfile.Name(), picture.Artist, picture.ArtistURL)
+	err = injectIntoExif(tmpfile.Name(), picture.Artist, picture.ArtistURL, picture.Description)
 	if err != nil {
 		return "", fmt.Errorf("failed to inject exif: %s", err.Error())
 	}
@@ -157,7 +163,7 @@ func UnpackArtist(packed string) (name, url string) {
 	return packed, ""
 }
 
-func injectArtistIntoExif(filePath, artistName, artistUrl string) error {
+func injectIntoExif(filePath, artistName, artistUrl, description string) error {
 	jmp := jpegstructure.NewJpegMediaParser()
 	intfc, err := jmp.ParseFile(filePath)
 	if err != nil {
@@ -170,8 +176,12 @@ func injectArtistIntoExif(filePath, artistName, artistUrl string) error {
 	}
 	ifdPath := "IFD0"
 	ifdIb, err := exif.GetOrCreateIbFromRootIb(rootIb, ifdPath)
+	if err != nil {
+		return err
+	}
 	// Artist key in decimal is 315 https://www.exiv2.org/tags.html
 	err = ifdIb.SetStandard(315, PackArtistNameAndURL(artistName, artistUrl))
+	err = ifdIb.SetStandard(270, description)
 	err = sl.SetExif(rootIb)
 	f, err := os.OpenFile(filePath, os.O_RDWR|os.O_TRUNC, 0755)
 	defer f.Close()

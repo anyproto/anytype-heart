@@ -44,7 +44,7 @@ func Test_injectArtistIntoExif(t *testing.T) {
 			_, err = io.Copy(copiedFile, origFile)
 			require.NoError(t, err)
 
-			if err := injectArtistIntoExif(copiedFile.Name(), tt.args.artistName, tt.args.artistUrl); (err != nil) != tt.wantErr {
+			if err := injectIntoExif(copiedFile.Name(), tt.args.artistName, tt.args.artistUrl); (err != nil) != tt.wantErr {
 				t.Errorf("injectExif() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			r, err := os.Open(copiedFile.Name())
