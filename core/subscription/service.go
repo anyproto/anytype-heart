@@ -253,10 +253,8 @@ func (s *service) onChange(entries []*entry) {
 		sub.onChange(s.ctxBuf)
 	}
 	log.Debugf("handle %d etries; ctx: %#v", len(entries), s.ctxBuf)
-	events := s.ctxBuf.apply()
-	for _, e := range events {
-		s.sendEvent(e)
-	}
+	event := s.ctxBuf.apply()
+	s.sendEvent(event)
 }
 
 func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
