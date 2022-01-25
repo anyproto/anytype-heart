@@ -1012,6 +1012,7 @@
     - [Block.Content.Link](#anytype.model.Block.Content.Link)
     - [Block.Content.Relation](#anytype.model.Block.Content.Relation)
     - [Block.Content.Smartblock](#anytype.model.Block.Content.Smartblock)
+    - [Block.Content.TableOfContents](#anytype.model.Block.Content.TableOfContents)
     - [Block.Content.Text](#anytype.model.Block.Content.Text)
     - [Block.Content.Text.Mark](#anytype.model.Block.Content.Text.Mark)
     - [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks)
@@ -15644,6 +15645,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | relation | [Block.Content.Relation](#anytype.model.Block.Content.Relation) |  |  |
 | featuredRelations | [Block.Content.FeaturedRelations](#anytype.model.Block.Content.FeaturedRelations) |  |  |
 | latex | [Block.Content.Latex](#anytype.model.Block.Content.Latex) |  |  |
+| tableOfContents | [Block.Content.TableOfContents](#anytype.model.Block.Content.TableOfContents) |  |  |
 
 
 
@@ -15905,6 +15907,16 @@ Link: block to link some content from an external sources.
 <a name="anytype.model.Block.Content.Smartblock"></a>
 
 ### Block.Content.Smartblock
+
+
+
+
+
+
+
+<a name="anytype.model.Block.Content.TableOfContents"></a>
+
+### Block.Content.TableOfContents
 
 
 
