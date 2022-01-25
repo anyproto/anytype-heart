@@ -182,9 +182,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		anytype.BootstrapWallet(mw.rootPath, account.Address()),
 		mw.EventSender,
 	}
-
-	comps = append(comps, mw.EventSender)
-
+	
 	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
