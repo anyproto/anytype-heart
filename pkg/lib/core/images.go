@@ -39,13 +39,11 @@ func (a *Anytype) ImageByHash(ctx context.Context, hash string) (Image, error) {
 		}
 	}
 
-	i := &image{
+	return &image{
 		hash:            files[0].Targets[0],
 		variantsByWidth: variantsByWidth,
 		service:         a.files,
-	}
-
-	return i, nil
+	}, nil
 }
 
 func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Image, error) {

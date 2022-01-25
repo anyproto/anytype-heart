@@ -707,7 +707,6 @@ message Rpc {
                 string blockId = 2;
                 string filePath = 3;
                 string url = 4;
-                string unsplashId = 5;
             }
 
             message Response {
