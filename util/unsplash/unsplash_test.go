@@ -14,9 +14,10 @@ import (
 
 func Test_injectArtistIntoExif(t *testing.T) {
 	type args struct {
-		filePath   string
-		artistName string
-		artistUrl  string
+		filePath    string
+		artistName  string
+		artistUrl   string
+		description string
 	}
 	tests := []struct {
 		name    string
@@ -44,7 +45,7 @@ func Test_injectArtistIntoExif(t *testing.T) {
 			_, err = io.Copy(copiedFile, origFile)
 			require.NoError(t, err)
 
-			if err := injectIntoExif(copiedFile.Name(), tt.args.artistName, tt.args.artistUrl); (err != nil) != tt.wantErr {
+			if err := injectIntoExif(copiedFile.Name(), tt.args.artistName, tt.args.artistUrl, tt.args.description); (err != nil) != tt.wantErr {
 				t.Errorf("injectExif() error = %v, wantErr %v", err, tt.wantErr)
 			}
 			r, err := os.Open(copiedFile.Name())
@@ -59,6 +60,13 @@ func Test_injectArtistIntoExif(t *testing.T) {
 			require.NoError(t, err)
 
 			require.Equal(t, PackArtistNameAndURL(tt.args.artistName, tt.args.artistUrl), s)
+
+			f, err = exf.Get(exif.ImageDescription)
+			require.NoError(t, err)
+			s, err = f.StringVal()
+			require.NoError(t, err)
+
+			require.Equal(t, tt.args.description, s)
 		})
 	}
 }
