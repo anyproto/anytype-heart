@@ -25,7 +25,7 @@ var (
 
 var dumpTree = &cobra.Command{
 	Use:   "dump-tree",
-	Short: "Dumps anonymized tree of changes for specific thread",
+	Short: "Dumps tree of changes for specific thread",
 	Run: func(c *cobra.Command, args []string) {
 		if debugAccount == "" {
 			console.Fatal("please specify account")
@@ -47,7 +47,7 @@ var dumpTree = &cobra.Command{
 
 		dbg := app.MustComponent(debug.CName).(debug.Debug)
 
-		filename, err := dbg.DumpTree(debugThread, debugOutputFile)
+		filename, err := dbg.DumpTree(debugThread, debugOutputFile, false)
 		if err != nil {
 			console.Fatal("failed to dump tree: %s", err.Error())
 		}
