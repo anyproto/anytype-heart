@@ -65,9 +65,10 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, entries []*entry, d
 				}
 			} else {
 				e = &entry{
-					id:     id,
-					data:   e.data,
-					subIds: e.subIds,
+					id:          id,
+					data:        e.data,
+					subIds:      e.subIds,
+					subIsActive: e.subIsActive,
 				}
 			}
 			ctx.entries = append(ctx.entries, e)

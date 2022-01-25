@@ -15,25 +15,40 @@ type entry struct {
 	id   string
 	data *types.Struct
 
-	subIds   []string
-	isActive bool
+	subIds      []string
+	subIsActive []bool
 }
 
 func (e *entry) AddSubId(subId string, isActive bool) {
-	if slice.FindPos(e.subIds, subId) == -1 {
+	if pos := slice.FindPos(e.subIds, subId); pos == -1 {
 		e.subIds = append(e.subIds, subId)
-	}
-	if isActive {
-		e.isActive = true
+		e.subIsActive = append(e.subIsActive, isActive)
+	} else {
+		e.subIsActive[pos] = isActive
 	}
 }
 
-func (e *entry) IsActive() bool {
-	return e.isActive
+func (e *entry) IsActive(subIds ...string) bool {
+	if len(subIds) == 0 {
+		return false
+	}
+	for _, id := range subIds {
+		if pos := slice.FindPos(e.subIds, id); pos != -1 {
+			if !e.subIsActive[pos] {
+				return false
+			}
+		} else {
+			return false
+		}
+	}
+	return true
 }
 
 func (e *entry) RemoveSubId(subId string) {
-	e.subIds = slice.Remove(e.subIds, subId)
+	if pos := slice.FindPos(e.subIds, subId); pos != -1 {
+		e.subIds = slice.Remove(e.subIds, subId)
+		e.subIsActive = append(e.subIsActive[:pos], e.subIsActive[pos+1:]...)
+	}
 }
 
 func (e *entry) SubIds() []string {

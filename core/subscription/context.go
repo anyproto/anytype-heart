@@ -146,11 +146,22 @@ func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
 		}
 		prev := ctx.c.Get(info.id)
 		var prevData *types.Struct
-		if prev != nil && prev.IsActive() {
+		if prev != nil && prev.IsActive(info.subIds...) {
 			prevData = prev.data
+			diff := pbtypes.StructDiff(prevData, curr.data)
+			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
+		} else {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectDetailsSet{
+					ObjectDetailsSet: &pb.EventObjectDetailsSet{
+						Id:      curr.id,
+						Details: pbtypes.StructFilterKeys(curr.data, info.keys),
+						SubIds:  info.subIds,
+					},
+				},
+			})
 		}
-		diff := pbtypes.StructDiff(prevData, curr.data)
-		msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
+
 	}
 	return
 }
