@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-const UNSPLASH_TOKEN = "wZ8VMd2YU6JIzur4Whjsbe2IjDVHkE7uJ_xQRQbXkEc"
+const UNSPLASH_TOKEN = "TLKq5P192MptAcTHnGM8WQPZV8kKNn1eT9FEi5Srem0"
 
 // todo: should probably add some GC here
 var queryCache = newCacheWithTTL(time.Minute * 60)
@@ -44,10 +44,10 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 		res.PictureThumbUrl = v.Urls.Thumb.String()
 	}
 	if v.Urls.Small != nil {
-		res.PictureThumbUrl = v.Urls.Small.String()
+		res.PictureSmallUrl = v.Urls.Small.String()
 	}
 	if v.Urls.Full != nil {
-		res.PictureThumbUrl = v.Urls.Full.String()
+		res.PictureFullUrl = v.Urls.Full.String()
 	}
 	if v.Photographer == nil {
 		return res, nil
@@ -98,9 +98,6 @@ func Search(ctx context.Context, query string, max int) ([]Result, error) {
 }
 
 func Download(ctx context.Context, id string) (imgPath string, err error) {
-	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: UNSPLASH_TOKEN},
-	)
 	var picture Result
 	for _, res := range queryCache.getLast() {
 		if res.ID == id {
@@ -109,6 +106,9 @@ func Download(ctx context.Context, id string) (imgPath string, err error) {
 		}
 	}
 	if picture.ID == "" {
+		ts := oauth2.StaticTokenSource(
+			&oauth2.Token{AccessToken: UNSPLASH_TOKEN},
+		)
 		client := oauth2.NewClient(ctx, ts)
 		unsplashApi := unsplash.New(client)
 		res, _, err := unsplashApi.Photos.Photo(id, nil)
