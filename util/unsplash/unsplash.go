@@ -85,8 +85,15 @@ func Search(ctx context.Context, query string, max int) ([]Result, error) {
 	opt.SearchQuery = query
 
 	results, _, err := unsplashApi.Photos.Random(&opt)
-	if err != nil || results == nil {
+	if err != nil {
+		if strings.Contains("404", err.Error()) {
+			return nil, nil
+		}
 		return nil, err
+	}
+
+	if results == nil {
+		return nil, nil
 	}
 
 	var photos = make([]Result, 0, len(*results))
