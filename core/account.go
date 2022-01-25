@@ -14,7 +14,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -25,9 +27,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
-
-const defaultCafeUrl = "127.0.0.1"
-const defaultCafePeerId = "12D3KooWRNcPvzFigfUZuqvak7vfQGCcvqotjE7R2KBTfnkKyVvj"
 
 // we cannot check the constant error from badger because they hardcoded it there
 const errSubstringMultipleAnytypeInstance = "Cannot acquire directory lock"
@@ -45,7 +44,7 @@ type AlphaInviteErrorResponse struct {
 	Error string `json:"error"`
 }
 
-func checkInviteCode(code string, account string) error {
+func checkInviteCode(cfg *config.Config, code string, account string) error {
 	if code == "" {
 		return fmt.Errorf("invite code is empty")
 	}
@@ -57,7 +56,7 @@ func checkInviteCode(code string, account string) error {
 
 	// TODO: here we always using the default cafe address, because we want to check invite code only on our server
 	// this code should be removed with a public release
-	req, err := http.NewRequest("POST", defaultCafeUrl+"/alpha-invite", bytes.NewBuffer(jsonStr))
+	req, err := http.NewRequest("POST", cfg.CafeUrl()+"/alpha-invite", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -85,7 +84,7 @@ func checkInviteCode(code string, account string) error {
 		return fmt.Errorf("failed to decode response json: %s", err.Error())
 	}
 
-	pubk, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeDevice, defaultCafePeerId)
+	pubk, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeDevice, cfg.CafePeerId)
 	if err != nil {
 		return fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
 	}
@@ -143,6 +142,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_STOP_RUNNING_NODE, err)
 	}
 
+	cfg := anytype.BootstrapConfig(true, os.Getenv("ANYTYPE_STAGING") == "1")
 	index := len(mw.foundAccounts)
 	var account wallet.Keypair
 	for {
@@ -162,7 +162,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		continue
 	}
 
-	if err := checkInviteCode(req.AlphaInviteCode, account.Address()); err != nil {
+	if err := checkInviteCode(cfg, req.AlphaInviteCode, account.Address()); err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_BAD_INVITE_CODE, err)
 	}
 
@@ -177,9 +177,10 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc := &model.Account{Id: account.Address()}
 
-	comps, err := anytype.BootstrapConfigAndWallet(true, mw.rootPath, account.Address())
-	if err != nil {
-		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
+	comps := []app.Component{
+		cfg,
+		anytype.BootstrapWallet(mw.rootPath, account.Address()),
+		mw.EventSender,
 	}
 
 	comps = append(comps, mw.EventSender)
@@ -468,12 +469,13 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		}
 	}
 
-	comps, err := anytype.BootstrapConfigAndWallet(false, mw.rootPath, req.Id)
-	if err != nil {
-		return response(nil, pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, err)
+	comps := []app.Component{
+		anytype.BootstrapConfig(false, os.Getenv("ANYTYPE_STAGING") == "1"),
+		anytype.BootstrapWallet(mw.rootPath, req.Id),
+		mw.EventSender,
 	}
+	var err error
 
-	comps = append(comps, mw.EventSender)
 	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		if err == core.ErrRepoCorrupted {
 			return response(nil, pb.RpcAccountSelectResponseError_LOCAL_REPO_EXISTS_BUT_CORRUPTED, err)

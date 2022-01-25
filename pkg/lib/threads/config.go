@@ -6,10 +6,6 @@ import (
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 )
 
-const (
-	defaultCafeNodeP2P = "/ip4/127.0.0.1/tcp/5001/p2p/12D3KooWRNcPvzFigfUZuqvak7vfQGCcvqotjE7R2KBTfnkKyVvj"
-)
-
 type CafeConfigFetcher interface {
 	GetCafeConfig() *cafePb.GetConfigResponseConfig
 }
@@ -47,6 +43,7 @@ var DefaultConfig = Config{
 	Debug:                   false,
 	Metrics:                 false,
 	PubSub:                  true,
-	CafeP2PAddr:             defaultCafeNodeP2P,
 	CafePermanentConnection: true,
+	// CafeP2PAddr is being set later when we have the global config
+	// We probably should refactor this default config logic for threads
 }

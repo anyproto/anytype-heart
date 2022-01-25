@@ -6,6 +6,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/kelseyhightower/envconfig"
@@ -22,8 +23,6 @@ var log = logging.Logger("anytype-config")
 
 const (
 	CName = "config"
-
-	defaultCafeNodeGRPC = "127.0.0.1:3006"
 )
 
 type ConfigRequired struct {
@@ -34,8 +33,6 @@ type Config struct {
 	ConfigRequired           `json:",inline"`
 	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	Offline                  bool
-	CafeAPIInsecure          bool
-	CafeAPIHost              string
 	DisableThreadsSyncEvents bool
 
 	PrivateNetworkSecret string
@@ -45,9 +42,34 @@ type Config struct {
 	BootstrapNodes []string
 	RelayNodes     []string
 
+	CafeAddr        string
+	CafeGrpcPort    int
+	CafeP2PPort     int
+	CafePeerId      string
+	CafeAPIInsecure bool
+
 	Threads           threads.Config
 	DS                clientds.Config
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
+}
+
+func (c *Config) CafeNodeGrpcAddr() string {
+	return c.CafeAddr + ":" + strconv.Itoa(c.CafeGrpcPort)
+}
+
+func (c *Config) CafeUrl() string {
+	if net.ParseIP(c.CafeAddr) != nil {
+		return c.CafeAddr
+	}
+	prefix := "https://"
+	if c.CafeAPIInsecure {
+		prefix = "http://"
+	}
+	return prefix + c.CafeAddr
+}
+
+func (c *Config) CafeP2PFullAddr() string {
+	return fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", c.CafeAddr, c.CafeP2PPort, c.CafePeerId)
 }
 
 const (
@@ -68,18 +90,38 @@ var DefaultConfig = Config{
 		"/dns4/relay2.anytype.io/tcp/4101/p2p/12D3KooWMLuW43JqNzUHbXMJH2Ted5Nf26sxv1VMcZAxXV3d3YtB",
 		"/dns4/relay1.anytype.io/tcp/4101/p2p/12D3KooWNPqCu4BC5WMBuHmqdiNWwAHGTNKbNy6JP5W1DML2psg1",
 	},
-	CafeAPIHost:     defaultCafeNodeGRPC,
-	CafeAPIInsecure: true,
+	CafeAPIInsecure: false,
+	CafeAddr:        "cafe1.anytype.io",
+	CafeP2PPort:     5001,
+	CafeGrpcPort:    3006,
+	CafePeerId:      "12D3KooWKwPC165PptjnzYzGrEs7NSjsF5vvMmxmuqpA2VfaBbLw",
 
 	DS:      clientds.DefaultConfig,
 	Threads: threads.DefaultConfig,
 }
 
-func New(apply func(*Config)) *Config {
-	cfg := DefaultConfig
-	if apply != nil {
-		apply(&cfg)
+func WithNewAccount(isNewAccount bool) func(*Config) {
+	return func(c *Config) {
+		c.NewAccount = isNewAccount
 	}
+}
+
+func WithStagingCafe(isStaging bool) func(*Config) {
+	return func(c *Config) {
+		if isStaging {
+			c.CafeAddr = "cafe-staging.anytype.io"
+			c.CafePeerId = "12D3KooWPGR6LQyTEtBzFnJ7fGEMe6hKiQKeNof29zLH4bGq2djR"
+		}
+	}
+}
+
+func New(options ...func(*Config)) *Config {
+	cfg := DefaultConfig
+	for _, opt := range options {
+		opt(&cfg)
+	}
+	cfg.Threads.CafeP2PAddr = cfg.CafeP2PFullAddr()
+
 	return &cfg
 }
 
@@ -92,10 +134,10 @@ func (c *Config) Init(a *app.App) (err error) {
 	return
 }
 
-func (cfg *Config) initFromFileAndEnv(repoPath string) error {
+func (c *Config) initFromFileAndEnv(repoPath string) error {
 	var configFileNotExists bool
 
-	if !cfg.DisableFileConfig {
+	if !c.DisableFileConfig {
 		cfgFilePath := filepath.Join(repoPath, configFileName)
 		cfgFile, err := os.OpenFile(cfgFilePath, os.O_RDONLY, 0655)
 		if err != nil {
@@ -106,7 +148,7 @@ func (cfg *Config) initFromFileAndEnv(repoPath string) error {
 		}
 		if err == nil {
 			defer cfgFile.Close()
-			err = json.NewDecoder(cfgFile).Decode(&cfg)
+			err = json.NewDecoder(cfgFile).Decode(&c)
 			if err != nil {
 				return fmt.Errorf("invalid format: %w", err)
 			}
@@ -119,7 +161,7 @@ func (cfg *Config) initFromFileAndEnv(repoPath string) error {
 				log.Errorf("failed to get random port for gateway, go with the default %d: %s", port, err.Error())
 			}
 
-			cfg.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
+			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
 
 			// we need to save selected port in order in order to increase chances of incoming connections
 			if cfgFile != nil {
@@ -134,21 +176,21 @@ func (cfg *Config) initFromFileAndEnv(repoPath string) error {
 
 			defer cfgFile.Close()
 
-			err = json.NewEncoder(cfgFile).Encode(cfg.ConfigRequired)
+			err = json.NewEncoder(cfgFile).Encode(c.ConfigRequired)
 			if err != nil {
 				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
 			}
 			return nil
 		}
-		if cfg.HostAddr == "" && configFileNotExists {
+		if c.HostAddr == "" && configFileNotExists {
 			err = saveRandomHostAddr()
 			if err != nil {
 				return err
 			}
 		} else {
-			parts := strings.Split(cfg.HostAddr, "/")
+			parts := strings.Split(c.HostAddr, "/")
 			if len(parts) == 0 {
-				log.Errorf("failed to parse cfg.HostAddr: %s", cfg.HostAddr)
+				log.Errorf("failed to parse cfg.HostAddr: %s", c.HostAddr)
 			} else {
 				// lets test the existing port in config
 				addr, err := net.ResolveTCPAddr("tcp4", "0.0.0.0:"+parts[len(parts)-1])
@@ -170,7 +212,7 @@ func (cfg *Config) initFromFileAndEnv(repoPath string) error {
 
 	}
 
-	err := envconfig.Process("ANYTYPE", cfg)
+	err := envconfig.Process("ANYTYPE", c)
 	if err != nil {
 		log.Errorf("failed to read config from env: %v", err)
 	}

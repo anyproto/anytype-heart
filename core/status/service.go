@@ -1,8 +1,7 @@
 package status
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
+	"fmt"
 	"sort"
 	"sync"
 	"time"
@@ -16,6 +15,8 @@ import (
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	cafepb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -33,9 +34,6 @@ const (
 	threadStatusEventBatchPeriod = 2 * time.Second
 	profileInformationLifetime   = 30 * time.Second
 	cafeLastPullTimeout          = 10 * time.Minute
-
-	// TODO: move to global config component
-	cafePeerId = "12D3KooWRNcPvzFigfUZuqvak7vfQGCcvqotjE7R2KBTfnkKyVvj"
 
 	// truncate device names and account IDs to last symbols
 	maxNameLength = 8
@@ -110,7 +108,7 @@ func (s *service) Init(a *app.App) (err error) {
 		cafePeer, _ = cafeAddr.ValueForProtocol(ma.P_P2P)
 	}
 	if cafePeer == "" {
-		cafePeer = cafePeerId
+		return fmt.Errorf("cafe address must be specified at start time")
 	}
 
 	cafePid, _ := peer.Decode(cafePeer)

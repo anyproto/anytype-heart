@@ -60,13 +60,15 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 	return a, nil
 }
 
-func BootstrapConfigAndWallet(newAccount bool, rootPath, accountId string) ([]app.Component, error) {
-	return []app.Component{
-		wallet.NewWithAccountRepo(rootPath, accountId),
-		config.New(func(c *config.Config) {
-			c.NewAccount = newAccount
-		}),
-	}, nil
+func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
+	return config.New(
+		config.WithStagingCafe(isStaging),
+		config.WithNewAccount(newAccount),
+	)
+}
+
+func BootstrapWallet(rootPath, accountId string) wallet.Wallet {
+	return wallet.NewWithAccountRepo(rootPath, accountId)
 }
 
 func StartNewApp(components ...app.Component) (a *app.App, err error) {
