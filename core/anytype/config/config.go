@@ -53,25 +53,6 @@ type Config struct {
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 }
 
-func (c *Config) CafeNodeGrpcAddr() string {
-	return c.CafeAddr + ":" + strconv.Itoa(c.CafeGrpcPort)
-}
-
-func (c *Config) CafeUrl() string {
-	if net.ParseIP(c.CafeAddr) != nil {
-		return c.CafeAddr
-	}
-	prefix := "https://"
-	if c.CafeAPIInsecure {
-		prefix = "http://"
-	}
-	return prefix + c.CafeAddr
-}
-
-func (c *Config) CafeP2PFullAddr() string {
-	return fmt.Sprintf("/ip4/%s/tcp/%d/p2p/%s", c.CafeAddr, c.CafeP2PPort, c.CafePeerId)
-}
-
 const (
 	configFileName = "config.json"
 )
@@ -123,6 +104,29 @@ func New(options ...func(*Config)) *Config {
 	cfg.Threads.CafeP2PAddr = cfg.CafeP2PFullAddr()
 
 	return &cfg
+}
+
+func (c *Config) CafeNodeGrpcAddr() string {
+	return c.CafeAddr + ":" + strconv.Itoa(c.CafeGrpcPort)
+}
+
+func (c *Config) CafeUrl() string {
+	if net.ParseIP(c.CafeAddr) != nil {
+		return c.CafeAddr
+	}
+	prefix := "https://"
+	if c.CafeAPIInsecure {
+		prefix = "http://"
+	}
+	return prefix + c.CafeAddr
+}
+
+func (c *Config) CafeP2PFullAddr() string {
+	prefix := "dns4"
+	if net.ParseIP(c.CafeAddr) != nil {
+		prefix = "ip4"
+	}
+	return fmt.Sprintf("/%s/%s/tcp/%d/p2p/%s", prefix, c.CafeAddr, c.CafeP2PPort, c.CafePeerId)
 }
 
 func (c *Config) Init(a *app.App) (err error) {
