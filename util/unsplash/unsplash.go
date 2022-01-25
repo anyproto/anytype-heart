@@ -87,6 +87,7 @@ func Search(ctx context.Context, query string, max int) ([]Result, error) {
 	results, _, err := unsplashApi.Photos.Random(&opt)
 	if err != nil {
 		if strings.Contains("404", err.Error()) {
+			queryCache.set(query, nil)
 			return nil, nil
 		}
 		return nil, err
