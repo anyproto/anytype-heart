@@ -9154,9 +9154,8 @@ deprecated, to be removed |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated | filters |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated | sorts |
-| fullText | [string](#string) |  | fulltext query (optional) |
-| limit | [int32](#int32) |  | results limit |
-| offset | [int32](#int32) |  | initial offset; middleware will find afterId |
+| limit | [int64](#int64) |  | results limit |
+| offset | [int64](#int64) |  | initial offset; middleware will find afterId |
 | keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
