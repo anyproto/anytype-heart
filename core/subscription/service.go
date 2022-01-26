@@ -88,10 +88,9 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	}
 
 	q := database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
+		Filters: req.Filters,
+		Sorts:   req.Sorts,
+		Limit:   int(req.Limit),
 	}
 
 	f, err := database.NewFilters(q, nil)
