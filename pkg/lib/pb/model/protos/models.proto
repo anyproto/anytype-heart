@@ -66,6 +66,7 @@ message Block {
         Content.Relation relation = 22;
         Content.FeaturedRelations featuredRelations = 23;
         Content.Latex latex = 24;
+        Content.TableOfContents tableOfContents = 25;
     }
 
     message Restrictions {
@@ -354,6 +355,9 @@ message Block {
 
         message Latex {
             string text = 1;
+        }
+
+        message TableOfContents {
         }
     }
 }
