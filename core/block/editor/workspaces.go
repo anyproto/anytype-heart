@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/database"
-	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -19,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes/pbconvert"
 	"github.com/gogo/protobuf/types"
 	ma "github.com/multiformats/go-multiaddr"
 	manet "github.com/multiformats/go-multiaddr/net"
@@ -36,9 +34,6 @@ const (
 	collectionKeyAddrs     = "addrs"
 	collectionKeyId        = "id"
 	collectionKeyKey       = "key"
-
-	collectionNameRelations    = "relations"
-	collectionNameRelationOpts = "relationOpts"
 )
 
 var (
@@ -298,7 +293,6 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	p.AddHook(p.checkUpdatedRelations, smartblock.HookBeforeApply)
 	defaultValue := &types.Struct{Fields: map[string]*types.Value{bundle.RelationKeyWorkspaceId.String(): pbtypes.String(p.Id())}}
 	return smartblock.ApplyTemplate(p, ctx.State,
 		template.WithEmpty,
@@ -485,81 +479,4 @@ func (p *Workspaces) threadInfoFromCreatorPB(val *types.Value) (threads.ThreadIn
 		Key:   thread.NewKey(sk, pk).String(),
 		Addrs: pbtypes.GetStringListValue(fields.Fields[collectionKeyAddrs]),
 	}, nil
-}
-
-func (p *Workspaces) SaveRelations(rels ...*model.Relation) (err error) {
-	s := p.NewState()
-	for _, rel := range rels {
-		s.SetInStore([]string{collectionNameRelations, rel.Key}, pbconvert.RelationToValue(rel))
-	}
-	return p.Apply(s, smartblock.NoHistory, smartblock.NoEvent)
-}
-
-func (p *Workspaces) GetRelation(relKey string) (r *model.Relation, err error) {
-	s := p.NewState()
-	v := pbtypes.Get(s.Store(), collectionNameRelations, relKey)
-	if v == nil {
-		return nil, ErrRelationNotFound
-	}
-	r = pbconvert.StructToRelation(v.GetStructValue())
-	if r == nil {
-		err = ErrRelationNotFound
-	}
-	return
-}
-
-func (p *Workspaces) SetRelationOptions(relKey string, opts ...*model.RelationOption) (err error) {
-	s := p.NewState()
-	for _, opt := range opts {
-		s.SetInStore([]string{collectionNameRelationOpts, relKey, opt.Id}, pbconvert.RelationOptionToValue(opt))
-	}
-	return p.Apply(s, smartblock.NoHistory, smartblock.NoEvent)
-}
-
-func (p *Workspaces) GetDocInfo() (info doc.DocInfo, err error) {
-	if info, err = p.SmartBlock.GetDocInfo(); err != nil {
-		return
-	}
-
-	// fetch all relations
-	s := p.NewState()
-	rels := pbtypes.Get(s.Store(), collectionNameRelations).GetStructValue()
-	if rels != nil && rels.Fields != nil {
-		for _, v := range rels.Fields {
-			info.Relations = append(info.Relations, v.GetStructValue())
-		}
-	}
-
-	opts := pbtypes.Get(s.Store(), collectionNameRelationOpts).GetStructValue()
-	if opts != nil && opts.Fields != nil {
-		for relId, v := range opts.Fields {
-			var optList []*types.Struct
-			if st := v.GetStructValue(); st != nil && st.Fields != nil {
-				for _, op := range st.Fields {
-					optList = append(optList, op.GetStructValue())
-				}
-			}
-			info.RelationOptions = append(info.RelationOptions, doc.RelationOptionsInfo{
-				RelationId: relId,
-				Options:    optList,
-			})
-		}
-	}
-	return
-}
-
-func (p *Workspaces) checkUpdatedRelations(s *state.State) (err error) {
-	paths := s.GetChangedStoreKeys(collectionNameRelations)
-	for _, path := range paths {
-		if len(path) >= 2 {
-			p.changedRelationIds = append(p.changedRelationIds, path[1])
-		}
-	}
-	paths = s.GetChangedStoreKeys(collectionNameRelationOpts)
-	for _, path := range paths {
-		if len(path) >= 2 {
-			p.changedRelationIdsOptions = append(p.changedRelationIdsOptions, path[1])
-		}
-	}
-	return
 }
