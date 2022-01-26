@@ -3,6 +3,10 @@ package unsplash
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/dsoprea/go-exif/v3"
 	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"github.com/hbagdi/go-unsplash/unsplash"
@@ -17,14 +21,44 @@ import (
 	"time"
 )
 
-const UNSPLASH_TOKEN = "TLKq5P192MptAcTHnGM8WQPZV8kKNn1eT9FEi5Srem0"
+const (
+	CName         = "unsplash"
+	DEFAULT_TOKEN = "TLKq5P192MptAcTHnGM8WQPZV8kKNn1eT9FEi5Srem0"
+	cacheTTL      = time.Minute * 10
+	cacheGCPeriod = time.Minute * 5
+)
 
-// todo: should probably add some GC here
-var queryCache = newCacheWithTTL(time.Minute * 60)
+type Unsplash interface {
+	Search(ctx context.Context, query string, max int) ([]Result, error)
+	Download(ctx context.Context, id string) (imgPath string, err error)
 
-// exitArtistWithUrl matches and extracts additional information we store in the Artist field – the URL of the author page.
+	app.Component
+}
+
+type unsplashService struct {
+	cache  ocache.OCache
+	client *unsplash.Unsplash
+	limit  int
+	config configfetcher.ConfigFetcher
+}
+
+func (l *unsplashService) Init(app *app.App) (err error) {
+	l.cache = ocache.New(l.search, ocache.WithTTL(cacheTTL), ocache.WithGCPeriod(cacheGCPeriod))
+	l.config = app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+	return
+}
+
+func (l *unsplashService) Name() (name string) {
+	return CName
+}
+
+func New() Unsplash {
+	return &unsplashService{}
+}
+
+// exifArtistWithUrl matches and extracts additional information we store in the Artist field – the URL of the author page.
 // We use it within the Unsplash integration
-var exitArtistWithUrl = regexp.MustCompile(`(.*?); (http.*)`)
+var exifArtistWithUrl = regexp.MustCompile(`(.*?); (http.*)`)
 
 type Result struct {
 	ID              string
@@ -34,6 +68,14 @@ type Result struct {
 	PictureFullUrl  string
 	Artist          string
 	ArtistURL       string
+}
+
+type results struct {
+	results []Result
+}
+
+func (results) Close() error {
+	return nil
 }
 
 func newFromPhoto(v unsplash.Photo) (Result, error) {
@@ -67,38 +109,59 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 	return res, nil
 }
 
-func Search(ctx context.Context, query string, max int) ([]Result, error) {
-	query = strings.ToLower(strings.TrimSpace(query))
-
+func (l *unsplashService) lazyInitClient() {
+	if l.client != nil {
+		return
+	}
+	cfg := l.config.GetCafeConfig()
+	token := DEFAULT_TOKEN
+	if configToken := pbtypes.GetString(cfg.Extra, "unsplash"); configToken != "" {
+		token = configToken
+	}
 	ts := oauth2.StaticTokenSource(
-		&oauth2.Token{AccessToken: UNSPLASH_TOKEN},
+		&oauth2.Token{AccessToken: token},
 	)
-	client := oauth2.NewClient(ctx, ts)
-	var opt unsplash.RandomPhotoOpt
-	unsplashApi := unsplash.New(client)
-	cachedResults := queryCache.get(query)
-	if cachedResults != nil {
-		return cachedResults, nil
+	l.client = unsplash.New(oauth2.NewClient(context.Background(), ts))
+}
+
+func (l *unsplashService) Search(ctx context.Context, query string, limit int) ([]Result, error) {
+	query = strings.ToLower(strings.TrimSpace(query))
+	l.limit = limit
+	v, err := l.cache.Get(ctx, query)
+	if err != nil {
+		return nil, err
 	}
 
-	opt.Count = max
+	if r, ok := v.(results); ok {
+		return r.results, nil
+	} else {
+		panic("invalid cache value")
+	}
+}
+
+func (l *unsplashService) search(ctx context.Context, query string) (ocache.Object, error) {
+	l.lazyInitClient()
+	query = strings.ToLower(strings.TrimSpace(query))
+
+	var opt unsplash.RandomPhotoOpt
+
+	opt.Count = l.limit
 	opt.SearchQuery = query
 
-	results, _, err := unsplashApi.Photos.Random(&opt)
+	res, _, err := l.client.Photos.Random(&opt)
 	if err != nil {
 		if strings.Contains("404", err.Error()) {
-			queryCache.set(query, nil)
 			return nil, nil
 		}
 		return nil, err
 	}
 
-	if results == nil {
+	if res == nil {
 		return nil, nil
 	}
 
-	var photos = make([]Result, 0, len(*results))
-	for _, v := range *results {
+	var photos = make([]Result, 0, len(*res))
+	for _, v := range *res {
 		res, err := newFromPhoto(v)
 		if err != nil {
 			continue
@@ -106,26 +169,28 @@ func Search(ctx context.Context, query string, max int) ([]Result, error) {
 
 		photos = append(photos, res)
 	}
-	queryCache.set(query, photos)
 
-	return photos, err
+	return results{results: photos}, nil
 }
 
-func Download(ctx context.Context, id string) (imgPath string, err error) {
+func (l *unsplashService) Download(ctx context.Context, id string) (imgPath string, err error) {
+	l.lazyInitClient()
 	var picture Result
-	for _, res := range queryCache.getLast() {
-		if res.ID == id {
-			picture = res
-			break
+	l.cache.ForEach(func(v ocache.Object) (isContinue bool) {
+		// todo: it will be better to save the last result, but we need another lock for this
+		if r, ok := v.(results); ok {
+			for _, res := range r.results {
+				if res.ID == id {
+					picture = res
+					break
+				}
+			}
 		}
-	}
+		return picture.ID == ""
+	})
+
 	if picture.ID == "" {
-		ts := oauth2.StaticTokenSource(
-			&oauth2.Token{AccessToken: UNSPLASH_TOKEN},
-		)
-		client := oauth2.NewClient(ctx, ts)
-		unsplashApi := unsplash.New(client)
-		res, _, err := unsplashApi.Photos.Photo(id, nil)
+		res, _, err := l.client.Photos.Photo(id, nil)
 		if err != nil {
 			return "", err
 		}
@@ -134,17 +199,22 @@ func Download(ctx context.Context, id string) (imgPath string, err error) {
 			return "", err
 		}
 	}
-
-	responseDownload, err := http.Get(picture.PictureFullUrl)
+	req, err := http.NewRequest("GET", picture.PictureFullUrl, nil)
+	if err != nil {
+		return "", err
+	}
+	req = req.WithContext(ctx)
+	client := http.DefaultClient
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to download file from unsplash: %s", err.Error())
 	}
-	defer responseDownload.Body.Close()
+	defer resp.Body.Close()
 	tmpfile, err := ioutil.TempFile(os.TempDir(), picture.ID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %s", err.Error())
 	}
-	_, _ = io.Copy(tmpfile, responseDownload.Body)
+	_, _ = io.Copy(tmpfile, resp.Body)
 	tmpfile.Close()
 
 	err = injectIntoExif(tmpfile.Name(), picture.Artist, picture.ArtistURL, picture.Description)
@@ -163,7 +233,7 @@ func PackArtistNameAndURL(name, url string) string {
 }
 
 func UnpackArtist(packed string) (name, url string) {
-	artistParts := exitArtistWithUrl.FindStringSubmatch(packed)
+	artistParts := exifArtistWithUrl.FindStringSubmatch(packed)
 	if len(artistParts) == 3 {
 		return artistParts[1], artistParts[2]
 	}

@@ -3960,7 +3960,7 @@ message Rpc {
     message UnsplashSearch {
         message Request {
             string query = 1; // empty means random images
-            int32 limit = 2; // 0 means default limit
+            int32 limit = 2; // may be omitted if the request was cached previously with another limit
         }
 
         message Response {

@@ -7,7 +7,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
-	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
 	"time"
@@ -625,7 +624,7 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 }
 
 func (s *service) UnsplashSearch(request string, max int) (pictures []*pb.RpcUnsplashSearchResponsePicture, err error) {
-	results, err := unsplash.Search(context.TODO(), request, max)
+	results, err := s.unsplash.Search(context.TODO(), request, max)
 	if err != nil {
 		return nil, err
 	}
@@ -643,7 +642,7 @@ func (s *service) UnsplashSearch(request string, max int) (pictures []*pb.RpcUns
 }
 
 func (s *service) UnsplashDownload(id string) (filePath string, err error) {
-	return unsplash.Download(context.TODO(), id)
+	return s.unsplash.Download(context.TODO(), id)
 }
 
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {

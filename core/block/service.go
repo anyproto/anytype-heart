@@ -9,8 +9,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -33,6 +34,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -44,8 +46,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/gogo/protobuf/types"
-	"github.com/textileio/go-threads/core/thread"
+	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
 
 const (
@@ -254,6 +255,7 @@ type service struct {
 	sendEvent   func(event *pb.Event)
 	closed      bool
 	linkPreview linkpreview.LinkPreview
+	unsplash    unsplash.Unsplash
 	process     process.Service
 	doc         doc.Service
 	app         *app.App
@@ -271,6 +273,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.anytype = a.MustComponent(core.CName).(core.Service)
 	s.status = a.MustComponent(status.CName).(status.Service)
 	s.linkPreview = a.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+	s.unsplash = a.MustComponent(unsplash.CName).(unsplash.Unsplash)
 	s.process = a.MustComponent(process.CName).(process.Service)
 	s.sendEvent = a.MustComponent(event.CName).(event.Sender).Send
 	s.source = a.MustComponent(source.CName).(source.Service)
