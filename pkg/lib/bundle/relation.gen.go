@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "1ba92c1a2fc9e1981ea2905bc37f97cd80b7a613113722bca61ee46781b5e50c"
+const RelationChecksum = "4f4ac6b54175a5a3bac632f6cf8fb499608f910c1989c91c9c1b9f96baff5c73"
 
 type RelationKey string
 
@@ -1277,7 +1277,7 @@ var (
 			Hidden:           true,
 			Key:              "mediaArtistName",
 			MaxCount:         1,
-			Name:             "Media artist name",
+			Name:             "Artist name",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1290,7 +1290,7 @@ var (
 			Hidden:           true,
 			Key:              "mediaArtistURL",
 			MaxCount:         1,
-			Name:             "Media artist URL",
+			Name:             "Artist URL",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

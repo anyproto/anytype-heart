@@ -1268,7 +1268,7 @@
     "hidden": true,
     "key": "mediaArtistName",
     "maxCount": 1,
-    "name": "Media artist name",
+    "name": "Artist name",
     "readonly": true,
     "source": "details"
   },
@@ -1277,7 +1277,7 @@
     "hidden": true,
     "key": "mediaArtistURL",
     "maxCount": 1,
-    "name": "Media artist URL",
+    "name": "Artist URL",
     "readonly": true,
     "source": "details"
   },
