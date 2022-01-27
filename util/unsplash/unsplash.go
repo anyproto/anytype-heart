@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 )
 
@@ -36,6 +37,7 @@ type Unsplash interface {
 }
 
 type unsplashService struct {
+	mu     sync.Mutex
 	cache  ocache.OCache
 	client *unsplash.Unsplash
 	limit  int
@@ -110,6 +112,8 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 }
 
 func (l *unsplashService) lazyInitClient() {
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	if l.client != nil {
 		return
 	}
