@@ -3,12 +3,11 @@ package core
 import (
 	"context"
 	"fmt"
-	"io"
-
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
+	"io"
 )
 
 var ErrImageNotFound = fmt.Errorf("image not found")

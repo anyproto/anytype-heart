@@ -1170,7 +1170,9 @@
       "exposure",
       "addedDate",
       "focalRatio",
-      "fileExt"
+      "fileExt",
+      "mediaArtistName",
+      "mediaArtistURL"
     ],
     "types": [
       "File"
