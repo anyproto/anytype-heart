@@ -36,7 +36,7 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 	for _, e := range entries {
 		e = s.cache.GetOrSet(e)
 		s.set[e.id] = struct{}{}
-		e.AddSubId(s.id, true)
+		e.SetSub(s.id, true)
 	}
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
@@ -64,7 +64,7 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 			})
 		}
 		newSet[e.id] = struct{}{}
-		e.AddSubId(s.id, true)
+		e.SetSub(s.id, true)
 	}
 	for oldId := range s.set {
 		if _, inSet := newSet[oldId]; !inSet {
@@ -92,7 +92,7 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 				keys:  s.keys,
 			})
 			changed = true
-			e.AddSubId(s.id, true)
+			e.SetSub(s.id, true)
 		}
 	}
 	if changed && s.depSub != nil {

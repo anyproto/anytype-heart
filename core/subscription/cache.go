@@ -19,7 +19,7 @@ type entry struct {
 	subIsActive []bool
 }
 
-func (e *entry) AddSubId(subId string, isActive bool) {
+func (e *entry) SetSub(subId string, isActive bool) {
 	if pos := slice.FindPos(e.subIds, subId); pos == -1 {
 		e.subIds = append(e.subIds, subId)
 		e.subIsActive = append(e.subIsActive, isActive)
