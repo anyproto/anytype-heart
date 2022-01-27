@@ -3957,6 +3957,64 @@ message Rpc {
         }
     }
 
+    message UnsplashSearch {
+        message Request {
+            string query = 1; // empty means random images
+            int32 limit = 2; // may be omitted if the request was cached previously with another limit
+        }
+
+        message Response {
+            Error error = 1;
+            repeated Picture pictures = 2;
+
+            message Picture {
+                string id = 1;
+                string url = 2;
+                string artist = 3;
+                string artistUrl = 4;
+            }
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+
+                    RATE_LIMIT_EXCEEDED = 100;
+                    // ...
+                }
+            }
+        }
+    }
+
+    message UnsplashDownload {
+        message Request {
+            string pictureId = 1;
+        }
+
+        message Response {
+            Error error = 1;
+            string hash = 2;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+
+                    RATE_LIMIT_EXCEEDED = 100;
+                    // ...
+                }
+            }
+        }
+    }
+
     message ApplyTemplate {
         message Request {
             string contextId = 1;

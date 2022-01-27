@@ -636,6 +636,15 @@
     - [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request)
     - [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response)
     - [Rpc.Shutdown.Response.Error](#anytype.Rpc.Shutdown.Response.Error)
+    - [Rpc.UnsplashDownload](#anytype.Rpc.UnsplashDownload)
+    - [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request)
+    - [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response)
+    - [Rpc.UnsplashDownload.Response.Error](#anytype.Rpc.UnsplashDownload.Response.Error)
+    - [Rpc.UnsplashSearch](#anytype.Rpc.UnsplashSearch)
+    - [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request)
+    - [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response)
+    - [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error)
+    - [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture)
     - [Rpc.UploadFile](#anytype.Rpc.UploadFile)
     - [Rpc.UploadFile.Request](#anytype.Rpc.UploadFile.Request)
     - [Rpc.UploadFile.Response](#anytype.Rpc.UploadFile.Response)
@@ -824,6 +833,8 @@
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Set.Create.Response.Error.Code](#anytype.Rpc.Set.Create.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
+    - [Rpc.UnsplashDownload.Response.Error.Code](#anytype.Rpc.UnsplashDownload.Response.Error.Code)
+    - [Rpc.UnsplashSearch.Response.Error.Code](#anytype.Rpc.UnsplashSearch.Response.Error.Code)
     - [Rpc.UploadFile.Response.Error.Code](#anytype.Rpc.UploadFile.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code)
@@ -1227,6 +1238,8 @@
 | MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
 | CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
 | ObjectDuplicate | [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request) | [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response) |  |
+| UnsplashSearch | [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request) | [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response) |  |
+| UnsplashDownload | [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request) | [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
 | ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
@@ -10447,6 +10460,139 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype.Rpc.UnsplashDownload"></a>
+
+### Rpc.UnsplashDownload
+
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Request"></a>
+
+### Rpc.UnsplashDownload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pictureId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response"></a>
+
+### Rpc.UnsplashDownload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.UnsplashDownload.Response.Error](#anytype.Rpc.UnsplashDownload.Response.Error) |  |  |
+| hash | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response.Error"></a>
+
+### Rpc.UnsplashDownload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.UnsplashDownload.Response.Error.Code](#anytype.Rpc.UnsplashDownload.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch"></a>
+
+### Rpc.UnsplashSearch
+
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Request"></a>
+
+### Rpc.UnsplashSearch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| query | [string](#string) |  | empty means random images |
+| limit | [int32](#int32) |  | 0 means default limit |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response"></a>
+
+### Rpc.UnsplashSearch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error) |  |  |
+| pictures | [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Error"></a>
+
+### Rpc.UnsplashSearch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.UnsplashSearch.Response.Error.Code](#anytype.Rpc.UnsplashSearch.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Picture"></a>
+
+### Rpc.UnsplashSearch.Response.Picture
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| artist | [string](#string) |  |  |
+| artistUrl | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.UploadFile"></a>
 
 ### Rpc.UploadFile
@@ -12967,6 +13113,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NODE_NOT_STARTED | 101 |  |
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response.Error.Code"></a>
+
+### Rpc.UnsplashDownload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Error.Code"></a>
+
+### Rpc.UnsplashSearch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
 
 
 
@@ -15612,6 +15786,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | enableDebug | [bool](#bool) |  |  |
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
+| unsplashToken | [string](#string) |  | reserve first params for app-wise flags |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 
