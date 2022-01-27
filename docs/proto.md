@@ -4,8 +4,12 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
+  
+  
+  
     - [ClientCommands](#anytype.ClientCommands)
   
+
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -30,6 +34,10 @@
     - [Change.StoreKeySet](#anytype.Change.StoreKeySet)
     - [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset)
   
+  
+  
+  
+
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -846,6 +854,9 @@
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
   
+  
+  
+
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -992,6 +1003,9 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
+  
+  
+
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -1002,6 +1016,10 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
+  
+  
+  
+
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -1071,6 +1089,9 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
+  
+  
+
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -9146,9 +9167,8 @@ deprecated, to be removed |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated | filters |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated | sorts |
-| fullText | [string](#string) |  | fulltext query (optional) |
-| limit | [int32](#int32) |  | results limit |
-| offset | [int32](#int32) |  | initial offset; middleware will find afterId |
+| limit | [int64](#int64) |  | results limit |
+| offset | [int64](#int64) |  | initial offset; middleware will find afterId |
 | keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
@@ -10536,7 +10556,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | query | [string](#string) |  | empty means random images |
-| limit | [int32](#int32) |  | 0 means default limit |
+| limit | [int32](#int32) |  | may be omitted if the request was cached previously with another limit |
 
 
 
@@ -15124,6 +15144,7 @@ Adds new document to subscriptions
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | afterId | [string](#string) |  | id of previous doc in order, empty means first |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -15141,6 +15162,7 @@ Adds new document to subscriptions
 | total | [int64](#int64) |  | total available records |
 | nextCount | [int64](#int64) |  | how many records available after |
 | prevCount | [int64](#int64) |  | how many records available before |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -15157,6 +15179,7 @@ Indicates new position of document
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | afterId | [string](#string) |  | id of previous doc in order, empty means first |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -15172,6 +15195,7 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -15786,7 +15810,6 @@ Avatar of a user&#39;s account. It could be an image or color
 | enableDebug | [bool](#bool) |  |  |
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
-| unsplashToken | [string](#string) |  | reserve first params for app-wise flags |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
 
 

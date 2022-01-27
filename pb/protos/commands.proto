@@ -3414,12 +3414,10 @@ message Rpc {
                 repeated anytype.model.Block.Content.Dataview.Filter filters = 2;
                 // sorts
                 repeated anytype.model.Block.Content.Dataview.Sort sorts = 3;
-                // fulltext query (optional)
-                string fullText = 4;
                 // results limit
-                int32 limit = 5;
+                int64 limit = 5;
                 // initial offset; middleware will find afterId
-                int32 offset = 6;
+                int64 offset = 6;
                 // (required)  needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent
                 repeated string keys = 7;
 

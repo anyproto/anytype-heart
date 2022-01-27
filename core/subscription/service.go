@@ -13,7 +13,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/cheggaaa/mb"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
@@ -88,16 +90,18 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	}
 
 	q := database.Query{
-		Filters:  req.Filters,
-		Sorts:    req.Sorts,
-		Limit:    int(req.Limit),
-		FullText: req.FullText,
+		Filters: req.Filters,
+		Sorts:   req.Sorts,
+		Limit:   int(req.Limit),
 	}
 
 	f, err := database.NewFilters(q, nil)
 	if err != nil {
 		return
 	}
+
+	filterDepIds := s.depIdsFromFilter(req.Filters)
+
 	if len(req.Source) > 0 {
 		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
@@ -125,6 +129,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		req.Limit = 0
 	}
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
+	sub.forceSubIds = filterDepIds
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
@@ -253,10 +258,8 @@ func (s *service) onChange(entries []*entry) {
 		sub.onChange(s.ctxBuf)
 	}
 	log.Debugf("handle %d etries; ctx: %#v", len(entries), s.ctxBuf)
-	events := s.ctxBuf.apply()
-	for _, e := range events {
-		s.sendEvent(e)
-	}
+	event := s.ctxBuf.apply()
+	s.sendEvent(event)
 }
 
 func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
@@ -293,6 +296,19 @@ func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {
 		})
 	}
 	return relTypeFilter, nil
+}
+
+func (s *service) depIdsFromFilter(filters []*model.BlockContentDataviewFilter) (depIds []string) {
+	for _, f := range filters {
+		if s.ds.isRelationObject(f.RelationKey) {
+			for _, id := range pbtypes.GetStringListValue(f.Value) {
+				if slice.FindPos(depIds, id) == -1 {
+					depIds = append(depIds, id)
+				}
+			}
+		}
+	}
+	return
 }
 
 func (s *service) Close() (err error) {

@@ -137,17 +137,20 @@ message Event {
             message Add {
                 string id = 1; // object id
                 string afterId = 2; // id of previous doc in order, empty means first
+                string subId = 3; // subscription id
             }
 
             // Removes document from subscription
             message Remove {
                 string id = 1; // object id
+                string subId = 2; // subscription id
             }
 
             // Indicates new position of document
             message Position {
                 string id = 1; // object id
                 string afterId = 2;  // id of previous doc in order, empty means first
+                string subId = 3; // subscription id
             }
 
             message Counters {
@@ -157,6 +160,8 @@ message Event {
                 int64 nextCount = 2;
                 // how many records available before
                 int64 prevCount = 3;
+
+                string subId = 4; // subscription id
             }
 
         }
