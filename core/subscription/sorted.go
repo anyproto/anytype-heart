@@ -45,6 +45,8 @@ type sortedSub struct {
 	depKeys          []string
 	activeEntriesBuf []*entry
 
+	forceSubIds []string
+
 	cache *cache
 	ds    *dependencyService
 }
@@ -111,8 +113,8 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
-		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys)
+		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
 		}
 	}
 	return nil

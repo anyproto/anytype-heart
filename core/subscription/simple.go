@@ -18,9 +18,10 @@ func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub 
 }
 
 type simpleSub struct {
-	id   string
-	set  map[string]struct{}
-	keys []string
+	id       string
+	set      map[string]struct{}
+	keys     []string
+	forceIds []string
 
 	depKeys          []string
 	depSub           *simpleSub
@@ -40,7 +41,7 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
 		}
 	}
 	return
