@@ -23,7 +23,7 @@ import (
 
 const (
 	CName         = "unsplash"
-	DEFAULT_TOKEN = "TLKq5P192MptAcTHnGM8WQPZV8kKNn1eT9FEi5Srem0"
+	DefaultToken  = "TLKq5P192MptAcTHnGM8WQPZV8kKNn1eT9FEi5Srem0"
 	cacheTTL      = time.Minute * 10
 	cacheGCPeriod = time.Minute * 5
 )
@@ -114,7 +114,7 @@ func (l *unsplashService) lazyInitClient() {
 		return
 	}
 	cfg := l.config.GetCafeConfig()
-	token := DEFAULT_TOKEN
+	token := DefaultToken
 	if configToken := pbtypes.GetString(cfg.Extra, "unsplash"); configToken != "" {
 		token = configToken
 	}
