@@ -1,9 +1,12 @@
 package core
 
 import (
+	"context"
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 	"os"
 	"strings"
 )
@@ -23,12 +26,21 @@ func (mw *Middleware) UnsplashSearch(req *pb.RpcUnsplashSearchRequest) *pb.RpcUn
 		}
 		return m
 	}
-	var pictures []*pb.RpcUnsplashSearchResponsePicture
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		pictures, err = bs.UnsplashSearch(req.Query, int(req.Limit))
-		return
-	})
+	un := mw.app.Component(unsplash.CName).(unsplash.Unsplash)
+	if un == nil {
+		return response(nil, fmt.Errorf("node not started"))
+	}
 
+	results, err := un.Search(context.TODO(), req.Query, int(req.Limit))
+	pictures := make([]*pb.RpcUnsplashSearchResponsePicture, 0, len(results))
+	for _, res := range results {
+		pictures = append(pictures, &pb.RpcUnsplashSearchResponsePicture{
+			Id:        res.ID,
+			Url:       res.PictureThumbUrl,
+			Artist:    res.Artist,
+			ArtistUrl: res.ArtistURL,
+		})
+	}
 	return response(pictures, err)
 }
 
@@ -49,11 +61,17 @@ func (mw *Middleware) UnsplashDownload(req *pb.RpcUnsplashDownloadRequest) *pb.R
 	}
 
 	var hash string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		imagePath, err := bs.UnsplashDownload(req.PictureId)
-		if err != nil {
-			return err
-		}
+	un := mw.app.Component(unsplash.CName).(unsplash.Unsplash)
+	if un == nil {
+		return response("", fmt.Errorf("node not started"))
+	}
+	imagePath, err := un.Download(context.TODO(), req.PictureId)
+	if err != nil {
+		return response("", err)
+	}
+	defer os.Remove(imagePath)
+
+	err = mw.doBlockService(func(bs block.Service) (err error) {
 		hash, err = bs.UploadFile(pb.RpcUploadFileRequest{
 			LocalPath: imagePath,
 			Type:      model.BlockContentFile_Image,
@@ -62,7 +80,6 @@ func (mw *Middleware) UnsplashDownload(req *pb.RpcUnsplashDownloadRequest) *pb.R
 		if err != nil {
 			return err
 		}
-		_ = os.Remove(imagePath)
 		return
 	})
 

@@ -623,28 +623,6 @@ func (s *service) CreateAndUploadFile(ctx *state.Context, req pb.RpcBlockFileCre
 	return
 }
 
-func (s *service) UnsplashSearch(request string, max int) (pictures []*pb.RpcUnsplashSearchResponsePicture, err error) {
-	results, err := s.unsplash.Search(context.TODO(), request, max)
-	if err != nil {
-		return nil, err
-	}
-
-	pictures = make([]*pb.RpcUnsplashSearchResponsePicture, 0, len(results))
-	for _, res := range results {
-		pictures = append(pictures, &pb.RpcUnsplashSearchResponsePicture{
-			Id:        res.ID,
-			Url:       res.PictureThumbUrl,
-			Artist:    res.Artist,
-			ArtistUrl: res.ArtistURL,
-		})
-	}
-	return pictures, nil
-}
-
-func (s *service) UnsplashDownload(id string) (filePath string, err error) {
-	return s.unsplash.Download(context.TODO(), id)
-}
-
 func (s *service) UploadFile(req pb.RpcUploadFileRequest) (hash string, err error) {
 	upl := file.NewUploader(s)
 	if req.DisableEncryption {

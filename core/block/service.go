@@ -221,9 +221,6 @@ type Service interface {
 
 	AddCreatorInfoIfNeeded(workspaceId string) error
 
-	UnsplashSearch(request string, max int) (search []*pb.RpcUnsplashSearchResponsePicture, err error)
-	UnsplashDownload(id string) (filePath string, err error)
-
 	app.ComponentRunnable
 }
 
