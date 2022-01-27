@@ -96,6 +96,12 @@ func WithStagingCafe(isStaging bool) func(*Config) {
 	}
 }
 
+func DisableFileConfig(disable bool) func(*Config) {
+	return func(c *Config) {
+		c.DisableFileConfig = disable
+	}
+}
+
 func New(options ...func(*Config)) *Config {
 	cfg := DefaultConfig
 	for _, opt := range options {
