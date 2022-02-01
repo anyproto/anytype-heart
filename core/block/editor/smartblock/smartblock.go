@@ -580,6 +580,10 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 				continue
 			}
 
+			if rel.Hidden {
+				continue
+			}
+
 			if rel.Key == bundle.RelationKeyId.String() ||
 				rel.Key == bundle.RelationKeyType.String() ||
 				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
