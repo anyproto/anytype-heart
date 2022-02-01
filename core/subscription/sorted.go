@@ -45,6 +45,8 @@ type sortedSub struct {
 	depKeys          []string
 	activeEntriesBuf []*entry
 
+	forceSubIds []string
+
 	cache *cache
 	ds    *dependencyService
 }
@@ -61,7 +63,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	for i, e := range entries {
 		e = s.cache.GetOrSet(e)
 		entries[i] = e
-		e.AddSubId(s.id, true)
+		e.SetSub(s.id, true)
 		s.skl.Set(e, nil)
 	}
 	if s.afterId != "" {
@@ -106,13 +108,13 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 
 	activeEntries := s.getActiveEntries()
 	for _, ae := range activeEntries {
-		ae.AddSubId(s.id, true)
+		ae.SetSub(s.id, true)
 	}
 
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
-		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys)
+		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)
 		}
 	}
 	return nil
@@ -219,10 +221,10 @@ func (s *sortedSub) add(ctx *opCtx, e *entry) (countersChanged, activeChanged bo
 			afterId: afterId,
 		})
 		s.alignRemove(ctx)
-		e.AddSubId(s.id, true)
+		e.SetSub(s.id, true)
 		return true, true
 	}
-	e.AddSubId(s.id, false)
+	e.SetSub(s.id, false)
 	return true, false
 }
 
@@ -258,7 +260,7 @@ func (s *sortedSub) change(ctx *opCtx, e *entry, currInActive bool) (countersCha
 			subId: s.id,
 			keys:  s.keys,
 		})
-		e.AddSubId(s.id, true)
+		e.SetSub(s.id, true)
 	} else {
 		if currInActive {
 			ctx.remove = append(ctx.remove, opRemove{
@@ -269,7 +271,7 @@ func (s *sortedSub) change(ctx *opCtx, e *entry, currInActive bool) (countersCha
 			activeChanged = true
 		}
 		countersChanged = true
-		e.AddSubId(s.id, false)
+		e.SetSub(s.id, false)
 	}
 	return
 }

@@ -124,6 +124,26 @@ func (p *Files) Init(ctx *smartblock.InitContext) (err error) {
 				},
 			})
 		}
+		if pbtypes.GetString(d, bundle.RelationKeyMediaArtistName.String()) != "" {
+			blocks = append(blocks, &model.Block{
+				Id: "rel6",
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: bundle.RelationKeyMediaArtistName.String(),
+					},
+				},
+			})
+		}
+		if pbtypes.GetString(d, bundle.RelationKeyMediaArtistURL.String()) != "" {
+			blocks = append(blocks, &model.Block{
+				Id: "rel7",
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: bundle.RelationKeyMediaArtistURL.String(),
+					},
+				},
+			})
+		}
 	default:
 		blocks = append(blocks,
 			[]*model.Block{

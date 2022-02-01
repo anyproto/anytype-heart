@@ -4,12 +4,8 @@
 ## Table of Contents
 
 - [pb/protos/service/service.proto](#pb/protos/service/service.proto)
-  
-  
-  
     - [ClientCommands](#anytype.ClientCommands)
   
-
 - [pb/protos/changes.proto](#pb/protos/changes.proto)
     - [Change](#anytype.Change)
     - [Change.BlockCreate](#anytype.Change.BlockCreate)
@@ -34,10 +30,6 @@
     - [Change.StoreKeySet](#anytype.Change.StoreKeySet)
     - [Change.StoreKeyUnset](#anytype.Change.StoreKeyUnset)
   
-  
-  
-  
-
 - [pb/protos/commands.proto](#pb/protos/commands.proto)
     - [Empty](#anytype.Empty)
     - [Rpc](#anytype.Rpc)
@@ -644,6 +636,15 @@
     - [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request)
     - [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response)
     - [Rpc.Shutdown.Response.Error](#anytype.Rpc.Shutdown.Response.Error)
+    - [Rpc.UnsplashDownload](#anytype.Rpc.UnsplashDownload)
+    - [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request)
+    - [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response)
+    - [Rpc.UnsplashDownload.Response.Error](#anytype.Rpc.UnsplashDownload.Response.Error)
+    - [Rpc.UnsplashSearch](#anytype.Rpc.UnsplashSearch)
+    - [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request)
+    - [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response)
+    - [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error)
+    - [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture)
     - [Rpc.UploadFile](#anytype.Rpc.UploadFile)
     - [Rpc.UploadFile.Request](#anytype.Rpc.UploadFile.Request)
     - [Rpc.UploadFile.Response](#anytype.Rpc.UploadFile.Response)
@@ -832,6 +833,8 @@
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Set.Create.Response.Error.Code](#anytype.Rpc.Set.Create.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
+    - [Rpc.UnsplashDownload.Response.Error.Code](#anytype.Rpc.UnsplashDownload.Response.Error.Code)
+    - [Rpc.UnsplashSearch.Response.Error.Code](#anytype.Rpc.UnsplashSearch.Response.Error.Code)
     - [Rpc.UploadFile.Response.Error.Code](#anytype.Rpc.UploadFile.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code)
@@ -843,9 +846,6 @@
     - [Rpc.Workspace.Select.Response.Error.Code](#anytype.Rpc.Workspace.Select.Response.Error.Code)
     - [Rpc.Workspace.SetIsHighlighted.Response.Error.Code](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error.Code)
   
-  
-  
-
 - [pb/protos/events.proto](#pb/protos/events.proto)
     - [Event](#anytype.Event)
     - [Event.Account](#anytype.Event.Account)
@@ -989,9 +989,6 @@
     - [Model.Process.State](#anytype.Model.Process.State)
     - [Model.Process.Type](#anytype.Model.Process.Type)
   
-  
-  
-
 - [pkg/lib/pb/model/protos/localstore.proto](#pkg/lib/pb/model/protos/localstore.proto)
     - [ObjectDetails](#anytype.model.ObjectDetails)
     - [ObjectInfo](#anytype.model.ObjectInfo)
@@ -1002,10 +999,6 @@
     - [ObjectLinksInfo](#anytype.model.ObjectLinksInfo)
     - [ObjectStoreChecksums](#anytype.model.ObjectStoreChecksums)
   
-  
-  
-  
-
 - [pkg/lib/pb/model/protos/models.proto](#pkg/lib/pb/model/protos/models.proto)
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
@@ -1075,9 +1068,6 @@
     - [Restrictions.ObjectRestriction](#anytype.model.Restrictions.ObjectRestriction)
     - [SmartBlockType](#anytype.model.SmartBlockType)
   
-  
-  
-
 - [Scalar Value Types](#scalar-value-types)
 
 
@@ -1243,6 +1233,8 @@
 | MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
 | CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
 | ObjectDuplicate | [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request) | [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response) |  |
+| UnsplashSearch | [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request) | [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response) |  |
+| UnsplashDownload | [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request) | [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
 | ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
@@ -9149,9 +9141,8 @@ deprecated, to be removed |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated | filters |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated | sorts |
-| fullText | [string](#string) |  | fulltext query (optional) |
-| limit | [int32](#int32) |  | results limit |
-| offset | [int32](#int32) |  | initial offset; middleware will find afterId |
+| limit | [int64](#int64) |  | results limit |
+| offset | [int64](#int64) |  | initial offset; middleware will find afterId |
 | keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
@@ -10457,6 +10448,139 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload"></a>
+
+### Rpc.UnsplashDownload
+
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Request"></a>
+
+### Rpc.UnsplashDownload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pictureId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response"></a>
+
+### Rpc.UnsplashDownload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.UnsplashDownload.Response.Error](#anytype.Rpc.UnsplashDownload.Response.Error) |  |  |
+| hash | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response.Error"></a>
+
+### Rpc.UnsplashDownload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.UnsplashDownload.Response.Error.Code](#anytype.Rpc.UnsplashDownload.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch"></a>
+
+### Rpc.UnsplashSearch
+
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Request"></a>
+
+### Rpc.UnsplashSearch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| query | [string](#string) |  | empty means random images |
+| limit | [int32](#int32) |  | may be omitted if the request was cached previously with another limit |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response"></a>
+
+### Rpc.UnsplashSearch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error) |  |  |
+| pictures | [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Error"></a>
+
+### Rpc.UnsplashSearch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.UnsplashSearch.Response.Error.Code](#anytype.Rpc.UnsplashSearch.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Picture"></a>
+
+### Rpc.UnsplashSearch.Response.Picture
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| artist | [string](#string) |  |  |
+| artistUrl | [string](#string) |  |  |
 
 
 
@@ -12986,6 +13110,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.UnsplashDownload.Response.Error.Code"></a>
+
+### Rpc.UnsplashDownload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Error.Code"></a>
+
+### Rpc.UnsplashSearch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
+
+
+
 <a name="anytype.Rpc.UploadFile.Response.Error.Code"></a>
 
 ### Rpc.UploadFile.Response.Error.Code
@@ -14909,6 +15061,7 @@ Adds new document to subscriptions
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | afterId | [string](#string) |  | id of previous doc in order, empty means first |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -14926,6 +15079,7 @@ Adds new document to subscriptions
 | total | [int64](#int64) |  | total available records |
 | nextCount | [int64](#int64) |  | how many records available after |
 | prevCount | [int64](#int64) |  | how many records available before |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -14942,6 +15096,7 @@ Indicates new position of document
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | afterId | [string](#string) |  | id of previous doc in order, empty means first |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -14957,6 +15112,7 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
+| subId | [string](#string) |  | subscription id |
 
 
 

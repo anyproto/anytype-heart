@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"sort"
 	"strings"
 	"sync"
@@ -567,6 +568,17 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 				}
 				continue
 			}
+
+			if rel.Key == bundle.RelationKeyCoverId.String() {
+				v := pbtypes.GetString(details, rel.Key)
+				_, err := cid.Decode(v)
+				if err != nil {
+					// this is an exception cause coverId can contains not a file hash but color
+					continue
+				}
+				ids = append(ids, v)
+			}
+
 			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
 				continue
 			}

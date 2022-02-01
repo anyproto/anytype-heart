@@ -1264,6 +1264,24 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": true,
+    "key": "mediaArtistName",
+    "maxCount": 1,
+    "name": "Artist name",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "url",
+    "hidden": true,
+    "key": "mediaArtistURL",
+    "maxCount": 1,
+    "name": "Artist URL",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "cameraIso",

@@ -18,9 +18,10 @@ func (s *service) newSimpleSub(id string, keys []string, isDep bool) *simpleSub 
 }
 
 type simpleSub struct {
-	id   string
-	set  map[string]struct{}
-	keys []string
+	id       string
+	set      map[string]struct{}
+	keys     []string
+	forceIds []string
 
 	depKeys          []string
 	depSub           *simpleSub
@@ -35,12 +36,12 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 	for _, e := range entries {
 		e = s.cache.GetOrSet(e)
 		s.set[e.id] = struct{}{}
-		e.AddSubId(s.id, true)
+		e.SetSub(s.id, true)
 	}
 	if s.ds != nil {
 		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 {
-			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys)
+			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, s.getActiveEntries(), s.keys, s.depKeys, nil)
 		}
 	}
 	return
@@ -63,7 +64,7 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 			})
 		}
 		newSet[e.id] = struct{}{}
-		e.AddSubId(s.id, true)
+		e.SetSub(s.id, true)
 	}
 	for oldId := range s.set {
 		if _, inSet := newSet[oldId]; !inSet {
@@ -91,7 +92,7 @@ func (s *simpleSub) onChange(ctx *opCtx) {
 				keys:  s.keys,
 			})
 			changed = true
-			e.AddSubId(s.id, true)
+			e.SetSub(s.id, true)
 		}
 	}
 	if changed && s.depSub != nil {

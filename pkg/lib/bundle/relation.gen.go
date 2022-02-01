@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "c0cae151a0cd595255597836babbc88e96a0cbc981ce293e58e52e50ee398cea"
+const RelationChecksum = "4f4ac6b54175a5a3bac632f6cf8fb499608f910c1989c91c9c1b9f96baff5c73"
 
 type RelationKey string
 
@@ -146,6 +146,8 @@ const (
 	RelationKeyId                        RelationKey = "id"
 	RelationKeyStockprice                RelationKey = "stockprice"
 	RelationKeyObjectives                RelationKey = "objectives"
+	RelationKeyMediaArtistName           RelationKey = "mediaArtistName"
+	RelationKeyMediaArtistURL            RelationKey = "mediaArtistURL"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
 	RelationKeyIsDeleted                 RelationKey = "isDeleted"
@@ -1264,6 +1266,32 @@ var (
 			MaxCount:         1,
 			Name:             "Measure of success",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMediaArtistName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Key:              "mediaArtistName",
+			MaxCount:         1,
+			Name:             "Artist name",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMediaArtistURL: {
+
+			DataSource:       model.Relation_details,
+			Description:      "",
+			Format:           model.RelationFormat_url,
+			Hidden:           true,
+			Key:              "mediaArtistURL",
+			MaxCount:         1,
+			Name:             "Artist URL",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
