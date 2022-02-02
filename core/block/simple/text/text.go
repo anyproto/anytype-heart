@@ -51,6 +51,9 @@ type Block interface {
 	RemoveMarkType(markType model.BlockContentTextMarkType)
 	HasMarkForAllText(mark *model.BlockContentTextMark) bool
 	SetTextColor(color string)
+	SetIconEmoji(emoji string)
+	SetIconImage(imageHash string)
+
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error)
 	RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error)
@@ -147,6 +150,14 @@ func (t *Text) GetChecked() bool {
 
 func (t *Text) SetTextColor(color string) {
 	t.content.Color = color
+}
+
+func (t *Text) SetIconEmoji(emoji string) {
+	t.content.IconEmoji = emoji
+}
+
+func (t *Text) SetIconImage(imageHash string) {
+	t.content.IconImage = imageHash
 }
 
 func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
