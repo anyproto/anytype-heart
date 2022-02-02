@@ -132,15 +132,17 @@ func TruncateText(text string, length int) string {
 	return text
 }
 
+// UniqueStrings returns the new slice without duplicates, while preserving the order.
+// The second and further occurrences are considered a duplicate
 func UniqueStrings(items []string) []string {
 	var um = make(map[string]struct{}, len(items))
-	for _, item := range items {
-		um[item] = struct{}{}
-	}
-
 	var unique = make([]string, 0, len(um))
-	for item := range um {
+	for _, item := range items {
+		if _, exists := um[item]; exists {
+			continue
+		}
 		unique = append(unique, item)
+		um[item] = struct{}{}
 	}
 
 	return unique
