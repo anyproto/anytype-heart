@@ -2318,7 +2318,6 @@ message Rpc {
                 string name = 1; // Account name
                 oneof avatar {
                     string avatarLocalPath = 2; // Path to an image, that will be used as an avatar of this account
-                    string avatarColor = 3; // Avatar color as an alternative for avatar image
                 }
 
 
