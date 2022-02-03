@@ -130,6 +130,14 @@ func (t *Text) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 		hasChanges = true
 		changes.Color = &pb.EventBlockSetTextColor{Value: text.content.Color}
 	}
+	if t.content.IconImage != text.content.IconImage {
+		hasChanges = true
+		changes.IconImage = &pb.EventBlockSetTextIconImage{Value: text.content.IconImage}
+	}
+	if t.content.IconEmoji != text.content.IconEmoji {
+		hasChanges = true
+		changes.IconEmoji = &pb.EventBlockSetTextIconEmoji{Value: text.content.IconEmoji}
+	}
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}}})
 	}
@@ -615,6 +623,12 @@ func (t *Text) ApplyEvent(e *pb.EventBlockSetText) error {
 	}
 	if e.Color != nil {
 		t.content.Color = e.Color.GetValue()
+	}
+	if e.IconImage != nil {
+		t.content.IconImage = e.IconImage.GetValue()
+	}
+	if e.IconEmoji != nil {
+		t.content.IconEmoji = e.IconEmoji.GetValue()
 	}
 	return nil
 }
