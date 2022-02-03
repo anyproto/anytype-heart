@@ -39,8 +39,8 @@ const (
 	CName = "indexer"
 
 	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 1  // reindex thread-based objects
-	ForceFilesReindexCounter          int32 = 4  // reindex ipfs-file-based objects
+	ForceThreadsObjectsReindexCounter int32 = 4  // reindex thread-based objects
+	ForceFilesReindexCounter          int32 = 5  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 3  // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 12 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
 	ForceFulltextIndexCounter         int32 = 2  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
@@ -577,6 +577,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 
 	details.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
 	details.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
+	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(d.Links)
 
 	var curDetails *types.Struct
 	curDetailsO, _ := i.store.GetDetails(id)
@@ -654,7 +655,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	}
 
 	details := info.State.CombinedDetails()
-
+	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
 	if setCreator == "" {
 		setCreator = i.anytype.ProfileID()

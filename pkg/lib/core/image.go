@@ -18,6 +18,8 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
+const imageObjectHiddenWidth = 256
+
 type Image interface {
 	Exif() (*mill.ImageExifSchema, error)
 	Hash() string
@@ -157,6 +159,9 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 	if v := pbtypes.Get(largest.Info().GetMeta(), "width"); v != nil {
 		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
+		if v.GetNumberValue() < imageObjectHiddenWidth {
+			details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
+		}
 	}
 
 	if v := pbtypes.Get(largest.Info().GetMeta(), "height"); v != nil {
@@ -169,12 +174,6 @@ func (i *image) Details() (*types.Struct, error) {
 		exif = &mill.ImageExifSchema{}
 	}
 
-	if exif.Width > 0 {
-		details.Fields[bundle.RelationKeyWidthInPixels.String()] = pbtypes.Float64(float64(exif.Width))
-	}
-	if exif.Height > 0 {
-		details.Fields[bundle.RelationKeyHeightInPixels.String()] = pbtypes.Float64(float64(exif.Height))
-	}
 	if !exif.Created.IsZero() {
 		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(exif.Created.Unix()))
 	}
