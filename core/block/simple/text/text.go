@@ -51,6 +51,9 @@ type Block interface {
 	RemoveMarkType(markType model.BlockContentTextMarkType)
 	HasMarkForAllText(mark *model.BlockContentTextMark) bool
 	SetTextColor(color string)
+	SetIconEmoji(emoji string)
+	SetIconImage(imageHash string)
+
 	Split(pos int32) (simple.Block, error)
 	RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error)
 	RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error)
@@ -127,6 +130,14 @@ func (t *Text) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 		hasChanges = true
 		changes.Color = &pb.EventBlockSetTextColor{Value: text.content.Color}
 	}
+	if t.content.IconImage != text.content.IconImage {
+		hasChanges = true
+		changes.IconImage = &pb.EventBlockSetTextIconImage{Value: text.content.IconImage}
+	}
+	if t.content.IconEmoji != text.content.IconEmoji {
+		hasChanges = true
+		changes.IconEmoji = &pb.EventBlockSetTextIconEmoji{Value: text.content.IconEmoji}
+	}
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetText{BlockSetText: changes}}})
 	}
@@ -147,6 +158,14 @@ func (t *Text) GetChecked() bool {
 
 func (t *Text) SetTextColor(color string) {
 	t.content.Color = color
+}
+
+func (t *Text) SetIconEmoji(emoji string) {
+	t.content.IconEmoji = emoji
+}
+
+func (t *Text) SetIconImage(imageHash string) {
+	t.content.IconImage = imageHash
 }
 
 func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
@@ -604,6 +623,12 @@ func (t *Text) ApplyEvent(e *pb.EventBlockSetText) error {
 	}
 	if e.Color != nil {
 		t.content.Color = e.Color.GetValue()
+	}
+	if e.IconImage != nil {
+		t.content.IconImage = e.IconImage.GetValue()
+	}
+	if e.IconEmoji != nil {
+		t.content.IconEmoji = e.IconEmoji.GetValue()
 	}
 	return nil
 }
