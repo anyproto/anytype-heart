@@ -1721,7 +1721,6 @@ Front end to middleware request-to-create-an account
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
-| avatarColor | [string](#string) |  | Avatar color as an alternative for avatar image |
 | alphaInviteCode | [string](#string) |  |  |
 
 
