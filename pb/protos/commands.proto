@@ -933,7 +933,6 @@ message Rpc {
                     }
                 }
 
-
                 message Style {
                     message Request {
                         string contextId = 1;
@@ -964,6 +963,32 @@ message Rpc {
                         string contextId = 1;
                         string blockId = 2;
                         bool checked = 3;
+                    }
+
+                    message Response {
+                        Error error = 1;
+                        ResponseEvent event = 2;
+
+                        message Error {
+                            Code code = 1;
+                            string description = 2;
+
+                            enum Code {
+                                NULL = 0;
+                                UNKNOWN_ERROR = 1;
+                                BAD_INPUT = 2;
+                                // ...
+                            }
+                        }
+                    }
+                }
+
+                message Icon {
+                    message Request {
+                        string contextId = 1;
+                        string blockId = 2;
+                        string iconImage = 3; // in case both image and emoji are set, image has a priority to show
+                        string iconEmoji = 5;
                     }
 
                     message Response {
