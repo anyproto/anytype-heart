@@ -10,15 +10,12 @@ jobs:
       - name: Install Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.17.3
+          go-version: 1.17.6
       - name: Setup GO
         run: |
           echo GOPATH=$(go env GOPATH) >> $GITHUB_ENV
           echo GOBIN=$(go env GOPATH)/bin >> $GITHUB_ENV
           echo $(go env GOPATH)/bin >> $GITHUB_PATH
-          wget https://at9412003.fra1.digitaloceanspaces.com/goroot.tar.gz
-          tar -xzf goroot.tar.gz -C $GOROOT
-          go version
       - name: Install patched gox
         run: |
           mkdir -p $GOPATH/src/github.com/mitchellh
@@ -148,7 +145,7 @@ jobs:
         run: |
           gomobile bind -tags "nogrpcserver gomobile" -ldflags "$FLAGS" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
           sudo /usr/sbin/purge
-          gtar -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf
+          gtar --exclude ".*" -czvf ios_framework_${VERSION}.tar.gz Lib.xcframework protobuf
           mv ios_framework_${VERSION}.tar.gz .release/
       - name: Make java protos
         run: |
@@ -163,7 +160,7 @@ jobs:
         run: |
           gomobile bind -tags "nogrpcserver gomobile" -ldflags "$FLAGS" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
           sudo /usr/sbin/purge
-          gtar -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
+          gtar --exclude ".*" -czvf android_lib_${VERSION}.tar.gz lib.aar protobuf
           mv android_lib_${VERSION}.tar.gz .release/
       - name: Publish android lib to maven
         run: |
@@ -187,7 +184,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.16
+          go-version: 1.17.6
       - name: Checkout
         uses: actions/checkout@v2
       - name: Set env vars
