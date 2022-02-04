@@ -70,14 +70,25 @@ type Object interface {
 	Close() (err error)
 }
 
+type ObjectLocker interface {
+	Object
+	Locked() bool
+}
+
 type entry struct {
 	id        string
 	lastUsage time.Time
 	refCount  uint32
-	locked    bool
 	load      chan struct{}
 	loadErr   error
 	value     Object
+}
+
+func (e *entry) locked() bool {
+	if locker, ok := e.value.(ObjectLocker); ok {
+		return locker.Locked()
+	}
+	return false
 }
 
 type OCache interface {
@@ -94,10 +105,6 @@ type OCache interface {
 	Add(id string, value Object) (err error)
 	// Release decreases the refs counter
 	Release(id string) bool
-	// Lock locks object in cache
-	Lock(id string) bool
-	// Unlock unlocks object in cache
-	Unlock(id string) bool
 	// Reset sets refs counter to 0
 	Reset(id string) bool
 	// Remove closes and removes object
@@ -228,16 +235,6 @@ func (c *oCache) Remove(id string) (ok bool, err error) {
 	return
 }
 
-func (c *oCache) Lock(id string) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if e, ok := c.data[id]; ok {
-		e.locked = true
-		return true
-	}
-	return false
-}
-
 func (c *oCache) DoLockedIfNotExists(id string, action func() error) error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
@@ -248,16 +245,6 @@ func (c *oCache) DoLockedIfNotExists(id string, action func() error) error {
 		return ErrExists
 	}
 	return action()
-}
-
-func (c *oCache) Unlock(id string) bool {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-	if e, ok := c.data[id]; ok {
-		e.locked = false
-		return true
-	}
-	return false
 }
 
 func (c *oCache) Add(id string, value Object) (err error) {
@@ -320,7 +307,7 @@ func (c *oCache) GC() {
 	deadline := c.timeNow().Add(-c.ttl)
 	var toClose []*entry
 	for k, e := range c.data {
-		if !e.locked && e.refCount <= 0 && e.lastUsage.Before(deadline) {
+		if !e.locked() && e.refCount <= 0 && e.lastUsage.Before(deadline) {
 			delete(c.data, k)
 			toClose = append(toClose, e)
 		}

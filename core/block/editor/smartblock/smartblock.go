@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/ipfs/go-cid"
 	"sort"
 	"strings"
@@ -123,7 +124,7 @@ type SmartBlock interface {
 	SetRestrictions(r restriction.Restrictions)
 	BlockClose()
 
-	Close() (err error)
+	ocache.ObjectLocker
 	state.Doc
 	sync.Locker
 }
@@ -612,6 +613,12 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 
 func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 	sb.sendEvent = f
+}
+
+func (sb *smartBlock) Locked() bool {
+	sb.Lock()
+	defer sb.Unlock()
+	return sb.sendEvent != nil
 }
 
 func (sb *smartBlock) DisableLayouts() {

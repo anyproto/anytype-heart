@@ -221,6 +221,10 @@ type Service interface {
 	app.ComponentRunnable
 }
 
+type SmartblockOpener interface {
+	Open(id string) (sb smartblock.SmartBlock, err error)
+}
+
 func newOpenedBlock(sb smartblock.SmartBlock) *openedBlock {
 	var ob = openedBlock{SmartBlock: sb}
 	if sb.Type() != model.SmartBlockType_Breadcrumbs {
@@ -361,7 +365,6 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		return
 	}
 	afterShowTime := time.Now()
-	s.cache.Lock(id)
 	if tid := ob.threadId; tid != thread.Undef && s.status != nil {
 		var (
 			fList = func() []string {
@@ -435,13 +438,12 @@ func (s *service) CloseBlock(id string) error {
 		s := b.NewState()
 		isDraft = pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String())
 		workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
-
 		return nil
 	})
 	if err != nil {
 		return err
 	}
-	s.cache.Unlock(id)
+
 	if isDraft {
 		_, _ = s.cache.Remove(id)
 		if err = s.DeleteObjectFromWorkspace(workspaceId, id); err != nil {
@@ -747,7 +749,6 @@ func (s *service) DeleteObject(id string) (err error) {
 	if err != nil && err != ErrBlockNotFound {
 		return err
 	}
-	s.cache.Unlock(id)
 	_, _ = s.cache.Remove(id)
 
 	for _, fileHash := range fileHashes {
@@ -1034,6 +1035,8 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 		sb = editor.NewWorkspace(s, s)
 	case model.SmartBlockType_AccountOld:
 		sb = editor.NewThreadDB(s)
+	case model.SmartBlockType_RelationOptionList:
+		sb = editor.NewOptions()
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
