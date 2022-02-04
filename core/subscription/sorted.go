@@ -46,6 +46,7 @@ type sortedSub struct {
 	activeEntriesBuf []*entry
 
 	forceSubIds []string
+	disableDep  bool
 
 	cache *cache
 	ds    *dependencyService
@@ -111,7 +112,7 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 		ae.SetSub(s.id, true)
 	}
 
-	if s.ds != nil {
+	if s.ds != nil && !s.disableDep {
 		s.depKeys = s.ds.depKeys(s.keys)
 		if len(s.depKeys) > 0 || len(s.forceSubIds) > 0 {
 			s.depSub = s.ds.makeSubscriptionByEntries(s.id+"/dep", entries, activeEntries, s.keys, s.depKeys, s.forceSubIds)

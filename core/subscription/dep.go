@@ -23,19 +23,22 @@ type dependencyService struct {
 func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries, activeEntries []*entry, keys, depKeys, filterDepIds []string) *simpleSub {
 	depSub := ds.s.newSimpleSub(subId, keys, true)
 	depSub.forceIds = filterDepIds
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, activeEntries, depKeys, depSub.forceIds)
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, ds.depIdsByEntries(activeEntries, depKeys, depSub.forceIds))
 	depSub.init(depEntries)
 	return depSub
 }
 
 func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []string) {
-	depEntries := ds.depEntriesByEntries(ctx, entries, depKeys, sub.forceIds)
-	sub.refill(ctx, depEntries)
+	depIds := ds.depIdsByEntries(entries, depKeys, sub.forceIds)
+	if !sub.isEqualIds(depIds) {
+		depEntries := ds.depEntriesByEntries(ctx, depIds)
+		sub.refill(ctx, depEntries)
+	}
 	return
 }
 
-func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, entries []*entry, depKeys, forceIds []string) (depEntries []*entry) {
-	var depIds = forceIds
+func (ds *dependencyService) depIdsByEntries(entries []*entry, depKeys, forceIds []string) (depIds []string) {
+	depIds = forceIds
 	for _, e := range entries {
 		for _, k := range depKeys {
 			for _, depId := range pbtypes.GetStringList(e.data, k) {
@@ -45,6 +48,10 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, entries []*entry, d
 			}
 		}
 	}
+	return
+}
+
+func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, depIds []string) (depEntries []*entry) {
 	if len(depIds) == 0 {
 		return
 	}

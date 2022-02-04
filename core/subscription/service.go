@@ -130,7 +130,11 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		req.Limit = 0
 	}
 	sub := s.newSortedSub(req.SubId, req.Keys, f.FilterObj, f.Order, int(req.Limit), int(req.Offset))
-	sub.forceSubIds = filterDepIds
+	if req.NoDepSubscription {
+		sub.disableDep = true
+	} else {
+		sub.forceSubIds = filterDepIds
+	}
 	entries := make([]*entry, 0, len(records))
 	for _, r := range records {
 		entries = append(entries, &entry{
@@ -262,7 +266,7 @@ func (s *service) onChange(entries []*entry) {
 	handleTime := time.Since(st)
 	event := s.ctxBuf.apply()
 	dur := time.Since(st)
-	log.Debugf("handle %d etries; %v(handle:%v;genEvents:%v) event: %v", len(entries), dur, handleTime, dur-handleTime, pbtypes.Sprint(event))
+	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; ctx.ch: %v", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), len(s.ctxBuf.change))
 	s.sendEvent(event)
 }
 
