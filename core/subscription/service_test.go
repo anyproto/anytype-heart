@@ -44,7 +44,7 @@ func TestService_Search(t *testing.T) {
 				"id":   pbtypes.String("author1"),
 				"name": pbtypes.String("author1"),
 			}}},
-		}, nil)
+		}, nil).AnyTimes()
 
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: subId,
@@ -63,7 +63,7 @@ func TestService_Search(t *testing.T) {
 
 		newSub(fx, "test")
 
-		fx.store.EXPECT().QueryById([]string{"author2", "author3", "1"}).Return([]database.Record{
+		fx.store.EXPECT().QueryById([]string{"author2", "author3"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("author2"),
 				"name": pbtypes.String("author2"),
@@ -71,11 +71,6 @@ func TestService_Search(t *testing.T) {
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("author3"),
 				"name": pbtypes.String("author3"),
-			}}},
-			{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":     pbtypes.String("1"),
-				"name":   pbtypes.String("one"),
-				"author": pbtypes.StringList([]string{"author2", "author3", "1"}),
 			}}},
 		}, nil)
 
@@ -122,6 +117,58 @@ func TestService_Search(t *testing.T) {
 		require.Len(t, fx.Service.(*service).cache.entries, 2)
 		assert.Len(t, fx.Service.(*service).cache.entries["1"].SubIds(), 2)
 		assert.Len(t, fx.Service.(*service).cache.entries["author1"].SubIds(), 2)
+	})
+
+	t.Run("filter deps", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close()
+		defer fx.ctrl.Finish()
+
+		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+			[]database.Record{
+				{Details: &types.Struct{Fields: map[string]*types.Value{
+					"id":   pbtypes.String("1"),
+					"name": pbtypes.String("one"),
+				}}},
+			},
+			nil,
+		)
+		fx.store.EXPECT().GetRelation(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+		fx.store.EXPECT().GetRelation(bundle.RelationKeyAuthor.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyAuthor.String(),
+			Format: model.RelationFormat_object,
+		}, nil).AnyTimes()
+
+		fx.store.EXPECT().QueryById([]string{"force1", "force2"}).Return([]database.Record{
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("force1"),
+				"name": pbtypes.String("force1"),
+			}}},
+			{Details: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("force2"),
+				"name": pbtypes.String("force2"),
+			}}},
+		}, nil)
+
+		var resp, err = fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId: "subId",
+			Keys:  []string{bundle.RelationKeyName.String(), bundle.RelationKeyAuthor.String()},
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyAuthor.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.StringList([]string{"force1", "force2"}),
+				},
+			},
+		})
+		require.NoError(t, err)
+
+		assert.Len(t, resp.Records, 1)
+		assert.Len(t, resp.Dependencies, 2)
+
 	})
 }
 

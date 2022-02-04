@@ -915,6 +915,26 @@ func (mw *Middleware) BlockSetTextStyle(req *pb.RpcBlockSetTextStyleRequest) *pb
 	return response(pb.RpcBlockSetTextStyleResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockSetTextIcon(req *pb.RpcBlockSetTextIconRequest) *pb.RpcBlockSetTextIconResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockSetTextIconResponseErrorCode, err error) *pb.RpcBlockSetTextIconResponse {
+		m := &pb.RpcBlockSetTextIconResponse{Error: &pb.RpcBlockSetTextIconResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetTextIcon(ctx, req.ContextId, req.IconImage, req.IconEmoji, req.BlockId)
+	})
+	if err != nil {
+		return response(pb.RpcBlockSetTextIconResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockSetTextIconResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockSetTextChecked(req *pb.RpcBlockSetTextCheckedRequest) *pb.RpcBlockSetTextCheckedResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockSetTextCheckedResponseErrorCode, err error) *pb.RpcBlockSetTextCheckedResponse {

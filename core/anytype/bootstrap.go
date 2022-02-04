@@ -1,6 +1,8 @@
 package anytype
 
 import (
+	"os"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -35,7 +37,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/builtinobjects"
 	"github.com/anytypeio/go-anytype-middleware/util/builtintemplate"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"os"
+	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 )
 
 func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.Keypair) (a *app.App, err error) {
@@ -113,6 +115,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		Register(gateway.New()).
 		Register(export.New()).
 		Register(linkpreview.New()).
+		Register(unsplash.New()).
 		Register(restriction.New()).
 		Register(debug.New()).
 		Register(doc.New()).

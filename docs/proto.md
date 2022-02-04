@@ -271,6 +271,10 @@
     - [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request)
     - [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response)
     - [Rpc.Block.Set.Text.Color.Response.Error](#anytype.Rpc.Block.Set.Text.Color.Response.Error)
+    - [Rpc.Block.Set.Text.Icon](#anytype.Rpc.Block.Set.Text.Icon)
+    - [Rpc.Block.Set.Text.Icon.Request](#anytype.Rpc.Block.Set.Text.Icon.Request)
+    - [Rpc.Block.Set.Text.Icon.Response](#anytype.Rpc.Block.Set.Text.Icon.Response)
+    - [Rpc.Block.Set.Text.Icon.Response.Error](#anytype.Rpc.Block.Set.Text.Icon.Response.Error)
     - [Rpc.Block.Set.Text.Style](#anytype.Rpc.Block.Set.Text.Style)
     - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
     - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
@@ -636,6 +640,15 @@
     - [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request)
     - [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response)
     - [Rpc.Shutdown.Response.Error](#anytype.Rpc.Shutdown.Response.Error)
+    - [Rpc.UnsplashDownload](#anytype.Rpc.UnsplashDownload)
+    - [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request)
+    - [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response)
+    - [Rpc.UnsplashDownload.Response.Error](#anytype.Rpc.UnsplashDownload.Response.Error)
+    - [Rpc.UnsplashSearch](#anytype.Rpc.UnsplashSearch)
+    - [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request)
+    - [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response)
+    - [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error)
+    - [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture)
     - [Rpc.UploadFile](#anytype.Rpc.UploadFile)
     - [Rpc.UploadFile.Request](#anytype.Rpc.UploadFile.Request)
     - [Rpc.UploadFile.Response](#anytype.Rpc.UploadFile.Response)
@@ -735,6 +748,7 @@
     - [Rpc.Block.Set.Restrictions.Response.Error.Code](#anytype.Rpc.Block.Set.Restrictions.Response.Error.Code)
     - [Rpc.Block.Set.Text.Checked.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code)
     - [Rpc.Block.Set.Text.Color.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Color.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Icon.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Icon.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
     - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
@@ -824,6 +838,8 @@
     - [Rpc.Process.Cancel.Response.Error.Code](#anytype.Rpc.Process.Cancel.Response.Error.Code)
     - [Rpc.Set.Create.Response.Error.Code](#anytype.Rpc.Set.Create.Response.Error.Code)
     - [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code)
+    - [Rpc.UnsplashDownload.Response.Error.Code](#anytype.Rpc.UnsplashDownload.Response.Error.Code)
+    - [Rpc.UnsplashSearch.Response.Error.Code](#anytype.Rpc.UnsplashSearch.Response.Error.Code)
     - [Rpc.UploadFile.Response.Error.Code](#anytype.Rpc.UploadFile.Response.Error.Code)
     - [Rpc.Version.Get.Response.Error.Code](#anytype.Rpc.Version.Get.Response.Error.Code)
     - [Rpc.Wallet.Convert.Response.Error.Code](#anytype.Rpc.Wallet.Convert.Response.Error.Code)
@@ -929,6 +945,8 @@
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked)
     - [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color)
+    - [Event.Block.Set.Text.IconEmoji](#anytype.Event.Block.Set.Text.IconEmoji)
+    - [Event.Block.Set.Text.IconImage](#anytype.Event.Block.Set.Text.IconImage)
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
@@ -1146,6 +1164,7 @@
 | BlockListSetTextMark | [Rpc.BlockList.Set.Text.Mark.Request](#anytype.Rpc.BlockList.Set.Text.Mark.Request) | [Rpc.BlockList.Set.Text.Mark.Response](#anytype.Rpc.BlockList.Set.Text.Mark.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
+| BlockSetTextIcon | [Rpc.Block.Set.Text.Icon.Request](#anytype.Rpc.Block.Set.Text.Icon.Request) | [Rpc.Block.Set.Text.Icon.Response](#anytype.Rpc.Block.Set.Text.Icon.Response) |  |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
@@ -1227,6 +1246,8 @@
 | MakeTemplateByObjectType | [Rpc.MakeTemplateByObjectType.Request](#anytype.Rpc.MakeTemplateByObjectType.Request) | [Rpc.MakeTemplateByObjectType.Response](#anytype.Rpc.MakeTemplateByObjectType.Response) |  |
 | CloneTemplate | [Rpc.CloneTemplate.Request](#anytype.Rpc.CloneTemplate.Request) | [Rpc.CloneTemplate.Response](#anytype.Rpc.CloneTemplate.Response) |  |
 | ObjectDuplicate | [Rpc.ObjectDuplicate.Request](#anytype.Rpc.ObjectDuplicate.Request) | [Rpc.ObjectDuplicate.Response](#anytype.Rpc.ObjectDuplicate.Response) |  |
+| UnsplashSearch | [Rpc.UnsplashSearch.Request](#anytype.Rpc.UnsplashSearch.Request) | [Rpc.UnsplashSearch.Response](#anytype.Rpc.UnsplashSearch.Response) |  |
+| UnsplashDownload | [Rpc.UnsplashDownload.Request](#anytype.Rpc.UnsplashDownload.Request) | [Rpc.UnsplashDownload.Response](#anytype.Rpc.UnsplashDownload.Response) | UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash. The artist info is available in the object details |
 | ApplyTemplate | [Rpc.ApplyTemplate.Request](#anytype.Rpc.ApplyTemplate.Request) | [Rpc.ApplyTemplate.Response](#anytype.Rpc.ApplyTemplate.Response) |  |
 | DebugSync | [Rpc.Debug.Sync.Request](#anytype.Rpc.Debug.Sync.Request) | [Rpc.Debug.Sync.Response](#anytype.Rpc.Debug.Sync.Response) |  |
 | DebugThread | [Rpc.Debug.Thread.Request](#anytype.Rpc.Debug.Thread.Request) | [Rpc.Debug.Thread.Response](#anytype.Rpc.Debug.Thread.Response) |  |
@@ -1700,7 +1721,6 @@ Front end to middleware request-to-create-an account
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
-| avatarColor | [string](#string) |  | Avatar color as an alternative for avatar image |
 | alphaInviteCode | [string](#string) |  |  |
 
 
@@ -5147,6 +5167,66 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.Text.Color.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Color.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon"></a>
+
+### Rpc.Block.Set.Text.Icon
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon.Request"></a>
+
+### Rpc.Block.Set.Text.Icon.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| iconImage | [string](#string) |  | in case both image and emoji are set, image has a priority to show |
+| iconEmoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon.Response"></a>
+
+### Rpc.Block.Set.Text.Icon.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Icon.Response.Error](#anytype.Rpc.Block.Set.Text.Icon.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Icon.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Icon.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Icon.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9133,9 +9213,8 @@ deprecated, to be removed |
 | subId | [string](#string) |  | (optional) subscription identifier client can provide some string or middleware will generate it automatically if subId is already registered on middleware, the new query will replace previous subscription |
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated | filters |
 | sorts | [model.Block.Content.Dataview.Sort](#anytype.model.Block.Content.Dataview.Sort) | repeated | sorts |
-| fullText | [string](#string) |  | fulltext query (optional) |
-| limit | [int32](#int32) |  | results limit |
-| offset | [int32](#int32) |  | initial offset; middleware will find afterId |
+| limit | [int64](#int64) |  | results limit |
+| offset | [int64](#int64) |  | initial offset; middleware will find afterId |
 | keys | [string](#string) | repeated | (required) needed keys in details for return, for object fields mw will return (and subscribe) objects as dependent |
 | afterId | [string](#string) |  | (optional) pagination: middleware will return results after given id |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
@@ -10441,6 +10520,139 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Shutdown.Response.Error.Code](#anytype.Rpc.Shutdown.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload"></a>
+
+### Rpc.UnsplashDownload
+
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Request"></a>
+
+### Rpc.UnsplashDownload.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| pictureId | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response"></a>
+
+### Rpc.UnsplashDownload.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.UnsplashDownload.Response.Error](#anytype.Rpc.UnsplashDownload.Response.Error) |  |  |
+| hash | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response.Error"></a>
+
+### Rpc.UnsplashDownload.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.UnsplashDownload.Response.Error.Code](#anytype.Rpc.UnsplashDownload.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch"></a>
+
+### Rpc.UnsplashSearch
+
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Request"></a>
+
+### Rpc.UnsplashSearch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| query | [string](#string) |  | empty means random images |
+| limit | [int32](#int32) |  | may be omitted if the request was cached previously with another limit |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response"></a>
+
+### Rpc.UnsplashSearch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.UnsplashSearch.Response.Error](#anytype.Rpc.UnsplashSearch.Response.Error) |  |  |
+| pictures | [Rpc.UnsplashSearch.Response.Picture](#anytype.Rpc.UnsplashSearch.Response.Picture) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Error"></a>
+
+### Rpc.UnsplashSearch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.UnsplashSearch.Response.Error.Code](#anytype.Rpc.UnsplashSearch.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Picture"></a>
+
+### Rpc.UnsplashSearch.Response.Picture
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+| artist | [string](#string) |  |  |
+| artistUrl | [string](#string) |  |  |
 
 
 
@@ -11786,6 +11998,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Block.Set.Text.Icon.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Icon.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.Block.Set.Text.Style.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Text.Style.Response.Error.Code
@@ -12967,6 +13192,34 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
 | NODE_NOT_STARTED | 101 |  |
+
+
+
+<a name="anytype.Rpc.UnsplashDownload.Response.Error.Code"></a>
+
+### Rpc.UnsplashDownload.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
+
+
+
+<a name="anytype.Rpc.UnsplashSearch.Response.Error.Code"></a>
+
+### Rpc.UnsplashSearch.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| RATE_LIMIT_EXCEEDED | 100 | ... |
 
 
 
@@ -14544,6 +14797,8 @@ Precondition: user A opened a block
 | marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
 | checked | [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked) |  |  |
 | color | [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color) |  |  |
+| iconEmoji | [Event.Block.Set.Text.IconEmoji](#anytype.Event.Block.Set.Text.IconEmoji) |  |  |
+| iconImage | [Event.Block.Set.Text.IconImage](#anytype.Event.Block.Set.Text.IconImage) |  |  |
 
 
 
@@ -14568,6 +14823,36 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Set.Text.Color"></a>
 
 ### Event.Block.Set.Text.Color
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.IconEmoji"></a>
+
+### Event.Block.Set.Text.IconEmoji
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.IconImage"></a>
+
+### Event.Block.Set.Text.IconImage
 
 
 
@@ -14950,6 +15235,7 @@ Adds new document to subscriptions
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | afterId | [string](#string) |  | id of previous doc in order, empty means first |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -14967,6 +15253,7 @@ Adds new document to subscriptions
 | total | [int64](#int64) |  | total available records |
 | nextCount | [int64](#int64) |  | how many records available after |
 | prevCount | [int64](#int64) |  | how many records available before |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -14983,6 +15270,7 @@ Indicates new position of document
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
 | afterId | [string](#string) |  | id of previous doc in order, empty means first |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -14998,6 +15286,7 @@ Removes document from subscription
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | object id |
+| subId | [string](#string) |  | subscription id |
 
 
 
@@ -15937,6 +16226,8 @@ Link: block to link some content from an external sources.
 | marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
 | checked | [bool](#bool) |  |  |
 | color | [string](#string) |  |  |
+| iconEmoji | [string](#string) |  | used with style Callout |
+| iconImage | [string](#string) |  | in case both image and emoji are set, image should has a priority in the UI |
 
 
 
@@ -16510,6 +16801,7 @@ scope from which this relation have been aggregated |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
 | Description | 12 | currently only only one block of this style can exists on a page |
+| Callout | 13 | currently only only one block of this style can exists on a page |
 
 
 

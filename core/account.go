@@ -216,11 +216,6 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 				Value: pbtypes.String(hash),
 			})
 		}
-	} else if req.GetAvatarColor() != "" {
-		details = append(details, &pb.RpcBlockSetDetailsDetail{
-			Key:   "iconColor",
-			Value: pbtypes.String(req.GetAvatarColor()),
-		})
 	}
 
 	if err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"encoding/json"
+	"github.com/anytypeio/go-anytype-middleware/util/unsplash"
 	"math"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
 )
+
+const imageObjectHiddenWidth = 256
 
 type Image interface {
 	Exif() (*mill.ImageExifSchema, error)
@@ -156,6 +159,9 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 	if v := pbtypes.Get(largest.Info().GetMeta(), "width"); v != nil {
 		details.Fields[bundle.RelationKeyWidthInPixels.String()] = v
+		if v.GetNumberValue() < imageObjectHiddenWidth {
+			details.Fields[bundle.RelationKeyIsHidden.String()] = pbtypes.Bool(true)
+		}
 	}
 
 	if v := pbtypes.Get(largest.Info().GetMeta(), "height"); v != nil {
@@ -168,12 +174,6 @@ func (i *image) Details() (*types.Struct, error) {
 		exif = &mill.ImageExifSchema{}
 	}
 
-	if exif.Width > 0 {
-		details.Fields[bundle.RelationKeyWidthInPixels.String()] = pbtypes.Float64(float64(exif.Width))
-	}
-	if exif.Height > 0 {
-		details.Fields[bundle.RelationKeyHeightInPixels.String()] = pbtypes.Float64(float64(exif.Height))
-	}
 	if !exif.Created.IsZero() {
 		details.Fields[bundle.RelationKeyCreatedDate.String()] = pbtypes.Float64(float64(exif.Created.Unix()))
 	}
@@ -194,6 +194,18 @@ func (i *image) Details() (*types.Struct, error) {
 	}
 	if exif.ISO != 0 {
 		details.Fields[bundle.RelationKeyCameraIso.String()] = pbtypes.Float64(float64(exif.ISO))
+	}
+	if exif.Description != "" {
+		// use non-empty image description as an image name, because it much uglier to use file names for objects
+		details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(exif.Description)
+	}
+	if exif.Artist != "" {
+		artistName, artistUrl := unsplash.UnpackArtist(exif.Artist)
+		details.Fields[bundle.RelationKeyMediaArtistName.String()] = pbtypes.String(artistName)
+
+		if artistUrl != "" {
+			details.Fields[bundle.RelationKeyMediaArtistURL.String()] = pbtypes.String(artistUrl)
+		}
 	}
 
 	return details, nil

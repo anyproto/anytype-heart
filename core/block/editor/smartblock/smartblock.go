@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/ipfs/go-cid"
 	"sort"
 	"strings"
 	"sync"
@@ -142,7 +143,7 @@ type linkSource interface {
 type smartBlock struct {
 	state.Doc
 	sync.Mutex
-	depIds         []string
+	depIds         []string // slice must be sorted
 	sendEvent      func(e *pb.Event)
 	undo           undo.History
 	source         source.Source
@@ -413,6 +414,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
 	sb.depIds = sb.dependentSmartIds(true, true)
+	sort.Strings(sb.depIds)
 	var records []database.Record
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
 		return
@@ -537,6 +539,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 	}
 }
 
+// dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
 func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 
@@ -564,7 +567,22 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 				}
 				continue
 			}
+
+			if rel.Key == bundle.RelationKeyCoverId.String() {
+				v := pbtypes.GetString(details, rel.Key)
+				_, err := cid.Decode(v)
+				if err != nil {
+					// this is an exception cause coverId can contains not a file hash but color
+					continue
+				}
+				ids = append(ids, v)
+			}
+
 			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
+				continue
+			}
+
+			if rel.Hidden {
 				continue
 			}
 
@@ -584,7 +602,6 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 		}
 	}
 	ids = util.UniqueStrings(ids)
-	sort.Strings(ids)
 
 	// todo: filter-out invalid ids
 	return
@@ -725,6 +742,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 	depIds := sb.dependentSmartIds(true, true)
+	sort.Strings(depIds)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
 		if sb.recordsSub != nil {
@@ -1651,7 +1669,10 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	}
 
 	links = slice.Remove(links, sb.Id())
-
+	// so links will have this order
+	// 1. Simple blocks: links, mentions in the text
+	// 2. Relations(format==Object)
+	// 3. Files
 	return doc.DocInfo{
 		Id:           sb.Id(),
 		Links:        links,

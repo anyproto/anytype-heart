@@ -51,25 +51,18 @@ type opCtx struct {
 	c *cache
 }
 
-func (ctx *opCtx) apply() (events []*pb.Event) {
-	var byEventsContext = make(map[string][]*pb.EventMessage)
-	var appendToContext = func(contextId string, msg ...*pb.EventMessage) {
-		msgs, ok := byEventsContext[contextId]
-		if ok {
-			byEventsContext[contextId] = append(msgs, msg...)
-		} else {
-			byEventsContext[contextId] = msg
-		}
-	}
+func (ctx *opCtx) apply() (event *pb.Event) {
+	var subMsgs = make([]*pb.EventMessage, 0, 10)
 
 	// adds
 	for _, add := range ctx.add {
 		ctx.collectKeys(add.id, add.subId, add.keys)
-		appendToContext(add.subId, &pb.EventMessage{
+		subMsgs = append(subMsgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionAdd{
 				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
 					Id:      add.id,
 					AfterId: add.afterId,
+					SubId:   add.subId,
 				},
 			},
 		})
@@ -81,15 +74,16 @@ func (ctx *opCtx) apply() (events []*pb.Event) {
 	}
 
 	// details events
-	appendToContext("", ctx.detailsEvents()...)
+	eventMsgs := ctx.detailsEvents()
 
 	// positions
 	for _, pos := range ctx.position {
-		appendToContext(pos.subId, &pb.EventMessage{
+		subMsgs = append(subMsgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionPosition{
 				SubscriptionPosition: &pb.EventObjectSubscriptionPosition{
 					Id:      pos.id,
 					AfterId: pos.afterId,
+					SubId:   pos.subId,
 				},
 			},
 		})
@@ -97,10 +91,11 @@ func (ctx *opCtx) apply() (events []*pb.Event) {
 
 	// removes
 	for _, rem := range ctx.remove {
-		appendToContext(rem.subId, &pb.EventMessage{
+		subMsgs = append(subMsgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionRemove{
 				SubscriptionRemove: &pb.EventObjectSubscriptionRemove{
-					Id: rem.id,
+					Id:    rem.id,
+					SubId: rem.subId,
 				},
 			},
 		})
@@ -108,12 +103,13 @@ func (ctx *opCtx) apply() (events []*pb.Event) {
 
 	// counters
 	for _, count := range ctx.counters {
-		appendToContext(count.subId, &pb.EventMessage{
+		subMsgs = append(subMsgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfSubscriptionCounters{
 				SubscriptionCounters: &pb.EventObjectSubscriptionCounters{
 					Total:     int64(count.total),
 					NextCount: int64(count.nextCount),
 					PrevCount: int64(count.prevCount),
+					SubId:     count.subId,
 				},
 			},
 		})
@@ -128,23 +124,9 @@ func (ctx *opCtx) apply() (events []*pb.Event) {
 		}
 	}
 
-	events = make([]*pb.Event, 0, len(byEventsContext))
-
-	// event with details must be first to send
-	if messages, ok := byEventsContext[""]; ok {
-		events = append(events, &pb.Event{
-			Messages: messages,
-		})
-		delete(byEventsContext, "")
+	return &pb.Event{
+		Messages: append(eventMsgs, subMsgs...),
 	}
-
-	for contextId, messages := range byEventsContext {
-		events = append(events, &pb.Event{
-			Messages:  messages,
-			ContextId: contextId,
-		})
-	}
-	return
 }
 
 func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
@@ -164,11 +146,22 @@ func (ctx *opCtx) detailsEvents() (msgs []*pb.EventMessage) {
 		}
 		prev := ctx.c.Get(info.id)
 		var prevData *types.Struct
-		if prev != nil && prev.IsActive() {
+		if prev != nil && prev.IsActive(info.subIds...) {
 			prevData = prev.data
+			diff := pbtypes.StructDiff(prevData, curr.data)
+			msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
+		} else {
+			msgs = append(msgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfObjectDetailsSet{
+					ObjectDetailsSet: &pb.EventObjectDetailsSet{
+						Id:      curr.id,
+						Details: pbtypes.StructFilterKeys(curr.data, info.keys),
+						SubIds:  info.subIds,
+					},
+				},
+			})
 		}
-		diff := pbtypes.StructDiff(prevData, curr.data)
-		msgs = append(msgs, state.StructDiffIntoEventsWithSubIds(info.id, diff, info.keys, info.subIds)...)
+
 	}
 	return
 }
@@ -179,8 +172,8 @@ func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
 		if kb.id == id {
 			found = true
 			for _, k := range keys {
-				if slice.FindPos(kb.keys, k) == -1 {
-					ctx.keysBuf[i].keys = append(kb.keys, k)
+				if slice.FindPos(ctx.keysBuf[i].keys, k) == -1 {
+					ctx.keysBuf[i].keys = append(ctx.keysBuf[i].keys, k)
 				}
 			}
 			if slice.FindPos(kb.subIds, subId) == -1 {
@@ -209,7 +202,6 @@ func (ctx *opCtx) getEntry(id string) *entry {
 	return nil
 }
 
-
 func (ctx *opCtx) reset() {
 	ctx.remove = ctx.remove[:0]
 	ctx.change = ctx.change[:0]
@@ -219,4 +211,3 @@ func (ctx *opCtx) reset() {
 	ctx.keysBuf = ctx.keysBuf[:0]
 	ctx.entries = ctx.entries[:0]
 }
-

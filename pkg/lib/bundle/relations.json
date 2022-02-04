@@ -1264,6 +1264,24 @@
     "source": "details"
   },
   {
+    "format": "longtext",
+    "hidden": true,
+    "key": "mediaArtistName",
+    "maxCount": 1,
+    "name": "Artist name",
+    "readonly": true,
+    "source": "details"
+  },
+  {
+    "format": "url",
+    "hidden": true,
+    "key": "mediaArtistURL",
+    "maxCount": 1,
+    "name": "Artist URL",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "number",
     "hidden": false,
     "key": "cameraIso",
@@ -1514,5 +1532,14 @@
     "name": "IMDb rating",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "format": "object",
+    "hidden": true,
+    "key": "links",
+    "maxCount": 0,
+    "name": "Outgoing links",
+    "readonly": true,
+    "source": "derived"
   }
 ]

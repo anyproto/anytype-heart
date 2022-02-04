@@ -26,6 +26,7 @@ type Text interface {
 	Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId string, err error)
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
+	SetIcon(ctx *state.Context, image, emoji string, blockIds ...string) error
 	SetText(req pb.RpcBlockSetTextTextRequest) (err error)
 	TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) error
 }
@@ -205,6 +206,22 @@ func (t *textImpl) SetMark(ctx *state.Context, mark *model.BlockContentTextMark,
 			tb.SetMarkForAllText(mark)
 		}
 	}
+	return t.Apply(s)
+}
+
+// SetIcon sets an icon for the text block with style BlockContentText_Callout(13)
+func (t *textImpl) SetIcon(ctx *state.Context, image string, emoji string, blockIds ...string) (err error) {
+	s := t.NewStateCtx(ctx)
+	for _, id := range blockIds {
+		tb, err := getText(s, id)
+		if err != nil {
+			continue
+		}
+
+		tb.SetIconImage(image)
+		tb.SetIconEmoji(emoji)
+	}
+
 	return t.Apply(s)
 }
 

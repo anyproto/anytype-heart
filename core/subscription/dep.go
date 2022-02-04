@@ -20,21 +20,22 @@ type dependencyService struct {
 	isRelationObjMap map[string]bool
 }
 
-func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries, activeEntries []*entry, keys, depKeys []string) *simpleSub {
+func (ds *dependencyService) makeSubscriptionByEntries(subId string, allEntries, activeEntries []*entry, keys, depKeys, filterDepIds []string) *simpleSub {
 	depSub := ds.s.newSimpleSub(subId, keys, true)
-	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, activeEntries, depKeys)
+	depSub.forceIds = filterDepIds
+	depEntries := ds.depEntriesByEntries(&opCtx{entries: allEntries}, activeEntries, depKeys, depSub.forceIds)
 	depSub.init(depEntries)
 	return depSub
 }
 
 func (ds *dependencyService) refillSubscription(ctx *opCtx, sub *simpleSub, entries []*entry, depKeys []string) {
-	depEntries := ds.depEntriesByEntries(ctx, entries, depKeys)
+	depEntries := ds.depEntriesByEntries(ctx, entries, depKeys, sub.forceIds)
 	sub.refill(ctx, depEntries)
 	return
 }
 
-func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, entries []*entry, depKeys []string) (depEntries []*entry) {
-	var depIds []string
+func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, entries []*entry, depKeys, forceIds []string) (depEntries []*entry) {
+	var depIds = forceIds
 	for _, e := range entries {
 		for _, k := range depKeys {
 			for _, depId := range pbtypes.GetStringList(e.data, k) {
@@ -47,32 +48,43 @@ func (ds *dependencyService) depEntriesByEntries(ctx *opCtx, entries []*entry, d
 	if len(depIds) == 0 {
 		return
 	}
-	depRecords, err := ds.s.objectStore.QueryById(depIds)
-	if err != nil {
-		log.Errorf("can't query by id: %v", err)
-	}
-	depEntries = make([]*entry, 0, len(depRecords))
-	for _, r := range depRecords {
+	var missIds []string
+	for _, id := range depIds {
 		var e *entry
-		id := pbtypes.GetString(r.Details, "id")
 
 		// priority: ctx.entries, cache, objectStore
 		if e = ctx.getEntry(id); e == nil {
-			if e = ds.s.cache.Get(id); e == nil {
+			if e = ds.s.cache.Get(id); e != nil {
 				e = &entry{
-					id:   id,
-					data: r.Details,
+					id:          id,
+					data:        e.data,
+					subIds:      e.subIds,
+					subIsActive: e.subIsActive,
 				}
 			} else {
-				e = &entry{
-					id:     id,
-					data:   e.data,
-					subIds: e.subIds,
-				}
+				missIds = append(missIds, id)
+			}
+			if e != nil {
+				ctx.entries = append(ctx.entries, e)
+			}
+		}
+		if e != nil {
+			depEntries = append(depEntries, e)
+		}
+	}
+	if len(missIds) > 0 {
+		records, err := ds.s.objectStore.QueryById(missIds)
+		if err != nil {
+			log.Errorf("can't query by id: %v", err)
+		}
+		for _, r := range records {
+			e := &entry{
+				id:   pbtypes.GetString(r.Details, "id"),
+				data: r.Details,
 			}
 			ctx.entries = append(ctx.entries, e)
+			depEntries = append(depEntries, e)
 		}
-		depEntries = append(depEntries, e)
 	}
 	return
 }
