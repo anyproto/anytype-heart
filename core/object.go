@@ -306,8 +306,10 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 						continue
 					}
 
-					if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-						outgoingRelationLink[l] = struct{}{}
+					if rel.Hidden ||
+						rel.Key == bundle.RelationKeyId.String() ||
+						rel.Key == bundle.RelationKeyCreator.String() ||
+						rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 						continue
 					}
 
@@ -323,7 +325,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 				}
 			}
 		}
-		links, _ := at.ObjectStore().GetOutboundLinksById(id)
+		links := pbtypes.GetStringList(rec.Details, bundle.RelationKeyLinks.String())
 		for _, link := range links {
 			sbType, _ := smartblock.SmartBlockTypeFromID(link)
 			// ignore files because we index all file blocks as outgoing links
