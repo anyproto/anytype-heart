@@ -257,8 +257,8 @@ func (s *service) onChange(entries []*entry) {
 	for _, sub := range s.subscriptions {
 		sub.onChange(s.ctxBuf)
 	}
-	log.Debugf("handle %d etries; ctx: %#v", len(entries), s.ctxBuf)
 	event := s.ctxBuf.apply()
+	log.Debugf("handle %d etries; event: %v", len(entries), pbtypes.Sprint(event))
 	s.sendEvent(event)
 }
 
