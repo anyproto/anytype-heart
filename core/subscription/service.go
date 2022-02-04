@@ -3,6 +3,7 @@ package subscription
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -252,13 +253,16 @@ func (s *service) recordsHandler() {
 func (s *service) onChange(entries []*entry) {
 	s.m.Lock()
 	defer s.m.Unlock()
+	st := time.Now()
 	s.ctxBuf.reset()
 	s.ctxBuf.entries = entries
 	for _, sub := range s.subscriptions {
 		sub.onChange(s.ctxBuf)
 	}
+	handleTime := time.Since(st)
 	event := s.ctxBuf.apply()
-	log.Debugf("handle %d etries; event: %v", len(entries), pbtypes.Sprint(event))
+	dur := time.Since(st)
+	log.Debugf("handle %d etries; %v(handle:%v;genEvents:%v) event: %v", len(entries), dur, handleTime, dur-handleTime, pbtypes.Sprint(event))
 	s.sendEvent(event)
 }
 

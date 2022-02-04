@@ -44,7 +44,7 @@ func TestService_Search(t *testing.T) {
 				"id":   pbtypes.String("author1"),
 				"name": pbtypes.String("author1"),
 			}}},
-		}, nil)
+		}, nil).AnyTimes()
 
 		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
 			SubId: subId,
@@ -63,7 +63,7 @@ func TestService_Search(t *testing.T) {
 
 		newSub(fx, "test")
 
-		fx.store.EXPECT().QueryById([]string{"author2", "author3", "1"}).Return([]database.Record{
+		fx.store.EXPECT().QueryById([]string{"author2", "author3"}).Return([]database.Record{
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("author2"),
 				"name": pbtypes.String("author2"),
@@ -71,11 +71,6 @@ func TestService_Search(t *testing.T) {
 			{Details: &types.Struct{Fields: map[string]*types.Value{
 				"id":   pbtypes.String("author3"),
 				"name": pbtypes.String("author3"),
-			}}},
-			{Details: &types.Struct{Fields: map[string]*types.Value{
-				"id":     pbtypes.String("1"),
-				"name":   pbtypes.String("one"),
-				"author": pbtypes.StringList([]string{"author2", "author3", "1"}),
 			}}},
 		}, nil)
 
