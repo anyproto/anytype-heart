@@ -306,8 +306,10 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 						continue
 					}
 
-					if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-						outgoingRelationLink[l] = struct{}{}
+					if rel.Hidden ||
+						rel.Key == bundle.RelationKeyId.String() ||
+						rel.Key == bundle.RelationKeyCreator.String() ||
+						rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 						continue
 					}
 
