@@ -325,7 +325,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 				}
 			}
 		}
-		links, _ := at.ObjectStore().GetOutboundLinksById(id)
+		links := pbtypes.GetStringList(rec.Details, bundle.RelationKeyLinks.String())
 		for _, link := range links {
 			sbType, _ := smartblock.SmartBlockTypeFromID(link)
 			// ignore files because we index all file blocks as outgoing links
