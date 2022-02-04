@@ -172,8 +172,8 @@ func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
 		if kb.id == id {
 			found = true
 			for _, k := range keys {
-				if slice.FindPos(kb.keys, k) == -1 {
-					ctx.keysBuf[i].keys = append(kb.keys, k)
+				if slice.FindPos(ctx.keysBuf[i].keys, k) == -1 {
+					ctx.keysBuf[i].keys = append(ctx.keysBuf[i].keys, k)
 				}
 			}
 			if slice.FindPos(kb.subIds, subId) == -1 {
