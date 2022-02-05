@@ -27,6 +27,8 @@ const CName = "subscription"
 
 var log = logging.Logger("anytype-mw-subscription")
 
+var batchTime = 50 * time.Millisecond
+
 func New() Service {
 	return new(service)
 }
@@ -46,6 +48,7 @@ type subscription interface {
 	counters() (prev, next int)
 	onChange(ctx *opCtx)
 	getActiveRecords() (res []*types.Struct)
+	hasDep() bool
 	close()
 }
 
@@ -238,36 +241,63 @@ func (s *service) UnsubscribeAll() (err error) {
 
 func (s *service) recordsHandler() {
 	var entries []*entry
+	nilIfExists := func(id string) {
+		for i, e := range entries {
+			if e != nil && e.id == id {
+				entries[i] = nil
+				return
+			}
+		}
+	}
 	for {
 		records := s.recBatch.Wait()
 		if len(records) == 0 {
 			return
 		}
 		for _, rec := range records {
+			id := pbtypes.GetString(rec.(database.Record).Details, "id")
+			// nil previous version
+			nilIfExists(id)
 			entries = append(entries, &entry{
-				id:   pbtypes.GetString(rec.(database.Record).Details, "id"),
+				id:   id,
 				data: rec.(database.Record).Details,
 			})
 		}
-		s.onChange(entries)
+		// filter nil entries
+		var filtered = entries[:0]
+		for _, e := range entries {
+			if e != nil {
+				filtered = append(filtered, e)
+			}
+		}
+		if s.onChange(filtered) < batchTime {
+			time.Sleep(batchTime)
+		}
 		entries = entries[:0]
 	}
 }
 
-func (s *service) onChange(entries []*entry) {
+func (s *service) onChange(entries []*entry) time.Duration {
 	s.m.Lock()
 	defer s.m.Unlock()
+	var subCount, depCount int
 	st := time.Now()
 	s.ctxBuf.reset()
 	s.ctxBuf.entries = entries
 	for _, sub := range s.subscriptions {
 		sub.onChange(s.ctxBuf)
+		subCount++
+		if sub.hasDep() {
+			depCount++
+		}
 	}
 	handleTime := time.Since(st)
 	event := s.ctxBuf.apply()
 	dur := time.Since(st)
-	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; ctx.ch: %v", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), len(s.ctxBuf.change))
+
+	log.Debugf("handle %d entries; %v(handle:%v;genEvents:%v); cacheSize: %d; subCount:%d; subDepCount:%d", len(entries), dur, handleTime, dur-handleTime, len(s.cache.entries), subCount, depCount)
 	s.sendEvent(event)
+	return dur
 }
 
 func (s *service) filtersFromSource(sources []string) (filter.Filter, error) {

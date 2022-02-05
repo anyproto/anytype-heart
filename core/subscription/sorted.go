@@ -549,6 +549,10 @@ func (s *sortedSub) CalcScore(key interface{}) float64 {
 	return 0
 }
 
+func (s *sortedSub) hasDep() bool {
+	return s.depSub != nil
+}
+
 func (s *sortedSub) close() {
 	el := s.skl.Front()
 	for el != nil {

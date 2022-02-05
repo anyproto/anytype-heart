@@ -127,6 +127,10 @@ func (s *simpleSub) getActiveRecords() (res []*types.Struct) {
 	return
 }
 
+func (s *simpleSub) hasDep() bool {
+	return s.depSub != nil
+}
+
 func (s *simpleSub) close() {
 	for id := range s.set {
 		s.cache.RemoveSubId(id, s.id)
