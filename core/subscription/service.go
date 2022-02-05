@@ -270,6 +270,7 @@ func (s *service) recordsHandler() {
 				filtered = append(filtered, e)
 			}
 		}
+		log.Debugf("batch rewrite: %d->%d", len(entries), len(filtered))
 		if s.onChange(filtered) < batchTime {
 			time.Sleep(batchTime)
 		}
