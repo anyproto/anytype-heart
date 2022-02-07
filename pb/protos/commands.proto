@@ -3453,6 +3453,8 @@ message Rpc {
                 repeated string source = 10;
 
                 string ignoreWorkspace = 12;
+                // disable dependent subscription
+                bool noDepSubscription = 13;
             }
 
             message Response {

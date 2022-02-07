@@ -9220,6 +9220,7 @@ deprecated, to be removed |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 | source | [string](#string) | repeated |  |
 | ignoreWorkspace | [string](#string) |  |  |
+| noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 
 

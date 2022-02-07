@@ -47,6 +47,18 @@ func (s *simpleSub) init(entries []*entry) (err error) {
 	return
 }
 
+func (s *simpleSub) isEqualIds(ids []string) bool {
+	if len(s.set) != len(ids) {
+		return false
+	}
+	for _, id := range ids {
+		if _, ok := s.set[id]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 	var newSet = make(map[string]struct{})
 	for _, e := range entries {
@@ -113,6 +125,10 @@ func (s *simpleSub) getActiveRecords() (res []*types.Struct) {
 		res = append(res, pbtypes.StructFilterKeys(s.cache.Get(id).data, s.keys))
 	}
 	return
+}
+
+func (s *simpleSub) hasDep() bool {
+	return s.depSub != nil
 }
 
 func (s *simpleSub) close() {
