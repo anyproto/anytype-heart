@@ -69,6 +69,34 @@ func (t *threadsMetrics) CreateRecord(threadId string, prepareMs int64, newRecor
 	})
 }
 
+func (t *threadsMetrics) NumberOfRecordsSentForLog(num int) {}
+
+func (t *threadsMetrics) NumberOfRecordsSentTotal(num int) {}
+
+func (t *threadsMetrics) GetRecordsGetThreadDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) GetRecordsHeadsChangedDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) GetLocalRecordsGetLogDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) GetLocalRecordsCborGetRecordsDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) UpdateRecordsDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) SemaphoreAcquireDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) SemaphoreHoldDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) SemaphoreAcquire() {}
+
+func (t *threadsMetrics) ThreadServed() {}
+
+func (t *threadsMetrics) ThreadPulled() {}
+
+func (t *threadsMetrics) ThreadPullDuration(duration time.Duration) {}
+
+func (t *threadsMetrics) UpdateRecordsDelayAfterExchangeEdges(duration time.Duration) {}
+
 var (
 	Enabled       bool
 	once          sync.Once
