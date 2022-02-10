@@ -1,23 +1,27 @@
 package subscription
 
+import (
+	"github.com/mb0/diff"
+)
+
 func newListDiff(ids []string) *listDiff {
 	ld := &listDiff{
-		before: make(map[string]string),
-		after:  make(map[string]string),
+		beforeIds:  ids,
+		beforeIdsM: map[string]struct{}{},
+		afterIdsM:  map[string]struct{}{},
 	}
-	var prevId string
 	for _, id := range ids {
-		ld.before[id] = prevId
-		prevId = id
+		ld.beforeIdsM[id] = struct{}{}
 	}
 	return ld
 }
 
 type listDiff struct {
-	// map[id]prevId
-	before, after map[string]string
-	afterIds      []string
+	beforeIds, afterIds   []string
+	beforeIdsM, afterIdsM map[string]struct{}
 }
+
+func (ld *listDiff) Equal(i, j int) bool { return ld.beforeIds[i] == ld.afterIds[j] }
 
 func (ld *listDiff) fillAfter(id string) {
 	ld.afterIds = append(ld.afterIds, id)
@@ -30,78 +34,55 @@ func (ld *listDiff) reverse() {
 }
 
 func (ld *listDiff) reset() {
-	ld.before = ld.after
-	ld.after = make(map[string]string)
+	ld.beforeIds, ld.afterIds = ld.afterIds, ld.beforeIds
 	ld.afterIds = ld.afterIds[:0]
+	ld.beforeIdsM = ld.afterIdsM
+	ld.afterIdsM = make(map[string]struct{})
 }
 
 func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) {
-	var ctxChangesLen = len(ctx.change)
-	var _ = func(prevId, bPrevId string) bool {
-		// by changes
-		ctxChanges := ctx.change[ctxChangesLen:]
-		for {
-			found := false
-			for _, ch := range ctxChanges {
-				if ch.id == prevId {
-					found = true
-				}
-			}
-			if found {
-				if prevId = ld.after[prevId]; prevId == "" {
-					break
-				}
-			} else {
-				break
-			}
-		}
-		return prevId != bPrevId
+	for _, id := range ld.afterIds {
+		ld.afterIdsM[id] = struct{}{}
 	}
-	var changeNeededAdd = func(prevId, bPrevId string) bool {
-		// by add
-		for {
-			if _, ok := ld.before[prevId]; !ok {
-				if prevId = ld.after[prevId]; prevId == "" {
-					break
-				}
-			} else {
-				break
-			}
+
+	hasBefore := func(id string) bool {
+		if _, ok := ld.beforeIdsM[id]; ok {
+			return true
 		}
-		return prevId != bPrevId
+		return false
 	}
-	var id, prevId, bPrevId string
-	var ok bool
-	for _, id = range ld.afterIds {
-		if bPrevId, ok = ld.before[id]; ok {
-			// change position
-			if bPrevId != prevId && changeNeededAdd(prevId, bPrevId) {
-				ctx.change = append(ctx.change, opChange{
-					id:      id,
-					subId:   subId,
-					keys:    keys,
-					afterId: prevId,
-				})
-			}
-		} else {
-			// add
+	hasAfter := func(id string) bool {
+		if _, ok := ld.afterIdsM[id]; ok {
+			return true
+		}
+		return false
+	}
+	getPrevId := func(s []string, i int) string {
+		if i == 0 {
+			return ""
+		}
+		return s[i-1]
+	}
+	diffData := diff.Diff(len(ld.beforeIds), len(ld.afterIds), ld)
+	for _, ch := range diffData {
+		for i := 0; i < ch.Ins; i++ {
+			idx := ch.B + i
 			ctx.change = append(ctx.change, opChange{
-				id:      id,
+				id:      ld.afterIds[idx],
 				subId:   subId,
 				keys:    keys,
-				afterId: prevId,
-				isAdd:   true,
+				afterId: getPrevId(ld.afterIds, idx),
+				isAdd:   !hasBefore(ld.afterIds[idx]),
 			})
 		}
-		ld.after[id] = prevId
-		prevId = id
-	}
-	for id = range ld.before {
-		if _, ok = ld.after[id]; !ok {
-			ctx.remove = append(ctx.remove, opRemove{
-				id:    id,
-				subId: subId,
-			})
+		for i := 0; i < ch.Del; i++ {
+			idx := ch.A + i
+			if !hasAfter(ld.beforeIds[idx]) {
+				ctx.remove = append(ctx.remove, opRemove{
+					id:    ld.beforeIds[idx],
+					subId: subId,
+				})
+			}
 		}
 	}
 }

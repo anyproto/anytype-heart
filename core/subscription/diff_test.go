@@ -3,12 +3,28 @@ package subscription
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/mb0/diff"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
 )
+
+type dstrings struct{ a, b []string }
+
+func (d *dstrings) Equal(i, j int) bool { return d.a[i] == d.b[j] }
+
+func TestDiff(t *testing.T) {
+	data := &dstrings{
+		a: []string{"1", "2", "3", "4", "5"},
+		b: []string{"6", "2", "3", "4", "5", "1"},
+	}
+	d := diff.Diff(len(data.a), len(data.b), data)
+	for _, ch := range d {
+		t.Logf("%+v", ch)
+	}
+}
 
 func TestListDiffFuzz(t *testing.T) {
 	var genRandomUniqueSeq = func(l int) []string {
@@ -72,20 +88,24 @@ func TestListDiffFuzz(t *testing.T) {
 				t.Log(dbg)
 			}
 		} else {
-			//t.Logf("ch: %d; rm: %d; %v", len(ctx.change), len(ctx.remove), resAfter)
+			t.Logf("ch: %d; rm: %d; %v", len(ctx.change), len(ctx.remove), len(resAfter))
 		}
 		assert.True(t, ok)
 		return
 	}
 
+	/*
+		checkBeforeAfter([]string{"1", "2", "3", "4", "5", "6"}, []string{"6", "2", "3", "4", "5", "1"})
+		return
+	*/
 	rand.Seed(time.Now().UnixNano())
 
-	var initialLen = 5
+	var initialLen = 30
 
 	var before, after []string
 	before = genRandomUniqueSeq(initialLen)
-	for i := 0; i < 100; i++ {
-		after = genRandomUniqueSeq(initialLen + rand.Intn(1+i))
+	for i := 0; i < 1000; i++ {
+		after = genRandomUniqueSeq(initialLen + rand.Intn(1+5))
 		if !checkBeforeAfter(before, after) {
 			break
 		}
@@ -124,7 +144,7 @@ func BenchmarkDiff(b *testing.B) {
 	}
 	var before, after []string
 	for _, n := range []int{
-		100, 1000, 10000, 100000,
+		100, 1000, 10000,
 	} {
 		b.Run(fmt.Sprintf("big-diff-%d", n), benchmark(genData(n, false), genData(n, true)))
 		before = genData(n, false)
