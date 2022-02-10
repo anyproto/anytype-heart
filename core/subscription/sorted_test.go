@@ -33,7 +33,7 @@ func TestSubscription_Add(t *testing.T) {
 
 		ctx := &opCtx{c: sub.cache, entries: newEntries}
 		sub.onChange(ctx)
-		assertCtxAdd(t, ctx, "newActiveId1", "id3")
+		assertCtxAdd(t, ctx, "newActiveId1", "")
 		assertCtxAdd(t, ctx, "newActiveId2", "newActiveId1")
 		assertCtxRemove(t, ctx, "id5", "id6")
 		assertCtxCounters(t, ctx, opCounter{subId: "test", total: 14, prevCount: 4, nextCount: 7})
@@ -101,7 +101,7 @@ func TestSubscription_Change(t *testing.T) {
 			data: &types.Struct{Fields: map[string]*types.Value{"id": pbtypes.String("id4"), "order": pbtypes.Int64(6)}},
 		})
 		sub.onChange(ctx)
-		assertCtxPosition(t, ctx, "id4", "id5")
+		assertCtxPosition(t, ctx, "id5", "")
 		assertCtxChange(t, ctx, "id4")
 	})
 }

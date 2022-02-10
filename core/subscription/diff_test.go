@@ -3,28 +3,12 @@ package subscription
 import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/mb0/diff"
 	"github.com/stretchr/testify/assert"
 	"math/rand"
 	"strings"
 	"testing"
 	"time"
 )
-
-type dstrings struct{ a, b []string }
-
-func (d *dstrings) Equal(i, j int) bool { return d.a[i] == d.b[j] }
-
-func TestDiff(t *testing.T) {
-	data := &dstrings{
-		a: []string{"1", "2", "3", "4", "5"},
-		b: []string{"6", "2", "3", "4", "5", "1"},
-	}
-	d := diff.Diff(len(data.a), len(data.b), data)
-	for _, ch := range d {
-		t.Logf("%+v", ch)
-	}
-}
 
 func TestListDiffFuzz(t *testing.T) {
 	var genRandomUniqueSeq = func(l int) []string {
@@ -39,7 +23,7 @@ func TestListDiffFuzz(t *testing.T) {
 		return res
 	}
 
-	var chToString = func(ch opChange) string {
+	var chToString = func(ch opPosition) string {
 		if ch.isAdd {
 			return fmt.Sprintf("add: %s after: %s", ch.id, ch.afterId)
 		}
@@ -59,7 +43,7 @@ func TestListDiffFuzz(t *testing.T) {
 		var resAfter = make([]string, len(before))
 		copy(resAfter, before)
 
-		for i, ch := range ctx.change {
+		for i, ch := range ctx.position {
 			if !ch.isAdd {
 				resAfter = slice.Remove(resAfter, ch.id)
 			}
@@ -88,7 +72,7 @@ func TestListDiffFuzz(t *testing.T) {
 				t.Log(dbg)
 			}
 		} else {
-			t.Logf("ch: %d; rm: %d; %v", len(ctx.change), len(ctx.remove), len(resAfter))
+			t.Logf("ch: %d; rm: %d; %v", len(ctx.position), len(ctx.remove), len(resAfter))
 		}
 		assert.True(t, ok)
 		return

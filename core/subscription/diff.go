@@ -40,7 +40,7 @@ func (ld *listDiff) reset() {
 	ld.afterIdsM = make(map[string]struct{})
 }
 
-func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) {
+func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) (wasAddOrRemove bool) {
 	for _, id := range ld.afterIds {
 		ld.afterIdsM[id] = struct{}{}
 	}
@@ -67,13 +67,17 @@ func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) {
 	for _, ch := range diffData {
 		for i := 0; i < ch.Ins; i++ {
 			idx := ch.B + i
-			ctx.change = append(ctx.change, opChange{
+			isAdd := !hasBefore(ld.afterIds[idx])
+			ctx.position = append(ctx.position, opPosition{
 				id:      ld.afterIds[idx],
 				subId:   subId,
 				keys:    keys,
 				afterId: getPrevId(ld.afterIds, idx),
-				isAdd:   !hasBefore(ld.afterIds[idx]),
+				isAdd:   isAdd,
 			})
+			if isAdd {
+				wasAddOrRemove = true
+			}
 		}
 		for i := 0; i < ch.Del; i++ {
 			idx := ch.A + i
@@ -82,7 +86,9 @@ func (ld *listDiff) diff(ctx *opCtx, subId string, keys []string) {
 					id:    ld.beforeIds[idx],
 					subId: subId,
 				})
+				wasAddOrRemove = true
 			}
 		}
 	}
+	return
 }

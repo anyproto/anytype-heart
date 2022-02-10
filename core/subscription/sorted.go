@@ -47,7 +47,8 @@ type sortedSub struct {
 	forceSubIds []string
 	disableDep  bool
 
-	compIdsBefore, compIdsAfter     []string
+	diff *listDiff
+
 	compCountBefore, compCountAfter opCounter
 
 	cache *cache
@@ -62,7 +63,6 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 			s.close()
 		}
 	}()
-
 	for i, e := range entries {
 		e = s.cache.GetOrSet(e)
 		entries[i] = e
@@ -110,12 +110,14 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 	}
 
 	activeEntries := s.getActiveEntries()
-	for _, ae := range activeEntries {
+	var activeIds = make([]string, len(activeEntries))
+	for i, ae := range activeEntries {
 		ae.SetSub(s.id, true)
-		s.compIdsBefore = append(s.compIdsBefore, s.id)
+		activeIds[i] = ae.id
 	}
+	s.diff = newListDiff(activeIds)
 	s.compCountBefore.subId = s.id
-	s.compCountBefore.prevCount, s.compCountAfter.nextCount = s.counters()
+	s.compCountBefore.prevCount, s.compCountBefore.nextCount = s.counters()
 	s.compCountBefore.total = s.skl.Len()
 
 	if s.ds != nil && !s.disableDep {
@@ -128,25 +130,57 @@ func (s *sortedSub) init(entries []*entry) (err error) {
 }
 
 func (s *sortedSub) onChange(ctx *opCtx) {
+	var changed bool
 	for _, e := range ctx.entries {
-		s.onEntryChange(ctx, e)
-	}
-	s.compIdsAfter = s.compIdsAfter[:0]
-	if s.iterateActive(func(e *entry) {
-		s.compIdsAfter = append(s.compIdsAfter, e.id)
-	}) {
-		for i, j := 0, len(s.compIdsAfter)-1; i < j; i, j = i+1, j-1 {
-			s.compIdsAfter[i], s.compIdsAfter[j] = s.compIdsAfter[j], s.compIdsAfter[i]
+		if !s.onEntryChange(ctx, e) {
+			changed = true
 		}
 	}
+	if !changed {
+		return
+	}
+	defer s.diff.reset()
+	s.activeEntriesBuf = s.activeEntriesBuf[:0]
+	if s.iterateActive(func(e *entry) {
+		s.diff.fillAfter(e.id)
+		if s.depSub != nil {
+			s.activeEntriesBuf = append(s.activeEntriesBuf, e)
+		}
+	}) {
+		s.diff.reverse()
+	}
 
-	/*
-		if activeChanged && s.depSub != nil {
-			s.ds.refillSubscription(ctx, s.depSub, s.getActiveEntries(), s.depKeys)
-		}*/
+	s.compCountAfter.subId = s.id
+	s.compCountAfter.prevCount, s.compCountAfter.nextCount = s.counters()
+	s.compCountAfter.total = s.skl.Len()
+
+	if s.compCountAfter != s.compCountBefore {
+		ctx.counters = append(ctx.counters, s.compCountAfter)
+		s.compCountBefore = s.compCountAfter
+	}
+
+	wasAddOrRemove := s.diff.diff(ctx, s.id, s.keys)
+
+	hasChanges := false
+	for _, e := range ctx.entries {
+		if _, ok := s.diff.afterIdsM[e.id]; ok {
+			e.SetSub(s.id, true)
+		}
+		ctx.change = append(ctx.change, opChange{
+			id:    e.id,
+			subId: s.id,
+			keys:  s.keys,
+		})
+		hasChanges = true
+	}
+
+	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
+		s.ds.refillSubscription(ctx, s.depSub, s.activeEntriesBuf, s.depKeys)
+	}
+
 }
 
-func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) {
+func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) (noChange bool) {
 	newInSet := true
 	if s.filter != nil {
 		newInSet = s.filter.FilterObject(e)
@@ -155,12 +189,12 @@ func (s *sortedSub) onEntryChange(ctx *opCtx, e *entry) {
 	curInSet := curr != nil
 	// nothing
 	if !curInSet && !newInSet {
-		return
+		return true
 	}
 	// remove
 	if curInSet && !newInSet {
 		s.skl.Remove(curr)
-		curr.RemoveSubId(s.id)
+		e.RemoveSubId(s.id)
 		return
 	}
 	// add
