@@ -13,6 +13,7 @@ type opChange struct {
 	subId   string
 	keys    []string
 	afterId string
+	isAdd   bool
 }
 
 type opRemove struct {
