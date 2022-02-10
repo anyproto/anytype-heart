@@ -2,29 +2,90 @@ package subscription
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/stretchr/testify/assert"
+	"math/rand"
 	"strings"
 	"testing"
+	"time"
 )
 
-func TestListDiff(t *testing.T) {
-	var before = []string{"1", "2", "3"}
-	var after = []string{"0", "1", "2"}
-	d := &listDiff{}
-	d.reset()
-	for _, id := range before {
-		d.fillAfter(id)
+func TestListDiffFuzz(t *testing.T) {
+	var genRandomUniqueSeq = func(l int) []string {
+		ids := map[string]struct{}{}
+		for len(ids) < l {
+			ids[fmt.Sprint(rand.Intn(int(float64(l)*1.2)))] = struct{}{}
+		}
+		res := make([]string, 0, l)
+		for id := range ids {
+			res = append(res, id)
+		}
+		return res
 	}
-	d.reset()
-	for _, id := range after {
-		d.fillAfter(id)
+
+	var chToString = func(ch opChange) string {
+		if ch.isAdd {
+			return fmt.Sprintf("add: %s after: %s", ch.id, ch.afterId)
+		}
+		return fmt.Sprintf("move: %s after: %s", ch.id, ch.afterId)
 	}
-	ctx := &opCtx{}
-	d.diff(ctx, "", nil)
-	for _, ch := range ctx.change {
-		t.Log("ch", ch)
+
+	var checkBeforeAfter = func(before, after []string) {
+		var debug []string
+
+		d := newListDiff(before)
+		for _, id := range after {
+			d.fillAfter(id)
+		}
+		ctx := &opCtx{}
+		d.diff(ctx, "", nil)
+
+		var resAfter = make([]string, len(before))
+		copy(resAfter, before)
+
+		for i, ch := range ctx.change {
+			if !ch.isAdd {
+				resAfter = slice.Remove(resAfter, ch.id)
+			}
+			if ch.afterId == "" {
+				resAfter = append([]string{ch.id}, resAfter...)
+			} else {
+				pos := slice.FindPos(resAfter, ch.afterId)
+				resAfter = slice.Insert(resAfter, pos+1, ch.id)
+			}
+			debug = append(debug, fmt.Sprintf("%d:\t %+v", i, chToString(ch)))
+			debug = append(debug, fmt.Sprintf("%d:\t %v", i, resAfter))
+		}
+		for _, rm := range ctx.remove {
+			resAfter = slice.Remove(resAfter, rm.id)
+		}
+		ok := assert.ObjectsAreEqual(after, resAfter)
+
+		if !ok {
+			t.Log("after", after)
+			t.Log("afterRes", resAfter)
+			t.Log("before", before)
+
+			for _, dbg := range debug {
+				t.Log(dbg)
+			}
+		} else {
+			//t.Logf("ch: %d; rm: %d; %v", len(ctx.change), len(ctx.remove), resAfter)
+		}
+		assert.True(t, ok)
+		return
 	}
-	for _, rm := range ctx.remove {
-		t.Log("rm", rm.id)
+
+	rand.Seed(time.Now().UnixNano())
+
+	var initialLen = 5
+
+	var before, after []string
+	before = genRandomUniqueSeq(initialLen)
+	for i := 0; i < 20; i++ {
+		after = genRandomUniqueSeq(initialLen + rand.Intn(1+i))
+		checkBeforeAfter(before, after)
+		before = after
 	}
 }
 
@@ -42,12 +103,7 @@ func BenchmarkDiff(b *testing.B) {
 		return res
 	}
 	benchmark := func(before, after []string) func(b *testing.B) {
-		d := &listDiff{}
-		d.reset()
-		for _, id := range before {
-			d.fillAfter(id)
-		}
-		d.reset()
+		d := newListDiff(before)
 		ctx := &opCtx{}
 		return func(b *testing.B) {
 			b.ReportAllocs()
