@@ -30,7 +30,7 @@ func TestListDiffFuzz(t *testing.T) {
 		return fmt.Sprintf("move: %s after: %s", ch.id, ch.afterId)
 	}
 
-	var checkBeforeAfter = func(before, after []string) {
+	var checkBeforeAfter = func(before, after []string) (ok bool) {
 		var debug []string
 
 		d := newListDiff(before)
@@ -56,10 +56,12 @@ func TestListDiffFuzz(t *testing.T) {
 			debug = append(debug, fmt.Sprintf("%d:\t %+v", i, chToString(ch)))
 			debug = append(debug, fmt.Sprintf("%d:\t %v", i, resAfter))
 		}
-		for _, rm := range ctx.remove {
+		for i, rm := range ctx.remove {
 			resAfter = slice.Remove(resAfter, rm.id)
+			debug = append(debug, fmt.Sprintf("%d:\t remove %+v", i, rm.id))
+			debug = append(debug, fmt.Sprintf("%d:\t %v", i, resAfter))
 		}
-		ok := assert.ObjectsAreEqual(after, resAfter)
+		ok = assert.ObjectsAreEqual(after, resAfter)
 
 		if !ok {
 			t.Log("after", after)
@@ -82,9 +84,11 @@ func TestListDiffFuzz(t *testing.T) {
 
 	var before, after []string
 	before = genRandomUniqueSeq(initialLen)
-	for i := 0; i < 20; i++ {
+	for i := 0; i < 100; i++ {
 		after = genRandomUniqueSeq(initialLen + rand.Intn(1+i))
-		checkBeforeAfter(before, after)
+		if !checkBeforeAfter(before, after) {
+			break
+		}
 		before = after
 	}
 }
