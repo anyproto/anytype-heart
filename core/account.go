@@ -7,11 +7,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -44,9 +47,9 @@ type AlphaInviteErrorResponse struct {
 	Error string `json:"error"`
 }
 
-func checkInviteCode(cfg *config.Config, code string, account string) error {
+func checkInviteCode(cfg *config.Config, code string, account string) (errorCode pb.RpcAccountCreateResponseErrorCode, err error) {
 	if code == "" {
-		return fmt.Errorf("invite code is empty")
+		return pb.RpcAccountCreateResponseError_BAD_INPUT, fmt.Errorf("invite code is empty")
 	}
 
 	jsonStr, err := json.Marshal(AlphaInviteRequest{
@@ -59,51 +62,81 @@ func checkInviteCode(cfg *config.Config, code string, account string) error {
 	req, err := http.NewRequest("POST", cfg.CafeUrl()+"/alpha-invite", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
+	checkNetError := func(err error) (netOpError bool, offline bool) {
+		if netErr, ok := err.(*net.OpError); ok {
+			if syscallErr, ok := netErr.Err.(*os.SyscallError); ok {
+				if syscallErr.Err == syscall.ENETDOWN || syscallErr.Err == syscall.ENETUNREACH {
+					return true, true
+				}
+			}
+			return true, false
+		}
+		return false, false
+	}
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return fmt.Errorf("failed to access cafe server: %s", err.Error())
+		var netOpErr bool
+		if urlErr, ok := err.(*url.Error); ok {
+			var offline bool
+			if netOpErr, offline = checkNetError(urlErr.Err); offline {
+				return pb.RpcAccountCreateResponseError_NET_OFFLINE, err
+			}
+		}
+
+		if netOpErr {
+			// additionally, check connection to the opendns ip
+			_, err2 := net.DialTimeout("tcp", "1.1.1.1:80", time.Second*5)
+			_, offline := checkNetError(err2)
+			if offline {
+				return pb.RpcAccountCreateResponseError_NET_OFFLINE, err
+			}
+			return pb.RpcAccountCreateResponseError_NET_CONNECTION_REFUSED, err
+		}
+
+		return pb.RpcAccountCreateResponseError_NET_ERROR, err
 	}
 
 	defer resp.Body.Close()
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to read response body: %s", err.Error())
+		return pb.RpcAccountCreateResponseError_NET_ERROR, fmt.Errorf("failed to read response body: %s", err.Error())
 	}
 
 	if resp.StatusCode != 200 {
 		respJson := AlphaInviteErrorResponse{}
 		err = json.Unmarshal(body, &respJson)
-		return fmt.Errorf(respJson.Error)
+		return pb.RpcAccountCreateResponseError_BAD_INVITE_CODE, fmt.Errorf(respJson.Error)
 	}
 
 	respJson := AlphaInviteResponse{}
 	err = json.Unmarshal(body, &respJson)
 	if err != nil {
-		return fmt.Errorf("failed to decode response json: %s", err.Error())
+		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode response json: %s", err.Error())
 	}
 
 	pubk, err := wallet.NewPubKeyFromAddress(wallet.KeypairTypeDevice, cfg.CafePeerId)
 	if err != nil {
-		return fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
+		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode cafe pubkey: %s", err.Error())
 	}
 
 	signature, err := base64.RawStdEncoding.DecodeString(respJson.Signature)
 	if err != nil {
-		return fmt.Errorf("failed to decode cafe signature: %s", err.Error())
+		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to decode cafe signature: %s", err.Error())
 	}
 
 	valid, err := pubk.Verify([]byte(code+account), signature)
 	if err != nil {
-		return fmt.Errorf("failed to verify cafe signature: %s", err.Error())
+		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("failed to verify cafe signature: %s", err.Error())
 	}
 
 	if !valid {
-		return fmt.Errorf("invalid signature")
+		return pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, fmt.Errorf("invalid signature")
 	}
 
-	return nil
+	return pb.RpcAccountCreateResponseError_NULL, nil
 }
 
 func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
@@ -162,8 +195,8 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		continue
 	}
 
-	if err := checkInviteCode(cfg, req.AlphaInviteCode, account.Address()); err != nil {
-		return response(nil, pb.RpcAccountCreateResponseError_BAD_INVITE_CODE, err)
+	if code, err := checkInviteCode(cfg, req.AlphaInviteCode, account.Address()); err != nil {
+		return response(nil, code, err)
 	}
 
 	seedRaw, err := account.Raw()
@@ -182,7 +215,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		anytype.BootstrapWallet(mw.rootPath, account.Address()),
 		mw.EventSender,
 	}
-	
+
 	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
