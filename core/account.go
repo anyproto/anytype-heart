@@ -62,36 +62,47 @@ func checkInviteCode(cfg *config.Config, code string, account string) (errorCode
 	req, err := http.NewRequest("POST", cfg.CafeUrl()+"/alpha-invite", bytes.NewBuffer(jsonStr))
 	req.Header.Set("Content-Type", "application/json")
 
-	checkNetError := func(err error) (netOpError bool, offline bool) {
+	checkNetError := func(err error) (netOpError bool, dnsError bool, offline bool) {
+		if err == nil {
+			return false, false, false
+		}
 		if netErr, ok := err.(*net.OpError); ok {
 			if syscallErr, ok := netErr.Err.(*os.SyscallError); ok {
 				if syscallErr.Err == syscall.ENETDOWN || syscallErr.Err == syscall.ENETUNREACH {
-					return true, true
+					return true, false, true
 				}
 			}
-			return true, false
+			if _, ok := netErr.Err.(*net.DNSError); ok {
+				return true, true, false
+			}
+			return true, false, false
 		}
-		return false, false
+		return false, false, false
 	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		var netOpErr bool
+		var netOpErr, dnsError bool
 		if urlErr, ok := err.(*url.Error); ok {
 			var offline bool
-			if netOpErr, offline = checkNetError(urlErr.Err); offline {
+			if netOpErr, dnsError, offline = checkNetError(urlErr.Err); offline {
+				return pb.RpcAccountCreateResponseError_NET_OFFLINE, err
+			}
+		}
+		if dnsError {
+			// we can receive DNS error in case device is offline, lets check the SHOULD-BE-ALWAYS-ONLINE OpenDNS IP address on the 80 port
+			c, err2 := net.DialTimeout("tcp", "1.1.1.1:80", time.Second*5)
+			if c != nil {
+				_ = c.Close()
+			}
+			_, _, offline := checkNetError(err2)
+			if offline {
 				return pb.RpcAccountCreateResponseError_NET_OFFLINE, err
 			}
 		}
 
 		if netOpErr {
-			// additionally, check connection to the opendns ip
-			_, err2 := net.DialTimeout("tcp", "1.1.1.1:80", time.Second*5)
-			_, offline := checkNetError(err2)
-			if offline {
-				return pb.RpcAccountCreateResponseError_NET_OFFLINE, err
-			}
 			return pb.RpcAccountCreateResponseError_NET_CONNECTION_REFUSED, err
 		}
 
