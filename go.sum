@@ -96,6 +96,8 @@ github.com/anytypeio/go-threads v1.1.0-rc1.0.20220209232550-ccd68d5a3c6e h1:WpP7
 github.com/anytypeio/go-threads v1.1.0-rc1.0.20220209232550-ccd68d5a3c6e/go.mod h1:O7G/oTjIZfQmB6ZoeU42IdRxWEY9D+HZuLzF6wMk4jI=
 github.com/anytypeio/go-threads v1.1.0-rc1.0.20220210000429-5fa142ad3bb1 h1:PogPTWhXWBfI/8iCu1wHeRdQXSZeRHYsZ+eXTbxkrAA=
 github.com/anytypeio/go-threads v1.1.0-rc1.0.20220210000429-5fa142ad3bb1/go.mod h1:O7G/oTjIZfQmB6ZoeU42IdRxWEY9D+HZuLzF6wMk4jI=
+github.com/anytypeio/go-threads v1.1.0-rc1.0.20220212122526-59f785ec84c5 h1:O3h/LQDy+FxWmw8c/gH9Hqr4pOOsVbaL+kL7778TXTg=
+github.com/anytypeio/go-threads v1.1.0-rc1.0.20220212122526-59f785ec84c5/go.mod h1:O7G/oTjIZfQmB6ZoeU42IdRxWEY9D+HZuLzF6wMk4jI=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1 h1:g/LEIEQ0ACBOKX9MhORhlmluUKvuxvrIDbGMI0cqF5A=
 github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1/go.mod h1:Qnhxlb4mi8T2624UtHX8EgDyYZXWbjQfLGuciFHZ+Go=
 github.com/anytypeio/ipfs-lite v1.1.20-0.20210428105030-fc5b3446abae h1:drp4/4ippiDtCGQHJw9AEPFlNdZI49DUW/6dkCdmChc=
