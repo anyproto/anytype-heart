@@ -88,6 +88,12 @@ message GetConfigResponse {
     }
 }
 
+message AccountDeleteRequest {
+    repeated string threads = 1;
+}
+
+message AccountDeleteResponse {}
+
 enum PinStatus {
     Queued = 0;
     Failed = 8;
@@ -100,5 +106,6 @@ service API {
     rpc ThreadLogFollow(ThreadLogFollowRequest) returns (ThreadLogFollowResponse) {}
     rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {}
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
+    rpc AccountDelete(AccountDeleteRequest) returns (AccountDeleteResponse) {}
     rpc ProfileFind(ProfileFindRequest) returns (stream ProfileFindResponse) {}
 }

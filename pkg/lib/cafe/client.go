@@ -218,6 +218,15 @@ func (c *Online) GetConfig(ctx context.Context, in *pb.GetConfigRequest, opts ..
 	return c.client.GetConfig(ctx, in, opts...)
 }
 
+func (c *Online) AccountDelete(ctx context.Context, in *pb.AccountDeleteRequest, opts ...grpc.CallOption) (*pb.AccountDeleteResponse, error) {
+	ctx, err := c.withToken(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return c.client.AccountDelete(ctx, in, opts...)
+}
+
 func New() Client {
 	limiter := make(chan struct{}, simultaneousRequests)
 
