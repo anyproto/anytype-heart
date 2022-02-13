@@ -2411,6 +2411,25 @@ message Rpc {
             }
         }
 
+        message Delete {
+            message Request {
+            }
+
+            message Response {
+                Error error = 1; // Error while trying to recover an account
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0; // No error;
+                        UNKNOWN_ERROR = 1; // Any other errors
+                        BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+
         message Select {
             /**
             * Front end to middleware request-to-launch-a specific account using account id and a root path

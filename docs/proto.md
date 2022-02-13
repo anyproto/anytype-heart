@@ -39,6 +39,10 @@
     - [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request)
     - [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response)
     - [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error)
+    - [Rpc.Account.Delete](#anytype.Rpc.Account.Delete)
+    - [Rpc.Account.Delete.Request](#anytype.Rpc.Account.Delete.Request)
+    - [Rpc.Account.Delete.Response](#anytype.Rpc.Account.Delete.Response)
+    - [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error)
     - [Rpc.Account.Recover](#anytype.Rpc.Account.Recover)
     - [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request)
     - [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response)
@@ -694,6 +698,7 @@
     - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
+    - [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
@@ -1114,6 +1119,7 @@
 | WorkspaceSetIsHighlighted | [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request) | [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
+| AccountDelete | [Rpc.Account.Delete.Request](#anytype.Rpc.Account.Delete.Request) | [Rpc.Account.Delete.Response](#anytype.Rpc.Account.Delete.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request) | [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response) |  |
 | FileOffload | [Rpc.File.Offload.Request](#anytype.Rpc.File.Offload.Request) | [Rpc.File.Offload.Response](#anytype.Rpc.File.Offload.Response) |  |
@@ -1754,6 +1760,57 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete"></a>
+
+### Rpc.Account.Delete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Request"></a>
+
+### Rpc.Account.Delete.Request
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Response"></a>
+
+### Rpc.Account.Delete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error) |  | Error while trying to recover an account |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Response.Error"></a>
+
+### Rpc.Account.Delete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11269,6 +11326,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | BAD_INVITE_CODE | 900 |  |
+
+
+
+<a name="anytype.Rpc.Account.Delete.Response.Error.Code"></a>
+
+### Rpc.Account.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error; |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
 
 
 

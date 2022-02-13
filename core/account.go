@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -182,7 +183,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		anytype.BootstrapWallet(mw.rootPath, account.Address()),
 		mw.EventSender,
 	}
-	
+
 	if mw.app, err = anytype.StartNewApp(comps...); err != nil {
 		return response(newAcc, pb.RpcAccountCreateResponseError_ACCOUNT_CREATED_BUT_FAILED_TO_START_NODE, err)
 	}
@@ -526,6 +527,28 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	}
 
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+	response := func(workspaceId string, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
+		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	var workspaceId string
+	err := mw.doAccountService(func(a account.Service) (err error) {
+		err = a.DeleteAccount(context.Background())
+		return
+	})
+	if err != nil {
+		return response("", pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response(workspaceId, pb.RpcAccountDeleteResponseError_NULL, nil)
 }
 
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {
