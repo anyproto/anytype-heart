@@ -800,14 +800,17 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {
-		if err := fts.Index(ftsearch.SearchDoc{
+		ftDoc := ftsearch.SearchDoc{
 			Id:    id,
 			Title: pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String()),
 			Text:  info.State.SearchText(),
-		}); err != nil {
+		}
+		if err := fts.Index(ftDoc); err != nil {
 			log.Errorf("can't ft index doc: %v", err)
 		}
+		log.Infof("ft search indexed with title: '%s'", ftDoc.Title)
 	}
+
 	log.With("thread", id).Infof("ft index updated for a %v", time.Since(st))
 	return
 }
