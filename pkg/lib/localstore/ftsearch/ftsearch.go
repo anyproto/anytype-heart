@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/blevesearch/bleve"
-	"github.com/blevesearch/bleve/search/query"
+	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/search/query"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
@@ -93,17 +93,18 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 	queries = append(queries, tss)
 	// title match
 	tm := bleve.NewMatchQuery(text)
-	tm.SetFuzziness(2)
+	tm.SetFuzziness(1)
 	tm.SetField("Title")
 	tm.SetBoost(7)
 	queries = append(queries, tm)
 	// text match
 	txtm := bleve.NewMatchQuery(text)
-	txtm.SetFuzziness(1)
+	txtm.SetFuzziness(0)
 	txtm.SetField("Text")
 	queries = append(queries, txtm)
 
 	sr := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(queries...))
+	sr.Size = 100
 	res, err := f.index.Search(sr)
 	if err != nil {
 		return
