@@ -170,6 +170,72 @@ func TestService_Search(t *testing.T) {
 		assert.Len(t, resp.Dependencies, 2)
 
 	})
+	t.Run("add with limit", func(t *testing.T) {
+		fx := newFixture(t)
+		defer fx.a.Close()
+		defer fx.ctrl.Finish()
+
+		fx.store.EXPECT().QueryRaw(gomock.Any()).Return(
+			[]database.Record{
+				{Details: &types.Struct{Fields: map[string]*types.Value{
+					"id":   pbtypes.String("1"),
+					"name": pbtypes.String("1"),
+				}}},
+				{Details: &types.Struct{Fields: map[string]*types.Value{
+					"id":   pbtypes.String("2"),
+					"name": pbtypes.String("2"),
+				}}},
+				{Details: &types.Struct{Fields: map[string]*types.Value{
+					"id":   pbtypes.String("3"),
+					"name": pbtypes.String("3"),
+				}}},
+			},
+			nil,
+		)
+		fx.store.EXPECT().GetRelation(bundle.RelationKeyName.String()).Return(&model.Relation{
+			Key:    bundle.RelationKeyName.String(),
+			Format: model.RelationFormat_shorttext,
+		}, nil).AnyTimes()
+
+		resp, err := fx.Search(pb.RpcObjectSearchSubscribeRequest{
+			SubId: "test",
+			Sorts: []*model.BlockContentDataviewSort{
+				{
+					RelationKey: "name",
+					Type:        model.BlockContentDataviewSort_Desc,
+				},
+			},
+			Limit: 2,
+			Keys:  []string{"id", "name"},
+		})
+		require.NoError(t, err)
+		// should be 3,2 (1)
+		require.Len(t, resp.Records, 2)
+		assert.Equal(t, "3", pbtypes.GetString(resp.Records[0], "id"))
+		assert.Equal(t, "2", pbtypes.GetString(resp.Records[1], "id"))
+
+		fx.Service.(*service).onChange([]*entry{
+			{id: "1", data: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("1"),
+				"name": pbtypes.String("4"),
+			}}},
+		})
+		// should be 1,3 (2)
+		require.Len(t, fx.events[0].Messages, 3)
+		assert.NotEmpty(t, fx.events[0].Messages[0].GetObjectDetailsSet())
+		assert.NotEmpty(t, fx.events[0].Messages[1].GetSubscriptionAdd())
+		assert.NotEmpty(t, fx.events[0].Messages[2].GetSubscriptionRemove())
+
+		fx.Service.(*service).onChange([]*entry{
+			{id: "2", data: &types.Struct{Fields: map[string]*types.Value{
+				"id":   pbtypes.String("2"),
+				"name": pbtypes.String("6"),
+			}}},
+		})
+
+		// should be 2,1 (3)
+		t.Log(pbtypes.Sprint(fx.events[1]))
+	})
 }
 
 func newFixture(t *testing.T) *fixture {
