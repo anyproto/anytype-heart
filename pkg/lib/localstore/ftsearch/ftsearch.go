@@ -93,13 +93,13 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 	queries = append(queries, tss)
 	// title match
 	tm := bleve.NewMatchQuery(text)
-	tm.SetFuzziness(2)
+	tm.SetFuzziness(1)
 	tm.SetField("Title")
 	tm.SetBoost(7)
 	queries = append(queries, tm)
 	// text match
 	txtm := bleve.NewMatchQuery(text)
-	txtm.SetFuzziness(1)
+	txtm.SetFuzziness(0)
 	txtm.SetField("Text")
 	queries = append(queries, txtm)
 
