@@ -49,7 +49,7 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 var (
-	ftIndexInterval = time.Minute / 3
+	ftIndexInterval = 10 * time.Second
 )
 
 func New() Indexer {
@@ -800,15 +800,19 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {
+		title := pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String())
+		if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
+			title = info.State.Snippet()
+		}
 		ftDoc := ftsearch.SearchDoc{
 			Id:    id,
-			Title: pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String()),
+			Title: title,
 			Text:  info.State.SearchText(),
 		}
 		if err := fts.Index(ftDoc); err != nil {
 			log.Errorf("can't ft index doc: %v", err)
 		}
-		log.Infof("ft search indexed with title: '%s'", ftDoc.Title)
+		log.Debugf("ft search indexed with title: '%s'", ftDoc.Title)
 	}
 
 	log.With("thread", id).Infof("ft index updated for a %v", time.Since(st))
