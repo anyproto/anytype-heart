@@ -203,7 +203,14 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 			return "", err
 		}
 	}
-	req, err := http.NewRequest("GET", picture.PictureFullUrl, nil)
+
+	// we must call download endpoint according to the API guidelines
+	picUrl, _, err := l.client.Photos.DownloadLink(id)
+	if err != nil {
+		return "", err
+	}
+
+	req, err := http.NewRequest("GET", picUrl.String(), nil)
 	if err != nil {
 		return "", err
 	}
