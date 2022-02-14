@@ -104,6 +104,7 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 	queries = append(queries, txtm)
 
 	sr := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(queries...))
+	sr.Size = 100
 	res, err := f.index.Search(sr)
 	if err != nil {
 		return
