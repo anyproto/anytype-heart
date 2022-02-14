@@ -122,8 +122,8 @@ func TestFtSearch_Search(t *testing.T) {
 			[]string{"6"},
 		},
 		{
-			"some tex",
-			[]string{"6", "2", "4", "3", "5"},
+			"some text",
+			[]string{"4", "3", "6", "5"},
 		},
 		{
 			"somelongidentifier",
