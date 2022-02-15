@@ -81,11 +81,17 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 		queries = append(queries, im)
 	}
 
+	// title prefix phrase
+	tpp := NewMatchPhrasePrefixQuery(text)
+	tpp.SetField("Title")
+	tpp.SetBoost(40)
+	queries = append(queries, tpp)
 	// title prefix
 	tp := bleve.NewPrefixQuery(text)
 	tp.SetField("Title")
-	tp.SetBoost(40)
+	tp.SetBoost(20)
 	queries = append(queries, tp)
+	bleve.NewPhraseQuery()
 	// title substr
 	tss := bleve.NewWildcardQuery("*" + strings.ReplaceAll(text, "*", `\*`) + "*")
 	tss.SetField("Title")

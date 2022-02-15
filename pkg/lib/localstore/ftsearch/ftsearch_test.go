@@ -96,6 +96,10 @@ func TestFtSearch_Search(t *testing.T) {
 			Id:    "eczq5t",
 			Title: "FERRARI styling CENter with somethinglong ",
 		},
+		{
+			Id:    "sometitle",
+			Title: "Some title with words",
+		},
 	}
 	for _, d := range docs {
 		require.NoError(t, ft.Index(d))
@@ -132,6 +136,14 @@ func TestFtSearch_Search(t *testing.T) {
 		{
 			"FeRRa",
 			[]string{"eczq5t"},
+		},
+		{
+			"Ferrari st",
+			[]string{"eczq5t"},
+		},
+		{
+			"Some ti",
+			[]string{"sometitle"},
 		},
 	}
 
