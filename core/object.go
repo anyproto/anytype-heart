@@ -377,6 +377,10 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
 	}
 
+	if len(relations) == 0 {
+		return response(nil, pb.RpcObjectRelationAddResponseError_ALREADY_EXISTS, nil)
+	}
+
 	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)
 }
 
