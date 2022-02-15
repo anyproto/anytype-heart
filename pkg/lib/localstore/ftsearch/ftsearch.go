@@ -1,26 +1,34 @@
 package ftsearch
 
 import (
+	"github.com/blevesearch/bleve/v2/analysis/analyzer/custom"
+	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
+	"github.com/blevesearch/bleve/v2/analysis/tokenizer/single"
+	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/blevesearch/bleve/v2"
-	"github.com/blevesearch/bleve/v2/search/query"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
+
+	"github.com/blevesearch/bleve/v2"
+	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
+	"github.com/blevesearch/bleve/v2/mapping"
+	"github.com/blevesearch/bleve/v2/search/query"
 )
 
 const (
 	CName  = "fts"
 	ftsDir = "fts"
+	ftsVer = "1"
 )
 
 type SearchDoc struct {
-	Id    string
-	Title string
-	Text  string
+	Id           string
+	Title        string
+	TitleNoTerms string
+	Text         string
 }
 
 func New() FTSearch {
@@ -37,13 +45,15 @@ type FTSearch interface {
 }
 
 type ftSearch struct {
-	path  string
-	index bleve.Index
+	rootPath string
+	ftsPath  string
+	index    bleve.Index
 }
 
 func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
-	f.path = filepath.Join(repoPath, ftsDir)
+	f.rootPath = filepath.Join(repoPath, ftsDir)
+	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
 	return nil
 }
 
@@ -52,10 +62,19 @@ func (f *ftSearch) Name() (name string) {
 }
 
 func (f *ftSearch) Run() (err error) {
-	f.index, err = bleve.Open(f.path)
+	de, e := os.ReadDir(f.rootPath)
+	if e == nil {
+		// cleanup old index versions
+		for _, d := range de {
+			if d.Name() != ftsVer {
+				os.RemoveAll(filepath.Join(f.rootPath, d.Name()))
+			}
+		}
+	}
+
+	f.index, err = bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
-		mapping := bleve.NewIndexMapping()
-		if f.index, err = bleve.New(f.path, mapping); err != nil {
+		if f.index, err = bleve.New(f.ftsPath, f.makeMapping()); err != nil {
 			return
 		}
 	} else if err != nil {
@@ -64,8 +83,35 @@ func (f *ftSearch) Run() (err error) {
 	return nil
 }
 
+func (f *ftSearch) makeMapping() mapping.IndexMapping {
+	mapping := bleve.NewIndexMapping()
+
+	keywordMapping := bleve.NewTextFieldMapping()
+	keywordMapping.Analyzer = "noTerms"
+
+	mapping.DefaultMapping.AddFieldMappingsAt("TitleNoTerms", keywordMapping)
+	mapping.DefaultMapping.AddFieldMappingsAt("Id", keywordMapping)
+
+	standardMapping := bleve.NewTextFieldMapping()
+	standardMapping.Analyzer = standard.Name
+	mapping.DefaultMapping.AddFieldMappingsAt("Title", standardMapping)
+	mapping.DefaultMapping.AddFieldMappingsAt("Text", standardMapping)
+
+	mapping.AddCustomAnalyzer("noTerms",
+		map[string]interface{}{
+			"type":      custom.Name,
+			"tokenizer": single.Name,
+			"token_filters": []string{
+				lowercase.Name,
+			},
+		})
+
+	return mapping
+}
+
 func (f *ftSearch) Index(d SearchDoc) (err error) {
 	metrics.ObjectFTUpdatedCounter.Inc()
+	d.TitleNoTerms = d.Title
 	return f.index.Index(d.Id, d)
 }
 
@@ -81,20 +127,18 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 		queries = append(queries, im)
 	}
 
-	// title prefix phrase
-	tpp := NewMatchPhrasePrefixQuery(text)
-	tpp.SetField("Title")
-	tpp.SetBoost(40)
-	queries = append(queries, tpp)
 	// title prefix
 	tp := bleve.NewPrefixQuery(text)
+	tp.SetField("TitleNoTerms")
+	tp.SetBoost(40)
+	queries = append(queries, tp)
+	tp = bleve.NewPrefixQuery(text)
 	tp.SetField("Title")
 	tp.SetBoost(20)
 	queries = append(queries, tp)
-	bleve.NewPhraseQuery()
 	// title substr
 	tss := bleve.NewWildcardQuery("*" + strings.ReplaceAll(text, "*", `\*`) + "*")
-	tss.SetField("Title")
+	tss.SetField("TitleNoTerms")
 	tss.SetBoost(8)
 	queries = append(queries, tss)
 	// title match

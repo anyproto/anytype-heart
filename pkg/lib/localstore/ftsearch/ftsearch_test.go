@@ -142,7 +142,7 @@ func TestFtSearch_Search(t *testing.T) {
 			[]string{"eczq5t"},
 		},
 		{
-			"Some ti",
+			"some ti",
 			[]string{"sometitle"},
 		},
 	}
