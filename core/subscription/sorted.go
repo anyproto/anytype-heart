@@ -165,13 +165,13 @@ func (s *sortedSub) onChange(ctx *opCtx) {
 	for _, e := range ctx.entries {
 		if _, ok := s.diff.afterIdsM[e.id]; ok {
 			e.SetSub(s.id, true)
+			ctx.change = append(ctx.change, opChange{
+				id:    e.id,
+				subId: s.id,
+				keys:  s.keys,
+			})
+			hasChanges = true
 		}
-		ctx.change = append(ctx.change, opChange{
-			id:    e.id,
-			subId: s.id,
-			keys:  s.keys,
-		})
-		hasChanges = true
 	}
 
 	if (wasAddOrRemove || hasChanges) && s.depSub != nil {
