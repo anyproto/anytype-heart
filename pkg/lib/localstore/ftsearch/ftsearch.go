@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/wallet"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/custom"
+	"github.com/blevesearch/bleve/v2/analysis/lang/en"
 	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
 	"github.com/blevesearch/bleve/v2/analysis/tokenizer/single"
 	"os"
@@ -44,15 +45,17 @@ type FTSearch interface {
 }
 
 type ftSearch struct {
-	rootPath string
-	ftsPath  string
-	index    bleve.Index
+	rootPath       string
+	ftsPath        string
+	index          bleve.Index
+	enStopWordsMap map[string]bool
 }
 
 func (f *ftSearch) Init(a *app.App) (err error) {
 	repoPath := a.MustComponent(wallet.CName).(wallet.Wallet).RepoPath()
 	f.rootPath = filepath.Join(repoPath, ftsDir)
 	f.ftsPath = filepath.Join(repoPath, ftsDir, ftsVer)
+	f.enStopWordsMap, _ = en.TokenMapConstructor(nil, nil)
 	return nil
 }
 
@@ -104,7 +107,6 @@ func (f *ftSearch) makeMapping() mapping.IndexMapping {
 				lowercase.Name,
 			},
 		})
-
 	return mapping
 }
 
@@ -118,9 +120,10 @@ func (f *ftSearch) Search(text string) (results []string, err error) {
 	text = strings.ToLower(strings.TrimSpace(text))
 	terms := append([]string{text}, strings.Split(text, " ")...)
 	termsFiltered := terms[:0]
+
 	for _, t := range terms {
 		t = strings.TrimSpace(t)
-		if t != "" {
+		if t != "" && !f.enStopWordsMap[t] {
 			termsFiltered = append(termsFiltered, t)
 		}
 	}
