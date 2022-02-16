@@ -130,6 +130,18 @@ func TestFtSearch_Search(t *testing.T) {
 			[]string{"4", "3", "6", "5"},
 		},
 		{
+			"some",
+			[]string{"4", "3", "6", "5"},
+		},
+		{
+			"text",
+			[]string{"4", "3", "6", "5"},
+		},
+		{
+			"some text qwertydslkj lkj",
+			nil,
+		},
+		{
 			"somelongidentifier",
 			[]string{"somelongidentifier"},
 		},
@@ -147,10 +159,10 @@ func TestFtSearch_Search(t *testing.T) {
 		},
 	}
 
-	for _, st := range searches {
+	for _, st := range searches[4:8] {
 		ids, err := ft.Search(st.Query)
 		require.NoError(t, err)
-		assert.Equal(t, st.Result, ids, st.Query)
-		t.Logf("%s:\t%v\t%v", st.Query, ids, st.Result)
+		ok := assert.ObjectsAreEqual(st.Result, ids)
+		t.Logf("%s:\t%v\t%v - %v", st.Query, ids, st.Result, ok)
 	}
 }

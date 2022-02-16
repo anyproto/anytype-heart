@@ -1,16 +1,15 @@
 package ftsearch
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/wallet"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/custom"
 	"github.com/blevesearch/bleve/v2/analysis/token/lowercase"
 	"github.com/blevesearch/bleve/v2/analysis/tokenizer/single"
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/wallet"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 
 	"github.com/blevesearch/bleve/v2"
 	"github.com/blevesearch/bleve/v2/analysis/analyzer/standard"
@@ -117,45 +116,74 @@ func (f *ftSearch) Index(d SearchDoc) (err error) {
 
 func (f *ftSearch) Search(text string) (results []string, err error) {
 	text = strings.ToLower(strings.TrimSpace(text))
-	var queries = make([]query.Query, 0, 4)
-
-	// id match
-	if len(text) > 10 {
-		im := bleve.NewMatchQuery(text)
-		im.SetField("Id")
-		im.SetBoost(30)
-		queries = append(queries, im)
+	terms := append([]string{text}, strings.Split(text, " ")...)
+	termsFiltered := terms[:0]
+	for _, t := range terms {
+		t = strings.TrimSpace(t)
+		if t != "" {
+			termsFiltered = append(termsFiltered, t)
+		}
 	}
+	terms = termsFiltered
 
+	var exactQueries = make([]query.Query, 0, 4)
+	// id match
+	if len(text) > 5 {
+		im := bleve.NewDocIDQuery([]string{text})
+		im.SetBoost(30)
+		exactQueries = append(exactQueries, im)
+	}
 	// title prefix
 	tp := bleve.NewPrefixQuery(text)
 	tp.SetField("TitleNoTerms")
 	tp.SetBoost(40)
-	queries = append(queries, tp)
-	tp = bleve.NewPrefixQuery(text)
-	tp.SetField("Title")
-	tp.SetBoost(20)
-	queries = append(queries, tp)
+	exactQueries = append(exactQueries, tp)
+
 	// title substr
 	tss := bleve.NewWildcardQuery("*" + strings.ReplaceAll(text, "*", `\*`) + "*")
 	tss.SetField("TitleNoTerms")
 	tss.SetBoost(8)
-	queries = append(queries, tss)
-	// title match
-	tm := bleve.NewMatchQuery(text)
-	tm.SetFuzziness(1)
-	tm.SetField("Title")
-	tm.SetBoost(7)
-	queries = append(queries, tm)
-	// text match
-	txtm := bleve.NewMatchQuery(text)
-	txtm.SetFuzziness(0)
-	txtm.SetField("Text")
-	queries = append(queries, txtm)
+	exactQueries = append(exactQueries, tss)
 
-	sr := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(queries...))
+	var notExactQueriesGroup = make([]query.Query, 0, 5)
+	for i, t := range terms {
+		// fulltext queries
+		var notExactQueries = make([]query.Query, 0, 3)
+		tp = bleve.NewPrefixQuery(t)
+		tp.SetField("Title")
+		if i == 0 {
+			tp.SetBoost(8)
+		}
+		notExactQueries = append(notExactQueries, tp)
+
+		// title match
+		tm := bleve.NewMatchQuery(t)
+		tm.SetFuzziness(1)
+		tm.SetField("Title")
+		if i == 0 {
+			tm.SetBoost(7)
+		}
+		notExactQueries = append(notExactQueries, tm)
+
+		// text match
+		txtm := bleve.NewMatchQuery(t)
+		txtm.SetFuzziness(0)
+		txtm.SetField("Text")
+		if i == 0 {
+			txtm.SetBoost(2)
+		}
+		notExactQueries = append(notExactQueries, txtm)
+		notExactQueriesGroup = append(notExactQueriesGroup, bleve.NewDisjunctionQuery(notExactQueries...))
+	}
+
+	//exactQueries = []query.Query{bleve.NewDisjunctionQuery(notExactQueriesGroup...)}
+	exactQueries = append(exactQueries, bleve.NewConjunctionQuery(notExactQueriesGroup...))
+
+	sr := bleve.NewSearchRequest(bleve.NewDisjunctionQuery(exactQueries...))
 	sr.Size = 100
+	sr.Explain = true
 	res, err := f.index.Search(sr)
+	//fmt.Println(res.String())
 	if err != nil {
 		return
 	}
