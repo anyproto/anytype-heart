@@ -64,20 +64,22 @@ func (f *ftSearch) Name() (name string) {
 }
 
 func (f *ftSearch) Run() (err error) {
-	de, e := os.ReadDir(f.rootPath)
-	if e == nil {
-		// cleanup old index versions
-		for _, d := range de {
-			if d.Name() != ftsVer {
-				os.RemoveAll(filepath.Join(f.rootPath, d.Name()))
-			}
-		}
-	}
-
 	f.index, err = bleve.Open(f.ftsPath)
 	if err == bleve.ErrorIndexPathDoesNotExist || err == bleve.ErrorIndexMetaMissing {
 		if f.index, err = bleve.New(f.ftsPath, f.makeMapping()); err != nil {
 			return
+		}
+		// cleanup old indexes
+		if strings.HasSuffix(f.rootPath, ftsDir) {
+			de, e := os.ReadDir(f.rootPath)
+			if e == nil {
+				// cleanup old index versions
+				for _, d := range de {
+					if d.Name() != ftsVer {
+						os.RemoveAll(filepath.Join(f.rootPath, d.Name()))
+					}
+				}
+			}
 		}
 	} else if err != nil {
 		return
