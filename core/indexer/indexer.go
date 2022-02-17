@@ -39,7 +39,7 @@ const (
 	CName = "indexer"
 
 	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 5  // reindex thread-based objects
+	ForceThreadsObjectsReindexCounter int32 = 6  // reindex thread-based objects
 	ForceFilesReindexCounter          int32 = 5  // reindex ipfs-file-based objects
 	ForceBundledObjectsReindexCounter int32 = 3  // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 12 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
@@ -49,7 +49,8 @@ const (
 var log = logging.Logger("anytype-doc-indexer")
 
 var (
-	ftIndexInterval = 10 * time.Second
+	ftIndexInterval         = time.Minute
+	ftIndexForceMinInterval = time.Second * 10
 )
 
 func New() Indexer {
@@ -57,6 +58,7 @@ func New() Indexer {
 }
 
 type Indexer interface {
+	ForceFTIndex()
 	app.ComponentRunnable
 }
 
@@ -96,6 +98,7 @@ type indexer struct {
 	archivedMap   map[string]struct{}
 	favoriteMap   map[string]struct{}
 	newAccount    bool
+	forceFt       chan struct{}
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -112,7 +115,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
-
+	i.forceFt = make(chan struct{})
 	return
 }
 
@@ -163,6 +166,13 @@ func (i *indexer) Run() (err error) {
 	i.migrateRemoveNonindexableObjects()
 	go i.ftLoop()
 	return
+}
+
+func (i *indexer) ForceFTIndex() {
+	select {
+	case i.forceFt <- struct{}{}:
+	default:
+	}
 }
 
 func (i *indexer) migrateRemoveNonindexableObjects() {
@@ -728,7 +738,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 func (i *indexer) ftLoop() {
 	ticker := time.NewTicker(ftIndexInterval)
 	i.ftIndex()
-
+	var lastForceIndex time.Time
 	i.mu.Lock()
 	quit := i.quit
 	i.mu.Unlock()
@@ -738,6 +748,11 @@ func (i *indexer) ftLoop() {
 			return
 		case <-ticker.C:
 			i.ftIndex()
+		case <-i.forceFt:
+			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
+				i.ftIndex()
+				lastForceIndex = time.Now()
+			}
 		}
 	}
 }
