@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "2e7a4c8295b7aea78b9a072ae48d59dc44fac5ad86df13244ca8da527ad5fcd3"
+const RelationChecksum = "c50645f3985a96c8680e89ba6930431951e6bbe9cfb96418063b320378c5fe1b"
 
 type RelationKey string
 
@@ -108,6 +108,7 @@ const (
 	RelationKeyAssignee                  RelationKey = "assignee"
 	RelationKeyExposure                  RelationKey = "exposure"
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
+	RelationKeyRestrictions              RelationKey = "restrictions"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
@@ -1665,6 +1666,19 @@ var (
 			Key:              "responsible",
 			Name:             "Responsible",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRestrictions: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Object restrictions list",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Key:              "restrictions",
+			MaxCount:         1,
+			Name:             "Object restrictions",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
