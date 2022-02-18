@@ -93,6 +93,8 @@ func (h *MD) render(b *model.Block, in *renderState) {
 		h.renderLayout(b, in)
 	case *model.BlockContentOfLink:
 		h.renderLink(b, in)
+	case *model.BlockContentOfLatex:
+		h.renderLatex(b, in)
 	default:
 		h.renderLayout(b, in)
 	}
@@ -240,6 +242,14 @@ func (h *MD) renderLink(b *model.Block, in *renderState) {
 			h.buf.WriteString(in.indent)
 			fmt.Fprintf(h.buf, "[%s](%s)    \n", escape.MarkdownCharacters(html.EscapeString(title)), filename)
 		}
+	}
+}
+
+func (h *MD) renderLatex(b *model.Block, in *renderState) {
+	l := b.GetLatex()
+	if l != nil {
+		h.buf.WriteString(in.indent)
+		fmt.Fprintf(h.buf, "\n$$\n%s\n$$\n", l.Text)
 	}
 }
 
