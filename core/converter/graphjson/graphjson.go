@@ -8,7 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/gogo/protobuf/types"
 )
 
 func NewMultiConverter() converter.MultiConverter {
@@ -52,15 +52,15 @@ type Graph struct {
 }
 
 type graphjson struct {
-	knownIds    []string
+	knownDocs   map[string]*types.Struct
 	fileHashes  []string
 	imageHashes []string
 	nodes       map[string]*Node
 	linksByNode map[string][]*Edge
 }
 
-func (g *graphjson) SetKnownLinks(ids []string) converter.Converter {
-	g.knownIds = ids
+func (g *graphjson) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+	g.knownDocs = docs
 	return g
 }
 
@@ -99,7 +99,7 @@ func (g *graphjson) Add(st *state.State) error {
 			if err != nil {
 				continue
 			}
-			if slice.FindPos(g.knownIds, objId) == -1 {
+			if _, ok := g.knownDocs[objId]; !ok {
 				continue
 			}
 			if t != smartblock.SmartBlockTypeAnytypeProfile && t != smartblock.SmartBlockTypePage {
@@ -121,7 +121,7 @@ func (g *graphjson) Add(st *state.State) error {
 		if err != nil {
 			continue
 		}
-		if slice.FindPos(g.knownIds, depId) == -1 {
+		if _, ok := g.knownDocs[depId]; !ok {
 			continue
 		}
 
