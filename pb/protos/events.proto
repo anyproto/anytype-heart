@@ -99,6 +99,7 @@ message Event {
         message Config {
             message Update {
                 anytype.model.Account.Config config = 1;
+                anytype.model.Account.Info info = 2;
             }
         }
     }

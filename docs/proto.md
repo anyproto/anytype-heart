@@ -1018,6 +1018,7 @@
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Account.Config](#anytype.model.Account.Config)
+    - [Account.Info](#anytype.model.Account.Info)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
@@ -1056,6 +1057,7 @@
     - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
     - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
+    - [Account.Status](#anytype.model.Account.Status)
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
@@ -1691,7 +1693,7 @@ Namespace, that agregates subtopics and actions, that relates to account.
 <a name="anytype.Rpc.Account.Config"></a>
 
 ### Rpc.Account.Config
-
+TODO: use model from models.proto
 
 
 | Field | Type | Label | Description |
@@ -1745,6 +1747,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | error | [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error) |  | Error while trying to create an account |
 | account | [model.Account](#anytype.model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
 | config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
+| info | [model.Account.Info](#anytype.model.Account.Info) |  |  |
 
 
 
@@ -1783,6 +1786,11 @@ Middleware-to-front-end response for an account creation request, that can conta
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| revert | [bool](#bool) |  |  |
+
+
 
 
 
@@ -1796,6 +1804,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error) |  | Error while trying to recover an account |
+| info | [model.Account.Info](#anytype.model.Account.Info) |  |  |
 
 
 
@@ -11360,6 +11369,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
+| ACCOUNT_IS_DELETED | 109 |  |
 
 
 
@@ -13490,6 +13500,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
+| info | [model.Account.Info](#anytype.model.Account.Info) |  |  |
 
 
 
@@ -15979,6 +15990,22 @@ Avatar of a user&#39;s account. It could be an image or color
 
 
 
+<a name="anytype.model.Account.Info"></a>
+
+### Account.Info
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| status | [Account.Status](#anytype.model.Account.Status) |  |  |
+| toBeDeletedAt | [int64](#int64) |  |  |
+
+
+
+
+
+
 <a name="anytype.model.Block"></a>
 
 ### Block
@@ -16630,6 +16657,19 @@ scope from which this relation have been aggregated |
 
 
  
+
+
+<a name="anytype.model.Account.Status"></a>
+
+### Account.Status
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| IsActive | 0 |  |
+| IsPendingDeletion | 1 |  |
+| IsDeleted | 2 |  |
+
 
 
 <a name="anytype.model.Block.Align"></a>

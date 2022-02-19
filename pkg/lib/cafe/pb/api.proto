@@ -77,6 +77,8 @@ message GetConfigRequest {}
 
 message GetConfigResponse {
     Config config = 1;
+    AccountInfo info = 2;
+
     message Config {
         bool  enableDataview = 1;
         bool  enableDebug = 2;
@@ -89,15 +91,44 @@ message GetConfigResponse {
 }
 
 message AccountDeleteRequest {
-    repeated string threads = 1;
+    bool isReverted = 1;
 }
 
-message AccountDeleteResponse {}
+message AccountDeleteResponse {
+    AccountInfo info = 1;
+}
+
+message StatusRequest {}
+
+message StatusResponse {
+    FilePins pins = 1;
+    AccountInfo info = 2;
+
+    message FilePins {
+        repeated FilePinStatus pins = 1;
+
+        message FilePinStatus {
+            string cid = 1;
+            PinStatus status = 2;
+        }
+    }
+}
 
 enum PinStatus {
     Queued = 0;
     Failed = 8;
     Done = 9;
+}
+
+message AccountInfo {
+    AccountStatus status = 1;
+    int64 toBeDeletedAt = 2;
+}
+
+enum AccountStatus {
+    IsActive = 0;
+    IsPendingDeletion = 1;
+    IsDeleted = 2;
 }
 
 service API {
@@ -107,5 +138,6 @@ service API {
     rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {}
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
     rpc AccountDelete(AccountDeleteRequest) returns (AccountDeleteResponse) {}
+    rpc Status(StatusRequest) returns (StatusResponse) {}
     rpc ProfileFind(ProfileFindRequest) returns (stream ProfileFindResponse) {}
 }
