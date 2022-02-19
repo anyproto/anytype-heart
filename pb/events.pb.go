@@ -1047,6 +1047,7 @@ func (m *EventAccountDetails) GetDetails() *types.Struct {
 	return nil
 }
 
+// TODO: maybe instead we need to add "message Update" to have AccountUpdate event
 type EventAccountConfig struct {
 }
 

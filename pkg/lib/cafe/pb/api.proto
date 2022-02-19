@@ -62,31 +62,31 @@ message ProfileFindResponse {
     string iconColor = 4;
 }
 
-message GetFilePinsRequest {}
+message GetFilePinsRequest {} // Deprecated
 
 message GetFilePinsResponse {
     repeated FilePinStatus pins = 1;
+
+    message FilePinStatus {
+        string cid = 1;
+        PinStatus status = 2;
+    }
 }
 
-message FilePinStatus {
-    string cid = 1;
-    PinStatus status = 2;
-}
-
-message GetConfigRequest {}
+message GetConfigRequest {} // Deprecated
 
 message GetConfigResponse {
     Config config = 1;
-}
 
-message Config {
-    bool  enableDataview = 1;
-    bool  enableDebug = 2;
-    bool  enableReleaseChannelSwitch = 3;
-    int32 simultaneousRequests = 4;
-    bool  enableSpaces = 5;
+    message Config {
+        bool  enableDataview = 1;
+        bool  enableDebug = 2;
+        bool  enableReleaseChannelSwitch = 3;
+        int32 simultaneousRequests = 4;
+        bool  enableSpaces = 5;
 
-    google.protobuf.Struct extra = 100;
+        google.protobuf.Struct extra = 100;
+    }
 }
 
 message AccountDeleteRequest {
@@ -94,17 +94,54 @@ message AccountDeleteRequest {
 }
 
 message AccountDeleteResponse {
-    AccountStatus status = 1;
+    Account.Status status = 1;
 }
 
-message GetAccountStateRequest {
+message GetAccountRequest {
     int64 statusOptions = 1;
 }
 
-message GetAccountStateResponse {
+message GetAccountResponse {
+    Account account = 1;
+
+    enum Option {
+        WithConfig = 0;
+        WithAccountStatus = 1;
+        WithFilePins = 2;
+    }
+}
+
+enum PinStatus {
+    Queued = 0;
+    Failed = 8;
+    Done = 9;
+}
+
+message Account {
     Config config = 1;
-    FilePins pins = 2;
-    AccountStatus status = 3;
+    Status status = 2;
+    FilePins pins = 3;
+
+    message Status {
+        StatusType status = 1;
+        int64 deletionDate = 2;
+    }
+
+    enum StatusType {
+        IsActive = 0;
+        IsPendingDeletion = 1;
+        IsDeleted = 2;
+    }
+
+    message Config {
+        bool  enableDataview = 1;
+        bool  enableDebug = 2;
+        bool  enableReleaseChannelSwitch = 3;
+        int32 simultaneousRequests = 4;
+        bool  enableSpaces = 5;
+
+        google.protobuf.Struct extra = 100;
+    }
 
     message FilePins {
         repeated FilePinStatus pins = 1;
@@ -116,36 +153,13 @@ message GetAccountStateResponse {
     }
 }
 
-enum GetAccountStateOption {
-    WithConfig = 0;
-    WithAccountStatus = 1;
-    WithFilePins = 2;
-}
-
-enum PinStatus {
-    Queued = 0;
-    Failed = 8;
-    Done = 9;
-}
-
-message AccountStatus {
-    AccountStatusType status = 1;
-    int64 deletionDate = 2;
-}
-
-enum AccountStatusType {
-    IsActive = 0;
-    IsPendingDeletion = 1;
-    IsDeleted = 2;
-}
-
 service API {
     rpc AuthGetToken(stream AuthGetTokenRequest) returns (stream AuthGetTokenResponse) {}
-    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {}
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {} // deprecated, use GetAccount
     rpc ThreadLogFollow(ThreadLogFollowRequest) returns (ThreadLogFollowResponse) {}
-    rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {}
+    rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {} // deprecated, use GetAccount
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
     rpc AccountDelete(AccountDeleteRequest) returns (AccountDeleteResponse) {}
-    rpc GetAccountState(GetAccountStateRequest) returns (GetAccountStateResponse) {}
+    rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {}
     rpc ProfileFind(ProfileFindRequest) returns (stream ProfileFindResponse) {}
 }

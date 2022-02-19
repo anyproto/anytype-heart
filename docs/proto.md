@@ -1018,7 +1018,7 @@
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Account.Config](#anytype.model.Account.Config)
-    - [Account.Info](#anytype.model.Account.Info)
+    - [Account.Status](#anytype.model.Account.Status)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
@@ -1057,7 +1057,7 @@
     - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
     - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
-    - [Account.Status](#anytype.model.Account.Status)
+    - [Account.StatusType](#anytype.model.Account.StatusType)
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
@@ -1746,8 +1746,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error) |  | Error while trying to create an account |
 | account | [model.Account](#anytype.model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
-| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
-| info | [model.Account.Info](#anytype.model.Account.Info) |  |  |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
 
 
 
@@ -1804,7 +1803,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error) |  | Error while trying to recover an account |
-| info | [model.Account.Info](#anytype.model.Account.Info) |  |  |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -1916,7 +1915,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error) |  | Error while trying to launch/select an account |
 | account | [model.Account](#anytype.model.Account) |  | Selected account |
-| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
 
 
 
@@ -13484,7 +13483,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 <a name="anytype.Event.Account.Config"></a>
 
 ### Event.Account.Config
-
+TODO: maybe instead we need to add &#34;message Update&#34; to have AccountUpdate event
 
 
 
@@ -13500,7 +13499,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
-| info | [model.Account.Info](#anytype.model.Account.Info) |  |  |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -15949,6 +15948,8 @@ Contains basic information about a user account
 | id | [string](#string) |  | User&#39;s thread id |
 | name | [string](#string) |  | User name, that associated with this account |
 | avatar | [Account.Avatar](#anytype.model.Account.Avatar) |  | Avatar of a user&#39;s account |
+| config | [Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -15990,16 +15991,16 @@ Avatar of a user&#39;s account. It could be an image or color
 
 
 
-<a name="anytype.model.Account.Info"></a>
+<a name="anytype.model.Account.Status"></a>
 
-### Account.Info
+### Account.Status
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| status | [Account.Status](#anytype.model.Account.Status) |  |  |
-| toBeDeletedAt | [int64](#int64) |  |  |
+| statusType | [Account.StatusType](#anytype.model.Account.StatusType) |  |  |
+| deletionDate | [int64](#int64) |  |  |
 
 
 
@@ -16659,9 +16660,9 @@ scope from which this relation have been aggregated |
  
 
 
-<a name="anytype.model.Account.Status"></a>
+<a name="anytype.model.Account.StatusType"></a>
 
-### Account.Status
+### Account.StatusType
 
 
 | Name | Number | Description |
