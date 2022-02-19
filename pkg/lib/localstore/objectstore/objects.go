@@ -50,7 +50,9 @@ var (
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
 	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
-	cafeConfig = ds.NewKey("/" + pagesPrefix + "/cafeconfig")
+	cafePrefix  = "cafe"
+	cafeConfig  = ds.NewKey("/" + cafePrefix + "/cafeconfig")
+	accountInfo = ds.NewKey("/" + cafePrefix + "/accountinfo")
 
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
@@ -271,6 +273,9 @@ type ObjectStore interface {
 
 	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
 	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
+
+	GetAccountInfo() (info *cafePb.AccountInfo, err error)
+	SaveAccountInfo(info *cafePb.AccountInfo) (err error)
 
 	GetCurrentWorkspaceId() (string, error)
 	SetCurrentWorkspaceId(threadId string) (err error)
@@ -545,6 +550,42 @@ func (m *dsObjectStore) SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err
 	defer txn.Discard()
 
 	b, err := cfg.Marshal()
+	if err != nil {
+		return err
+	}
+
+	if err := txn.Put(cafeConfig, b); err != nil {
+		return fmt.Errorf("failed to put into ds: %w", err)
+	}
+
+	return txn.Commit()
+}
+
+func (m *dsObjectStore) GetAccountInfo() (info *cafePb.AccountInfo, err error) {
+	txn, err := m.ds.NewTransaction(true)
+	if err != nil {
+		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	var account cafePb.AccountInfo
+	if val, err := txn.Get(accountInfo); err != nil {
+		return nil, err
+	} else if err := proto.Unmarshal(val, &account); err != nil {
+		return nil, err
+	}
+
+	return &account, nil
+}
+
+func (m *dsObjectStore) SaveAccountInfo(info *cafePb.AccountInfo) (err error) {
+	txn, err := m.ds.NewTransaction(false)
+	if err != nil {
+		return fmt.Errorf("error creating txn in datastore: %w", err)
+	}
+	defer txn.Discard()
+
+	b, err := info.Marshal()
 	if err != nil {
 		return err
 	}
