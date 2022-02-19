@@ -96,10 +96,11 @@ message Event {
             google.protobuf.Struct details = 2;
         }
 
+        // TODO: maybe instead we need to add "message Update" to have AccountUpdate event
         message Config {
             message Update {
                 anytype.model.Account.Config config = 1;
-                anytype.model.Account.Info info = 2;
+                anytype.model.Account.Status status = 2;
             }
         }
     }

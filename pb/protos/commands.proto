@@ -2355,8 +2355,7 @@ message Rpc {
             message Response {
                 Error error = 1; // Error while trying to create an account
                 anytype.model.Account account = 2; // A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields
-                Config config = 3;
-                anytype.model.Account.Info info = 4;
+                Config config = 3; // deprecated, use account
 
                 message Error {
                     Code code = 1;
@@ -2421,7 +2420,7 @@ message Rpc {
 
             message Response {
                 Error error = 1; // Error while trying to recover an account
-                anytype.model.Account.Info info = 2;
+                anytype.model.Account.Status status = 2;
 
                 message Error {
                     Code code = 1;
@@ -2452,7 +2451,8 @@ message Rpc {
             message Response {
                 Error error = 1; // Error while trying to launch/select an account
                 anytype.model.Account account = 2; // Selected account
-                Config config = 3;
+                Config config = 3; // deprecated, use account
+
                 message Error {
                     Code code = 1;
                     string description = 2;
