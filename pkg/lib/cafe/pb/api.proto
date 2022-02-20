@@ -146,9 +146,9 @@ message ErrorAttachment {
 
 service API {
     rpc AuthGetToken(stream AuthGetTokenRequest) returns (stream AuthGetTokenResponse) {}
-    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {} // deprecated, use GetAccount
+    rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {} // deprecated, use GetAccountState
     rpc ThreadLogFollow(ThreadLogFollowRequest) returns (ThreadLogFollowResponse) {}
-    rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {} // deprecated, use GetAccount
+    rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {}
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
     rpc AccountDelete(AccountDeleteRequest) returns (AccountDeleteResponse) {}
     rpc GetAccountState(GetAccountStateRequest) returns (GetAccountStateResponse) {}
