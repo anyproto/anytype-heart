@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/gogo/protobuf/proto"
+	ds "github.com/ipfs/go-datastore"
 	"sync"
 	"time"
 
@@ -111,7 +112,7 @@ OuterLoop:
 			select {
 			case <-c.ctx.Done():
 				return
-			case <-t:
+			case <-t: // if we failed too many attempts, we still want to continue trying at least each accountStateFetchInterval
 				break OuterLoop
 			case <-time.After(time.Second * 2 * time.Duration(attempt)):
 				break
@@ -131,6 +132,7 @@ OuterLoop:
 				if !equal {
 					c.NotifyClientApp()
 				}
+				<-t
 				break
 			}
 
@@ -178,12 +180,15 @@ func (c *configFetcher) fetchAccountState() (state *pb.AccountState, equal bool,
 		return
 	}
 	oldState, err := c.store.GetAccountState()
-	if err != nil {
+	if err != nil && err != ds.ErrNotFound {
 		err = fmt.Errorf("failed to get cafe config: %w", err)
 		return
 	}
 
-	equal = proto.Equal(resp.AccountState, oldState)
+	if oldState != nil {
+		equal = proto.Equal(resp.AccountState, oldState)
+	}
+
 	if resp != nil && !equal {
 		err = c.store.SaveAccountState(resp.AccountState)
 		if err != nil {
