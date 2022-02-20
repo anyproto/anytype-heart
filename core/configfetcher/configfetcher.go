@@ -179,7 +179,7 @@ func (c *configFetcher) fetchAccountState() (state *pb.AccountState, equal bool,
 	}
 	oldState, err := c.store.GetAccountState()
 	if err != nil {
-		err = fmt.Errorf("failed to get cafe config: %w, err")
+		err = fmt.Errorf("failed to get cafe config: %w", err)
 		return
 	}
 
