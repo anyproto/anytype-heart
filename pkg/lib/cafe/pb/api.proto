@@ -62,7 +62,7 @@ message ProfileFindResponse {
     string iconColor = 4;
 }
 
-message GetFilePinsRequest {} // Deprecated
+message GetFilePinsRequest {}
 
 message GetFilePinsResponse {
     repeated FilePinStatus pins = 1;
