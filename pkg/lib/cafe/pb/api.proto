@@ -140,6 +140,10 @@ enum ErrorCodes {
     AccountIsActive = 1;
 }
 
+message ErrorAttachment {
+    ErrorCodes code = 1;
+}
+
 service API {
     rpc AuthGetToken(stream AuthGetTokenRequest) returns (stream AuthGetTokenResponse) {}
     rpc GetConfig(GetConfigRequest) returns (GetConfigResponse) {} // deprecated, use GetAccount
