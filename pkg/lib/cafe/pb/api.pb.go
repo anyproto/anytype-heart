@@ -55,59 +55,56 @@ func (PinStatus) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_362f216c1b9aeb43, []int{0}
 }
 
-type GetAccountResponseOption int32
+type ErrorCodes int32
 
 const (
-	GetAccountResponse_WithConfig        GetAccountResponseOption = 0
-	GetAccountResponse_WithAccountStatus GetAccountResponseOption = 1
-	GetAccountResponse_WithFilePins      GetAccountResponseOption = 2
+	ErrorCodes_AccountIsDeleted ErrorCodes = 0
+	ErrorCodes_AccountIsActive  ErrorCodes = 1
 )
 
-var GetAccountResponseOption_name = map[int32]string{
-	0: "WithConfig",
-	1: "WithAccountStatus",
-	2: "WithFilePins",
+var ErrorCodes_name = map[int32]string{
+	0: "AccountIsDeleted",
+	1: "AccountIsActive",
 }
 
-var GetAccountResponseOption_value = map[string]int32{
-	"WithConfig":        0,
-	"WithAccountStatus": 1,
-	"WithFilePins":      2,
+var ErrorCodes_value = map[string]int32{
+	"AccountIsDeleted": 0,
+	"AccountIsActive":  1,
 }
 
-func (x GetAccountResponseOption) String() string {
-	return proto.EnumName(GetAccountResponseOption_name, int32(x))
+func (x ErrorCodes) String() string {
+	return proto.EnumName(ErrorCodes_name, int32(x))
 }
 
-func (GetAccountResponseOption) EnumDescriptor() ([]byte, []int) {
-	return fileDescriptor_362f216c1b9aeb43, []int{16, 0}
+func (ErrorCodes) EnumDescriptor() ([]byte, []int) {
+	return fileDescriptor_362f216c1b9aeb43, []int{1}
 }
 
-type AccountStatusType int32
+type AccountStateStatusType int32
 
 const (
-	Account_IsActive          AccountStatusType = 0
-	Account_IsPendingDeletion AccountStatusType = 1
-	Account_IsDeleted         AccountStatusType = 2
+	AccountState_IsActive          AccountStateStatusType = 0
+	AccountState_IsPendingDeletion AccountStateStatusType = 1
+	AccountState_IsDeleted         AccountStateStatusType = 2
 )
 
-var AccountStatusType_name = map[int32]string{
+var AccountStateStatusType_name = map[int32]string{
 	0: "IsActive",
 	1: "IsPendingDeletion",
 	2: "IsDeleted",
 }
 
-var AccountStatusType_value = map[string]int32{
+var AccountStateStatusType_value = map[string]int32{
 	"IsActive":          0,
 	"IsPendingDeletion": 1,
 	"IsDeleted":         2,
 }
 
-func (x AccountStatusType) String() string {
-	return proto.EnumName(AccountStatusType_name, int32(x))
+func (x AccountStateStatusType) String() string {
+	return proto.EnumName(AccountStateStatusType_name, int32(x))
 }
 
-func (AccountStatusType) EnumDescriptor() ([]byte, []int) {
+func (AccountStateStatusType) EnumDescriptor() ([]byte, []int) {
 	return fileDescriptor_362f216c1b9aeb43, []int{17, 0}
 }
 
@@ -992,7 +989,7 @@ func (m *AccountDeleteRequest) GetIsReverted() bool {
 }
 
 type AccountDeleteResponse struct {
-	Status *AccountStatus `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
+	Status *AccountStateStatus `protobuf:"bytes,1,opt,name=status,proto3" json:"status,omitempty"`
 }
 
 func (m *AccountDeleteResponse) Reset()         { *m = AccountDeleteResponse{} }
@@ -1028,29 +1025,28 @@ func (m *AccountDeleteResponse) XXX_DiscardUnknown() {
 
 var xxx_messageInfo_AccountDeleteResponse proto.InternalMessageInfo
 
-func (m *AccountDeleteResponse) GetStatus() *AccountStatus {
+func (m *AccountDeleteResponse) GetStatus() *AccountStateStatus {
 	if m != nil {
 		return m.Status
 	}
 	return nil
 }
 
-type GetAccountRequest struct {
-	StatusOptions int64 `protobuf:"varint,1,opt,name=statusOptions,proto3" json:"statusOptions,omitempty"`
+type GetAccountStateRequest struct {
 }
 
-func (m *GetAccountRequest) Reset()         { *m = GetAccountRequest{} }
-func (m *GetAccountRequest) String() string { return proto.CompactTextString(m) }
-func (*GetAccountRequest) ProtoMessage()    {}
-func (*GetAccountRequest) Descriptor() ([]byte, []int) {
+func (m *GetAccountStateRequest) Reset()         { *m = GetAccountStateRequest{} }
+func (m *GetAccountStateRequest) String() string { return proto.CompactTextString(m) }
+func (*GetAccountStateRequest) ProtoMessage()    {}
+func (*GetAccountStateRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_362f216c1b9aeb43, []int{15}
 }
-func (m *GetAccountRequest) XXX_Unmarshal(b []byte) error {
+func (m *GetAccountStateRequest) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *GetAccountRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *GetAccountStateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_GetAccountRequest.Marshal(b, m, deterministic)
+		return xxx_messageInfo_GetAccountStateRequest.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1060,41 +1056,34 @@ func (m *GetAccountRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, e
 		return b[:n], nil
 	}
 }
-func (m *GetAccountRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetAccountRequest.Merge(m, src)
+func (m *GetAccountStateRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetAccountStateRequest.Merge(m, src)
 }
-func (m *GetAccountRequest) XXX_Size() int {
+func (m *GetAccountStateRequest) XXX_Size() int {
 	return m.Size()
 }
-func (m *GetAccountRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetAccountRequest.DiscardUnknown(m)
+func (m *GetAccountStateRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetAccountStateRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetAccountRequest proto.InternalMessageInfo
+var xxx_messageInfo_GetAccountStateRequest proto.InternalMessageInfo
 
-func (m *GetAccountRequest) GetStatusOptions() int64 {
-	if m != nil {
-		return m.StatusOptions
-	}
-	return 0
+type GetAccountStateResponse struct {
+	AccountState *AccountState `protobuf:"bytes,1,opt,name=accountState,proto3" json:"accountState,omitempty"`
 }
 
-type GetAccountResponse struct {
-	Account *Account `protobuf:"bytes,1,opt,name=account,proto3" json:"account,omitempty"`
-}
-
-func (m *GetAccountResponse) Reset()         { *m = GetAccountResponse{} }
-func (m *GetAccountResponse) String() string { return proto.CompactTextString(m) }
-func (*GetAccountResponse) ProtoMessage()    {}
-func (*GetAccountResponse) Descriptor() ([]byte, []int) {
+func (m *GetAccountStateResponse) Reset()         { *m = GetAccountStateResponse{} }
+func (m *GetAccountStateResponse) String() string { return proto.CompactTextString(m) }
+func (*GetAccountStateResponse) ProtoMessage()    {}
+func (*GetAccountStateResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_362f216c1b9aeb43, []int{16}
 }
-func (m *GetAccountResponse) XXX_Unmarshal(b []byte) error {
+func (m *GetAccountStateResponse) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *GetAccountResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *GetAccountStateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_GetAccountResponse.Marshal(b, m, deterministic)
+		return xxx_messageInfo_GetAccountStateResponse.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1104,43 +1093,42 @@ func (m *GetAccountResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, 
 		return b[:n], nil
 	}
 }
-func (m *GetAccountResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_GetAccountResponse.Merge(m, src)
+func (m *GetAccountStateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_GetAccountStateResponse.Merge(m, src)
 }
-func (m *GetAccountResponse) XXX_Size() int {
+func (m *GetAccountStateResponse) XXX_Size() int {
 	return m.Size()
 }
-func (m *GetAccountResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_GetAccountResponse.DiscardUnknown(m)
+func (m *GetAccountStateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_GetAccountStateResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_GetAccountResponse proto.InternalMessageInfo
+var xxx_messageInfo_GetAccountStateResponse proto.InternalMessageInfo
 
-func (m *GetAccountResponse) GetAccount() *Account {
+func (m *GetAccountStateResponse) GetAccountState() *AccountState {
 	if m != nil {
-		return m.Account
+		return m.AccountState
 	}
 	return nil
 }
 
-type Account struct {
-	Config *AccountConfig   `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
-	Status *AccountStatus   `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Pins   *AccountFilePins `protobuf:"bytes,3,opt,name=pins,proto3" json:"pins,omitempty"`
+type AccountState struct {
+	Config *AccountStateConfig `protobuf:"bytes,1,opt,name=config,proto3" json:"config,omitempty"`
+	Status *AccountStateStatus `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
 }
 
-func (m *Account) Reset()         { *m = Account{} }
-func (m *Account) String() string { return proto.CompactTextString(m) }
-func (*Account) ProtoMessage()    {}
-func (*Account) Descriptor() ([]byte, []int) {
+func (m *AccountState) Reset()         { *m = AccountState{} }
+func (m *AccountState) String() string { return proto.CompactTextString(m) }
+func (*AccountState) ProtoMessage()    {}
+func (*AccountState) Descriptor() ([]byte, []int) {
 	return fileDescriptor_362f216c1b9aeb43, []int{17}
 }
-func (m *Account) XXX_Unmarshal(b []byte) error {
+func (m *AccountState) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *AccountState) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_Account.Marshal(b, m, deterministic)
+		return xxx_messageInfo_AccountState.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1150,56 +1138,49 @@ func (m *Account) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 		return b[:n], nil
 	}
 }
-func (m *Account) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_Account.Merge(m, src)
+func (m *AccountState) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountState.Merge(m, src)
 }
-func (m *Account) XXX_Size() int {
+func (m *AccountState) XXX_Size() int {
 	return m.Size()
 }
-func (m *Account) XXX_DiscardUnknown() {
-	xxx_messageInfo_Account.DiscardUnknown(m)
+func (m *AccountState) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountState.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_Account proto.InternalMessageInfo
+var xxx_messageInfo_AccountState proto.InternalMessageInfo
 
-func (m *Account) GetConfig() *AccountConfig {
+func (m *AccountState) GetConfig() *AccountStateConfig {
 	if m != nil {
 		return m.Config
 	}
 	return nil
 }
 
-func (m *Account) GetStatus() *AccountStatus {
+func (m *AccountState) GetStatus() *AccountStateStatus {
 	if m != nil {
 		return m.Status
 	}
 	return nil
 }
 
-func (m *Account) GetPins() *AccountFilePins {
-	if m != nil {
-		return m.Pins
-	}
-	return nil
+type AccountStateStatus struct {
+	Status       AccountStateStatusType `protobuf:"varint,1,opt,name=status,proto3,enum=pb.AccountStateStatusType" json:"status,omitempty"`
+	DeletionDate int64                  `protobuf:"varint,2,opt,name=deletionDate,proto3" json:"deletionDate,omitempty"`
 }
 
-type AccountStatus struct {
-	Status       AccountStatusType `protobuf:"varint,1,opt,name=status,proto3,enum=pb.AccountStatusType" json:"status,omitempty"`
-	DeletionDate int64             `protobuf:"varint,2,opt,name=deletionDate,proto3" json:"deletionDate,omitempty"`
-}
-
-func (m *AccountStatus) Reset()         { *m = AccountStatus{} }
-func (m *AccountStatus) String() string { return proto.CompactTextString(m) }
-func (*AccountStatus) ProtoMessage()    {}
-func (*AccountStatus) Descriptor() ([]byte, []int) {
+func (m *AccountStateStatus) Reset()         { *m = AccountStateStatus{} }
+func (m *AccountStateStatus) String() string { return proto.CompactTextString(m) }
+func (*AccountStateStatus) ProtoMessage()    {}
+func (*AccountStateStatus) Descriptor() ([]byte, []int) {
 	return fileDescriptor_362f216c1b9aeb43, []int{17, 0}
 }
-func (m *AccountStatus) XXX_Unmarshal(b []byte) error {
+func (m *AccountStateStatus) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *AccountStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *AccountStateStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_AccountStatus.Marshal(b, m, deterministic)
+		return xxx_messageInfo_AccountStateStatus.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1209,33 +1190,33 @@ func (m *AccountStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error
 		return b[:n], nil
 	}
 }
-func (m *AccountStatus) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountStatus.Merge(m, src)
+func (m *AccountStateStatus) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountStateStatus.Merge(m, src)
 }
-func (m *AccountStatus) XXX_Size() int {
+func (m *AccountStateStatus) XXX_Size() int {
 	return m.Size()
 }
-func (m *AccountStatus) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountStatus.DiscardUnknown(m)
+func (m *AccountStateStatus) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountStateStatus.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AccountStatus proto.InternalMessageInfo
+var xxx_messageInfo_AccountStateStatus proto.InternalMessageInfo
 
-func (m *AccountStatus) GetStatus() AccountStatusType {
+func (m *AccountStateStatus) GetStatus() AccountStateStatusType {
 	if m != nil {
 		return m.Status
 	}
-	return Account_IsActive
+	return AccountState_IsActive
 }
 
-func (m *AccountStatus) GetDeletionDate() int64 {
+func (m *AccountStateStatus) GetDeletionDate() int64 {
 	if m != nil {
 		return m.DeletionDate
 	}
 	return 0
 }
 
-type AccountConfig struct {
+type AccountStateConfig struct {
 	EnableDataview             bool          `protobuf:"varint,1,opt,name=enableDataview,proto3" json:"enableDataview,omitempty"`
 	EnableDebug                bool          `protobuf:"varint,2,opt,name=enableDebug,proto3" json:"enableDebug,omitempty"`
 	EnableReleaseChannelSwitch bool          `protobuf:"varint,3,opt,name=enableReleaseChannelSwitch,proto3" json:"enableReleaseChannelSwitch,omitempty"`
@@ -1244,18 +1225,18 @@ type AccountConfig struct {
 	Extra                      *types.Struct `protobuf:"bytes,100,opt,name=extra,proto3" json:"extra,omitempty"`
 }
 
-func (m *AccountConfig) Reset()         { *m = AccountConfig{} }
-func (m *AccountConfig) String() string { return proto.CompactTextString(m) }
-func (*AccountConfig) ProtoMessage()    {}
-func (*AccountConfig) Descriptor() ([]byte, []int) {
+func (m *AccountStateConfig) Reset()         { *m = AccountStateConfig{} }
+func (m *AccountStateConfig) String() string { return proto.CompactTextString(m) }
+func (*AccountStateConfig) ProtoMessage()    {}
+func (*AccountStateConfig) Descriptor() ([]byte, []int) {
 	return fileDescriptor_362f216c1b9aeb43, []int{17, 1}
 }
-func (m *AccountConfig) XXX_Unmarshal(b []byte) error {
+func (m *AccountStateConfig) XXX_Unmarshal(b []byte) error {
 	return m.Unmarshal(b)
 }
-func (m *AccountConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+func (m *AccountStateConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
 	if deterministic {
-		return xxx_messageInfo_AccountConfig.Marshal(b, m, deterministic)
+		return xxx_messageInfo_AccountStateConfig.Marshal(b, m, deterministic)
 	} else {
 		b = b[:cap(b)]
 		n, err := m.MarshalToSizedBuffer(b)
@@ -1265,160 +1246,64 @@ func (m *AccountConfig) XXX_Marshal(b []byte, deterministic bool) ([]byte, error
 		return b[:n], nil
 	}
 }
-func (m *AccountConfig) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountConfig.Merge(m, src)
+func (m *AccountStateConfig) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_AccountStateConfig.Merge(m, src)
 }
-func (m *AccountConfig) XXX_Size() int {
+func (m *AccountStateConfig) XXX_Size() int {
 	return m.Size()
 }
-func (m *AccountConfig) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountConfig.DiscardUnknown(m)
+func (m *AccountStateConfig) XXX_DiscardUnknown() {
+	xxx_messageInfo_AccountStateConfig.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_AccountConfig proto.InternalMessageInfo
+var xxx_messageInfo_AccountStateConfig proto.InternalMessageInfo
 
-func (m *AccountConfig) GetEnableDataview() bool {
+func (m *AccountStateConfig) GetEnableDataview() bool {
 	if m != nil {
 		return m.EnableDataview
 	}
 	return false
 }
 
-func (m *AccountConfig) GetEnableDebug() bool {
+func (m *AccountStateConfig) GetEnableDebug() bool {
 	if m != nil {
 		return m.EnableDebug
 	}
 	return false
 }
 
-func (m *AccountConfig) GetEnableReleaseChannelSwitch() bool {
+func (m *AccountStateConfig) GetEnableReleaseChannelSwitch() bool {
 	if m != nil {
 		return m.EnableReleaseChannelSwitch
 	}
 	return false
 }
 
-func (m *AccountConfig) GetSimultaneousRequests() int32 {
+func (m *AccountStateConfig) GetSimultaneousRequests() int32 {
 	if m != nil {
 		return m.SimultaneousRequests
 	}
 	return 0
 }
 
-func (m *AccountConfig) GetEnableSpaces() bool {
+func (m *AccountStateConfig) GetEnableSpaces() bool {
 	if m != nil {
 		return m.EnableSpaces
 	}
 	return false
 }
 
-func (m *AccountConfig) GetExtra() *types.Struct {
+func (m *AccountStateConfig) GetExtra() *types.Struct {
 	if m != nil {
 		return m.Extra
 	}
 	return nil
 }
 
-type AccountFilePins struct {
-	Pins []*AccountFilePinsFilePinStatus `protobuf:"bytes,1,rep,name=pins,proto3" json:"pins,omitempty"`
-}
-
-func (m *AccountFilePins) Reset()         { *m = AccountFilePins{} }
-func (m *AccountFilePins) String() string { return proto.CompactTextString(m) }
-func (*AccountFilePins) ProtoMessage()    {}
-func (*AccountFilePins) Descriptor() ([]byte, []int) {
-	return fileDescriptor_362f216c1b9aeb43, []int{17, 2}
-}
-func (m *AccountFilePins) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *AccountFilePins) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_AccountFilePins.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *AccountFilePins) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountFilePins.Merge(m, src)
-}
-func (m *AccountFilePins) XXX_Size() int {
-	return m.Size()
-}
-func (m *AccountFilePins) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountFilePins.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AccountFilePins proto.InternalMessageInfo
-
-func (m *AccountFilePins) GetPins() []*AccountFilePinsFilePinStatus {
-	if m != nil {
-		return m.Pins
-	}
-	return nil
-}
-
-type AccountFilePinsFilePinStatus struct {
-	Cid    string    `protobuf:"bytes,1,opt,name=cid,proto3" json:"cid,omitempty"`
-	Status PinStatus `protobuf:"varint,2,opt,name=status,proto3,enum=pb.PinStatus" json:"status,omitempty"`
-}
-
-func (m *AccountFilePinsFilePinStatus) Reset()         { *m = AccountFilePinsFilePinStatus{} }
-func (m *AccountFilePinsFilePinStatus) String() string { return proto.CompactTextString(m) }
-func (*AccountFilePinsFilePinStatus) ProtoMessage()    {}
-func (*AccountFilePinsFilePinStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_362f216c1b9aeb43, []int{17, 2, 0}
-}
-func (m *AccountFilePinsFilePinStatus) XXX_Unmarshal(b []byte) error {
-	return m.Unmarshal(b)
-}
-func (m *AccountFilePinsFilePinStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	if deterministic {
-		return xxx_messageInfo_AccountFilePinsFilePinStatus.Marshal(b, m, deterministic)
-	} else {
-		b = b[:cap(b)]
-		n, err := m.MarshalToSizedBuffer(b)
-		if err != nil {
-			return nil, err
-		}
-		return b[:n], nil
-	}
-}
-func (m *AccountFilePinsFilePinStatus) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_AccountFilePinsFilePinStatus.Merge(m, src)
-}
-func (m *AccountFilePinsFilePinStatus) XXX_Size() int {
-	return m.Size()
-}
-func (m *AccountFilePinsFilePinStatus) XXX_DiscardUnknown() {
-	xxx_messageInfo_AccountFilePinsFilePinStatus.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_AccountFilePinsFilePinStatus proto.InternalMessageInfo
-
-func (m *AccountFilePinsFilePinStatus) GetCid() string {
-	if m != nil {
-		return m.Cid
-	}
-	return ""
-}
-
-func (m *AccountFilePinsFilePinStatus) GetStatus() PinStatus {
-	if m != nil {
-		return m.Status
-	}
-	return PinStatus_Queued
-}
-
 func init() {
 	proto.RegisterEnum("pb.PinStatus", PinStatus_name, PinStatus_value)
-	proto.RegisterEnum("pb.GetAccountResponseOption", GetAccountResponseOption_name, GetAccountResponseOption_value)
-	proto.RegisterEnum("pb.AccountStatusType", AccountStatusType_name, AccountStatusType_value)
+	proto.RegisterEnum("pb.ErrorCodes", ErrorCodes_name, ErrorCodes_value)
+	proto.RegisterEnum("pb.AccountStateStatusType", AccountStateStatusType_name, AccountStateStatusType_value)
 	proto.RegisterType((*WithSignature)(nil), "pb.WithSignature")
 	proto.RegisterType((*AuthGetTokenRequest)(nil), "pb.AuthGetTokenRequest")
 	proto.RegisterType((*AuthGetTokenResponse)(nil), "pb.AuthGetTokenResponse")
@@ -1437,92 +1322,87 @@ func init() {
 	proto.RegisterType((*GetConfigResponseConfig)(nil), "pb.GetConfigResponse.Config")
 	proto.RegisterType((*AccountDeleteRequest)(nil), "pb.AccountDeleteRequest")
 	proto.RegisterType((*AccountDeleteResponse)(nil), "pb.AccountDeleteResponse")
-	proto.RegisterType((*GetAccountRequest)(nil), "pb.GetAccountRequest")
-	proto.RegisterType((*GetAccountResponse)(nil), "pb.GetAccountResponse")
-	proto.RegisterType((*Account)(nil), "pb.Account")
-	proto.RegisterType((*AccountStatus)(nil), "pb.Account.Status")
-	proto.RegisterType((*AccountConfig)(nil), "pb.Account.Config")
-	proto.RegisterType((*AccountFilePins)(nil), "pb.Account.FilePins")
-	proto.RegisterType((*AccountFilePinsFilePinStatus)(nil), "pb.Account.FilePins.FilePinStatus")
+	proto.RegisterType((*GetAccountStateRequest)(nil), "pb.GetAccountStateRequest")
+	proto.RegisterType((*GetAccountStateResponse)(nil), "pb.GetAccountStateResponse")
+	proto.RegisterType((*AccountState)(nil), "pb.AccountState")
+	proto.RegisterType((*AccountStateStatus)(nil), "pb.AccountState.Status")
+	proto.RegisterType((*AccountStateConfig)(nil), "pb.AccountState.Config")
 }
 
 func init() { proto.RegisterFile("pkg/lib/cafe/pb/api.proto", fileDescriptor_362f216c1b9aeb43) }
 
 var fileDescriptor_362f216c1b9aeb43 = []byte{
-	// 1164 bytes of a gzipped FileDescriptorProto
+	// 1115 bytes of a gzipped FileDescriptorProto
 	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xec, 0x56, 0x4f, 0x6f, 0xe3, 0x44,
-	0x14, 0x8f, 0x93, 0x36, 0x9b, 0xbc, 0x24, 0x5d, 0x77, 0x9a, 0x6d, 0xbb, 0xa6, 0x8a, 0xaa, 0xd1,
-	0x16, 0x45, 0x95, 0x36, 0x59, 0x85, 0xd5, 0x8a, 0x5d, 0x09, 0xd8, 0xb4, 0x55, 0xda, 0xc0, 0x4a,
-	0x14, 0xa7, 0x12, 0x12, 0xe2, 0xe2, 0xc4, 0x2f, 0x89, 0xb5, 0xae, 0xc7, 0xc4, 0xe3, 0x76, 0xf7,
-	0xc2, 0x95, 0x0b, 0x07, 0xae, 0xc0, 0xc7, 0xe0, 0x0b, 0x70, 0xe4, 0xb8, 0x27, 0xc4, 0x11, 0xb5,
-	0xe2, 0x7b, 0x20, 0xcf, 0x8c, 0x1d, 0x3b, 0x49, 0xe1, 0xc4, 0x8d, 0x9b, 0xe7, 0x37, 0xbf, 0xf7,
-	0x7b, 0xf3, 0xe6, 0xfd, 0xf1, 0xc0, 0x43, 0xff, 0xf5, 0xa4, 0xed, 0x3a, 0xc3, 0xf6, 0xc8, 0x1a,
-	0x63, 0xdb, 0x1f, 0xb6, 0x2d, 0xdf, 0x69, 0xf9, 0x33, 0xc6, 0x19, 0xc9, 0xfb, 0x43, 0x63, 0x6f,
-	0xc2, 0xd8, 0xc4, 0xc5, 0xb6, 0x40, 0x86, 0xe1, 0xb8, 0x1d, 0xf0, 0x59, 0x38, 0xe2, 0x92, 0x41,
-	0x7f, 0xd1, 0xa0, 0xf6, 0xa5, 0xc3, 0xa7, 0x03, 0x67, 0xe2, 0x59, 0x3c, 0x9c, 0x21, 0x79, 0x1f,
-	0x36, 0xac, 0xd1, 0x88, 0x85, 0x1e, 0xef, 0xda, 0xf6, 0x0c, 0x83, 0x60, 0x57, 0xdb, 0xd7, 0x9a,
-	0x65, 0x73, 0x01, 0x25, 0x8f, 0xa0, 0x66, 0xe3, 0x95, 0x33, 0xc2, 0x98, 0x96, 0x17, 0xb4, 0x2c,
-	0x48, 0x0e, 0x41, 0x57, 0x76, 0x89, 0x87, 0xdd, 0x82, 0x20, 0x2e, 0xe1, 0xa4, 0x09, 0xf7, 0xa5,
-	0xf1, 0x9c, 0xba, 0x26, 0xa8, 0x8b, 0x30, 0x1d, 0xc2, 0x56, 0x37, 0xe4, 0xd3, 0x53, 0xe4, 0x17,
-	0xec, 0x35, 0x7a, 0x26, 0x7e, 0x13, 0x62, 0xc0, 0x89, 0x01, 0x25, 0x2b, 0xe4, 0xd3, 0x63, 0x66,
-	0xa3, 0x3a, 0x74, 0xb2, 0x26, 0x6d, 0x28, 0x07, 0x89, 0xac, 0xbd, 0xaf, 0x35, 0x2b, 0x9d, 0xcd,
-	0x96, 0x3f, 0x6c, 0x65, 0x82, 0x37, 0xe7, 0x1c, 0xfa, 0xab, 0x06, 0xf5, 0xac, 0x93, 0xc0, 0x67,
-	0x5e, 0x80, 0x64, 0x6f, 0xd1, 0xcb, 0x59, 0x2e, 0xe5, 0xe7, 0x05, 0xac, 0xf3, 0x88, 0x2e, 0xae,
-	0xa3, 0xd2, 0xa1, 0x91, 0x8f, 0x55, 0x32, 0x2d, 0xb1, 0xea, 0x7b, 0x63, 0x76, 0x96, 0x33, 0xa5,
-	0x89, 0xf1, 0x09, 0x94, 0x13, 0x94, 0xd4, 0x63, 0x21, 0x19, 0x89, 0x5c, 0x90, 0x3d, 0x28, 0xe3,
-	0x1b, 0xdf, 0x99, 0x61, 0xd0, 0xe5, 0xc2, 0x45, 0xc1, 0x9c, 0x03, 0x47, 0x35, 0xa8, 0xf0, 0x6b,
-	0x36, 0xe0, 0xe8, 0xf7, 0x5c, 0x76, 0x4d, 0x3f, 0x85, 0xed, 0x8b, 0xe9, 0x0c, 0x2d, 0xfb, 0x15,
-	0x9b, 0xf4, 0x98, 0xeb, 0xb2, 0xeb, 0xf8, 0xa6, 0x08, 0xac, 0x59, 0xb6, 0x3d, 0x13, 0xda, 0x55,
-	0x53, 0x7c, 0x47, 0xd2, 0x63, 0x41, 0xfa, 0x0c, 0xdf, 0x0a, 0xe9, 0xaa, 0x39, 0x07, 0xe8, 0x43,
-	0xd8, 0x59, 0xd2, 0x92, 0x91, 0x50, 0x0a, 0x1b, 0x3d, 0xc7, 0xc5, 0x73, 0x27, 0x49, 0x84, 0x0e,
-	0x85, 0x91, 0x63, 0xab, 0x93, 0x47, 0x9f, 0x74, 0x13, 0xee, 0x27, 0x1c, 0x65, 0xf6, 0x21, 0x90,
-	0xf3, 0x19, 0x1b, 0x3b, 0x2e, 0xf6, 0x1c, 0xcf, 0x8e, 0x4d, 0x29, 0x54, 0x53, 0x85, 0x16, 0x15,
-	0x5f, 0xa1, 0x59, 0x36, 0x33, 0x18, 0xfd, 0x4e, 0x83, 0xad, 0x8c, 0xa9, 0xca, 0xcc, 0x3e, 0x54,
-	0x52, 0x3c, 0xe5, 0x3e, 0x0d, 0x45, 0x71, 0x7b, 0xd6, 0x25, 0xaa, 0x5a, 0x15, 0xdf, 0x51, 0xdc,
-	0xce, 0x88, 0x79, 0xfd, 0x4b, 0x6b, 0x12, 0xd7, 0xe6, 0x1c, 0x88, 0x77, 0x8f, 0x99, 0xcb, 0x66,
-	0xaa, 0x1c, 0xe7, 0x00, 0xad, 0x03, 0x39, 0x45, 0xae, 0x22, 0x0b, 0x54, 0x0c, 0xf4, 0x27, 0x0d,
-	0xb6, 0x32, 0xb0, 0x3a, 0xdf, 0x73, 0x58, 0xf3, 0x1d, 0x4f, 0xc6, 0x54, 0xe9, 0x1c, 0x44, 0xa5,
-	0xb1, 0x82, 0xd6, 0x52, 0xc0, 0x80, 0x5b, 0x3c, 0x0c, 0x4c, 0x61, 0x62, 0x9c, 0x41, 0x2d, 0x03,
-	0x2f, 0x5f, 0x31, 0x39, 0x80, 0x62, 0x20, 0xf6, 0x44, 0x74, 0x1b, 0x9d, 0x5a, 0xa4, 0x3f, 0xd7,
-	0x51, 0x9b, 0x94, 0x80, 0x7e, 0x8a, 0xfc, 0x98, 0x79, 0x63, 0x67, 0x12, 0x1f, 0xf8, 0xaf, 0x3c,
-	0x6c, 0xa6, 0x40, 0x75, 0xdc, 0xa7, 0x50, 0x1c, 0x09, 0x44, 0x78, 0xa9, 0x74, 0xf6, 0xd4, 0x81,
-	0xb3, 0xb4, 0x96, 0x5a, 0x2a, 0xae, 0xf1, 0x63, 0x1e, 0x8a, 0x12, 0x8a, 0x46, 0x09, 0x7a, 0xd6,
-	0xd0, 0xc5, 0x13, 0x8b, 0x5b, 0x57, 0x0e, 0x5e, 0x0b, 0xa1, 0x92, 0xb9, 0x80, 0x46, 0x79, 0x53,
-	0x08, 0x0e, 0xc3, 0x89, 0x38, 0x7e, 0xc9, 0x4c, 0x43, 0xe4, 0x63, 0x30, 0xe4, 0xd2, 0x44, 0x17,
-	0xad, 0x00, 0x8f, 0xa7, 0x96, 0xe7, 0xa1, 0x3b, 0xb8, 0x76, 0xf8, 0x68, 0x2a, 0x92, 0x56, 0x32,
-	0xff, 0x81, 0x41, 0x3a, 0x50, 0x0f, 0x9c, 0xcb, 0xd0, 0xe5, 0x96, 0x87, 0x2c, 0x8c, 0x13, 0x15,
-	0x88, 0x84, 0xae, 0x9b, 0x2b, 0xf7, 0xa2, 0x4a, 0x94, 0x8a, 0x03, 0xdf, 0x1a, 0x61, 0xb0, 0xbb,
-	0x2e, 0xbc, 0x64, 0x30, 0xf2, 0x18, 0xd6, 0xf1, 0x0d, 0x9f, 0x59, 0x6a, 0xa2, 0xec, 0xb4, 0xe4,
-	0xb0, 0x6d, 0xc5, 0xc3, 0xb6, 0x35, 0x10, 0xc3, 0xd6, 0x94, 0x2c, 0xfa, 0x0c, 0xea, 0x5d, 0x59,
-	0x8d, 0x27, 0xe8, 0x22, 0xc7, 0xb8, 0xe8, 0x1b, 0x00, 0x4e, 0x60, 0xe2, 0x15, 0xce, 0x38, 0xda,
-	0xea, 0x92, 0x52, 0x08, 0x3d, 0x86, 0x07, 0x0b, 0x76, 0x2a, 0x45, 0x87, 0x49, 0xce, 0x65, 0x8a,
-	0x88, 0x18, 0x37, 0x92, 0xda, 0x5a, 0x48, 0xfc, 0x73, 0x91, 0x63, 0xb5, 0x19, 0x7b, 0x7e, 0x04,
-	0x35, 0xb9, 0xfd, 0xb9, 0xcf, 0x1d, 0xe6, 0x49, 0x9d, 0x82, 0x99, 0x05, 0xe9, 0xb7, 0xa2, 0xcc,
-	0x13, 0x53, 0xe5, 0xfc, 0x00, 0xee, 0xa9, 0xde, 0x52, 0xde, 0x2b, 0x29, 0xef, 0x66, 0xbc, 0x47,
-	0xbb, 0x50, 0x94, 0x3a, 0x64, 0x03, 0x20, 0x1a, 0xb7, 0xb2, 0x3a, 0xf4, 0x1c, 0x79, 0x00, 0x9b,
-	0xd1, 0x5a, 0x59, 0xc8, 0xe3, 0xea, 0x1a, 0xd1, 0xa1, 0x1a, 0xc1, 0x71, 0x5f, 0xe8, 0x79, 0xfa,
-	0xfb, 0x3a, 0xdc, 0x53, 0xac, 0x28, 0xe4, 0x4c, 0x55, 0x66, 0x42, 0xce, 0xd6, 0x62, 0xea, 0x7a,
-	0xf2, 0xff, 0x76, 0x3d, 0xa4, 0xa9, 0x9a, 0xb3, 0x20, 0x98, 0xf5, 0x34, 0x33, 0xe9, 0x50, 0xd9,
-	0x8b, 0x5f, 0x43, 0x51, 0x35, 0x61, 0x2b, 0x73, 0xfd, 0x1b, 0x9d, 0xed, 0x65, 0xfd, 0x8b, 0xb7,
-	0x3e, 0x26, 0x3e, 0x28, 0x54, 0xed, 0x28, 0x81, 0x0e, 0xf3, 0x4e, 0x2c, 0x8e, 0x6a, 0x80, 0x67,
-	0xb0, 0xff, 0xfb, 0xe7, 0xee, 0xfe, 0x31, 0xbe, 0xd7, 0xa0, 0x14, 0x27, 0x83, 0x3c, 0xcb, 0x4c,
-	0x53, 0xba, 0x2a, 0x61, 0xff, 0xf1, 0x28, 0x7d, 0x09, 0x30, 0x4f, 0x32, 0xa9, 0x42, 0xa9, 0x1f,
-	0x74, 0x47, 0xdc, 0xb9, 0x42, 0x59, 0xdb, 0xfd, 0xe0, 0x1c, 0x3d, 0xdb, 0xf1, 0x26, 0x27, 0x2a,
-	0xbf, 0xba, 0x46, 0x6a, 0x50, 0xee, 0x07, 0xb2, 0x89, 0x6d, 0x3d, 0x7f, 0xf8, 0x18, 0xca, 0xf3,
-	0x73, 0x00, 0x14, 0xbf, 0x08, 0x31, 0x44, 0x5b, 0xcf, 0x45, 0xdf, 0x3d, 0xcb, 0x71, 0xd1, 0xd6,
-	0x4b, 0xa4, 0x04, 0x6b, 0x27, 0xcc, 0x43, 0xbd, 0xdc, 0xf9, 0x79, 0x0d, 0x0a, 0xdd, 0xf3, 0x3e,
-	0x39, 0x85, 0x6a, 0xfa, 0x4d, 0x41, 0x76, 0x96, 0x5f, 0x19, 0x22, 0x09, 0xc6, 0xee, 0x5d, 0xcf,
-	0x0f, 0x9a, 0x6b, 0x6a, 0x4f, 0x34, 0xf2, 0x02, 0xca, 0xc9, 0x40, 0x27, 0xf5, 0x85, 0xf9, 0x2e,
-	0x25, 0x1e, 0xac, 0x9c, 0xfa, 0x34, 0x47, 0x5e, 0xc1, 0xfd, 0x85, 0x17, 0x01, 0x31, 0x22, 0xee,
-	0xea, 0x27, 0x87, 0xf1, 0xde, 0xca, 0xbd, 0x44, 0xed, 0x25, 0x54, 0x52, 0xff, 0x42, 0xb2, 0xbd,
-	0xf4, 0x73, 0x94, 0x2a, 0x3b, 0x77, 0xfc, 0x34, 0x69, 0x8e, 0x3c, 0x85, 0x7b, 0x0a, 0x25, 0xa2,
-	0xcf, 0xb3, 0x6f, 0x12, 0x63, 0x2b, 0x83, 0x25, 0x56, 0x3d, 0xa8, 0x65, 0x46, 0x2b, 0xd9, 0x4d,
-	0x15, 0x52, 0x66, 0x4a, 0x1b, 0x0f, 0x57, 0xec, 0x24, 0x3a, 0x1f, 0x01, 0xcc, 0x47, 0x24, 0x89,
-	0x2f, 0x2d, 0x3b, 0x6d, 0x8d, 0xed, 0x45, 0x38, 0x31, 0x3f, 0x82, 0x4a, 0xea, 0x45, 0x23, 0xc3,
-	0x5f, 0x7e, 0x1d, 0xc9, 0xf0, 0x57, 0x3c, 0x7d, 0x68, 0xee, 0x89, 0x76, 0xb4, 0xf7, 0xdb, 0x4d,
-	0x43, 0x7b, 0x77, 0xd3, 0xd0, 0xfe, 0xbc, 0x69, 0x68, 0x3f, 0xdc, 0x36, 0x72, 0xef, 0x6e, 0x1b,
-	0xb9, 0x3f, 0x6e, 0x1b, 0xb9, 0xaf, 0xf2, 0xfe, 0x70, 0x58, 0x14, 0x3d, 0xf5, 0xc1, 0xdf, 0x01,
-	0x00, 0x00, 0xff, 0xff, 0xfe, 0x1a, 0x4f, 0xa8, 0x2f, 0x0c, 0x00, 0x00,
+	0x14, 0xb7, 0xd3, 0x34, 0x24, 0x2f, 0x49, 0x9b, 0x4e, 0xd3, 0x36, 0xf5, 0x56, 0x51, 0x65, 0xb1,
+	0xa8, 0xaa, 0xb4, 0xc9, 0x2a, 0xbb, 0xe2, 0xcf, 0x1e, 0x60, 0xd3, 0x96, 0xb4, 0x81, 0x95, 0x28,
+	0x4e, 0x25, 0x24, 0x6e, 0x8e, 0xfd, 0x92, 0x8c, 0xd6, 0xf5, 0x18, 0x7b, 0xdc, 0xee, 0x7e, 0x02,
+	0xae, 0x5c, 0xe1, 0x23, 0x70, 0x43, 0x7c, 0x01, 0x8e, 0x1c, 0xf7, 0xc8, 0x11, 0xb5, 0xe2, 0x7b,
+	0x20, 0x8f, 0xc7, 0x8e, 0x9d, 0xa4, 0x2b, 0x3e, 0x00, 0x37, 0xcf, 0x6f, 0x7e, 0xef, 0xff, 0x9b,
+	0xf7, 0x0c, 0xfb, 0xde, 0xeb, 0x69, 0xd7, 0xa1, 0xe3, 0xae, 0x65, 0x4e, 0xb0, 0xeb, 0x8d, 0xbb,
+	0xa6, 0x47, 0x3b, 0x9e, 0xcf, 0x38, 0x23, 0x05, 0x6f, 0xac, 0x1d, 0x4c, 0x19, 0x9b, 0x3a, 0xd8,
+	0x15, 0xc8, 0x38, 0x9c, 0x74, 0x03, 0xee, 0x87, 0x16, 0x8f, 0x19, 0xfa, 0xef, 0x2a, 0xd4, 0xbf,
+	0xa3, 0x7c, 0x36, 0xa2, 0x53, 0xd7, 0xe4, 0xa1, 0x8f, 0xe4, 0x23, 0xd8, 0x30, 0x2d, 0x8b, 0x85,
+	0x2e, 0xef, 0xdb, 0xb6, 0x8f, 0x41, 0xd0, 0x52, 0x0f, 0xd5, 0xa3, 0x8a, 0xb1, 0x80, 0x92, 0x0f,
+	0xa1, 0x6e, 0xe3, 0x0d, 0xb5, 0x30, 0xa1, 0x15, 0x04, 0x2d, 0x0f, 0x92, 0x63, 0x68, 0x48, 0xb9,
+	0xd4, 0x42, 0x6b, 0x4d, 0x10, 0x97, 0x70, 0x72, 0x04, 0x9b, 0xb1, 0xf0, 0x9c, 0x5a, 0x14, 0xd4,
+	0x45, 0x58, 0x1f, 0xc3, 0x76, 0x3f, 0xe4, 0xb3, 0x73, 0xe4, 0x57, 0xec, 0x35, 0xba, 0x06, 0xfe,
+	0x10, 0x62, 0xc0, 0x89, 0x06, 0x65, 0x33, 0xe4, 0xb3, 0x53, 0x66, 0xa3, 0x74, 0x3a, 0x3d, 0x93,
+	0x2e, 0x54, 0x82, 0x54, 0xad, 0x7d, 0xa8, 0x1e, 0x55, 0x7b, 0x5b, 0x1d, 0x6f, 0xdc, 0xc9, 0x05,
+	0x6f, 0xcc, 0x39, 0xfa, 0x1f, 0x2a, 0x34, 0xf3, 0x46, 0x02, 0x8f, 0xb9, 0x01, 0x92, 0x83, 0x45,
+	0x2b, 0x17, 0x4a, 0xc6, 0xce, 0x0b, 0x58, 0xe7, 0x11, 0x5d, 0xa4, 0xa3, 0xda, 0xd3, 0x23, 0x1b,
+	0xab, 0xd4, 0x74, 0xc4, 0x69, 0xe8, 0x4e, 0xd8, 0x85, 0x62, 0xc4, 0x22, 0xda, 0x17, 0x50, 0x49,
+	0x51, 0xd2, 0x4c, 0x14, 0xc5, 0x91, 0xc4, 0x07, 0x72, 0x00, 0x15, 0x7c, 0xe3, 0x51, 0x1f, 0x83,
+	0x3e, 0x17, 0x26, 0xd6, 0x8c, 0x39, 0x70, 0x52, 0x87, 0x2a, 0xbf, 0x65, 0x23, 0x8e, 0xde, 0xc0,
+	0x61, 0xb7, 0xfa, 0x57, 0xb0, 0x7b, 0x35, 0xf3, 0xd1, 0xb4, 0x5f, 0xb1, 0xe9, 0x80, 0x39, 0x0e,
+	0xbb, 0x4d, 0x32, 0x45, 0xa0, 0x68, 0xda, 0xb6, 0x2f, 0x74, 0xd7, 0x0c, 0xf1, 0x1d, 0xa9, 0x9e,
+	0x08, 0xd2, 0xd7, 0xf8, 0x56, 0xa8, 0xae, 0x19, 0x73, 0x40, 0xdf, 0x87, 0xbd, 0x25, 0x5d, 0x71,
+	0x24, 0xba, 0x0e, 0x1b, 0x03, 0xea, 0xe0, 0x25, 0x4d, 0x0b, 0xd1, 0x80, 0x35, 0x8b, 0xda, 0xd2,
+	0xf3, 0xe8, 0x53, 0xdf, 0x82, 0xcd, 0x94, 0x23, 0xc5, 0x3e, 0x05, 0x72, 0xe9, 0xb3, 0x09, 0x75,
+	0x70, 0x40, 0x5d, 0x3b, 0x11, 0xd5, 0xa1, 0x96, 0x69, 0xb4, 0xa8, 0xf9, 0xd6, 0x8e, 0x2a, 0x46,
+	0x0e, 0xd3, 0x7f, 0x54, 0x61, 0x3b, 0x27, 0x2a, 0x2b, 0x73, 0x08, 0xd5, 0x0c, 0x4f, 0x9a, 0xcf,
+	0x42, 0x51, 0xdc, 0xae, 0x79, 0x8d, 0xb2, 0x57, 0xc5, 0x77, 0x14, 0x37, 0xb5, 0x98, 0x3b, 0xbc,
+	0x36, 0xa7, 0x49, 0x6f, 0xce, 0x81, 0xe4, 0xf6, 0x94, 0x39, 0xcc, 0x97, 0xed, 0x38, 0x07, 0xf4,
+	0x26, 0x90, 0x73, 0xe4, 0x32, 0xb2, 0x40, 0xc6, 0xa0, 0xff, 0xa2, 0xc2, 0x76, 0x0e, 0x96, 0xfe,
+	0x7d, 0x06, 0x45, 0x8f, 0xba, 0x71, 0x4c, 0xd5, 0xde, 0xe3, 0xa8, 0x35, 0x56, 0xd0, 0x3a, 0x12,
+	0x18, 0x71, 0x93, 0x87, 0x81, 0x21, 0x44, 0xb4, 0x0b, 0xa8, 0xe7, 0xe0, 0xe5, 0x14, 0x93, 0xc7,
+	0x50, 0x0a, 0xc4, 0x9d, 0x88, 0x6e, 0xa3, 0x57, 0x8f, 0xf4, 0xcf, 0xf5, 0xc8, 0x4b, 0x9d, 0x40,
+	0xe3, 0x1c, 0xf9, 0x29, 0x73, 0x27, 0x74, 0x9a, 0x38, 0xfc, 0x4f, 0x01, 0xb6, 0x32, 0xa0, 0x74,
+	0xf7, 0x39, 0x94, 0x2c, 0x81, 0x08, 0x2b, 0xd5, 0xde, 0x81, 0x74, 0x38, 0x4f, 0xeb, 0xc8, 0xa3,
+	0xe4, 0x6a, 0x3f, 0x17, 0xa0, 0x14, 0x43, 0xd1, 0x28, 0x41, 0xd7, 0x1c, 0x3b, 0x78, 0x66, 0x72,
+	0xf3, 0x86, 0xe2, 0xad, 0x50, 0x54, 0x36, 0x16, 0xd0, 0xa8, 0x6e, 0x12, 0xc1, 0x71, 0x38, 0x15,
+	0xee, 0x97, 0x8d, 0x2c, 0x44, 0x3e, 0x07, 0x2d, 0x3e, 0x1a, 0xe8, 0xa0, 0x19, 0xe0, 0xe9, 0xcc,
+	0x74, 0x5d, 0x74, 0x46, 0xb7, 0x94, 0x5b, 0x33, 0x51, 0xb4, 0xb2, 0xf1, 0x1e, 0x06, 0xe9, 0x41,
+	0x33, 0xa0, 0xd7, 0xa1, 0xc3, 0x4d, 0x17, 0x59, 0x98, 0x14, 0x2a, 0x10, 0x05, 0x5d, 0x37, 0x56,
+	0xde, 0x45, 0x9d, 0x18, 0x6b, 0x1c, 0x79, 0xa6, 0x85, 0x41, 0x6b, 0x5d, 0x58, 0xc9, 0x61, 0xe4,
+	0x09, 0xac, 0xe3, 0x1b, 0xee, 0x9b, 0x72, 0xa2, 0xec, 0x75, 0xe2, 0x61, 0xdb, 0x49, 0x86, 0x6d,
+	0x67, 0x24, 0x86, 0xad, 0x11, 0xb3, 0xf4, 0x8f, 0xa1, 0xd9, 0x8f, 0xbb, 0xf1, 0x0c, 0x1d, 0xe4,
+	0x98, 0x34, 0x7d, 0x1b, 0x80, 0x06, 0x06, 0xde, 0xa0, 0xcf, 0xd1, 0x96, 0x49, 0xca, 0x20, 0xfa,
+	0x05, 0xec, 0x2c, 0xc8, 0xc9, 0x12, 0x75, 0xd3, 0x9a, 0xab, 0xd2, 0x81, 0x68, 0xdc, 0xc8, 0xc1,
+	0xca, 0x4d, 0x8e, 0x9d, 0x85, 0xea, 0xb7, 0x60, 0xf7, 0x1c, 0x79, 0x96, 0x91, 0xf4, 0xc0, 0x37,
+	0xb0, 0xb7, 0x74, 0x93, 0x36, 0x42, 0xf2, 0xfe, 0x04, 0x2e, 0x6d, 0x35, 0x16, 0x6d, 0x19, 0x39,
+	0x96, 0xfe, 0x5b, 0x11, 0x6a, 0xd9, 0xeb, 0xc8, 0xd9, 0x5c, 0x3f, 0x2d, 0x3b, 0x9b, 0x6f, 0xa5,
+	0x4c, 0x74, 0x85, 0xff, 0x14, 0x9d, 0x66, 0x42, 0x49, 0x3e, 0x8f, 0x67, 0xb9, 0xc4, 0x6c, 0xf4,
+	0x1e, 0x3d, 0x20, 0x7a, 0xf5, 0xd6, 0xc3, 0x44, 0x3c, 0xaa, 0xb8, 0x1d, 0xe5, 0x97, 0x32, 0xf7,
+	0x2c, 0x8a, 0x33, 0x9e, 0xaf, 0x39, 0xec, 0xff, 0xf6, 0x7e, 0x4f, 0x7b, 0xbf, 0x04, 0x98, 0x67,
+	0x95, 0xd4, 0xa0, 0x3c, 0x0c, 0xfa, 0x16, 0xa7, 0x37, 0xd8, 0x50, 0xc8, 0x0e, 0x6c, 0x0d, 0x83,
+	0x4b, 0x74, 0x6d, 0xea, 0x4e, 0xcf, 0x64, 0x42, 0x1b, 0x2a, 0xa9, 0x43, 0x65, 0x18, 0xc4, 0x4d,
+	0x6d, 0x37, 0x0a, 0xc7, 0x4f, 0xa0, 0x32, 0x1f, 0x71, 0x00, 0xa5, 0x6f, 0x43, 0x0c, 0xd1, 0x6e,
+	0x28, 0xd1, 0xf7, 0xc0, 0xa4, 0x0e, 0xda, 0x8d, 0x32, 0x29, 0x43, 0xf1, 0x8c, 0xb9, 0xd8, 0xa8,
+	0x1c, 0x7f, 0x02, 0xf0, 0xa5, 0xef, 0x33, 0x3f, 0xda, 0xbc, 0x01, 0x69, 0x42, 0x43, 0x56, 0x78,
+	0xae, 0x52, 0x21, 0xdb, 0xb0, 0x99, 0xa2, 0xd2, 0x1b, 0xb5, 0xf7, 0x6b, 0x11, 0xd6, 0xfa, 0x97,
+	0x43, 0x72, 0x0e, 0xb5, 0xec, 0x72, 0x26, 0x7b, 0xcb, 0xeb, 0x5a, 0xa4, 0x4b, 0x6b, 0x3d, 0xb4,
+	0xc7, 0x75, 0xe5, 0x48, 0x7d, 0xaa, 0x92, 0x17, 0x50, 0x49, 0x27, 0x23, 0x69, 0x2e, 0x0c, 0xca,
+	0x58, 0xc5, 0xce, 0xca, 0xf1, 0xa9, 0x2b, 0xe4, 0x15, 0x6c, 0x2e, 0xac, 0x56, 0xa2, 0x45, 0xdc,
+	0xd5, 0xbb, 0x5b, 0x7b, 0xb4, 0xf2, 0x2e, 0xd5, 0xf6, 0x12, 0xaa, 0x99, 0xa5, 0x42, 0x76, 0x97,
+	0xb6, 0x4c, 0xac, 0x65, 0xef, 0x81, 0xed, 0xa3, 0x2b, 0xe4, 0x39, 0x7c, 0x20, 0x51, 0x42, 0x22,
+	0x56, 0x7e, 0xb9, 0x6b, 0xdb, 0x39, 0x2c, 0x95, 0x1a, 0x40, 0x3d, 0x37, 0xa3, 0x48, 0x2b, 0xf3,
+	0xe4, 0x72, 0xe3, 0x4e, 0xdb, 0x5f, 0x71, 0x93, 0xcd, 0xc6, 0xc2, 0x1c, 0x8a, 0xb3, 0xb1, 0x7a,
+	0x6c, 0xc5, 0xd9, 0x78, 0x60, 0x70, 0xe9, 0x0a, 0x39, 0x81, 0x6a, 0xe6, 0x4f, 0x21, 0xce, 0xc6,
+	0xf2, 0x5f, 0x47, 0x9c, 0x8d, 0x15, 0xbf, 0x14, 0xba, 0xf2, 0x54, 0x3d, 0x39, 0xf8, 0xf3, 0xae,
+	0xad, 0xbe, 0xbb, 0x6b, 0xab, 0x7f, 0xdf, 0xb5, 0xd5, 0x9f, 0xee, 0xdb, 0xca, 0xbb, 0xfb, 0xb6,
+	0xf2, 0xd7, 0x7d, 0x5b, 0xf9, 0xbe, 0xe0, 0x8d, 0xc7, 0x25, 0xf1, 0x18, 0x9e, 0xfd, 0x1b, 0x00,
+	0x00, 0xff, 0xff, 0x75, 0x91, 0x27, 0x6d, 0x87, 0x0b, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1543,7 +1423,7 @@ type APIClient interface {
 	GetFilePins(ctx context.Context, in *GetFilePinsRequest, opts ...grpc.CallOption) (*GetFilePinsResponse, error)
 	FilePin(ctx context.Context, in *FilePinRequest, opts ...grpc.CallOption) (*FilePinResponse, error)
 	AccountDelete(ctx context.Context, in *AccountDeleteRequest, opts ...grpc.CallOption) (*AccountDeleteResponse, error)
-	GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountResponse, error)
+	GetAccountState(ctx context.Context, in *GetAccountStateRequest, opts ...grpc.CallOption) (*GetAccountStateResponse, error)
 	ProfileFind(ctx context.Context, in *ProfileFindRequest, opts ...grpc.CallOption) (API_ProfileFindClient, error)
 }
 
@@ -1631,9 +1511,9 @@ func (c *aPIClient) AccountDelete(ctx context.Context, in *AccountDeleteRequest,
 	return out, nil
 }
 
-func (c *aPIClient) GetAccount(ctx context.Context, in *GetAccountRequest, opts ...grpc.CallOption) (*GetAccountResponse, error) {
-	out := new(GetAccountResponse)
-	err := c.cc.Invoke(ctx, "/pb.API/GetAccount", in, out, opts...)
+func (c *aPIClient) GetAccountState(ctx context.Context, in *GetAccountStateRequest, opts ...grpc.CallOption) (*GetAccountStateResponse, error) {
+	out := new(GetAccountStateResponse)
+	err := c.cc.Invoke(ctx, "/pb.API/GetAccountState", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1680,7 +1560,7 @@ type APIServer interface {
 	GetFilePins(context.Context, *GetFilePinsRequest) (*GetFilePinsResponse, error)
 	FilePin(context.Context, *FilePinRequest) (*FilePinResponse, error)
 	AccountDelete(context.Context, *AccountDeleteRequest) (*AccountDeleteResponse, error)
-	GetAccount(context.Context, *GetAccountRequest) (*GetAccountResponse, error)
+	GetAccountState(context.Context, *GetAccountStateRequest) (*GetAccountStateResponse, error)
 	ProfileFind(*ProfileFindRequest, API_ProfileFindServer) error
 }
 
@@ -1706,8 +1586,8 @@ func (*UnimplementedAPIServer) FilePin(ctx context.Context, req *FilePinRequest)
 func (*UnimplementedAPIServer) AccountDelete(ctx context.Context, req *AccountDeleteRequest) (*AccountDeleteResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AccountDelete not implemented")
 }
-func (*UnimplementedAPIServer) GetAccount(ctx context.Context, req *GetAccountRequest) (*GetAccountResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method GetAccount not implemented")
+func (*UnimplementedAPIServer) GetAccountState(ctx context.Context, req *GetAccountStateRequest) (*GetAccountStateResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method GetAccountState not implemented")
 }
 func (*UnimplementedAPIServer) ProfileFind(req *ProfileFindRequest, srv API_ProfileFindServer) error {
 	return status.Errorf(codes.Unimplemented, "method ProfileFind not implemented")
@@ -1833,20 +1713,20 @@ func _API_AccountDelete_Handler(srv interface{}, ctx context.Context, dec func(i
 	return interceptor(ctx, in, info, handler)
 }
 
-func _API_GetAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(GetAccountRequest)
+func _API_GetAccountState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountStateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(APIServer).GetAccount(ctx, in)
+		return srv.(APIServer).GetAccountState(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/pb.API/GetAccount",
+		FullMethod: "/pb.API/GetAccountState",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(APIServer).GetAccount(ctx, req.(*GetAccountRequest))
+		return srv.(APIServer).GetAccountState(ctx, req.(*GetAccountStateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1897,8 +1777,8 @@ var _API_serviceDesc = grpc.ServiceDesc{
 			Handler:    _API_AccountDelete_Handler,
 		},
 		{
-			MethodName: "GetAccount",
-			Handler:    _API_GetAccount_Handler,
+			MethodName: "GetAccountState",
+			Handler:    _API_GetAccountState_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
@@ -2613,7 +2493,7 @@ func (m *AccountDeleteResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *GetAccountRequest) Marshal() (dAtA []byte, err error) {
+func (m *GetAccountStateRequest) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2623,25 +2503,20 @@ func (m *GetAccountRequest) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *GetAccountRequest) MarshalTo(dAtA []byte) (int, error) {
+func (m *GetAccountStateRequest) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *GetAccountRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *GetAccountStateRequest) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.StatusOptions != 0 {
-		i = encodeVarintApi(dAtA, i, uint64(m.StatusOptions))
-		i--
-		dAtA[i] = 0x8
-	}
 	return len(dAtA) - i, nil
 }
 
-func (m *GetAccountResponse) Marshal() (dAtA []byte, err error) {
+func (m *GetAccountStateResponse) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2651,19 +2526,19 @@ func (m *GetAccountResponse) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *GetAccountResponse) MarshalTo(dAtA []byte) (int, error) {
+func (m *GetAccountStateResponse) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *GetAccountResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *GetAccountStateResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Account != nil {
+	if m.AccountState != nil {
 		{
-			size, err := m.Account.MarshalToSizedBuffer(dAtA[:i])
+			size, err := m.AccountState.MarshalToSizedBuffer(dAtA[:i])
 			if err != nil {
 				return 0, err
 			}
@@ -2676,7 +2551,7 @@ func (m *GetAccountResponse) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *Account) Marshal() (dAtA []byte, err error) {
+func (m *AccountState) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2686,28 +2561,16 @@ func (m *Account) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *Account) MarshalTo(dAtA []byte) (int, error) {
+func (m *AccountState) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *AccountState) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
 	_ = l
-	if m.Pins != nil {
-		{
-			size, err := m.Pins.MarshalToSizedBuffer(dAtA[:i])
-			if err != nil {
-				return 0, err
-			}
-			i -= size
-			i = encodeVarintApi(dAtA, i, uint64(size))
-		}
-		i--
-		dAtA[i] = 0x1a
-	}
 	if m.Status != nil {
 		{
 			size, err := m.Status.MarshalToSizedBuffer(dAtA[:i])
@@ -2735,7 +2598,7 @@ func (m *Account) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *AccountStatus) Marshal() (dAtA []byte, err error) {
+func (m *AccountStateStatus) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2745,12 +2608,12 @@ func (m *AccountStatus) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *AccountStatus) MarshalTo(dAtA []byte) (int, error) {
+func (m *AccountStateStatus) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *AccountStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *AccountStateStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2768,7 +2631,7 @@ func (m *AccountStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	return len(dAtA) - i, nil
 }
 
-func (m *AccountConfig) Marshal() (dAtA []byte, err error) {
+func (m *AccountStateConfig) Marshal() (dAtA []byte, err error) {
 	size := m.Size()
 	dAtA = make([]byte, size)
 	n, err := m.MarshalToSizedBuffer(dAtA[:size])
@@ -2778,12 +2641,12 @@ func (m *AccountConfig) Marshal() (dAtA []byte, err error) {
 	return dAtA[:n], nil
 }
 
-func (m *AccountConfig) MarshalTo(dAtA []byte) (int, error) {
+func (m *AccountStateConfig) MarshalTo(dAtA []byte) (int, error) {
 	size := m.Size()
 	return m.MarshalToSizedBuffer(dAtA[:size])
 }
 
-func (m *AccountConfig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
+func (m *AccountStateConfig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 	i := len(dAtA)
 	_ = i
 	var l int
@@ -2846,78 +2709,6 @@ func (m *AccountConfig) MarshalToSizedBuffer(dAtA []byte) (int, error) {
 		}
 		i--
 		dAtA[i] = 0x8
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *AccountFilePins) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *AccountFilePins) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *AccountFilePins) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if len(m.Pins) > 0 {
-		for iNdEx := len(m.Pins) - 1; iNdEx >= 0; iNdEx-- {
-			{
-				size, err := m.Pins[iNdEx].MarshalToSizedBuffer(dAtA[:i])
-				if err != nil {
-					return 0, err
-				}
-				i -= size
-				i = encodeVarintApi(dAtA, i, uint64(size))
-			}
-			i--
-			dAtA[i] = 0xa
-		}
-	}
-	return len(dAtA) - i, nil
-}
-
-func (m *AccountFilePinsFilePinStatus) Marshal() (dAtA []byte, err error) {
-	size := m.Size()
-	dAtA = make([]byte, size)
-	n, err := m.MarshalToSizedBuffer(dAtA[:size])
-	if err != nil {
-		return nil, err
-	}
-	return dAtA[:n], nil
-}
-
-func (m *AccountFilePinsFilePinStatus) MarshalTo(dAtA []byte) (int, error) {
-	size := m.Size()
-	return m.MarshalToSizedBuffer(dAtA[:size])
-}
-
-func (m *AccountFilePinsFilePinStatus) MarshalToSizedBuffer(dAtA []byte) (int, error) {
-	i := len(dAtA)
-	_ = i
-	var l int
-	_ = l
-	if m.Status != 0 {
-		i = encodeVarintApi(dAtA, i, uint64(m.Status))
-		i--
-		dAtA[i] = 0x10
-	}
-	if len(m.Cid) > 0 {
-		i -= len(m.Cid)
-		copy(dAtA[i:], m.Cid)
-		i = encodeVarintApi(dAtA, i, uint64(len(m.Cid)))
-		i--
-		dAtA[i] = 0xa
 	}
 	return len(dAtA) - i, nil
 }
@@ -3228,32 +3019,29 @@ func (m *AccountDeleteResponse) Size() (n int) {
 	return n
 }
 
-func (m *GetAccountRequest) Size() (n int) {
+func (m *GetAccountStateRequest) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.StatusOptions != 0 {
-		n += 1 + sovApi(uint64(m.StatusOptions))
-	}
 	return n
 }
 
-func (m *GetAccountResponse) Size() (n int) {
+func (m *GetAccountStateResponse) Size() (n int) {
 	if m == nil {
 		return 0
 	}
 	var l int
 	_ = l
-	if m.Account != nil {
-		l = m.Account.Size()
+	if m.AccountState != nil {
+		l = m.AccountState.Size()
 		n += 1 + l + sovApi(uint64(l))
 	}
 	return n
 }
 
-func (m *Account) Size() (n int) {
+func (m *AccountState) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3267,14 +3055,10 @@ func (m *Account) Size() (n int) {
 		l = m.Status.Size()
 		n += 1 + l + sovApi(uint64(l))
 	}
-	if m.Pins != nil {
-		l = m.Pins.Size()
-		n += 1 + l + sovApi(uint64(l))
-	}
 	return n
 }
 
-func (m *AccountStatus) Size() (n int) {
+func (m *AccountStateStatus) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3289,7 +3073,7 @@ func (m *AccountStatus) Size() (n int) {
 	return n
 }
 
-func (m *AccountConfig) Size() (n int) {
+func (m *AccountStateConfig) Size() (n int) {
 	if m == nil {
 		return 0
 	}
@@ -3313,37 +3097,6 @@ func (m *AccountConfig) Size() (n int) {
 	if m.Extra != nil {
 		l = m.Extra.Size()
 		n += 2 + l + sovApi(uint64(l))
-	}
-	return n
-}
-
-func (m *AccountFilePins) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	if len(m.Pins) > 0 {
-		for _, e := range m.Pins {
-			l = e.Size()
-			n += 1 + l + sovApi(uint64(l))
-		}
-	}
-	return n
-}
-
-func (m *AccountFilePinsFilePinStatus) Size() (n int) {
-	if m == nil {
-		return 0
-	}
-	var l int
-	_ = l
-	l = len(m.Cid)
-	if l > 0 {
-		n += 1 + l + sovApi(uint64(l))
-	}
-	if m.Status != 0 {
-		n += 1 + sovApi(uint64(m.Status))
 	}
 	return n
 }
@@ -5113,7 +4866,7 @@ func (m *AccountDeleteResponse) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Status == nil {
-				m.Status = &AccountStatus{}
+				m.Status = &AccountStateStatus{}
 			}
 			if err := m.Status.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5140,7 +4893,7 @@ func (m *AccountDeleteResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *GetAccountRequest) Unmarshal(dAtA []byte) error {
+func (m *GetAccountStateRequest) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5163,31 +4916,12 @@ func (m *GetAccountRequest) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GetAccountRequest: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetAccountStateRequest: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetAccountRequest: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetAccountStateRequest: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
-		case 1:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field StatusOptions", wireType)
-			}
-			m.StatusOptions = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowApi
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.StatusOptions |= int64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipApi(dAtA[iNdEx:])
@@ -5209,7 +4943,7 @@ func (m *GetAccountRequest) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *GetAccountResponse) Unmarshal(dAtA []byte) error {
+func (m *GetAccountStateResponse) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5232,15 +4966,15 @@ func (m *GetAccountResponse) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: GetAccountResponse: wiretype end group for non-group")
+			return fmt.Errorf("proto: GetAccountStateResponse: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: GetAccountResponse: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: GetAccountStateResponse: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
 			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Account", wireType)
+				return fmt.Errorf("proto: wrong wireType = %d for field AccountState", wireType)
 			}
 			var msglen int
 			for shift := uint(0); ; shift += 7 {
@@ -5267,10 +5001,10 @@ func (m *GetAccountResponse) Unmarshal(dAtA []byte) error {
 			if postIndex > l {
 				return io.ErrUnexpectedEOF
 			}
-			if m.Account == nil {
-				m.Account = &Account{}
+			if m.AccountState == nil {
+				m.AccountState = &AccountState{}
 			}
-			if err := m.Account.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
+			if err := m.AccountState.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5295,7 +5029,7 @@ func (m *GetAccountResponse) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *Account) Unmarshal(dAtA []byte) error {
+func (m *AccountState) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5318,10 +5052,10 @@ func (m *Account) Unmarshal(dAtA []byte) error {
 		fieldNum := int32(wire >> 3)
 		wireType := int(wire & 0x7)
 		if wireType == 4 {
-			return fmt.Errorf("proto: Account: wiretype end group for non-group")
+			return fmt.Errorf("proto: AccountState: wiretype end group for non-group")
 		}
 		if fieldNum <= 0 {
-			return fmt.Errorf("proto: Account: illegal tag %d (wire type %d)", fieldNum, wire)
+			return fmt.Errorf("proto: AccountState: illegal tag %d (wire type %d)", fieldNum, wire)
 		}
 		switch fieldNum {
 		case 1:
@@ -5354,7 +5088,7 @@ func (m *Account) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Config == nil {
-				m.Config = &AccountConfig{}
+				m.Config = &AccountStateConfig{}
 			}
 			if err := m.Config.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
@@ -5390,45 +5124,9 @@ func (m *Account) Unmarshal(dAtA []byte) error {
 				return io.ErrUnexpectedEOF
 			}
 			if m.Status == nil {
-				m.Status = &AccountStatus{}
+				m.Status = &AccountStateStatus{}
 			}
 			if err := m.Status.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 3:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Pins", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowApi
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthApi
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthApi
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			if m.Pins == nil {
-				m.Pins = &AccountFilePins{}
-			}
-			if err := m.Pins.Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
 				return err
 			}
 			iNdEx = postIndex
@@ -5453,7 +5151,7 @@ func (m *Account) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *AccountStatus) Unmarshal(dAtA []byte) error {
+func (m *AccountStateStatus) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5496,7 +5194,7 @@ func (m *AccountStatus) Unmarshal(dAtA []byte) error {
 				}
 				b := dAtA[iNdEx]
 				iNdEx++
-				m.Status |= AccountStatusType(b&0x7F) << shift
+				m.Status |= AccountStateStatusType(b&0x7F) << shift
 				if b < 0x80 {
 					break
 				}
@@ -5541,7 +5239,7 @@ func (m *AccountStatus) Unmarshal(dAtA []byte) error {
 	}
 	return nil
 }
-func (m *AccountConfig) Unmarshal(dAtA []byte) error {
+func (m *AccountStateConfig) Unmarshal(dAtA []byte) error {
 	l := len(dAtA)
 	iNdEx := 0
 	for iNdEx < l {
@@ -5705,191 +5403,6 @@ func (m *AccountConfig) Unmarshal(dAtA []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipApi(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthApi
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *AccountFilePins) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowApi
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: FilePins: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: FilePins: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Pins", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowApi
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				msglen |= int(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthApi
-			}
-			postIndex := iNdEx + msglen
-			if postIndex < 0 {
-				return ErrInvalidLengthApi
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Pins = append(m.Pins, &AccountFilePinsFilePinStatus{})
-			if err := m.Pins[len(m.Pins)-1].Unmarshal(dAtA[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		default:
-			iNdEx = preIndex
-			skippy, err := skipApi(dAtA[iNdEx:])
-			if err != nil {
-				return err
-			}
-			if (skippy < 0) || (iNdEx+skippy) < 0 {
-				return ErrInvalidLengthApi
-			}
-			if (iNdEx + skippy) > l {
-				return io.ErrUnexpectedEOF
-			}
-			iNdEx += skippy
-		}
-	}
-
-	if iNdEx > l {
-		return io.ErrUnexpectedEOF
-	}
-	return nil
-}
-func (m *AccountFilePinsFilePinStatus) Unmarshal(dAtA []byte) error {
-	l := len(dAtA)
-	iNdEx := 0
-	for iNdEx < l {
-		preIndex := iNdEx
-		var wire uint64
-		for shift := uint(0); ; shift += 7 {
-			if shift >= 64 {
-				return ErrIntOverflowApi
-			}
-			if iNdEx >= l {
-				return io.ErrUnexpectedEOF
-			}
-			b := dAtA[iNdEx]
-			iNdEx++
-			wire |= uint64(b&0x7F) << shift
-			if b < 0x80 {
-				break
-			}
-		}
-		fieldNum := int32(wire >> 3)
-		wireType := int(wire & 0x7)
-		if wireType == 4 {
-			return fmt.Errorf("proto: FilePinStatus: wiretype end group for non-group")
-		}
-		if fieldNum <= 0 {
-			return fmt.Errorf("proto: FilePinStatus: illegal tag %d (wire type %d)", fieldNum, wire)
-		}
-		switch fieldNum {
-		case 1:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Cid", wireType)
-			}
-			var stringLen uint64
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowApi
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				stringLen |= uint64(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			intStringLen := int(stringLen)
-			if intStringLen < 0 {
-				return ErrInvalidLengthApi
-			}
-			postIndex := iNdEx + intStringLen
-			if postIndex < 0 {
-				return ErrInvalidLengthApi
-			}
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Cid = string(dAtA[iNdEx:postIndex])
-			iNdEx = postIndex
-		case 2:
-			if wireType != 0 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Status", wireType)
-			}
-			m.Status = 0
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowApi
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := dAtA[iNdEx]
-				iNdEx++
-				m.Status |= PinStatus(b&0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
 		default:
 			iNdEx = preIndex
 			skippy, err := skipApi(dAtA[iNdEx:])

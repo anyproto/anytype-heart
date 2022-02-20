@@ -50,9 +50,8 @@ var (
 	bundledChecksums       = ds.NewKey("/" + pagesPrefix + "/checksum")
 	indexedHeadsState      = ds.NewKey("/" + pagesPrefix + "/headsstate")
 
-	cafePrefix  = "cafe"
-	cafeConfig  = ds.NewKey("/" + cafePrefix + "/cafeconfig")
-	accountInfo = ds.NewKey("/" + cafePrefix + "/accountinfo")
+	cafePrefix   = "cafe"
+	accountState = ds.NewKey("/" + cafePrefix + "/accountstate")
 
 	workspacesPrefix = "workspaces"
 	currentWorkspace = ds.NewKey("/" + workspacesPrefix + "/current")
@@ -271,11 +270,8 @@ type ObjectStore interface {
 	GetLastIndexedHeadsHash(id string) (headsHash string, err error)
 	SaveLastIndexedHeadsHash(id string, headsHash string) (err error)
 
-	GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error)
-	SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error)
-
-	GetAccountInfo() (info *cafePb.AccountInfo, err error)
-	SaveAccountInfo(info *cafePb.AccountInfo) (err error)
+	GetAccountState() (state *cafePb.AccountState, err error)
+	SaveAccountState(state *cafePb.AccountState) (err error)
 
 	GetCurrentWorkspaceId() (string, error)
 	SetCurrentWorkspaceId(threadId string) (err error)
@@ -525,72 +521,36 @@ func (m *dsObjectStore) RemoveCurrentWorkspaceId() (err error) {
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) GetCafeConfig() (cfg *cafePb.GetConfigResponseConfig, err error) {
+func (m *dsObjectStore) GetAccountState() (cfg *cafePb.AccountState, err error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	var cafecfg cafePb.GetConfigResponseConfig
-	if val, err := txn.Get(cafeConfig); err != nil {
+	var state cafePb.AccountState
+	if val, err := txn.Get(accountState); err != nil {
 		return nil, err
-	} else if err := proto.Unmarshal(val, &cafecfg); err != nil {
+	} else if err := proto.Unmarshal(val, &state); err != nil {
 		return nil, err
 	}
 
-	return &cafecfg, nil
+	return &state, nil
 }
 
-func (m *dsObjectStore) SaveCafeConfig(cfg *cafePb.GetConfigResponseConfig) (err error) {
+func (m *dsObjectStore) SaveAccountState(state *cafePb.AccountState) (err error) {
 	txn, err := m.ds.NewTransaction(false)
 	if err != nil {
 		return fmt.Errorf("error creating txn in datastore: %w", err)
 	}
 	defer txn.Discard()
 
-	b, err := cfg.Marshal()
+	b, err := state.Marshal()
 	if err != nil {
 		return err
 	}
 
-	if err := txn.Put(cafeConfig, b); err != nil {
-		return fmt.Errorf("failed to put into ds: %w", err)
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) GetAccountInfo() (info *cafePb.AccountInfo, err error) {
-	txn, err := m.ds.NewTransaction(true)
-	if err != nil {
-		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	var account cafePb.AccountInfo
-	if val, err := txn.Get(accountInfo); err != nil {
-		return nil, err
-	} else if err := proto.Unmarshal(val, &account); err != nil {
-		return nil, err
-	}
-
-	return &account, nil
-}
-
-func (m *dsObjectStore) SaveAccountInfo(info *cafePb.AccountInfo) (err error) {
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return fmt.Errorf("error creating txn in datastore: %w", err)
-	}
-	defer txn.Discard()
-
-	b, err := info.Marshal()
-	if err != nil {
-		return err
-	}
-
-	if err := txn.Put(cafeConfig, b); err != nil {
+	if err := txn.Put(accountState, b); err != nil {
 		return fmt.Errorf("failed to put into ds: %w", err)
 	}
 

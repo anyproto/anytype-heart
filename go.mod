@@ -83,6 +83,7 @@ require (
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
 	github.com/yuin/goldmark v1.3.5
+	github.com/gogo/status v1.1.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
 	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect

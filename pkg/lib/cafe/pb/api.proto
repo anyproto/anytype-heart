@@ -94,21 +94,13 @@ message AccountDeleteRequest {
 }
 
 message AccountDeleteResponse {
-    Account.Status status = 1;
+    AccountState.Status status = 1;
 }
 
-message GetAccountRequest {
-    int64 statusOptions = 1;
-}
+message GetAccountStateRequest {}
 
-message GetAccountResponse {
-    Account account = 1;
-
-    enum Option {
-        WithConfig = 0;
-        WithAccountStatus = 1;
-        WithFilePins = 2;
-    }
+message GetAccountStateResponse {
+    AccountState accountState = 1;
 }
 
 enum PinStatus {
@@ -117,10 +109,9 @@ enum PinStatus {
     Done = 9;
 }
 
-message Account {
+message AccountState {
     Config config = 1;
     Status status = 2;
-    FilePins pins = 3;
 
     message Status {
         StatusType status = 1;
@@ -142,15 +133,11 @@ message Account {
 
         google.protobuf.Struct extra = 100;
     }
+}
 
-    message FilePins {
-        repeated FilePinStatus pins = 1;
-
-        message FilePinStatus {
-            string cid = 1;
-            PinStatus status = 2;
-        }
-    }
+enum ErrorCodes {
+    AccountIsDeleted = 0;
+    AccountIsActive = 1;
 }
 
 service API {
@@ -160,6 +147,6 @@ service API {
     rpc GetFilePins(GetFilePinsRequest) returns (GetFilePinsResponse) {} // deprecated, use GetAccount
     rpc FilePin(FilePinRequest) returns (FilePinResponse) {}
     rpc AccountDelete(AccountDeleteRequest) returns (AccountDeleteResponse) {}
-    rpc GetAccount(GetAccountRequest) returns (GetAccountResponse) {}
+    rpc GetAccountState(GetAccountStateRequest) returns (GetAccountStateResponse) {}
     rpc ProfileFind(ProfileFindRequest) returns (stream ProfileFindResponse) {}
 }

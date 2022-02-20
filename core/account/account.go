@@ -14,7 +14,7 @@ var log = logging.Logger("anytype-account")
 
 type Service interface {
 	app.Component
-	DeleteAccount(ctx context.Context) error
+	DeleteAccount(ctx context.Context, isReverted bool) (resp *pb.AccountDeleteResponse, err error)
 }
 
 func New() Service {
@@ -34,7 +34,7 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) DeleteAccount(ctx context.Context) error {
-	_, err := s.cafe.AccountDelete(ctx, &pb.AccountDeleteRequest{})
-	return err
+func (s *service) DeleteAccount(ctx context.Context, isReverted bool) (resp *pb.AccountDeleteResponse, err error) {
+	resp, err = s.cafe.AccountDelete(ctx, &pb.AccountDeleteRequest{IsReverted: isReverted})
+	return
 }

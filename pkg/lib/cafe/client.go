@@ -188,13 +188,13 @@ func (c *Online) GetFilePins(ctx context.Context, in *pb.GetFilePinsRequest, opt
 	return c.client.GetFilePins(ctx, in, opts...)
 }
 
-func (c *Online) Status(ctx context.Context, in *pb.StatusRequest, opts ...grpc.CallOption) (*pb.StatusResponse, error) {
+func (c *Online) GetAccountState(ctx context.Context, in *pb.GetAccountStateRequest, opts ...grpc.CallOption) (*pb.GetAccountStateResponse, error) {
 	ctx, err := c.withToken(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	return c.client.Status(ctx, in, opts...)
+	return c.client.GetAccountState(ctx, in, opts...)
 }
 
 func (c *Online) FilePin(ctx context.Context, in *pb.FilePinRequest, opts ...grpc.CallOption) (*pb.FilePinResponse, error) {
