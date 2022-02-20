@@ -9,7 +9,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/gogo/status"
-	"google.golang.org/grpc/codes"
 	"io/ioutil"
 	"net/http"
 	"os"
@@ -376,9 +375,18 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 	if len(sentAccounts) == 0 {
 		if findProfilesErr != nil {
 			code := pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND
-			st := status.Convert(findProfilesErr)
-			if st.Code() == codes.Code(cafePb.ErrorCodes_AccountIsDeleted) {
-				code = pb.RpcAccountRecoverResponseError_ACCOUNT_IS_DELETED
+			st, ok := status.FromError(findProfilesErr)
+			if ok {
+				for _, detail := range st.Details() {
+					if at, ok := detail.(*cafePb.ErrorAttachment); ok {
+						switch at.Code {
+						case cafePb.ErrorCodes_AccountIsDeleted:
+							code = pb.RpcAccountRecoverResponseError_ACCOUNT_IS_DELETED
+						default:
+							break
+						}
+					}
+				}
 			}
 			return response(code, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
 		}
@@ -561,13 +569,21 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 	if err != nil {
 		// TODO: maybe this logic should be in a.DeleteAccount
 		code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
-		st := status.Convert(err)
-		switch st.Code() {
-		case codes.Code(cafePb.ErrorCodes_AccountIsDeleted):
-			code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
-		// this code is returned if we call revert but an account is active
-		case codes.Code(cafePb.ErrorCodes_AccountIsActive):
-			code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
+		st, ok := status.FromError(err)
+		if ok {
+			for _, detail := range st.Details() {
+				if at, ok := detail.(*cafePb.ErrorAttachment); ok {
+					switch at.Code {
+					case cafePb.ErrorCodes_AccountIsDeleted:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+					// this code is returned if we call revert but an account is active
+					case cafePb.ErrorCodes_AccountIsActive:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
+					default:
+						break
+					}
+				}
+			}
 		}
 		return response(nil, code, err)
 	}
