@@ -83,6 +83,7 @@ service ClientCommands {
     rpc BlockListSetTextMark (anytype.Rpc.BlockList.Set.Text.Mark.Request) returns (anytype.Rpc.BlockList.Set.Text.Mark.Response);
     rpc BlockSetTextStyle (anytype.Rpc.Block.Set.Text.Style.Request) returns (anytype.Rpc.Block.Set.Text.Style.Response);
     rpc BlockSetTextChecked (anytype.Rpc.Block.Set.Text.Checked.Request) returns (anytype.Rpc.Block.Set.Text.Checked.Response);
+    rpc BlockSetTextIcon (anytype.Rpc.Block.Set.Text.Icon.Request) returns (anytype.Rpc.Block.Set.Text.Icon.Response);
 
     rpc BlockSplit (anytype.Rpc.Block.Split.Request) returns (anytype.Rpc.Block.Split.Response);
     rpc BlockMerge (anytype.Rpc.Block.Merge.Request) returns (anytype.Rpc.Block.Merge.Response);

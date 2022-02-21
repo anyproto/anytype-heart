@@ -271,6 +271,10 @@
     - [Rpc.Block.Set.Text.Color.Request](#anytype.Rpc.Block.Set.Text.Color.Request)
     - [Rpc.Block.Set.Text.Color.Response](#anytype.Rpc.Block.Set.Text.Color.Response)
     - [Rpc.Block.Set.Text.Color.Response.Error](#anytype.Rpc.Block.Set.Text.Color.Response.Error)
+    - [Rpc.Block.Set.Text.Icon](#anytype.Rpc.Block.Set.Text.Icon)
+    - [Rpc.Block.Set.Text.Icon.Request](#anytype.Rpc.Block.Set.Text.Icon.Request)
+    - [Rpc.Block.Set.Text.Icon.Response](#anytype.Rpc.Block.Set.Text.Icon.Response)
+    - [Rpc.Block.Set.Text.Icon.Response.Error](#anytype.Rpc.Block.Set.Text.Icon.Response.Error)
     - [Rpc.Block.Set.Text.Style](#anytype.Rpc.Block.Set.Text.Style)
     - [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request)
     - [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response)
@@ -744,6 +748,7 @@
     - [Rpc.Block.Set.Restrictions.Response.Error.Code](#anytype.Rpc.Block.Set.Restrictions.Response.Error.Code)
     - [Rpc.Block.Set.Text.Checked.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Checked.Response.Error.Code)
     - [Rpc.Block.Set.Text.Color.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Color.Response.Error.Code)
+    - [Rpc.Block.Set.Text.Icon.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Icon.Response.Error.Code)
     - [Rpc.Block.Set.Text.Style.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Style.Response.Error.Code)
     - [Rpc.Block.Set.Text.Text.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Text.Response.Error.Code)
     - [Rpc.Block.Set.Video.Name.Response.Error.Code](#anytype.Rpc.Block.Set.Video.Name.Response.Error.Code)
@@ -936,6 +941,8 @@
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked)
     - [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color)
+    - [Event.Block.Set.Text.IconEmoji](#anytype.Event.Block.Set.Text.IconEmoji)
+    - [Event.Block.Set.Text.IconImage](#anytype.Event.Block.Set.Text.IconImage)
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
@@ -1154,6 +1161,7 @@
 | BlockListSetTextMark | [Rpc.BlockList.Set.Text.Mark.Request](#anytype.Rpc.BlockList.Set.Text.Mark.Request) | [Rpc.BlockList.Set.Text.Mark.Response](#anytype.Rpc.BlockList.Set.Text.Mark.Response) |  |
 | BlockSetTextStyle | [Rpc.Block.Set.Text.Style.Request](#anytype.Rpc.Block.Set.Text.Style.Request) | [Rpc.Block.Set.Text.Style.Response](#anytype.Rpc.Block.Set.Text.Style.Response) |  |
 | BlockSetTextChecked | [Rpc.Block.Set.Text.Checked.Request](#anytype.Rpc.Block.Set.Text.Checked.Request) | [Rpc.Block.Set.Text.Checked.Response](#anytype.Rpc.Block.Set.Text.Checked.Response) |  |
+| BlockSetTextIcon | [Rpc.Block.Set.Text.Icon.Request](#anytype.Rpc.Block.Set.Text.Icon.Request) | [Rpc.Block.Set.Text.Icon.Response](#anytype.Rpc.Block.Set.Text.Icon.Response) |  |
 | BlockSplit | [Rpc.Block.Split.Request](#anytype.Rpc.Block.Split.Request) | [Rpc.Block.Split.Response](#anytype.Rpc.Block.Split.Response) |  |
 | BlockMerge | [Rpc.Block.Merge.Request](#anytype.Rpc.Block.Merge.Request) | [Rpc.Block.Merge.Response](#anytype.Rpc.Block.Merge.Response) |  |
 | BlockCopy | [Rpc.Block.Copy.Request](#anytype.Rpc.Block.Copy.Request) | [Rpc.Block.Copy.Response](#anytype.Rpc.Block.Copy.Response) |  |
@@ -1708,7 +1716,6 @@ Front end to middleware request-to-create-an account
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
-| avatarColor | [string](#string) |  | Avatar color as an alternative for avatar image |
 | alphaInviteCode | [string](#string) |  |  |
 
 
@@ -5155,6 +5162,66 @@ Image/Video/File blocks then:
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.Set.Text.Color.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Color.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon"></a>
+
+### Rpc.Block.Set.Text.Icon
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon.Request"></a>
+
+### Rpc.Block.Set.Text.Icon.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| iconImage | [string](#string) |  | in case both image and emoji are set, image has a priority to show |
+| iconEmoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon.Response"></a>
+
+### Rpc.Block.Set.Text.Icon.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.Set.Text.Icon.Response.Error](#anytype.Rpc.Block.Set.Text.Icon.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon.Response.Error"></a>
+
+### Rpc.Block.Set.Text.Icon.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.Set.Text.Icon.Response.Error.Code](#anytype.Rpc.Block.Set.Text.Icon.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -9148,6 +9215,7 @@ deprecated, to be removed |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 | source | [string](#string) | repeated |  |
 | ignoreWorkspace | [string](#string) |  |  |
+| noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 
 
@@ -11196,6 +11264,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | BAD_INVITE_CODE | 900 |  |
+| NET_ERROR | 901 | means general network error |
+| NET_CONNECTION_REFUSED | 902 | means we wasn&#39;t able to connect to the cafe server |
+| NET_OFFLINE | 903 | client can additionally support this error code to notify user that device is offline |
 
 
 
@@ -11916,6 +11987,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Block.Set.Text.Color.Response.Error.Code"></a>
 
 ### Rpc.Block.Set.Text.Color.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Block.Set.Text.Icon.Response.Error.Code"></a>
+
+### Rpc.Block.Set.Text.Icon.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -12719,6 +12803,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| ALREADY_EXISTS | 10 |  |
 
 
 
@@ -14642,6 +14727,8 @@ Precondition: user A opened a block
 | marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
 | checked | [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked) |  |  |
 | color | [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color) |  |  |
+| iconEmoji | [Event.Block.Set.Text.IconEmoji](#anytype.Event.Block.Set.Text.IconEmoji) |  |  |
+| iconImage | [Event.Block.Set.Text.IconImage](#anytype.Event.Block.Set.Text.IconImage) |  |  |
 
 
 
@@ -14666,6 +14753,36 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Set.Text.Color"></a>
 
 ### Event.Block.Set.Text.Color
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.IconEmoji"></a>
+
+### Event.Block.Set.Text.IconEmoji
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.IconImage"></a>
+
+### Event.Block.Set.Text.IconImage
 
 
 
@@ -16052,6 +16169,8 @@ Link: block to link some content from an external sources.
 | marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
 | checked | [bool](#bool) |  |  |
 | color | [string](#string) |  |  |
+| iconEmoji | [string](#string) |  | used with style Callout |
+| iconImage | [string](#string) |  | in case both image and emoji are set, image should has a priority in the UI |
 
 
 
@@ -16625,6 +16744,7 @@ scope from which this relation have been aggregated |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
 | Description | 12 | currently only only one block of this style can exists on a page |
+| Callout | 13 | currently only only one block of this style can exists on a page |
 
 
 

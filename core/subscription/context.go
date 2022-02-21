@@ -9,10 +9,9 @@ import (
 )
 
 type opChange struct {
-	id      string
-	subId   string
-	keys    []string
-	afterId string
+	id    string
+	subId string
+	keys  []string
 }
 
 type opRemove struct {
@@ -24,6 +23,8 @@ type opPosition struct {
 	id      string
 	subId   string
 	afterId string
+	keys    []string
+	isAdd   bool
 }
 
 type opCounter struct {
@@ -37,7 +38,6 @@ type opCtx struct {
 	// subIds for remove
 	remove   []opRemove
 	change   []opChange
-	add      []opChange
 	position []opPosition
 	counters []opCounter
 	entries  []*entry
@@ -54,18 +54,30 @@ type opCtx struct {
 func (ctx *opCtx) apply() (event *pb.Event) {
 	var subMsgs = make([]*pb.EventMessage, 0, 10)
 
-	// adds
-	for _, add := range ctx.add {
-		ctx.collectKeys(add.id, add.subId, add.keys)
-		subMsgs = append(subMsgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfSubscriptionAdd{
-				SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
-					Id:      add.id,
-					AfterId: add.afterId,
-					SubId:   add.subId,
+	// adds, positions
+	for _, pos := range ctx.position {
+		if pos.isAdd {
+			ctx.collectKeys(pos.id, pos.subId, pos.keys)
+			subMsgs = append(subMsgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfSubscriptionAdd{
+					SubscriptionAdd: &pb.EventObjectSubscriptionAdd{
+						Id:      pos.id,
+						AfterId: pos.afterId,
+						SubId:   pos.subId,
+					},
 				},
-			},
-		})
+			})
+		} else {
+			subMsgs = append(subMsgs, &pb.EventMessage{
+				Value: &pb.EventMessageValueOfSubscriptionPosition{
+					SubscriptionPosition: &pb.EventObjectSubscriptionPosition{
+						Id:      pos.id,
+						AfterId: pos.afterId,
+						SubId:   pos.subId,
+					},
+				},
+			})
+		}
 	}
 
 	// changes
@@ -75,19 +87,6 @@ func (ctx *opCtx) apply() (event *pb.Event) {
 
 	// details events
 	eventMsgs := ctx.detailsEvents()
-
-	// positions
-	for _, pos := range ctx.position {
-		subMsgs = append(subMsgs, &pb.EventMessage{
-			Value: &pb.EventMessageValueOfSubscriptionPosition{
-				SubscriptionPosition: &pb.EventObjectSubscriptionPosition{
-					Id:      pos.id,
-					AfterId: pos.afterId,
-					SubId:   pos.subId,
-				},
-			},
-		})
-	}
 
 	// removes
 	for _, rem := range ctx.remove {
@@ -172,8 +171,8 @@ func (ctx *opCtx) collectKeys(id string, subId string, keys []string) {
 		if kb.id == id {
 			found = true
 			for _, k := range keys {
-				if slice.FindPos(kb.keys, k) == -1 {
-					ctx.keysBuf[i].keys = append(kb.keys, k)
+				if slice.FindPos(ctx.keysBuf[i].keys, k) == -1 {
+					ctx.keysBuf[i].keys = append(ctx.keysBuf[i].keys, k)
 				}
 			}
 			if slice.FindPos(kb.subIds, subId) == -1 {
@@ -205,7 +204,6 @@ func (ctx *opCtx) getEntry(id string) *entry {
 func (ctx *opCtx) reset() {
 	ctx.remove = ctx.remove[:0]
 	ctx.change = ctx.change[:0]
-	ctx.add = ctx.add[:0]
 	ctx.position = ctx.position[:0]
 	ctx.counters = ctx.counters[:0]
 	ctx.keysBuf = ctx.keysBuf[:0]

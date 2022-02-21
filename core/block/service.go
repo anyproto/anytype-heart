@@ -141,6 +141,7 @@ type Service interface {
 	SetTextChecked(ctx *state.Context, req pb.RpcBlockSetTextCheckedRequest) error
 	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
+	SetTextIcon(ctx *state.Context, contextId, image, emoji string, blockIds ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
 	SetLayout(ctx *state.Context, id string, layout model.ObjectTypeLayout) error

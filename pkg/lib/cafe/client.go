@@ -69,7 +69,7 @@ func (c *Online) Init(a *app.App) (err error) {
 	} else {
 		opts = append(opts, grpc.WithTransportCredentials(credentials.NewTLS(nil)))
 	}
-	conn, err := grpc.Dial(cfg.CafeAPIHost, opts...)
+	conn, err := grpc.Dial(cfg.CafeNodeGrpcAddr(), opts...)
 	if err != nil {
 		return err
 	}

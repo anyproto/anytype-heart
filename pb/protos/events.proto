@@ -303,6 +303,8 @@ message Event {
                 Marks marks = 4;
                 Checked checked = 5;
                 Color color = 6;
+                IconEmoji iconEmoji = 7;
+                IconImage iconImage = 8;
 
                 message Text {
                     string value = 1;
@@ -324,6 +326,13 @@ message Event {
                     string value = 1;
                 }
 
+                message IconEmoji {
+                    string value = 1;
+                }
+
+                message IconImage {
+                    string value = 1;
+                }
             }
             message Latex {
                 string id = 1;

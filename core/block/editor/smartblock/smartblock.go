@@ -417,7 +417,7 @@ func (sb *smartBlock) fetchMeta() (details []*pb.EventObjectDetailsSet, objectTy
 	}
 	recordsCh := make(chan *types.Struct, 10)
 	sb.recordsSub = database.NewSubscription(nil, recordsCh)
-	sb.depIds = sb.dependentSmartIds(true, true)
+	sb.depIds = sb.dependentSmartIds(true, true, true)
 	sort.Strings(sb.depIds)
 	var records []database.Record
 	if records, sb.closeRecordsSub, err = sb.objectStore.QueryByIdAndSubscribeForChanges(sb.depIds, sb.recordsSub); err != nil {
@@ -544,7 +544,7 @@ func (sb *smartBlock) onMetaChange(details *types.Struct) {
 }
 
 // dependentSmartIds returns list of dependent objects in this order: Simple blocks(Link, mentions in Text), Relations. Both of them are returned in the order of original blocks/relations
-func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool) (ids []string) {
+func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModifier bool, includeHidden bool) (ids []string) {
 	ids = sb.Doc.(*state.State).DepSmartIds()
 
 	if sb.Type() != model.SmartBlockType_Breadcrumbs {
@@ -562,13 +562,32 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 
 		for _, rel := range sb.RelationsState(sb.Doc.(*state.State), false) {
 			// do not index local dates such as lastOpened/lastModified
-			if rel.Format == model.RelationFormat_date && (slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
+			if rel.Format == model.RelationFormat_date &&
+				(slice.FindPos(bundle.LocalRelationsKeys, rel.Key) == 0) && (slice.FindPos(bundle.DerivedRelationsKeys, rel.Key) == 0) {
 				relInt := pbtypes.GetInt64(details, rel.Key)
 				if relInt > 0 {
 					t := time.Unix(relInt, 0)
 					t = t.In(time.UTC)
 					ids = append(ids, source.TimeToId(t))
 				}
+				continue
+			}
+
+			if rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
+				if includeCreatorModifier {
+					v := pbtypes.GetString(details, rel.Key)
+					ids = append(ids, v)
+				}
+				continue
+			}
+
+			if rel.Hidden && !includeHidden {
+				continue
+			}
+
+			if rel.Key == bundle.RelationKeyId.String() ||
+				rel.Key == bundle.RelationKeyType.String() || // always skip type because it was proceed above
+				rel.Key == bundle.RelationKeyFeaturedRelations.String() {
 				continue
 			}
 
@@ -583,17 +602,6 @@ func (sb *smartBlock) dependentSmartIds(includeObjTypes bool, includeCreatorModi
 			}
 
 			if rel.Format != model.RelationFormat_object && rel.Format != model.RelationFormat_file {
-				continue
-			}
-
-			if rel.Hidden {
-				continue
-			}
-
-			if rel.Key == bundle.RelationKeyId.String() ||
-				rel.Key == bundle.RelationKeyType.String() ||
-				rel.Key == bundle.RelationKeyFeaturedRelations.String() ||
-				!includeCreatorModifier && (rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String()) {
 				continue
 			}
 
@@ -764,7 +772,7 @@ func (sb *smartBlock) ResetToVersion(s *state.State) (err error) {
 }
 
 func (sb *smartBlock) CheckSubscriptions() (changed bool) {
-	depIds := sb.dependentSmartIds(true, true)
+	depIds := sb.dependentSmartIds(true, true, true)
 	sort.Strings(depIds)
 	if !slice.SortedEquals(sb.depIds, depIds) {
 		sb.depIds = depIds
@@ -1670,18 +1678,13 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 		}
 	}
 
-	links := sb.dependentSmartIds(false, false)
-	for _, fileHash := range fileHashes {
-		if slice.FindPos(links, fileHash) == -1 {
-			links = append(links, fileHash)
-		}
-	}
+	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
+	links := sb.dependentSmartIds(false, false, false)
 
 	links = slice.Remove(links, sb.Id())
 	// so links will have this order
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
-	// 3. Files
 	return doc.DocInfo{
 		Id:           sb.Id(),
 		Links:        links,

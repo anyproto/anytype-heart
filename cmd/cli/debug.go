@@ -1,6 +1,7 @@
 package main
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/debug"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
@@ -33,12 +34,11 @@ var dumpTree = &cobra.Command{
 			console.Fatal("please specify thread")
 		}
 
-		comps, err := anytype.BootstrapConfigAndWallet(false, debugRepoPath, debugAccount)
-		if err != nil {
-			console.Fatal("failed to bootstrap anytype: %s", err.Error())
+		comps := []app.Component{
+			anytype.BootstrapConfig(false, false),
+			anytype.BootstrapWallet(debugRepoPath, debugAccount),
+			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
-
-		comps = append(comps, event.NewCallbackSender(func(event *pb.Event) {}))
 
 		app, err := anytype.StartNewApp(comps...)
 		if err != nil {
@@ -62,12 +62,11 @@ var dumpLocalstore = &cobra.Command{
 			console.Fatal("please specify account")
 		}
 
-		comps, err := anytype.BootstrapConfigAndWallet(false, debugRepoPath, debugAccount)
-		if err != nil {
-			console.Fatal("failed to bootstrap anytype: %s", err.Error())
+		comps := []app.Component{
+			anytype.BootstrapConfig(false, false),
+			anytype.BootstrapWallet(debugRepoPath, debugAccount),
+			event.NewCallbackSender(func(event *pb.Event) {}),
 		}
-
-		comps = append(comps, event.NewCallbackSender(func(event *pb.Event) {}))
 
 		app, err := anytype.StartNewApp(comps...)
 		if err != nil {

@@ -549,6 +549,12 @@ func (s *service) SetTextMark(ctx *state.Context, contextId string, mark *model.
 	})
 }
 
+func (s *service) SetTextIcon(ctx *state.Context, contextId, image, emoji string, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.SetIcon(ctx, image, emoji, blockIds...)
+	})
+}
+
 func (s *service) SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) (err error) {
 	return s.DoBasic(contextId, func(b basic.Basic) error {
 		return b.Update(ctx, func(b simple.Block) error {
