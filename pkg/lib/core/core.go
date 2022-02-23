@@ -56,7 +56,6 @@ type Service interface {
 	Start() error
 	Stop() error
 	IsStarted() bool
-	BecameOnline(ch chan<- error)
 
 	EnsurePredefinedBlocks(ctx context.Context, mustSyncFromRemote bool) error
 	PredefinedBlocks() threads.DerivedSmartblockIds
@@ -129,8 +128,6 @@ type Anytype struct {
 	isStarted        bool // use under the lock
 	shutdownStartsCh chan struct {
 	} // closed when node shutdown starts
-	onlineCh chan struct {
-	} // closed when became online
 
 	recordsbatch        batchAdder
 	subscribeOnce       sync.Once
@@ -156,7 +153,6 @@ type batchAdder interface {
 func New() *Anytype {
 	return &Anytype{
 		shutdownStartsCh: make(chan struct{}),
-		onlineCh:         make(chan struct{}),
 	}
 }
 
@@ -213,19 +209,6 @@ func (a *Anytype) IsStarted() bool {
 	defer a.lock.Unlock()
 
 	return a.isStarted
-}
-
-func (a *Anytype) BecameOnline(ch chan<- error) {
-	for {
-		select {
-		case <-a.onlineCh:
-			ch <- nil
-			close(ch)
-		case <-a.shutdownStartsCh:
-			ch <- fmt.Errorf("node was shutdown")
-			close(ch)
-		}
-	}
 }
 
 func (a *Anytype) GetAllWorkspaces() ([]string, error) {
@@ -325,7 +308,6 @@ func (a *Anytype) Stop() error {
 
 	if a.shutdownStartsCh != nil {
 		close(a.shutdownStartsCh)
-		a.shutdownStartsCh = nil
 	}
 
 	// fixme useless!
