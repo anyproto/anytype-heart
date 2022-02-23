@@ -285,14 +285,29 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			return s1, nil
 		}
 
+		var p1, p2 string
 		// unexpected behavior - just return lesser id
 		if s1 < s2 {
-			log.Warnf("changes build tree: prefer %s (%s<%s)", s1, s1, s2)
-			return s1, nil
+			p1, p2 = s1, s2
+		} else {
+			p1, p2 = s2, s1
 		}
-		log.Warnf("changes build tree: prefer %s (%s<%s)", s2, s2, s1)
 
-		return s2, nil
+		log.With("thread", sb.smartblock.ID()).Errorf("changes build tree: made base snapshot for logs %s and %s: merge first changes %s+%s", ch1.Device, ch2.Device, p1, p2)
+		baseId := p1 + p2
+
+		sb.cache[baseId] = &Change{
+			Id:      baseId,
+			Account: sb.cache[p1].Account,
+			Device:  sb.cache[p1].Device,
+			Next:    []*Change{sb.cache[p1], sb.cache[p2]},
+			Change:  &pb.Change{Snapshot: sb.cache[p1].Snapshot},
+		}
+
+		ch1.PreviousIds = []string{baseId}
+		ch2.PreviousIds = []string{baseId}
+
+		return baseId, nil
 	}
 
 	for len(snapshotIds) > 1 {
