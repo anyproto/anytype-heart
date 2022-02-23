@@ -53,6 +53,17 @@ func StringList(s []string) *types.Value {
 	}
 }
 
+func IntList(ints ...int) *types.Value {
+	var vals = make([]*types.Value, 0, len(ints))
+	for _, i := range ints {
+		vals = append(vals, Int64(int64(i)))
+	}
+
+	return &types.Value{
+		Kind: &types.Value_ListValue{ListValue: &types.ListValue{Values: vals}},
+	}
+}
+
 func Bool(v bool) *types.Value {
 	return &types.Value{
 		Kind: &types.Value_BoolValue{BoolValue: v},
