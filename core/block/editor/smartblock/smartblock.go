@@ -1701,7 +1701,16 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
 		}
 	}
+	sb.setRestrictionsDetail(s)
 	return
+}
+
+func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
+	var ints = make([]int, len(sb.Restrictions().Object))
+	for i, v := range sb.Restrictions().Object {
+		ints[i] = int(v)
+	}
+	s.SetLocalDetail(bundle.RelationKeyRestrictions.String(), pbtypes.IntList(ints...))
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
