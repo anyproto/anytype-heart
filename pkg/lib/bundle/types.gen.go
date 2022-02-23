@@ -318,7 +318,7 @@ var (
 		TypeKeyNote: {
 
 			Description: "Blank canvas with no Title. A brief record of points written down as an aid to memory",
-			IconEmoji:   "⚪",
+			IconEmoji:   "📝",
 			Layout:      model.ObjectType_note,
 			Name:        "Note",
 			Readonly:    true,
