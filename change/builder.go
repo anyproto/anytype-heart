@@ -3,6 +3,7 @@ package change
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"runtime"
@@ -23,7 +24,7 @@ var (
 var log = logging.Logger("anytype-mw-change-builder")
 
 const (
-	virtualChangeBasePrefix    = "base_"
+	virtualChangeBasePrefix    = "_virtual:"
 	virtualChangeBaseSeparator = "+"
 )
 
@@ -300,8 +301,19 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 		}
 
 		log.With("thread", sb.smartblock.ID()).Errorf("changes build tree: made base snapshot for logs %s and %s: merge first changes %s+%s", ch1.Device, ch2.Device, p1, p2)
-		baseId := virtualChangeBasePrefix + p1 + virtualChangeBaseSeparator + p2
+		baseId := sb.makeVirtualSnapshotId(p1, p2)
 
+		if len(ch2.PreviousIds) != 0 || len(ch2.PreviousIds) != 0 {
+			if len(ch2.PreviousIds) == 1 && len(ch2.PreviousIds) == 1 && ch1.PreviousIds[0] == baseId && ch2.PreviousIds[0] == baseId {
+				// already patched
+				return baseId, nil
+			} else {
+				return "", fmt.Errorf("failed to create virtual base change: has invalid PreviousIds")
+			}
+		}
+
+		ch1.PreviousIds = []string{baseId}
+		ch2.PreviousIds = []string{baseId}
 		return baseId, nil
 	}
 
@@ -370,42 +382,44 @@ func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 	return sch, nil
 }
 
+func (sb *stateBuilder) makeVirtualSnapshotId(s1, s2 string) string {
+	return virtualChangeBasePrefix + base64.RawStdEncoding.EncodeToString([]byte(s1+virtualChangeBaseSeparator+s2))
+}
+
+func (sb *stateBuilder) makeChangeFromVirtualId(id string) (*Change, error) {
+	dataB, err := base64.RawStdEncoding.DecodeString(id[len(virtualChangeBasePrefix):])
+	if err != nil {
+		return nil, fmt.Errorf("invalid virtual id format: %s", err.Error())
+	}
+
+	ids := strings.Split(string(dataB), virtualChangeBaseSeparator)
+	if len(ids) != 2 {
+		return nil, fmt.Errorf("invalid virtual id format: %v", id)
+	}
+
+	ch1, err := sb.loadChange(ids[0])
+	if err != nil {
+		return nil, err
+	}
+	ch2, err := sb.loadChange(ids[1])
+	if err != nil {
+		return nil, err
+	}
+	return &Change{
+		Id:      id,
+		Account: ch1.Account,
+		Device:  ch1.Device,
+		Next:    []*Change{ch1, ch2},
+		Change:  &pb.Change{Snapshot: ch1.Snapshot},
+	}, nil
+
+}
+
 func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if strings.HasPrefix(id, virtualChangeBasePrefix) {
-		ids := strings.SplitN(strings.TrimPrefix(id, virtualChangeBasePrefix), virtualChangeBaseSeparator, 2)
-		if len(ids) < 2 {
-			return nil, fmt.Errorf("incorrect virtual base change id format")
-		}
-		if ids[0] > ids[1] {
-			return nil, fmt.Errorf("incorrect virtual base change id order")
-		}
-		ch1, err := sb.loadChange(ids[0])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create virtual base change %s: %s got error %s ", id, ids[0], err)
-		}
-
-		ch2, err := sb.loadChange(ids[1])
-		if err != nil {
-			return nil, fmt.Errorf("failed to create virtual base change %s: %s got error %s ", id, ids[1], err)
-		}
-		if len(ch2.PreviousIds) != 0 || len(ch2.PreviousIds) != 0 {
-			if len(ch2.PreviousIds) == 1 && len(ch2.PreviousIds) == 1 && ch1.PreviousIds[0] == id && ch2.PreviousIds[0] == id {
-				// already patched
-			} else {
-				return nil, fmt.Errorf("failed to create virtual base change %s: has PreviousIds", id)
-			}
-		}
-		// dirty hack, patch existing changes on-the-fly. May be racy
-		ch1.PreviousIds = []string{id}
-		ch2.PreviousIds = []string{id}
-		return &Change{
-			Id:      id,
-			Account: ch1.Account,
-			Device:  ch1.Device,
-			Next:    []*Change{ch1, ch2},
-			Change:  &pb.Change{Snapshot: ch1.Snapshot},
-		}, nil
+		return sb.makeChangeFromVirtualId(id)
 	}
+
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
 	}
