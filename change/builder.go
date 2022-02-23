@@ -372,8 +372,8 @@ func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 
 func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if strings.HasPrefix(id, virtualChangeBasePrefix) {
-		ids := strings.Split(strings.TrimPrefix(id, virtualChangeBasePrefix), virtualChangeBaseSeparator)
-		if len(ids) != 2 {
+		ids := strings.SplitN(strings.TrimPrefix(id, virtualChangeBasePrefix), virtualChangeBaseSeparator, 2)
+		if len(ids) < 2 {
 			return nil, fmt.Errorf("incorrect virtual base change id format")
 		}
 		if ids[0] > ids[1] {
