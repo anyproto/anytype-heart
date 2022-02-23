@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"runtime"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -20,6 +21,11 @@ var (
 )
 
 var log = logging.Logger("anytype-mw-change-builder")
+
+const (
+	virtualChangeBasePrefix    = "base_"
+	virtualChangeBaseSeparator = "+"
+)
 
 func BuildTreeBefore(s core.SmartBlock, beforeLogId string, includeBeforeId bool) (t *Tree, err error) {
 	sb := &stateBuilder{beforeId: beforeLogId, includeBeforeId: includeBeforeId}
@@ -294,18 +300,7 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 		}
 
 		log.With("thread", sb.smartblock.ID()).Errorf("changes build tree: made base snapshot for logs %s and %s: merge first changes %s+%s", ch1.Device, ch2.Device, p1, p2)
-		baseId := p1 + p2
-
-		sb.cache[baseId] = &Change{
-			Id:      baseId,
-			Account: sb.cache[p1].Account,
-			Device:  sb.cache[p1].Device,
-			Next:    []*Change{sb.cache[p1], sb.cache[p2]},
-			Change:  &pb.Change{Snapshot: sb.cache[p1].Snapshot},
-		}
-
-		ch1.PreviousIds = []string{baseId}
-		ch2.PreviousIds = []string{baseId}
+		baseId := virtualChangeBasePrefix + p1 + virtualChangeBaseSeparator + p2
 
 		return baseId, nil
 	}
@@ -376,6 +371,41 @@ func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 }
 
 func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
+	if strings.HasPrefix(id, virtualChangeBasePrefix) {
+		ids := strings.Split(strings.TrimPrefix(id, virtualChangeBasePrefix), virtualChangeBaseSeparator)
+		if len(ids) != 2 {
+			return nil, fmt.Errorf("incorrect virtual base change id format")
+		}
+		if ids[0] > ids[1] {
+			return nil, fmt.Errorf("incorrect virtual base change id order")
+		}
+		ch1, err := sb.loadChange(ids[0])
+		if err != nil {
+			return nil, fmt.Errorf("failed to create virtual base change %s: %s got error %s ", id, ids[0], err)
+		}
+
+		ch2, err := sb.loadChange(ids[1])
+		if err != nil {
+			return nil, fmt.Errorf("failed to create virtual base change %s: %s got error %s ", id, ids[1], err)
+		}
+		if len(ch2.PreviousIds) != 0 || len(ch2.PreviousIds) != 0 {
+			if len(ch2.PreviousIds) == 1 && len(ch2.PreviousIds) == 1 && ch1.PreviousIds[0] == id && ch2.PreviousIds[0] == id {
+				// already patched
+			} else {
+				return nil, fmt.Errorf("failed to create virtual base change %s: has PreviousIds", id)
+			}
+		}
+		// dirty hack, patch existing changes on-the-fly. May be racy
+		ch1.PreviousIds = []string{id}
+		ch2.PreviousIds = []string{id}
+		return &Change{
+			Id:      id,
+			Account: ch1.Account,
+			Device:  ch1.Device,
+			Next:    []*Change{ch1, ch2},
+			Change:  &pb.Change{Snapshot: ch1.Snapshot},
+		}, nil
+	}
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
 	}
