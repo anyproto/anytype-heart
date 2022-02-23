@@ -104,8 +104,6 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		return
 	}
 
-	filterDepIds := s.depIdsFromFilter(req.Filters)
-
 	if len(req.Source) > 0 {
 		sourceFilter, err := s.filtersFromSource(req.Source)
 		if err != nil {
@@ -123,6 +121,8 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 
 	s.m.Lock()
 	defer s.m.Unlock()
+
+	filterDepIds := s.depIdsFromFilter(req.Filters)
 	if exists, ok := s.subscriptions[req.SubId]; ok {
 		exists.close()
 	}
