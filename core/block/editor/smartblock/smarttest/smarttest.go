@@ -41,6 +41,10 @@ type SmartTest struct {
 	os        *testMock.MockObjectStore
 }
 
+func (st *SmartTest) Locked() bool {
+	return false
+}
+
 func (st *SmartTest) DocService() doc.Service {
 	return nil
 }

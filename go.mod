@@ -10,8 +10,7 @@ require (
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de
-	github.com/blevesearch/bleve/v2 v2.3.0 // indirect
-	github.com/blevesearch/bleve_index_api v1.0.1 // indirect
+	github.com/blevesearch/bleve/v2 v2.3.0
 	github.com/cheggaaa/mb v1.0.3
 	github.com/dave/jennifer v1.4.1
 	github.com/dgraph-io/badger v1.6.2
@@ -102,7 +101,7 @@ require (
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
-replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20220212122526-59f785ec84c5
+replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20220223104843-a67245cee80e
 
 replace github.com/msingleton/amplitude-go => github.com/anytypeio/amplitude-go v0.0.0-20211130222238-8d16496a9b31
 

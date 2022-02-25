@@ -80,7 +80,7 @@ func (p *Set) Init(ctx *smartblock.InitContext) (err error) {
 			template.WithDataview(dataview, false),
 			template.WithDetailName("Notes"),
 			template.WithDetail(bundle.RelationKeySetOf, pbtypes.StringList([]string{bundle.TypeKeyNote.URL()})),
-			template.WithDetailIconEmoji("⚪"))
+			template.WithDetailIconEmoji("📝"))
 	} else if dvBlock := p.Pick(template.DataviewBlockId); dvBlock != nil {
 		setOf := dvBlock.Model().GetDataview().Source
 		templates = append(templates, template.WithForcedDetail(bundle.RelationKeySetOf, pbtypes.StringList(setOf)))
