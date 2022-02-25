@@ -104,16 +104,24 @@ func (c *configFetcher) Run() error {
 
 func (c *configFetcher) run() {
 	defer close(c.stopped)
+	var t *time.Timer
+	// timer shouldn't be nil at this point, because we always create it at the beginning of loop
+	defer t.Stop()
 OuterLoop:
 	for {
 		var attempt int
-		t := time.After(accountStateFetchInterval)
+		if t == nil {
+			t = time.NewTimer(accountStateFetchInterval)
+		} else {
+			// we should go here only if we drained the channel and the timer expires
+			t.Reset(accountStateFetchInterval)
+		}
 		for {
 			select {
 			case <-c.ctx.Done():
 				return
-			case <-t: // if we failed too many attempts, we still want to continue trying at least each accountStateFetchInterval
-				break OuterLoop
+			case <-t.C: // if we failed too many attempts, we still want to continue trying at least each accountStateFetchInterval
+				continue OuterLoop
 			case <-time.After(time.Second * 2 * time.Duration(attempt)):
 				break
 			}
@@ -132,7 +140,7 @@ OuterLoop:
 				if !equal {
 					c.NotifyClientApp()
 				}
-				<-t
+				<-t.C
 				break
 			}
 
