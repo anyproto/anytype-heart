@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "4f4ac6b54175a5a3bac632f6cf8fb499608f910c1989c91c9c1b9f96baff5c73"
+const RelationChecksum = "c50645f3985a96c8680e89ba6930431951e6bbe9cfb96418063b320378c5fe1b"
 
 type RelationKey string
 
@@ -108,6 +108,7 @@ const (
 	RelationKeyAssignee                  RelationKey = "assignee"
 	RelationKeyExposure                  RelationKey = "exposure"
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
+	RelationKeyRestrictions              RelationKey = "restrictions"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
@@ -174,6 +175,7 @@ const (
 	RelationKeyFeaturedRelations         RelationKey = "featuredRelations"
 	RelationKeyPhone                     RelationKey = "phone"
 	RelationKeyImdbRating                RelationKey = "imdbRating"
+	RelationKeyLinks                     RelationKey = "links"
 )
 
 var (
@@ -1221,6 +1223,18 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyLinks: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "",
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
+			Key:              "links",
+			Name:             "Outgoing links",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyLocation: {
 
 			DataSource:       model.Relation_details,
@@ -1652,6 +1666,19 @@ var (
 			Key:              "responsible",
 			Name:             "Responsible",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyRestrictions: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Object restrictions list",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Key:              "restrictions",
+			MaxCount:         1,
+			Name:             "Object restrictions",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

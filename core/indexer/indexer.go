@@ -39,17 +39,18 @@ const (
 	CName = "indexer"
 
 	// increasing counters below will trigger existing account to reindex their data
-	ForceThreadsObjectsReindexCounter int32 = 1  // reindex thread-based objects
-	ForceFilesReindexCounter          int32 = 4  // reindex ipfs-file-based objects
-	ForceBundledObjectsReindexCounter int32 = 3  // reindex objects like anytypeProfile
+	ForceThreadsObjectsReindexCounter int32 = 6  // reindex thread-based objects
+	ForceFilesReindexCounter          int32 = 6  // reindex ipfs-file-based objects
+	ForceBundledObjectsReindexCounter int32 = 4  // reindex objects like anytypeProfile
 	ForceIdxRebuildCounter            int32 = 12 // erases localstore indexes and reindex all type of objects (no need to increase ForceThreadsObjectsReindexCounter & ForceFilesReindexCounter)
-	ForceFulltextIndexCounter         int32 = 2  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
+	ForceFulltextIndexCounter         int32 = 3  // performs fulltext indexing for all type of objects (useful when we change fulltext config)
 )
 
 var log = logging.Logger("anytype-doc-indexer")
 
 var (
-	ftIndexInterval = time.Minute / 3
+	ftIndexInterval         = time.Minute
+	ftIndexForceMinInterval = time.Second * 10
 )
 
 func New() Indexer {
@@ -57,6 +58,7 @@ func New() Indexer {
 }
 
 type Indexer interface {
+	ForceFTIndex()
 	app.ComponentRunnable
 }
 
@@ -96,6 +98,7 @@ type indexer struct {
 	archivedMap   map[string]struct{}
 	favoriteMap   map[string]struct{}
 	newAccount    bool
+	forceFt       chan struct{}
 }
 
 func (i *indexer) Init(a *app.App) (err error) {
@@ -112,7 +115,7 @@ func (i *indexer) Init(a *app.App) (err error) {
 	i.quit = make(chan struct{})
 	i.archivedMap = make(map[string]struct{}, 100)
 	i.favoriteMap = make(map[string]struct{}, 100)
-
+	i.forceFt = make(chan struct{})
 	return
 }
 
@@ -163,6 +166,13 @@ func (i *indexer) Run() (err error) {
 	i.migrateRemoveNonindexableObjects()
 	go i.ftLoop()
 	return
+}
+
+func (i *indexer) ForceFTIndex() {
+	select {
+	case i.forceFt <- struct{}{}:
+	default:
+	}
 }
 
 func (i *indexer) migrateRemoveNonindexableObjects() {
@@ -577,6 +587,7 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 
 	details.Fields[bundle.RelationKeyIsArchived.String()] = pbtypes.Bool(isArchived)
 	details.Fields[bundle.RelationKeyIsFavorite.String()] = pbtypes.Bool(isFavorite)
+	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(d.Links)
 
 	var curDetails *types.Struct
 	curDetailsO, _ := i.store.GetDetails(id)
@@ -654,7 +665,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	}
 
 	details := info.State.CombinedDetails()
-
+	details.Fields[bundle.RelationKeyLinks.String()] = pbtypes.StringList(info.Links)
 	setCreator := pbtypes.GetString(info.State.LocalDetails(), bundle.RelationKeyCreator.String())
 	if setCreator == "" {
 		setCreator = i.anytype.ProfileID()
@@ -727,7 +738,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 func (i *indexer) ftLoop() {
 	ticker := time.NewTicker(ftIndexInterval)
 	i.ftIndex()
-
+	var lastForceIndex time.Time
 	i.mu.Lock()
 	quit := i.quit
 	i.mu.Unlock()
@@ -737,6 +748,11 @@ func (i *indexer) ftLoop() {
 			return
 		case <-ticker.C:
 			i.ftIndex()
+		case <-i.forceFt:
+			if time.Since(lastForceIndex) > ftIndexForceMinInterval {
+				i.ftIndex()
+				lastForceIndex = time.Now()
+			}
 		}
 	}
 }
@@ -799,14 +815,21 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {
-		if err := fts.Index(ftsearch.SearchDoc{
+		title := pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String())
+		if info.State.ObjectType() == bundle.TypeKeyNote.String() || title == "" {
+			title = info.State.Snippet()
+		}
+		ftDoc := ftsearch.SearchDoc{
 			Id:    id,
-			Title: pbtypes.GetString(info.State.Details(), bundle.RelationKeyName.String()),
+			Title: title,
 			Text:  info.State.SearchText(),
-		}); err != nil {
+		}
+		if err := fts.Index(ftDoc); err != nil {
 			log.Errorf("can't ft index doc: %v", err)
 		}
+		log.Debugf("ft search indexed with title: '%s'", ftDoc.Title)
 	}
+
 	log.With("thread", id).Infof("ft index updated for a %v", time.Since(st))
 	return
 }

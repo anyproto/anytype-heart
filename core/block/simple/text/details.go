@@ -133,7 +133,7 @@ func (td *textDetails) Diff(s simple.Block) (msgs []simple.EventMessage, err err
 			}
 		}
 		if st := msg.Msg.GetBlockSetText(); st != nil {
-			if st.Text == nil && st.Checked == nil && st.Marks == nil && st.Style == nil && st.Color == nil {
+			if st.Text == nil && st.Checked == nil && st.Marks == nil && st.Style == nil && st.Color == nil && st.IconImage == nil && st.IconEmoji == nil {
 				toRemove = i
 			}
 		}

@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"strings"
 	"time"
 
@@ -110,7 +111,9 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
-
+	if req.FullText != "" {
+		mw.app.MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
+	}
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:          req.Filters,
 		Sorts:            req.Sorts,
@@ -306,8 +309,10 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 						continue
 					}
 
-					if rel.Key == bundle.RelationKeyId.String() || rel.Key == bundle.RelationKeyType.String() || rel.Key == bundle.RelationKeyCreator.String() || rel.Key == bundle.RelationKeyLastModifiedBy.String() {
-						outgoingRelationLink[l] = struct{}{}
+					if rel.Hidden ||
+						rel.Key == bundle.RelationKeyId.String() ||
+						rel.Key == bundle.RelationKeyCreator.String() ||
+						rel.Key == bundle.RelationKeyLastModifiedBy.String() {
 						continue
 					}
 
@@ -323,7 +328,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 				}
 			}
 		}
-		links, _ := at.ObjectStore().GetOutboundLinksById(id)
+		links := pbtypes.GetStringList(rec.Details, bundle.RelationKeyLinks.String())
 		for _, link := range links {
 			sbType, _ := smartblock.SmartBlockTypeFromID(link)
 			// ignore files because we index all file blocks as outgoing links
@@ -373,6 +378,10 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 	})
 	if err != nil {
 		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
+	}
+
+	if len(relations) == 0 {
+		return response(nil, pb.RpcObjectRelationAddResponseError_ALREADY_EXISTS, nil)
 	}
 
 	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)

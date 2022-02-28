@@ -99,6 +99,12 @@ func TestState_InsertTo(t *testing.T) {
 		assert.Len(t, hist.Change, 1)
 		assert.Equal(t, []string{"first", "second"}, r.Pick("root").Model().ChildrenIds)
 		assert.Equal(t, []string{"child"}, r.Pick("first").Model().ChildrenIds)
+
+		s = r.NewState()
+		require.NoError(t, r.InsertTo("first", model.Block_Replace, "child"))
+		_, _, err = ApplyState(s, true)
+		require.NoError(t, err)
+		assert.Equal(t, []string{"child", "second"}, r.Pick("root").Model().ChildrenIds)
 	})
 
 	t.Run("innerFirst", func(t *testing.T) {

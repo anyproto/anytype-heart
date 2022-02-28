@@ -115,7 +115,6 @@ func injectDefaultFilters(filters []*model.BlockContentDataviewFilter) []*model.
 
 		if filter.RelationKey == bundle.RelationKeyIsDeleted.String() {
 			hasDeletedFilter = true
-			break
 		}
 	}
 

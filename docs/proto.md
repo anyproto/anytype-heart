@@ -304,6 +304,10 @@
     - [Rpc.BlockText.SetColor.Request](#anytype.Rpc.BlockText.SetColor.Request)
     - [Rpc.BlockText.SetColor.Response](#anytype.Rpc.BlockText.SetColor.Response)
     - [Rpc.BlockText.SetColor.Response.Error](#anytype.Rpc.BlockText.SetColor.Response.Error)
+    - [Rpc.BlockText.SetIcon](#anytype.Rpc.BlockText.SetIcon)
+    - [Rpc.BlockText.SetIcon.Request](#anytype.Rpc.BlockText.SetIcon.Request)
+    - [Rpc.BlockText.SetIcon.Response](#anytype.Rpc.BlockText.SetIcon.Response)
+    - [Rpc.BlockText.SetIcon.Response.Error](#anytype.Rpc.BlockText.SetIcon.Response.Error)
     - [Rpc.BlockText.SetMarks](#anytype.Rpc.BlockText.SetMarks)
     - [Rpc.BlockText.SetMarks.Get](#anytype.Rpc.BlockText.SetMarks.Get)
     - [Rpc.BlockText.SetMarks.Get.Request](#anytype.Rpc.BlockText.SetMarks.Get.Request)
@@ -726,6 +730,7 @@
     - [Rpc.BlockText.ListSetStyle.Response.Error.Code](#anytype.Rpc.BlockText.ListSetStyle.Response.Error.Code)
     - [Rpc.BlockText.SetChecked.Response.Error.Code](#anytype.Rpc.BlockText.SetChecked.Response.Error.Code)
     - [Rpc.BlockText.SetColor.Response.Error.Code](#anytype.Rpc.BlockText.SetColor.Response.Error.Code)
+    - [Rpc.BlockText.SetIcon.Response.Error.Code](#anytype.Rpc.BlockText.SetIcon.Response.Error.Code)
     - [Rpc.BlockText.SetMarks.Get.Response.Error.Code](#anytype.Rpc.BlockText.SetMarks.Get.Response.Error.Code)
     - [Rpc.BlockText.SetStyle.Response.Error.Code](#anytype.Rpc.BlockText.SetStyle.Response.Error.Code)
     - [Rpc.BlockText.SetText.Response.Error.Code](#anytype.Rpc.BlockText.SetText.Response.Error.Code)
@@ -908,6 +913,8 @@
     - [Event.Block.Set.Text](#anytype.Event.Block.Set.Text)
     - [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked)
     - [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color)
+    - [Event.Block.Set.Text.IconEmoji](#anytype.Event.Block.Set.Text.IconEmoji)
+    - [Event.Block.Set.Text.IconImage](#anytype.Event.Block.Set.Text.IconImage)
     - [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks)
     - [Event.Block.Set.Text.Style](#anytype.Event.Block.Set.Text.Style)
     - [Event.Block.Set.Text.Text](#anytype.Event.Block.Set.Text.Text)
@@ -1086,7 +1093,7 @@
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request) | [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype.Rpc.Object.Search.Request) | [Rpc.Object.Search.Response](#anytype.Rpc.Object.Search.Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype.Rpc.Object.SearchSubscribe.Request) | [Rpc.Object.SearchSubscribe.Response](#anytype.Rpc.Object.SearchSubscribe.Response) |  |
-| ObjectIdsSubscribe | [Rpc.Object.SubscribeIds.Request](#anytype.Rpc.Object.SubscribeIds.Request) | [Rpc.Object.SubscribeIds.Response](#anytype.Rpc.Object.SubscribeIds.Response) |  |
+| ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype.Rpc.Object.SubscribeIds.Request) | [Rpc.Object.SubscribeIds.Response](#anytype.Rpc.Object.SubscribeIds.Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype.Rpc.Object.SearchUnsubscribe.Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype.Rpc.Object.SearchUnsubscribe.Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype.Rpc.Object.SetDetails.Request) | [Rpc.Object.SetDetails.Response](#anytype.Rpc.Object.SetDetails.Response) |  |
 | ObjectDuplicate | [Rpc.Object.Duplicate.Request](#anytype.Rpc.Object.Duplicate.Request) | [Rpc.Object.Duplicate.Response](#anytype.Rpc.Object.Duplicate.Response) |  |
@@ -1163,6 +1170,7 @@
 | BlockTextSetColor | [Rpc.BlockText.SetText.Request](#anytype.Rpc.BlockText.SetText.Request) | [Rpc.BlockText.SetColor.Response](#anytype.Rpc.BlockText.SetColor.Response) |  |
 | BlockTextSetStyle | [Rpc.BlockText.SetStyle.Request](#anytype.Rpc.BlockText.SetStyle.Request) | [Rpc.BlockText.SetStyle.Response](#anytype.Rpc.BlockText.SetStyle.Response) |  |
 | BlockTextSetChecked | [Rpc.BlockText.SetChecked.Request](#anytype.Rpc.BlockText.SetChecked.Request) | [Rpc.BlockText.SetChecked.Response](#anytype.Rpc.BlockText.SetChecked.Response) |  |
+| BlockTextSetIcon | [Rpc.BlockText.SetIcon.Request](#anytype.Rpc.BlockText.SetIcon.Request) | [Rpc.BlockText.SetIcon.Response](#anytype.Rpc.BlockText.SetIcon.Response) |  |
 | BlockTextListSetColor | [Rpc.BlockText.ListSetColor.Request](#anytype.Rpc.BlockText.ListSetColor.Request) | [Rpc.BlockText.ListSetColor.Response](#anytype.Rpc.BlockText.ListSetColor.Response) |  |
 | BlockTextListSetMark | [Rpc.BlockText.ListSetMark.Request](#anytype.Rpc.BlockText.ListSetMark.Request) | [Rpc.BlockText.ListSetMark.Response](#anytype.Rpc.BlockText.ListSetMark.Response) |  |
 | BlockTextListSetStyle | [Rpc.BlockText.ListSetStyle.Request](#anytype.Rpc.BlockText.ListSetStyle.Request) | [Rpc.BlockText.ListSetStyle.Response](#anytype.Rpc.BlockText.ListSetStyle.Response) |  |
@@ -1654,7 +1662,6 @@ Front end to middleware request-to-create-an account
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
-| avatarColor | [string](#string) |  | Avatar color as an alternative for avatar image |
 | alphaInviteCode | [string](#string) |  |  |
 
 
@@ -5613,6 +5620,66 @@ id of the closest simple block |
 
 
 
+<a name="anytype.Rpc.BlockText.SetIcon"></a>
+
+### Rpc.BlockText.SetIcon
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockText.SetIcon.Request"></a>
+
+### Rpc.BlockText.SetIcon.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| iconImage | [string](#string) |  | in case both image and emoji are set, image has a priority to show |
+| iconEmoji | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockText.SetIcon.Response"></a>
+
+### Rpc.BlockText.SetIcon.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockText.SetIcon.Response.Error](#anytype.Rpc.BlockText.SetIcon.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockText.SetIcon.Response.Error"></a>
+
+### Rpc.BlockText.SetIcon.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockText.SetIcon.Response.Error.Code](#anytype.Rpc.BlockText.SetIcon.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockText.SetMarks"></a>
 
 ### Rpc.BlockText.SetMarks
@@ -8145,6 +8212,7 @@ deprecated, to be removed |
 | beforeId | [string](#string) |  | (optional) pagination: middleware will return results before given id |
 | source | [string](#string) | repeated |  |
 | ignoreWorkspace | [string](#string) |  |  |
+| noDepSubscription | [bool](#bool) |  | disable dependent subscription |
 
 
 
@@ -10815,6 +10883,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | BAD_INVITE_CODE | 900 |  |
+| NET_ERROR | 901 | means general network error |
+| NET_CONNECTION_REFUSED | 902 | means we wasn&#39;t able to connect to the cafe server |
+| NET_OFFLINE | 903 | client can additionally support this error code to notify user that device is offline |
 
 
 
@@ -11640,6 +11711,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.BlockText.SetColor.Response.Error.Code"></a>
 
 ### Rpc.BlockText.SetColor.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.BlockText.SetIcon.Response.Error.Code"></a>
+
+### Rpc.BlockText.SetIcon.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -14252,6 +14336,8 @@ Precondition: user A opened a block
 | marks | [Event.Block.Set.Text.Marks](#anytype.Event.Block.Set.Text.Marks) |  |  |
 | checked | [Event.Block.Set.Text.Checked](#anytype.Event.Block.Set.Text.Checked) |  |  |
 | color | [Event.Block.Set.Text.Color](#anytype.Event.Block.Set.Text.Color) |  |  |
+| iconEmoji | [Event.Block.Set.Text.IconEmoji](#anytype.Event.Block.Set.Text.IconEmoji) |  |  |
+| iconImage | [Event.Block.Set.Text.IconImage](#anytype.Event.Block.Set.Text.IconImage) |  |  |
 
 
 
@@ -14276,6 +14362,36 @@ Precondition: user A opened a block
 <a name="anytype.Event.Block.Set.Text.Color"></a>
 
 ### Event.Block.Set.Text.Color
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.IconEmoji"></a>
+
+### Event.Block.Set.Text.IconEmoji
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Text.IconImage"></a>
+
+### Event.Block.Set.Text.IconImage
 
 
 
@@ -15649,6 +15765,8 @@ Link: block to link some content from an external sources.
 | marks | [Block.Content.Text.Marks](#anytype.model.Block.Content.Text.Marks) |  | list of marks to apply to the text |
 | checked | [bool](#bool) |  |  |
 | color | [string](#string) |  |  |
+| iconEmoji | [string](#string) |  | used with style Callout |
+| iconImage | [string](#string) |  | in case both image and emoji are set, image should has a priority in the UI |
 
 
 
@@ -16222,6 +16340,7 @@ scope from which this relation have been aggregated |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
 | Description | 12 | currently only only one block of this style can exists on a page |
+| Callout | 13 | currently only only one block of this style can exists on a page |
 
 
 

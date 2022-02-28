@@ -47,7 +47,7 @@ func (h *history) Undo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter,
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.Before))
 	}
-	if err = h.Apply(s, smartblock.NoHistory); err != nil {
+	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}
 	counters.Undo, counters.Redo = h.History().Counters()
@@ -81,7 +81,7 @@ func (h *history) Redo(ctx *state.Context) (counters pb.RpcBlockUndoRedoCounter,
 	if action.Details != nil {
 		s.SetDetails(pbtypes.CopyStruct(action.Details.After))
 	}
-	if err = h.Apply(s, smartblock.NoHistory); err != nil {
+	if err = h.Apply(s, smartblock.NoHistory, smartblock.NoRestrictions); err != nil {
 		return
 	}
 	counters.Undo, counters.Redo = h.History().Counters()

@@ -1,6 +1,8 @@
 package anytype
 
 import (
+	"os"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
@@ -45,11 +47,12 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 		return nil, err
 	}
 
-	cfg := config.DefaultConfig
-	cfg.DisableFileConfig = true // do not load/save config to file because we don't have a libp2p node and repo in this mode
-
 	a.Register(wallet.NewWithRepoPathAndKeys("", accountPrivKey, device)).
-		Register(&cfg).
+		Register(config.New(
+			config.WithStagingCafe(os.Getenv("ANYTYPE_STAGING") == "1"),
+			config.DisableFileConfig(true), // do not load/save config to file because we don't have a libp2p node and repo in this mode
+		),
+		).
 		Register(cafe.New()).
 		Register(profilefinder.New()).
 		Register(eventSender)
@@ -61,13 +64,15 @@ func StartAccountRecoverApp(eventSender event.Sender, accountPrivKey walletUtil.
 	return a, nil
 }
 
-func BootstrapConfigAndWallet(newAccount bool, rootPath, accountId string) ([]app.Component, error) {
-	return []app.Component{
-		wallet.NewWithAccountRepo(rootPath, accountId),
-		config.New(func(c *config.Config) {
-			c.NewAccount = newAccount
-		}),
-	}, nil
+func BootstrapConfig(newAccount bool, isStaging bool) *config.Config {
+	return config.New(
+		config.WithStagingCafe(isStaging),
+		config.WithNewAccount(newAccount),
+	)
+}
+
+func BootstrapWallet(rootPath, accountId string) wallet.Wallet {
+	return wallet.NewWithAccountRepo(rootPath, accountId)
 }
 
 func StartNewApp(components ...app.Component) (a *app.App, err error) {

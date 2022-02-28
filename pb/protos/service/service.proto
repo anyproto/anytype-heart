@@ -146,6 +146,7 @@ service ClientCommands {
     rpc BlockTextSetColor (anytype.Rpc.BlockText.SetText.Request) returns (anytype.Rpc.BlockText.SetColor.Response);
     rpc BlockTextSetStyle (anytype.Rpc.BlockText.SetStyle.Request) returns (anytype.Rpc.BlockText.SetStyle.Response);
     rpc BlockTextSetChecked (anytype.Rpc.BlockText.SetChecked.Request) returns (anytype.Rpc.BlockText.SetChecked.Response);
+    rpc BlockTextSetIcon (anytype.Rpc.BlockText.SetIcon.Request) returns (anytype.Rpc.BlockText.SetIcon.Response);
     rpc BlockTextListSetColor (anytype.Rpc.BlockText.ListSetColor.Request) returns (anytype.Rpc.BlockText.ListSetColor.Response);
     rpc BlockTextListSetMark (anytype.Rpc.BlockText.ListSetMark.Request) returns (anytype.Rpc.BlockText.ListSetMark.Response);
     rpc BlockTextListSetStyle (anytype.Rpc.BlockText.ListSetStyle.Request) returns (anytype.Rpc.BlockText.ListSetStyle.Response);
