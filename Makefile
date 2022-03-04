@@ -20,8 +20,6 @@ setup: setup-go
 	@echo 'Setting up npm...'
 	@npm install
 
-uuu:
-	@echo $(PATH)
 
 setup-go:
 	@echo 'Setting up go modules...'
@@ -85,7 +83,6 @@ build-js-addon:
 	@rm clientlibrary/jsaddon/lib.a clientlibrary/jsaddon/lib.h clientlibrary/jsaddon/bridge.h
 
 build-ios: setup-go
-	@echo 'Init gomobile...'
 	gomobile init
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
@@ -93,7 +90,6 @@ build-ios: setup-go
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 
 build-android: setup-go
-	@echo 'Init gomobile...'
 	gomobile init
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
