@@ -27,7 +27,8 @@ setup-go:
 	@echo 'Setting up go modules...'
 	@go mod download
 	@GO111MODULE=off go get github.com/ahmetb/govvv
-	@GO111MODULE=off go get golang.org/x/mobile/cmd/...
+	go install golang.org/x/mobile/cmd/gomobile@latest
+	go install golang.org/x/mobile/cmd/gobind@latest
 
 fmt:
 	@echo 'Formatting with prettier...'
@@ -84,15 +85,19 @@ build-js-addon:
 	@rm clientlibrary/jsaddon/lib.a clientlibrary/jsaddon/lib.h clientlibrary/jsaddon/bridge.h
 
 build-ios: setup-go
+	@echo 'Init gomobile...'
+	gomobile init
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 
 build-android: setup-go
+	@echo 'Init gomobile...'
+	gomobile init
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
 
 setup-protoc-go:
