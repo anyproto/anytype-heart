@@ -16687,9 +16687,10 @@ scope from which this relation have been aggregated |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| IsActive | 0 |  |
-| IsPendingDeletion | 1 |  |
-| IsDeleted | 2 |  |
+| Active | 0 |  |
+| PendingDeletion | 1 |  |
+| StartedDeletion | 2 |  |
+| Deleted | 3 |  |
 
 
 

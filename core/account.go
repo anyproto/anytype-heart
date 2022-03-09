@@ -115,6 +115,12 @@ func (mw *Middleware) getCafeAccount() *cafePb.AccountState {
 	return fetcher.GetAccountState()
 }
 
+func (mw *Middleware) refetch() {
+	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+
+	fetcher.Refetch()
+}
+
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
@@ -566,6 +572,9 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 		}
 		return
 	})
+
+	mw.refetch()
+
 	if err != nil {
 		// TODO: maybe this logic should be in a.DeleteAccount
 		code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
@@ -585,6 +594,13 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 				}
 			}
 		}
+		// TODO: remove when Razor finishes testing
+		log.Error("got error while deleting: %v", err)
+		state := mw.getCafeAccount()
+		return response(&model.AccountStatus{
+			StatusType:   model.AccountStatusType(state.Status.GetStatus()),
+			DeletionDate: state.Status.DeletionDate,
+		}, pb.RpcAccountDeleteResponseError_NULL, nil)
 		return response(nil, code, err)
 	}
 

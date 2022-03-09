@@ -49,6 +49,7 @@ type ConfigFetcher interface {
 	GetAccountState() *pb.AccountState
 	AddAccountStateObserver(observer util.CafeAccountStateUpdateObserver)
 	NotifyClientApp()
+	Refetch()
 }
 
 type configFetcher struct {
@@ -60,7 +61,9 @@ type configFetcher struct {
 
 	fetched       chan struct{}
 	stopped       chan struct{}
+	refetch       chan struct{}
 	fetchedClosed bool
+	refetchClosed bool
 	ctx           context.Context
 	cancel        context.CancelFunc
 
@@ -128,6 +131,8 @@ OuterLoop:
 				continue OuterLoop
 			case <-time.After(time.Second * 2 * time.Duration(attempt)):
 				break
+			case <-c.refetch:
+				break
 			}
 			state, equal, err := c.fetchAccountState()
 			if err == nil {
@@ -149,6 +154,11 @@ OuterLoop:
 				case <-c.ctx.Done():
 					return
 				case <-t.C:
+					continue OuterLoop
+				case <-c.refetch:
+					if !t.Stop() {
+						<-t.C
+					}
 					continue OuterLoop
 				}
 			}
@@ -180,6 +190,9 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
 	c.fetched = make(chan struct{})
 	c.stopped = make(chan struct{})
+	c.refetch = make(chan struct{})
+	c.fetchedClosed = false
+	c.refetchClosed = false
 	c.cancel = func() {}
 	return nil
 }
@@ -217,9 +230,31 @@ func (c *configFetcher) fetchAccountState() (state *pb.AccountState, equal bool,
 	return
 }
 
+func (c *configFetcher) Refetch() {
+	c.Lock()
+	defer c.Unlock()
+	if c.refetchClosed {
+		return
+	}
+	select {
+	case c.refetch <- struct{}{}:
+	default:
+	}
+}
+
 func (c *configFetcher) Close() (err error) {
 	c.cancel()
 	<-c.stopped
+
+	c.Lock()
+	close(c.refetch)
+	c.refetchClosed = true
+	c.Unlock()
+
+	if !c.fetchedClosed {
+		close(c.fetched)
+		c.fetchedClosed = true
+	}
 	return nil
 }
 
