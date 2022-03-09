@@ -417,9 +417,10 @@ message Account {
     }
 
     enum StatusType {
-        IsActive = 0;
-        IsPendingDeletion = 1;
-        IsDeleted = 2;
+        Active = 0;
+        PendingDeletion = 1;
+        StartedDeletion = 2;
+        Deleted = 3;
     }
 }
 

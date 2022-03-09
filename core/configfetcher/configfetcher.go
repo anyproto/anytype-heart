@@ -38,7 +38,7 @@ var defaultAccountState = &pb.AccountState{
 		Extra:                      nil,
 	},
 	Status: &pb.AccountStateStatus{
-		Status:       pb.AccountState_IsActive,
+		Status:       pb.AccountState_Active,
 		DeletionDate: 0,
 	},
 }
@@ -110,6 +110,7 @@ func (c *configFetcher) run() {
 			<-t.C
 		}
 	}()
+	sentFirstUpdate := false
 OuterLoop:
 	for {
 		var attempt int
@@ -140,8 +141,9 @@ OuterLoop:
 				}
 				c.RUnlock()
 
-				if !equal {
+				if !equal || !sentFirstUpdate {
 					c.NotifyClientApp()
+					sentFirstUpdate = true
 				}
 				select {
 				case <-c.ctx.Done():
@@ -226,8 +228,8 @@ func (c *configFetcher) NotifyClientApp() {
 	ev := &pbMiddle.Event{
 		Messages: []*pbMiddle.EventMessage{
 			&pbMiddle.EventMessage{
-				Value: &pbMiddle.EventMessageValueOfAccountConfigUpdate{
-					AccountConfigUpdate: &pbMiddle.EventAccountConfigUpdate{
+				Value: &pbMiddle.EventMessageValueOfAccountUpdate{
+					AccountUpdate: &pbMiddle.EventAccountUpdate{
 						Config: convertToAccountConfigModel(accountState.Config),
 						Status: convertToAccounStatusModel(accountState.Status),
 					},

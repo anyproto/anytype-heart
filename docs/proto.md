@@ -863,6 +863,7 @@
     - [Event.Account.Config.Update](#anytype.Event.Account.Config.Update)
     - [Event.Account.Details](#anytype.Event.Account.Details)
     - [Event.Account.Show](#anytype.Event.Account.Show)
+    - [Event.Account.Update](#anytype.Event.Account.Update)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Dataview](#anytype.Event.Block.Dataview)
@@ -13485,7 +13486,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 <a name="anytype.Event.Account.Config"></a>
 
 ### Event.Account.Config
-TODO: maybe instead we need to add &#34;message Update&#34; to have AccountUpdate event
+Deprecated
 
 
 
@@ -13534,6 +13535,22 @@ Message, that will be sent to the front on each account found after an AccountRe
 | ----- | ---- | ----- | ----------- |
 | index | [int32](#int32) |  | Number of an account in an all found accounts list |
 | account | [model.Account](#anytype.model.Account) |  | An Account, that has been found for the mnemonic |
+
+
+
+
+
+
+<a name="anytype.Event.Account.Update"></a>
+
+### Event.Account.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -15004,6 +15021,7 @@ Precondition: user A opened a block
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype.Event.Account.Config.Update) |  |  |
+| accountUpdate | [Event.Account.Update](#anytype.Event.Account.Update) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype.Event.Object.Details.Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset) |  |  |
