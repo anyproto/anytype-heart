@@ -114,56 +114,50 @@ func (c *configFetcher) run() {
 		}
 	}()
 	sentFirstUpdate := false
-OuterLoop:
+	timeInterval := time.Duration(0)
+	attempt := 0
 	for {
-		var attempt int
 		if t == nil {
-			t = time.NewTimer(accountStateFetchInterval)
+			t = time.NewTimer(timeInterval)
 		} else {
 			// we should go here only if we drained the channel and the timer expires
-			t.Reset(accountStateFetchInterval)
+			t.Reset(timeInterval)
 		}
-		for {
-			select {
-			case <-c.ctx.Done():
-				return
-			case <-t.C: // if we failed too many attempts, we still want to continue trying at least each accountStateFetchInterval
-				continue OuterLoop
-			case <-time.After(time.Second * 2 * time.Duration(attempt)):
-				break
-			case <-c.refetch:
-				break
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-t.C:
+			break
+		case <-c.refetch:
+			if !t.Stop() {
+				<-t.C
 			}
-			state, equal, err := c.fetchAccountState()
-			if err == nil {
-				if !c.fetchedClosed {
-					close(c.fetched)
-					c.fetchedClosed = true
-				}
-				c.RLock()
-				for _, observer := range c.observers {
-					observer.ObserveAccountStateUpdate(state)
-				}
-				c.RUnlock()
-
-				if !equal || !sentFirstUpdate {
-					c.NotifyClientApp()
-					sentFirstUpdate = true
-				}
-				select {
-				case <-c.ctx.Done():
-					return
-				case <-t.C:
-					continue OuterLoop
-				case <-c.refetch:
-					if !t.Stop() {
-						<-t.C
-					}
-					continue OuterLoop
-				}
+			break
+		}
+		state, equal, err := c.fetchAccountState()
+		if err == nil {
+			if !c.fetchedClosed {
+				close(c.fetched)
+				c.fetchedClosed = true
 			}
+			c.RLock()
+			for _, observer := range c.observers {
+				observer.ObserveAccountStateUpdate(state)
+			}
+			c.RUnlock()
 
+			if !equal || !sentFirstUpdate {
+				c.NotifyClientApp()
+				sentFirstUpdate = true
+			}
+			timeInterval = accountStateFetchInterval
+			attempt = 0
+		} else {
 			attempt++
+			timeInterval = 2 * time.Second * time.Duration(attempt)
+			if timeInterval > accountStateFetchInterval {
+				timeInterval = accountStateFetchInterval
+			}
 			log.Errorf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
 		}
 	}
