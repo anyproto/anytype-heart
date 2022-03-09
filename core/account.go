@@ -566,7 +566,7 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 		resp, err := a.DeleteAccount(context.Background(), req.Revert)
 		if resp.GetStatus() != nil {
 			st = &model.AccountStatus{
-				StatusType:   model.AccountStatusType(0),
+				StatusType:   model.AccountStatusType(resp.Status.Status),
 				DeletionDate: resp.Status.DeletionDate,
 			}
 		}
@@ -594,13 +594,6 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 				}
 			}
 		}
-		// TODO: remove when Razor finishes testing
-		log.Error("got error while deleting: %v", err)
-		state := mw.getCafeAccount()
-		return response(&model.AccountStatus{
-			StatusType:   model.AccountStatusType(0),
-			DeletionDate: state.Status.DeletionDate,
-		}, pb.RpcAccountDeleteResponseError_NULL, nil)
 		return response(nil, code, err)
 	}
 
