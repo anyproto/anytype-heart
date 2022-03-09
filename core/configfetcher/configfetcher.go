@@ -105,8 +105,11 @@ func (c *configFetcher) Run() error {
 func (c *configFetcher) run() {
 	defer close(c.stopped)
 	var t *time.Timer
-	// timer shouldn't be nil at this point, because we always create it at the beginning of loop
-	defer t.Stop()
+	defer func() {
+		if t != nil && !t.Stop() {
+			<-t.C
+		}
+	}()
 OuterLoop:
 	for {
 		var attempt int
@@ -140,8 +143,12 @@ OuterLoop:
 				if !equal {
 					c.NotifyClientApp()
 				}
-				<-t.C
-				break
+				select {
+				case <-c.ctx.Done():
+					return
+				case <-t.C:
+					continue OuterLoop
+				}
 			}
 
 			attempt++
