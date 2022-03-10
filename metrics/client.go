@@ -244,11 +244,15 @@ func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) (err error) {
 	return
 }
 
+// empty EventType on Event means we should skip this event
 func (c *client) RecordEvent(ev EventRepresentable) {
 	if c.amplitude == nil || ev == nil {
 		return
 	}
 	e := ev.ToEvent()
+	if e.EventType == "" {
+		return
+	}
 	c.lock.RLock()
 	ampEvent := amplitude.Event{
 		UserId:          c.userId,

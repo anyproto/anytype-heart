@@ -62,6 +62,8 @@ const (
 	ReindexTypeOutdatedHeads
 )
 
+const IndexEventThresholdMs = 10
+
 type IndexEvent struct {
 	ObjectId                string
 	IndexLinksTimeMs        int64
@@ -73,6 +75,10 @@ type IndexEvent struct {
 }
 
 func (c IndexEvent) ToEvent() Event {
+	if c.IndexLinksTimeMs+c.IndexDetailsTimeMs+c.IndexSetRelationsTimeMs < IndexEventThresholdMs {
+		return Event{}
+	}
+
 	return Event{
 		EventType: "index",
 		EventData: map[string]interface{}{
@@ -88,6 +94,8 @@ func (c IndexEvent) ToEvent() Event {
 	}
 }
 
+const ReindexEventThresholdsMs = 100
+
 type ReindexEvent struct {
 	ReindexType    ReindexType
 	Total          int
@@ -97,6 +105,9 @@ type ReindexEvent struct {
 }
 
 func (c ReindexEvent) ToEvent() Event {
+	if c.SpentMs < ReindexEventThresholdsMs {
+		return Event{}
+	}
 	return Event{
 		EventType: "store_reindex",
 		EventData: map[string]interface{}{
@@ -109,6 +120,8 @@ func (c ReindexEvent) ToEvent() Event {
 	}
 }
 
+const RecordCreateEventThresholdMs = 30
+
 type RecordCreateEvent struct {
 	PrepareMs       int64
 	NewRecordMs     int64
@@ -118,6 +131,9 @@ type RecordCreateEvent struct {
 }
 
 func (c RecordCreateEvent) ToEvent() Event {
+	if c.PrepareMs+c.NewRecordMs+c.LocalEventBusMs+c.PushMs < RecordCreateEventThresholdMs {
+		return Event{}
+	}
 	return Event{
 		EventType: "record_create",
 		EventData: map[string]interface{}{
@@ -139,6 +155,7 @@ type DifferentAddresses struct {
 }
 
 func (c DifferentAddresses) ToEvent() Event {
+	return Event{} // TODO: temporary disabled. Need to accumulate statistic on client
 	return Event{
 		EventType: "exchange_edges_addr_diff",
 		EventData: map[string]interface{}{
@@ -158,8 +175,9 @@ type DifferentHeads struct {
 }
 
 func (c DifferentHeads) ToEvent() Event {
+	return Event{} // TODO: temporary disabled. Need to accumulate statistic on client
 	return Event{
-		EventType: "exchange_edges_addr_diff",
+		EventType: "exchange_edges_head_diff",
 		EventData: map[string]interface{}{
 			"local":     c.LocalEdge,
 			"remote":    c.RemoteEdge,
@@ -202,6 +220,8 @@ func (c TreeBuild) ToEvent() Event {
 	}
 }
 
+const StateApplyThresholdMs = 100
+
 type StateApply struct {
 	BeforeApplyMs  int64
 	StateApplyMs   int64
@@ -212,6 +232,10 @@ type StateApply struct {
 }
 
 func (c StateApply) ToEvent() Event {
+	total := c.StateApplyMs + c.PushChangeMs + c.BeforeApplyMs + c.ApplyHookMs + c.ReportChangeMs
+	if total <= StateApplyThresholdMs {
+		return Event{}
+	}
 	return Event{
 		EventType: "state_apply",
 		EventData: map[string]interface{}{
