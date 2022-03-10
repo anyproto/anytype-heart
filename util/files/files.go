@@ -27,8 +27,8 @@ func WriteReaderIntoFileReuseSameExistingFile(path string, r io.Reader) (string,
 	}
 
 	var (
-		ext = filepath.Ext(path)
-		dir = filepath.Dir(path)
+		ext  = filepath.Ext(path)
+		dir  = filepath.Dir(path)
 		name = strings.TrimSuffix(filepath.Base(path), ext)
 	)
 
