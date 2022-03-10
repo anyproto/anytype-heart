@@ -15,6 +15,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -101,11 +102,17 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 		res.PictureSmallUrl = v.Urls.Small.String()
 	}
 	if v.Urls.Regular != nil {
-		fUrl := v.Urls.Small.String()
+		fUrl := v.Urls.Regular.String()
 		// hack to have full hd instead of 1080w,
 		// in case unsplash will change the URL format it will not break things
-		fUrl = strings.Replace(fUrl, "&w=1080", "&w=1920", 1)
-		res.PictureHDUrl = fUrl
+		u, _ := url.Parse(fUrl)
+		if u != nil {
+			if q := u.Query(); q.Get("w") != "" {
+				q.Set("w", "1920")
+				u.RawQuery = q.Encode()
+			}
+		}
+		res.PictureHDUrl = u.String()
 	}
 	if v.Urls.Full != nil {
 		res.PictureFullUrl = v.Urls.Full.String()
