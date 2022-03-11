@@ -380,7 +380,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 						Url:       f.Name,
 					})
 					if err != nil {
-						return rootLinks, fmt.Errorf("can not import this file from URL: %s. error: %s", f.Name, err)
+						return rootLinks, fmt.Errorf("can not import file from URL: %s", err)
 					}
 					continue
 				}
@@ -419,7 +419,7 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				})
 				os.Remove(tmpFile.Name())
 				if err != nil {
-					return rootLinks, fmt.Errorf("can not import this file: %s. error: %s", f.Name, err)
+					return rootLinks, fmt.Errorf("can not import file from temp file: %s", err)
 				}
 			}
 		}
