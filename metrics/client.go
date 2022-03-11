@@ -19,7 +19,8 @@ var (
 )
 
 type EventRepresentable interface {
-	ToEvent() Event
+	// ToEvent returns nil in case event should be ignored
+	ToEvent() *Event
 }
 
 type EventAggregatable interface {
@@ -250,7 +251,7 @@ func (c *client) RecordEvent(ev EventRepresentable) {
 		return
 	}
 	e := ev.ToEvent()
-	if e.EventType == "" {
+	if e == nil {
 		return
 	}
 	c.lock.RLock()
