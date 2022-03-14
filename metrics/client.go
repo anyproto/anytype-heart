@@ -245,7 +245,6 @@ func (c *client) sendNextBatch(b *mb.MB, msgs []interface{}) (err error) {
 	return
 }
 
-// empty EventType on Event means we should skip this event
 func (c *client) RecordEvent(ev EventRepresentable) {
 	if c.amplitude == nil || ev == nil {
 		return
