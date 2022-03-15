@@ -293,14 +293,14 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 		}
 
 		var p1, p2 string
-		// unexpected behavior - just return lesser id
+		// unexpected behavior - lets merge branches using the virtual change mechanism
 		if s1 < s2 {
 			p1, p2 = s1, s2
 		} else {
 			p1, p2 = s2, s1
 		}
 
-		log.With("thread", sb.smartblock.ID()).Errorf("changes build tree: made base snapshot for logs %s and %s: merge first changes %s+%s", ch1.Device, ch2.Device, p1, p2)
+		log.With("thread", sb.smartblock.ID()).Errorf("changes build tree: made base snapshot for logs %s and %s: conflicting snapshots %s+%s", ch1.Device, ch2.Device, p1, p2)
 		baseId := sb.makeVirtualSnapshotId(p1, p2)
 
 		if len(ch2.PreviousIds) != 0 || len(ch2.PreviousIds) != 0 {
@@ -416,12 +416,16 @@ func (sb *stateBuilder) makeChangeFromVirtualId(id string) (*Change, error) {
 }
 
 func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
-	if strings.HasPrefix(id, virtualChangeBasePrefix) {
-		return sb.makeChangeFromVirtualId(id)
-	}
-
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
+	}
+	if strings.HasPrefix(id, virtualChangeBasePrefix) {
+		ch, err = sb.makeChangeFromVirtualId(id)
+		if err != nil {
+			return nil, err
+		}
+		sb.cache[id] = ch
+		return
 	}
 	if sb.smartblock == nil {
 		return nil, fmt.Errorf("no smarblock in builder")
