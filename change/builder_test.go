@@ -1,6 +1,7 @@
 package change
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"testing"
 
@@ -269,7 +270,31 @@ func TestStateBuilder_findCommonSnapshot(t *testing.T) {
 		b := new(stateBuilder)
 		err := b.Build(sb)
 		require.NoError(t, err)
-		assert.Equal(t, "_virtual:czAuMStzMS4x", b.tree.RootId())
+		id := "_virtual:" + base64.RawStdEncoding.EncodeToString([]byte("s0.1+s1.1"))
+		assert.Equal(t, id, b.tree.RootId())
+	})
+
+	t.Run("abs split 3 branches", func(t *testing.T) {
+		sb := NewTestSmartBlock()
+		sb.AddChanges(
+			"a",
+			newSnapshot("s0.1", "", nil),
+		)
+		sb.AddChanges(
+			"b",
+			newSnapshot("s1.1", "", nil),
+		)
+		sb.AddChanges(
+			"c",
+			newSnapshot("s2.1", "", nil),
+		)
+		b := new(stateBuilder)
+		err := b.Build(sb)
+		require.NoError(t, err)
+		id2 := "_virtual:" + base64.RawStdEncoding.EncodeToString([]byte("s1.1+s2.1"))
+		id := "_virtual:" + base64.RawStdEncoding.EncodeToString([]byte(id2+"+s0.1"))
+
+		assert.Equal(t, id, b.tree.RootId())
 	})
 }
 
