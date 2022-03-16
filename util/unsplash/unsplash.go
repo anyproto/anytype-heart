@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/dsoprea/go-exif/v3"
@@ -14,6 +15,7 @@ import (
 	"io"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -21,6 +23,8 @@ import (
 	"sync"
 	"time"
 )
+
+var log = logging.Logger("unsplash")
 
 const (
 	CName         = "unsplash"
@@ -68,6 +72,7 @@ type Result struct {
 	PictureThumbUrl string
 	PictureSmallUrl string
 	PictureFullUrl  string
+	PictureHDUrl    string
 	Artist          string
 	ArtistURL       string
 }
@@ -95,6 +100,19 @@ func newFromPhoto(v unsplash.Photo) (Result, error) {
 	}
 	if v.Urls.Small != nil {
 		res.PictureSmallUrl = v.Urls.Small.String()
+	}
+	if v.Urls.Regular != nil {
+		fUrl := v.Urls.Regular.String()
+		// hack to have full hd instead of 1080w,
+		// in case unsplash will change the URL format it will not break things
+		u, _ := url.Parse(fUrl)
+		if u != nil {
+			if q := u.Query(); q.Get("w") != "" {
+				q.Set("w", "1920")
+				u.RawQuery = q.Encode()
+			}
+		}
+		res.PictureHDUrl = u.String()
 	}
 	if v.Urls.Full != nil {
 		res.PictureFullUrl = v.Urls.Full.String()
@@ -204,16 +222,11 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 		}
 	}
 
-	// we must call download endpoint according to the API guidelines
-	picUrl, _, err := l.client.Photos.DownloadLink(id)
+	req, err := http.NewRequest("GET", picture.PictureHDUrl, nil)
 	if err != nil {
 		return "", err
 	}
 
-	req, err := http.NewRequest("GET", picUrl.String(), nil)
-	if err != nil {
-		return "", err
-	}
 	req = req.WithContext(ctx)
 	client := http.DefaultClient
 	resp, err := client.Do(req)
@@ -236,6 +249,15 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 	if err != nil {
 		return "", fmt.Errorf("failed to inject exif: %s", err.Error())
 	}
+
+	go func(cl *unsplash.Unsplash) {
+		// we must call download endpoint according to the API guidelines
+		// but we can do it in a separate goroutine to make sure we will download the picture as fast as possible
+		_, _, err = cl.Photos.DownloadLink(id)
+		if err != nil {
+			log.Errorf("failed to call unsplash download endpoint: %s", err.Error())
+		}
+	}(l.client)
 	return p, nil
 }
 

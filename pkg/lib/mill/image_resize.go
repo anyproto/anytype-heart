@@ -3,6 +3,9 @@ package mill
 import (
 	"bytes"
 	"fmt"
+	"github.com/disintegration/imaging"
+	"github.com/dsoprea/go-exif/v3"
+	jpegstructure "github.com/dsoprea/go-jpeg-image-structure/v2"
 	"image"
 	"image/color/palette"
 	"image/draw"
@@ -10,10 +13,9 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
+	"io/ioutil"
+	"os"
 	"strconv"
-
-	"github.com/disintegration/imaging"
-	"github.com/rwcarlsen/goexif/exif"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
 )
@@ -72,7 +74,7 @@ func (m *ImageResize) Options(add map[string]interface{}) (string, error) {
 }
 
 func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
-	img, formatStr, err := image.Decode(r)
+	imgConfig, formatStr, err := image.DecodeConfig(r)
 	if err != nil {
 		return nil, err
 	}
@@ -83,11 +85,7 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return nil, err
 	}
 
-	clean, err := removeExif(r, img, format)
-	if err != nil {
-		return nil, err
-	}
-
+	var height int
 	width, err := strconv.Atoi(m.Opts.Width)
 	if err != nil {
 		return nil, fmt.Errorf("invalid width: " + m.Opts.Width)
@@ -97,161 +95,196 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		return nil, fmt.Errorf("invalid quality: " + m.Opts.Quality)
 	}
 
-	buff, rect, err := encodeImage(clean, format, width, quality)
-	if err != nil {
-		return nil, err
-	}
+	var (
+		img         image.Image
+		orientation int
+	)
 
-	return &Result{
-		File: buff,
-		Meta: map[string]interface{}{
-			"width":  rect.Dx(),
-			"height": rect.Dy(),
-		},
-	}, nil
-}
-
-// removeExif strips exif data from an image
-func removeExif(reader io.Reader, img image.Image, format Format) (io.Reader, error) {
-	if format == GIF || format == ICO {
-		return reader, nil
-	}
-
-	exf, _ := exif.Decode(reader)
-	var err error
-	img, err = correctOrientation(img, exf)
-	if err != nil {
-		return nil, err
-	}
-
-	// re-encoding will remove any exif
-	return encodeSingleImage(img, format)
-}
-
-// encodeImage creates a jpeg|gif from reader (quality applies to jpeg only)
-// NOTE: format is the reader image format, destination format is chosen accordingly.
-func encodeImage(reader io.Reader, format Format, width int, quality int) (*bytes.Buffer, *image.Rectangle, error) {
-	buff := new(bytes.Buffer)
-	var size image.Rectangle
-
-	if format != GIF {
-		// encode to png or jpeg
-		img, _, err := image.Decode(reader)
+	if format == JPEG {
+		var exifData []byte
+		exifData, err = getExifData(r)
 		if err != nil {
-			return nil, nil, err
+			return nil, fmt.Errorf("failed to get exif data %s", err.Error())
 		}
 
-		if img.Bounds().Size().X < width {
-			width = img.Bounds().Size().X
+		_, err = r.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+		if exifData != nil {
+			orientation, err = getJpegOrientation(exifData)
+			if err != nil {
+				return nil, fmt.Errorf("failed to get jpeg orientation: %s", err.Error())
+			}
+			_, err = r.Seek(0, io.SeekStart)
+			if err != nil {
+				return nil, err
+			}
+		}
+		if orientation > 1 {
+			img, err = jpeg.Decode(r)
+			if err != nil {
+				return nil, err
+			}
+
+			img = reverseOrientation(img, orientation)
+			if err != nil {
+				err = fmt.Errorf("failed to fix img orientation: %s", err.Error())
+				return nil, err
+			}
+			imgConfig.Width, imgConfig.Height = img.Bounds().Max.X, img.Bounds().Max.Y
+		}
+	}
+
+	if imgConfig.Width <= width || width == 0 {
+		// we will not do the upscale
+		width, height = imgConfig.Width, imgConfig.Height
+	}
+
+	if orientation <= 1 && width == imgConfig.Width {
+		var r2 io.Reader
+		if format == JPEG {
+			r2, err = patchReaderRemoveExif(r)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			r2 = r
+		}
+		// here is an optimisation
+		// lets return the original picture in case it has not been resized or normilised
+		return &Result{
+			File: r2,
+			Meta: map[string]interface{}{
+				"width":  imgConfig.Width,
+				"height": imgConfig.Height,
+			},
+		}, nil
+	}
+
+	if format == JPEG || format == PNG || format == ICO {
+		if format == JPEG && img == nil {
+			// we already have img decoded if we have orientation <= 1
+			img, err = jpeg.Decode(r)
+			if err != nil {
+				return nil, err
+			}
+		} else if format != JPEG {
+			img, err = png.Decode(r)
+			if err != nil {
+				return nil, err
+			}
 		}
 
 		resized := imaging.Resize(img, width, 0, imaging.Lanczos)
+		width, height = resized.Rect.Max.X, resized.Rect.Max.Y
 
-		if format == PNG || format == ICO {
-			if err = png.Encode(buff, resized); err != nil {
-				return nil, nil, err
+		buff := &bytes.Buffer{}
+		if format == JPEG {
+			if err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}); err != nil {
+				return nil, err
 			}
 		} else {
-			if err = jpeg.Encode(buff, resized, &jpeg.Options{Quality: quality}); err != nil {
-				return nil, nil, err
+			if err = png.Encode(buff, resized); err != nil {
+				return nil, err
 			}
 		}
-		size = resized.Rect
 
-	} else {
-		// encode to gif
-		img, err := gif.DecodeAll(reader)
+		return &Result{
+			File: buff,
+			Meta: map[string]interface{}{
+				"width":  width,
+				"height": height,
+			},
+		}, nil
+	} else if format == GIF {
+		gifImg, err := gif.DecodeAll(r)
 		if err != nil {
-			return nil, nil, err
+			return nil, err
 		}
-		if len(img.Image) == 0 {
-			return nil, nil, fmt.Errorf("gif does not have any frames")
-		}
-
-		firstFrame := img.Image[0].Bounds()
-		if firstFrame.Dx() < width {
-			width = firstFrame.Dx()
-		}
-		rect := image.Rect(0, 0, firstFrame.Dx(), firstFrame.Dy())
+		rect := image.Rect(0, 0, imgConfig.Width, imgConfig.Height)
 		rgba := image.NewRGBA(rect)
-		for index, frame := range img.Image {
+		for index, frame := range gifImg.Image {
 			bounds := frame.Bounds()
 			draw.Draw(rgba, bounds, frame, bounds.Min, draw.Over)
-			img.Image[index] = imageToPaletted(imaging.Resize(rgba, width, 0, imaging.Lanczos))
+			gifImg.Image[index] = imageToPaletted(imaging.Resize(rgba, width, 0, imaging.Lanczos))
+		}
+		gifImg.Config.Width, gifImg.Config.Height = gifImg.Image[0].Bounds().Dx(), gifImg.Image[0].Bounds().Dy()
+
+		file, err := ioutil.TempFile(os.TempDir(), "anytype_img")
+		if err != nil {
+			return nil, err
 		}
 
-		img.Config.Width = img.Image[0].Bounds().Dx()
-		img.Config.Height = img.Image[0].Bounds().Dy()
-
-		if err = gif.EncodeAll(buff, img); err != nil {
-			return nil, nil, err
+		if err = gif.EncodeAll(file, gifImg); err != nil {
+			_ = file.Close()
+			return nil, err
 		}
 
-		size = img.Image[0].Bounds()
+		_, err = file.Seek(0, io.SeekStart)
+		if err != nil {
+			return nil, err
+		}
+		return &Result{
+			File: file,
+			Meta: map[string]interface{}{
+				"width":  gifImg.Config.Width,
+				"height": gifImg.Config.Height,
+			},
+		}, nil
 	}
 
-	return buff, &size, nil
+	return nil, fmt.Errorf("unknown format")
 }
 
-// correctOrientation returns a copy of an image (jpg|png|gif) with exif removed
-func correctOrientation(img image.Image, exf *exif.Exif) (image.Image, error) {
-	if exf == nil {
-		return img, nil
-	}
-
-	orient, err := exf.Get(exif.Orientation)
-	if err != nil && err != exif.TagNotPresentError(exif.Orientation) {
-		return nil, err
-	}
-	if orient != nil {
-		img = reverseOrientation(img, orient.String())
-	} else {
-		img = reverseOrientation(img, "1")
-	}
-
-	return img, nil
-}
-
-// encodeSingleImage creates a reader from an image
-func encodeSingleImage(img image.Image, format Format) (*bytes.Reader, error) {
-	writer := &bytes.Buffer{}
-	var err error
-
-	switch format {
-	case JPEG:
-		err = jpeg.Encode(writer, img, &jpeg.Options{Quality: 100})
-	case PNG:
-		// NOTE: while PNGs don't technically have exif data,
-		// they can contain meta data with sensitive info
-		err = png.Encode(writer, img)
-	default:
-		err = fmt.Errorf("unrecognized image format")
-	}
+func getExifData(r io.ReadSeeker) (data []byte, err error) {
+	exifData, err := exif.SearchAndExtractExifWithReader(r)
 	if err != nil {
+		if err == exif.ErrNoExif {
+			return nil, nil
+		}
 		return nil, err
 	}
 
-	return bytes.NewReader(writer.Bytes()), nil
+	return exifData, nil
+}
+
+func getJpegOrientation(exifData []byte) (int, error) {
+	tags, _, err := exif.GetFlatExifData(exifData, nil)
+	if err != nil {
+		return 0, err
+	}
+	var orientation int
+	for _, tag := range tags {
+		if tag.TagId != 274 {
+			continue
+		}
+		if v, ok := tag.Value.([]uint16); ok && len(v) == 1 {
+			orientation = int(v[0])
+		}
+	}
+
+	return orientation, nil
 }
 
 // reverseOrientation transforms the given orientation to 1
-func reverseOrientation(img image.Image, orientation string) *image.NRGBA {
+func reverseOrientation(img image.Image, orientation int) image.Image {
 	switch orientation {
-	case "1":
+	case 1:
 		return imaging.Clone(img)
-	case "2":
+	case 2:
 		return imaging.FlipV(img)
-	case "3":
+	case 3:
 		return imaging.Rotate180(img)
-	case "4":
+	case 4:
 		return imaging.Rotate180(imaging.FlipV(img))
-	case "5":
+	case 5:
 		return imaging.Rotate270(imaging.FlipV(img))
-	case "6":
+	case 6:
 		return imaging.Rotate270(img)
-	case "7":
+	case 7:
 		return imaging.Rotate90(imaging.FlipV(img))
-	case "8":
+	case 8:
 		return imaging.Rotate90(img)
 	}
 
@@ -265,4 +298,32 @@ func imageToPaletted(img image.Image) *image.Paletted {
 	pm := image.NewPaletted(b, palette.Plan9)
 	draw.FloydSteinberg.Draw(pm, b, img, image.ZP)
 	return pm
+}
+
+func patchReaderRemoveExif(r io.ReadSeeker) (io.Reader, error) {
+	jmp := jpegstructure.NewJpegMediaParser()
+	size, err := r.Seek(0, io.SeekEnd)
+	if err != nil {
+		return nil, err
+	}
+	_, _ = r.Seek(0, io.SeekStart)
+
+	buff := bytes.NewBuffer(make([]byte, 0, size))
+	intfc, err := jmp.Parse(r, int(size))
+	if err != nil {
+		return nil, fmt.Errorf("failed to open file to read exif: %s", err.Error())
+	}
+	sl := intfc.(*jpegstructure.SegmentList)
+
+	_, err = sl.DropExif()
+	if err != nil {
+		return nil, err
+	}
+
+	err = sl.Write(buff)
+	if err != nil {
+		return nil, err
+	}
+
+	return buff, nil
 }
