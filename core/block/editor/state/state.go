@@ -785,6 +785,15 @@ func (s *State) StringDebug() string {
 	})
 	fmt.Fprintf(buf, "\nBlocks:\n")
 	s.writeString(buf, 0, s.RootId())
+	fmt.Fprintf(buf, "\nCollection:\n")
+	pbtypes.SortedRange(s.Store(), func(k string, v *types.Value) {
+		fmt.Fprintf(buf, "\t%s\n", k)
+		if st := v.GetStructValue(); st != nil {
+			pbtypes.SortedRange(st, func(k string, v *types.Value) {
+				fmt.Fprintf(buf, "\t\t%s:\t%v\n", k, pbtypes.Sprint(v))
+			})
+		}
+	})
 	return buf.String()
 }
 

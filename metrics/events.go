@@ -10,8 +10,8 @@ type RecordAcceptEventAggregated struct {
 	Count      int
 }
 
-func (r RecordAcceptEventAggregated) ToEvent() Event {
-	return Event{
+func (r RecordAcceptEventAggregated) ToEvent() *Event {
+	return &Event{
 		EventType: "thread_record_accepted",
 		EventData: map[string]interface{}{
 			"record_type": r.RecordType,
@@ -39,8 +39,8 @@ type ChangesetEvent struct {
 	Diff int64
 }
 
-func (c ChangesetEvent) ToEvent() Event {
-	return Event{
+func (c ChangesetEvent) ToEvent() *Event {
+	return &Event{
 		EventType: "changeset_applied",
 		EventData: map[string]interface{}{
 			// we send diff, and not timestamps of records, because we cannot filter
@@ -62,6 +62,8 @@ const (
 	ReindexTypeOutdatedHeads
 )
 
+const IndexEventThresholdMs = 10
+
 type IndexEvent struct {
 	ObjectId                string
 	IndexLinksTimeMs        int64
@@ -72,8 +74,12 @@ type IndexEvent struct {
 	SetRelationsCount       int
 }
 
-func (c IndexEvent) ToEvent() Event {
-	return Event{
+func (c IndexEvent) ToEvent() *Event {
+	if c.IndexLinksTimeMs+c.IndexDetailsTimeMs+c.IndexSetRelationsTimeMs < IndexEventThresholdMs {
+		return nil
+	}
+
+	return &Event{
 		EventType: "index",
 		EventData: map[string]interface{}{
 			"object_id":     c.ObjectId,
@@ -88,6 +94,8 @@ func (c IndexEvent) ToEvent() Event {
 	}
 }
 
+const ReindexEventThresholdsMs = 100
+
 type ReindexEvent struct {
 	ReindexType    ReindexType
 	Total          int
@@ -96,8 +104,11 @@ type ReindexEvent struct {
 	IndexesRemoved bool
 }
 
-func (c ReindexEvent) ToEvent() Event {
-	return Event{
+func (c ReindexEvent) ToEvent() *Event {
+	if c.SpentMs < ReindexEventThresholdsMs {
+		return nil
+	}
+	return &Event{
 		EventType: "store_reindex",
 		EventData: map[string]interface{}{
 			"spent_ms":   c.SpentMs,
@@ -109,6 +120,8 @@ func (c ReindexEvent) ToEvent() Event {
 	}
 }
 
+const RecordCreateEventThresholdMs = 30
+
 type RecordCreateEvent struct {
 	PrepareMs       int64
 	NewRecordMs     int64
@@ -117,8 +130,11 @@ type RecordCreateEvent struct {
 	ThreadId        string
 }
 
-func (c RecordCreateEvent) ToEvent() Event {
-	return Event{
+func (c RecordCreateEvent) ToEvent() *Event {
+	if c.PrepareMs+c.NewRecordMs+c.LocalEventBusMs+c.PushMs < RecordCreateEventThresholdMs {
+		return nil
+	}
+	return &Event{
 		EventType: "record_create",
 		EventData: map[string]interface{}{
 			"thread_id":     c.ThreadId,
@@ -138,16 +154,8 @@ type DifferentAddresses struct {
 	ThreadId   string
 }
 
-func (c DifferentAddresses) ToEvent() Event {
-	return Event{
-		EventType: "exchange_edges_addr_diff",
-		EventData: map[string]interface{}{
-			"local":     c.LocalEdge,
-			"remote":    c.RemoteEdge,
-			"peer_id":   c.PeerId,
-			"thread_id": c.ThreadId,
-		},
-	}
+func (c DifferentAddresses) ToEvent() *Event {
+	return nil // TODO: temporary disabled. Need to accumulate statistic on client
 }
 
 type DifferentHeads struct {
@@ -157,16 +165,8 @@ type DifferentHeads struct {
 	ThreadId   string
 }
 
-func (c DifferentHeads) ToEvent() Event {
-	return Event{
-		EventType: "exchange_edges_addr_diff",
-		EventData: map[string]interface{}{
-			"local":     c.LocalEdge,
-			"remote":    c.RemoteEdge,
-			"peer_id":   c.PeerId,
-			"thread_id": c.ThreadId,
-		},
-	}
+func (c DifferentHeads) ToEvent() *Event {
+	return nil // TODO: temporary disabled. Need to accumulate statistic on client
 }
 
 type BlockSplit struct {
@@ -175,8 +175,8 @@ type BlockSplit struct {
 	ObjectId    string
 }
 
-func (c BlockSplit) ToEvent() Event {
-	return Event{
+func (c BlockSplit) ToEvent() *Event {
+	return &Event{
 		EventType: "block_merge",
 		EventData: map[string]interface{}{
 			"object_id":    c.ObjectId,
@@ -192,8 +192,8 @@ type TreeBuild struct {
 	ObjectId string
 }
 
-func (c TreeBuild) ToEvent() Event {
-	return Event{
+func (c TreeBuild) ToEvent() *Event {
+	return &Event{
 		EventType: "tree_build",
 		EventData: map[string]interface{}{
 			"object_id": c.ObjectId,
@@ -201,6 +201,8 @@ func (c TreeBuild) ToEvent() Event {
 		},
 	}
 }
+
+const StateApplyThresholdMs = 100
 
 type StateApply struct {
 	BeforeApplyMs  int64
@@ -211,8 +213,12 @@ type StateApply struct {
 	ObjectId       string
 }
 
-func (c StateApply) ToEvent() Event {
-	return Event{
+func (c StateApply) ToEvent() *Event {
+	total := c.StateApplyMs + c.PushChangeMs + c.BeforeApplyMs + c.ApplyHookMs + c.ReportChangeMs
+	if total <= StateApplyThresholdMs {
+		return nil
+	}
+	return &Event{
 		EventType: "state_apply",
 		EventData: map[string]interface{}{
 			"before_ms": c.BeforeApplyMs,
@@ -232,8 +238,8 @@ type AppStart struct {
 	PerCompMs map[string]int64
 }
 
-func (c AppStart) ToEvent() Event {
-	return Event{
+func (c AppStart) ToEvent() *Event {
+	return &Event{
 		EventType: "app_start",
 		EventData: map[string]interface{}{
 			"type":     c.Type,
@@ -247,8 +253,8 @@ type InitPredefinedBlocks struct {
 	TimeMs int64
 }
 
-func (c InitPredefinedBlocks) ToEvent() Event {
-	return Event{
+func (c InitPredefinedBlocks) ToEvent() *Event {
+	return &Event{
 		EventType: "init_predefined_blocks",
 		EventData: map[string]interface{}{
 			"time_ms": c.TimeMs,
@@ -262,8 +268,8 @@ type InitPredefinedBlock struct {
 	ObjectId string
 }
 
-func (c InitPredefinedBlock) ToEvent() Event {
-	return Event{
+func (c InitPredefinedBlock) ToEvent() *Event {
+	return &Event{
 		EventType: "init_predefined_block",
 		EventData: map[string]interface{}{
 			"time_ms":   c.TimeMs,
@@ -279,8 +285,8 @@ type BlockMerge struct {
 	ObjectId    string
 }
 
-func (c BlockMerge) ToEvent() Event {
-	return Event{
+func (c BlockMerge) ToEvent() *Event {
+	return &Event{
 		EventType: "block_split",
 		EventData: map[string]interface{}{
 			"object_id":    c.ObjectId,
@@ -300,8 +306,8 @@ type CreateObjectEvent struct {
 	ObjectId                string
 }
 
-func (c CreateObjectEvent) ToEvent() Event {
-	return Event{
+func (c CreateObjectEvent) ToEvent() *Event {
+	return &Event{
 		EventType: "create_object",
 		EventData: map[string]interface{}{
 			"set_details_ms":              c.SetDetailsMs,
@@ -325,8 +331,8 @@ type OpenBlockEvent struct {
 	ObjectId       string
 }
 
-func (c OpenBlockEvent) ToEvent() Event {
-	return Event{
+func (c OpenBlockEvent) ToEvent() *Event {
+	return &Event{
 		EventType: "open_block",
 		EventData: map[string]interface{}{
 			"object_id":          c.ObjectId,
@@ -345,8 +351,8 @@ type ProcessThreadsEvent struct {
 	WaitTimeMs int64
 }
 
-func (c ProcessThreadsEvent) ToEvent() Event {
-	return Event{
+func (c ProcessThreadsEvent) ToEvent() *Event {
+	return &Event{
 		EventType: "process_threads",
 		EventData: map[string]interface{}{
 			"wait_time_ms": c.WaitTimeMs,
@@ -360,8 +366,8 @@ type AccountRecoverEvent struct {
 	SimultaneousRequests int
 }
 
-func (c AccountRecoverEvent) ToEvent() Event {
-	return Event{
+func (c AccountRecoverEvent) ToEvent() *Event {
+	return &Event{
 		EventType: "account_recover",
 		EventData: map[string]interface{}{
 			"spent_ms":              c.SpentMs,

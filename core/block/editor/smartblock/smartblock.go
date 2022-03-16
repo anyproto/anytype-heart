@@ -746,17 +746,15 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.execHooks(HookAfterApply, sb.Doc.(*state.State))
 	afterApplyHookTime := time.Now()
 
-	// if apply takes to long we want to record it
-	if afterApplyHookTime.Sub(startTime).Milliseconds() > 100 {
-		metrics.SharedClient.RecordEvent(metrics.StateApply{
-			BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
-			StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
-			PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
-			ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
-			ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
-			ObjectId:       sb.Id(),
-		})
-	}
+	metrics.SharedClient.RecordEvent(metrics.StateApply{
+		BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
+		StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
+		PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
+		ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
+		ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
+		ObjectId:       sb.Id(),
+	})
+
 	return
 }
 
