@@ -40,17 +40,23 @@ type Unsplash interface {
 	app.Component
 }
 
+type tempDirGetter interface {
+	TempDir() string
+}
+
 type unsplashService struct {
-	mu     sync.Mutex
-	cache  ocache.OCache
-	client *unsplash.Unsplash
-	limit  int
-	config configfetcher.ConfigFetcher
+	mu            sync.Mutex
+	cache         ocache.OCache
+	client        *unsplash.Unsplash
+	limit         int
+	config        configfetcher.ConfigFetcher
+	tempDirGetter tempDirGetter
 }
 
 func (l *unsplashService) Init(app *app.App) (err error) {
 	l.cache = ocache.New(l.search, ocache.WithTTL(cacheTTL), ocache.WithGCPeriod(cacheGCPeriod))
 	l.config = app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+	l.tempDirGetter = app.MustComponent("anytype").(tempDirGetter)
 	return
 }
 
@@ -234,7 +240,7 @@ func (l *unsplashService) Download(ctx context.Context, id string) (imgPath stri
 		return "", fmt.Errorf("failed to download file from unsplash: %s", err.Error())
 	}
 	defer resp.Body.Close()
-	tmpfile, err := ioutil.TempFile(os.TempDir(), picture.ID)
+	tmpfile, err := ioutil.TempFile(l.tempDirGetter.TempDir(), picture.ID)
 	if err != nil {
 		return "", fmt.Errorf("failed to create temp file: %s", err.Error())
 	}

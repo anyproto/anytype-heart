@@ -13,8 +13,6 @@ import (
 	"image/jpeg"
 	"image/png"
 	"io"
-	"io/ioutil"
-	"os"
 	"strconv"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/mill/ico"
@@ -211,22 +209,14 @@ func (m *ImageResize) Mill(r io.ReadSeeker, name string) (*Result, error) {
 		}
 		gifImg.Config.Width, gifImg.Config.Height = gifImg.Image[0].Bounds().Dx(), gifImg.Image[0].Bounds().Dy()
 
-		file, err := ioutil.TempFile(os.TempDir(), "anytype_img")
-		if err != nil {
+		buff := bytes.NewBuffer(make([]byte, 0))
+
+		if err = gif.EncodeAll(buff, gifImg); err != nil {
 			return nil, err
 		}
 
-		if err = gif.EncodeAll(file, gifImg); err != nil {
-			_ = file.Close()
-			return nil, err
-		}
-
-		_, err = file.Seek(0, io.SeekStart)
-		if err != nil {
-			return nil, err
-		}
 		return &Result{
-			File: file,
+			File: buff,
 			Meta: map[string]interface{}{
 				"width":  gifImg.Config.Width,
 				"height": gifImg.Config.Height,

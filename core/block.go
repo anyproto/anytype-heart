@@ -1145,7 +1145,7 @@ func (mw *Middleware) DownloadFile(req *pb.RpcDownloadFileRequest) *pb.RpcDownlo
 	}
 
 	if req.Path == "" {
-		req.Path = os.TempDir() + string(os.PathSeparator) + "anytype-download"
+		req.Path = mw.GetAnytype().TempDir() + string(os.PathSeparator) + "anytype-download"
 	}
 
 	err := os.MkdirAll(req.Path, 0755)
