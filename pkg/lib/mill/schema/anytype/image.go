@@ -9,7 +9,11 @@ var Image = `
 	  "use": ":file",
 	  "pin": true,
 	  "plaintext": false,
-	  "mill": "/blob"
+	  "mill": "/image/resize",
+      "opts": {
+        "width": "0",
+        "quality": "100"
+      }
     },
     "large": {
       "use": ":file",

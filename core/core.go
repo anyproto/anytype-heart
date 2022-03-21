@@ -88,7 +88,7 @@ func (mw *Middleware) GetAnytype() core.Service {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
 	if mw.app != nil {
-		return mw.app.MustComponent(core.CName).(core.Service)
+		return mw.app.MustComponent("anytype").(core.Service)
 	}
 	return nil
 }

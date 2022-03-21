@@ -20,14 +20,13 @@ setup: setup-go
 	@echo 'Setting up npm...'
 	@npm install
 
-uuu:
-	@echo $(PATH)
 
 setup-go:
 	@echo 'Setting up go modules...'
 	@go mod download
 	@GO111MODULE=off go get github.com/ahmetb/govvv
-	@GO111MODULE=off go get golang.org/x/mobile/cmd/...
+	go install golang.org/x/mobile/cmd/gomobile@latest
+	go install golang.org/x/mobile/cmd/gobind@latest
 
 fmt:
 	@echo 'Formatting with prettier...'
@@ -84,16 +83,22 @@ build-js-addon:
 	@rm clientlibrary/jsaddon/lib.a clientlibrary/jsaddon/lib.h clientlibrary/jsaddon/bridge.h
 
 build-ios: setup-go
+	gomobile init
+	@go get golang.org/x/mobile/bind
 	@echo 'Building library for iOS...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
+	@go mod tidy
 
 build-android: setup-go
+	gomobile init
+	@go get golang.org/x/mobile/bind
 	@echo 'Building library for Android...'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
-	@GOPRIVATE=github.com/anytypeio gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=android -o lib.aar github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
 	@mkdir -p dist/android/ && mv lib.aar dist/android/
+	@go mod tidy
 
 setup-protoc-go:
 	@echo 'Setting up protobuf compiler...'
@@ -108,8 +113,9 @@ setup-protoc-go:
 setup-protoc-jsweb:
 	@echo 'Installing grpc-web plugin...'
 	@rm -rf grpc-web
-	@git clone https://github.com/grpc/grpc-web
-	@$(MAKE) -C grpc-web install-plugin
+	@git clone http://github.com/grpc/grpc-web
+	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
+	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew/bin" $(MAKE) -C grpc-web install-plugin || $(MAKE) -C grpc-web install-plugin
 	@rm -rf grpc-web
 
 setup-protoc-doc:

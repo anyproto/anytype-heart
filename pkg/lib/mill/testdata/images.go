@@ -10,6 +10,20 @@ type TestImage struct {
 
 var Images = []TestImage{
 	{
+		Path:    "testdata/Landscape_8.jpg",
+		Format:  "jpeg",
+		HasExif: true,
+		Width:   1200,
+		Height:  1800,
+	},
+	{
+		Path:    "testdata/image-no-orientation.jpg",
+		Format:  "jpeg",
+		HasExif: true,
+		Width:   680,
+		Height:  518,
+	},
+	{
 		Path:    "testdata/image.jpeg",
 		Format:  "jpeg",
 		HasExif: true,
