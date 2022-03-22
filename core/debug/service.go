@@ -6,14 +6,20 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/change"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/gogo/protobuf/jsonpb"
+	"github.com/goccy/go-graphviz"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
+	"strings"
 )
 
 const CName = "debug"
+
+var logger = logging.Logger("anytype-debug")
 
 func New() Debug {
 	return new(debug)
@@ -41,12 +47,57 @@ func (d *debug) Name() (name string) {
 }
 
 func (d *debug) DumpTree(blockId, path string, anonymize bool) (filename string, err error) {
+	// 0 - get first block
 	block, err := d.core.GetBlock(blockId)
 	if err != nil {
 		return
 	}
+
+	// 1 - create ZIP file
+	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
 	builder := &treeBuilder{b: block, s: d.store, anonymized: anonymize}
-	return builder.Build(path)
+	zipFilename, err := builder.Build(path)
+	if err != nil {
+		logger.Fatal("build tree error:", err)
+		return "", err
+	}
+
+	// 2 - create SVG file near ZIP
+	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.svg
+	t, _, err := change.BuildTree(block)
+	if err != nil {
+		logger.Fatal("build tree error:", err)
+		return "", err
+	}
+
+	gv, err := t.Graphviz()
+	if err != nil {
+		logger.Fatal("can't make graphviz data:", err)
+		return "", err
+	}
+
+	gvo, err := graphviz.ParseBytes([]byte(gv))
+	if err != nil {
+		logger.Fatal("can't open graphviz data:", err)
+		return "", err
+	}
+
+	// generate a filename just like zip file had
+	maxReplacements := 1
+	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
+
+	f, err := os.Create(svgFilename)
+	if err != nil {
+		logger.Fatal("can't create SVG file:", err)
+		return "", err
+	}
+	defer f.Close()
+
+	g := graphviz.New()
+	err = g.Render(gvo, graphviz.SVG, f)
+
+	// Warning: returns filename of a ZIP file, not SVG
+	return zipFilename, err
 }
 
 func (d *debug) DumpLocalstore(objIds []string, path string) (filename string, err error) {
