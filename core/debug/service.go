@@ -27,7 +27,7 @@ func New() Debug {
 
 type Debug interface {
 	app.Component
-	DumpTree(blockId, path string, anonymize bool) (filename string, err error)
+	DumpTree(blockId, path string, anonymize bool, withSvg bool) (filename string, err error)
 	DumpLocalstore(objectIds []string, path string) (filename string, err error)
 }
 
@@ -46,7 +46,7 @@ func (d *debug) Name() (name string) {
 	return CName
 }
 
-func (d *debug) DumpTree(blockId, path string, anonymize bool) (filename string, err error) {
+func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (filename string, err error) {
 	// 0 - get first block
 	block, err := d.core.GetBlock(blockId)
 	if err != nil {
@@ -60,6 +60,11 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool) (filename string,
 	if err != nil {
 		logger.Fatal("build tree error:", err)
 		return "", err
+	}
+
+	// if client never asked for SVG generation -> return
+	if !withSvg {
+		return zipFilename, err
 	}
 
 	// 2 - create SVG file near ZIP

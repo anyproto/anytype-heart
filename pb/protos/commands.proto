@@ -4162,6 +4162,7 @@ message Rpc {
                 string blockId = 1;
                 string path = 2;
                 bool unanonymized = 3; // set to true to disable mocking of the actual data inside changes
+                bool generateSvg = 4; // set to true to write both ZIP and SVG files
             }
 
             message Response {
