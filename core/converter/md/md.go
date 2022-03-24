@@ -121,7 +121,7 @@ func (h *MD) renderText(b *model.Block, in *renderState) {
 
 		for i, r = range []rune(text.Text) {
 			mw.writeMarks(i)
-			h.buf.WriteString(escape.MarkdownCharacters(html.EscapeString(string(r))))
+			h.buf.WriteString(escape.MarkdownCharacters(string(r)))
 		}
 		mw.writeMarks(i + 1)
 		h.buf.WriteString("   \n")
