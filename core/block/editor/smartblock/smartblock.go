@@ -723,17 +723,15 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	sb.execHooks(HookAfterApply)
 	afterApplyHookTime := time.Now()
 
-	// if apply takes to long we want to record it
-	if afterApplyHookTime.Sub(startTime).Milliseconds() > 100 {
-		metrics.SharedClient.RecordEvent(metrics.StateApply{
-			BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
-			StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
-			PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
-			ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
-			ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
-			ObjectId:       sb.Id(),
-		})
-	}
+	metrics.SharedClient.RecordEvent(metrics.StateApply{
+		BeforeApplyMs:  beforeApplyStateTime.Sub(startTime).Milliseconds(),
+		StateApplyMs:   afterApplyStateTime.Sub(beforeApplyStateTime).Milliseconds(),
+		PushChangeMs:   afterPushChangeTime.Sub(afterApplyStateTime).Milliseconds(),
+		ReportChangeMs: afterReportChangeTime.Sub(afterPushChangeTime).Milliseconds(),
+		ApplyHookMs:    afterApplyHookTime.Sub(afterReportChangeTime).Milliseconds(),
+		ObjectId:       sb.Id(),
+	})
+
 	return
 }
 
@@ -1701,7 +1699,16 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
 		}
 	}
+	sb.setRestrictionsDetail(s)
 	return
+}
+
+func (sb *smartBlock) setRestrictionsDetail(s *state.State) {
+	var ints = make([]int, len(sb.Restrictions().Object))
+	for i, v := range sb.Restrictions().Object {
+		ints[i] = int(v)
+	}
+	s.SetLocalDetail(bundle.RelationKeyRestrictions.String(), pbtypes.IntList(ints...))
 }
 
 func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
