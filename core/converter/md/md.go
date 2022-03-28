@@ -3,8 +3,11 @@ package md
 import (
 	"bytes"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/gogo/protobuf/types"
 	"html"
 	"net/url"
+	"path/filepath"
 	"sort"
 	"strings"
 
@@ -14,11 +17,10 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 type FileNamer interface {
-	Get(hash, title string) (name string)
+	Get(path, hash, title, ext string) (name string)
 }
 
 func NewMDConverter(a core.Service, s *state.State, fn FileNamer) converter.Converter {
@@ -33,9 +35,10 @@ type MD struct {
 	fileHashes  []string
 	imageHashes []string
 
-	mw         *marksWriter
-	knownLinks []string
-	fn         FileNamer
+	knownDocs map[string]*types.Struct
+
+	mw *marksWriter
+	fn FileNamer
 }
 
 func (h *MD) Convert() (result []byte) {
@@ -64,6 +67,7 @@ func (h *MD) Ext() string {
 type renderState struct {
 	indent     string
 	listOpened bool
+	listNumber int
 }
 
 func (in renderState) AddNBSpace() *renderState {
@@ -71,7 +75,7 @@ func (in renderState) AddNBSpace() *renderState {
 }
 
 func (in renderState) AddSpace() *renderState {
-	return &renderState{indent: in.indent + "  "}
+	return &renderState{indent: in.indent + "    "}
 }
 
 func (h *MD) render(b *model.Block, in *renderState) {
@@ -89,6 +93,8 @@ func (h *MD) render(b *model.Block, in *renderState) {
 		h.renderLayout(b, in)
 	case *model.BlockContentOfLink:
 		h.renderLink(b, in)
+	case *model.BlockContentOfLatex:
+		h.renderLatex(b, in)
 	default:
 		h.renderLayout(b, in)
 	}
@@ -115,7 +121,7 @@ func (h *MD) renderText(b *model.Block, in *renderState) {
 
 		for i, r = range []rune(text.Text) {
 			mw.writeMarks(i)
-			h.buf.WriteString(escape.MarkdownCharacters(html.EscapeString(string(r))))
+			h.buf.WriteString(escape.MarkdownCharacters(string(r)))
 		}
 		mw.writeMarks(i + 1)
 		h.buf.WriteString("   \n")
@@ -123,6 +129,7 @@ func (h *MD) renderText(b *model.Block, in *renderState) {
 	if in.listOpened && text.Style != model.BlockContentText_Marked && text.Style != model.BlockContentText_Numbered {
 		h.buf.WriteString("   \n")
 		in.listOpened = false
+		in.listNumber = 0
 	}
 
 	h.buf.WriteString(in.indent)
@@ -168,7 +175,8 @@ func (h *MD) renderText(b *model.Block, in *renderState) {
 		h.renderChilds(b, in.AddSpace())
 		in.listOpened = true
 	case model.BlockContentText_Numbered:
-		h.buf.WriteString(`1. `)
+		in.listNumber++
+		h.buf.WriteString(fmt.Sprintf(`%d. `, in.listNumber))
 		renderText()
 		h.renderChilds(b, in.AddSpace())
 		in.listOpened = true
@@ -186,10 +194,10 @@ func (h *MD) renderFile(b *model.Block, in *renderState) {
 	name := escape.MarkdownCharacters(html.EscapeString(file.Name))
 	h.buf.WriteString(in.indent)
 	if file.Type != model.BlockContentFile_Image {
-		fmt.Fprintf(h.buf, "[%s](files/%s)    \n", name, url.PathEscape(h.fn.Get(file.Hash, file.Name)))
+		fmt.Fprintf(h.buf, "[%s](%s)    \n", name, h.fn.Get("files", file.Hash, filepath.Base(file.Name), filepath.Ext(file.Name)))
 		h.fileHashes = append(h.fileHashes, file.Hash)
 	} else {
-		fmt.Fprintf(h.buf, "![%s](files/%s)    \n", name, url.PathEscape(h.fn.Get(file.Hash, file.Name)))
+		fmt.Fprintf(h.buf, "![%s](%s)    \n", name, h.fn.Get("files", file.Hash, filepath.Base(file.Name), filepath.Ext(file.Name)))
 		h.imageHashes = append(h.imageHashes, file.Hash)
 	}
 }
@@ -228,18 +236,20 @@ func (h *MD) renderLayout(b *model.Block, in *renderState) {
 
 func (h *MD) renderLink(b *model.Block, in *renderState) {
 	l := b.GetLink()
-	h.a.ObjectStore().GetByIDs()
-	if l != nil && l.TargetBlockId != "" && h.isKnownLink(l.TargetBlockId) {
-		var title string
-		ois, err := h.a.ObjectStore().GetByIDs(l.TargetBlockId)
-		if err == nil && len(ois) > 0 {
-			title = pbtypes.GetString(ois[0].Details, "name")
+	if l != nil && l.TargetBlockId != "" {
+		title, filename, ok := h.getLinkInfo(l.TargetBlockId)
+		if ok {
+			h.buf.WriteString(in.indent)
+			fmt.Fprintf(h.buf, "[%s](%s)    \n", escape.MarkdownCharacters(html.EscapeString(title)), filename)
 		}
-		if title == "" {
-			title = l.TargetBlockId
-		}
+	}
+}
+
+func (h *MD) renderLatex(b *model.Block, in *renderState) {
+	l := b.GetLatex()
+	if l != nil {
 		h.buf.WriteString(in.indent)
-		fmt.Fprintf(h.buf, "[%s](%s)    \n", escape.MarkdownCharacters(html.EscapeString(title)), l.TargetBlockId+".md")
+		fmt.Fprintf(h.buf, "\n$$\n%s\n$$\n", l.Text)
 	}
 }
 
@@ -260,13 +270,25 @@ func (h *MD) marksWriter(text *model.BlockContentText) *marksWriter {
 	return h.mw.Init(text)
 }
 
-func (h *MD) SetKnownLinks(ids []string) converter.Converter {
-	h.knownLinks = ids
+func (h *MD) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+	h.knownDocs = docs
 	return h
 }
 
-func (h *MD) isKnownLink(docId string) bool {
-	return slice.FindPos(h.knownLinks, docId) != -1
+func (h *MD) getLinkInfo(docId string) (title, filename string, ok bool) {
+	info, ok := h.knownDocs[docId]
+	if !ok {
+		return
+	}
+	title = pbtypes.GetString(info, bundle.RelationKeyName.String())
+	if title == "" {
+		title = pbtypes.GetString(info, bundle.RelationKeySnippet.String())
+	}
+	if title == "" {
+		title = docId
+	}
+	filename = h.fn.Get("", docId, title, h.Ext())
+	return
 }
 
 type marksWriter struct {
@@ -299,11 +321,12 @@ func (mw *marksWriter) writeMarks(pos int) {
 				fmt.Fprintf(mw.h.buf, "](%s)", urlS)
 			}
 		case model.BlockContentTextMark_Mention, model.BlockContentTextMark_Object:
-			if mw.h.isKnownLink(m.Param) {
+			_, filename, ok := mw.h.getLinkInfo(m.Param)
+			if ok {
 				if start {
 					mw.h.buf.WriteString("[")
 				} else {
-					fmt.Fprintf(mw.h.buf, "](%s)", m.Param+".md")
+					fmt.Fprintf(mw.h.buf, "](%s)", filename)
 				}
 			}
 		case model.BlockContentTextMark_Keyboard:
