@@ -132,6 +132,13 @@ func TestCommonSmart_pasteAny(t *testing.T) {
 		pasteAny(t, sb, "4", model.Range{From: 0, To: 6}, []string{}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
 		checkBlockText(t, sb, []string{"11111", "22222", "33333", "aaaaa", "bbbbb", "55555"})
 	})
+
+	t.Run("8. Replace selection", func(t *testing.T) {
+		sb := createPage(t, createBlocks([]string{}, []string{"11111", "22222", "33333", "44444", "55555"}, emptyMarks))
+		pasteAny(t, sb, "", model.Range{}, []string{"3", "4"}, createBlocks([]string{"new1", "new2"}, []string{"aaaaa", "bbbbb"}, emptyMarks))
+		checkBlockText(t, sb, []string{"11111", "22222", "aaaaa", "bbbbb", "55555"})
+	})
+
 }
 
 func TestCommonSmart_splitMarks(t *testing.T) {
@@ -511,14 +518,14 @@ func TestClipboard_TitleOps(t *testing.T) {
 		return sb
 	}
 
-	singleBlockReq := pb.RpcBlockPasteRequest{
+	singleBlockReq := &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    template.TitleBlockId,
 		SelectedTextRange: &model.Range{},
 		AnySlot: []*model.Block{
 			newTextBlock("single").Model(),
 		},
 	}
-	multiBlockReq := pb.RpcBlockPasteRequest{
+	multiBlockReq := &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    template.TitleBlockId,
 		SelectedTextRange: &model.Range{},
 		AnySlot: []*model.Block{
@@ -641,7 +648,7 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 	require.NoError(t, sb.Apply(s))
 
 	cb := NewClipboard(sb, nil)
-	_, _, _, _, err := cb.Paste(nil, pb.RpcBlockPasteRequest{
+	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
 		FocusedBlockId:    codeBlock.Model().Id,
 		SelectedTextRange: &model.Range{4, 5},
 		TextSlot:          "\nsome text\nhere\n",
@@ -649,4 +656,39 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "some\nsome text\nhere\ncode", sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Text)
 	assert.Equal(t, model.BlockContentText_Code, sb.Doc.Pick(codeBlock.Model().Id).Model().GetText().Style)
+}
+
+func Test_PasteText(t *testing.T) {
+	sb := smarttest.New("text")
+	require.NoError(t, smartblock.ApplyTemplate(sb, nil, template.WithEmpty))
+	s := sb.NewState()
+	b1 := simple.New(&model.Block{
+		Id: "1",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "some text 1",
+			},
+		},
+	})
+	s.Add(b1)
+	s.InsertTo("", model.Block_Inner, b1.Model().Id)
+	b2 := simple.New(&model.Block{
+		Id: "2",
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: "some text 2",
+			},
+		},
+	})
+	s.Add(b2)
+	s.InsertTo("", model.Block_Inner, b2.Model().Id)
+	require.NoError(t, sb.Apply(s))
+	cb := NewClipboard(sb, nil)
+	_, _, _, _, err := cb.Paste(nil, &pb.RpcBlockPasteRequest{
+		SelectedBlockIds: []string{"1", "2"},
+		TextSlot:         "One string",
+	}, "")
+	require.NoError(t, err)
+	assert.Equal(t, "One string", sb.NewState().Snippet())
+
 }

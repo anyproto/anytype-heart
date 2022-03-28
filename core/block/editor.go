@@ -442,7 +442,7 @@ func (s *service) Copy(req pb.RpcBlockCopyRequest) (textSlot string, htmlSlot st
 
 func (s *service) Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error) {
 	err = s.DoClipboard(req.ContextId, func(cb clipboard.Clipboard) error {
-		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.Paste(ctx, req, groupId)
+		blockIds, uploadArr, caretPosition, isSameBlockCaret, err = cb.Paste(ctx, &req, groupId)
 		return err
 	})
 
