@@ -1369,6 +1369,23 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
+	if idx := strings.LastIndex(id, "/"); idx != -1 {
+		parentId := id[:idx]
+		subId := id[idx+1:]
+		if value, err = s.cache.Get(ctx, parentId); err != nil {
+			return
+		}
+		if sbO, ok := value.(SmartblockOpener); ok {
+			var sb smartblock.SmartBlock
+			sb, err = sbO.Open(subId)
+			if err != nil {
+				return
+			}
+			return newOpenedBlock(sb), nil
+		} else {
+			return nil, fmt.Errorf("invalid id path '%s': '%s' not implement opener", id, parentId)
+		}
+	}
 	sb, err := s.newSmartBlock(id, nil)
 	if err != nil {
 		return
