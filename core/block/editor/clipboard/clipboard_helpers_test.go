@@ -43,7 +43,7 @@ func page(blocks ...*model.Block) (sb *smarttest.SmartTest) {
 
 func rangePaste(sb *smarttest.SmartTest, t *testing.T, focusId string, focusRange *model.Range, copyRange *model.Range, blocks ...*model.Block) {
 	cb := NewClipboard(sb, nil)
-	req := pb.RpcBlockPasteRequest{
+	req := &pb.RpcBlockPasteRequest{
 		ContextId:         sb.Id(),
 		FocusedBlockId:    focusId,
 		SelectedTextRange: focusRange,
@@ -232,7 +232,7 @@ func checkBlockMarksDebug(t *testing.T, sb *smarttest.SmartTest, marksArr [][]*m
 
 func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, blocks []*model.Block) {
 	cb := NewClipboard(sb, nil)
-	req := pb.RpcBlockPasteRequest{}
+	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
 	}
@@ -248,7 +248,7 @@ func pasteAny(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.
 
 func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, textSlot string) {
 	cb := NewClipboard(sb, nil)
-	req := pb.RpcBlockPasteRequest{}
+	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
 	}
@@ -264,7 +264,7 @@ func pasteText(t *testing.T, sb *smarttest.SmartTest, id string, textRange model
 
 func pasteHtml(t *testing.T, sb *smarttest.SmartTest, id string, textRange model.Range, selectedBlockIds []string, htmlSlot string) {
 	cb := NewClipboard(sb, nil)
-	req := pb.RpcBlockPasteRequest{}
+	req := &pb.RpcBlockPasteRequest{}
 	if id != "" {
 		req.FocusedBlockId = id
 	}
