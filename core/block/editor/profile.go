@@ -62,17 +62,13 @@ func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetail
 	if err = p.SmartBlock.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}
-	meta := p.SmartBlock.Meta()
-	if meta == nil {
-		return
-	}
 	p.sendEvent(&pb.Event{
 		Messages: []*pb.EventMessage{
 			{
 				Value: &pb.EventMessageValueOfAccountDetails{
 					AccountDetails: &pb.EventAccountDetails{
 						ProfileId: p.Id(),
-						Details:   meta.Details,
+						Details:   p.Details(),
 					},
 				},
 			},

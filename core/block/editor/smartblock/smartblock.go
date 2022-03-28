@@ -88,7 +88,6 @@ type SmartBlock interface {
 	Init(ctx *InitContext) (err error)
 	Id() string
 	Type() model.SmartBlockType
-	Meta() *core.SmartBlockMeta
 	Show(*state.Context) (err error)
 	SetEventFunc(f func(e *pb.Event))
 	Apply(s *state.State, flags ...ApplyFlag) error
@@ -192,14 +191,6 @@ func (s *smartBlock) GetAndUnsetFileKeys() (keys []pb.ChangeFileKeys) {
 		})
 	}
 	return
-}
-
-func (sb *smartBlock) Meta() *core.SmartBlockMeta {
-	return &core.SmartBlockMeta{
-		ObjectTypes: sb.ObjectTypes(),
-		Details:     sb.CombinedDetails(),
-		Relations:   sb.ExtraRelations(),
-	}
 }
 
 func (sb *smartBlock) ObjectStore() objectstore.ObjectStore {

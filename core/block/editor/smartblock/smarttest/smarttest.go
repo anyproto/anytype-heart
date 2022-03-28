@@ -270,10 +270,6 @@ func (st *SmartTest) Show(*state.Context) (err error) {
 	return
 }
 
-func (st *SmartTest) Meta() *core.SmartBlockMeta {
-	return st.meta
-}
-
 func (st *SmartTest) SetEventFunc(f func(e *pb.Event)) {
 }
 
