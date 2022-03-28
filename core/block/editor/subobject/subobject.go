@@ -29,6 +29,10 @@ func (s *SubObject) Id() string {
 	return s.ParentObject.Id() + "/" + s.id
 }
 
+func (s *SubObject) SubId() string {
+	return s.id
+}
+
 func (s *SubObject) SubInit() {
 	s.AddHook(func(st *state.State) (err error) {
 		return s.ParentObject.SubStateApply(s.id, st)

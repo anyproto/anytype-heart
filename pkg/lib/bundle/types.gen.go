@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "a4237ce5c66d6d645e608d5408dea2a98f07d78420b19b8d1ce9eb09243046b5"
+const TypeChecksum = "48f5cacb03833724aa4a9ca80156a16049b7c8e444f77c779c87116d2a5e509a"
 
 type TypeKey string
 

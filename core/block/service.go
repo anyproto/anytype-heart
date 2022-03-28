@@ -1038,7 +1038,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_AccountOld:
 		sb = editor.NewThreadDB(s)
 	case model.SmartBlockType_RelationOptionList:
-		sb = editor.NewOptions()
+		sb = editor.NewOptions(s)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -1378,7 +1378,9 @@ func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		}
 		if sbO, ok := value.(SmartblockOpener); ok {
 			var sb smartblock.SmartBlock
+			sb.Lock()
 			sb, err = sbO.Open(subId)
+			sb.Unlock()
 			if err != nil {
 				return
 			}
