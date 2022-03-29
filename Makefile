@@ -84,9 +84,13 @@ build-js-addon:
 	@rm clientlibrary/jsaddon/lib.a clientlibrary/jsaddon/lib.h clientlibrary/jsaddon/bridge.h
 
 build-ios: setup-go
-	@echo 'Building library for iOS...'
+	@echo 'Building library for iOS'
 	@$(eval FLAGS := $$(shell govvv -flags | sed 's/main/github.com\/anytypeio\/go-anytype-middleware\/core/g'))
 	@GOPRIVATE=github.com/anytypeio gomobile bind -tags "nogrpcserver gomobile" -ldflags "$(FLAGS)" -v -target=ios -o Lib.xcframework github.com/anytypeio/go-anytype-middleware/clientlibrary/service github.com/anytypeio/go-anytype-middleware/core
+	@echo 'Library successfully built'
+	@echo 'Cleanup dist folder'
+	@rm ./dist/ios/Lib.xcframework || true
+	@echo 'Move lib to dist'
 	@mkdir -p dist/ios/ && mv Lib.xcframework dist/ios/
 
 build-android: setup-go
@@ -165,8 +169,14 @@ protos-docs:
 protos: protos-go protos-server protos-docs
 
 protos-swift:
-	@echo 'Generating protobuf packages (Swift)...'
+	@echo 'Generating swift protobuf files'
 	@protoc -I ./  --swift_opt=FileNaming=DropPath --swift_opt=Visibility=Public --swift_out=./dist/ios/pb pb/protos/*.proto pkg/lib/pb/model/protos/*.proto
+		@echo 'Generated swift protobuf files at ./dist/ios/pb'
+	
+protos-swift-local: protos-swift
+	@echo 'Copying proto files'
+	@cp -r ./pb/protos ./dist/ios/pb
+	@open ./dist
 
 protos-js:
 	@echo 'Generating protobuf packages (JS)...'
