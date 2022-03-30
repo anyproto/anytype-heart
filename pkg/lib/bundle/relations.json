@@ -897,6 +897,16 @@
     "source": "details"
   },
   {
+    "description": "Object restrictions list",
+    "format": "number",
+    "hidden": true,
+    "key": "restrictions",
+    "maxCount": 1,
+    "name": "Object restrictions",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "materials",

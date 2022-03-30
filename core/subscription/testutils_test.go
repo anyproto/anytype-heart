@@ -40,10 +40,11 @@ func genEntry(id string, ord int64) *entry {
 
 func assertCtxAdd(t *testing.T, ctx *opCtx, id, afterId string) {
 	var found bool
-	for _, add := range ctx.add {
-		if add.id == id {
+	for _, add := range ctx.position {
+		if add.isAdd && add.id == id {
 			found = true
 			assert.Equal(t, afterId, add.afterId, "add after id not equal")
+			break
 		}
 	}
 	assert.True(t, found, fmt.Sprintf("add id %v not found", id))
@@ -55,6 +56,7 @@ func assertCtxPosition(t *testing.T, ctx *opCtx, id, afterId string) {
 		if pos.id == id {
 			found = true
 			assert.Equal(t, afterId, pos.afterId, "pos after id not equal")
+			break
 		}
 	}
 	assert.True(t, found, fmt.Sprintf("pos id %v not found", id))
@@ -93,7 +95,6 @@ func assertCtxChange(t *testing.T, ctx *opCtx, ids ...string) {
 }
 
 func assertCtxEmpty(t *testing.T, ctx *opCtx) {
-	assert.Len(t, ctx.add, 0, "add not empty")
 	assert.Len(t, ctx.remove, 0, "remove not empty")
 	assert.Len(t, ctx.counters, 0, "counters not empty")
 	assert.Len(t, ctx.change, 0, "change not empty")

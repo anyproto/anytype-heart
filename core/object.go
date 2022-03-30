@@ -2,6 +2,7 @@ package core
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"strings"
 	"time"
 
@@ -110,7 +111,9 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
-
+	if req.FullText != "" {
+		mw.app.MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
+	}
 	records, _, err := at.ObjectStore().Query(nil, database.Query{
 		Filters:          req.Filters,
 		Sorts:            req.Sorts,
@@ -375,6 +378,10 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 	})
 	if err != nil {
 		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
+	}
+
+	if len(relations) == 0 {
+		return response(nil, pb.RpcObjectRelationAddResponseError_ALREADY_EXISTS, nil)
 	}
 
 	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)

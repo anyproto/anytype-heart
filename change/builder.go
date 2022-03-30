@@ -3,10 +3,12 @@ package change
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"runtime"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -20,6 +22,11 @@ var (
 )
 
 var log = logging.Logger("anytype-mw-change-builder")
+
+const (
+	virtualChangeBasePrefix    = "_virtual:"
+	virtualChangeBaseSeparator = "+"
+)
 
 func BuildTreeBefore(s core.SmartBlock, beforeLogId string, includeBeforeId bool) (t *Tree, err error) {
 	sb := &stateBuilder{beforeId: beforeLogId, includeBeforeId: includeBeforeId}
@@ -285,14 +292,29 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			return s1, nil
 		}
 
-		// unexpected behavior - just return lesser id
+		var p1, p2 string
+		// unexpected behavior - lets merge branches using the virtual change mechanism
 		if s1 < s2 {
-			log.Warnf("changes build tree: prefer %s (%s<%s)", s1, s1, s2)
-			return s1, nil
+			p1, p2 = s1, s2
+		} else {
+			p1, p2 = s2, s1
 		}
-		log.Warnf("changes build tree: prefer %s (%s<%s)", s2, s2, s1)
 
-		return s2, nil
+		log.With("thread", sb.smartblock.ID()).Errorf("changes build tree: made base snapshot for logs %s and %s: conflicting snapshots %s+%s", ch1.Device, ch2.Device, p1, p2)
+		baseId := sb.makeVirtualSnapshotId(p1, p2)
+
+		if len(ch2.PreviousIds) != 0 || len(ch2.PreviousIds) != 0 {
+			if len(ch2.PreviousIds) == 1 && len(ch2.PreviousIds) == 1 && ch1.PreviousIds[0] == baseId && ch2.PreviousIds[0] == baseId {
+				// already patched
+				return baseId, nil
+			} else {
+				return "", fmt.Errorf("failed to create virtual base change: has invalid PreviousIds")
+			}
+		}
+
+		ch1.PreviousIds = []string{baseId}
+		ch2.PreviousIds = []string{baseId}
+		return baseId, nil
 	}
 
 	for len(snapshotIds) > 1 {
@@ -360,9 +382,50 @@ func (sb *stateBuilder) getNearSnapshot(id string) (sh *Change, err error) {
 	return sch, nil
 }
 
+func (sb *stateBuilder) makeVirtualSnapshotId(s1, s2 string) string {
+	return virtualChangeBasePrefix + base64.RawStdEncoding.EncodeToString([]byte(s1+virtualChangeBaseSeparator+s2))
+}
+
+func (sb *stateBuilder) makeChangeFromVirtualId(id string) (*Change, error) {
+	dataB, err := base64.RawStdEncoding.DecodeString(id[len(virtualChangeBasePrefix):])
+	if err != nil {
+		return nil, fmt.Errorf("invalid virtual id format: %s", err.Error())
+	}
+
+	ids := strings.Split(string(dataB), virtualChangeBaseSeparator)
+	if len(ids) != 2 {
+		return nil, fmt.Errorf("invalid virtual id format: %v", id)
+	}
+
+	ch1, err := sb.loadChange(ids[0])
+	if err != nil {
+		return nil, err
+	}
+	ch2, err := sb.loadChange(ids[1])
+	if err != nil {
+		return nil, err
+	}
+	return &Change{
+		Id:      id,
+		Account: ch1.Account,
+		Device:  ch1.Device,
+		Next:    []*Change{ch1, ch2},
+		Change:  &pb.Change{Snapshot: ch1.Snapshot},
+	}, nil
+
+}
+
 func (sb *stateBuilder) loadChange(id string) (ch *Change, err error) {
 	if ch, ok := sb.cache[id]; ok {
 		return ch, nil
+	}
+	if strings.HasPrefix(id, virtualChangeBasePrefix) {
+		ch, err = sb.makeChangeFromVirtualId(id)
+		if err != nil {
+			return nil, err
+		}
+		sb.cache[id] = ch
+		return
 	}
 	if sb.smartblock == nil {
 		return nil, fmt.Errorf("no smarblock in builder")

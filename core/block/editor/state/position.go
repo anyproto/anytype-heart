@@ -65,7 +65,18 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 	case model.Block_Replace:
 		pos = targetPos + 1
 		if len(ids) > 0 && len(s.Get(ids[0]).Model().ChildrenIds) == 0 {
-			s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
+			var idsIsChild bool
+			if targetChild := target.Model().ChildrenIds; len(targetChild) > 0 {
+				for _, id := range ids {
+					if slice.FindPos(targetChild, id) != -1 {
+						idsIsChild = true
+						break
+					}
+				}
+			}
+			if !idsIsChild {
+				s.Get(ids[0]).Model().ChildrenIds = target.Model().ChildrenIds
+			}
 		}
 		targetParentM.ChildrenIds = slice.Insert(targetParentM.ChildrenIds, pos, ids...)
 		s.Unlink(target.Model().Id)

@@ -69,10 +69,11 @@ func (s *simpleSub) refill(ctx *opCtx, entries []*entry) {
 				keys:  s.keys,
 			})
 		} else {
-			ctx.add = append(ctx.add, opChange{
+			ctx.position = append(ctx.position, opPosition{
 				id:    e.id,
 				subId: s.id,
 				keys:  s.keys,
+				isAdd: true,
 			})
 		}
 		newSet[e.id] = struct{}{}

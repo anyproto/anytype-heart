@@ -11335,6 +11335,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
 | BAD_INVITE_CODE | 900 |  |
+| NET_ERROR | 901 | means general network error |
+| NET_CONNECTION_REFUSED | 902 | means we wasn&#39;t able to connect to the cafe server |
+| NET_OFFLINE | 903 | client can additionally support this error code to notify user that device is offline |
 
 
 
@@ -12887,6 +12890,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 |  |
+| ALREADY_EXISTS | 10 |  |
 
 
 
