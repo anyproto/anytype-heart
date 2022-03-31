@@ -37,6 +37,10 @@ func SetEventHandler(eh func(event *pb.Event)) {
 	mw.EventSender = event.NewCallbackSender(eh)
 }
 
+func SetEnv(key, value string) {
+	os.Setenv(key, value)
+}
+
 func SetEventHandlerMobile(eh MessageHandler) {
 	SetEventHandler(func(event *pb.Event) {
 		b, err := proto.Marshal(event)
