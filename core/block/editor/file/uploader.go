@@ -281,6 +281,7 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	if u.block != nil {
 		u.fileStyle = u.block.Model().GetFile().GetStyle()
 	}
+	u.fileType = u.detectType(buf)
 	if u.fileStyle == model.BlockContentFile_Auto {
 		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
 			u.fileStyle = model.BlockContentFile_Link
@@ -288,7 +289,6 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			u.fileStyle = model.BlockContentFile_Embed
 		}
 	}
-	u.fileType = u.detectType(buf)
 	var opts = []files.AddOption{
 		files.WithName(u.name),
 		files.WithReader(buf),
@@ -309,6 +309,10 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 			return
 		}
 		result.Hash = im.Hash()
+		orig, _ := im.GetOriginalFile(context.TODO())
+		if orig != nil {
+			result.Size = orig.Meta().Size
+		}
 	} else {
 		fl, e := u.anytype.FileAdd(ctx, opts...)
 		if e != nil {
