@@ -26,7 +26,7 @@ const (
 type dot struct {
 }
 
-func (d *dot) SetKnownLinks(ids []string) converter.Converter {
+func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
 	return d
 }
 
