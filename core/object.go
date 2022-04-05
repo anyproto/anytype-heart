@@ -64,6 +64,26 @@ func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.Rpc
 	return response(objectId, err)
 }
 
+func (mw *Middleware) ObjectListDuplicate(req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
+	response := func(objectIds []string, err error) *pb.RpcObjectListDuplicateResponse {
+		m := &pb.RpcObjectListDuplicateResponse{
+			Error: &pb.RpcObjectListDuplicateResponseError{Code: pb.RpcObjectListDuplicateResponseError_NULL},
+			Ids:   objectIds,
+		}
+		if err != nil {
+			m.Error.Code = pb.RpcObjectListDuplicateResponseError_UNKNOWN_ERROR
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+	var objectIds []string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		objectIds, err = bs.ObjectsDuplicate(req.ObjectIds)
+		return
+	})
+	return response(objectIds, err)
+}
+
 func handleDateSearch(req *pb.RpcObjectSearchRequest, records []database.Record) []database.Record {
 	n := time.Now()
 	f, _ := filter.MakeAndFilter(req.Filters)

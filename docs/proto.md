@@ -582,6 +582,10 @@
     - [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request)
     - [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response)
     - [Rpc.ObjectList.Delete.Response.Error](#anytype.Rpc.ObjectList.Delete.Response.Error)
+    - [Rpc.ObjectList.Duplicate](#anytype.Rpc.ObjectList.Duplicate)
+    - [Rpc.ObjectList.Duplicate.Request](#anytype.Rpc.ObjectList.Duplicate.Request)
+    - [Rpc.ObjectList.Duplicate.Response](#anytype.Rpc.ObjectList.Duplicate.Response)
+    - [Rpc.ObjectList.Duplicate.Response.Error](#anytype.Rpc.ObjectList.Duplicate.Response.Error)
     - [Rpc.ObjectList.Set](#anytype.Rpc.ObjectList.Set)
     - [Rpc.ObjectList.Set.IsArchived](#anytype.Rpc.ObjectList.Set.IsArchived)
     - [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request)
@@ -825,6 +829,7 @@
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
     - [Rpc.ObjectDuplicate.Response.Error.Code](#anytype.Rpc.ObjectDuplicate.Response.Error.Code)
     - [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code)
+    - [Rpc.ObjectList.Duplicate.Response.Error.Code](#anytype.Rpc.ObjectList.Duplicate.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsArchived.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsFavorite.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
@@ -1220,6 +1225,7 @@
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request) | [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request) | [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response) | ObjectToSet creates new set from given object and removes object |
+| ObjectListDuplicate | [Rpc.ObjectList.Duplicate.Request](#anytype.Rpc.ObjectList.Duplicate.Request) | [Rpc.ObjectList.Duplicate.Response](#anytype.Rpc.ObjectList.Duplicate.Response) |  |
 | ObjectListDelete | [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request) | [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response) |  |
 | ObjectListSetIsArchived | [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request) | [Rpc.ObjectList.Set.IsArchived.Response](#anytype.Rpc.ObjectList.Set.IsArchived.Response) |  |
 | ObjectListSetIsFavorite | [Rpc.ObjectList.Set.IsFavorite.Request](#anytype.Rpc.ObjectList.Set.IsFavorite.Request) | [Rpc.ObjectList.Set.IsFavorite.Response](#anytype.Rpc.ObjectList.Set.IsFavorite.Response) |  |
@@ -9625,7 +9631,7 @@ deprecated, to be removed |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of template block for cloning |
+| contextId | [string](#string) |  |  |
 
 
 
@@ -9641,7 +9647,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectDuplicate.Response.Error](#anytype.Rpc.ObjectDuplicate.Response.Error) |  |  |
-| id | [string](#string) |  | created template id |
+| id | [string](#string) |  |  |
 
 
 
@@ -9724,6 +9730,63 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate"></a>
+
+### Rpc.ObjectList.Duplicate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Request"></a>
+
+### Rpc.ObjectList.Duplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response"></a>
+
+### Rpc.ObjectList.Duplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectList.Duplicate.Response.Error](#anytype.Rpc.ObjectList.Duplicate.Response.Error) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response.Error"></a>
+
+### Rpc.ObjectList.Duplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectList.Duplicate.Response.Error.Code](#anytype.Rpc.ObjectList.Duplicate.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -13011,6 +13074,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.ObjectList.Delete.Response.Error.Code"></a>
 
 ### Rpc.ObjectList.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response.Error.Code"></a>
+
+### Rpc.ObjectList.Duplicate.Response.Error.Code
 
 
 | Name | Number | Description |
