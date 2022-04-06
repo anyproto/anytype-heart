@@ -50,7 +50,11 @@ func (ch *Change) HasMeta() bool {
 			return true
 		case *pb.ChangeContentValueOfRelationRemove:
 			return true
-		case *pb.ChangeContentValueOfRelationUpdate:
+		case *pb.ChangeContentValueOfOldRelationUpdate:
+			return true
+		case *pb.ChangeContentValueOfOldRelationRemove:
+			return true
+		case *pb.ChangeContentValueOfOldRelationAdd:
 			return true
 		case *pb.ChangeContentValueOfObjectTypeAdd:
 			return true

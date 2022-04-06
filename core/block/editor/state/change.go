@@ -131,16 +131,16 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
 			return
 		}
-	case ch.GetRelationAdd() != nil:
-		if err = s.changeRelationAdd(ch.GetRelationAdd()); err != nil {
+	case ch.GetOldRelationAdd() != nil:
+		if err = s.changeRelationAdd(ch.GetOldRelationAdd()); err != nil {
 			return
 		}
-	case ch.GetRelationRemove() != nil:
-		if err = s.changeRelationRemove(ch.GetRelationRemove()); err != nil {
+	case ch.GetOldRelationRemove() != nil:
+		if err = s.changeRelationRemove(ch.GetOldRelationRemove()); err != nil {
 			return
 		}
-	case ch.GetRelationUpdate() != nil:
-		if err = s.changeRelationUpdate(ch.GetRelationUpdate()); err != nil {
+	case ch.GetOldRelationUpdate() != nil:
+		if err = s.changeRelationUpdate(ch.GetOldRelationUpdate()); err != nil {
 			return
 		}
 	case ch.GetObjectTypeAdd() != nil:
@@ -197,7 +197,7 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	return nil
 }
 
-func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
+func (s *State) changeRelationAdd(add *pb.Change_RelationAdd) error {
 	for _, rel := range s.ExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
@@ -215,7 +215,7 @@ func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
 	return nil
 }
 
-func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
+func (s *State) changeRelationRemove(remove *pb.Change_RelationRemove) error {
 	rels := pbtypes.CopyRelations(s.ExtraRelations())
 	for i, rel := range rels {
 		if rel.Key == remove.Key {
@@ -228,7 +228,7 @@ func (s *State) changeRelationRemove(remove *pb.ChangeRelationRemove) error {
 	return nil
 }
 
-func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
+func (s *State) changeRelationUpdate(update *pb.Change_RelationUpdate) error {
 	rels := pbtypes.CopyRelations(s.ExtraRelations())
 	for _, rel := range rels {
 		if rel.Key != update.Key {
@@ -236,13 +236,13 @@ func (s *State) changeRelationUpdate(update *pb.ChangeRelationUpdate) error {
 		}
 
 		switch val := update.Value.(type) {
-		case *pb.ChangeRelationUpdateValueOfFormat:
+		case *pb.Change_RelationUpdateValueOfFormat:
 			rel.Format = val.Format
-		case *pb.ChangeRelationUpdateValueOfName:
+		case *pb.Change_RelationUpdateValueOfName:
 			rel.Name = val.Name
-		case *pb.ChangeRelationUpdateValueOfDefaultValue:
+		case *pb.Change_RelationUpdateValueOfDefaultValue:
 			rel.DefaultValue = val.DefaultValue
-		case *pb.ChangeRelationUpdateValueOfSelectDict:
+		case *pb.Change_RelationUpdateValueOfSelectDict:
 			rel.SelectDict = val.SelectDict.Dict
 		}
 		s.extraRelations = rels
@@ -433,7 +433,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.collapseSameKeyStoreChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
-	s.changes = append(s.changes, s.makeRelationsChanges()...)
+	//s.changes = append(s.changes, s.makeRelationsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
 
 }
@@ -561,120 +561,6 @@ func (s *State) collapseSameKeyStoreChanges() {
 		filteredChanges[l-i-1] = temp
 	}
 	s.changes = filteredChanges
-}
-
-func diffRelationsIntoUpdates(prev model.Relation, new model.Relation) ([]*pb.ChangeRelationUpdate, error) {
-	var updates []*pb.ChangeRelationUpdate
-
-	if prev.Key != new.Key {
-		return nil, fmt.Errorf("key should be the same")
-	}
-
-	if prev.Name != new.Name {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfName{Name: new.Name},
-		})
-	}
-
-	if prev.Format != new.Format {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfFormat{Format: new.Format},
-		})
-	}
-
-	if !slice.UnsortedEquals(prev.ObjectTypes, new.ObjectTypes) {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfObjectTypes{ObjectTypes: &pb.ChangeRelationUpdateObjectTypes{ObjectTypes: new.ObjectTypes}},
-		})
-	}
-
-	if !prev.DefaultValue.Equal(new.DefaultValue) {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfDefaultValue{DefaultValue: new.DefaultValue},
-		})
-	}
-
-	if prev.Multi != new.Multi {
-		updates = append(updates, &pb.ChangeRelationUpdate{
-			Key:   prev.Key,
-			Value: &pb.ChangeRelationUpdateValueOfMulti{Multi: new.Multi},
-		})
-	}
-
-	if new.Format == model.RelationFormat_tag || new.Format == model.RelationFormat_status {
-		newDict := pbtypes.RelationOptionsFilterScope(new.SelectDict, model.RelationOption_local)
-		if !pbtypes.RelationSelectDictEqual(pbtypes.RelationOptionsFilterScope(prev.SelectDict, model.RelationOption_local), newDict) {
-			// todo: CRDT SelectDict patches
-			updates = append(updates, &pb.ChangeRelationUpdate{
-				Key:   prev.Key,
-				Value: &pb.ChangeRelationUpdateValueOfSelectDict{SelectDict: &pb.ChangeRelationUpdateDict{Dict: newDict}},
-			})
-		}
-	}
-
-	return updates, nil
-}
-
-func (s *State) makeRelationsChanges() (ch []*pb.ChangeContent) {
-	if s.extraRelations == nil {
-		return nil
-	}
-	var prev []*model.Relation
-	if s.parent != nil {
-		prev = s.parent.ExtraRelations()
-	}
-
-	var prevMap = pbtypes.CopyRelationsToMap(prev)
-	var curMap = pbtypes.CopyRelationsToMap(s.extraRelations)
-
-	for _, v := range s.extraRelations {
-		var rel *model.Relation
-		if v.Format == model.RelationFormat_tag || v.Format == model.RelationFormat_status {
-			rel = pbtypes.CopyRelation(v)
-			// filter-out non-local scope options which we can have in the state to receive events
-			rel.SelectDict = pbtypes.RelationOptionsFilterScope(rel.SelectDict, model.RelationOption_local)
-		} else {
-			rel = v
-		}
-
-		pv, ok := prevMap[v.Key]
-		if !ok {
-			ch = append(ch, &pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfRelationAdd{
-					RelationAdd: &pb.ChangeRelationAdd{Relation: v},
-				},
-			})
-		} else {
-			updates, err := diffRelationsIntoUpdates(*pv, *v)
-			if err != nil {
-				// bad input(not equal keys), return the fatal error
-				log.Fatal("diffRelationsIntoUpdates fatal error: %s", err.Error())
-			}
-
-			for _, update := range updates {
-				ch = append(ch, &pb.ChangeContent{
-					Value: &pb.ChangeContentValueOfRelationUpdate{
-						RelationUpdate: update,
-					},
-				})
-			}
-		}
-	}
-	for _, v := range prev {
-		_, ok := curMap[v.Key]
-		if !ok {
-			ch = append(ch, &pb.ChangeContent{
-				Value: &pb.ChangeContentValueOfRelationRemove{
-					RelationRemove: &pb.ChangeRelationRemove{Key: v.Key},
-				},
-			})
-		}
-	}
-	return
 }
 
 func (s *State) makeObjectTypesChanges() (ch []*pb.ChangeContent) {

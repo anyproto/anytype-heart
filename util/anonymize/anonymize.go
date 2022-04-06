@@ -78,10 +78,7 @@ func ChangeContent(chc *pb.ChangeContent) (res *pb.ChangeContent) {
 		v.DetailsSet.Value = StructValue(v.DetailsSet.Value)
 	case *pb.ChangeContentValueOfDetailsUnset:
 	case *pb.ChangeContentValueOfRelationAdd:
-		v.RelationAdd.Relation = Relation(v.RelationAdd.Relation)
 	case *pb.ChangeContentValueOfRelationRemove:
-	case *pb.ChangeContentValueOfRelationUpdate:
-		// TODO:
 	case *pb.ChangeContentValueOfObjectTypeAdd:
 	case *pb.ChangeContentValueOfObjectTypeRemove:
 	}

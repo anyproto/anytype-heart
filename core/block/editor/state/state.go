@@ -71,16 +71,17 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx                         *Context
-	parent                      *State
-	blocks                      map[string]simple.Block
-	rootId                      string
-	newIds                      []string
-	changeId                    string
-	changes                     []*pb.ChangeContent
-	fileKeys                    []pb.ChangeFileKeys
-	details                     *types.Struct
-	localDetails                *types.Struct
+	ctx          *Context
+	parent       *State
+	blocks       map[string]simple.Block
+	rootId       string
+	newIds       []string
+	changeId     string
+	changes      []*pb.ChangeContent
+	fileKeys     []pb.ChangeFileKeys
+	details      *types.Struct
+	localDetails *types.Struct
+
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
