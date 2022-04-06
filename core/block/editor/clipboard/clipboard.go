@@ -364,7 +364,8 @@ func (cb *clipboard) pasteFiles(ctx *state.Context, req *pb.RpcBlockPasteRequest
 		b := simple.New(&model.Block{
 			Content: &model.BlockContentOfFile{
 				File: &model.BlockContentFile{
-					Name: fs.Name,
+					Name:  fs.Name,
+					Style: model.BlockContentFile_Auto,
 				},
 			},
 		})
@@ -373,7 +374,7 @@ func (cb *clipboard) pasteFiles(ctx *state.Context, req *pb.RpcBlockPasteRequest
 			Bytes: fs.Data,
 			Path:  fs.LocalPath,
 			Name:  fs.Name,
-		}, true); err != nil {
+		}, false); err != nil {
 			return
 		}
 		blockIds = append(blockIds, b.Model().Id)
