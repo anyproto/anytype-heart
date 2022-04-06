@@ -39,6 +39,10 @@
     - [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request)
     - [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response)
     - [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error)
+    - [Rpc.Account.Delete](#anytype.Rpc.Account.Delete)
+    - [Rpc.Account.Delete.Request](#anytype.Rpc.Account.Delete.Request)
+    - [Rpc.Account.Delete.Response](#anytype.Rpc.Account.Delete.Response)
+    - [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error)
     - [Rpc.Account.Recover](#anytype.Rpc.Account.Recover)
     - [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request)
     - [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response)
@@ -694,6 +698,7 @@
     - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
+    - [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
@@ -858,6 +863,7 @@
     - [Event.Account.Config.Update](#anytype.Event.Account.Config.Update)
     - [Event.Account.Details](#anytype.Event.Account.Details)
     - [Event.Account.Show](#anytype.Event.Account.Show)
+    - [Event.Account.Update](#anytype.Event.Account.Update)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Dataview](#anytype.Event.Block.Dataview)
@@ -1013,6 +1019,7 @@
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Account.Config](#anytype.model.Account.Config)
+    - [Account.Status](#anytype.model.Account.Status)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
@@ -1051,6 +1058,7 @@
     - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
     - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
+    - [Account.StatusType](#anytype.model.Account.StatusType)
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
@@ -1114,6 +1122,7 @@
 | WorkspaceSetIsHighlighted | [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request) | [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
+| AccountDelete | [Rpc.Account.Delete.Request](#anytype.Rpc.Account.Delete.Request) | [Rpc.Account.Delete.Response](#anytype.Rpc.Account.Delete.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request) | [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response) |  |
 | FileOffload | [Rpc.File.Offload.Request](#anytype.Rpc.File.Offload.Request) | [Rpc.File.Offload.Response](#anytype.Rpc.File.Offload.Response) |  |
@@ -1685,7 +1694,7 @@ Namespace, that agregates subtopics and actions, that relates to account.
 <a name="anytype.Rpc.Account.Config"></a>
 
 ### Rpc.Account.Config
-
+TODO: use model from models.proto
 
 
 | Field | Type | Label | Description |
@@ -1738,7 +1747,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error) |  | Error while trying to create an account |
 | account | [model.Account](#anytype.model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
-| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
 
 
 
@@ -1754,6 +1763,63 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete"></a>
+
+### Rpc.Account.Delete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Request"></a>
+
+### Rpc.Account.Delete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| revert | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Response"></a>
+
+### Rpc.Account.Delete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error) |  | Error while trying to recover an account |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Response.Error"></a>
+
+### Rpc.Account.Delete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1850,7 +1916,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error) |  | Error while trying to launch/select an account |
 | account | [model.Account](#anytype.model.Account) |  | Selected account |
-| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
 
 
 
@@ -11275,6 +11341,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Account.Delete.Response.Error.Code"></a>
+
+### Rpc.Account.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error; |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_ALREADY_DELETED | 101 |  |
+| ACCOUNT_IS_ACTIVE | 102 |  |
+
+
+
 <a name="anytype.Rpc.Account.Recover.Response.Error.Code"></a>
 
 ### Rpc.Account.Recover.Response.Error.Code
@@ -11293,6 +11374,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
+| ACCOUNT_IS_DELETED | 109 |  |
 
 
 
@@ -13408,7 +13490,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 <a name="anytype.Event.Account.Config"></a>
 
 ### Event.Account.Config
-
+Deprecated
 
 
 
@@ -13424,6 +13506,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -13456,6 +13539,22 @@ Message, that will be sent to the front on each account found after an AccountRe
 | ----- | ---- | ----- | ----------- |
 | index | [int32](#int32) |  | Number of an account in an all found accounts list |
 | account | [model.Account](#anytype.model.Account) |  | An Account, that has been found for the mnemonic |
+
+
+
+
+
+
+<a name="anytype.Event.Account.Update"></a>
+
+### Event.Account.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -14926,6 +15025,7 @@ Precondition: user A opened a block
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype.Event.Account.Config.Update) |  |  |
+| accountUpdate | [Event.Account.Update](#anytype.Event.Account.Update) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype.Event.Object.Details.Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset) |  |  |
@@ -15872,6 +15972,8 @@ Contains basic information about a user account
 | id | [string](#string) |  | User&#39;s thread id |
 | name | [string](#string) |  | User name, that associated with this account |
 | avatar | [Account.Avatar](#anytype.model.Account.Avatar) |  | Avatar of a user&#39;s account |
+| config | [Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -15907,6 +16009,22 @@ Avatar of a user&#39;s account. It could be an image or color
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Account.Status"></a>
+
+### Account.Status
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| statusType | [Account.StatusType](#anytype.model.Account.StatusType) |  |  |
+| deletionDate | [int64](#int64) |  |  |
 
 
 
@@ -16564,6 +16682,20 @@ scope from which this relation have been aggregated |
 
 
  
+
+
+<a name="anytype.model.Account.StatusType"></a>
+
+### Account.StatusType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Active | 0 |  |
+| PendingDeletion | 1 |  |
+| StartedDeletion | 2 |  |
+| Deleted | 3 |  |
+
 
 
 <a name="anytype.model.Block.Align"></a>

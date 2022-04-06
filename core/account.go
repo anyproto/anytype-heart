@@ -6,6 +6,9 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
+	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/gogo/status"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -150,18 +153,16 @@ func checkInviteCode(cfg *config.Config, code string, account string) (errorCode
 	return pb.RpcAccountCreateResponseError_NULL, nil
 }
 
-func (mw *Middleware) getAccountConfig() *pb.RpcAccountConfig {
+func (mw *Middleware) getCafeAccount() *cafePb.AccountState {
 	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
-	cfg := fetcher.GetAccountConfig()
 
-	// TODO: change proto defs to use same model from "models.proto" and not from "api.proto"
-	return &pb.RpcAccountConfig{
-		EnableDataview:             cfg.EnableDataview,
-		EnableDebug:                cfg.EnableDebug,
-		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
-		Extra:                      cfg.Extra,
-		EnableSpaces:               cfg.EnableSpaces,
-	}
+	return fetcher.GetAccountState()
+}
+
+func (mw *Middleware) refetch() {
+	fetcher := mw.app.MustComponent(configfetcher.CName).(configfetcher.ConfigFetcher)
+
+	fetcher.Refetch()
 }
 
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
@@ -172,7 +173,10 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 	response := func(account *model.Account, code pb.RpcAccountCreateResponseErrorCode, err error) *pb.RpcAccountCreateResponse {
 		var clientConfig *pb.RpcAccountConfig
 		if account != nil {
-			clientConfig = mw.getAccountConfig()
+			cafeAccount := mw.getCafeAccount()
+
+			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
+			enrichWithCafeAccount(account, cafeAccount)
 		}
 		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
 		if err != nil {
@@ -420,7 +424,21 @@ func (mw *Middleware) AccountRecover(_ *pb.RpcAccountRecoverRequest) *pb.RpcAcco
 
 	if len(sentAccounts) == 0 {
 		if findProfilesErr != nil {
-			return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
+			code := pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND
+			st, ok := status.FromError(findProfilesErr)
+			if ok {
+				for _, detail := range st.Details() {
+					if at, ok := detail.(*cafePb.ErrorAttachment); ok {
+						switch at.Code {
+						case cafePb.ErrorCodes_AccountIsDeleted:
+							code = pb.RpcAccountRecoverResponseError_ACCOUNT_IS_DELETED
+						default:
+							break
+						}
+					}
+				}
+			}
+			return response(code, fmt.Errorf("failed to fetch remote accounts derived from this mnemonic: %s", findProfilesErr.Error()))
 		}
 		return response(pb.RpcAccountRecoverResponseError_NO_ACCOUNTS_FOUND, fmt.Errorf("failed to find any local or remote accounts derived from this mnemonic"))
 	}
@@ -432,7 +450,10 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	response := func(account *model.Account, code pb.RpcAccountSelectResponseErrorCode, err error) *pb.RpcAccountSelectResponse {
 		var clientConfig *pb.RpcAccountConfig
 		if account != nil {
-			clientConfig = mw.getAccountConfig()
+			cafeAccount := mw.getCafeAccount()
+
+			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
+			enrichWithCafeAccount(account, cafeAccount)
 		}
 		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
@@ -572,6 +593,57 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
 }
 
+func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
+	response := func(status *model.AccountStatus, code pb.RpcAccountDeleteResponseErrorCode, err error) *pb.RpcAccountDeleteResponse {
+		m := &pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Status = status
+		}
+
+		return m
+	}
+
+	var st *model.AccountStatus
+	err := mw.doAccountService(func(a account.Service) (err error) {
+		resp, err := a.DeleteAccount(context.Background(), req.Revert)
+		if resp.GetStatus() != nil {
+			st = &model.AccountStatus{
+				StatusType:   model.AccountStatusType(resp.Status.Status),
+				DeletionDate: resp.Status.DeletionDate,
+			}
+		}
+		return
+	})
+
+	mw.refetch()
+
+	if err != nil {
+		// TODO: maybe this logic should be in a.DeleteAccount
+		code := pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR
+		st, ok := status.FromError(err)
+		if ok {
+			for _, detail := range st.Details() {
+				if at, ok := detail.(*cafePb.ErrorAttachment); ok {
+					switch at.Code {
+					case cafePb.ErrorCodes_AccountIsDeleted:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ALREADY_DELETED
+					// this code is returned if we call revert but an account is active
+					case cafePb.ErrorCodes_AccountIsActive:
+						code = pb.RpcAccountDeleteResponseError_ACCOUNT_IS_ACTIVE
+					default:
+						break
+					}
+				}
+			}
+		}
+		return response(nil, code, err)
+	}
+
+	return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
+}
+
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {
 	var firstAccounts = make([]wallet.Keypair, count)
 	for i := 0; i < count; i++ {
@@ -599,4 +671,31 @@ func keypairsToAddresses(keypairs []wallet.Keypair) []string {
 		addresses[i] = keypair.Address()
 	}
 	return addresses
+}
+
+func convertToRpcAccountConfig(cfg *cafePb.AccountStateConfig) *pb.RpcAccountConfig {
+	return &pb.RpcAccountConfig{
+		EnableDataview:             cfg.EnableDataview,
+		EnableDebug:                cfg.EnableDebug,
+		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
+		Extra:                      cfg.Extra,
+		EnableSpaces:               cfg.EnableSpaces,
+	}
+}
+
+func enrichWithCafeAccount(acc *model.Account, cafeAcc *cafePb.AccountState) {
+	cfg := cafeAcc.Config
+	acc.Config = &model.AccountConfig{
+		EnableDataview:             cfg.EnableDataview,
+		EnableDebug:                cfg.EnableDebug,
+		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
+		Extra:                      cfg.Extra,
+		EnableSpaces:               cfg.EnableSpaces,
+	}
+
+	st := cafeAcc.Status
+	acc.Status = &model.AccountStatus{
+		StatusType:   model.AccountStatusType(st.Status),
+		DeletionDate: st.DeletionDate,
+	}
 }

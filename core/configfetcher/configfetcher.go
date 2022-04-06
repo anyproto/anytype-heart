@@ -3,6 +3,11 @@ package configfetcher
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/gogo/protobuf/proto"
+	ds "github.com/ipfs/go-datastore"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -12,73 +17,82 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var log = logging.Logger("anytype-mw-configfetcher")
 
 const CName = "configfetcher"
+const accountStateFetchInterval = 15 * time.Minute
 
 type WorkspaceGetter interface {
 	GetAllWorkspaces() ([]string, error)
 }
 
-var defaultConfigResponse = &pb.GetConfigResponseConfig{
-	EnableDataview:             false,
-	EnableDebug:                false,
-	EnableReleaseChannelSwitch: false,
-	SimultaneousRequests:       20,
-	EnableSpaces:               false,
-	Extra:                      nil,
+var defaultAccountState = &pb.AccountState{
+	Config: &pb.AccountStateConfig{
+		EnableDataview:             false,
+		EnableDebug:                false,
+		EnableReleaseChannelSwitch: false,
+		SimultaneousRequests:       20,
+		EnableSpaces:               false,
+		Extra:                      nil,
+	},
+	Status: &pb.AccountStateStatus{
+		Status:       pb.AccountState_Active,
+		DeletionDate: 0,
+	},
 }
 
 type ConfigFetcher interface {
 	app.ComponentRunnable
-	GetCafeConfigWithContext(ctx context.Context) *pb.GetConfigResponseConfig
-	GetCafeConfig() *pb.GetConfigResponseConfig
-	GetAccountConfigWithContext(ctx context.Context) *model.AccountConfig
-	GetAccountConfig() *model.AccountConfig
-	SendAccountConfig()
-}
-
-type SimultaneousRequestsUpdater interface {
-	UpdateSimultaneousRequests(requests int) error
+	GetAccountStateWithContext(ctx context.Context) *pb.AccountState
+	GetAccountState() *pb.AccountState
+	AddAccountStateObserver(observer util.CafeAccountStateUpdateObserver)
+	NotifyClientApp()
+	Refetch()
 }
 
 type configFetcher struct {
+	sync.RWMutex
 	store           objectstore.ObjectStore
 	cafe            cafeClient.Client
 	workspaceGetter WorkspaceGetter
 	eventSender     func(event *pbMiddle.Event)
-	requestsUpdater SimultaneousRequestsUpdater
 
-	fetched chan struct{}
-	ctx     context.Context
-	cancel  context.CancelFunc
+	fetched       chan struct{}
+	stopped       chan struct{}
+	refetch       chan struct{}
+	fetchedClosed bool
+	refetchClosed bool
+	ctx           context.Context
+	cancel        context.CancelFunc
+
+	observers []util.CafeAccountStateUpdateObserver
 }
 
-func (c *configFetcher) GetAccountConfig() *model.AccountConfig {
+func (c *configFetcher) GetAccountState() *pb.AccountState {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	return c.GetAccountConfigWithContext(ctx)
+	return c.GetAccountStateWithContext(ctx)
 }
 
-func (c *configFetcher) GetAccountConfigWithContext(ctx context.Context) *model.AccountConfig {
-	cafeConfig := c.GetCafeConfigWithContext(ctx)
+func (c *configFetcher) AddAccountStateObserver(observer util.CafeAccountStateUpdateObserver) {
+	c.Lock()
+	defer c.Unlock()
+	c.observers = append(c.observers, observer)
+}
+
+func (c *configFetcher) GetAccountStateWithContext(ctx context.Context) *pb.AccountState {
+	state := c.GetCafeAccountStateWithContext(ctx)
 	// we could have cached this, but for now it is not needed, because we call this rarely
-	enableSpaces := cafeConfig.GetEnableSpaces()
+	enableSpaces := state.GetConfig().GetEnableSpaces()
 	workspaces, err := c.workspaceGetter.GetAllWorkspaces()
 	if err == nil && len(workspaces) != 0 {
 		enableSpaces = true
 	}
+	state.Config.EnableSpaces = enableSpaces
 
-	return &model.AccountConfig{
-		EnableDataview:             cafeConfig.EnableDataview,
-		EnableDebug:                cafeConfig.EnableDebug,
-		EnableReleaseChannelSwitch: cafeConfig.EnableReleaseChannelSwitch,
-		Extra:                      cafeConfig.Extra,
-		EnableSpaces:               enableSpaces,
-	}
+	return state
 }
 
 func New() ConfigFetcher {
@@ -87,51 +101,80 @@ func New() ConfigFetcher {
 
 func (c *configFetcher) Run() error {
 	c.ctx, c.cancel = context.WithCancel(context.Background())
-	go func() {
-		var attempt int
-		for {
-			select {
-			case <-c.ctx.Done():
-				return
-			case <-time.After(time.Second * 2 * time.Duration(attempt)):
-			}
-			err := c.fetchConfig()
-			if err == nil {
-				close(c.fetched)
-				cfg := c.GetCafeConfig()
-				err = c.requestsUpdater.UpdateSimultaneousRequests(int(cfg.SimultaneousRequests))
-				if err != nil {
-					log.Errorf("failed to update simultaneous requests: %v", err)
-				}
-				c.SendAccountConfig()
-				return
-			}
-
-			attempt++
-			log.Errorf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
-		}
-	}()
+	go c.run()
 	return nil
 }
 
-func (c *configFetcher) GetCafeConfig() *pb.GetConfigResponseConfig {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	return c.GetCafeConfigWithContext(ctx)
+func (c *configFetcher) run() {
+	defer close(c.stopped)
+	var t *time.Timer
+	defer func() {
+		if t != nil && !t.Stop() {
+			<-t.C
+		}
+	}()
+	sentFirstUpdate := false
+	timeInterval := time.Duration(0)
+	attempt := 0
+	for {
+		if t == nil {
+			t = time.NewTimer(timeInterval)
+		} else {
+			// we should go here only if we drained the channel and the timer expires
+			t.Reset(timeInterval)
+		}
+		select {
+		case <-c.ctx.Done():
+			return
+		case <-t.C:
+			break
+		case <-c.refetch:
+			if !t.Stop() {
+				<-t.C
+			}
+			break
+		}
+		state, equal, err := c.fetchAccountState()
+		if err == nil {
+			if !c.fetchedClosed {
+				close(c.fetched)
+				c.fetchedClosed = true
+			}
+			c.RLock()
+			for _, observer := range c.observers {
+				observer.ObserveAccountStateUpdate(state)
+			}
+			c.RUnlock()
+
+			if !equal || !sentFirstUpdate {
+				c.NotifyClientApp()
+				sentFirstUpdate = true
+			}
+			timeInterval = accountStateFetchInterval
+			attempt = 0
+		} else {
+			attempt++
+			timeInterval = 2 * time.Second * time.Duration(attempt)
+			if timeInterval > accountStateFetchInterval {
+				timeInterval = accountStateFetchInterval
+			}
+			log.Errorf("failed to fetch cafe config after %d attempts with error: %s", attempt, err.Error())
+		}
+	}
 }
 
-func (c *configFetcher) GetCafeConfigWithContext(ctx context.Context) *pb.GetConfigResponseConfig {
+func (c *configFetcher) GetCafeAccountStateWithContext(ctx context.Context) *pb.AccountState {
 	select {
 	case <-c.fetched:
 	case <-ctx.Done():
 	}
 
-	cfg, err := c.store.GetCafeConfig()
+	state, err := c.store.GetAccountState()
 	if err != nil {
-		log.Errorf("failed to get cafe config from the store: %s", err.Error())
-		cfg = defaultConfigResponse
+		log.Errorf("failed to account state config from the store: %s", err.Error())
+		state = defaultAccountState
 	}
-	return cfg
+	return state
 }
 
 func (c *configFetcher) Init(a *app.App) (err error) {
@@ -139,11 +182,12 @@ func (c *configFetcher) Init(a *app.App) (err error) {
 	c.cafe = a.MustComponent(cafeClient.CName).(cafeClient.Client)
 	c.workspaceGetter = a.MustComponent("threads").(WorkspaceGetter)
 	c.eventSender = a.MustComponent(event.CName).(event.Sender).Send
-	c.requestsUpdater = a.MustComponent("threads").(SimultaneousRequestsUpdater)
 	c.fetched = make(chan struct{})
-	c.cancel = func() {
-
-	}
+	c.stopped = make(chan struct{})
+	c.refetch = make(chan struct{})
+	c.fetchedClosed = false
+	c.refetchClosed = false
+	c.cancel = func() {}
 	return nil
 }
 
@@ -151,41 +195,95 @@ func (c *configFetcher) Name() (name string) {
 	return CName
 }
 
-func (c *configFetcher) fetchConfig() (err error) {
+func (c *configFetcher) fetchAccountState() (state *pb.AccountState, equal bool, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
-	resp, err := c.cafe.GetConfig(ctx, &pb.GetConfigRequest{})
+	resp, err := c.cafe.GetAccountState(ctx, &pb.GetAccountStateRequest{})
 	cancel()
 	if err != nil {
-		return fmt.Errorf("failed to request cafe config: %w", err)
+		err = fmt.Errorf("failed to request cafe config: %w", err)
+		return
+	}
+	oldState, err := c.store.GetAccountState()
+	if err != nil && err != ds.ErrNotFound {
+		err = fmt.Errorf("failed to get cafe config: %w", err)
+		return
 	}
 
-	if resp != nil {
-		err = c.store.SaveCafeConfig(resp.Config)
+	if oldState != nil {
+		equal = proto.Equal(resp.AccountState, oldState)
+	}
+
+	if resp != nil && !equal {
+		err = c.store.SaveAccountState(resp.AccountState)
 		if err != nil {
-			return fmt.Errorf("failed to save cafe config to objectstore: %w", err)
+			err = fmt.Errorf("failed to save cafe account state to objectstore: %w", err)
+			return
 		}
 	}
-	return err
+	state = resp.AccountState
+	return
+}
+
+func (c *configFetcher) Refetch() {
+	c.Lock()
+	defer c.Unlock()
+	if c.refetchClosed {
+		return
+	}
+	select {
+	case c.refetch <- struct{}{}:
+	default:
+	}
 }
 
 func (c *configFetcher) Close() (err error) {
 	c.cancel()
+	<-c.stopped
+
+	c.Lock()
+	close(c.refetch)
+	c.refetchClosed = true
+	c.Unlock()
+
+	if !c.fetchedClosed {
+		close(c.fetched)
+		c.fetchedClosed = true
+	}
 	return nil
 }
 
-func (c *configFetcher) SendAccountConfig() {
-	event := &pbMiddle.Event{
+func (c *configFetcher) NotifyClientApp() {
+	accountState := c.GetAccountState()
+	ev := &pbMiddle.Event{
 		Messages: []*pbMiddle.EventMessage{
 			&pbMiddle.EventMessage{
-				Value: &pbMiddle.EventMessageValueOfAccountConfigUpdate{
-					AccountConfigUpdate: &pbMiddle.EventAccountConfigUpdate{
-						Config: c.GetAccountConfig(),
+				Value: &pbMiddle.EventMessageValueOfAccountUpdate{
+					AccountUpdate: &pbMiddle.EventAccountUpdate{
+						Config: convertToAccountConfigModel(accountState.Config),
+						Status: convertToAccounStatusModel(accountState.Status),
 					},
 				},
 			},
 		},
 	}
 	if c.eventSender != nil {
-		c.eventSender(event)
+		c.eventSender(ev)
+	}
+}
+
+func convertToAccountConfigModel(cfg *pb.AccountStateConfig) *model.AccountConfig {
+	return &model.AccountConfig{
+		EnableDataview:             cfg.EnableDataview,
+		EnableDebug:                cfg.EnableDebug,
+		EnableReleaseChannelSwitch: cfg.EnableReleaseChannelSwitch,
+		EnableSpaces:               cfg.EnableSpaces,
+		Extra:                      cfg.Extra,
+	}
+}
+
+func convertToAccounStatusModel(status *pb.AccountStateStatus) *model.AccountStatus {
+	return &model.AccountStatus{
+		StatusType:   model.AccountStatusType(status.Status),
+		DeletionDate: status.DeletionDate,
 	}
 }
