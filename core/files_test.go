@@ -87,20 +87,19 @@ func TestFile(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, int64(1024*1024*3), f.Meta().Size)
 		}
-		m, err := getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
+		m, err := getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite_v3"))
 		require.NoError(t, err)
 		require.Equal(t, 10, m.NumVLOG)
 		fmt.Printf("BADGER METRICS AFTER ADD: %+v\n", m)
 		resp := mw.FileListOffload(&pb.RpcFileListOffloadRequest{IncludeNotPinned: true})
 		require.Equal(t, 0, int(resp.Error.Code), resp.Error.Description)
-		require.Equal(t, int32(200), resp.FilesOffloaded)
+		require.Equal(t, int32(201), resp.FilesOffloaded)
 		require.Equal(t, uint64(1024*1024*3*200+247400), resp.BytesOffloaded) // 247400 is the overhead for the links and meta
 
-		m, err = getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
+		m, err = getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite_v3"))
 		require.NoError(t, err)
 		fmt.Printf("BADGER METRICS AFTER OFFLOAD: %+v\n", m)
 		require.LessOrEqual(t, m.NumVLOG, 3)
-
 	})
 	t.Run("image_should_open_as_object", func(t *testing.T) {
 		respUploadImage := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
