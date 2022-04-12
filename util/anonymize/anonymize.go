@@ -96,14 +96,6 @@ func Event(e *pb.EventMessage) (res *pb.EventMessage) {
 		for i, d := range v.ObjectDetailsAmend.Details {
 			v.ObjectDetailsAmend.Details[i].Value = StructValue(d.Value)
 		}
-	case *pb.EventMessageValueOfObjectRelationsSet:
-		for i, er := range v.ObjectRelationsSet.Relations {
-			v.ObjectRelationsSet.Relations[i] = Relation(er)
-		}
-	case *pb.EventMessageValueOfObjectRelationsAmend:
-		for i, er := range v.ObjectRelationsAmend.Relations {
-			v.ObjectRelationsAmend.Relations[i] = Relation(er)
-		}
 	case *pb.EventMessageValueOfBlockAdd:
 		if v.BlockAdd.Blocks != nil {
 			for i, b := range v.BlockAdd.Blocks {

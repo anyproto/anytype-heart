@@ -131,16 +131,24 @@ func (s *State) applyChange(ch *pb.ChangeContent) (err error) {
 		if err = s.changeBlockDetailsUnset(ch.GetDetailsUnset()); err != nil {
 			return
 		}
+	case ch.GetRelationAdd() != nil:
+		if err = s.changeRelationAdd(ch.GetRelationAdd()); err != nil {
+			return
+		}
+	case ch.GetRelationRemove() != nil:
+		if err = s.changeRelationRemove(ch.GetRelationRemove()); err != nil {
+			return
+		}
 	case ch.GetOldRelationAdd() != nil:
-		if err = s.changeRelationAdd(ch.GetOldRelationAdd()); err != nil {
+		if err = s.changeOldRelationAdd(ch.GetOldRelationAdd()); err != nil {
 			return
 		}
 	case ch.GetOldRelationRemove() != nil:
-		if err = s.changeRelationRemove(ch.GetOldRelationRemove()); err != nil {
+		if err = s.changeOldRelationRemove(ch.GetOldRelationRemove()); err != nil {
 			return
 		}
 	case ch.GetOldRelationUpdate() != nil:
-		if err = s.changeRelationUpdate(ch.GetOldRelationUpdate()); err != nil {
+		if err = s.changeOldRelationUpdate(ch.GetOldRelationUpdate()); err != nil {
 			return
 		}
 	case ch.GetObjectTypeAdd() != nil:
@@ -197,11 +205,27 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 	return nil
 }
 
-func (s *State) changeRelationAdd(add *pb.Change_RelationAdd) error {
+func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
+	for _, id := range add.RelationId {
+		if slice.FindPos(s.relationIds, id) == -1 {
+			s.relationIds = append(s.relationIds, id)
+		}
+	}
+	return nil
+}
+
+func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
+	for _, id := range rem.RelationId {
+		s.relationIds = slice.Remove(s.relationIds, id)
+	}
+	return nil
+}
+
+func (s *State) changeOldRelationAdd(add *pb.Change_RelationAdd) error {
 	for _, rel := range s.ExtraRelations() {
 		if rel.Key == add.Relation.Key {
 			// todo: update?
-			log.Warnf("changeRelationAdd, relation already exists")
+			log.Warnf("changeOldRelationAdd, relation already exists")
 			return nil
 		}
 	}
@@ -215,7 +239,7 @@ func (s *State) changeRelationAdd(add *pb.Change_RelationAdd) error {
 	return nil
 }
 
-func (s *State) changeRelationRemove(remove *pb.Change_RelationRemove) error {
+func (s *State) changeOldRelationRemove(remove *pb.Change_RelationRemove) error {
 	rels := pbtypes.CopyRelations(s.ExtraRelations())
 	for i, rel := range rels {
 		if rel.Key == remove.Key {
@@ -224,11 +248,11 @@ func (s *State) changeRelationRemove(remove *pb.Change_RelationRemove) error {
 		}
 	}
 
-	log.Warnf("changeRelationRemove: relation to remove not found")
+	log.Warnf("changeOldRelationRemove: relation to remove not found")
 	return nil
 }
 
-func (s *State) changeRelationUpdate(update *pb.Change_RelationUpdate) error {
+func (s *State) changeOldRelationUpdate(update *pb.Change_RelationUpdate) error {
 	rels := pbtypes.CopyRelations(s.ExtraRelations())
 	for _, rel := range rels {
 		if rel.Key != update.Key {
@@ -340,7 +364,7 @@ func (s *State) GetChanges() []*pb.ChangeContent {
 
 func (s *State) fillChanges(msgs []simple.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
-	var delIds []string
+	var delIds, delRelIds, newRelIds []string
 	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
 	var b1, b2 []byte
 	for i, msg := range msgs {
@@ -404,6 +428,10 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
 			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfObjectRelationsAmend:
+			newRelIds = append(newRelIds, msg.Msg.GetObjectRelationsAmend().RelationIds...)
+		case *pb.EventMessageValueOfObjectRelationsRemove:
+			delRelIds = append(delRelIds, msg.Msg.GetObjectRelationsRemove().RelationIds...)
 		default:
 			log.Errorf("unexpected event - can't convert to changes: %v", msg.Msg)
 		}
@@ -421,6 +449,24 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			},
 		})
 	}
+	if len(newRelIds) > 0 {
+		cb.AddChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfRelationAdd{
+				RelationAdd: &pb.ChangeRelationAdd{
+					RelationId: newRelIds,
+				},
+			},
+		})
+	}
+	if len(delRelIds) > 0 {
+		cb.AddChange(&pb.ChangeContent{
+			Value: &pb.ChangeContentValueOfRelationRemove{
+				RelationRemove: &pb.ChangeRelationRemove{
+					RelationId: newRelIds,
+				},
+			},
+		})
+	}
 	if len(updMsgs) > 0 {
 		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfBlockUpdate{
@@ -433,7 +479,6 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 	s.collapseSameKeyStoreChanges()
 	s.changes = cb.Build()
 	s.changes = append(s.changes, s.makeDetailsChanges()...)
-	//s.changes = append(s.changes, s.makeRelationsChanges()...)
 	s.changes = append(s.changes, s.makeObjectTypesChanges()...)
 
 }

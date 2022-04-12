@@ -23,7 +23,6 @@ message Event {
             Object.Details.Set objectDetailsSet = 16;
             Object.Details.Amend objectDetailsAmend = 50;
             Object.Details.Unset objectDetailsUnset = 51;
-            Object.Relations.Set objectRelationsSet = 22;
             Object.Relations.Amend objectRelationsAmend = 52;
             Object.Relations.Remove objectRelationsRemove = 53;
 
@@ -163,31 +162,15 @@ message Event {
         }
 
         message Relations {
-            message Set {
-                string id = 1; // context objectId
-                repeated anytype.model.Relation relations = 2;
-            }
 
             message Amend {
                 string id = 1; // context objectId
-                repeated anytype.model.Relation relations = 2;
+                repeated string relationIds = 2;
             }
 
             message Remove {
                 string id = 1; // context objectId
-                repeated string keys = 2;
-            }
-        }
-
-        message Relation {
-            message Set {
-                string id = 1; // context objectId
-                string relationKey = 2;
-                anytype.model.Relation relation = 3; // missing value means relation should be removed
-            }
-            message Remove {
-                string id = 1; // context objectId
-                string relationKey = 2;
+                repeated string relationIds = 2;
             }
         }
 

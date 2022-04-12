@@ -81,7 +81,9 @@ type State struct {
 	fileKeys     []pb.ChangeFileKeys
 	details      *types.Struct
 	localDetails *types.Struct
+	relationIds  []string
 
+	// deprecated
 	extraRelations              []*model.Relation
 	aggregatedOptionsByRelation map[string][]*model.RelationOption
 
@@ -531,52 +533,33 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			s.parent.details = s.details
 		}
 	}
-	if s.parent != nil && s.extraRelations != nil {
-		prev := s.parent.ExtraRelations()
-
-		if added, updated, removed := pbtypes.RelationsDiff(prev, s.extraRelations); (len(added) + len(updated) + len(removed)) > 0 {
-			action.Relations = &undo.Relations{Before: pbtypes.CopyRelations(prev), After: pbtypes.CopyRelations(s.extraRelations)}
-			s.parent.extraRelations = s.extraRelations
-			if len(added)+len(updated) > 0 {
-				aggregetedOptions := s.AggregatedOptionsByRelation()
-				if aggregetedOptions != nil {
-					for _, rel := range append(added, updated...) {
-						if m, exists := aggregetedOptions[rel.Key]; exists {
-							addedOpts, updatedOpts, _ := pbtypes.RelationSelectDictDiff(pbtypes.GetRelation(prev, rel.Key).GetSelectDict(), rel.GetSelectDict())
-							// so here we need to filter out options that has been actually changed in this apply
-							// otherwise option names can be overwritten from the localstore with the old ones
-							m = pbtypes.RelationOptionsFilter(m, func(option *model.RelationOption) bool {
-								return pbtypes.GetOption(append(updatedOpts), option.Id) == nil && pbtypes.GetOption(append(addedOpts), option.Id) == nil
-							})
-							rel.SelectDict = pbtypes.MergeOptionsPreserveScope(rel.SelectDict, m)
-						}
-					}
-				}
-				msgs = append(msgs, simple.EventMessage{
-					Msg: &pb.EventMessage{
-						Value: &pb.EventMessageValueOfObjectRelationsAmend{
-							ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
-								Id:        s.RootId(),
-								Relations: append(added, updated...),
-							},
+	if s.parent != nil && s.relationIds != nil {
+		removed, added := slice.DifferenceRemovedAdded(s.relationIds, s.parent.relationIds)
+		if len(removed) > 0 {
+			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfObjectRelationsRemove{
+						ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
+							Id:          s.RootId(),
+							RelationIds: removed,
 						},
 					},
-				})
-			}
-
-			if len(removed) > 0 {
-				msgs = append(msgs, simple.EventMessage{
-					Msg: &pb.EventMessage{
-						Value: &pb.EventMessageValueOfObjectRelationsRemove{
-							ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
-								Id:   s.RootId(),
-								Keys: removed,
-							},
-						},
-					},
-				})
-			}
+				},
+			})...)
 		}
+		if len(added) > 0 {
+			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfObjectRelationsAmend{
+						ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
+							Id:          s.RootId(),
+							RelationIds: added,
+						},
+					},
+				},
+			})...)
+		}
+		s.parent.relationIds = s.relationIds
 	}
 
 	if s.parent != nil && s.objectTypes != nil {
@@ -642,8 +625,8 @@ func (s *State) intermediateApply() {
 	if s.aggregatedOptionsByRelation != nil {
 		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
 	}
-	if s.extraRelations != nil {
-		s.parent.extraRelations = s.extraRelations
+	if s.relationIds != nil {
+		s.parent.relationIds = s.relationIds
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
@@ -659,51 +642,9 @@ func (s *State) intermediateApply() {
 }
 
 func (s *State) Diff(new *State) (msgs []simple.EventMessage, err error) {
-	var (
-		newBlocks []*model.Block
-		removeIds []string
-	)
-	new.Iterate(func(nb simple.Block) (isContinue bool) {
-		b := s.Pick(nb.Model().Id)
-		if b == nil {
-			newBlocks = append(newBlocks, nb.Copy().Model())
-		} else {
-			bdiff, e := b.Diff(nb)
-			if e != nil {
-				err = e
-				return false
-			}
-			msgs = append(msgs, bdiff...)
-		}
-		return true
-	})
-	if err != nil {
-		return
-	}
-	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if !new.Exists(b.Model().Id) {
-			removeIds = append(removeIds, b.Model().Id)
-		}
-		return true
-	})
-	if len(newBlocks) > 0 {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
-			Value: &pb.EventMessageValueOfBlockAdd{
-				BlockAdd: &pb.EventBlockAdd{
-					Blocks: newBlocks,
-				},
-			},
-		}})
-	}
-	if len(removeIds) > 0 {
-		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{
-			Value: &pb.EventMessageValueOfBlockDelete{
-				BlockDelete: &pb.EventBlockDelete{
-					BlockIds: removeIds,
-				},
-			},
-		}})
-	}
+	sc := s.Copy()
+	new.SetParent(sc)
+	msgs, _, err = ApplyState(new, false)
 	return
 }
 
@@ -1367,13 +1308,15 @@ func (s *State) Copy() *State {
 	for k, v := range s.AggregatedOptionsByRelation() {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
 	}
-
+	relationIds := make([]string, len(s.relationIds))
+	copy(relationIds, s.relationIds)
 	copy := &State{
 		ctx:                         s.ctx,
 		blocks:                      blocks,
 		rootId:                      s.rootId,
 		details:                     pbtypes.CopyStruct(s.Details()),
 		localDetails:                pbtypes.CopyStruct(s.LocalDetails()),
+		relationIds:                 relationIds,
 		extraRelations:              pbtypes.CopyRelations(s.ExtraRelations()),
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,

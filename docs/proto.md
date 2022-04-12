@@ -955,13 +955,9 @@
     - [Event.Object.Details.Amend.KeyValue](#anytype.Event.Object.Details.Amend.KeyValue)
     - [Event.Object.Details.Set](#anytype.Event.Object.Details.Set)
     - [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset)
-    - [Event.Object.Relation](#anytype.Event.Object.Relation)
-    - [Event.Object.Relation.Remove](#anytype.Event.Object.Relation.Remove)
-    - [Event.Object.Relation.Set](#anytype.Event.Object.Relation.Set)
     - [Event.Object.Relations](#anytype.Event.Object.Relations)
     - [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend)
     - [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove)
-    - [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set)
     - [Event.Object.Remove](#anytype.Event.Object.Remove)
     - [Event.Object.Restriction](#anytype.Event.Object.Restriction)
     - [Event.Object.Show](#anytype.Event.Object.Show)
@@ -14888,7 +14884,6 @@ Precondition: user A opened a block
 | objectDetailsSet | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype.Event.Object.Details.Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset) |  |  |
-| objectRelationsSet | [Event.Object.Relations.Set](#anytype.Event.Object.Relations.Set) |  |  |
 | objectRelationsAmend | [Event.Object.Relations.Amend](#anytype.Event.Object.Relations.Amend) |  |  |
 | objectRelationsRemove | [Event.Object.Relations.Remove](#anytype.Event.Object.Relations.Remove) |  |  |
 | objectRemove | [Event.Object.Remove](#anytype.Event.Object.Remove) |  |  |
@@ -15022,49 +15017,6 @@ Unset existing detail keys
 
 
 
-<a name="anytype.Event.Object.Relation"></a>
-
-### Event.Object.Relation
-
-
-
-
-
-
-
-<a name="anytype.Event.Object.Relation.Remove"></a>
-
-### Event.Object.Relation.Remove
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | context objectId |
-| relationKey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Event.Object.Relation.Set"></a>
-
-### Event.Object.Relation.Set
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | context objectId |
-| relationKey | [string](#string) |  |  |
-| relation | [model.Relation](#anytype.model.Relation) |  | missing value means relation should be removed |
-
-
-
-
-
-
 <a name="anytype.Event.Object.Relations"></a>
 
 ### Event.Object.Relations
@@ -15084,7 +15036,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
+| relationIds | [string](#string) | repeated |  |
 
 
 
@@ -15100,23 +15052,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| keys | [string](#string) | repeated |  |
-
-
-
-
-
-
-<a name="anytype.Event.Object.Relations.Set"></a>
-
-### Event.Object.Relations.Set
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  | context objectId |
-| relations | [model.Relation](#anytype.model.Relation) | repeated |  |
+| relationIds | [string](#string) | repeated |  |
 
 
 

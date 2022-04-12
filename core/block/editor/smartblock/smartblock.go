@@ -1053,18 +1053,6 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	if err = sb.Apply(s, NoRestrictions); err != nil {
 		return
 	}
-
-	if ctx != nil {
-		// todo: send an atomic event for each changed relation
-		ctx.AddMessages(sb.Id(), []*pb.EventMessage{{
-			Value: &pb.EventMessageValueOfObjectRelationsSet{
-				ObjectRelationsSet: &pb.EventObjectRelationsSet{
-					Id:        s.RootId(),
-					Relations: sb.Relations(),
-				},
-			},
-		}})
-	}
 	return
 }
 
