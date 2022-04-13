@@ -16,7 +16,7 @@ func TestProfile_SetDetails(t *testing.T) {
 	})
 	p.SmartBlock = smarttest.New("1")
 
-	err := p.SetDetails(nil, []*pb.RpcBlockSetDetailsDetail{
+	err := p.SetDetails(nil, []*pb.RpcObjectSetDetailsDetail{
 		{
 			Key:   "key",
 			Value: pbtypes.String("value"),

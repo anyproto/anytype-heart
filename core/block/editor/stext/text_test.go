@@ -210,11 +210,11 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb)
 
-		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		require.NoError(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
-		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		require.NoError(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "12",
 		}))
@@ -230,11 +230,11 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", " "))
 		tb := NewText(sb)
 
-		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		require.NoError(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
-		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		require.NoError(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "12",
 		}))
@@ -252,12 +252,12 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", ""))
 		tb := NewText(sb)
 
-		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		require.NoError(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 		}))
 		tb.(*textImpl).flushSetTextState()
-		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		require.NoError(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "2",
 		}))
@@ -274,7 +274,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("2", ""))
 		tb := NewText(sb)
 
-		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		require.NoError(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "1",
 			Text:    "1",
 			Marks: &model.BlockContentTextMarks{
@@ -296,7 +296,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			AddBlock(newTextBlock("1", "")).
 			AddBlock(simple.New(&model.Block{Id: "2"}))
 		tb := NewText(sb)
-		assert.Error(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
+		assert.Error(t, tb.SetText(pb.RpcBlockTextSetTextRequest{
 			BlockId: "2",
 			Text:    "",
 		}))

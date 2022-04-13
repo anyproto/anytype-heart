@@ -35,7 +35,7 @@ func New() Service {
 
 type Service interface {
 	Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcObjectSearchSubscribeResponse, err error)
-	SubscribeIdsReq(req pb.RpcObjectIdsSubscribeRequest) (resp *pb.RpcObjectIdsSubscribeResponse, err error)
+	SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error)
 	SubscribeIds(subId string, ids []string) (records []*types.Struct, err error)
 	Unsubscribe(subIds ...string) (err error)
 	UnsubscribeAll() (err error)
@@ -171,7 +171,7 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 	return
 }
 
-func (s *service) SubscribeIdsReq(req pb.RpcObjectIdsSubscribeRequest) (resp *pb.RpcObjectIdsSubscribeResponse, err error) {
+func (s *service) SubscribeIdsReq(req pb.RpcObjectSubscribeIdsRequest) (resp *pb.RpcObjectSubscribeIdsResponse, err error) {
 	records, err := s.objectStore.QueryById(req.Ids)
 	if err != nil {
 		return
@@ -205,8 +205,8 @@ func (s *service) SubscribeIdsReq(req pb.RpcObjectIdsSubscribeRequest) (resp *pb
 		depRecords = sub.depSub.getActiveRecords()
 	}
 
-	return &pb.RpcObjectIdsSubscribeResponse{
-		Error:        &pb.RpcObjectIdsSubscribeResponseError{},
+	return &pb.RpcObjectSubscribeIdsResponse{
+		Error:        &pb.RpcObjectSubscribeIdsResponseError{},
 		Records:      subRecords,
 		Dependencies: depRecords,
 		SubId:        req.SubId,

@@ -41,7 +41,7 @@ func New() Export {
 }
 
 type Export interface {
-	Export(req pb.RpcExportRequest) (path string, succeed int, err error)
+	Export(req pb.RpcObjectExportRequest) (path string, succeed int, err error)
 	app.Component
 }
 
@@ -60,7 +60,7 @@ func (e *export) Name() (name string) {
 	return CName
 }
 
-func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err error) {
+func (e *export) Export(req pb.RpcObjectExportRequest) (path string, succeed int, err error) {
 	queue := e.bs.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
@@ -92,9 +92,9 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err 
 	defer wr.Close()
 
 	queue.SetMessage("export docs")
-	if req.Format == pb.RpcExport_DOT || req.Format == pb.RpcExport_SVG {
+	if req.Format == pb.RpcObjectExport_DOT || req.Format == pb.RpcObjectExport_SVG {
 		var format = dot.ExportFormatDOT
-		if req.Format == pb.RpcExport_SVG {
+		if req.Format == pb.RpcObjectExport_SVG {
 			format = dot.ExportFormatSVG
 		}
 		mc := dot.NewMultiConverter(format)
@@ -103,7 +103,7 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err 
 		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
-	} else if req.Format == pb.RpcExport_GRAPH_JSON {
+	} else if req.Format == pb.RpcObjectExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter()
 		mc.SetKnownDocs(docs)
 		var werr error
@@ -276,7 +276,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	return
 }
 
-func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
+func (e *export) writeDoc(format pb.RpcObjectExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
 			return nil
@@ -286,17 +286,17 @@ func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docInfo map[stri
 		}
 		var conv converter.Converter
 		switch format {
-		case pb.RpcExport_Markdown:
+		case pb.RpcObjectExport_Markdown:
 			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
-		case pb.RpcExport_Protobuf:
+		case pb.RpcObjectExport_Protobuf:
 			conv = pbc.NewConverter(b)
-		case pb.RpcExport_JSON:
+		case pb.RpcObjectExport_JSON:
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert()
 		filename := docId + conv.Ext()
-		if format == pb.RpcExport_Markdown {
+		if format == pb.RpcObjectExport_Markdown {
 			s := b.NewState()
 			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 			if name == "" {

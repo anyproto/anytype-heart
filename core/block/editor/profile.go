@@ -47,7 +47,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	if err = p.SmartBlock.Init(ctx); err != nil {
 		return
 	}
-	return smartblock.ApplyTemplate(p, ctx.State,
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyProfile.URL()}),
 		template.WithDetail(bundle.RelationKeyLayoutAlign, pbtypes.Float64(float64(model.Block_AlignCenter))),
 		template.WithTitle,
@@ -58,7 +58,7 @@ func (p *Profile) Init(ctx *smartblock.InitContext) (err error) {
 	)
 }
 
-func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
+func (p *Profile) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	if err = p.SmartBlock.SetDetails(ctx, details, showEvent); err != nil {
 		return
 	}

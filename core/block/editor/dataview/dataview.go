@@ -63,7 +63,7 @@ type Dataview interface {
 	WithSystemObjects(yes bool)
 	SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error
 
-	smartblock.SmartblockOpenListner
+	smartblock.SmartObjectOpenListner
 }
 
 func NewDataview(sb smartblock.SmartBlock) Dataview {
@@ -890,7 +890,7 @@ func (d *dataviewCollectionImpl) fillAggregatedOptions(b dataview.Block) {
 	}
 }
 
-func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
+func (d *dataviewCollectionImpl) SmartObjectOpened(ctx *state.Context) {
 	st := d.NewStateCtx(ctx)
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {

@@ -1966,7 +1966,7 @@ message Rpc {
                 }
             }
         }
-        message CreateWithObjectType {
+        message CreateFromObjectType {
             message Request {
                 // id of desired object type
                 string objectType = 1;
@@ -3397,228 +3397,230 @@ message Rpc {
     }
 
     message BlockDataview {
-        message CreateView {
-            message Request {
-                string contextId = 1;
-                string blockId = 2; // id of dataview block to insert the new block
-                anytype.model.Block.Content.Dataview.View view = 4;
+        message View {
+            message Create {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to insert the new block
+                    anytype.model.Block.Content.Dataview.View view = 4;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+                    string viewId = 3;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
             }
+            message Update {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to update
+                    string viewId = 3; // id of view to update
+                    anytype.model.Block.Content.Dataview.View view = 4;
+                }
 
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-                string viewId = 3;
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
 
-                message Error {
-                    Code code = 1;
-                    string description = 2;
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
 
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message Delete {
+                message Request {
+                    string contextId = 1; // id of the context block
+                    string blockId = 2; // id of the dataview
+                    string viewId = 4; // id of the view to remove
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            message SetPosition {
+                message Request {
+                    string contextId = 1; // id of the context block
+                    string blockId = 2; // id of the dataview
+                    string viewId = 4; // id of the view to remove
+                    uint32 position = 5; // index of view position (0 - means first)
+                }
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
+                    }
+                }
+            }
+            // set the current active view (persisted only within a session)
+            message SetActive {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block
+                    string viewId = 3; // id of active view
+                    uint32 offset = 4;
+                    uint32 limit = 5;
+                }
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            // ...
+                        }
                     }
                 }
             }
         }
-        message UpdateView {
-            message Request {
-                string contextId = 1;
-                string blockId = 2; // id of dataview block to update
-                string viewId = 3; // id of view to update
-                anytype.model.Block.Content.Dataview.View view = 4;
+        message Relation {
+            message Add {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    anytype.model.Relation relation = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+                    string relationKey = 3; // deprecated
+                    anytype.model.Relation relation = 4;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
             }
+            message Update {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3; // key of relation to update
+                    anytype.model.Relation relation = 4;
+                }
 
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
 
-                message Error {
-                    Code code = 1;
-                    string description = 2;
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
 
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+            message Delete {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2; // id of dataview block to add relation
+                    string relationKey = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 3;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
+                    }
+                }
+            }
+            message ListAvailable {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                }
+
+                message Response {
+                    Error error = 1;
+                    repeated anytype.model.Relation relations = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                            NOT_A_DATAVIEW_BLOCK = 3;
+                            // ...
+                        }
                     }
                 }
             }
         }
-        message DeleteView {
-            message Request {
-                string contextId = 1; // id of the context block
-                string blockId = 2; // id of the dataview
-                string viewId = 4; // id of the view to remove
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-        message SetViewPosition {
-            message Request {
-                string contextId = 1; // id of the context block
-                string blockId = 2; // id of the dataview
-                string viewId = 4; // id of the view to remove
-                uint32 position = 5; // index of view position (0 - means first)
-            }
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-        // set the current active view (persisted only within a session)
-        message SetActiveView {
-            message Request {
-                string contextId = 1;
-                string blockId = 2; // id of dataview block
-                string viewId = 3; // id of active view
-                uint32 offset = 4;
-                uint32 limit = 5;
-            }
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-
-        message AddRelation {
-            message Request {
-                string contextId = 1;
-                string blockId = 2; // id of dataview block to add relation
-                anytype.model.Relation relation = 3;
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-                string relationKey = 3; // deprecated
-                anytype.model.Relation relation = 4;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                    }
-                }
-            }
-        }
-        message UpdateRelation {
-            message Request {
-                string contextId = 1;
-                string blockId = 2; // id of dataview block to add relation
-                string relationKey = 3; // key of relation to update
-                anytype.model.Relation relation = 4;
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                    }
-                }
-            }
-        }
-        message DeleteRelation {
-            message Request {
-                string contextId = 1;
-                string blockId = 2; // id of dataview block to add relation
-                string relationKey = 3;
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 3;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                    }
-                }
-            }
-        }
-        message ListAvailableRelation {
-            message Request {
-                string contextId = 1;
-                string blockId = 2;
-            }
-
-            message Response {
-                Error error = 1;
-                repeated anytype.model.Relation relations = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        NOT_A_DATAVIEW_BLOCK = 3;
-                        // ...
-                    }
-                }
-            }
-        }
-
         message SetSource {
             message Request {
                 string contextId = 1;
@@ -4021,7 +4023,6 @@ message Rpc {
         }
     }
 
-
     message Process {
         message Cancel {
             message Request {
@@ -4041,6 +4042,21 @@ message Rpc {
                         BAD_INPUT = 2;
                     }
                 }
+            }
+        }
+    }
+
+    message GenericErrorResponse {
+        Error error = 1;
+        message Error {
+            Code code = 1;
+            string description = 2;
+
+            enum Code {
+                NULL = 0;
+                UNKNOWN_ERROR = 1;
+                BAD_INPUT = 2;
+                // ...
             }
         }
     }

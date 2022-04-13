@@ -100,10 +100,10 @@ func (mw *Middleware) NavigationGetObjectInfoWithLinks(req *pb.RpcNavigationGetO
 	return response(pb.RpcNavigationGetObjectInfoWithLinksResponseError_NULL, page, nil)
 }
 
-func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreateResponse {
+func (mw *Middleware) ObjectCreate(req *pb.RpcObjectCreateRequest) *pb.RpcObjectCreateResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcPageCreateResponseErrorCode, id string, err error) *pb.RpcPageCreateResponse {
-		m := &pb.RpcPageCreateResponse{Error: &pb.RpcPageCreateResponseError{Code: code}, PageId: id}
+	response := func(code pb.RpcObjectCreateResponseErrorCode, id string, err error) *pb.RpcObjectCreateResponse {
+		m := &pb.RpcObjectCreateResponse{Error: &pb.RpcObjectCreateResponseError{Code: code}, PageId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -119,7 +119,7 @@ func (mw *Middleware) PageCreate(req *pb.RpcPageCreateRequest) *pb.RpcPageCreate
 	})
 
 	if err != nil {
-		return response(pb.RpcPageCreateResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcObjectCreateResponseError_UNKNOWN_ERROR, "", err)
 	}
-	return response(pb.RpcPageCreateResponseError_NULL, id, nil)
+	return response(pb.RpcObjectCreateResponseError_NULL, id, nil)
 }

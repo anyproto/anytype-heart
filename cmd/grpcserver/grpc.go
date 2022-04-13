@@ -227,7 +227,7 @@ func main() {
 	case <-stopChan:
 		server.Stop()
 		proxy.Close()
-		mw.Shutdown(&pb.RpcShutdownRequest{})
+		mw.AppShutdown(&pb.RpcAppShutdownRequest{})
 		return
 	}
 }

@@ -633,7 +633,7 @@ func TestClipboard_TitleOps(t *testing.T) {
 
 func TestClipboard_PasteToCodeBock(t *testing.T) {
 	sb := smarttest.New("text")
-	require.NoError(t, smartblock.ApplyTemplate(sb, nil, template.WithTitle))
+	require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithTitle))
 	s := sb.NewState()
 	codeBlock := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{
@@ -660,7 +660,7 @@ func TestClipboard_PasteToCodeBock(t *testing.T) {
 
 func Test_PasteText(t *testing.T) {
 	sb := smarttest.New("text")
-	require.NoError(t, smartblock.ApplyTemplate(sb, nil, template.WithEmpty))
+	require.NoError(t, smartblock.ObjectApplyTemplate(sb, nil, template.WithEmpty))
 	s := sb.NewState()
 	b1 := simple.New(&model.Block{
 		Id: "1",

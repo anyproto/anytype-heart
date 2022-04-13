@@ -4,9 +4,9 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) VersionGet(req *pb.RpcVersionGetRequest) *pb.RpcVersionGetResponse {
-	response := func(version, details string, code pb.RpcVersionGetResponseErrorCode, err error) *pb.RpcVersionGetResponse {
-		m := &pb.RpcVersionGetResponse{Version: version, Details: details, Error: &pb.RpcVersionGetResponseError{Code: code}}
+func (mw *Middleware) AppVersionGet(req *pb.RpcAppGetVersionRequest) *pb.RpcAppGetVersionResponse {
+	response := func(version, details string, code pb.RpcAppGetVersionResponseErrorCode, err error) *pb.RpcAppGetVersionResponse {
+		m := &pb.RpcAppGetVersionResponse{Version: version, Details: details, Error: &pb.RpcAppGetVersionResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -14,5 +14,5 @@ func (mw *Middleware) VersionGet(req *pb.RpcVersionGetRequest) *pb.RpcVersionGet
 		return m
 	}
 
-	return response(mw.app.Version(), mw.app.VersionDescription(), pb.RpcVersionGetResponseError_NULL, nil)
+	return response(mw.app.Version(), mw.app.VersionDescription(), pb.RpcAppGetVersionResponseError_NULL, nil)
 }

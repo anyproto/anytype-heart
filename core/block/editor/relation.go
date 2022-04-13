@@ -45,7 +45,7 @@ func (p *Relation) Init(ctx *smartblock.InitContext) (err error) {
 		},
 	}
 
-	return smartblock.ApplyTemplate(p, ctx.State,
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithObjectTypesAndLayout([]string{bundle.TypeKeyRelation.URL()}),
 		template.WithEmpty,
 		template.WithTitle,

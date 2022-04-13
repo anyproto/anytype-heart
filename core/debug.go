@@ -138,15 +138,15 @@ func (mw *Middleware) DebugTree(req *pb.RpcDebugTreeRequest) *pb.RpcDebugTreeRes
 	return response(err, filename)
 }
 
-func (mw *Middleware) ExportLocalstore(req *pb.RpcExportLocalstoreRequest) *pb.RpcExportLocalstoreResponse {
-	response := func(path string, err error) (res *pb.RpcExportLocalstoreResponse) {
-		res = &pb.RpcExportLocalstoreResponse{
-			Error: &pb.RpcExportLocalstoreResponseError{
-				Code: pb.RpcExportLocalstoreResponseError_NULL,
+func (mw *Middleware) DebugExportLocalstore(req *pb.RpcDebugExportLocalstoreRequest) *pb.RpcDebugExportLocalstoreResponse {
+	response := func(path string, err error) (res *pb.RpcDebugExportLocalstoreResponse) {
+		res = &pb.RpcDebugExportLocalstoreResponse{
+			Error: &pb.RpcDebugExportLocalstoreResponseError{
+				Code: pb.RpcDebugExportLocalstoreResponseError_NULL,
 			},
 		}
 		if err != nil {
-			res.Error.Code = pb.RpcExportLocalstoreResponseError_UNKNOWN_ERROR
+			res.Error.Code = pb.RpcDebugExportLocalstoreResponseError_UNKNOWN_ERROR
 			res.Error.Description = err.Error()
 			return
 		} else {

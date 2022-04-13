@@ -25,7 +25,7 @@ var log = logging.Logger("anytype-core-db")
 func New(
 	pageStore objectstore.ObjectStore,
 	objectType *model.ObjectType,
-	setDetails func(req pb.RpcBlockSetDetailsRequest) error,
+	setDetails func(req pb.RpcObjectSetDetailsRequest) error,
 	getRelations func(objectId string) (relations []*model.Relation, err error),
 	setRelations func(id string, relations []*model.Relation) (err error),
 	modifyExtraRelations func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error,
@@ -49,7 +49,7 @@ func New(
 type setOfObjects struct {
 	objectstore.ObjectStore
 	objectType                *model.ObjectType
-	setDetails                func(req pb.RpcBlockSetDetailsRequest) error
+	setDetails                func(req pb.RpcObjectSetDetailsRequest) error
 	getRelations              func(objectId string) (relations []*model.Relation, err error)
 	setRelations              func(id string, relations []*model.Relation) (err error)
 	modifyExtraRelations      func(id string, modifier func(current []*model.Relation) ([]*model.Relation, error)) error
@@ -123,14 +123,14 @@ func (sp setOfObjects) Create(ctx context.Context, relations []*model.Relation, 
 }
 
 func (sp *setOfObjects) Update(id string, rels []*model.Relation, rec database.Record) error {
-	var details []*pb.RpcBlockSetDetailsDetail
+	var details []*pb.RpcObjectSetDetailsDetail
 	if rec.Details != nil && rec.Details.Fields != nil {
 		for k, v := range rec.Details.Fields {
 			if _, ok := v.Kind.(*types.Value_NullValue); ok {
 				v = nil
 			}
 
-			details = append(details, &pb.RpcBlockSetDetailsDetail{Key: k, Value: v})
+			details = append(details, &pb.RpcObjectSetDetailsDetail{Key: k, Value: v})
 		}
 	}
 
@@ -143,7 +143,7 @@ func (sp *setOfObjects) Update(id string, rels []*model.Relation, rec database.R
 		return nil
 	}
 
-	return sp.setDetails(pb.RpcBlockSetDetailsRequest{
+	return sp.setDetails(pb.RpcObjectSetDetailsRequest{
 		ContextId: id, // not sure?
 		Details:   details,
 	})

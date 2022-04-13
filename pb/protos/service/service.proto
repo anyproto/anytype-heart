@@ -75,7 +75,7 @@ service ClientCommands {
     rpc ObjectRelationDelete (anytype.Rpc.ObjectRelation.Delete.Request) returns (anytype.Rpc.ObjectRelation.Delete.Response);
     rpc ObjectRelationAddFeatured (anytype.Rpc.ObjectRelation.AddFeatured.Request) returns (anytype.Rpc.ObjectRelation.AddFeatured.Response);
     rpc ObjectRelationRemoveFeatured (anytype.Rpc.ObjectRelation.RemoveFeatured.Request) returns (anytype.Rpc.ObjectRelation.RemoveFeatured.Response);
-    rpc ObjectRelationListAvailable (anytype.Rpc.ObjectRelation.Delete.Request) returns (anytype.Rpc.ObjectRelation.ListAvailable.Response);
+    rpc ObjectRelationListAvailable (anytype.Rpc.ObjectRelation.ListAvailable.Request) returns (anytype.Rpc.ObjectRelation.ListAvailable.Response);
     rpc ObjectRelationOptionAdd (anytype.Rpc.ObjectRelationOption.Add.Request) returns (anytype.Rpc.ObjectRelationOption.Add.Response);
     rpc ObjectRelationOptionUpdate (anytype.Rpc.ObjectRelationOption.Update.Request) returns (anytype.Rpc.ObjectRelationOption.Update.Response);
     rpc ObjectRelationOptionDelete (anytype.Rpc.ObjectRelationOption.Delete.Request) returns (anytype.Rpc.ObjectRelationOption.Delete.Response);
@@ -106,13 +106,13 @@ service ClientCommands {
     rpc NavigationGetObjectInfoWithLinks (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Request) returns (anytype.Rpc.Navigation.GetObjectInfoWithLinks.Response);
 
     rpc TemplateCreateFromObject (anytype.Rpc.Template.CreateFromObject.Request) returns (anytype.Rpc.Template.CreateFromObject.Response);
-    rpc TemplateCreateFromObjectType (anytype.Rpc.Template.CreateWithObjectType.Request) returns (anytype.Rpc.Template.CreateWithObjectType.Response);
+    rpc TemplateCreateFromObjectType (anytype.Rpc.Template.CreateFromObjectType.Request) returns (anytype.Rpc.Template.CreateFromObjectType.Response);
     rpc TemplateClone (anytype.Rpc.Template.Clone.Request) returns (anytype.Rpc.Template.Clone.Response);
-    rpc TemplateExportAll (anytype.Rpc.Template.ExportAll.Request) returns (anytype.Rpc.Template.Clone.Response);
+    rpc TemplateExportAll (anytype.Rpc.Template.ExportAll.Request) returns (anytype.Rpc.Template.ExportAll.Response);
 
     rpc LinkPreview (anytype.Rpc.LinkPreview.Request) returns (anytype.Rpc.LinkPreview.Response);
 
-    rpc UnsplashSearch (anytype.Rpc.Unsplash.Download.Request) returns (anytype.Rpc.Unsplash.Search.Response);
+    rpc UnsplashSearch (anytype.Rpc.Unsplash.Search.Request) returns (anytype.Rpc.Unsplash.Search.Response);
     // UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
     // The artist info is available in the object details
     rpc UnsplashDownload (anytype.Rpc.Unsplash.Download.Request) returns (anytype.Rpc.Unsplash.Download.Response);
@@ -132,8 +132,8 @@ service ClientCommands {
     rpc BlockSetRestrictions (anytype.Rpc.Block.SetRestrictions.Request) returns (anytype.Rpc.Block.SetRestrictions.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
 
-    rpc BlockListMove (anytype.Rpc.Block.ListMoveToExistingObject.Request) returns (anytype.Rpc.Block.ListMoveToExistingObject.Response);
-    rpc BlockListMoveToNewPage (anytype.Rpc.Block.ListMoveToNewObject.Request) returns (anytype.Rpc.Block.ListMoveToNewObject.Response);
+    rpc BlockListMoveToExistingObject (anytype.Rpc.Block.ListMoveToExistingObject.Request) returns (anytype.Rpc.Block.ListMoveToExistingObject.Response);
+    rpc BlockListMoveToNewObject (anytype.Rpc.Block.ListMoveToNewObject.Request) returns (anytype.Rpc.Block.ListMoveToNewObject.Response);
     rpc BlockListConvertToObjects (anytype.Rpc.Block.ListConvertToObjects.Request) returns (anytype.Rpc.Block.ListConvertToObjects.Response);
     rpc BlockListSetFields (anytype.Rpc.Block.ListSetFields.Request) returns (anytype.Rpc.Block.ListSetFields.Response);
     rpc BlockListDuplicate (anytype.Rpc.Block.ListDuplicate.Request) returns (anytype.Rpc.Block.ListDuplicate.Response);
@@ -144,7 +144,7 @@ service ClientCommands {
     // Text Block commands
     // ***
     rpc BlockTextSetText (anytype.Rpc.BlockText.SetText.Request) returns (anytype.Rpc.BlockText.SetText.Response);
-    rpc BlockTextSetColor (anytype.Rpc.BlockText.SetText.Request) returns (anytype.Rpc.BlockText.SetColor.Response);
+    rpc BlockTextSetColor (anytype.Rpc.BlockText.SetColor.Request) returns (anytype.Rpc.BlockText.SetColor.Response);
     rpc BlockTextSetStyle (anytype.Rpc.BlockText.SetStyle.Request) returns (anytype.Rpc.BlockText.SetStyle.Response);
     rpc BlockTextSetChecked (anytype.Rpc.BlockText.SetChecked.Request) returns (anytype.Rpc.BlockText.SetChecked.Response);
     rpc BlockTextSetIcon (anytype.Rpc.BlockText.SetIcon.Request) returns (anytype.Rpc.BlockText.SetIcon.Response);
@@ -164,16 +164,16 @@ service ClientCommands {
 
     // Dataview block commands
     // ***
-    rpc BlockDataviewViewCreate (anytype.Rpc.BlockDataview.CreateView.Request) returns (anytype.Rpc.BlockDataview.CreateView.Response);
-    rpc BlockDataviewViewDelete (anytype.Rpc.BlockDataview.DeleteView.Request) returns (anytype.Rpc.BlockDataview.DeleteView.Response);
-    rpc BlockDataviewViewUpdate (anytype.Rpc.BlockDataview.UpdateView.Request) returns (anytype.Rpc.BlockDataview.UpdateView.Response);
-    rpc BlockDataviewViewSetActive (anytype.Rpc.BlockDataview.SetActiveView.Request) returns (anytype.Rpc.BlockDataview.SetActiveView.Response);
-    rpc BlockDataviewViewSetPosition(anytype.Rpc.BlockDataview.SetViewPosition.Request) returns (anytype.Rpc.BlockDataview.SetViewPosition.Response);
+    rpc BlockDataviewViewCreate (anytype.Rpc.BlockDataview.View.Create.Request) returns (anytype.Rpc.BlockDataview.View.Create.Response);
+    rpc BlockDataviewViewDelete (anytype.Rpc.BlockDataview.View.Delete.Request) returns (anytype.Rpc.BlockDataview.View.Delete.Response);
+    rpc BlockDataviewViewUpdate (anytype.Rpc.BlockDataview.View.Update.Request) returns (anytype.Rpc.BlockDataview.View.Update.Response);
+    rpc BlockDataviewViewSetActive (anytype.Rpc.BlockDataview.View.SetActive.Request) returns (anytype.Rpc.BlockDataview.View.SetActive.Response);
+    rpc BlockDataviewViewSetPosition(anytype.Rpc.BlockDataview.View.SetPosition.Request) returns (anytype.Rpc.BlockDataview.View.SetPosition.Response);
     rpc BlockDataviewSetSource (anytype.Rpc.BlockDataview.SetSource.Request) returns (anytype.Rpc.BlockDataview.SetSource.Response);
-    rpc BlockDataviewAddRelation (anytype.Rpc.BlockDataview.AddRelation.Request) returns (anytype.Rpc.BlockDataview.AddRelation.Response);
-    rpc BlockDataviewUpdateRelation (anytype.Rpc.BlockDataview.UpdateRelation.Request) returns (anytype.Rpc.BlockDataview.UpdateRelation.Response);
-    rpc BlockDataviewDeleteRelation (anytype.Rpc.BlockDataview.DeleteRelation.Request) returns (anytype.Rpc.BlockDataview.DeleteRelation.Response);
-    rpc BlockDataviewListAvailableRelation (anytype.Rpc.BlockDataview.ListAvailableRelation.Request) returns (anytype.Rpc.BlockDataview.ListAvailableRelation.Response);
+    rpc BlockDataviewAddRelation (anytype.Rpc.BlockDataview.Relation.Add.Request) returns (anytype.Rpc.BlockDataview.Relation.Add.Response);
+    rpc BlockDataviewUpdateRelation (anytype.Rpc.BlockDataview.Relation.Update.Request) returns (anytype.Rpc.BlockDataview.Relation.Update.Response);
+    rpc BlockDataviewDeleteRelation (anytype.Rpc.BlockDataview.Relation.Delete.Request) returns (anytype.Rpc.BlockDataview.Relation.Delete.Response);
+    rpc BlockDataviewListAvailableRelation (anytype.Rpc.BlockDataview.Relation.ListAvailable.Request) returns (anytype.Rpc.BlockDataview.Relation.ListAvailable.Response);
 
     rpc BlockDataviewRecordCreate (anytype.Rpc.BlockDataviewRecord.Create.Request) returns (anytype.Rpc.BlockDataviewRecord.Create.Response);
     rpc BlockDataviewRecordUpdate (anytype.Rpc.BlockDataviewRecord.Update.Request) returns (anytype.Rpc.BlockDataviewRecord.Update.Response);

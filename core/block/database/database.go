@@ -17,7 +17,7 @@ import (
 type Ctrl interface {
 	Anytype() core.Service
 
-	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) error
+	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) error
 	GetRelations(objectId string) (relations []*model.Relation, err error)
 
 	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
@@ -44,7 +44,7 @@ type router struct{ s Ctrl }
 
 func (r router) Get(objectType *model.ObjectType) (database.Database, error) {
 	// todo: wrap into iface
-	setDetailsNoContext := func(req pb.RpcBlockSetDetailsRequest) error {
+	setDetailsNoContext := func(req pb.RpcObjectSetDetailsRequest) error {
 		return r.s.SetDetails(nil, req)
 	}
 

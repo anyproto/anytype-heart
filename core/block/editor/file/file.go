@@ -36,13 +36,13 @@ func NewFile(sb smartblock.SmartBlock, source BlockService) File {
 
 type BlockService interface {
 	DoFile(id string, apply func(f File) error) error
-	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
+	CreateLinkToNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateLinkToNewObjectRequest) (linkId string, pageId string, err error)
 	ProcessAdd(p process.Process) (err error)
 	Anytype() core.Service
 }
 
 type File interface {
-	DropFiles(req pb.RpcExternalDropFilesRequest) (err error)
+	DropFiles(req pb.RpcFileDropRequest) (err error)
 	Upload(ctx *state.Context, id string, source FileSource, isSync bool) (err error)
 	UploadState(s *state.State, id string, source FileSource, isSync bool) (err error)
 	UpdateFile(id, groupId string, apply func(b file.Block) error) (err error)
@@ -167,7 +167,7 @@ func (sf *sfile) UpdateFile(id, groupId string, apply func(b file.Block) error) 
 	return sf.Apply(s)
 }
 
-func (sf *sfile) DropFiles(req pb.RpcExternalDropFilesRequest) (err error) {
+func (sf *sfile) DropFiles(req pb.RpcFileDropRequest) (err error) {
 	process := &dropFilesProcess{s: sf.fileSource}
 	if err = process.Init(req.LocalFilePaths); err != nil {
 		return
@@ -187,7 +187,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.fileSource.CreatePage(nil, groupId, pb.RpcBlockCreatePageRequest{
+			blockId, pageId, err = sf.fileSource.CreateLinkToNewObject(nil, groupId, pb.RpcBlockLinkCreateLinkToNewObjectRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,

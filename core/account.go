@@ -249,9 +249,9 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
-	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
+	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(pb.RpcUploadFileRequest{
+		hash, err := bs.UploadFile(pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
 			Type:      model.BlockContentFile_Image,
 		})
@@ -259,14 +259,14 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			log.Warnf("can't add avatar: %v", err)
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-			details = append(details, &pb.RpcBlockSetDetailsDetail{
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
 				Key:   "iconImage",
 				Value: pbtypes.String(hash),
 			})
 		}
 	}
 
-	if err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {

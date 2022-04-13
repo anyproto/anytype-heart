@@ -27,7 +27,7 @@ type Text interface {
 	Merge(ctx *state.Context, firstId, secondId string) (err error)
 	SetMark(ctx *state.Context, mark *model.BlockContentTextMark, blockIds ...string) error
 	SetIcon(ctx *state.Context, image, emoji string, blockIds ...string) error
-	SetText(req pb.RpcBlockSetTextTextRequest) (err error)
+	SetText(req pb.RpcBlockTextSetTextRequest) (err error)
 	TurnInto(ctx *state.Context, style model.BlockContentTextStyle, ids ...string) error
 }
 
@@ -275,7 +275,7 @@ func (t *textImpl) cancelSetTextState() {
 	}
 }
 
-func (t *textImpl) SetText(req pb.RpcBlockSetTextTextRequest) (err error) {
+func (t *textImpl) SetText(req pb.RpcBlockTextSetTextRequest) (err error) {
 	defer func() {
 		if err != nil {
 			t.cancelSetTextState()

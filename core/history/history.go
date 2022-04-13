@@ -32,8 +32,8 @@ func New() History {
 }
 
 type History interface {
-	Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersionsVersion, err error)
-	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersionsVersion, err error)
+	Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersion, err error)
+	Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error)
 	SetVersion(pageId, versionId string) (err error)
 	app.Component
 }
@@ -59,7 +59,7 @@ func (h *history) Name() (name string) {
 	return CName
 }
 
-func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersionsVersion, err error) {
+func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *pb.RpcHistoryVersion, err error) {
 	s, ver, err := h.buildState(pageId, versionId)
 	if err != nil {
 		return
@@ -98,7 +98,7 @@ func (h *history) Show(pageId, versionId string) (bs *pb.EventObjectShow, ver *p
 	}, ver, nil
 }
 
-func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersionsVersion, err error) {
+func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.RpcHistoryVersion, err error) {
 	if limit <= 0 {
 		limit = 100
 	}
@@ -108,7 +108,7 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 	}
 	var includeLastId = true
 
-	reverse := func(vers []*pb.RpcHistoryVersionsVersion) []*pb.RpcHistoryVersionsVersion {
+	reverse := func(vers []*pb.RpcHistoryVersion) []*pb.RpcHistoryVersion {
 		for i, j := 0, len(vers)-1; i < j; i, j = i+1, j-1 {
 			vers[i], vers[j] = vers[j], vers[i]
 		}
@@ -120,10 +120,10 @@ func (h *history) Versions(pageId, lastVersionId string, limit int) (resp []*pb.
 		if e != nil {
 			return nil, e
 		}
-		var data []*pb.RpcHistoryVersionsVersion
+		var data []*pb.RpcHistoryVersion
 
 		tree.Iterate(tree.RootId(), func(c *change.Change) (isContinue bool) {
-			data = append(data, &pb.RpcHistoryVersionsVersion{
+			data = append(data, &pb.RpcHistoryVersion{
 				Id:          c.Id,
 				PreviousIds: c.PreviousIds,
 				AuthorId:    profileId,
@@ -207,7 +207,7 @@ func (h *history) buildTree(pageId, versionId string, includeLastId bool) (tree 
 	return tree, sb.Type(), nil
 }
 
-func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.RpcHistoryVersionsVersion, err error) {
+func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.RpcHistoryVersion, err error) {
 	tree, sbType, err := h.buildTree(pageId, versionId, true)
 	if err != nil {
 		return
@@ -237,7 +237,7 @@ func (h *history) buildState(pageId, versionId string) (s *state.State, ver *pb.
 			err = e
 			return
 		}
-		ver = &pb.RpcHistoryVersionsVersion{
+		ver = &pb.RpcHistoryVersion{
 			Id:          ch.Id,
 			PreviousIds: ch.PreviousIds,
 			AuthorId:    profileId,

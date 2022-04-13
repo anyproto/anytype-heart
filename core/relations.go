@@ -334,10 +334,10 @@ func (mw *Middleware) ObjectTypeList(_ *pb.RpcObjectTypeListRequest) *pb.RpcObje
 	return response(pb.RpcObjectTypeListResponseError_NULL, otypes, nil)
 }
 
-func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateResponse {
+func (mw *Middleware) ObjectCreateSet(req *pb.RpcObjectCreateSetRequest) *pb.RpcObjectCreateSetResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcSetCreateResponseErrorCode, id string, err error) *pb.RpcSetCreateResponse {
-		m := &pb.RpcSetCreateResponse{Error: &pb.RpcSetCreateResponseError{Code: code}, Id: id}
+	response := func(code pb.RpcObjectCreateSetResponseErrorCode, id string, err error) *pb.RpcObjectCreateSetResponse {
+		m := &pb.RpcObjectCreateSetResponse{Error: &pb.RpcObjectCreateSetResponseError{Code: code}, Id: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -348,18 +348,19 @@ func (mw *Middleware) SetCreate(req *pb.RpcSetCreateRequest) *pb.RpcSetCreateRes
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		_, id, err = bs.CreateSet(ctx, pb.RpcBlockCreateSetRequest{Source: req.Source, Details: req.Details})
+		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
+		id, _, err = bs.CreateSmartBlock(context.Background(), smartblock.SmartBlockTypeSet, req.Details, nil)
 		return err
 	})
 
 	if err != nil {
 		if err == block.ErrUnknownObjectType {
-			return response(pb.RpcSetCreateResponseError_UNKNOWN_OBJECT_TYPE_URL, "", err)
+			return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_OBJECT_TYPE_URL, "", err)
 		}
-		return response(pb.RpcSetCreateResponseError_UNKNOWN_ERROR, "", err)
+		return response(pb.RpcObjectCreateSetResponseError_UNKNOWN_ERROR, "", err)
 	}
 
-	return response(pb.RpcSetCreateResponseError_NULL, id, nil)
+	return response(pb.RpcObjectCreateSetResponseError_NULL, id, nil)
 }
 
 func (mw *Middleware) getObjectType(at core.Service, url string) (*model.ObjectType, error) {

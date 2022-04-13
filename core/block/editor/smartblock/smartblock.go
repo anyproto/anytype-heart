@@ -75,9 +75,9 @@ func New() SmartBlock {
 	return &smartBlock{}
 }
 
-type SmartblockOpenListner interface {
+type SmartObjectOpenListner interface {
 	// should not do any Do operations inside
-	SmartblockOpened(*state.Context)
+	SmartObjectOpened(*state.Context)
 }
 
 type SmartBlock interface {
@@ -90,7 +90,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() core.Service
-	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
+	SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*model.Relation
 	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
 	HasRelation(relationKey string) bool
@@ -101,7 +101,7 @@ type SmartBlock interface {
 	AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
 	UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error
 	DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
-	MakeTemplateState() (*state.State, error)
+	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
@@ -118,7 +118,7 @@ type SmartBlock interface {
 	ObjectStore() objectstore.ObjectStore
 	Restrictions() restriction.Restrictions
 	SetRestrictions(r restriction.Restrictions)
-	BlockClose()
+	ObjectClose()
 
 	Close() (err error)
 	state.Doc
@@ -784,7 +784,7 @@ func (sb *smartBlock) Anytype() core.Service {
 	return sb.source.Anytype()
 }
 
-func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
+func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcObjectSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
 	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
 	if detCopy == nil || detCopy.Fields == nil {
@@ -1092,7 +1092,7 @@ func (sb *smartBlock) setLayout(s *state.State, layout model.ObjectTypeLayout) (
 	return template.InitTemplate(s, template.ByLayout(layout)...)
 }
 
-func (sb *smartBlock) MakeTemplateState() (*state.State, error) {
+func (sb *smartBlock) TemplateCreateFromObjectState() (*state.State, error) {
 	st := sb.NewState().Copy()
 	st.SetLocalDetails(nil)
 	st.SetDetail(bundle.RelationKeyTargetObjectType.String(), pbtypes.String(st.ObjectType()))
@@ -1404,7 +1404,7 @@ func (sb *smartBlock) DocService() doc.Service {
 	return sb.doc
 }
 
-func (sb *smartBlock) BlockClose() {
+func (sb *smartBlock) ObjectClose() {
 	sb.execHooks(HookOnBlockClose)
 	sb.SetEventFunc(nil)
 }
@@ -1719,7 +1719,7 @@ func msgsToEvents(msgs []simple.EventMessage) []*pb.EventMessage {
 	return events
 }
 
-func ApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTransformer) (err error) {
+func ObjectApplyTemplate(sb SmartBlock, s *state.State, templates ...template.StateTransformer) (err error) {
 	if s == nil {
 		s = sb.NewState()
 	}
