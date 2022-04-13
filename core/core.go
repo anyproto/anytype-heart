@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"github.com/anytypeio/go-anytype-middleware/core/account"
 	"os"
 	"runtime/debug"
 	"sync"
@@ -62,8 +63,25 @@ func (mw *Middleware) getBlockService() (bs block.Service, err error) {
 	return nil, ErrNotLoggedIn
 }
 
+func (mw *Middleware) getAccountService() (a account.Service, err error) {
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+	if mw.app != nil {
+		return mw.app.MustComponent(account.CName).(account.Service), nil
+	}
+	return nil, ErrNotLoggedIn
+}
+
 func (mw *Middleware) doBlockService(f func(bs block.Service) error) (err error) {
 	bs, err := mw.getBlockService()
+	if err != nil {
+		return
+	}
+	return f(bs)
+}
+
+func (mw *Middleware) doAccountService(f func(a account.Service) error) (err error) {
+	bs, err := mw.getAccountService()
 	if err != nil {
 		return
 	}
