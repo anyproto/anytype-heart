@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/gogo/status"
 	"io/ioutil"
 	"net"
@@ -24,6 +25,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
+
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -165,6 +168,33 @@ func (mw *Middleware) refetch() {
 	fetcher.Refetch()
 }
 
+func (mw *Middleware) getInfo() *pb.RpcAccountInfo {
+	at := mw.app.MustComponent(core.CName).(core.Service)
+	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
+	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
+	var deviceId string
+	deviceKey, err := wallet.GetDevicePrivkey()
+	if err == nil {
+		deviceId = deviceKey.Address()
+	}
+
+	if gwAddr != "" {
+		gwAddr = "http://" + gwAddr
+	}
+
+	pBlocks := at.PredefinedBlocks()
+	return &pb.RpcAccountInfo{
+		HomeBlockId:           pBlocks.Home,
+		ArchiveBlockId:        pBlocks.Archive,
+		ProfileBlockId:        pBlocks.Profile,
+		MarketplaceTypeId:     pBlocks.MarketplaceType,
+		MarketplaceRelationId: pBlocks.MarketplaceRelation,
+		MarketplaceTemplateId: pBlocks.MarketplaceTemplate,
+		GatewayUrl:            gwAddr,
+		DeviceId:              deviceId,
+	}
+}
+
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
@@ -179,6 +209,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			enrichWithCafeAccount(account, cafeAccount)
 		}
 		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
+		m.Info = mw.getInfo()
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -455,7 +486,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
 			enrichWithCafeAccount(account, cafeAccount)
 		}
-		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
+		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Info: mw.getInfo(), Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
