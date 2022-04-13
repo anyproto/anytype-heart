@@ -462,7 +462,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfRelationRemove{
 				RelationRemove: &pb.ChangeRelationRemove{
-					RelationId: newRelIds,
+					RelationId: delRelIds,
 				},
 			},
 		})

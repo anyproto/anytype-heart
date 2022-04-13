@@ -212,28 +212,6 @@ func TestApplyState(t *testing.T) {
 
 }
 
-func TestState_Diff(t *testing.T) {
-	s1 := NewDoc("root", map[string]simple.Block{
-		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2", "3"}}),
-		"2":    base.NewBase(&model.Block{Id: "2"}),
-		"3":    base.NewBase(&model.Block{Id: "3"}),
-	}).NewState()
-	s2 := NewDoc("root", map[string]simple.Block{
-		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2", "4"}}),
-		"2":    base.NewBase(&model.Block{Id: "2"}),
-		"4":    base.NewBase(&model.Block{Id: "4"}),
-	}).NewState()
-
-	msgs, err := s1.Diff(s2)
-	require.NoError(t, err)
-	assert.Len(t, msgs, 3)
-	assert.NotNil(t, msgs[0].Msg.GetBlockSetChildrenIds())
-	require.NotNil(t, msgs[1].Msg.GetBlockAdd())
-	assert.Len(t, msgs[1].Msg.GetBlockAdd().Blocks, 1)
-	require.NotNil(t, msgs[2].Msg.GetBlockDelete())
-	assert.Len(t, msgs[2].Msg.GetBlockDelete().BlockIds, 1)
-}
-
 func TestState_IsChild(t *testing.T) {
 	s := NewDoc("root", map[string]simple.Block{
 		"root": base.NewBase(&model.Block{Id: "root", ChildrenIds: []string{"2"}}),

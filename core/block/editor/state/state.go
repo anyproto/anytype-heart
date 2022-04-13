@@ -499,6 +499,35 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			},
 		}})
 	}
+
+	if s.parent != nil && s.relationIds != nil {
+		removed, added := slice.DifferenceRemovedAdded(s.parent.relationIds, s.relationIds)
+		if len(removed) > 0 {
+			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfObjectRelationsRemove{
+						ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
+							Id:          s.RootId(),
+							RelationIds: removed,
+						},
+					},
+				},
+			})...)
+		}
+		if len(added) > 0 {
+			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
+				{
+					Value: &pb.EventMessageValueOfObjectRelationsAmend{
+						ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
+							Id:          s.RootId(),
+							RelationIds: added,
+						},
+					},
+				},
+			})...)
+		}
+	}
+
 	// generate changes
 	s.fillChanges(msgs)
 
@@ -533,34 +562,6 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 			s.parent.details = s.details
 		}
 	}
-	if s.parent != nil && s.relationIds != nil {
-		removed, added := slice.DifferenceRemovedAdded(s.relationIds, s.parent.relationIds)
-		if len(removed) > 0 {
-			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfObjectRelationsRemove{
-						ObjectRelationsRemove: &pb.EventObjectRelationsRemove{
-							Id:          s.RootId(),
-							RelationIds: removed,
-						},
-					},
-				},
-			})...)
-		}
-		if len(added) > 0 {
-			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
-				{
-					Value: &pb.EventMessageValueOfObjectRelationsAmend{
-						ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
-							Id:          s.RootId(),
-							RelationIds: added,
-						},
-					},
-				},
-			})...)
-		}
-		s.parent.relationIds = s.relationIds
-	}
 
 	if s.parent != nil && s.objectTypes != nil {
 		prev := s.parent.ObjectTypes()
@@ -571,6 +572,10 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 	}
 	if s.parent != nil && len(s.fileKeys) > 0 {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
+	}
+
+	if s.parent != nil && s.relationIds != nil {
+		s.parent.relationIds = s.relationIds
 	}
 
 	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
@@ -638,13 +643,6 @@ func (s *State) intermediateApply() {
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 	s.parent.changes = append(s.parent.changes, s.changes...)
-	return
-}
-
-func (s *State) Diff(new *State) (msgs []simple.EventMessage, err error) {
-	sc := s.Copy()
-	new.SetParent(sc)
-	msgs, _, err = ApplyState(new, false)
 	return
 }
 

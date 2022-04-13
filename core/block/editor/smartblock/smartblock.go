@@ -1378,24 +1378,20 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 	return nil
 }
 
+// TODO: need to test StateRebuild
 func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
 	d.(*state.State).InjectDerivedDetails()
-	msgs, e := sb.Doc.(*state.State).Diff(d.(*state.State))
-	sb.Doc = d
+	d.(*state.State).SetParent(sb.Doc.(*state.State))
+	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
-	if e != nil {
-		// can't make diff - reopen doc
-		sb.Show(state.NewContext(sb.sendEvent))
-	} else {
-		if len(msgs) > 0 && sb.sendEvent != nil {
-			sb.sendEvent(&pb.Event{
-				Messages:  msgsToEvents(msgs),
-				ContextId: sb.Id(),
-			})
-		}
+	if len(msgs) > 0 && sb.sendEvent != nil {
+		sb.sendEvent(&pb.Event{
+			Messages:  msgsToEvents(msgs),
+			ContextId: sb.Id(),
+		})
 	}
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
