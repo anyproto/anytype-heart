@@ -3,19 +3,13 @@ package export
 import (
 	"bytes"
 	"context"
-	"github.com/anytypeio/go-anytype-middleware/core/converter/dot"
-	"github.com/anytypeio/go-anytype-middleware/core/converter/graphjson"
-	"math/rand"
-	"path/filepath"
-	"strconv"
-	"sync"
-	"unicode/utf8"
-
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	sb "github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/dot"
+	"github.com/anytypeio/go-anytype-middleware/core/converter/graphjson"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/md"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/pbc"
 	"github.com/anytypeio/go-anytype-middleware/core/converter/pbjson"
@@ -27,7 +21,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
+	"github.com/gosimple/slug"
+	"math/rand"
+	"path/filepath"
+	"strconv"
+	"strings"
+	"sync"
 )
 
 const CName = "export"
@@ -71,7 +73,7 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err 
 	}
 	defer queue.Stop(err)
 
-	docIds, err := e.idsForExport(req.DocIds, req.IncludeNested)
+	docs, err := e.docsForExport(req.DocIds, req.IncludeNested)
 	if err != nil {
 		return
 	}
@@ -96,24 +98,24 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err 
 			format = dot.ExportFormatSVG
 		}
 		mc := dot.NewMultiConverter(format)
-		mc.SetKnownLinks(docIds)
+		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else if req.Format == pb.RpcExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter()
-		mc.SetKnownLinks(docIds)
+		mc.SetKnownDocs(docs)
 		var werr error
-		if succeed, werr = e.writeMultiDoc(mc, wr, docIds, queue); werr != nil {
+		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
 	} else {
-		for _, docId := range docIds {
+		for docId := range docs {
 			did := docId
 			if err = queue.Wait(func() {
 				log.With("threadId", did).Debugf("write doc")
-				if werr := e.writeDoc(req.Format, wr, docIds, queue, did, req.IncludeFiles); werr != nil {
+				if werr := e.writeDoc(req.Format, wr, docs, queue, did, req.IncludeFiles); werr != nil {
 					log.With("threadId", did).Warnf("can't export doc: %v", werr)
 				} else {
 					succeed++
@@ -132,13 +134,19 @@ func (e *export) Export(req pb.RpcExportRequest) (path string, succeed int, err 
 	return wr.Path(), succeed, nil
 }
 
-func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string, err error) {
+func (e *export) docsForExport(reqIds []string, includeNested bool) (docs map[string]*types.Struct, err error) {
+	docs = make(map[string]*types.Struct)
 	if len(reqIds) == 0 {
 		var res []*model.ObjectInfo
 		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
 			Filters: []*model.BlockContentDataviewFilter{
 				{
 					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
 					Condition:   model.BlockContentDataviewFilter_Equal,
 					Value:       pbtypes.Bool(false),
 				},
@@ -153,17 +161,11 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 		}
 
 		for _, r := range res {
-			ids = append(ids, r.Id)
+			docs[r.Id] = r.Details
 		}
-		return ids, nil
+		return docs, nil
 	}
 
-	var m map[string]struct{}
-	if includeNested {
-		m = make(map[string]struct{}, len(reqIds)*10)
-	} else {
-		m = make(map[string]struct{}, len(reqIds))
-	}
 	var getNested func(id string)
 	getNested = func(id string) {
 		links, err := e.a.ObjectStore().GetOutboundLinksById(id)
@@ -172,7 +174,7 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 			return
 		}
 		for _, link := range links {
-			if _, exists := m[link]; !exists {
+			if _, exists := docs[link]; !exists {
 				sbt, err2 := smartblock.SmartBlockTypeFromID(link)
 				if err2 != nil {
 					log.Errorf("failed to get smartblocktype of id %s", link)
@@ -181,28 +183,54 @@ func (e *export) idsForExport(reqIds []string, includeNested bool) (ids []string
 				if sbt != smartblock.SmartBlockTypePage && sbt != smartblock.SmartBlockTypeSet {
 					continue
 				}
-				ids = append(ids, link)
-				m[link] = struct{}{}
-				getNested(link)
+				rec, _ := e.a.ObjectStore().QueryById(links)
+				if len(rec) > 0 {
+					docs[link] = rec[0].Details
+					getNested(link)
+				}
 			}
 		}
 	}
-
-	for _, id := range reqIds {
-		if _, exists := m[id]; !exists {
-			ids = append(ids, id)
-			m[id] = struct{}{}
-			if includeNested {
+	if len(reqIds) > 0 {
+		var res []*model.ObjectInfo
+		res, _, err = e.a.ObjectStore().QueryObjectInfo(database.Query{
+			Filters: []*model.BlockContentDataviewFilter{
+				{
+					RelationKey: bundle.RelationKeyId.String(),
+					Condition:   model.BlockContentDataviewFilter_In,
+					Value:       pbtypes.StringList(reqIds),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsArchived.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+				{
+					RelationKey: bundle.RelationKeyIsDeleted.String(),
+					Condition:   model.BlockContentDataviewFilter_Equal,
+					Value:       pbtypes.Bool(false),
+				},
+			},
+		}, nil)
+		if err != nil {
+			return
+		}
+		var ids []string
+		for _, r := range res {
+			docs[r.Id] = r.Details
+			ids = append(ids, r.Id)
+		}
+		if includeNested {
+			for _, id := range ids {
 				getNested(id)
 			}
 		}
 	}
-
 	return
 }
 
-func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []string, queue process.Queue) (succeed int, err error) {
-	for _, did := range docIds {
+func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[string]*types.Struct, queue process.Queue) (succeed int, err error) {
+	for did := range docs {
 		if err = queue.Wait(func() {
 			log.With("threadId", did).Debugf("write doc")
 			werr := e.bs.Do(did, func(b sb.SmartBlock) error {
@@ -248,10 +276,12 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docIds []
 	return
 }
 
-func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string, queue process.Queue, docId string, exportFiles bool) (err error) {
-
+func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
+			return nil
+		}
+		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsDeleted.String()) {
 			return nil
 		}
 		var conv converter.Converter
@@ -263,9 +293,17 @@ func (e *export) writeDoc(format pb.RpcExportFormat, wr writer, docIds []string,
 		case pb.RpcExport_JSON:
 			conv = pbjson.NewConverter(b)
 		}
-		conv.SetKnownLinks(docIds)
+		conv.SetKnownDocs(docInfo)
 		result := conv.Convert()
 		filename := docId + conv.Ext()
+		if format == pb.RpcExport_Markdown {
+			s := b.NewState()
+			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
+			if name == "" {
+				name = s.Snippet()
+			}
+			filename = wr.Namer().Get("", docId, name, conv.Ext())
+		}
 		if docId == e.a.PredefinedBlocks().Home {
 			filename = "index" + conv.Ext()
 		}
@@ -304,7 +342,8 @@ func (e *export) saveFile(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	filename := filepath.Join("files", wr.Namer().Get(hash, file.Meta().Name))
+	origName := file.Meta().Name
+	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
 	rd, err := file.Reader()
 	if err != nil {
 		return
@@ -321,7 +360,8 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	if err != nil {
 		return
 	}
-	filename := filepath.Join("files", wr.Namer().Get(hash, orig.Meta().Name))
+	origName := orig.Meta().Name
+	filename := wr.Namer().Get("files", hash, filepath.Base(origName), filepath.Ext(origName))
 	rd, err := orig.Reader()
 	if err != nil {
 		return
@@ -329,40 +369,34 @@ func (e *export) saveImage(wr writer, hash string) (err error) {
 	return wr.WriteFile(filename, rd)
 }
 
-func newNamer() *fileNamer {
-	return &fileNamer{
+func newNamer() *namer {
+	return &namer{
 		names: make(map[string]string),
 	}
 }
 
-type fileNamer struct {
+type namer struct {
 	// id -> name and name -> id
 	names map[string]string
 	mu    sync.Mutex
 }
 
-func (fn *fileNamer) Get(hash, title string) (name string) {
-	const fileLenLimit = 30
+func (fn *namer) Get(path, hash, title, ext string) (name string) {
+	const fileLenLimit = 48
 	fn.mu.Lock()
 	defer fn.mu.Unlock()
 	var ok bool
 	if name, ok = fn.names[hash]; ok {
 		return name
 	}
-	if l := utf8.RuneCountInString(title); l > fileLenLimit {
-		buf := bytes.NewBuffer(nil)
-		for i := l - fileLenLimit; i < l; i++ {
-			buf.WriteRune([]rune(title)[i])
-		}
-		name = buf.String()
-	} else {
-		name = title
-	}
+	title = slug.Make(strings.TrimSuffix(title, ext))
+	name = text.Truncate(title, fileLenLimit)
+	name = strings.TrimSuffix(name, text.TruncateEllipsis)
 	var (
 		i = 0
 		b = 36
 	)
-	gname := name
+	gname := filepath.Join(path, name+ext)
 	for {
 		if _, ok = fn.names[gname]; !ok {
 			fn.names[hash] = gname
@@ -371,6 +405,6 @@ func (fn *fileNamer) Get(hash, title string) (name string) {
 		}
 		i++
 		n := int64(i * b)
-		gname = strconv.FormatInt(rand.Int63n(n), b) + "_" + name
+		gname = filepath.Join(path, name+"_"+strconv.FormatInt(rand.Int63n(n), b)+ext)
 	}
 }

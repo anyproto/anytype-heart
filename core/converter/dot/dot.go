@@ -1,3 +1,4 @@
+//go:build !gomobile && !windows && !nographviz
 // +build !gomobile,!windows,!nographviz
 
 package dot
@@ -5,6 +6,7 @@ package dot
 import (
 	"bytes"
 	"fmt"
+	"github.com/gogo/protobuf/types"
 	"io/ioutil"
 
 	"github.com/goccy/go-graphviz"
@@ -16,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/anytypeio/go-anytype-middleware/util/slice"
 )
 
 func NewMultiConverter(format graphviz.Format) converter.MultiConverter {
@@ -51,7 +52,7 @@ type linkInfo struct {
 type dot struct {
 	graph        *cgraph.Graph
 	graphviz     *graphviz.Graphviz
-	knownIds     []string
+	knownDocs    map[string]*types.Struct
 	fileHashes   []string
 	imageHashes  []string
 	exportFormat graphviz.Format
@@ -59,8 +60,8 @@ type dot struct {
 	linksByNode  map[string][]linkInfo
 }
 
-func (d *dot) SetKnownLinks(ids []string) converter.Converter {
-	d.knownIds = ids
+func (d *dot) SetKnownDocs(docs map[string]*types.Struct) converter.Converter {
+	d.knownDocs = docs
 	return d
 }
 
@@ -115,7 +116,7 @@ func (d *dot) Add(st *state.State) error {
 			if err != nil {
 				continue
 			}
-			if slice.FindPos(d.knownIds, objId) == -1 {
+			if _, ok := d.knownDocs[objId]; !ok {
 				continue
 			}
 			if t != smartblock.SmartBlockTypeAnytypeProfile && t != smartblock.SmartBlockTypePage {
@@ -137,7 +138,7 @@ func (d *dot) Add(st *state.State) error {
 		if err != nil {
 			continue
 		}
-		if slice.FindPos(d.knownIds, depId) == -1 {
+		if _, ok := d.knownDocs[depId]; !ok {
 			continue
 		}
 

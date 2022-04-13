@@ -19,6 +19,7 @@ message Event {
             Account.Show accountShow = 1;
             Account.Details accountDetails = 201;
             Account.Config.Update accountConfigUpdate = 202;
+            Account.Update accountUpdate = 203;
 
             Object.Details.Set objectDetailsSet = 16;
             Object.Details.Amend objectDetailsAmend = 50;
@@ -99,7 +100,13 @@ message Event {
         message Config {
             message Update {
                 anytype.model.Account.Config config = 1;
+                anytype.model.Account.Status status = 2;
             }
+        }
+
+        message Update {
+            anytype.model.Account.Config config = 1;
+            anytype.model.Account.Status status = 2;
         }
     }
 

@@ -65,20 +65,14 @@ func TestMD_Convert(t *testing.T) {
 								Range: &model.Range{12, 18},
 								Type:  model.BlockContentTextMark_Strikethrough,
 							},
-							{
-								Range: &model.Range{21, 29},
-								Type:  model.BlockContentTextMark_Mention,
-								Param: "some_page_id",
-							},
 						},
 					},
 				},
 			},
 		})
 		c := NewMDConverter(nil, s, nil)
-		c.SetKnownLinks([]string{"some_page_id"})
 		res := c.Convert()
-		exp := "***[some](http://golang.org)*** [t](http://golang.org) [e](http://golang.org)xt **wi~~th m~~**~~ar~~ks [@mention](some_page_id.md)   \n"
+		exp := "***[some](http://golang.org)*** [t](http://golang.org) [e](http://golang.org)xt **wi~~th m~~**~~ar~~ks @mention   \n"
 		assert.Equal(t, exp, string(res))
 	})
 }

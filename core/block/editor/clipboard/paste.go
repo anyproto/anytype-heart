@@ -36,7 +36,7 @@ type pasteMode struct {
 	textBuf             string
 }
 
-func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
+func (p *pasteCtrl) Exec(req *pb.RpcBlockPasteRequest) (err error) {
 	if err = p.configure(req); err != nil {
 		return
 	}
@@ -69,7 +69,7 @@ func (p *pasteCtrl) Exec(req pb.RpcBlockPasteRequest) (err error) {
 	return
 }
 
-func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
+func (p *pasteCtrl) configure(req *pb.RpcBlockPasteRequest) (err error) {
 	if req.SelectedTextRange != nil {
 		p.selRange = *req.SelectedTextRange
 	}
@@ -88,7 +88,11 @@ func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
 	} else {
 		p.mode.removeSelection = true
 	}
-	p.mode.multiRange = len(p.selIds) > 1 && p.selRange.From+p.selRange.To > 0
+	selRangeNotEmpty := p.selRange.From+p.selRange.To > 0
+	if !req.IsPartOfBlock && selRangeNotEmpty {
+		req.IsPartOfBlock = true
+	}
+	p.mode.multiRange = len(p.selIds) > 1 && selRangeNotEmpty
 	if !p.mode.multiRange {
 		var (
 			textCount, nonTextCount int
@@ -108,7 +112,7 @@ func (p *pasteCtrl) configure(req pb.RpcBlockPasteRequest) (err error) {
 		selText := p.getFirstSelectedText()
 		p.mode.toTitle = selText != nil && p.s.HasParent(selText.Model().Id, template.HeaderLayoutId)
 		p.mode.intoBlockPasteStyle = p.mode.toTitle
-		if selText != nil && textCount == 1 && nonTextCount == 0 {
+		if selText != nil && textCount == 1 && nonTextCount == 0 && req.IsPartOfBlock {
 			p.mode.intoBlock = true
 			if selText.GetText() == "" {
 				p.mode.intoBlockPasteStyle = true
