@@ -693,7 +693,7 @@ func (s *service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
 	var merr multierror.Error
 	for _, id := range ids {
 		if newId, err = s.ObjectDuplicate(id); err == nil {
-			newIds = append(ids, newId)
+			newIds = append(newIds, newId)
 			anySucceed = true
 		} else {
 			merr.Errors = append(merr.Errors, err)
