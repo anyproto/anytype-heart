@@ -45,7 +45,7 @@ func main() {
 				return nil
 			}
 
-			resp := mw.UploadFile(&pb.RpcFileUploadRequest{LocalPath: path, DisableEncryption: true})
+			resp := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: path, DisableEncryption: true})
 			if int(resp.Error.Code) != 0 {
 				return fmt.Errorf(resp.Error.Description)
 			}

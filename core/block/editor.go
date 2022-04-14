@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
@@ -913,6 +914,55 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 	})
 }
 
+func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err error) {
+	var dvContent model.BlockContentOfDataview
+	var dvSchema schema.Schema
+	if len(req.Source) != 0 {
+		if dvContent, dvSchema, err = dataview.DataviewBlockBySource(s.anytype.ObjectStore(), req.Source); err != nil {
+			return
+		}
+	}
+	workspaceId := s.anytype.PredefinedBlocks().Account
+
+	// TODO: here can be a deadlock if this is somehow created from workspace (as set)
+	csm, err := s.CreateObjectInWorkspace(context.TODO(), workspaceId, thread.Undef, coresb.SmartBlockTypeSet)
+	if err != nil {
+		return "", err
+	}
+
+	setId = csm.ID()
+
+	state := state.NewDoc(csm.ID(), nil).NewState()
+	if workspaceId != "" {
+		state.SetDetailAndBundledRelation(bundle.RelationKeyWorkspaceId, pbtypes.String(workspaceId))
+	}
+
+	sb, err := s.newSmartBlock(setId, &smartblock.InitContext{
+		State: state,
+	})
+	if err != nil {
+		return "", err
+	}
+	set, ok := sb.(*editor.Set)
+	if !ok {
+		return setId, fmt.Errorf("unexpected set block type: %T", sb)
+	}
+
+	name := pbtypes.GetString(req.Details, bundle.RelationKeyName.String())
+	icon := pbtypes.GetString(req.Details, bundle.RelationKeyIconEmoji.String())
+
+	if name == "" && dvSchema != nil {
+		name = dvSchema.Description() + " set"
+	}
+	if dvSchema != nil {
+		err = set.InitDataview(&dvContent, name, icon)
+	} else {
+		err = set.InitDataview(nil, name, icon)
+	}
+
+	return setId, err
+}
+
 func (s *service) ObjectToSet(id string, source []string) (newId string, err error) {
 	var details *types.Struct
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
@@ -923,7 +973,10 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 	}
 
 	details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(source)
-	newId, _, err = s.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+	newId, err = s.CreateSet(pb.RpcObjectCreateSetRequest{
+		Source:  source,
+		Details: details,
+	})
 	if err != nil {
 		return
 	}

@@ -348,8 +348,11 @@ func (mw *Middleware) ObjectCreateSet(req *pb.RpcObjectCreateSetRequest) *pb.Rpc
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
+		if req.GetDetails().GetFields() == nil {
+			req.Details = &types.Struct{Fields: map[string]*types.Value{}}
+		}
 		req.Details.Fields[bundle.RelationKeySetOf.String()] = pbtypes.StringList(req.Source)
-		id, _, err = bs.CreateSmartBlock(context.Background(), smartblock.SmartBlockTypeSet, req.Details, nil)
+		id, err = bs.CreateSet(*req)
 		return err
 	})
 

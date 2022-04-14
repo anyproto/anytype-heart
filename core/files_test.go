@@ -103,7 +103,7 @@ func TestFile(t *testing.T) {
 
 	})
 	t.Run("image_should_open_as_object", func(t *testing.T) {
-		respUploadImage := mw.UploadFile(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+		respUploadImage := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
 		require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)
 
 		respOpenImage := mw.ObjectOpen(&pb.RpcObjectOpenRequest{BlockId: respUploadImage.Hash})
@@ -122,19 +122,19 @@ func TestFile(t *testing.T) {
 	})
 
 	t.Run("file_should_be_reused", func(t *testing.T) {
-		respUploadFile1 := mw.UploadFile(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		respUploadFile2 := mw.UploadFile(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		require.Equal(t, respUploadFile1.Hash, respUploadFile2.Hash)
+		respFileUpload1 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		respFileUpload2 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		require.Equal(t, respFileUpload1.Hash, respFileUpload2.Hash)
 	})
 
 	t.Run("image_should_be_reused", func(t *testing.T) {
-		respUploadFile1 := mw.UploadFile(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		respUploadFile2 := mw.UploadFile(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		require.Equal(t, respUploadFile1.Hash, respUploadFile2.Hash)
+		respFileUpload1 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		respFileUpload2 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		require.Equal(t, respFileUpload1.Hash, respFileUpload2.Hash)
 	})
 
 }
