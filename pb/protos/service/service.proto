@@ -161,6 +161,7 @@ service ClientCommands {
     // ObjectToSet creates new set from given object and removes object
     rpc ObjectToSet (anytype.Rpc.Object.ToSet.Request) returns (anytype.Rpc.Object.ToSet.Response);
 
+    rpc ObjectListDuplicate (anytype.Rpc.ObjectList.Duplicate.Request) returns (anytype.Rpc.ObjectList.Duplicate.Response);
     rpc ObjectListDelete (anytype.Rpc.ObjectList.Delete.Request) returns (anytype.Rpc.ObjectList.Delete.Response);
     rpc ObjectListSetIsArchived (anytype.Rpc.ObjectList.Set.IsArchived.Request) returns (anytype.Rpc.ObjectList.Set.IsArchived.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.ObjectList.Set.IsFavorite.Request) returns (anytype.Rpc.ObjectList.Set.IsFavorite.Response);
@@ -201,6 +202,7 @@ service ClientCommands {
     rpc MakeTemplateByObjectType (anytype.Rpc.MakeTemplateByObjectType.Request) returns (anytype.Rpc.MakeTemplateByObjectType.Response);
     rpc CloneTemplate (anytype.Rpc.CloneTemplate.Request) returns (anytype.Rpc.CloneTemplate.Response);
     rpc ObjectDuplicate (anytype.Rpc.ObjectDuplicate.Request) returns (anytype.Rpc.ObjectDuplicate.Response);
+
     rpc UnsplashSearch (anytype.Rpc.UnsplashSearch.Request) returns (anytype.Rpc.UnsplashSearch.Response);
     // UnsplashDownload downloads picture from unsplash by ID, put it to the IPFS and returns the hash.
     // The artist info is available in the object details
