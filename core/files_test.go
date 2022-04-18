@@ -106,7 +106,7 @@ func TestFile(t *testing.T) {
 		respUploadImage := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
 		require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)
 
-		respOpenImage := mw.ObjectOpen(&pb.RpcObjectOpenRequest{BlockId: respUploadImage.Hash})
+		respOpenImage := mw.ObjectOpen(&pb.RpcObjectOpenRequest{ObjectId: respUploadImage.Hash})
 		require.Equal(t, 0, int(respOpenImage.Error.Code), respOpenImage.Error.Description)
 		require.Len(t, respOpenImage.Event.Messages, 1)
 		show := getEventObjectShow(respOpenImage.Event.Messages)

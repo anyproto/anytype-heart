@@ -268,18 +268,10 @@
     - [Rpc.BlockLatex.SetText.Response](#anytype.Rpc.BlockLatex.SetText.Response)
     - [Rpc.BlockLatex.SetText.Response.Error](#anytype.Rpc.BlockLatex.SetText.Response.Error)
     - [Rpc.BlockLink](#anytype.Rpc.BlockLink)
-    - [Rpc.BlockLink.CreateLinkToNewObject](#anytype.Rpc.BlockLink.CreateLinkToNewObject)
-    - [Rpc.BlockLink.CreateLinkToNewObject.Request](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Request)
-    - [Rpc.BlockLink.CreateLinkToNewObject.Response](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Response)
-    - [Rpc.BlockLink.CreateLinkToNewObject.Response.Error](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Response.Error)
-    - [Rpc.BlockLink.CreateLinkToNewSet](#anytype.Rpc.BlockLink.CreateLinkToNewSet)
-    - [Rpc.BlockLink.CreateLinkToNewSet.Request](#anytype.Rpc.BlockLink.CreateLinkToNewSet.Request)
-    - [Rpc.BlockLink.CreateLinkToNewSet.Response](#anytype.Rpc.BlockLink.CreateLinkToNewSet.Response)
-    - [Rpc.BlockLink.CreateLinkToNewSet.Response.Error](#anytype.Rpc.BlockLink.CreateLinkToNewSet.Response.Error)
-    - [Rpc.BlockLink.SetTargetBlockId](#anytype.Rpc.BlockLink.SetTargetBlockId)
-    - [Rpc.BlockLink.SetTargetBlockId.Request](#anytype.Rpc.BlockLink.SetTargetBlockId.Request)
-    - [Rpc.BlockLink.SetTargetBlockId.Response](#anytype.Rpc.BlockLink.SetTargetBlockId.Response)
-    - [Rpc.BlockLink.SetTargetBlockId.Response.Error](#anytype.Rpc.BlockLink.SetTargetBlockId.Response.Error)
+    - [Rpc.BlockLink.CreateToTheNewObject](#anytype.Rpc.BlockLink.CreateToTheNewObject)
+    - [Rpc.BlockLink.CreateToTheNewObject.Request](#anytype.Rpc.BlockLink.CreateToTheNewObject.Request)
+    - [Rpc.BlockLink.CreateToTheNewObject.Response](#anytype.Rpc.BlockLink.CreateToTheNewObject.Response)
+    - [Rpc.BlockLink.CreateToTheNewObject.Response.Error](#anytype.Rpc.BlockLink.CreateToTheNewObject.Response.Error)
     - [Rpc.BlockRelation](#anytype.Rpc.BlockRelation)
     - [Rpc.BlockRelation.Add](#anytype.Rpc.BlockRelation.Add)
     - [Rpc.BlockRelation.Add.Request](#anytype.Rpc.BlockRelation.Add.Request)
@@ -729,9 +721,7 @@
     - [Rpc.BlockImage.SetName.Response.Error.Code](#anytype.Rpc.BlockImage.SetName.Response.Error.Code)
     - [Rpc.BlockImage.SetWidth.Response.Error.Code](#anytype.Rpc.BlockImage.SetWidth.Response.Error.Code)
     - [Rpc.BlockLatex.SetText.Response.Error.Code](#anytype.Rpc.BlockLatex.SetText.Response.Error.Code)
-    - [Rpc.BlockLink.CreateLinkToNewObject.Response.Error.Code](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Response.Error.Code)
-    - [Rpc.BlockLink.CreateLinkToNewSet.Response.Error.Code](#anytype.Rpc.BlockLink.CreateLinkToNewSet.Response.Error.Code)
-    - [Rpc.BlockLink.SetTargetBlockId.Response.Error.Code](#anytype.Rpc.BlockLink.SetTargetBlockId.Response.Error.Code)
+    - [Rpc.BlockLink.CreateToTheNewObject.Response.Error.Code](#anytype.Rpc.BlockLink.CreateToTheNewObject.Response.Error.Code)
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype.Rpc.BlockRelation.Add.Response.Error.Code)
     - [Rpc.BlockRelation.SetKey.Response.Error.Code](#anytype.Rpc.BlockRelation.SetKey.Response.Error.Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype.Rpc.BlockText.ListSetColor.Response.Error.Code)
@@ -1083,7 +1073,7 @@
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| AppVersionGet | [Rpc.App.GetVersion.Request](#anytype.Rpc.App.GetVersion.Request) | [Rpc.App.GetVersion.Response](#anytype.Rpc.App.GetVersion.Response) |  |
+| AppGetVersion | [Rpc.App.GetVersion.Request](#anytype.Rpc.App.GetVersion.Request) | [Rpc.App.GetVersion.Response](#anytype.Rpc.App.GetVersion.Response) |  |
 | AppShutdown | [Rpc.App.Shutdown.Request](#anytype.Rpc.App.Shutdown.Request) | [Rpc.App.Shutdown.Response](#anytype.Rpc.App.Shutdown.Response) |  |
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) | Wallet *** |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
@@ -1211,7 +1201,7 @@
 | BlockDataviewRecordRelationOptionAdd | [Rpc.BlockDataviewRecord.AddRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.AddRelationOption.Request) | [Rpc.BlockDataviewRecord.AddRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.AddRelationOption.Response) |  |
 | BlockDataviewRecordRelationOptionUpdate | [Rpc.BlockDataviewRecord.UpdateRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Request) | [Rpc.BlockDataviewRecord.UpdateRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Response) |  |
 | BlockDataviewRecordRelationOptionDelete | [Rpc.BlockDataviewRecord.DeleteRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Request) | [Rpc.BlockDataviewRecord.DeleteRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Response) |  |
-| BlockLinkCreateLinkToNewObject | [Rpc.BlockLink.CreateLinkToNewObject.Request](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Request) | [Rpc.BlockLink.CreateLinkToNewObject.Response](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Response) | Other specific block commands *** |
+| BlockLinkCreateToTheNewObject | [Rpc.BlockLink.CreateToTheNewObject.Request](#anytype.Rpc.BlockLink.CreateToTheNewObject.Request) | [Rpc.BlockLink.CreateToTheNewObject.Response](#anytype.Rpc.BlockLink.CreateToTheNewObject.Response) | Other specific block commands *** |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype.Rpc.BlockBookmark.Fetch.Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype.Rpc.BlockBookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.BlockBookmark.CreateAndFetch.Request](#anytype.Rpc.BlockBookmark.CreateAndFetch.Request) | [Rpc.BlockBookmark.CreateAndFetch.Response](#anytype.Rpc.BlockBookmark.CreateAndFetch.Response) |  |
 | BlockRelationSetKey | [Rpc.BlockRelation.SetKey.Request](#anytype.Rpc.BlockRelation.SetKey.Request) | [Rpc.BlockRelation.SetKey.Response](#anytype.Rpc.BlockRelation.SetKey.Response) |  |
@@ -1831,12 +1821,12 @@ Middleware-to-front-end response for an account creation request, that can conta
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| homeBlockId | [string](#string) |  | home dashboard block id |
-| archiveBlockId | [string](#string) |  | archive block id |
-| profileBlockId | [string](#string) |  | profile block id |
-| marketplaceTypeId | [string](#string) |  | marketplace type id |
-| marketplaceRelationId | [string](#string) |  | marketplace relation id |
-| marketplaceTemplateId | [string](#string) |  | marketplace template id |
+| homeObjectId | [string](#string) |  | home dashboard block id |
+| archiveObjectId | [string](#string) |  | archive block id |
+| profileObjectId | [string](#string) |  | profile block id |
+| marketplaceTypeObjectId | [string](#string) |  | marketplace type id |
+| marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
+| marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
 | deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
@@ -2229,7 +2219,7 @@ common simple block command
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 | targetId | [string](#string) |  | id of the closest block |
 | block | [model.Block](#anytype.model.Block) |  |  |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
@@ -2528,7 +2518,7 @@ Makes blocks copy by given ids and paste it to shown place
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 | targetId | [string](#string) |  | id of the closest block |
 | blockIds | [string](#string) | repeated | id of block for duplicate |
 | position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
@@ -3396,7 +3386,7 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 | blockIds | [string](#string) | repeated | targets to remove |
 
 
@@ -4031,7 +4021,7 @@ Remove blocks from the childrenIds of its parents
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 | blockId | [string](#string) |  | id of the dataview |
 | viewId | [string](#string) |  | id of the view to remove |
 
@@ -4151,7 +4141,7 @@ set the current active view (persisted only within a session)
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 | blockId | [string](#string) |  | id of the dataview |
 | viewId | [string](#string) |  | id of the view to remove |
 | position | [uint32](#uint32) |  | index of view position (0 - means first) |
@@ -5090,25 +5080,25 @@ RecordRelationOptionAdd may return existing option in case object specified with
 
 
 
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewObject"></a>
+<a name="anytype.Rpc.BlockLink.CreateToTheNewObject"></a>
 
-### Rpc.BlockLink.CreateLinkToNewObject
-
-
+### Rpc.BlockLink.CreateToTheNewObject
 
 
 
 
 
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewObject.Request"></a>
 
-### Rpc.BlockLink.CreateLinkToNewObject.Request
+
+<a name="anytype.Rpc.BlockLink.CreateToTheNewObject.Request"></a>
+
+### Rpc.BlockLink.CreateToTheNewObject.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 | details | [google.protobuf.Struct](#google.protobuf.Struct) |  | new object details |
 | templateId | [string](#string) |  | optional template id for creating from template |
 | targetId | [string](#string) |  | link block params
@@ -5122,15 +5112,15 @@ id of the closest simple block |
 
 
 
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewObject.Response"></a>
+<a name="anytype.Rpc.BlockLink.CreateToTheNewObject.Response"></a>
 
-### Rpc.BlockLink.CreateLinkToNewObject.Response
+### Rpc.BlockLink.CreateToTheNewObject.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockLink.CreateLinkToNewObject.Response.Error](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Response.Error) |  |  |
+| error | [Rpc.BlockLink.CreateToTheNewObject.Response.Error](#anytype.Rpc.BlockLink.CreateToTheNewObject.Response.Error) |  |  |
 | blockId | [string](#string) |  |  |
 | targetId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
@@ -5140,137 +5130,15 @@ id of the closest simple block |
 
 
 
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewObject.Response.Error"></a>
+<a name="anytype.Rpc.BlockLink.CreateToTheNewObject.Response.Error"></a>
 
-### Rpc.BlockLink.CreateLinkToNewObject.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockLink.CreateLinkToNewObject.Response.Error.Code](#anytype.Rpc.BlockLink.CreateLinkToNewObject.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewSet"></a>
-
-### Rpc.BlockLink.CreateLinkToNewSet
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewSet.Request"></a>
-
-### Rpc.BlockLink.CreateLinkToNewSet.Request
+### Rpc.BlockLink.CreateToTheNewObject.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
-| targetId | [string](#string) |  | id of the closest block |
-| source | [string](#string) | repeated |  |
-| details | [google.protobuf.Struct](#google.protobuf.Struct) |  | details |
-| position | [model.Block.Position](#anytype.model.Block.Position) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewSet.Response"></a>
-
-### Rpc.BlockLink.CreateLinkToNewSet.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockLink.CreateLinkToNewSet.Response.Error](#anytype.Rpc.BlockLink.CreateLinkToNewSet.Response.Error) |  |  |
-| blockId | [string](#string) |  | (optional) id of the link block pointing to this set |
-| targetId | [string](#string) |  | id of the new set |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewSet.Response.Error"></a>
-
-### Rpc.BlockLink.CreateLinkToNewSet.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockLink.CreateLinkToNewSet.Response.Error.Code](#anytype.Rpc.BlockLink.CreateLinkToNewSet.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.SetTargetBlockId"></a>
-
-### Rpc.BlockLink.SetTargetBlockId
-
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.SetTargetBlockId.Request"></a>
-
-### Rpc.BlockLink.SetTargetBlockId.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| blockId | [string](#string) |  |  |
-| targetBlockId | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.SetTargetBlockId.Response"></a>
-
-### Rpc.BlockLink.SetTargetBlockId.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockLink.SetTargetBlockId.Response.Error](#anytype.Rpc.BlockLink.SetTargetBlockId.Response.Error) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.BlockLink.SetTargetBlockId.Response.Error"></a>
-
-### Rpc.BlockLink.SetTargetBlockId.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockLink.SetTargetBlockId.Response.Error.Code](#anytype.Rpc.BlockLink.SetTargetBlockId.Response.Error.Code) |  |  |
+| code | [Rpc.BlockLink.CreateToTheNewObject.Response.Error.Code](#anytype.Rpc.BlockLink.CreateToTheNewObject.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -6354,7 +6222,7 @@ Get marks list in the selected range in text block.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| blockId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | path | [string](#string) |  |  |
 | unanonymized | [bool](#bool) |  | set to true to disable mocking of the actual data inside changes |
 
@@ -7451,8 +7319,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context blo1k |
-| blockId | [string](#string) |  |  |
+| contextId | [string](#string) |  | deprecated |
+| objectId | [string](#string) |  |  |
 
 
 
@@ -8084,7 +7952,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context blo1k |
-| blockId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
 
 
@@ -8142,7 +8010,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context blo1k |
+| contextId | [string](#string) |  | deprecated |
 | traceId | [string](#string) |  |  |
 
 
@@ -8159,7 +8027,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.OpenBreadcrumbs.Response.Error](#anytype.Rpc.Object.OpenBreadcrumbs.Response.Error) |  |  |
-| blockId | [string](#string) |  |  |
+| objectId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
 
 
@@ -8201,7 +8069,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 
 
 
@@ -8871,8 +8739,8 @@ deprecated, to be removed |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context blo1k |
-| blockId | [string](#string) |  |  |
+| contextId | [string](#string) |  | deprecated |
+| objectId | [string](#string) |  |  |
 | traceId | [string](#string) |  |  |
 
 
@@ -9050,7 +8918,7 @@ deprecated, to be removed |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context block |
+| contextId | [string](#string) |  | id of the context object |
 
 
 
@@ -11728,36 +11596,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewObject.Response.Error.Code"></a>
+<a name="anytype.Rpc.BlockLink.CreateToTheNewObject.Response.Error.Code"></a>
 
-### Rpc.BlockLink.CreateLinkToNewObject.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype.Rpc.BlockLink.CreateLinkToNewSet.Response.Error.Code"></a>
-
-### Rpc.BlockLink.CreateLinkToNewSet.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 |  |
-| UNKNOWN_OBJECT_TYPE_URL | 3 | ... |
-
-
-
-<a name="anytype.Rpc.BlockLink.SetTargetBlockId.Response.Error.Code"></a>
-
-### Rpc.BlockLink.SetTargetBlockId.Response.Error.Code
+### Rpc.BlockLink.CreateToTheNewObject.Response.Error.Code
 
 
 | Name | Number | Description |

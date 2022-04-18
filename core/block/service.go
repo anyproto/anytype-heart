@@ -93,7 +93,7 @@ type Service interface {
 	CloseBlock(id string) error
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
-	CreateLinkToNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateLinkToNewObjectRequest) (linkId string, pageId string, err error)
+	CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateToTheNewObjectRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
@@ -906,7 +906,7 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	return id, sb.CombinedDetails(), nil
 }
 
-func (s *service) CreateLinkToNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateLinkToNewObjectRequest) (linkId string, pageId string, err error) {
+func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateToTheNewObjectRequest) (linkId string, pageId string, err error) {
 	if req.ContextId != "" {
 		var contextBlockType model.SmartBlockType
 		if err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {

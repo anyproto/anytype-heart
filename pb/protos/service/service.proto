@@ -6,7 +6,7 @@ import "pb/protos/commands.proto";
 import "pb/protos/events.proto";
 
 service ClientCommands {
-    rpc AppVersionGet (anytype.Rpc.App.GetVersion.Request) returns (anytype.Rpc.App.GetVersion.Response);
+    rpc AppGetVersion (anytype.Rpc.App.GetVersion.Request) returns (anytype.Rpc.App.GetVersion.Response);
     rpc AppShutdown (anytype.Rpc.App.Shutdown.Request) returns (anytype.Rpc.App.Shutdown.Response);
 
     // Wallet
@@ -66,7 +66,7 @@ service ClientCommands {
     rpc ObjectUndo (anytype.Rpc.Object.Undo.Request) returns (anytype.Rpc.Object.Undo.Response);
     rpc ObjectRedo (anytype.Rpc.Object.Redo.Request) returns (anytype.Rpc.Object.Redo.Response);
     rpc ObjectImportMarkdown (anytype.Rpc.Object.ImportMarkdown.Request) returns (anytype.Rpc.Object.ImportMarkdown.Response);
-    rpc ObjectExport (anytype.Rpc.Object.Export.Request) returns (anytype.Rpc.Object.Export.Response);
+    rpc ObjectListExport (anytype.Rpc.Object.ListExport.Request) returns (anytype.Rpc.Object.ListExport.Response);
 
     // Object Relations
     // ***
@@ -184,7 +184,7 @@ service ClientCommands {
 
     // Other specific block commands
     // ***
-    rpc BlockLinkCreateLinkToNewObject (anytype.Rpc.BlockLink.CreateLinkToNewObject.Request) returns (anytype.Rpc.BlockLink.CreateLinkToNewObject.Response);
+    rpc BlockLinkCreateToTheNewObject (anytype.Rpc.BlockLink.CreateToTheNewObject.Request) returns (anytype.Rpc.BlockLink.CreateToTheNewObject.Response);
     rpc BlockBookmarkFetch (anytype.Rpc.BlockBookmark.Fetch.Request) returns (anytype.Rpc.BlockBookmark.Fetch.Response);
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.BlockBookmark.CreateAndFetch.Request) returns (anytype.Rpc.BlockBookmark.CreateAndFetch.Response);
     rpc BlockRelationSetKey (anytype.Rpc.BlockRelation.SetKey.Request) returns (anytype.Rpc.BlockRelation.SetKey.Response);

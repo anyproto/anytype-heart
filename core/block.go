@@ -40,10 +40,10 @@ func (mw *Middleware) BlockCreate(req *pb.RpcBlockCreateRequest) *pb.RpcBlockCre
 	return response(pb.RpcBlockCreateResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockLinkCreateLinkToNewObject(req *pb.RpcBlockLinkCreateLinkToNewObjectRequest) *pb.RpcBlockLinkCreateLinkToNewObjectResponse {
+func (mw *Middleware) BlockLinkCreateToTheNewObject(req *pb.RpcBlockLinkCreateToTheNewObjectRequest) *pb.RpcBlockLinkCreateToTheNewObjectResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockLinkCreateLinkToNewObjectResponseErrorCode, id, targetId string, err error) *pb.RpcBlockLinkCreateLinkToNewObjectResponse {
-		m := &pb.RpcBlockLinkCreateLinkToNewObjectResponse{Error: &pb.RpcBlockLinkCreateLinkToNewObjectResponseError{Code: code}, BlockId: id, TargetId: targetId}
+	response := func(code pb.RpcBlockLinkCreateToTheNewObjectResponseErrorCode, id, targetId string, err error) *pb.RpcBlockLinkCreateToTheNewObjectResponse {
+		m := &pb.RpcBlockLinkCreateToTheNewObjectResponse{Error: &pb.RpcBlockLinkCreateToTheNewObjectResponseError{Code: code}, BlockId: id, TargetId: targetId}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -53,13 +53,13 @@ func (mw *Middleware) BlockLinkCreateLinkToNewObject(req *pb.RpcBlockLinkCreateL
 	}
 	var id, targetId string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, targetId, err = bs.CreateLinkToNewObject(ctx, "", *req)
+		id, targetId, err = bs.CreateLinkToTheNewObject(ctx, "", *req)
 		return
 	})
 	if err != nil {
-		return response(pb.RpcBlockLinkCreateLinkToNewObjectResponseError_UNKNOWN_ERROR, "", "", err)
+		return response(pb.RpcBlockLinkCreateToTheNewObjectResponseError_UNKNOWN_ERROR, "", "", err)
 	}
-	return response(pb.RpcBlockLinkCreateLinkToNewObjectResponseError_NULL, id, targetId, nil)
+	return response(pb.RpcBlockLinkCreateToTheNewObjectResponseError_NULL, id, targetId, nil)
 }
 
 func (mw *Middleware) ObjectOpen(req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpenResponse {
@@ -75,7 +75,7 @@ func (mw *Middleware) ObjectOpen(req *pb.RpcObjectOpenRequest) *pb.RpcObjectOpen
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.OpenBlock(ctx, req.BlockId)
+		return bs.OpenBlock(ctx, req.ObjectId)
 	})
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {
@@ -102,7 +102,7 @@ func (mw *Middleware) ObjectShow(req *pb.RpcObjectShowRequest) *pb.RpcObjectShow
 	}
 
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.ShowBlock(ctx, req.BlockId)
+		return bs.ShowBlock(ctx, req.ObjectId)
 	})
 	if err != nil {
 		if err == source.ErrUnknownDataFormat {
@@ -119,7 +119,7 @@ func (mw *Middleware) ObjectShow(req *pb.RpcObjectShowRequest) *pb.RpcObjectShow
 func (mw *Middleware) ObjectOpenBreadcrumbs(req *pb.RpcObjectOpenBreadcrumbsRequest) *pb.RpcObjectOpenBreadcrumbsResponse {
 	ctx := state.NewContextTrace(req.TraceId, nil)
 	response := func(code pb.RpcObjectOpenBreadcrumbsResponseErrorCode, id string, err error) *pb.RpcObjectOpenBreadcrumbsResponse {
-		m := &pb.RpcObjectOpenBreadcrumbsResponse{Error: &pb.RpcObjectOpenBreadcrumbsResponseError{Code: code}, BlockId: id}
+		m := &pb.RpcObjectOpenBreadcrumbsResponse{Error: &pb.RpcObjectOpenBreadcrumbsResponseError{Code: code}, ObjectId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -169,7 +169,7 @@ func (mw *Middleware) ObjectClose(req *pb.RpcObjectCloseRequest) *pb.RpcObjectCl
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.CloseBlock(req.BlockId)
+		return bs.CloseBlock(req.ObjectId)
 	})
 	if err != nil {
 		return response(pb.RpcObjectCloseResponseError_UNKNOWN_ERROR, err)

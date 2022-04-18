@@ -142,7 +142,7 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error) {
 	// 1. Create new page, link
-	linkId, pageId, err := s.CreateLinkToNewObject(ctx, "", pb.RpcBlockLinkCreateLinkToNewObjectRequest{
+	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateToTheNewObjectRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
@@ -470,7 +470,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkd
 			return rootLinkIds, err
 		}
 	} else {
-		_, pageId, err := s.CreateLinkToNewObject(ctx, "", pb.RpcBlockLinkCreateLinkToNewObjectRequest{
+		_, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateToTheNewObjectRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{Fields: map[string]*types.Value{
 				"name":      pbtypes.String("Import from Notion"),

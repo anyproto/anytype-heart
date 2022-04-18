@@ -36,7 +36,7 @@ func NewFile(sb smartblock.SmartBlock, source BlockService) File {
 
 type BlockService interface {
 	DoFile(id string, apply func(f File) error) error
-	CreateLinkToNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateLinkToNewObjectRequest) (linkId string, pageId string, err error)
+	CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateToTheNewObjectRequest) (linkId string, pageId string, err error)
 	ProcessAdd(p process.Process) (err error)
 	Anytype() core.Service
 }
@@ -187,7 +187,7 @@ func (sf *sfile) dropFilesCreateStructure(groupId, targetId string, pos model.Bl
 				return
 			}
 			sf.Unlock()
-			blockId, pageId, err = sf.fileSource.CreateLinkToNewObject(nil, groupId, pb.RpcBlockLinkCreateLinkToNewObjectRequest{
+			blockId, pageId, err = sf.fileSource.CreateLinkToTheNewObject(nil, groupId, pb.RpcBlockLinkCreateToTheNewObjectRequest{
 				ContextId: sf.Id(),
 				TargetId:  targetId,
 				Position:  pos,

@@ -41,7 +41,7 @@ func New() Export {
 }
 
 type Export interface {
-	Export(req pb.RpcObjectExportRequest) (path string, succeed int, err error)
+	Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error)
 	app.Component
 }
 
@@ -60,7 +60,7 @@ func (e *export) Name() (name string) {
 	return CName
 }
 
-func (e *export) Export(req pb.RpcObjectExportRequest) (path string, succeed int, err error) {
+func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed int, err error) {
 	queue := e.bs.Process().NewQueue(pb.ModelProcess{
 		Id:    bson.NewObjectId().Hex(),
 		Type:  pb.ModelProcess_Export,
@@ -73,7 +73,7 @@ func (e *export) Export(req pb.RpcObjectExportRequest) (path string, succeed int
 	}
 	defer queue.Stop(err)
 
-	docs, err := e.docsForExport(req.DocIds, req.IncludeNested)
+	docs, err := e.docsForExport(req.ObjectIds, req.IncludeNested)
 	if err != nil {
 		return
 	}

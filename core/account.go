@@ -184,14 +184,14 @@ func (mw *Middleware) getInfo() *pb.RpcAccountInfo {
 
 	pBlocks := at.PredefinedBlocks()
 	return &pb.RpcAccountInfo{
-		HomeBlockId:           pBlocks.Home,
-		ArchiveBlockId:        pBlocks.Archive,
-		ProfileBlockId:        pBlocks.Profile,
-		MarketplaceTypeId:     pBlocks.MarketplaceType,
-		MarketplaceRelationId: pBlocks.MarketplaceRelation,
-		MarketplaceTemplateId: pBlocks.MarketplaceTemplate,
-		GatewayUrl:            gwAddr,
-		DeviceId:              deviceId,
+		HomeObjectId:                pBlocks.Home,
+		ArchiveObjectId:             pBlocks.Archive,
+		ProfileObjectId:             pBlocks.Profile,
+		MarketplaceTypeObjectId:     pBlocks.MarketplaceType,
+		MarketplaceRelationObjectId: pBlocks.MarketplaceRelation,
+		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
+		GatewayUrl:                  gwAddr,
+		DeviceId:                    deviceId,
 	}
 }
 

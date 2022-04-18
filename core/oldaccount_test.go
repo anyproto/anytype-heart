@@ -8,7 +8,7 @@ package core
 //	t.Run("account_should_open", func(t *testing.T) {
 //		accId := mw.GetAnytype().PredefinedBlocks().Account
 //		mw.ObjectCreate(&pb.RpcObjectCreateRequest{})
-//		resp := mw.ObjectOpen(&pb.RpcObjectOpenRequest{BlockId: accId})
+//		resp := mw.ObjectOpen(&pb.RpcObjectOpenRequest{ObjectId: accId})
 //		require.Equal(t, 0, int(resp.Error.Code), resp.Error.Description)
 //		show := getEventObjectShow(resp.Event.Messages)
 //	})

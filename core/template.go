@@ -133,11 +133,11 @@ func (mw *Middleware) TemplateExportAll(req *pb.RpcTemplateExportAllRequest) *pb
 		if len(docIds) == 0 {
 			return fmt.Errorf("no templates")
 		}
-		path, _, err = es.Export(pb.RpcObjectExportRequest{
-			Path:   req.Path,
-			DocIds: docIds,
-			Format: pb.RpcObjectExport_Protobuf,
-			Zip:    true,
+		path, _, err = es.Export(pb.RpcObjectListExportRequest{
+			Path:      req.Path,
+			ObjectIds: docIds,
+			Format:    pb.RpcObjectExport_Protobuf,
+			Zip:       true,
 		})
 		return err
 	})
@@ -191,9 +191,9 @@ func (mw *Middleware) WorkspaceExport(req *pb.RpcWorkspaceExportRequest) *pb.Rpc
 		if len(docIds) == 0 {
 			return fmt.Errorf("no objects in workspace")
 		}
-		path, _, err = es.Export(pb.RpcObjectExportRequest{
+		path, _, err = es.Export(pb.RpcObjectListExportRequest{
 			Path:          req.Path,
-			DocIds:        docIds,
+			ObjectIds:     docIds,
 			Format:        pb.RpcObjectExport_Protobuf,
 			Zip:           true,
 			IncludeNested: false,
