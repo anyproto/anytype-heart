@@ -92,9 +92,9 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 	defer wr.Close()
 
 	queue.SetMessage("export docs")
-	if req.Format == pb.RpcObjectExport_DOT || req.Format == pb.RpcObjectExport_SVG {
+	if req.Format == pb.RpcObjectListExport_DOT || req.Format == pb.RpcObjectListExport_SVG {
 		var format = dot.ExportFormatDOT
-		if req.Format == pb.RpcObjectExport_SVG {
+		if req.Format == pb.RpcObjectListExport_SVG {
 			format = dot.ExportFormatSVG
 		}
 		mc := dot.NewMultiConverter(format)
@@ -103,7 +103,7 @@ func (e *export) Export(req pb.RpcObjectListExportRequest) (path string, succeed
 		if succeed, werr = e.writeMultiDoc(mc, wr, docs, queue); werr != nil {
 			log.Warnf("can't export docs: %v", werr)
 		}
-	} else if req.Format == pb.RpcObjectExport_GRAPH_JSON {
+	} else if req.Format == pb.RpcObjectListExport_GRAPH_JSON {
 		mc := graphjson.NewMultiConverter()
 		mc.SetKnownDocs(docs)
 		var werr error
@@ -276,7 +276,7 @@ func (e *export) writeMultiDoc(mw converter.MultiConverter, wr writer, docs map[
 	return
 }
 
-func (e *export) writeDoc(format pb.RpcObjectExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
+func (e *export) writeDoc(format pb.RpcObjectListExportFormat, wr writer, docInfo map[string]*types.Struct, queue process.Queue, docId string, exportFiles bool) (err error) {
 	return e.bs.Do(docId, func(b sb.SmartBlock) error {
 		if pbtypes.GetBool(b.CombinedDetails(), bundle.RelationKeyIsArchived.String()) {
 			return nil
@@ -286,17 +286,17 @@ func (e *export) writeDoc(format pb.RpcObjectExportFormat, wr writer, docInfo ma
 		}
 		var conv converter.Converter
 		switch format {
-		case pb.RpcObjectExport_Markdown:
+		case pb.RpcObjectListExport_Markdown:
 			conv = md.NewMDConverter(e.a, b.NewState(), wr.Namer())
-		case pb.RpcObjectExport_Protobuf:
+		case pb.RpcObjectListExport_Protobuf:
 			conv = pbc.NewConverter(b)
-		case pb.RpcObjectExport_JSON:
+		case pb.RpcObjectListExport_JSON:
 			conv = pbjson.NewConverter(b)
 		}
 		conv.SetKnownDocs(docInfo)
 		result := conv.Convert()
 		filename := docId + conv.Ext()
-		if format == pb.RpcObjectExport_Markdown {
+		if format == pb.RpcObjectListExport_Markdown {
 			s := b.NewState()
 			name := pbtypes.GetString(s.Details(), bundle.RelationKeyName.String())
 			if name == "" {

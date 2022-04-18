@@ -136,7 +136,7 @@ func (mw *Middleware) TemplateExportAll(req *pb.RpcTemplateExportAllRequest) *pb
 		path, _, err = es.Export(pb.RpcObjectListExportRequest{
 			Path:      req.Path,
 			ObjectIds: docIds,
-			Format:    pb.RpcObjectExport_Protobuf,
+			Format:    pb.RpcObjectListExport_Protobuf,
 			Zip:       true,
 		})
 		return err
@@ -194,7 +194,7 @@ func (mw *Middleware) WorkspaceExport(req *pb.RpcWorkspaceExportRequest) *pb.Rpc
 		path, _, err = es.Export(pb.RpcObjectListExportRequest{
 			Path:          req.Path,
 			ObjectIds:     docIds,
-			Format:        pb.RpcObjectExport_Protobuf,
+			Format:        pb.RpcObjectListExport_Protobuf,
 			Zip:           true,
 			IncludeNested: false,
 		})

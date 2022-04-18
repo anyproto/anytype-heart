@@ -436,10 +436,6 @@
     - [Rpc.Object.Duplicate.Request](#anytype.Rpc.Object.Duplicate.Request)
     - [Rpc.Object.Duplicate.Response](#anytype.Rpc.Object.Duplicate.Response)
     - [Rpc.Object.Duplicate.Response.Error](#anytype.Rpc.Object.Duplicate.Response.Error)
-    - [Rpc.Object.Export](#anytype.Rpc.Object.Export)
-    - [Rpc.Object.Export.Request](#anytype.Rpc.Object.Export.Request)
-    - [Rpc.Object.Export.Response](#anytype.Rpc.Object.Export.Response)
-    - [Rpc.Object.Export.Response.Error](#anytype.Rpc.Object.Export.Response.Error)
     - [Rpc.Object.Graph](#anytype.Rpc.Object.Graph)
     - [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge)
     - [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node)
@@ -454,6 +450,10 @@
     - [Rpc.Object.ListDelete.Request](#anytype.Rpc.Object.ListDelete.Request)
     - [Rpc.Object.ListDelete.Response](#anytype.Rpc.Object.ListDelete.Response)
     - [Rpc.Object.ListDelete.Response.Error](#anytype.Rpc.Object.ListDelete.Response.Error)
+    - [Rpc.Object.ListExport](#anytype.Rpc.Object.ListExport)
+    - [Rpc.Object.ListExport.Request](#anytype.Rpc.Object.ListExport.Request)
+    - [Rpc.Object.ListExport.Response](#anytype.Rpc.Object.ListExport.Response)
+    - [Rpc.Object.ListExport.Response.Error](#anytype.Rpc.Object.ListExport.Response.Error)
     - [Rpc.Object.ListSetIsArchived](#anytype.Rpc.Object.ListSetIsArchived)
     - [Rpc.Object.ListSetIsArchived.Request](#anytype.Rpc.Object.ListSetIsArchived.Request)
     - [Rpc.Object.ListSetIsArchived.Response](#anytype.Rpc.Object.ListSetIsArchived.Response)
@@ -762,12 +762,12 @@
     - [Rpc.Object.Create.Response.Error.Code](#anytype.Rpc.Object.Create.Response.Error.Code)
     - [Rpc.Object.CreateSet.Response.Error.Code](#anytype.Rpc.Object.CreateSet.Response.Error.Code)
     - [Rpc.Object.Duplicate.Response.Error.Code](#anytype.Rpc.Object.Duplicate.Response.Error.Code)
-    - [Rpc.Object.Export.Format](#anytype.Rpc.Object.Export.Format)
-    - [Rpc.Object.Export.Response.Error.Code](#anytype.Rpc.Object.Export.Response.Error.Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype.Rpc.Object.Graph.Edge.Type)
     - [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code)
     - [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Object.ImportMarkdown.Response.Error.Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype.Rpc.Object.ListDelete.Response.Error.Code)
+    - [Rpc.Object.ListExport.Format](#anytype.Rpc.Object.ListExport.Format)
+    - [Rpc.Object.ListExport.Response.Error.Code](#anytype.Rpc.Object.ListExport.Response.Error.Code)
     - [Rpc.Object.ListSetIsArchived.Response.Error.Code](#anytype.Rpc.Object.ListSetIsArchived.Response.Error.Code)
     - [Rpc.Object.ListSetIsFavorite.Response.Error.Code](#anytype.Rpc.Object.ListSetIsFavorite.Response.Error.Code)
     - [Rpc.Object.Open.Response.Error.Code](#anytype.Rpc.Object.Open.Response.Error.Code)
@@ -1117,7 +1117,7 @@
 | ObjectUndo | [Rpc.Object.Undo.Request](#anytype.Rpc.Object.Undo.Request) | [Rpc.Object.Undo.Response](#anytype.Rpc.Object.Undo.Response) |  |
 | ObjectRedo | [Rpc.Object.Redo.Request](#anytype.Rpc.Object.Redo.Request) | [Rpc.Object.Redo.Response](#anytype.Rpc.Object.Redo.Response) |  |
 | ObjectImportMarkdown | [Rpc.Object.ImportMarkdown.Request](#anytype.Rpc.Object.ImportMarkdown.Request) | [Rpc.Object.ImportMarkdown.Response](#anytype.Rpc.Object.ImportMarkdown.Response) |  |
-| ObjectExport | [Rpc.Object.Export.Request](#anytype.Rpc.Object.Export.Request) | [Rpc.Object.Export.Response](#anytype.Rpc.Object.Export.Response) |  |
+| ObjectListExport | [Rpc.Object.ListExport.Request](#anytype.Rpc.Object.ListExport.Request) | [Rpc.Object.ListExport.Response](#anytype.Rpc.Object.ListExport.Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype.Rpc.ObjectRelation.Add.Request) | [Rpc.ObjectRelation.Add.Response](#anytype.Rpc.ObjectRelation.Add.Response) | Object Relations *** |
 | ObjectRelationUpdate | [Rpc.ObjectRelation.Update.Request](#anytype.Rpc.ObjectRelation.Update.Request) | [Rpc.ObjectRelation.Update.Response](#anytype.Rpc.ObjectRelation.Update.Response) |  |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype.Rpc.ObjectRelation.Delete.Request) | [Rpc.ObjectRelation.Delete.Response](#anytype.Rpc.ObjectRelation.Delete.Response) |  |
@@ -7533,70 +7533,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.Export"></a>
-
-### Rpc.Object.Export
-
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.Export.Request"></a>
-
-### Rpc.Object.Export.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| path | [string](#string) |  | the path where export files will place |
-| docIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
-| format | [Rpc.Object.Export.Format](#anytype.Rpc.Object.Export.Format) |  | export format |
-| zip | [bool](#bool) |  | save as zip file |
-| includeNested | [bool](#bool) |  | include all nested |
-| includeFiles | [bool](#bool) |  | include all files |
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.Export.Response"></a>
-
-### Rpc.Object.Export.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.Object.Export.Response.Error](#anytype.Rpc.Object.Export.Response.Error) |  |  |
-| path | [string](#string) |  |  |
-| succeed | [int32](#int32) |  |  |
-| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype.Rpc.Object.Export.Response.Error"></a>
-
-### Rpc.Object.Export.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.Object.Export.Response.Error.Code](#anytype.Rpc.Object.Export.Response.Error.Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Object.Graph"></a>
 
 ### Rpc.Object.Graph
@@ -7812,6 +7748,70 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Object.ListDelete.Response.Error.Code](#anytype.Rpc.Object.ListDelete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ListExport"></a>
+
+### Rpc.Object.ListExport
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ListExport.Request"></a>
+
+### Rpc.Object.ListExport.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| path | [string](#string) |  | the path where export files will place |
+| objectIds | [string](#string) | repeated | ids of documents for export, when empty - will export all available docs |
+| format | [Rpc.Object.ListExport.Format](#anytype.Rpc.Object.ListExport.Format) |  | export format |
+| zip | [bool](#bool) |  | save as zip file |
+| includeNested | [bool](#bool) |  | include all nested |
+| includeFiles | [bool](#bool) |  | include all files |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ListExport.Response"></a>
+
+### Rpc.Object.ListExport.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ListExport.Response.Error](#anytype.Rpc.Object.ListExport.Response.Error) |  |  |
+| path | [string](#string) |  |  |
+| succeed | [int32](#int32) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ListExport.Response.Error"></a>
+
+### Rpc.Object.ListExport.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ListExport.Response.Error.Code](#anytype.Rpc.Object.ListExport.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12139,35 +12139,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype.Rpc.Object.Export.Format"></a>
-
-### Rpc.Object.Export.Format
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Markdown | 0 |  |
-| Protobuf | 1 |  |
-| JSON | 2 |  |
-| DOT | 3 |  |
-| SVG | 4 |  |
-| GRAPH_JSON | 5 |  |
-
-
-
-<a name="anytype.Rpc.Object.Export.Response.Error.Code"></a>
-
-### Rpc.Object.Export.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype.Rpc.Object.Graph.Edge.Type"></a>
 
 ### Rpc.Object.Graph.Edge.Type
@@ -12209,6 +12180,35 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.ListDelete.Response.Error.Code"></a>
 
 ### Rpc.Object.ListDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.ListExport.Format"></a>
+
+### Rpc.Object.ListExport.Format
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Markdown | 0 |  |
+| Protobuf | 1 |  |
+| JSON | 2 |  |
+| DOT | 3 |  |
+| SVG | 4 |  |
+| GRAPH_JSON | 5 |  |
+
+
+
+<a name="anytype.Rpc.Object.ListExport.Response.Error.Code"></a>
+
+### Rpc.Object.ListExport.Response.Error.Code
 
 
 | Name | Number | Description |
