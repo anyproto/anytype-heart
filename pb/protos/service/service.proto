@@ -122,16 +122,15 @@ service ClientCommands {
     rpc BlockUpload (anytype.Rpc.Block.Upload.Request) returns (anytype.Rpc.Block.Upload.Response);
     rpc BlockReplace (anytype.Rpc.Block.Replace.Request) returns (anytype.Rpc.Block.Replace.Response);
     rpc BlockCreate (anytype.Rpc.Block.Create.Request) returns (anytype.Rpc.Block.Create.Response);
-    rpc BlockUnlink (anytype.Rpc.Block.Unlink.Request) returns (anytype.Rpc.Block.Unlink.Response);
     rpc BlockSplit (anytype.Rpc.Block.Split.Request) returns (anytype.Rpc.Block.Split.Response);
     rpc BlockMerge (anytype.Rpc.Block.Merge.Request) returns (anytype.Rpc.Block.Merge.Response);
     rpc BlockCopy (anytype.Rpc.Block.Copy.Request) returns (anytype.Rpc.Block.Copy.Response);
     rpc BlockPaste (anytype.Rpc.Block.Paste.Request) returns (anytype.Rpc.Block.Paste.Response);
     rpc BlockCut (anytype.Rpc.Block.Cut.Request) returns (anytype.Rpc.Block.Cut.Response);
     rpc BlockSetFields (anytype.Rpc.Block.SetFields.Request) returns (anytype.Rpc.Block.SetFields.Response);
-    rpc BlockSetRestrictions (anytype.Rpc.Block.SetRestrictions.Request) returns (anytype.Rpc.Block.SetRestrictions.Response);
     rpc BlockExport (anytype.Rpc.Block.Export.Request) returns (anytype.Rpc.Block.Export.Response);
 
+    rpc BlockListDelete (anytype.Rpc.Block.ListDelete.Request) returns (anytype.Rpc.Block.ListDelete.Response);
     rpc BlockListMoveToExistingObject (anytype.Rpc.Block.ListMoveToExistingObject.Request) returns (anytype.Rpc.Block.ListMoveToExistingObject.Response);
     rpc BlockListMoveToNewObject (anytype.Rpc.Block.ListMoveToNewObject.Request) returns (anytype.Rpc.Block.ListMoveToNewObject.Response);
     rpc BlockListConvertToObjects (anytype.Rpc.Block.ListConvertToObjects.Request) returns (anytype.Rpc.Block.ListConvertToObjects.Response);
@@ -156,9 +155,7 @@ service ClientCommands {
     // ***
     rpc BlockFileSetName (anytype.Rpc.BlockFile.SetName.Request) returns (anytype.Rpc.BlockFile.SetName.Response);
     rpc BlockImageSetName (anytype.Rpc.BlockImage.SetName.Request) returns (anytype.Rpc.BlockImage.SetName.Response);
-    rpc BlockImageSetWidth (anytype.Rpc.BlockImage.SetWidth.Request) returns (anytype.Rpc.BlockImage.SetWidth.Response);
     rpc BlockVideoSetName (anytype.Rpc.BlockVideo.SetName.Request) returns (anytype.Rpc.BlockVideo.SetName.Response);
-    rpc BlockVideoSetWidth (anytype.Rpc.BlockVideo.SetWidth.Request) returns (anytype.Rpc.BlockVideo.SetWidth.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.BlockFile.CreateAndUpload.Request) returns (anytype.Rpc.BlockFile.CreateAndUpload.Response);
     rpc BlockFileListSetStyle (anytype.Rpc.BlockFile.ListSetStyle.Request) returns (anytype.Rpc.BlockFile.ListSetStyle.Response);
 
@@ -178,13 +175,13 @@ service ClientCommands {
     rpc BlockDataviewRecordCreate (anytype.Rpc.BlockDataviewRecord.Create.Request) returns (anytype.Rpc.BlockDataviewRecord.Create.Response);
     rpc BlockDataviewRecordUpdate (anytype.Rpc.BlockDataviewRecord.Update.Request) returns (anytype.Rpc.BlockDataviewRecord.Update.Response);
     rpc BlockDataviewRecordDelete (anytype.Rpc.BlockDataviewRecord.Delete.Request) returns (anytype.Rpc.BlockDataviewRecord.Delete.Response);
-    rpc BlockDataviewRecordAddRelationOption (anytype.Rpc.BlockDataviewRecord.AddRelationOption.Request) returns (anytype.Rpc.BlockDataviewRecord.AddRelationOption.Response);
-    rpc BlockDataviewRecordUpdateRelationOption (anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Request) returns (anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Response);
-    rpc BlockDataviewRecordDeleteRelationOption (anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Request) returns (anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Response);
+    rpc BlockDataviewRecordAddRelationOption (anytype.Rpc.BlockDataviewRecord.RelationOption.Add.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Add.Response);
+    rpc BlockDataviewRecordUpdateRelationOption (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Response);
+    rpc BlockDataviewRecordDeleteRelationOption (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Response);
 
     // Other specific block commands
     // ***
-    rpc BlockLinkCreateToTheNewObject (anytype.Rpc.BlockLink.CreateToTheNewObject.Request) returns (anytype.Rpc.BlockLink.CreateToTheNewObject.Response);
+    rpc BlockLinkCreateWithObject (anytype.Rpc.BlockLink.CreateWithObject.Request) returns (anytype.Rpc.BlockLink.CreateWithObject.Response);
     rpc BlockBookmarkFetch (anytype.Rpc.BlockBookmark.Fetch.Request) returns (anytype.Rpc.BlockBookmark.Fetch.Response);
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.BlockBookmark.CreateAndFetch.Request) returns (anytype.Rpc.BlockBookmark.CreateAndFetch.Response);
     rpc BlockRelationSetKey (anytype.Rpc.BlockRelation.SetKey.Request) returns (anytype.Rpc.BlockRelation.SetKey.Response);

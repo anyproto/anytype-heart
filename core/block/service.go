@@ -93,12 +93,12 @@ type Service interface {
 	CloseBlock(id string) error
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
-	CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateToTheNewObjectRequest) (linkId string, pageId string, err error)
+	CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error)
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
-	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
+	UnlinkBlock(ctx *state.Context, req pb.RpcBlockListDeleteRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
 	ObjectToSet(id string, source []string) (newId string, err error)
 
@@ -179,9 +179,9 @@ type Service interface {
 	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (relation *model.Relation, err error)
 	UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationUpdateRequest) error
 	DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
-	AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordAddRelationOptionRequest) (opt *model.RelationOption, err error)
-	UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRelationOptionRequest) error
-	DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordDeleteRelationOptionRequest) error
+	AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *model.RelationOption, err error)
+	UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) error
+	DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error
 
 	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (*types.Struct, error)
 	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRequest) error
@@ -906,7 +906,7 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	return id, sb.CombinedDetails(), nil
 }
 
-func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateToTheNewObjectRequest) (linkId string, pageId string, err error) {
+func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error) {
 	if req.ContextId != "" {
 		var contextBlockType model.SmartBlockType
 		if err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {

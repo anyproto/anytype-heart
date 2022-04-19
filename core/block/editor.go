@@ -74,7 +74,7 @@ func (s *service) DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplica
 	return
 }
 
-func (s *service) UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) (err error) {
+func (s *service) UnlinkBlock(ctx *state.Context, req pb.RpcBlockListDeleteRequest) (err error) {
 	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
 		return b.Unlink(ctx, req.BlockIds...)
 	})
@@ -142,7 +142,7 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error) {
 	// 1. Create new page, link
-	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateToTheNewObjectRequest{
+	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.DropTargetId,
 		Position:  req.Position,
@@ -377,7 +377,7 @@ func (s *service) DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockData
 	})
 }
 
-func (s *service) AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordAddRelationOptionRequest) (opt *model.RelationOption, err error) {
+func (s *service) AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *model.RelationOption, err error) {
 	err = s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		opt, err = b.AddRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, *req.Option, true)
 		if err != nil {
@@ -389,7 +389,7 @@ func (s *service) AddDataviewRecordRelationOption(ctx *state.Context, req pb.Rpc
 	return
 }
 
-func (s *service) UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRelationOptionRequest) error {
+func (s *service) UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) error {
 	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		err := b.UpdateRelationOption(ctx, req.BlockId, req.RecordId, req.RelationKey, *req.Option, true)
 		if err != nil {
@@ -401,7 +401,7 @@ func (s *service) UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.
 	return err
 }
 
-func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordDeleteRelationOptionRequest) error {
+func (s *service) DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error {
 	err := s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		err := b.DeleteRelationOption(ctx, true, req.BlockId, req.RecordId, req.RelationKey, req.OptionId, true)
 		if err != nil {
@@ -470,7 +470,7 @@ func (s *service) ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkd
 			return rootLinkIds, err
 		}
 	} else {
-		_, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateToTheNewObjectRequest{
+		_, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{Fields: map[string]*types.Value{
 				"name":      pbtypes.String("Import from Notion"),
