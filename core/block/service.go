@@ -1337,7 +1337,7 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	}); err != nil {
 		return
 	}
-	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, nil, nil, st)
 	if err != nil {
 		return
 	}
