@@ -160,17 +160,6 @@ message Rpc {
             google.protobuf.Struct extra = 100;
         }
 
-        message Info {
-            string homeObjectId = 2; // home dashboard block id
-            string archiveObjectId = 3; // archive block id
-            string profileObjectId = 4; // profile block id
-            string marketplaceTypeObjectId = 5; // marketplace type id
-            string marketplaceRelationObjectId = 6; // marketplace relation id
-            string marketplaceTemplateObjectId = 7; // marketplace template id
-            string deviceId = 8;
-            string gatewayUrl = 101; // gateway url for fetching static files
-        }
-
         message Create {
             /**
             * Front end to middleware request-to-create-an account
@@ -192,7 +181,6 @@ message Rpc {
                 Error error = 1; // Error while trying to create an account
                 anytype.model.Account account = 2; // A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields
                 Config config = 3; // deprecated, use account
-                Info info = 4;
                 message Error {
                     Code code = 1;
                     string description = 2;
@@ -295,7 +283,6 @@ message Rpc {
                 Error error = 1; // Error while trying to launch/select an account
                 anytype.model.Account account = 2; // Selected account
                 Config config = 3; // deprecated, use account
-                Info info = 4;
                 message Error {
                     Code code = 1;
                     string description = 2;

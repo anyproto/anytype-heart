@@ -168,7 +168,7 @@ func (mw *Middleware) refetch() {
 	fetcher.Refetch()
 }
 
-func (mw *Middleware) getInfo() *pb.RpcAccountInfo {
+func (mw *Middleware) getInfo() *model.AccountInfo {
 	at := mw.app.MustComponent(core.CName).(core.Service)
 	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
 	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
@@ -183,7 +183,7 @@ func (mw *Middleware) getInfo() *pb.RpcAccountInfo {
 	}
 
 	pBlocks := at.PredefinedBlocks()
-	return &pb.RpcAccountInfo{
+	return &model.AccountInfo{
 		HomeObjectId:                pBlocks.Home,
 		ArchiveObjectId:             pBlocks.Archive,
 		ProfileObjectId:             pBlocks.Profile,
@@ -209,7 +209,6 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			enrichWithCafeAccount(account, cafeAccount)
 		}
 		m := &pb.RpcAccountCreateResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountCreateResponseError{Code: code}}
-		m.Info = mw.getInfo()
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -296,6 +295,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			})
 		}
 	}
+	newAcc.Info = mw.getInfo()
 
 	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
@@ -486,7 +486,7 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 			clientConfig = convertToRpcAccountConfig(cafeAccount.Config) // to support deprecated clients
 			enrichWithCafeAccount(account, cafeAccount)
 		}
-		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Info: mw.getInfo(), Error: &pb.RpcAccountSelectResponseError{Code: code}}
+		m := &pb.RpcAccountSelectResponse{Config: clientConfig, Account: account, Error: &pb.RpcAccountSelectResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -582,12 +582,15 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		log.Errorf("AccountSelect app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
 	}
 
+	acc := &model.Account{Id: req.Id}
+	acc.Info = mw.getInfo()
+
 	metrics.SharedClient.RecordEvent(metrics.AppStart{
 		Type:      "select",
 		TotalMs:   stat.SpentMsTotal,
 		PerCompMs: stat.SpentMsPerComp})
 
-	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
+	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {

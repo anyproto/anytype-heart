@@ -46,7 +46,6 @@
     - [Rpc.Account.GetConfig](#anytype.Rpc.Account.GetConfig)
     - [Rpc.Account.GetConfig.Get](#anytype.Rpc.Account.GetConfig.Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype.Rpc.Account.GetConfig.Get.Request)
-    - [Rpc.Account.Info](#anytype.Rpc.Account.Info)
     - [Rpc.Account.Recover](#anytype.Rpc.Account.Recover)
     - [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request)
     - [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response)
@@ -982,6 +981,7 @@
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Account.Config](#anytype.model.Account.Config)
+    - [Account.Info](#anytype.model.Account.Info)
     - [Account.Status](#anytype.model.Account.Status)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
@@ -1191,16 +1191,16 @@
 | BlockDataviewViewSetActive | [Rpc.BlockDataview.View.SetActive.Request](#anytype.Rpc.BlockDataview.View.SetActive.Request) | [Rpc.BlockDataview.View.SetActive.Response](#anytype.Rpc.BlockDataview.View.SetActive.Response) |  |
 | BlockDataviewViewSetPosition | [Rpc.BlockDataview.View.SetPosition.Request](#anytype.Rpc.BlockDataview.View.SetPosition.Request) | [Rpc.BlockDataview.View.SetPosition.Response](#anytype.Rpc.BlockDataview.View.SetPosition.Response) |  |
 | BlockDataviewSetSource | [Rpc.BlockDataview.SetSource.Request](#anytype.Rpc.BlockDataview.SetSource.Request) | [Rpc.BlockDataview.SetSource.Response](#anytype.Rpc.BlockDataview.SetSource.Response) |  |
-| BlockDataviewAddRelation | [Rpc.BlockDataview.Relation.Add.Request](#anytype.Rpc.BlockDataview.Relation.Add.Request) | [Rpc.BlockDataview.Relation.Add.Response](#anytype.Rpc.BlockDataview.Relation.Add.Response) |  |
-| BlockDataviewUpdateRelation | [Rpc.BlockDataview.Relation.Update.Request](#anytype.Rpc.BlockDataview.Relation.Update.Request) | [Rpc.BlockDataview.Relation.Update.Response](#anytype.Rpc.BlockDataview.Relation.Update.Response) |  |
-| BlockDataviewDeleteRelation | [Rpc.BlockDataview.Relation.Delete.Request](#anytype.Rpc.BlockDataview.Relation.Delete.Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype.Rpc.BlockDataview.Relation.Delete.Response) |  |
-| BlockDataviewListAvailableRelation | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype.Rpc.BlockDataview.Relation.ListAvailable.Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype.Rpc.BlockDataview.Relation.ListAvailable.Response) |  |
+| BlockDataviewRelationAdd | [Rpc.BlockDataview.Relation.Add.Request](#anytype.Rpc.BlockDataview.Relation.Add.Request) | [Rpc.BlockDataview.Relation.Add.Response](#anytype.Rpc.BlockDataview.Relation.Add.Response) |  |
+| BlockDataviewRelationUpdate | [Rpc.BlockDataview.Relation.Update.Request](#anytype.Rpc.BlockDataview.Relation.Update.Request) | [Rpc.BlockDataview.Relation.Update.Response](#anytype.Rpc.BlockDataview.Relation.Update.Response) |  |
+| BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype.Rpc.BlockDataview.Relation.Delete.Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype.Rpc.BlockDataview.Relation.Delete.Response) |  |
+| BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype.Rpc.BlockDataview.Relation.ListAvailable.Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype.Rpc.BlockDataview.Relation.ListAvailable.Response) |  |
 | BlockDataviewRecordCreate | [Rpc.BlockDataviewRecord.Create.Request](#anytype.Rpc.BlockDataviewRecord.Create.Request) | [Rpc.BlockDataviewRecord.Create.Response](#anytype.Rpc.BlockDataviewRecord.Create.Response) |  |
 | BlockDataviewRecordUpdate | [Rpc.BlockDataviewRecord.Update.Request](#anytype.Rpc.BlockDataviewRecord.Update.Request) | [Rpc.BlockDataviewRecord.Update.Response](#anytype.Rpc.BlockDataviewRecord.Update.Response) |  |
 | BlockDataviewRecordDelete | [Rpc.BlockDataviewRecord.Delete.Request](#anytype.Rpc.BlockDataviewRecord.Delete.Request) | [Rpc.BlockDataviewRecord.Delete.Response](#anytype.Rpc.BlockDataviewRecord.Delete.Response) |  |
-| BlockDataviewRecordRelationOptionAdd | [Rpc.BlockDataviewRecord.AddRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.AddRelationOption.Request) | [Rpc.BlockDataviewRecord.AddRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.AddRelationOption.Response) |  |
-| BlockDataviewRecordRelationOptionUpdate | [Rpc.BlockDataviewRecord.UpdateRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Request) | [Rpc.BlockDataviewRecord.UpdateRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Response) |  |
-| BlockDataviewRecordRelationOptionDelete | [Rpc.BlockDataviewRecord.DeleteRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Request) | [Rpc.BlockDataviewRecord.DeleteRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Response) |  |
+| BlockDataviewRecordAddRelationOption | [Rpc.BlockDataviewRecord.AddRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.AddRelationOption.Request) | [Rpc.BlockDataviewRecord.AddRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.AddRelationOption.Response) |  |
+| BlockDataviewRecordUpdateRelationOption | [Rpc.BlockDataviewRecord.UpdateRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Request) | [Rpc.BlockDataviewRecord.UpdateRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.UpdateRelationOption.Response) |  |
+| BlockDataviewRecordDeleteRelationOption | [Rpc.BlockDataviewRecord.DeleteRelationOption.Request](#anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Request) | [Rpc.BlockDataviewRecord.DeleteRelationOption.Response](#anytype.Rpc.BlockDataviewRecord.DeleteRelationOption.Response) |  |
 | BlockLinkCreateToTheNewObject | [Rpc.BlockLink.CreateToTheNewObject.Request](#anytype.Rpc.BlockLink.CreateToTheNewObject.Request) | [Rpc.BlockLink.CreateToTheNewObject.Response](#anytype.Rpc.BlockLink.CreateToTheNewObject.Response) | Other specific block commands *** |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype.Rpc.BlockBookmark.Fetch.Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype.Rpc.BlockBookmark.Fetch.Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.BlockBookmark.CreateAndFetch.Request](#anytype.Rpc.BlockBookmark.CreateAndFetch.Request) | [Rpc.BlockBookmark.CreateAndFetch.Response](#anytype.Rpc.BlockBookmark.CreateAndFetch.Response) |  |
@@ -1703,7 +1703,6 @@ Middleware-to-front-end response for an account creation request, that can conta
 | error | [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error) |  | Error while trying to create an account |
 | account | [model.Account](#anytype.model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
 | config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
-| info | [Rpc.Account.Info](#anytype.Rpc.Account.Info) |  |  |
 
 
 
@@ -1813,28 +1812,6 @@ Middleware-to-front-end response for an account creation request, that can conta
 
 
 
-<a name="anytype.Rpc.Account.Info"></a>
-
-### Rpc.Account.Info
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| homeObjectId | [string](#string) |  | home dashboard block id |
-| archiveObjectId | [string](#string) |  | archive block id |
-| profileObjectId | [string](#string) |  | profile block id |
-| marketplaceTypeObjectId | [string](#string) |  | marketplace type id |
-| marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
-| marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
-| deviceId | [string](#string) |  |  |
-| gatewayUrl | [string](#string) |  | gateway url for fetching static files |
-
-
-
-
-
-
 <a name="anytype.Rpc.Account.Recover"></a>
 
 ### Rpc.Account.Recover
@@ -1925,7 +1902,6 @@ Middleware-to-front-end response for an account select request, that can contain
 | error | [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error) |  | Error while trying to launch/select an account |
 | account | [model.Account](#anytype.model.Account) |  | Selected account |
 | config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
-| info | [Rpc.Account.Info](#anytype.Rpc.Account.Info) |  |  |
 
 
 
@@ -15418,6 +15394,7 @@ Contains basic information about a user account
 | avatar | [Account.Avatar](#anytype.model.Account.Avatar) |  | Avatar of a user&#39;s account |
 | config | [Account.Config](#anytype.model.Account.Config) |  |  |
 | status | [Account.Status](#anytype.model.Account.Status) |  |  |
+| info | [Account.Info](#anytype.model.Account.Info) |  |  |
 
 
 
@@ -15453,6 +15430,28 @@ Avatar of a user&#39;s account. It could be an image or color
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Account.Info"></a>
+
+### Account.Info
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| homeObjectId | [string](#string) |  | home dashboard block id |
+| archiveObjectId | [string](#string) |  | archive block id |
+| profileObjectId | [string](#string) |  | profile block id |
+| marketplaceTypeObjectId | [string](#string) |  | marketplace type id |
+| marketplaceRelationObjectId | [string](#string) |  | marketplace relation id |
+| marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
+| deviceId | [string](#string) |  |  |
+| gatewayUrl | [string](#string) |  | gateway url for fetching static files |
 
 
 

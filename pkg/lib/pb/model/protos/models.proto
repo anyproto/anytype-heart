@@ -391,6 +391,8 @@ message Account {
     Avatar avatar = 3; // Avatar of a user's account
     Config config = 4;
     Status status = 5;
+    Info info = 6;
+
     /**
     * Avatar of a user's account. It could be an image or color
     */
@@ -420,6 +422,18 @@ message Account {
         StartedDeletion = 2;
         Deleted = 3;
     }
+
+    message Info {
+        string homeObjectId = 2; // home dashboard block id
+        string archiveObjectId = 3; // archive block id
+        string profileObjectId = 4; // profile block id
+        string marketplaceTypeObjectId = 5; // marketplace type id
+        string marketplaceRelationObjectId = 6; // marketplace relation id
+        string marketplaceTemplateObjectId = 7; // marketplace template id
+        string deviceId = 8;
+        string gatewayUrl = 101; // gateway url for fetching static files
+    }
+
 }
 
 message LinkPreview {
