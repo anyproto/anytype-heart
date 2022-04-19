@@ -1337,7 +1337,16 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	}); err != nil {
 		return
 	}
-	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+
+	sbt, err := coresb.SmartBlockTypeFromID(id)
+	if err != nil {
+		return
+	}
+	if sbt != coresb.SmartBlockTypePage && sbt != coresb.SmartBlockTypeSet {
+		return "", fmt.Errorf("invalid smartblockTYpe for duplicate")
+	}
+
+	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
 	if err != nil {
 		return
 	}
