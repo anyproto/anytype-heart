@@ -43,7 +43,7 @@ type Block interface {
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
 
-	AddRelation(relation model.Relation)
+	AddRelation(relation model.Relation) error
 	GetRelation(relationKey string) (*model.Relation, error)
 	UpdateRelation(relationKey string, relation model.Relation) error
 	DeleteRelation(relationKey string) error
@@ -377,7 +377,7 @@ func (d *Dataview) GetSource() []string {
 	return d.content.Source
 }
 
-func (d *Dataview) AddRelation(relation model.Relation) {
+func (d *Dataview) AddRelation(relation model.Relation) error {
 	if relation.Key == "" {
 		relation.Key = bson.NewObjectId().Hex()
 	}
@@ -388,7 +388,15 @@ func (d *Dataview) AddRelation(relation model.Relation) {
 		}
 	}
 
+	for _, rel := range d.content.Relations {
+		if rel.Key == relation.Key {
+			return fmt.Errorf("relation has already been added")
+		}
+	}
+
 	d.content.Relations = append(d.content.Relations, &relation)
+
+	return nil
 }
 
 func (d *Dataview) DeleteRelation(relationKey string) error {
