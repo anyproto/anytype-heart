@@ -48,6 +48,12 @@ func (s *State) InsertTo(targetId string, reqPos model.BlockPosition, ids ...str
 		return fmt.Errorf("target[%s] is not a child of parent[%s]", target.Model().Id, targetParentM.Id)
 	}
 
+	if content, ok := target.Model().Content.(*model.BlockContentOfText); ok {
+		if content.Text == nil || content.Text.Text == "" {
+			reqPos = model.Block_Replace
+		}
+	}
+
 	var pos int
 	switch reqPos {
 	case model.Block_Bottom:
