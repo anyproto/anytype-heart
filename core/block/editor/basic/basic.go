@@ -203,6 +203,18 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 			s.Unlink(id)
 		}
 	}
+
+	target := s.Get(req.DropTargetId)
+	if target == nil {
+		return fmt.Errorf("target block not found")
+	}
+
+	if content, ok := target.Model().Content.(*model.BlockContentOfText); ok {
+		if content.Text == nil || content.Text.Text == "" {
+			req.Position = model.Block_Replace
+		}
+	}
+
 	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
 		return
 	}
