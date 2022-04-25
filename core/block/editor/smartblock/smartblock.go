@@ -1052,8 +1052,8 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 			return err
 		}
 		if textBlock != nil {
-			sb.Details().Fields[bundle.RelationKeyName.String()] =  pbtypes.String(textBlock.Text.Text)
-			if err := sb.Iterate(func(b simple.Block) (isContinue bool) {
+			s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+			if err := s.Iterate(func(b simple.Block) (isContinue bool) {
 				if b.Model().Content == textBlock {
 					s.Unlink(b.Model().Id)
 					return false
