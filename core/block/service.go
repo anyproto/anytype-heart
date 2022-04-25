@@ -1371,14 +1371,13 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 
 		if layout, ok := orig.Layout(); ok && layout == model.ObjectType_note {
-			name := ""
-			for _, block := range orig.Blocks() {
-				if content, ok := block.Content.(*model.BlockContentOfText); ok {
-					name = content.Text.Text
-					break
-				}
+			textBlock, err := b.GetFirstTextBlock()
+			if err != nil {
+				return err
 			}
-			orig.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(name))
+			if textBlock != nil {
+				orig.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+			}
 		}
 
 		ts.BlocksInit(orig)

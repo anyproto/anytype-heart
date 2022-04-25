@@ -107,6 +107,7 @@ type SmartBlock interface {
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	SetIsDeleted()
 	IsDeleted() bool
+	GetFirstTextBlock() (*model.BlockContentOfText, error)
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
@@ -282,6 +283,22 @@ func (sb *smartBlock) SetIsDeleted() {
 
 func (sb *smartBlock) IsDeleted() bool {
 	return sb.isDeleted
+}
+
+func (sb *smartBlock) GetFirstTextBlock() (*model.BlockContentOfText, error) {
+	var firstTextBlock *model.BlockContentOfText
+	err := sb.Iterate(func(b simple.Block) (isContinue bool) {
+		if content, ok := b.Model().Content.(*model.BlockContentOfText); ok {
+			firstTextBlock = content
+			return false
+		}
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return firstTextBlock, nil
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
@@ -1028,6 +1045,25 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
+
+	if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+		textBlock, err := sb.GetFirstTextBlock()
+		if err != nil {
+			return err
+		}
+		if textBlock != nil {
+			sb.Details().Fields[bundle.RelationKeyName.String()] =  pbtypes.String(textBlock.Text.Text)
+			if err := sb.Iterate(func(b simple.Block) (isContinue bool) {
+				if b.Model().Content == textBlock {
+					s.Unlink(b.Model().Id)
+					return false
+				}
+				return true
+			}); err != nil {
+				return err
+			}
+		}
+	}
 
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return

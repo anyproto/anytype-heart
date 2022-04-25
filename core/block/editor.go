@@ -889,20 +889,6 @@ func (s *service) DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObject
 
 func (s *service) SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error) {
 	return s.Do(objectId, func(b smartblock.SmartBlock) error {
-
-		if det := b.Details(); det != nil && det.Fields != nil {
-			if _, ok := det.Fields[bundle.RelationKeyLayout.String()]; ok {
-				if pbtypes.GetInt64(det, bundle.RelationKeyLayout.String()) == int64(model.ObjectType_note) {
-					for _, block := range b.Blocks() {
-						if content, ok := block.Content.(*model.BlockContentOfText); ok {
-							b.Details().Fields[bundle.RelationKeyName.String()] =  pbtypes.String(content.Text.Text)
-							break
-						}
-					}
-				}
-			}
-		}
-
 		return b.SetObjectTypes(ctx, objectTypes)
 	})
 }
@@ -999,16 +985,14 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
 
-		if details != nil && details.Fields != nil {
-			if _, ok := details.Fields[bundle.RelationKeyLayout.String()]; ok {
-				if pbtypes.GetInt64(details, bundle.RelationKeyLayout.String()) == int64(model.ObjectType_note) {
-					for _, block := range b.Blocks() {
-						if content, ok := block.Content.(*model.BlockContentOfText); ok {
-							details.Fields[bundle.RelationKeyName.String()] =  pbtypes.String(content.Text.Text)
-							break
-						}
-					}
-				}
+		s := b.NewState()
+		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := b.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] =  pbtypes.String(textBlock.Text.Text)
 			}
 		}
 
