@@ -987,7 +987,7 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 
 		s := b.NewState()
 		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
-			textBlock, err := b.GetFirstTextBlock()
+			textBlock, err := s.GetFirstTextBlock()
 			if err != nil {
 				return err
 			}

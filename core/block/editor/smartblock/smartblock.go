@@ -107,7 +107,6 @@ type SmartBlock interface {
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	SetIsDeleted()
 	IsDeleted() bool
-	GetFirstTextBlock() (*model.BlockContentOfText, error)
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
@@ -283,22 +282,6 @@ func (sb *smartBlock) SetIsDeleted() {
 
 func (sb *smartBlock) IsDeleted() bool {
 	return sb.isDeleted
-}
-
-func (sb *smartBlock) GetFirstTextBlock() (*model.BlockContentOfText, error) {
-	var firstTextBlock *model.BlockContentOfText
-	err := sb.Iterate(func(b simple.Block) (isContinue bool) {
-		if content, ok := b.Model().Content.(*model.BlockContentOfText); ok {
-			firstTextBlock = content
-			return false
-		}
-		return true
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return firstTextBlock, nil
 }
 
 func (sb *smartBlock) normalizeRelations(s *state.State) error {
@@ -1047,7 +1030,7 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	s := sb.NewStateCtx(ctx)
 
 	if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
-		textBlock, err := sb.GetFirstTextBlock()
+		textBlock, err := s.GetFirstTextBlock()
 		if err != nil {
 			return err
 		}

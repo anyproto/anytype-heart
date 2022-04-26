@@ -1371,7 +1371,7 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		ts.SetParent(orig)
 
 		if layout, ok := orig.Layout(); ok && layout == model.ObjectType_note {
-			textBlock, err := b.GetFirstTextBlock()
+			textBlock, err := orig.GetFirstTextBlock()
 			if err != nil {
 				return err
 			}
