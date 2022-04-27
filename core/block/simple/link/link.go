@@ -2,6 +2,7 @@ package link
 
 import (
 	"fmt"
+	"reflect"
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -75,6 +76,26 @@ func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	if l.content.TargetBlockId != link.content.TargetBlockId {
 		hasChanges = true
 		changes.TargetBlockId = &pb.EventBlockSetLinkTargetBlockId{Value: link.content.TargetBlockId}
+	}
+
+	if l.content.IconSize != link.content.IconSize {
+		hasChanges = true
+		changes.IconSize = &pb.EventBlockSetLinkIconSize{Value: link.content.IconSize}
+	}
+
+	if l.content.CardStyle != link.content.CardStyle {
+		hasChanges = true
+		changes.CardStyle = &pb.EventBlockSetLinkCardStyle{Value: link.content.CardStyle}
+	}
+
+	if l.content.Description != link.content.Description {
+		hasChanges = true
+		changes.Description = &pb.EventBlockSetLinkDescription{Value: link.content.Description}
+	}
+
+	if !reflect.DeepEqual(l.content.Relations, link.content.Relations) {
+		hasChanges = true
+		changes.Relations = &pb.EventBlockSetLinkRelations{Value: link.content.Relations}
 	}
 
 	if hasChanges {
