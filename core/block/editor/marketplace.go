@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -14,8 +13,8 @@ const (
 	viewIdMarketplace = "marketplace"
 )
 
-func NewMarketplaceType(dbCtrl database.Ctrl) *MarketplaceType {
-	return &MarketplaceType{Set: NewSet(dbCtrl)}
+func NewMarketplaceType() *MarketplaceType {
+	return &MarketplaceType{Set: NewSet()}
 }
 
 type MarketplaceType struct {
@@ -92,8 +91,8 @@ type MarketplaceRelation struct {
 	*Set
 }
 
-func NewMarketplaceRelation(dbCtrl database.Ctrl) *MarketplaceRelation {
-	return &MarketplaceRelation{Set: NewSet(dbCtrl)}
+func NewMarketplaceRelation() *MarketplaceRelation {
+	return &MarketplaceRelation{Set: NewSet()}
 }
 
 func (p *MarketplaceRelation) Init(ctx *smartblock.InitContext) (err error) {
@@ -156,8 +155,8 @@ type MarketplaceTemplate struct {
 	*Set
 }
 
-func NewMarketplaceTemplate(dbCtrl database.Ctrl) *MarketplaceTemplate {
-	return &MarketplaceTemplate{Set: NewSet(dbCtrl)}
+func NewMarketplaceTemplate() *MarketplaceTemplate {
+	return &MarketplaceTemplate{Set: NewSet()}
 }
 
 func (p *MarketplaceTemplate) Init(ctx *smartblock.InitContext) (err error) {

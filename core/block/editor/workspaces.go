@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -40,9 +39,9 @@ var (
 	ErrRelationNotFound = errors.New("relation not found")
 )
 
-func NewWorkspace(dbCtrl database.Ctrl, dmservice DetailsModifier) *Workspaces {
+func NewWorkspace(dmservice DetailsModifier) *Workspaces {
 	return &Workspaces{
-		Set:             NewSet(dbCtrl),
+		Set:             NewSet(),
 		DetailsModifier: dmservice,
 	}
 }

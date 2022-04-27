@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -13,9 +12,9 @@ type Relation struct {
 	*Set
 }
 
-func NewRelation(dbCtrl database.Ctrl) *Relation {
+func NewRelation() *Relation {
 	return &Relation{
-		Set: NewSet(dbCtrl),
+		Set: NewSet(),
 	}
 }
 

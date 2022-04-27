@@ -95,9 +95,9 @@ type Service interface {
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
-	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error)
 	DuplicateBlocks(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) ([]string, error)
 	UnlinkBlock(ctx *state.Context, req pb.RpcBlockUnlinkRequest) error
 	ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error)
@@ -114,18 +114,13 @@ type Service interface {
 	ModifyDetails(objectId string, modifier func(current *types.Struct) (*types.Struct, error)) (err error) // you must copy original struct within the modifier in order to modify it
 
 	GetRelations(objectId string) (relations []*model.Relation, err error)
-	UpdateExtraRelations(ctx *state.Context, id string, relations []*model.Relation, createIfMissing bool) (err error)
-	ModifyExtraRelations(ctx *state.Context, objectId string, modifier func(current []*model.Relation) ([]*model.Relation, error)) (err error)
-	AddExtraRelations(ctx *state.Context, id string, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
+	AddExtraRelations(ctx *state.Context, id string, relations []string) (err error)
 	RemoveExtraRelations(ctx *state.Context, id string, relationKeys []string) (err error)
 	CreateSet(ctx *state.Context, req pb.RpcBlockCreateSetRequest) (linkId string, setId string, err error)
 	SetDataviewSource(ctx *state.Context, contextId, blockId string, source []string) error
 
 	ListAvailableRelations(objectId string) (aggregatedRelations []*model.Relation, err error)
 	SetObjectTypes(ctx *state.Context, objectId string, objectTypes []string) (err error)
-	AddExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionAddRequest) (opt *model.RelationOption, err error)
-	UpdateExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionUpdateRequest) (err error)
-	DeleteExtraRelationOption(ctx *state.Context, req pb.RpcObjectRelationOptionDeleteRequest) (err error)
 
 	Paste(ctx *state.Context, req pb.RpcBlockPasteRequest, groupId string) (blockIds []string, uploadArr []pb.RpcBlockUploadRequest, caretPosition int32, isSameBlockCaret bool, err error)
 
@@ -178,12 +173,8 @@ type Service interface {
 	SetDataviewActiveView(ctx *state.Context, req pb.RpcBlockDataviewViewSetActiveRequest) error
 	SetDataviewViewPosition(ctx *state.Context, request pb.RpcBlockDataviewViewSetPositionRequest) error
 	CreateDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewCreateRequest) (id string, err error)
-	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (relation *model.Relation, err error)
-	UpdateDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationUpdateRequest) error
+	AddDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationAddRequest) (err error)
 	DeleteDataviewRelation(ctx *state.Context, req pb.RpcBlockDataviewRelationDeleteRequest) error
-	AddDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionAddRequest) (opt *model.RelationOption, err error)
-	UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) error
-	DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error
 
 	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (*types.Struct, error)
 
@@ -407,10 +398,8 @@ func (s *service) ShowBlock(ctx *state.Context, id string) (err error) {
 func (s *service) OpenBreadcrumbsBlock(ctx *state.Context) (blockId string, err error) {
 	bs := editor.NewBreadcrumbs()
 	if err = bs.Init(&smartblock.InitContext{
-		Restriction: s.restriction,
-		ObjectStore: s.objectStore,
-		Doc:         s.doc,
-		Source:      source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
+		App:    s.app,
+		Source: source.NewVirtual(s.anytype, model.SmartBlockType_Breadcrumbs),
 	}); err != nil {
 		return
 	}
@@ -798,11 +787,11 @@ func (s *service) sendOnRemoveEvent(ids ...string) {
 	}
 }
 
-func (s *service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error) {
-	return s.CreateSmartBlockFromState(ctx, sbType, details, relations, state.NewDoc("", nil).NewState())
+func (s *service) CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string) (id string, newDetails *types.Struct, err error) {
+	return s.CreateSmartBlockFromState(ctx, sbType, details, relationIds, state.NewDoc("", nil).NewState())
 }
 
-func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, templateId string) (id string, newDetails *types.Struct, err error) {
 	var createState *state.State
 	if templateId != "" {
 		if createState, err = s.stateFromTemplate(templateId, pbtypes.GetString(details, bundle.RelationKeyName.String())); err != nil {
@@ -811,10 +800,10 @@ func (s *service) CreateSmartBlockFromTemplate(ctx context.Context, sbType cores
 	} else {
 		createState = state.NewDoc("", nil).NewState()
 	}
-	return s.CreateSmartBlockFromState(ctx, sbType, details, relations, createState)
+	return s.CreateSmartBlockFromState(ctx, sbType, details, relationIds, createState)
 }
 
-func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error) {
+func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relationIds []string, createState *state.State) (id string, newDetails *types.Struct, err error) {
 	startTime := time.Now()
 	objectTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 	if objectTypes == nil {
@@ -831,7 +820,7 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 		}
 	}
 
-	objType, err := objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
+	_, err = objectstore.GetObjectType(s.anytype.ObjectStore(), objectTypes[0])
 	if err != nil {
 		return "", nil, fmt.Errorf("object type not found")
 	}
@@ -843,15 +832,6 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
-			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
-				rel := pbtypes.GetRelation(objType.Relations, k)
-				if rel == nil {
-					return "", nil, fmt.Errorf("relation for detail %s not found", k)
-				}
-				relCopy := pbtypes.CopyRelation(rel)
-				relCopy.Scope = model.Relation_object
-				relations = append(relations, relCopy)
-			}
 		}
 
 		if isDraft {
@@ -893,10 +873,11 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	}
 	id = csm.ID()
 	createState.SetRootId(id)
+	createState.SetObjectTypes(objectTypes)
+	createState.AddRelationIds(relationIds...)
 	initCtx := &smartblock.InitContext{
 		State:          createState,
 		ObjectTypeUrls: objectTypes,
-		Relations:      relations,
 	}
 	var sb smartblock.SmartBlock
 	if sb, err = s.newSmartBlock(id, initCtx); err != nil {
@@ -1010,23 +991,23 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Home:
 		sb = editor.NewDashboard(s, s)
 	case model.SmartBlockType_Set:
-		sb = editor.NewSet(s)
+		sb = editor.NewSet()
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
 		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
-		sb = editor.NewObjectType(s)
+		sb = editor.NewObjectType()
 	case model.SmartBlockType_BundledRelation,
 		model.SmartBlockType_IndexedRelation:
-		sb = editor.NewRelation(s)
+		sb = editor.NewRelation()
 	case model.SmartBlockType_File:
 		sb = editor.NewFiles()
 	case model.SmartBlockType_MarketplaceType:
-		sb = editor.NewMarketplaceType(s)
+		sb = editor.NewMarketplaceType()
 	case model.SmartBlockType_MarketplaceRelation:
-		sb = editor.NewMarketplaceRelation(s)
+		sb = editor.NewMarketplaceRelation()
 	case model.SmartBlockType_MarketplaceTemplate:
-		sb = editor.NewMarketplaceTemplate(s)
+		sb = editor.NewMarketplaceTemplate()
 	case model.SmartBlockType_Template:
 		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_BundledTemplate:
@@ -1034,7 +1015,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
-		sb = editor.NewWorkspace(s, s)
+		sb = editor.NewWorkspace(s)
 	case model.SmartBlockType_AccountOld:
 		sb = editor.NewThreadDB(s)
 	case model.SmartBlockType_RelationOptionList:
@@ -1048,15 +1029,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	if initCtx == nil {
 		initCtx = &smartblock.InitContext{}
 	}
-	if initCtx.Restriction == nil {
-		initCtx.Restriction = s.restriction
-	}
-	if initCtx.ObjectStore == nil {
-		initCtx.ObjectStore = s.objectStore
-	}
-	if initCtx.Doc == nil {
-		initCtx.Doc = s.doc
-	}
+	initCtx.App = s.app
 	initCtx.Source = sc
 	err = sb.Init(initCtx)
 	return
@@ -1425,9 +1398,7 @@ func (s *service) NewSubObject(subId string, parent subobject.ParentObject) (so 
 		Source:         s.source.NewStaticSource(so.Id(), model.SmartBlockType_Page, st),
 		ObjectTypeUrls: st.ObjectTypes(),
 		State:          st,
-		Restriction:    s.restriction,
-		Doc:            s.doc,
-		ObjectStore:    s.objectStore,
+		App:            s.app,
 	}
 	if err = so.Init(ctx); err != nil {
 		return

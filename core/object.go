@@ -354,12 +354,8 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
 	ctx := state.NewContext(nil)
-	response := func(relation *model.Relation, code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
-		var relKey string
-		if relation != nil {
-			relKey = relation.Key
-		}
-		m := &pb.RpcObjectRelationAddResponse{RelationKey: relKey, Relation: relation, Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationAddResponseErrorCode, err error) *pb.RpcObjectRelationAddResponse {
+		m := &pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -367,45 +363,18 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 		}
 		return m
 	}
-	if req.Relation == nil {
-		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
+	if len(req.RelationIds) == 0 {
+		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, fmt.Errorf("relation is nil"))
 	}
 
-	var relations []*model.Relation
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		relations, err = bs.AddExtraRelations(ctx, req.ContextId, []*model.Relation{req.Relation})
-		return err
+		return bs.AddExtraRelations(ctx, req.ContextId, req.RelationIds)
 	})
 	if err != nil {
-		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
+		return response(pb.RpcObjectRelationAddResponseError_BAD_INPUT, err)
 	}
 
-	if len(relations) == 0 {
-		return response(nil, pb.RpcObjectRelationAddResponseError_ALREADY_EXISTS, nil)
-	}
-
-	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationUpdate(req *pb.RpcObjectRelationUpdateRequest) *pb.RpcObjectRelationUpdateResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectRelationUpdateResponseErrorCode, err error) *pb.RpcObjectRelationUpdateResponse {
-		m := &pb.RpcObjectRelationUpdateResponse{Error: &pb.RpcObjectRelationUpdateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateExtraRelations(nil, req.ContextId, []*model.Relation{req.Relation}, false)
-	})
-	if err != nil {
-		return response(pb.RpcObjectRelationUpdateResponseError_BAD_INPUT, err)
-	}
-
-	return response(pb.RpcObjectRelationUpdateResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationAddResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationDelete(req *pb.RpcObjectRelationDeleteRequest) *pb.RpcObjectRelationDeleteResponse {
@@ -420,78 +389,12 @@ func (mw *Middleware) ObjectRelationDelete(req *pb.RpcObjectRelationDeleteReques
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.RemoveExtraRelations(ctx, req.ContextId, []string{req.RelationKey})
+		return bs.RemoveExtraRelations(ctx, req.ContextId, []string{req.RelationId})
 	})
 	if err != nil {
 		return response(pb.RpcObjectRelationDeleteResponseError_BAD_INPUT, err)
 	}
 	return response(pb.RpcObjectRelationDeleteResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationOptionAdd(req *pb.RpcObjectRelationOptionAddRequest) *pb.RpcObjectRelationOptionAddResponse {
-	ctx := state.NewContext(nil)
-	response := func(opt *model.RelationOption, code pb.RpcObjectRelationOptionAddResponseErrorCode, err error) *pb.RpcObjectRelationOptionAddResponse {
-		m := &pb.RpcObjectRelationOptionAddResponse{Option: opt, Error: &pb.RpcObjectRelationOptionAddResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	var opt *model.RelationOption
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		var err2 error
-		opt, err2 = bs.AddExtraRelationOption(ctx, *req)
-		return err2
-	})
-	if err != nil {
-		return response(nil, pb.RpcObjectRelationOptionAddResponseError_BAD_INPUT, err)
-	}
-
-	return response(opt, pb.RpcObjectRelationOptionAddResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationOptionUpdate(req *pb.RpcObjectRelationOptionUpdateRequest) *pb.RpcObjectRelationOptionUpdateResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectRelationOptionUpdateResponseErrorCode, err error) *pb.RpcObjectRelationOptionUpdateResponse {
-		m := &pb.RpcObjectRelationOptionUpdateResponse{Error: &pb.RpcObjectRelationOptionUpdateResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.UpdateExtraRelationOption(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectRelationOptionUpdateResponseError_BAD_INPUT, err)
-	}
-
-	return response(pb.RpcObjectRelationOptionUpdateResponseError_NULL, nil)
-}
-
-func (mw *Middleware) ObjectRelationOptionDelete(req *pb.RpcObjectRelationOptionDeleteRequest) *pb.RpcObjectRelationOptionDeleteResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectRelationOptionDeleteResponseErrorCode, err error) *pb.RpcObjectRelationOptionDeleteResponse {
-		m := &pb.RpcObjectRelationOptionDeleteResponse{Error: &pb.RpcObjectRelationOptionDeleteResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.DeleteExtraRelationOption(ctx, *req)
-	})
-	if err != nil {
-		return response(pb.RpcObjectRelationOptionDeleteResponseError_BAD_INPUT, err)
-	}
-
-	return response(pb.RpcObjectRelationOptionDeleteResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectRelationListAvailable(req *pb.RpcObjectRelationListAvailableRequest) *pb.RpcObjectRelationListAvailableResponse {

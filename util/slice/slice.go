@@ -130,3 +130,9 @@ func HasPrefix(value, prefix []string) bool {
 	}
 	return true
 }
+
+func Copy(s []string) []string {
+	res := make([]string, len(s))
+	copy(res, s)
+	return res
+}

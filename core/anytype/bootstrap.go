@@ -1,6 +1,7 @@
 package anytype
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"os"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -94,6 +95,7 @@ func Bootstrap(a *app.App, components ...app.Component) {
 		a.Register(c)
 	}
 	a.Register(clientds.New()).
+		Register(relation.New()).
 		Register(ftsearch.New()).
 		Register(objectstore.New()).
 		Register(filestore.New()).

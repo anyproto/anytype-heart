@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	relation2 "github.com/anytypeio/go-anytype-middleware/core/relation"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/ipfs/go-cid"
 	"sort"
@@ -31,7 +33,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -72,9 +73,6 @@ const CallerKey key = 0
 
 var log = logging.Logger("anytype-mw-smartblock")
 
-// DepSmartblockEventsTimeout sets the timeout after which we will stop to synchronously wait dependent smart blocks and will send them as a separate events in the background
-var DepSmartblockSyncEventsTimeout = time.Second * 1
-
 func New() SmartBlock {
 	return &smartBlock{hooks: map[Hook][]HookCallback{}}
 }
@@ -97,13 +95,8 @@ type SmartBlock interface {
 	Relations() []*model.Relation
 	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
 	HasRelation(relationKey string) bool
-	AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error)
-
-	UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error)
+	AddExtraRelations(ctx *state.Context, relationIds ...string) (err error)
 	RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error)
-	AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
-	UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error
-	DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error
 	MakeTemplateState() (*state.State, error)
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
@@ -132,10 +125,7 @@ type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
 	State          *state.State
-	Relations      []*model.Relation
-	Restriction    restriction.Service
-	Doc            doc.Service
-	ObjectStore    objectstore.ObjectStore
+	App            *app.App
 }
 
 type linkSource interface {
@@ -156,6 +146,7 @@ type smartBlock struct {
 	restrictions        restriction.Restrictions
 	restrictionsChanged bool
 	objectStore         objectstore.ObjectStore
+	relationService     relation2.Service
 	isDeleted           bool
 
 	disableLayouts bool
@@ -208,9 +199,9 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 
 	sb.source = ctx.Source
 	sb.undo = undo.NewHistory(0)
-	sb.restrictions = ctx.Restriction.RestrictionsByObj(sb)
-	sb.doc = ctx.Doc
-	sb.objectStore = ctx.ObjectStore
+	sb.restrictions = ctx.App.MustComponent(restriction.CName).(restriction.Service).RestrictionsByObj(sb)
+	sb.doc = ctx.App.MustComponent(doc.CName).(doc.Service)
+	sb.objectStore = ctx.App.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	sb.lastDepDetails = map[string]*pb.EventObjectDetailsSet{}
 	if ctx.State != nil {
 		// need to store file keys in case we have some new files in the state
@@ -244,12 +235,6 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		err = sb.setObjectTypes(ctx.State, ctx.ObjectTypeUrls)
 		if err != nil {
 			return err
-		}
-	}
-
-	if len(ctx.Relations) > 0 {
-		if _, err = sb.addExtraRelations(ctx.State, ctx.Relations); err != nil {
-			return
 		}
 	}
 
@@ -920,12 +905,10 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 	return nil
 }
 
-func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
+func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relationIds ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
 
-	if relationsWithKeys, err = sb.addExtraRelations(s, relations); err != nil {
-		return
-	}
+	s.AddRelationIds(relationIds...)
 
 	if err = sb.Apply(s); err != nil {
 		return
@@ -992,59 +975,8 @@ func (sb *smartBlock) injectLocalDetails(s *state.State) error {
 	return nil
 }
 
-func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
-	copy := pbtypes.CopyRelations(s.ExtraRelations())
-
-	var existsMap = map[string]int{}
-	for i, rel := range copy {
-		existsMap[rel.Key] = i
-	}
-	for _, rel := range relations {
-		if rel.Key == "" {
-			rel.Key = bson.NewObjectId().Hex()
-			rel.Creator = sb.Anytype().ProfileID()
-		}
-
-		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
-			if err != nil {
-				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
-			} else {
-				s.SetAggregatedRelationsOptions(rel.Key, opts)
-			}
-		}
-
-		if relEx, exists := existsMap[rel.Key]; exists {
-			if !pbtypes.RelationEqualOmitDictionary(copy[relEx], rel) {
-				log.Warnf("failed to AddExtraRelations: provided relation %s not equal to existing aggregated one", rel.Key)
-			}
-		} else {
-			existingRelation, err := sb.Anytype().ObjectStore().GetRelation(rel.Key)
-			if err != nil {
-				log.Errorf("existingRelation failed to get: %s", err.Error())
-			}
-			c := pbtypes.CopyRelation(rel)
-
-			if existingRelation != nil && (existingRelation.ReadOnlyRelation || rel.Name == "") {
-				c = existingRelation
-			} else if existingRelation != nil && !pbtypes.RelationCompatible(existingRelation, rel) {
-				return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
-			}
-			relationsWithKeys = append(relationsWithKeys, c)
-			copy = append(copy, c)
-		}
-		if !s.HasCombinedDetailsKey(rel.Key) {
-			s.SetDetail(rel.Key, pbtypes.Null())
-		}
-	}
-
-	s = s.SetExtraRelations(copy)
-	return
-}
-
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
-
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
 	}
@@ -1137,64 +1069,11 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 	return
 }
 
-// UpdateExtraRelations sets the extra relations, it skips the
-func (sb *smartBlock) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
-	extraRelations := pbtypes.CopyRelations(sb.ExtraRelations())
-	relationsToSet := pbtypes.CopyRelations(relations)
-
-	var somethingChanged bool
-	var newRelations []*model.Relation
-mainLoop:
-	for i := range relationsToSet {
-		for j := range extraRelations {
-			if extraRelations[j].Key == relationsToSet[i].Key {
-				if !pbtypes.RelationEqual(extraRelations[j], relationsToSet[i]) {
-					if !pbtypes.RelationCompatible(extraRelations[j], relationsToSet[i]) {
-						return fmt.Errorf("can't update extraRelation: provided format is incompatible")
-					}
-					extraRelations[j] = relationsToSet[i]
-					somethingChanged = true
-				}
-
-				continue mainLoop
-			}
-		}
-
-		if createIfMissing {
-			somethingChanged = true
-			newRelations = append(newRelations, relations[i])
-		}
-	}
-
-	if !somethingChanged {
-		log.Warnf("UpdateExtraRelations obj %s: nothing changed", sb.Id())
-		return
-	}
-
-	st := sb.NewStateCtx(ctx)
-	st.SetExtraRelations(append(extraRelations, newRelations...))
-	for _, rel := range newRelations {
-		if rel.Format == model.RelationFormat_tag || rel.Format == model.RelationFormat_status {
-			opts, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, st.ObjectType())
-			if err != nil {
-				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
-			} else {
-				st.SetAggregatedRelationsOptions(rel.Key, opts)
-			}
-		}
-	}
-	if err = sb.Apply(st); err != nil {
-		return
-	}
-	return
-}
-
-func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []string) (err error) {
-	copy := pbtypes.CopyRelations(sb.ExtraRelations())
-	filtered := []*model.Relation{}
+func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationIds []string) (err error) {
 	st := sb.NewStateCtx(ctx)
 	det := st.Details()
 
+	// TODO: decide what to do with simple blocks
 	var simpleRelKeys []string
 	if err = st.Iterate(func(b simple.Block) (isContinue bool) {
 		if _, ok := b.(relation.Block); ok {
@@ -1205,146 +1084,26 @@ func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationKeys []st
 		return
 	}
 
-	for _, rel := range copy {
-		var toBeRemoved bool
-		for _, relationKey := range relationKeys {
-			if rel.Key == relationKey && slice.FindPos(simpleRelKeys, relationKey) == -1 {
-				toBeRemoved = true
-				break
-			}
-		}
+	relationIdsFiltered := relationIds[:0]
 
-		if toBeRemoved {
-			if pbtypes.HasField(det, rel.Key) {
-				delete(det.Fields, rel.Key)
-			}
-		} else {
-			filtered = append(filtered, rel)
+	for _, relId := range relationIds {
+		if st.RemoveRelation(relId) {
+			relationIdsFiltered = append(relationIdsFiltered, relId)
 		}
 	}
+
+	keysToRemove, err := sb.relationService.IdsToKeys(relationIdsFiltered...)
+	st.RemoveDetail(keysToRemove...)
 
 	// remove from the list of featured relations
 	featuredList := pbtypes.GetStringList(det, bundle.RelationKeyFeaturedRelations.String())
 	featuredList = slice.Filter(featuredList, func(s string) bool {
-		return slice.FindPos(relationKeys, s) == -1
+		return slice.FindPos(keysToRemove, s) == -1
 	})
 	det.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList(featuredList)
 
 	st.SetDetails(det)
-	st.SetExtraRelations(filtered)
-
-	if err = sb.Apply(st); err != nil {
-		return
-	}
-
-	return
-}
-
-// AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (sb *smartBlock) AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
-	s := sb.NewStateCtx(ctx)
-	rel := pbtypes.GetRelation(sb.Relations(), relationKey)
-	if rel == nil {
-		var err error
-		rel, err = sb.Anytype().ObjectStore().GetRelation(relationKey)
-		if err != nil {
-			return nil, fmt.Errorf("relation not found: %s", err.Error())
-		}
-	}
-
-	if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-		return nil, fmt.Errorf("incorrect relation format")
-	}
-
-	if option.Id == "" {
-		existingOptions, err := sb.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
-		if err != nil {
-			log.Errorf("failed to get existing aggregated options: %s", err.Error())
-		} else {
-			for _, exOpt := range existingOptions {
-				if strings.EqualFold(exOpt.Text, option.Text) {
-					option.Id = exOpt.Id
-					option.Color = exOpt.Color
-					break
-				}
-			}
-		}
-	}
-	newOption, err := s.AddExtraRelationOption(*rel, option)
-	if err != nil {
-		return nil, err
-	}
-
-	if showEvent {
-		return newOption, sb.Apply(s)
-	}
-	return newOption, sb.Apply(s, NoEvent)
-}
-
-func (sb *smartBlock) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error {
-	s := sb.NewStateCtx(ctx)
-	for _, rel := range sb.ExtraRelations() {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == option.Id {
-				copy := pbtypes.CopyRelation(rel)
-				copy.SelectDict[i] = &option
-				s.SetExtraRelation(copy)
-
-				if showEvent {
-					return sb.Apply(s)
-				}
-				return sb.Apply(s, NoEvent)
-			}
-		}
-
-		return ErrRelationOptionNotFound
-	}
-
-	return ErrRelationNotFound
-}
-
-func (sb *smartBlock) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
-	s := sb.NewStateCtx(ctx)
-	for _, rel := range sb.ExtraRelations() {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == optionId {
-				// filter-out this option from details also
-				if opts := pbtypes.GetStringList(s.Details(), relationKey); len(opts) > 0 {
-					filtered := slice.Filter(opts, func(s string) bool {
-						return s != opt.Id
-					})
-					if len(filtered) != len(opts) {
-						s.SetDetail(relationKey, pbtypes.StringList(filtered))
-					}
-				}
-
-				copy := pbtypes.CopyRelation(rel)
-				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
-				s.SetExtraRelation(copy)
-				if showEvent {
-					return sb.Apply(s)
-				}
-				return sb.Apply(s, NoEvent)
-			}
-		}
-		// todo: should we remove option and value from all objects within type?
-
-		return fmt.Errorf("relation option not found")
-	}
-
-	return fmt.Errorf("relation not found")
+	return sb.Apply(st)
 }
 
 func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error)) error {

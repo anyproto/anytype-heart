@@ -3,6 +3,7 @@ package dataview
 import (
 	"errors"
 	"fmt"
+	"github.com/globalsign/mgo/bson"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -10,13 +11,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/proto"
 	"github.com/google/uuid"
 )
 
 var _ Block = (*Dataview)(nil)
+
 var (
+	ErrRelationExists   = fmt.Errorf("relation exists")
 	ErrRelationNotFound = fmt.Errorf("relation not found")
 	ErrOptionNotExists  = errors.New("option not exists")
 )
@@ -43,14 +45,8 @@ type Block interface {
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
 
-	AddRelation(relation model.Relation)
-	GetRelation(relationKey string) (*model.Relation, error)
-	UpdateRelation(relationKey string, relation model.Relation) error
-	DeleteRelation(relationKey string) error
-
-	AddRelationOption(relationKey string, opt model.RelationOption) error
-	UpdateRelationOption(relationKey string, opt model.RelationOption) error
-	DeleteRelationOption(relationKey string, optId string) error
+	AddRelation(relationId string) error
+	DeleteRelation(relationId, relationKey string) error
 
 	GetSource() []string
 	SetSource(source []string) error
@@ -58,6 +54,13 @@ type Block interface {
 
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
+
+	// AddRelationOld DEPRECATED
+	AddRelationOld(relation model.Relation)
+	// UpdateRelation DEPRECATED
+	UpdateRelation(relationKey string, relation model.Relation) error
+	// DeleteRelationOld DEPRECATED
+	DeleteRelationOld(relationKey string) error
 }
 
 type Dataview struct {
@@ -131,45 +134,26 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		}
 	}
 
-	for _, rel2 := range dv.content.Relations {
-		var found bool
-		var changed bool
-		for _, rel1 := range d.content.Relations {
-			if rel1.Key == rel2.Key {
-				found = true
-				changed = !pbtypes.RelationEqual(rel1, rel2)
-				break
-			}
-		}
-
-		if !found || changed {
-			msgs = append(msgs,
-				simple.EventMessage{
-					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
-						&pb.EventBlockDataviewRelationSet{
-							Id:          dv.Id,
-							RelationKey: rel2.Key,
-							Relation:    rel2,
-						}}}})
-		}
+	removed, added := slice.DifferenceRemovedAdded(d.content.RelationIds, dv.content.RelationIds)
+	if len(removed) > 0 {
+		msgs = append(msgs, simple.EventMessage{
+			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
+				BlockDataviewRelationDelete: &pb.EventBlockDataviewRelationDelete{
+					Id:          dv.Id,
+					RelationIds: removed,
+				},
+			}},
+		})
 	}
-	for _, rel1 := range d.content.Relations {
-		var found bool
-		for _, rel2 := range dv.content.Relations {
-			if rel1.Key == rel2.Key {
-				found = true
-				break
-			}
-		}
-
-		if !found {
-			msgs = append(msgs,
-				simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
-					&pb.EventBlockDataviewRelationDelete{
-						Id:          dv.Id,
-						RelationKey: rel1.Key,
-					}}}})
-		}
+	if len(added) > 0 {
+		msgs = append(msgs, simple.EventMessage{
+			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
+				BlockDataviewRelationSet: &pb.EventBlockDataviewRelationSet{
+					Id:          dv.Id,
+					RelationIds: added,
+				},
+			}},
+		})
 	}
 
 	if !slice.UnsortedEquals(dv.content.Source, d.content.Source) {
@@ -263,6 +247,148 @@ func (s *Dataview) SetView(viewID string, view model.BlockContentDataviewView) e
 	return nil
 }
 
+func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
+	for i, view := range l.GetDataview().Views {
+		if view.Id == l.content.ActiveView {
+			return l.GetDataview().Views[i]
+		}
+	}
+	return nil
+}
+
+func (l *Dataview) FillSmartIds(ids []string) []string {
+	return append(ids, l.content.GetRelationIds()...)
+}
+
+func (l *Dataview) HasSmartIds() bool {
+	return len(l.content.RelationIds) > 0
+}
+
+func (d *Dataview) AddRelation(relationId string) error {
+	if slice.FindPos(d.content.RelationIds, relationId) != -1 {
+		return ErrRelationExists
+	}
+	d.content.RelationIds = append(d.content.RelationIds, relationId)
+	return nil
+}
+
+func (d *Dataview) DeleteRelation(relationId, relationKey string) error {
+	var found bool
+	if slice.FindPos(d.content.RelationIds, relationId) == -1 {
+		found = true
+		d.content.RelationIds = slice.Remove(d.content.RelationIds, relationId)
+	}
+
+	for _, view := range d.content.Views {
+		var filteredFilters []*model.BlockContentDataviewFilter
+		for _, filter := range view.Filters {
+			if filter.RelationKey != relationKey {
+				filteredFilters = append(filteredFilters, filter)
+			}
+		}
+		view.Filters = filteredFilters
+
+		var filteredSorts []*model.BlockContentDataviewSort
+		for _, sort := range view.Sorts {
+			if sort.RelationKey != relationKey {
+				filteredSorts = append(filteredSorts, sort)
+			}
+		}
+		view.Sorts = filteredSorts
+	}
+
+	if !found {
+		return fmt.Errorf("relation not found")
+	}
+
+	return nil
+}
+
+func (td *Dataview) ModelToSave() *model.Block {
+	b := pbtypes.CopyBlock(td.Model())
+	b.Content.(*model.BlockContentOfDataview).Dataview.Relations = nil
+	b.Content.(*model.BlockContentOfDataview).Dataview.ActiveView = ""
+	return b
+}
+
+func (d *Dataview) SetSource(source []string) error {
+	d.content.Source = source
+	return nil
+}
+
+func (d *Dataview) GetSource() []string {
+	return d.content.Source
+}
+
+func (d *Dataview) AddRelationOld(relation model.Relation) {
+	if relation.Key == "" {
+		relation.Key = bson.NewObjectId().Hex()
+	}
+
+	for i := range relation.SelectDict {
+		if relation.SelectDict[i].Id == "" {
+			relation.SelectDict[i].Id = bson.NewObjectId().Hex()
+		}
+	}
+
+	d.content.Relations = append(d.content.Relations, &relation)
+}
+
+func (d *Dataview) DeleteRelationOld(relationKey string) error {
+	var found bool
+	for i, r := range d.content.Relations {
+		if r.Key == relationKey {
+			found = true
+			d.content.Relations = append(d.content.Relations[:i], d.content.Relations[i+1:]...)
+			break
+		}
+	}
+
+	for _, view := range d.content.Views {
+		var filteredFilters []*model.BlockContentDataviewFilter
+		for _, filter := range view.Filters {
+			if filter.RelationKey != relationKey {
+				filteredFilters = append(filteredFilters, filter)
+			}
+		}
+		view.Filters = filteredFilters
+
+		var filteredSorts []*model.BlockContentDataviewSort
+		for _, sort := range view.Sorts {
+			if sort.RelationKey != relationKey {
+				filteredSorts = append(filteredSorts, sort)
+			}
+		}
+		view.Sorts = filteredSorts
+	}
+
+	if !found {
+		return fmt.Errorf("relation not found")
+	}
+
+	return nil
+}
+
+func (d *Dataview) SetActiveView(activeView string) {
+	d.content.ActiveView = activeView
+}
+
+func (d *Dataview) SetViewOrder(viewIds []string) {
+	var newViews = make([]*model.BlockContentDataviewView, 0, len(viewIds))
+	for _, viewId := range viewIds {
+		if view, err := d.GetView(viewId); err == nil {
+			newViews = append(newViews, view)
+		}
+	}
+	// if some view not exists in viewIds - add it to end
+	for _, view := range d.content.Views {
+		if slice.FindPos(viewIds, view.Id) == -1 {
+			newViews = append(newViews, view)
+		}
+	}
+	d.content.Views = newViews
+}
+
 func (s *Dataview) GetRelation(relationKey string) (*model.Relation, error) {
 	for _, v := range s.content.Relations {
 		if v.Key == relationKey {
@@ -302,286 +428,4 @@ func (l *Dataview) relationsWithObjectFormat() []string {
 		}
 	}
 	return relationsWithObjFormat
-}
-
-func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
-	for i, view := range l.GetDataview().Views {
-		if view.Id == l.content.ActiveView {
-			return l.GetDataview().Views[i]
-		}
-	}
-
-	return nil
-}
-
-func (l *Dataview) FillSmartIds(ids []string) []string {
-	relationsWithObjFormat := l.relationsWithObjectFormat()
-	activeView := l.getActiveView()
-
-	ids = append(ids, l.GetSource()...)
-	if activeView == nil {
-		// shouldn't be a case
-		return ids
-	}
-
-	for _, filter := range activeView.Filters {
-		if slice.FindPos(relationsWithObjFormat, filter.RelationKey) >= 0 {
-			for _, objId := range pbtypes.GetStringListValue(filter.Value) {
-				if objId != "" && slice.FindPos(ids, objId) == -1 {
-					ids = append(ids, objId)
-				}
-			}
-		}
-	}
-
-	return ids
-}
-
-func (l *Dataview) HasSmartIds() bool {
-	relationsWithObjFormat := l.relationsWithObjectFormat()
-	activeView := l.getActiveView()
-	if len(l.GetSource()) > 0 {
-		return true
-	}
-	if activeView == nil {
-		// shouldn't be a case
-		return false
-	}
-
-	for _, filter := range activeView.Filters {
-		if slice.FindPos(relationsWithObjFormat, filter.RelationKey) >= 0 {
-			if len(pbtypes.GetStringListValue(filter.Value)) > 0 {
-				return true
-			}
-		}
-	}
-
-	return false
-}
-
-func (td *Dataview) ModelToSave() *model.Block {
-	b := pbtypes.CopyBlock(td.Model())
-	for _, rel := range b.Content.(*model.BlockContentOfDataview).Dataview.Relations {
-		// reset all selectDict
-		rel.SelectDict = nil
-	}
-	b.Content.(*model.BlockContentOfDataview).Dataview.ActiveView = ""
-	return b
-}
-
-func (d *Dataview) SetSource(source []string) error {
-	d.content.Source = source
-	return nil
-}
-
-func (d *Dataview) GetSource() []string {
-	return d.content.Source
-}
-
-func (d *Dataview) AddRelation(relation model.Relation) {
-	if relation.Key == "" {
-		relation.Key = bson.NewObjectId().Hex()
-	}
-
-	for i := range relation.SelectDict {
-		if relation.SelectDict[i].Id == "" {
-			relation.SelectDict[i].Id = bson.NewObjectId().Hex()
-		}
-	}
-
-	d.content.Relations = append(d.content.Relations, &relation)
-}
-
-func (d *Dataview) DeleteRelation(relationKey string) error {
-	var found bool
-	for i, r := range d.content.Relations {
-		if r.Key == relationKey {
-			found = true
-			d.content.Relations = append(d.content.Relations[:i], d.content.Relations[i+1:]...)
-			break
-		}
-	}
-
-	for _, view := range d.content.Views {
-		var filteredFilters []*model.BlockContentDataviewFilter
-		for _, filter := range view.Filters {
-			if filter.RelationKey != relationKey {
-				filteredFilters = append(filteredFilters, filter)
-			}
-		}
-		view.Filters = filteredFilters
-
-		var filteredSorts []*model.BlockContentDataviewSort
-		for _, sort := range view.Sorts {
-			if sort.RelationKey != relationKey {
-				filteredSorts = append(filteredSorts, sort)
-			}
-		}
-		view.Sorts = filteredSorts
-	}
-
-	if !found {
-		return fmt.Errorf("relation not found")
-	}
-
-	return nil
-}
-
-func (d *Dataview) DetailsInit(s simple.DetailsService) {
-	//todo: inject setOf
-}
-
-func (d *Dataview) OnDetailsChange(s simple.DetailsService) {
-	// empty
-}
-
-func (d *Dataview) DetailsApply(s simple.DetailsService) {
-
-}
-
-func (d *Dataview) SetActiveView(activeView string) {
-	d.content.ActiveView = activeView
-}
-
-func (d *Dataview) AddRelationOption(relationKey string, option model.RelationOption) error {
-	var relFound *model.Relation
-	for _, rel := range d.content.Relations {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-
-		relFound = pbtypes.CopyRelation(rel)
-		for _, opt := range rel.SelectDict {
-			if option.Id == opt.Id {
-				return fmt.Errorf("option already exists")
-			}
-		}
-		if option.Scope != model.RelationOption_local {
-			return fmt.Errorf("incorrect option scope")
-		}
-		optionCopy := option
-		rel.SelectDict = append(rel.SelectDict, &optionCopy)
-		break
-	}
-
-	if relFound == nil {
-		return fmt.Errorf("relation not found")
-	}
-
-	// add this option with format scope to other dataview relations
-	for _, rel := range d.content.Relations {
-		if rel.Key == relationKey {
-			continue
-		}
-
-		if rel.Format != relFound.Format {
-			continue
-		}
-		optionCopy := option
-
-		optionCopy.Scope = model.RelationOption_format
-		rel.SelectDict = append(rel.SelectDict, &optionCopy)
-	}
-
-	return nil
-}
-
-func (d *Dataview) UpdateRelationOption(relationKey string, option model.RelationOption) error {
-	if option.Scope != model.RelationOption_local {
-		return fmt.Errorf("incorrect option scope")
-	}
-
-	relFound := pbtypes.GetRelation(d.content.Relations, relationKey)
-
-	for _, rel := range d.content.Relations {
-		if rel.Key != relationKey {
-			if relFound.Format != rel.Format {
-				continue
-			}
-			option.Scope = model.RelationOption_format
-		} else {
-			option.Scope = model.RelationOption_local
-		}
-
-		var found bool
-		for i, opt := range rel.SelectDict {
-			if option.Id == opt.Id {
-				optionCopy := option
-				rel.SelectDict[i] = &optionCopy
-				found = true
-				break
-			}
-		}
-
-		if !found && rel.Key != relationKey {
-			rel.SelectDict = append(rel.SelectDict, &option)
-		}
-	}
-	return nil
-}
-
-func (d *Dataview) DeleteRelationOption(relationKey string, optId string) error {
-	for relI, rel := range d.content.Relations {
-		if rel.Key != relationKey {
-			continue
-		}
-		var filtered = make([]*model.RelationOption, 0, len(rel.SelectDict))
-		for optI, opt := range rel.SelectDict {
-			if optId != opt.Id {
-				filtered = append(filtered, rel.SelectDict[optI])
-			}
-		}
-
-		if len(filtered) == len(rel.SelectDict) {
-			return ErrOptionNotExists
-		}
-
-		d.content.Relations[relI].SelectDict = filtered
-		return nil
-	}
-
-	return fmt.Errorf("relation not found")
-}
-
-func (d *Dataview) SetViewOrder(viewIds []string) {
-	var newViews = make([]*model.BlockContentDataviewView, 0, len(viewIds))
-	for _, viewId := range viewIds {
-		if view, err := d.GetView(viewId); err == nil {
-			newViews = append(newViews, view)
-		}
-	}
-	// if some view not exists in viewIds - add it to end
-	for _, view := range d.content.Views {
-		if slice.FindPos(viewIds, view.Id) == -1 {
-			newViews = append(newViews, view)
-		}
-	}
-	d.content.Views = newViews
-}
-
-func mergeSelectOptions(opts1, opts2 []*model.RelationOption) []*model.RelationOption {
-	var opts []*model.RelationOption
-	for _, opt1 := range opts1 {
-		opts = append(opts, &*opt1)
-	}
-
-	for _, opt2 := range opts2 {
-		var found bool
-		for _, opt := range opts {
-			if opt.Id != opt2.Id {
-				continue
-			}
-			opt.Text = opt2.Text
-			opt2.Color = opt2.Color
-			found = true
-		}
-
-		if !found {
-			opts = append(opts, &*opt2)
-		}
-	}
-	return opts
 }

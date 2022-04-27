@@ -711,8 +711,8 @@ func (s *State) StringDebug() string {
 	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
 	fmt.Fprintf(buf, "ObjectTypes: %v\n", s.ObjectTypes())
 	fmt.Fprintf(buf, "Relations:\n")
-	for _, rel := range s.ExtraRelations() {
-		fmt.Fprintf(buf, "\t%v\n", rel.Key)
+	for _, rel := range s.relationIds {
+		fmt.Fprintf(buf, "\t%v\n", rel)
 	}
 
 	fmt.Fprintf(buf, "\nDetails:\n")
@@ -806,6 +806,7 @@ func (s *State) SetDetail(key string, value *types.Value) {
 	return
 }
 
+// deprecated
 func (s *State) SetExtraRelation(rel *model.Relation) {
 	if s.extraRelations == nil && s.parent != nil {
 		s.extraRelations = pbtypes.CopyRelations(s.parent.ExtraRelations())
@@ -1589,6 +1590,37 @@ func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 
 func (s *State) SetContext(context *Context) {
 	s.ctx = context
+}
+
+func (s *State) AddRelationIds(ids ...string) {
+	relIds := slice.Copy(s.GetRelationIds())
+	for _, id := range ids {
+		if slice.FindPos(relIds, id) == -1 {
+			relIds = append(relIds, id)
+		}
+	}
+	s.relationIds = relIds
+}
+
+func (s *State) GetRelationIds() []string {
+	if s.relationIds != nil {
+		return s.relationIds
+	}
+	if s.parent != nil {
+		return s.parent.relationIds
+	}
+	return nil
+}
+
+func (s *State) RemoveRelation(id string) (ok bool) {
+	if s.relationIds == nil {
+		s.relationIds = slice.Copy(s.GetRelationIds())
+	}
+	if slice.FindPos(s.relationIds, id) != -1 {
+		s.relationIds = slice.Remove(s.relationIds, id)
+		return true
+	}
+	return false
 }
 
 type linkSource interface {

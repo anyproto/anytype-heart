@@ -133,11 +133,11 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockDataviewRelationSet:
-		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
-			if f, ok := b.(dataview.Block); ok && o.BlockDataviewRelationSet.Relation != nil {
-				if er := f.UpdateRelation(o.BlockDataviewRelationSet.RelationKey, *o.BlockDataviewRelationSet.Relation); er == dataview.ErrRelationNotFound {
-					f.AddRelation(*o.BlockDataviewRelationSet.Relation)
+	case *pb.EventMessageValueOfBlockDataviewOldRelationSet:
+		if err = apply(o.BlockDataviewOldRelationSet.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok && o.BlockDataviewOldRelationSet.Relation != nil {
+				if er := f.UpdateRelation(o.BlockDataviewOldRelationSet.RelationKey, *o.BlockDataviewOldRelationSet.Relation); er == dataview.ErrRelationNotFound {
+					f.AddRelationOld(*o.BlockDataviewOldRelationSet.Relation)
 				} else {
 					return er
 				}
@@ -146,10 +146,22 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockDataviewRelationDelete:
-		if err = apply(o.BlockDataviewRelationDelete.Id, func(b simple.Block) error {
+	case *pb.EventMessageValueOfBlockDataviewOldRelationDelete:
+		if err = apply(o.BlockDataviewOldRelationDelete.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				return f.DeleteRelation(o.BlockDataviewRelationDelete.RelationKey)
+				return f.DeleteRelationOld(o.BlockDataviewOldRelationDelete.RelationKey)
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
+	case *pb.EventMessageValueOfBlockDataviewRelationSet:
+		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				for _, relId := range o.BlockDataviewRelationSet.RelationIds {
+					f.DeleteRelation(relId, "")
+				}
+				return nil
 			}
 			return fmt.Errorf("not a dataview block")
 		}); err != nil {
@@ -220,7 +232,7 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys [
 				ObjectDetailsAmend: &pb.EventObjectDetailsAmend{
 					Id:      contextId,
 					Details: details,
-					SubIds: subIds,
+					SubIds:  subIds,
 				},
 			},
 		})
@@ -229,8 +241,8 @@ func StructDiffIntoEventsWithSubIds(contextId string, diff *types.Struct, keys [
 		msgs = append(msgs, &pb.EventMessage{
 			Value: &pb.EventMessageValueOfObjectDetailsUnset{
 				ObjectDetailsUnset: &pb.EventObjectDetailsUnset{
-					Id:   contextId,
-					Keys: removed,
+					Id:     contextId,
+					Keys:   removed,
 					SubIds: subIds,
 				},
 			},

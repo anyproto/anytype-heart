@@ -258,9 +258,10 @@ message Block {
         message Dataview {
             repeated string source = 1;
             repeated View views = 2;
-            // index 3 is deprecated, was used for schemaURL in old-format sets
+            // deprecated
             repeated model.Relation relations = 4;
             string activeView = 3; // saved within a session
+            repeated string relationIds = 5;
 
             message View {
                 string id = 1;

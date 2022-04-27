@@ -87,6 +87,16 @@
     "source": "details"
   },
   {
+    "description": "Relation key",
+    "format": "shorttext",
+    "hidden": true,
+    "key": "relationKey",
+    "maxCount": 1,
+    "name": "Relation key",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "instructions",

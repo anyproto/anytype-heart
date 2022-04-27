@@ -3,7 +3,6 @@ package editor
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	dataview "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -17,7 +16,7 @@ import (
 
 var ErrAlreadyHasDataviewBlock = fmt.Errorf("already has the dataview block")
 
-func NewSet(dbCtrl database.Ctrl) *Set {
+func NewSet() *Set {
 	sb := &Set{
 		SmartBlock: smartblock.New(),
 	}
@@ -25,7 +24,6 @@ func NewSet(dbCtrl database.Ctrl) *Set {
 	sb.Basic = basic.NewBasic(sb)
 	sb.IHistory = basic.NewHistory(sb)
 	sb.Dataview = dataview.NewDataview(sb)
-	sb.Router = database.New(dbCtrl)
 	sb.Text = stext.NewText(sb)
 	return sb
 }
@@ -35,7 +33,6 @@ type Set struct {
 	basic.Basic
 	basic.IHistory
 	dataview.Dataview
-	database.Router
 	stext.Text
 }
 

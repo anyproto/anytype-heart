@@ -1,7 +1,6 @@
 package editor
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/database"
 	dataview2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/dataview"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
@@ -16,9 +15,9 @@ type ObjectType struct {
 	*Set
 }
 
-func NewObjectType(dbCtrl database.Ctrl) *ObjectType {
+func NewObjectType() *ObjectType {
 	return &ObjectType{
-		Set: NewSet(dbCtrl),
+		Set: NewSet(),
 	}
 }
 

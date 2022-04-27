@@ -1,17 +1,13 @@
 package dataview
 
 import (
-	"context"
 	"fmt"
-	"strings"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	smartblock2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 
-	blockDB "github.com/anytypeio/go-anytype-middleware/core/block/database"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -44,15 +40,8 @@ type Dataview interface {
 	SetActiveView(ctx *state.Context, blockId string, activeViewId string, limit int, offset int) error
 	CreateView(ctx *state.Context, blockId string, view model.BlockContentDataviewView) (*model.BlockContentDataviewView, error)
 	SetViewPosition(ctx *state.Context, blockId string, viewId string, position uint32) error
-	AddRelation(ctx *state.Context, blockId string, relation model.Relation, showEvent bool) (*model.Relation, error)
-	DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error
-	UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error
-	AddRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error)
-	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
-	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
-	FillAggregatedOptions(ctx *state.Context) error
-
-	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
+	AddRelation(ctx *state.Context, blockId, relationId string, showEvent bool) error
+	DeleteRelation(ctx *state.Context, blockId, relationId string, showEvent bool) error
 }
 
 func NewDataview(sb smartblock.SmartBlock) Dataview {
@@ -104,52 +93,24 @@ func (d *sdataview) SetSource(ctx *state.Context, blockId string, source []strin
 	return d.Apply(s, smartblock.NoRestrictions)
 }
 
-func (d *sdataview) AddRelation(ctx *state.Context, blockId string, relation model.Relation, showEvent bool) (*model.Relation, error) {
+func (d *sdataview) AddRelation(ctx *state.Context, blockId string, relationId string, showEvent bool) (err error) {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
-		return nil, err
+		return
 	}
-
-	if relation.Key == "" {
-		relation.Creator = d.Anytype().ProfileID()
-		relation.Key = bson.NewObjectId().Hex()
-	} else {
-		existingRelation, err := d.Anytype().ObjectStore().GetRelation(relation.Key)
-		if err != nil {
-			log.Errorf("existingRelation failed to get: %s", err.Error())
-		}
-
-		if existingRelation != nil && (relation.ReadOnlyRelation || relation.Name == "") {
-			relation = *existingRelation
-		} else if existingRelation != nil && !pbtypes.RelationCompatible(existingRelation, &relation) {
-			return nil, fmt.Errorf("provided relation not compatible with the same-key existing aggregated relation")
-		}
-	}
-
-	if relation.Format == model.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
-	}
-
-	// reset SelectDict because it is supposed to be aggregated and injected on-the-fly
-	relation.SelectDict = nil
-	tb.AddRelation(relation)
-	err = d.Apply(s)
-	if err != nil {
-		return nil, err
-	}
-
-	return &relation, nil
+	tb.AddRelation(relationId)
+	return d.Apply(s)
 }
 
-func (d *sdataview) DeleteRelation(ctx *state.Context, blockId string, relationKey string, showEvent bool) error {
+func (d *sdataview) DeleteRelation(ctx *state.Context, blockId string, relationId string, showEvent bool) error {
 	s := d.NewStateCtx(ctx)
 	tb, err := getDataviewBlock(s, blockId)
 	if err != nil {
 		return err
 	}
 
-	if err = tb.DeleteRelation(relationKey); err != nil {
+	if err = tb.DeleteRelation(relationId, ""); err != nil {
 		return err
 	}
 
@@ -157,224 +118,6 @@ func (d *sdataview) DeleteRelation(ctx *state.Context, blockId string, relationK
 		return d.Apply(s)
 	}
 	return d.Apply(s, smartblock.NoEvent)
-}
-
-func (d *sdataview) UpdateRelation(ctx *state.Context, blockId string, relationKey string, relation model.Relation, showEvent bool) error {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
-	if err != nil {
-		return err
-	}
-
-	ot := d.getObjectTypeSource(tb)
-	if relation.Format == model.RelationFormat_file && relation.ObjectTypes == nil {
-		relation.ObjectTypes = bundle.FormatFilePossibleTargetObjectTypes
-	}
-
-	ex, _ := tb.GetRelation(relationKey)
-	if ex != nil {
-		if ex.Format != relation.Format {
-			return fmt.Errorf("changing format of existing relation is retricted")
-		}
-		if ex.DataSource != relation.DataSource {
-			return fmt.Errorf("changing data source of existing relation is retricted")
-		}
-
-		if ex.Hidden != relation.Hidden {
-			return fmt.Errorf("changing hidden flag of existing relation is retricted")
-		}
-	}
-
-	if relation.Format == model.RelationFormat_status || relation.Format == model.RelationFormat_tag {
-		// reinject relation options
-		options, err := d.Anytype().ObjectStore().GetAggregatedOptions(relationKey, ot)
-		if err != nil {
-			log.Errorf("failed to GetAggregatedOptionsForRelation %s", err.Error())
-		} else {
-			relation.SelectDict = options
-		}
-	}
-
-	if err = tb.UpdateRelation(relationKey, relation); err != nil {
-		return err
-	}
-	if showEvent {
-		err = d.Apply(s)
-	} else {
-		err = d.Apply(s, smartblock.NoEvent)
-	}
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// AddRelationOption adds a new option to the select dict. It returns existing option for the relation key in case there is a one with the same text
-func (d *sdataview) AddRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
-	if err != nil {
-		return nil, err
-	}
-
-	var db database.Database
-	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-		return nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(nil); err != nil {
-		return nil, err
-	} else {
-		db = target
-	}
-
-	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
-	if rel == nil {
-		return nil, fmt.Errorf("relation not found in dataview")
-	}
-	err = db.Update(recordId, []*model.Relation{rel}, database.Record{})
-	if err != nil {
-		return nil, err
-	}
-
-	if option.Id == "" {
-		existingOptions, err := d.Anytype().ObjectStore().GetAggregatedOptions(rel.Key, s.ObjectType())
-		if err != nil {
-			log.Errorf("failed to get existing aggregated options: %s", err.Error())
-		} else {
-			for _, exOpt := range existingOptions {
-				if strings.EqualFold(exOpt.Text, option.Text) {
-					option.Id = exOpt.Id
-					option.Color = exOpt.Color
-					break
-				}
-			}
-		}
-	}
-
-	optionId, err := db.UpdateRelationOption(recordId, relationKey, option)
-	if err != nil {
-		return nil, err
-	}
-
-	option.Id = optionId
-	err = tb.AddRelationOption(relationKey, option)
-	if err != nil {
-		return nil, err
-	}
-
-	if showEvent {
-		err = d.Apply(s)
-	} else {
-		err = d.Apply(s, smartblock.NoEvent)
-	}
-
-	return &option, err
-}
-
-func (d *sdataview) UpdateRelationOption(ctx *state.Context, blockId, recordId string, relationKey string, option model.RelationOption, showEvent bool) error {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
-	if err != nil {
-		return err
-	}
-
-	var db database.Database
-	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(nil); err != nil {
-		return err
-	} else {
-		db = target
-	}
-
-	if option.Id == "" {
-		return fmt.Errorf("option id is empty")
-	}
-
-	err = tb.UpdateRelationOption(relationKey, option)
-	if err != nil {
-		log.Errorf("UpdateRelationOption error: %s", err.Error())
-		return err
-	}
-
-	if showEvent {
-		err = d.Apply(s)
-	} else {
-		err = d.Apply(s, smartblock.NoEvent)
-	}
-
-	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
-	if rel == nil {
-		return fmt.Errorf("relation not found in dataview")
-	}
-
-	return db.Update(recordId, []*model.Relation{rel}, database.Record{})
-}
-
-func (d *sdataview) DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId, recordId string, relationKey string, optionId string, showEvent bool) error {
-	s := d.NewStateCtx(ctx)
-	tb, err := getDataviewBlock(s, blockId)
-	if err != nil {
-		return err
-	}
-
-	var db database.Database
-	if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-		return fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-	} else if target, err := dbRouter.Get(nil); err != nil {
-		return err
-	} else {
-		db = target
-	}
-
-	if optionId == "" {
-		return fmt.Errorf("option id is empty")
-	}
-
-	objIds, err := db.AggregateObjectIdsForOptionAndRelation(relationKey, optionId)
-	if err != nil {
-		return err
-	}
-
-	if len(objIds) > 1 && !allowMultiupdate {
-		return ErrMultiupdateWasNotAllowed
-	}
-
-	if slice.FindPos(objIds, recordId) == -1 {
-		// just in case we have some indexing lag
-		objIds = append(objIds, recordId)
-	}
-
-	err = tb.DeleteRelationOption(relationKey, optionId)
-	if err != nil {
-		return err
-	}
-
-	rel := pbtypes.GetRelation(tb.Model().GetDataview().Relations, relationKey)
-	if rel == nil {
-		return fmt.Errorf("relation not found in dataview")
-	}
-
-	for _, objId := range objIds {
-		err = db.DeleteRelationOption(objId, relationKey, optionId)
-		if err != nil {
-			if objId != recordId {
-				// not sure if it is a right approach here, but we may face some ACL problems later otherwise
-				log.Errorf("DeleteRelationOption failed to multiupdate %s: %s", objId, err.Error())
-			} else {
-				return err
-			}
-		}
-		log.Debugf("DeleteRelationOption updated %s", objId)
-	}
-
-	if showEvent {
-		err = d.Apply(s)
-	} else {
-		err = d.Apply(s, smartblock.NoEvent)
-	}
-
-	return nil
 }
 
 func (d *sdataview) GetAggregatedRelations(blockId string) ([]*model.Relation, error) {
@@ -586,53 +329,6 @@ func (d *sdataview) CreateView(ctx *state.Context, id string, view model.BlockCo
 	}
 	tb.AddView(view)
 	return &view, d.Apply(s)
-}
-
-func (d *sdataview) CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error) {
-	dvBlock, db, err := d.getDatabase(blockId)
-	if err != nil {
-		return nil, err
-	}
-	if defaultRecordFields := pbtypes.GetStruct(dvBlock.Model().Fields, DefaultDetailsFieldName); defaultRecordFields != nil && defaultRecordFields.Fields != nil {
-		if rec.Details == nil || rec.Details.Fields == nil {
-			rec.Details = defaultRecordFields
-		} else {
-			for k, v := range defaultRecordFields.Fields {
-				if !pbtypes.HasField(rec.Details, k) {
-					rec.Details.Fields[k] = pbtypes.CopyVal(v)
-				}
-			}
-		}
-	}
-	callerCtx := context.WithValue(context.Background(), smartblock.CallerKey, d.Id())
-	created, err := db.Create(callerCtx, dvBlock.Model().GetDataview().Relations, database.Record{Details: rec.Details}, nil, templateId)
-	if err != nil {
-		return nil, err
-	}
-
-	return &model.ObjectDetails{Details: created.Details}, nil
-}
-
-func (d *sdataview) getDatabase(blockId string) (dataview.Block, database.Database, error) {
-	if dvBlock, ok := d.Pick(blockId).(dataview.Block); !ok {
-		return nil, nil, fmt.Errorf("not a dataview block")
-	} else {
-		sch, err := d.getSchema(dvBlock)
-		if err != nil {
-			return nil, nil, err
-		}
-
-		var db database.Database
-		if dbRouter, ok := d.SmartBlock.(blockDB.Router); !ok {
-			return nil, nil, fmt.Errorf("unexpected smart block type: %T", d.SmartBlock)
-		} else if target, err := dbRouter.Get(sch.ObjectType()); err != nil {
-			return nil, nil, err
-		} else {
-			db = target
-		}
-
-		return dvBlock, db, nil
-	}
 }
 
 func (d *sdataview) FillAggregatedOptions(ctx *state.Context) error {
