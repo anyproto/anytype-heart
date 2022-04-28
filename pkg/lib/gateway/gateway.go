@@ -96,12 +96,6 @@ func (g *gateway) Run() error {
 		Handler: handler,
 	}
 
-	fmt.Println(" --------------- START SERVER --------------- ", g.addr)
-
-	g.server.RegisterOnShutdown(func() {
-		g.server = nil
-	})
-
 	handler.HandleFunc("/file/", g.fileHandler)
 	handler.HandleFunc("/image/", g.imageHandler)
 
@@ -131,6 +125,7 @@ func (g *gateway) Run() error {
 				}
 
 				if !ok {
+					g.server = nil
 					log.Info("gateway was shutdown")
 					return
 				}
