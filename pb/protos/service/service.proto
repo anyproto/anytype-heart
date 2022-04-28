@@ -175,9 +175,9 @@ service ClientCommands {
     rpc BlockDataviewRecordCreate (anytype.Rpc.BlockDataviewRecord.Create.Request) returns (anytype.Rpc.BlockDataviewRecord.Create.Response);
     rpc BlockDataviewRecordUpdate (anytype.Rpc.BlockDataviewRecord.Update.Request) returns (anytype.Rpc.BlockDataviewRecord.Update.Response);
     rpc BlockDataviewRecordDelete (anytype.Rpc.BlockDataviewRecord.Delete.Request) returns (anytype.Rpc.BlockDataviewRecord.Delete.Response);
-    rpc BlockDataviewRecordAddRelationOption (anytype.Rpc.BlockDataviewRecord.RelationOption.Add.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Add.Response);
-    rpc BlockDataviewRecordUpdateRelationOption (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Response);
-    rpc BlockDataviewRecordDeleteRelationOption (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Response);
+    rpc BlockDataviewRecordRelationOptionAdd (anytype.Rpc.BlockDataviewRecord.RelationOption.Add.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Add.Response);
+    rpc BlockDataviewRecordRelationOptionUpdate (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Response);
+    rpc BlockDataviewRecordRelationOptionDelete (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Response);
 
     // Other specific block commands
     // ***
