@@ -507,7 +507,9 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
 		mw.app.MustComponent("blockService").(block.Service).CloseBlocks()
-		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
+		acc := &model.Account{Id: req.Id}
+		acc.Info = mw.getInfo()
+		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 	}
 
 	// in case user selected account other than the first one(used to perform search)
