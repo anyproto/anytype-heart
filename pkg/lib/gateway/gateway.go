@@ -3,11 +3,13 @@ package gateway
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pb"
 	"net"
 	"net/http"
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -29,12 +31,14 @@ func New() Gateway {
 type Gateway interface {
 	Addr() string
 	app.ComponentRunnable
+	app.ComponentStatable
 }
 
 type gateway struct {
 	Node   core.Service
 	server *http.Server
 	addr   string
+	mu     sync.Mutex
 }
 
 func getRandomPort() (int, error) {
@@ -78,6 +82,9 @@ func (g *gateway) Name() string {
 }
 
 func (g *gateway) Run() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if g.server != nil {
 		return fmt.Errorf("gateway already started")
 	}
@@ -88,6 +95,12 @@ func (g *gateway) Run() error {
 		Addr:    g.addr,
 		Handler: handler,
 	}
+
+	fmt.Println(" --------------- START SERVER --------------- ", g.addr)
+
+	g.server.RegisterOnShutdown(func() {
+		g.server = nil
+	})
 
 	handler.HandleFunc("/file/", g.fileHandler)
 	handler.HandleFunc("/image/", g.imageHandler)
@@ -131,6 +144,9 @@ func (g *gateway) Run() error {
 
 // Close stops the gateway
 func (g *gateway) Close() error {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+
 	if g.server == nil {
 		// not running
 		return nil
@@ -144,6 +160,19 @@ func (g *gateway) Close() error {
 // Addr returns the gateway's address
 func (g *gateway) Addr() string {
 	return g.addr
+}
+
+func (g *gateway) StateChange(state int) {
+	switch pb.RpcDeviceStateRequestDeviceState(state) {
+	case pb.RpcDeviceStateRequest_FOREGROUND_ACTIVE:
+		if err := g.Run(); err != nil {
+			log.Errorf("err gateway start: %+v", err)
+		}
+	case pb.RpcDeviceStateRequest_SUSPENDED:
+		if err := g.Close(); err != nil {
+			log.Errorf("err gateway close: %+v", err)
+		}
+	}
 }
 
 func enableCors(w http.ResponseWriter) {

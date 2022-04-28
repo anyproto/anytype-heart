@@ -2663,6 +2663,37 @@ message Rpc {
         }
     }
 
+    message DeviceState {
+        message Request {
+            DeviceState deviceState = 1;
+
+            enum DeviceState {
+                SUSPENDED = 0;
+                FOREGROUND_ACTIVE = 1;
+                FOREGROUND_INACTIVE = 2;
+                BACKGROUND = 3;
+                UNATTACHED = 4;
+            }
+        }
+
+        message Response {
+            Error error = 1;
+
+            message Error {
+                Code code = 1;
+                string description = 2;
+                enum Code {
+                    NULL = 0;
+                    UNKNOWN_ERROR = 1;
+                    BAD_INPUT = 2;
+
+                    NODE_NOT_STARTED = 101;
+                }
+            }
+
+        }
+    }
+
     message Config {
         message Get {
             message Request {
