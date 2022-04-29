@@ -17067,10 +17067,8 @@ scope from which this relation have been aggregated |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| verySmall | 0 |  |
-| small | 1 |  |
-| medium | 2 |  |
-| large | 3 |  |
+| Small | 0 |  |
+| Medium | 1 |  |
 
 
 
