@@ -198,8 +198,13 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 			req.DropTargetId = template.HeaderLayoutId
 		}
 	}
+
+	var replacementCandidate simple.Block
 	for _, id := range req.BlockIds {
 		if b := s.Pick(id); b != nil {
+			if replacementCandidate == nil {
+				replacementCandidate = s.Get(id)
+			}
 			s.Unlink(id)
 		}
 	}
@@ -209,9 +214,22 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 		return fmt.Errorf("target block not found")
 	}
 
-	if content, ok := target.Model().Content.(*model.BlockContentOfText); ok {
-		if content.Text == nil || content.Text.Text == "" {
+	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
+		if targetContent.Text.Style == model.BlockContentText_Paragraph && targetContent.Text.Text == "" {
+
 			req.Position = model.Block_Replace
+
+			if replacementCandidate != nil {
+				if replacementCandidate.Model().BackgroundColor == "" {
+					replacementCandidate.Model().BackgroundColor = target.Model().BackgroundColor
+				}
+			}
+
+			if replacementContent, ok := replacementCandidate.Model().Content.(*model.BlockContentOfText); ok {
+				if replacementContent.Text.Color == "" {
+					replacementContent.Text.Color = targetContent.Text.Color
+				}
+			}
 		}
 	}
 
