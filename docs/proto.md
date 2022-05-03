@@ -446,6 +446,10 @@
     - [Rpc.Object.ListDelete.Request](#anytype.Rpc.Object.ListDelete.Request)
     - [Rpc.Object.ListDelete.Response](#anytype.Rpc.Object.ListDelete.Response)
     - [Rpc.Object.ListDelete.Response.Error](#anytype.Rpc.Object.ListDelete.Response.Error)
+    - [Rpc.Object.ListDuplicate](#anytype.Rpc.Object.ListDuplicate)
+    - [Rpc.Object.ListDuplicate.Request](#anytype.Rpc.Object.ListDuplicate.Request)
+    - [Rpc.Object.ListDuplicate.Response](#anytype.Rpc.Object.ListDuplicate.Response)
+    - [Rpc.Object.ListDuplicate.Response.Error](#anytype.Rpc.Object.ListDuplicate.Response.Error)
     - [Rpc.Object.ListExport](#anytype.Rpc.Object.ListExport)
     - [Rpc.Object.ListExport.Request](#anytype.Rpc.Object.ListExport.Request)
     - [Rpc.Object.ListExport.Response](#anytype.Rpc.Object.ListExport.Response)
@@ -761,6 +765,7 @@
     - [Rpc.Object.Graph.Response.Error.Code](#anytype.Rpc.Object.Graph.Response.Error.Code)
     - [Rpc.Object.ImportMarkdown.Response.Error.Code](#anytype.Rpc.Object.ImportMarkdown.Response.Error.Code)
     - [Rpc.Object.ListDelete.Response.Error.Code](#anytype.Rpc.Object.ListDelete.Response.Error.Code)
+    - [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype.Rpc.Object.ListDuplicate.Response.Error.Code)
     - [Rpc.Object.ListExport.Format](#anytype.Rpc.Object.ListExport.Format)
     - [Rpc.Object.ListExport.Response.Error.Code](#anytype.Rpc.Object.ListExport.Response.Error.Code)
     - [Rpc.Object.ListSetIsArchived.Response.Error.Code](#anytype.Rpc.Object.ListSetIsArchived.Response.Error.Code)
@@ -1101,6 +1106,7 @@
 | ObjectSetLayout | [Rpc.Object.SetLayout.Request](#anytype.Rpc.Object.SetLayout.Request) | [Rpc.Object.SetLayout.Response](#anytype.Rpc.Object.SetLayout.Response) |  |
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request) | [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
+| ObjectListDuplicate | [Rpc.Object.ListDuplicate.Request](#anytype.Rpc.Object.ListDuplicate.Request) | [Rpc.Object.ListDuplicate.Response](#anytype.Rpc.Object.ListDuplicate.Response) |  |
 | ObjectListDelete | [Rpc.Object.ListDelete.Request](#anytype.Rpc.Object.ListDelete.Request) | [Rpc.Object.ListDelete.Response](#anytype.Rpc.Object.ListDelete.Response) |  |
 | ObjectListSetIsArchived | [Rpc.Object.ListSetIsArchived.Request](#anytype.Rpc.Object.ListSetIsArchived.Request) | [Rpc.Object.ListSetIsArchived.Response](#anytype.Rpc.Object.ListSetIsArchived.Response) |  |
 | ObjectListSetIsFavorite | [Rpc.Object.ListSetIsFavorite.Request](#anytype.Rpc.Object.ListSetIsFavorite.Request) | [Rpc.Object.ListSetIsFavorite.Response](#anytype.Rpc.Object.ListSetIsFavorite.Response) |  |
@@ -7675,6 +7681,63 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype.Rpc.Object.ListDuplicate"></a>
+
+### Rpc.Object.ListDuplicate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ListDuplicate.Request"></a>
+
+### Rpc.Object.ListDuplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ListDuplicate.Response"></a>
+
+### Rpc.Object.ListDuplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ListDuplicate.Response.Error](#anytype.Rpc.Object.ListDuplicate.Response.Error) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Object.ListDuplicate.Response.Error"></a>
+
+### Rpc.Object.ListDuplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ListDuplicate.Response.Error.Code](#anytype.Rpc.Object.ListDuplicate.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.Object.ListExport"></a>
 
 ### Rpc.Object.ListExport
@@ -12087,6 +12150,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.Object.ListDelete.Response.Error.Code"></a>
 
 ### Rpc.Object.ListDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.Object.ListDuplicate.Response.Error.Code"></a>
+
+### Rpc.Object.ListDuplicate.Response.Error.Code
 
 
 | Name | Number | Description |

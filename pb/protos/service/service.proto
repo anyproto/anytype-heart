@@ -53,6 +53,7 @@ service ClientCommands {
     rpc ObjectSetLayout (anytype.Rpc.Object.SetLayout.Request) returns (anytype.Rpc.Object.SetLayout.Response);
     rpc ObjectSetIsFavorite (anytype.Rpc.Object.SetIsFavorite.Request) returns (anytype.Rpc.Object.SetIsFavorite.Response);
     rpc ObjectSetIsArchived (anytype.Rpc.Object.SetIsArchived.Request) returns (anytype.Rpc.Object.SetIsArchived.Response);
+    rpc ObjectListDuplicate (anytype.Rpc.Object.ListDuplicate.Request) returns (anytype.Rpc.Object.ListDuplicate.Response);
     rpc ObjectListDelete (anytype.Rpc.Object.ListDelete.Request) returns (anytype.Rpc.Object.ListDelete.Response);
     rpc ObjectListSetIsArchived (anytype.Rpc.Object.ListSetIsArchived.Request) returns (anytype.Rpc.Object.ListSetIsArchived.Response);
     rpc ObjectListSetIsFavorite (anytype.Rpc.Object.ListSetIsFavorite.Request) returns (anytype.Rpc.Object.ListSetIsFavorite.Response);
