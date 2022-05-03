@@ -34,6 +34,7 @@ type Block interface {
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetLink) error
 	ToText(targetDetails *types.Struct) simple.Block
+	SetAppearance(content *model.BlockContentLink) error
 }
 
 type Link struct {
@@ -53,6 +54,14 @@ func (l *Link) Validate() error {
 	if l.content.TargetBlockId == "" {
 		return fmt.Errorf("targetBlockId is empty")
 	}
+	return nil
+}
+
+func (l *Link) SetAppearance(content *model.BlockContentLink) error {
+	l.content.IconSize = content.IconSize
+	l.content.CardStyle = content.CardStyle
+	l.content.Description = content.Description
+	l.content.Relations = content.Relations
 	return nil
 }
 
