@@ -12625,11 +12625,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| SUSPENDED | 0 |  |
-| FOREGROUND_ACTIVE | 1 |  |
-| FOREGROUND_INACTIVE | 2 |  |
-| BACKGROUND | 3 |  |
-| UNATTACHED | 4 |  |
+| BACKGROUND | 0 |  |
+| FOREGROUND | 1 |  |
 
 
 
