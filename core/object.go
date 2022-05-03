@@ -56,12 +56,15 @@ func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.Rpc
 		}
 		return m
 	}
-	var objectId string
+	var objectIds []string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		objectId, err = bs.ObjectDuplicate(req.ContextId)
+		objectIds, err = bs.ObjectsDuplicate([]string{req.ContextId})
 		return
 	})
-	return response(objectId, err)
+	if len(objectIds) == 0 {
+		return response("", err)
+	}
+	return response(objectIds[0], err)
 }
 
 func (mw *Middleware) ObjectListDuplicate(req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {

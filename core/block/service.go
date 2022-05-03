@@ -208,7 +208,6 @@ type Service interface {
 	TemplateCreateFromObjectByObjectType(otId string) (templateId string, err error)
 	TemplateClone(id string) (templateId string, err error)
 	ObjectsDuplicate(ids []string) (newIds []string, err error)
-	ApplyTemplate(contextId, templateId string) error
 	ObjectApplyTemplate(contextId, templateId string) error
 
 	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
