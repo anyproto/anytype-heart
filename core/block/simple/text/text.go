@@ -168,6 +168,13 @@ func (t *Text) SetIconImage(imageHash string) {
 	t.content.IconImage = imageHash
 }
 
+func (t *Text) FillFileHashes(hashes []string) []string {
+	if h := t.content.IconImage; h != "" {
+		return append(hashes, h)
+	}
+	return hashes
+}
+
 func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
 	mRange := &model.Range{
 		To: int32(utf8.RuneCountInString(t.content.Text)),

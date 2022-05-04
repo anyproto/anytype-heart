@@ -15,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -1462,12 +1461,6 @@ func getChangedFileHashes(s *state.State, fileDetailKeys []string, act undo.Acti
 	for _, eb := range act.Change {
 		if fh, ok := eb.After.(simple.FileHashes); ok {
 			hashes = fh.FillFileHashes(hashes)
-		}
-
-		if t, ok := eb.After.(*text.Text); ok {
-			if hash := t.Model().GetText().GetIconImage(); hash != "" {
-				hashes = append(hashes, hash)
-			}
 		}
 	}
 	if act.Details != nil {
