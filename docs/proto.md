@@ -509,7 +509,6 @@
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error](#anytype-Rpc-Object-FeaturedRelation-Remove-Response-Error)
     - [Rpc.Object.Graph](#anytype-Rpc-Object-Graph)
     - [Rpc.Object.Graph.Edge](#anytype-Rpc-Object-Graph-Edge)
-    - [Rpc.Object.Graph.Node](#anytype-Rpc-Object-Graph-Node)
     - [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request)
     - [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response)
     - [Rpc.Object.Graph.Response.Error](#anytype-Rpc-Object-Graph-Response-Error)
@@ -8650,30 +8649,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype-Rpc-Object-Graph-Node"></a>
-
-### Rpc.Object.Graph.Node
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| layout | [int32](#int32) |  |  |
-| description | [string](#string) |  |  |
-| iconImage | [string](#string) |  |  |
-| iconEmoji | [string](#string) |  |  |
-| done | [bool](#bool) |  |  |
-| relationFormat | [int32](#int32) |  |  |
-| snippet | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype-Rpc-Object-Graph-Request"></a>
 
 ### Rpc.Object.Graph.Request
@@ -8701,9 +8676,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Graph.Response.Error](#anytype-Rpc-Object-Graph-Response-Error) |  |  |
-| nodes | [Rpc.Object.Graph.Node](#anytype-Rpc-Object-Graph-Node) | repeated |  |
+| nodes | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
 | edges | [Rpc.Object.Graph.Edge](#anytype-Rpc-Object-Graph-Edge) | repeated |  |
-| detailsNodes | [google.protobuf.Struct](#google-protobuf-Struct) | repeated |  |
 
 
 

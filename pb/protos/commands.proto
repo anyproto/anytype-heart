@@ -3415,19 +3415,6 @@ message Rpc {
                 repeated string keys = 4;
             }
 
-            message Node {
-                string id = 1;
-                string type = 2;
-                string name = 3;
-                int32 layout = 4;
-                string description = 5;
-                string iconImage = 6;
-                string iconEmoji = 7;
-                bool done = 8;
-                int32 relationFormat = 9;
-                string snippet = 10;
-            }
-
             message Edge {
                 enum Type {
                     Link = 0;
@@ -3445,9 +3432,8 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                repeated Node nodes = 2;
+                repeated google.protobuf.Struct nodes = 2;
                 repeated Edge edges = 3;
-                repeated google.protobuf.Struct detailsNodes = 4;
 
                 message Error {
                     Code code = 1;

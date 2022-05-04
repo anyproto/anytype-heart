@@ -246,8 +246,8 @@ func (mw *Middleware) ObjectSearchUnsubscribe(req *pb.RpcObjectSearchUnsubscribe
 }
 
 func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGraphResponse {
-	response := func(code pb.RpcObjectGraphResponseErrorCode, nodes []*pb.RpcObjectGraphNode, edges []*pb.RpcObjectGraphEdge, detailNodes []*types.Struct, err error) *pb.RpcObjectGraphResponse {
-		m := &pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: code}, Nodes: nodes, Edges: edges, DetailsNodes: detailNodes}
+	response := func(code pb.RpcObjectGraphResponseErrorCode, nodes []*types.Struct, edges []*pb.RpcObjectGraphEdge, err error) *pb.RpcObjectGraphResponse {
+		m := &pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: code}, Nodes: nodes, Edges: edges}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -259,7 +259,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 	defer mw.m.RUnlock()
 
 	if mw.app == nil {
-		return response(pb.RpcObjectGraphResponseError_BAD_INPUT, nil, nil, nil, fmt.Errorf("account must be started"))
+		return response(pb.RpcObjectGraphResponseError_BAD_INPUT, nil, nil, fmt.Errorf("account must be started"))
 	}
 
 	at := mw.app.MustComponent(core.CName).(core.Service)
@@ -270,11 +270,10 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 		ObjectTypeFilter: req.ObjectTypeFilter,
 	})
 	if err != nil {
-		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, nil, err)
+		return response(pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, nil, nil, err)
 	}
 
-	var nodes = make([]*pb.RpcObjectGraphNode, 0, len(records))
-	var detailsNodes = make([]*types.Struct, 0, len(records))
+	var nodes = make([]*types.Struct, 0, len(records))
 	var edges = make([]*pb.RpcObjectGraphEdge, 0, len(records)*2)
 	var nodeExists = make(map[string]struct{}, len(records))
 
@@ -296,20 +295,8 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 
 	for _, rec := range records {
 		id := pbtypes.GetString(rec.Details, bundle.RelationKeyId.String())
-		nodes = append(nodes, &pb.RpcObjectGraphNode{
-			Id:             id,
-			Type:           pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()),
-			Name:           pbtypes.GetString(rec.Details, bundle.RelationKeyName.String()),
-			Layout:         int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyLayout.String())),
-			Description:    pbtypes.GetString(rec.Details, bundle.RelationKeyDescription.String()),
-			IconImage:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconImage.String()),
-			IconEmoji:      pbtypes.GetString(rec.Details, bundle.RelationKeyIconEmoji.String()),
-			Done:           pbtypes.GetBool(rec.Details, bundle.RelationKeyDone.String()),
-			RelationFormat: int32(pbtypes.GetInt64(rec.Details, bundle.RelationKeyRelationFormat.String())),
-			Snippet:        pbtypes.GetString(rec.Details, bundle.RelationKeySnippet.String()),
-		})
 
-		detailsNodes = append(detailsNodes, pbtypes.Map(rec.Details, req.Keys...))
+		nodes = append(nodes, pbtypes.Map(rec.Details, req.Keys...))
 
 		var outgoingRelationLink = make(map[string]struct{}, 10)
 		for k, v := range rec.Details.GetFields() {
@@ -372,7 +359,7 @@ func (mw *Middleware) ObjectGraph(req *pb.RpcObjectGraphRequest) *pb.RpcObjectGr
 		}
 	}
 
-	return response(pb.RpcObjectGraphResponseError_NULL, nodes, edges, detailsNodes, nil)
+	return response(pb.RpcObjectGraphResponseError_NULL, nodes, edges, nil)
 }
 
 func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb.RpcObjectRelationAddResponse {
