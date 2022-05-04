@@ -3412,6 +3412,7 @@ message Rpc {
                 int32 limit = 2;
                 // additional filter by objectTypes
                 repeated string objectTypeFilter = 3;
+                repeated string keys = 4;
             }
 
             message Node {
@@ -3446,6 +3447,7 @@ message Rpc {
                 Error error = 1;
                 repeated Node nodes = 2;
                 repeated Edge edges = 3;
+                repeated google.protobuf.Struct detailsNodes = 4;
 
                 message Error {
                     Code code = 1;
