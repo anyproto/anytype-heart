@@ -332,7 +332,6 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 		case model.BlockContentText_Header1,
 			model.BlockContentText_Header2,
 			model.BlockContentText_Header3,
-			model.BlockContentText_Quote,
 			model.BlockContentText_Code:
 			if len(b.Model().ChildrenIds) > 0 {
 				ids := b.Model().ChildrenIds
@@ -351,6 +350,7 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 		case model.BlockContentText_Checkbox,
 			model.BlockContentText_Marked,
 			model.BlockContentText_Numbered,
+			model.BlockContentText_Callout,
 			model.BlockContentText_Toggle:
 			b.Model().Align = model.Block_AlignLeft
 		case model.BlockContentText_Code:
@@ -388,6 +388,7 @@ func (t *textImpl) TurnInto(ctx *state.Context, style model.BlockContentTextStyl
 		model.BlockContentText_Header2,
 		model.BlockContentText_Header3,
 		model.BlockContentText_Code,
+		model.BlockContentText_Callout,
 		model.BlockContentText_Quote:
 		ids = onlyParents(ids)
 	}
