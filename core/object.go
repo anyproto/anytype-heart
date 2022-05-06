@@ -2,13 +2,15 @@ package core
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 	"strings"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/indexer"
 
 	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
 	"github.com/tj/go-naturaldate"
@@ -84,35 +86,6 @@ func (mw *Middleware) ObjectListDuplicate(req *pb.RpcObjectListDuplicateRequest)
 	return response(objectIds, err)
 }
 
-func handleDateSearch(req *pb.RpcObjectSearchRequest, records []database.Record) []database.Record {
-	n := time.Now()
-	f, _ := filter.MakeAndFilter(req.Filters)
-	t, err := naturaldate.Parse(req.FullText, n)
-	if err == nil {
-		if t.Equal(n) && !strings.EqualFold(req.FullText, "now") {
-			// naturaldate pkg returns NOW by default, but we don't need it
-			t = time.Time{}
-		}
-	} else {
-		// todo: use system locale to get preferred date format
-		t, err = dateparse.ParseAny(req.FullText, dateparse.PreferMonthFirst(false))
-	}
-
-	if !t.IsZero() {
-		d := &types.Struct{Fields: map[string]*types.Value{
-			"id":        pbtypes.String("_date_" + t.Format("2006-01-02")),
-			"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
-			"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
-			"iconEmoji": pbtypes.String("📅"),
-		}}
-		if vg := pbtypes.ValueGetter(d); f.FilterObject(vg) {
-			records = append([]database.Record{{Details: d}}, records...)
-		}
-	}
-
-	return records
-}
-
 func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObjectSearchResponse {
 	response := func(code pb.RpcObjectSearchResponseErrorCode, records []*types.Struct, err error) *pb.RpcObjectSearchResponse {
 		m := &pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: code}, Records: records}
@@ -146,13 +119,105 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	records = handleDateSearch(req, records)
+	records, err = enrichWithDateSuggestion(records, at.ObjectStore(), req)
+	if err != nil {
+		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
+	}
+
 	var records2 = make([]*types.Struct, 0, len(records))
 	for _, rec := range records {
 		records2 = append(records2, pbtypes.Map(rec.Details, req.Keys...))
 	}
 
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
+}
+
+func enrichWithDateSuggestion(records []database.Record, store objectstore.ObjectStore, req *pb.RpcObjectSearchRequest) ([]database.Record, error) {
+	dt := suggestDateForSearch(req.FullText)
+	if dt == nil {
+		return records, nil
+	}
+
+	id := deriveDateId(*dt)
+	// dateRecords, err := store.QueryById([]string{id})
+	// if err != nil {
+	// 	return nil, fmt.Errorf("query by id %s: %w", id, err)
+	// }
+
+	// Don't duplicate search suggestions
+	var found bool
+	for _, r := range records {
+		if r.Details.Fields == nil {
+			continue
+		}
+		if v, ok := r.Details.Fields["id"]; ok {
+			if v.GetStringValue() == id {
+				found = true
+				break
+			}
+		}
+
+	}
+	if found {
+		return records, nil
+	}
+
+	var rec database.Record
+	rec = makeSuggestedDateRecord(*dt)
+	f, _ := filter.MakeAndFilter(req.Filters)
+	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
+		return append([]database.Record{rec}, records...), nil
+	}
+	return records, nil
+}
+
+func suggestDateForSearch(raw string) *time.Time {
+	n := time.Now()
+
+	// todo: use system locale to get preferred date format
+	t, err := dateparse.ParseAny(raw, dateparse.PreferMonthFirst(false))
+
+	if err != nil {
+		var exprType naturaldate.ExprType
+		t, exprType, err = naturaldate.Parse(raw, n)
+		if t.Equal(n) && !strings.EqualFold(raw, "now") {
+			// naturaldate pkg returns NOW by default, but we don't need it
+			t = time.Time{}
+		}
+		if exprType == naturaldate.ExprTypeRelHour {
+			t = time.Time{}
+		}
+	}
+
+	if t.Year() == 0 {
+		_, month, day := t.Date()
+		h, m, s := t.Clock()
+		t = time.Date(n.Year(), month, day, h, m, s, 0, t.Location())
+	}
+
+	if !t.IsZero() {
+		return &t
+	}
+	return nil
+}
+
+func deriveDateId(t time.Time) string {
+	return "_date_" + t.Format("2006-01-02")
+}
+
+func makeSuggestedDateRecord(t time.Time) database.Record {
+	id := deriveDateId(t)
+
+	d := &types.Struct{Fields: map[string]*types.Value{
+		"id":        pbtypes.String(id),
+		"name":      pbtypes.String(t.Format("Mon Jan  2 2006")),
+		"type":      pbtypes.String(bundle.TypeKeyDate.URL()),
+		"iconEmoji": pbtypes.String("📅"),
+	}}
+
+	return database.Record{
+		Details: d,
+	}
 }
 
 func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequest) *pb.RpcObjectSearchSubscribeResponse {

@@ -109,7 +109,7 @@ func (sbt SmartBlockType) Valid() (err error) {
 func (sbt SmartBlockType) Indexable() (details, outgoingLinks bool) {
 	switch sbt {
 	case SmartblockTypeMarketplaceType, SmartblockTypeMarketplaceRelation,
-		SmartblockTypeMarketplaceTemplate, SmartBlockTypeDate, SmartBlockTypeBreadcrumbs, SmartBlockTypeAccountOld, SmartBlockTypeWorkspaceOld:
+		SmartblockTypeMarketplaceTemplate, SmartBlockTypeBreadcrumbs, SmartBlockTypeAccountOld, SmartBlockTypeWorkspaceOld:
 		return false, false
 	case SmartBlockTypeArchive:
 		return false, true

@@ -102,6 +102,8 @@ require (
 	nhooyr.io/websocket v1.8.7 // indirect
 )
 
+replace github.com/tj/go-naturaldate => ../go-naturaldate
+
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 
 replace github.com/textileio/go-threads => github.com/anytypeio/go-threads v1.1.0-rc1.0.20220223104843-a67245cee80e
