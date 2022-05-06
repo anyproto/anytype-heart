@@ -32,6 +32,7 @@ service ClientCommands {
     rpc LogSend (anytype.Rpc.Log.Send.Request) returns (anytype.Rpc.Log.Send.Response);
     rpc ConfigGet (anytype.Rpc.Config.Get.Request) returns (anytype.Rpc.Config.Get.Response);
     rpc Shutdown (anytype.Rpc.Shutdown.Request) returns (anytype.Rpc.Shutdown.Response);
+    rpc SetDeviceState (anytype.Rpc.DeviceState.Request) returns (anytype.Rpc.DeviceState.Response);
 
     rpc ExternalDropFiles (anytype.Rpc.ExternalDrop.Files.Request) returns (anytype.Rpc.ExternalDrop.Files.Response);
     rpc ExternalDropContent (anytype.Rpc.ExternalDrop.Content.Request) returns (anytype.Rpc.ExternalDrop.Content.Response);

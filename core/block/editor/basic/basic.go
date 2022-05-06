@@ -157,7 +157,7 @@ func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateReque
 
 func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 	b := s.Get(sourceId)
-	if bs == nil {
+	if b == nil {
 		return "", smartblock.ErrSimpleBlockNotFound
 	}
 	m := b.Copy().Model()
