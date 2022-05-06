@@ -3440,19 +3440,7 @@ message Rpc {
                 int32 limit = 2;
                 // additional filter by objectTypes
                 repeated string objectTypeFilter = 3;
-            }
-
-            message Node {
-                string id = 1;
-                string type = 2;
-                string name = 3;
-                int32 layout = 4;
-                string description = 5;
-                string iconImage = 6;
-                string iconEmoji = 7;
-                bool done = 8;
-                int32 relationFormat = 9;
-                string snippet = 10;
+                repeated string keys = 4;
             }
 
             message Edge {
@@ -3472,7 +3460,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                repeated Node nodes = 2;
+                repeated google.protobuf.Struct nodes = 2;
                 repeated Edge edges = 3;
 
                 message Error {
