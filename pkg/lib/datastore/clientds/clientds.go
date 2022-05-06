@@ -94,21 +94,21 @@ func init() {
 	// used to store objects localstore + threads logs info
 	DefaultConfig.Localstore.MemTableSize = 16 * 1024 * 1024     // Memtable saves all values below value threshold + write ahead log, actual file size is 2x the amount, the size is preallocated
 	DefaultConfig.Localstore.ValueLogFileSize = 16 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
-	DefaultConfig.Localstore.GcDiscardRatio = 0.2                // allow up to 20% value log overhead
-	DefaultConfig.Localstore.GcInterval = time.Minute * 10       // run GC every 10 minutes
-	DefaultConfig.Localstore.GcSleep = time.Second * 5           // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
-	DefaultConfig.Localstore.ValueThreshold = 1024               // store up to 1KB of value within the LSM tree itself to speed-up details filter queries
+	DefaultConfig.Localstore.GcInterval = 0                      // we don't need to have value GC here, because all the values should fit in the ValueThreshold. So GC will be done by the live LSM compactions
+	DefaultConfig.Localstore.GcSleep = 0
+	DefaultConfig.Localstore.ValueThreshold = 1024 * 512 // Object details should be small enough, e.g. under 10KB. 512KB here is just a precaution.
 	DefaultConfig.Localstore.Logger = logging.Logger("badger-localstore")
 	DefaultConfig.Localstore.SyncWrites = false
+	DefaultConfig.Litestore.WithCompression(0) // disable compression
 
 	DefaultConfig.Litestore.MemTableSize = 64 * 1024 * 1024     // Memtable saves all values below value threshold + write ahead log, actual file size is 2x the amount, the size is preallocated
 	DefaultConfig.Litestore.ValueLogFileSize = 64 * 1024 * 1024 // Vlog has all values more than value threshold, actual file uses 2x the amount, the size is preallocated
-	DefaultConfig.Litestore.GcDiscardRatio = 0.2                // allow up to 20% value log overhead
-	DefaultConfig.Litestore.GcInterval = time.Minute * 10       // run GC every 10 minutes
-	DefaultConfig.Litestore.GcSleep = time.Second * 5           // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
-	DefaultConfig.Litestore.ValueThreshold = 1024
+	DefaultConfig.Litestore.GcInterval = 0                      // disable regular GC because current use case leads only to grow of keys. If we call some methods like FileListOffload we need to call GC manually after
+	DefaultConfig.Litestore.GcSleep = 0                         // sleep between rounds of one GC cycle(it has multiple rounds within one cycle)
+	DefaultConfig.Litestore.ValueThreshold = 1024               // todo: we should consider bigger value in case user has HDD
 	DefaultConfig.Litestore.Logger = logging.Logger("badger-litestore")
 	DefaultConfig.Litestore.SyncWrites = false
+	DefaultConfig.Litestore.WithCompression(0) // disable compression
 
 	DefaultConfig.LitestoreOld.Logger = logging.Logger("badger-litestore-old")
 	DefaultConfig.LitestoreOld.ValueLogFileSize = 64 * 1024 * 1024
