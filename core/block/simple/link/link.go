@@ -2,7 +2,7 @@ package link
 
 import (
 	"fmt"
-	"reflect"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -102,7 +102,7 @@ func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 		changes.Description = &pb.EventBlockSetLinkDescription{Value: link.content.Description}
 	}
 
-	if !reflect.DeepEqual(l.content.Relations, link.content.Relations) {
+	if !slice.SortedEquals(l.content.Relations, link.content.Relations) {
 		hasChanges = true
 		changes.Relations = &pb.EventBlockSetLinkRelations{Value: link.content.Relations}
 	}
