@@ -63,6 +63,10 @@
     - [Rpc.App.GetVersion.Request](#anytype.Rpc.App.GetVersion.Request)
     - [Rpc.App.GetVersion.Response](#anytype.Rpc.App.GetVersion.Response)
     - [Rpc.App.GetVersion.Response.Error](#anytype.Rpc.App.GetVersion.Response.Error)
+    - [Rpc.App.SetDeviceState](#anytype.Rpc.App.SetDeviceState)
+    - [Rpc.App.SetDeviceState.Request](#anytype.Rpc.App.SetDeviceState.Request)
+    - [Rpc.App.SetDeviceState.Response](#anytype.Rpc.App.SetDeviceState.Response)
+    - [Rpc.App.SetDeviceState.Response.Error](#anytype.Rpc.App.SetDeviceState.Response.Error)
     - [Rpc.App.Shutdown](#anytype.Rpc.App.Shutdown)
     - [Rpc.App.Shutdown.Request](#anytype.Rpc.App.Shutdown.Request)
     - [Rpc.App.Shutdown.Response](#anytype.Rpc.App.Shutdown.Response)
@@ -434,7 +438,6 @@
     - [Rpc.Object.Duplicate.Response.Error](#anytype.Rpc.Object.Duplicate.Response.Error)
     - [Rpc.Object.Graph](#anytype.Rpc.Object.Graph)
     - [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge)
-    - [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node)
     - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
     - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
     - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
@@ -673,6 +676,8 @@
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
     - [Rpc.App.GetVersion.Response.Error.Code](#anytype.Rpc.App.GetVersion.Response.Error.Code)
+    - [Rpc.App.SetDeviceState.Request.DeviceState](#anytype.Rpc.App.SetDeviceState.Request.DeviceState)
+    - [Rpc.App.SetDeviceState.Response.Error.Code](#anytype.Rpc.App.SetDeviceState.Response.Error.Code)
     - [Rpc.App.Shutdown.Response.Error.Code](#anytype.Rpc.App.Shutdown.Response.Error.Code)
     - [Rpc.Block.Copy.Response.Error.Code](#anytype.Rpc.Block.Copy.Response.Error.Code)
     - [Rpc.Block.Create.Response.Error.Code](#anytype.Rpc.Block.Create.Response.Error.Code)
@@ -1075,6 +1080,7 @@
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
 | AppGetVersion | [Rpc.App.GetVersion.Request](#anytype.Rpc.App.GetVersion.Request) | [Rpc.App.GetVersion.Response](#anytype.Rpc.App.GetVersion.Response) |  |
+| AppSetDeviceState | [Rpc.App.SetDeviceState.Request](#anytype.Rpc.App.SetDeviceState.Request) | [Rpc.App.SetDeviceState.Response](#anytype.Rpc.App.SetDeviceState.Response) |  |
 | AppShutdown | [Rpc.App.Shutdown.Request](#anytype.Rpc.App.Shutdown.Request) | [Rpc.App.Shutdown.Response](#anytype.Rpc.App.Shutdown.Response) |  |
 | WalletCreate | [Rpc.Wallet.Create.Request](#anytype.Rpc.Wallet.Create.Request) | [Rpc.Wallet.Create.Response](#anytype.Rpc.Wallet.Create.Response) | Wallet *** |
 | WalletRecover | [Rpc.Wallet.Recover.Request](#anytype.Rpc.Wallet.Recover.Request) | [Rpc.Wallet.Recover.Response](#anytype.Rpc.Wallet.Recover.Response) |  |
@@ -2035,6 +2041,62 @@ Middleware-to-front-end response for an account stop request
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.App.GetVersion.Response.Error.Code](#anytype.Rpc.App.GetVersion.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.App.SetDeviceState"></a>
+
+### Rpc.App.SetDeviceState
+
+
+
+
+
+
+
+<a name="anytype.Rpc.App.SetDeviceState.Request"></a>
+
+### Rpc.App.SetDeviceState.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceState | [Rpc.App.SetDeviceState.Request.DeviceState](#anytype.Rpc.App.SetDeviceState.Request.DeviceState) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.App.SetDeviceState.Response"></a>
+
+### Rpc.App.SetDeviceState.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.App.SetDeviceState.Response.Error](#anytype.Rpc.App.SetDeviceState.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.App.SetDeviceState.Response.Error"></a>
+
+### Rpc.App.SetDeviceState.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.App.SetDeviceState.Response.Error.Code](#anytype.Rpc.App.SetDeviceState.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -7491,30 +7553,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.Graph.Node"></a>
-
-### Rpc.Object.Graph.Node
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| layout | [int32](#int32) |  |  |
-| description | [string](#string) |  |  |
-| iconImage | [string](#string) |  |  |
-| iconEmoji | [string](#string) |  |  |
-| done | [bool](#bool) |  |  |
-| relationFormat | [int32](#int32) |  |  |
-| snippet | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Object.Graph.Request"></a>
 
 ### Rpc.Object.Graph.Request
@@ -7526,6 +7564,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| keys | [string](#string) | repeated |  |
 
 
 
@@ -7541,7 +7580,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error) |  |  |
-| nodes | [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node) | repeated |  |
+| nodes | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
 | edges | [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge) | repeated |  |
 
 
@@ -10949,6 +10988,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | VERSION_IS_EMPTY | 3 |  |
 | NOT_FOUND | 101 |  |
 | TIMEOUT | 102 |  |
+
+
+
+<a name="anytype.Rpc.App.SetDeviceState.Request.DeviceState"></a>
+
+### Rpc.App.SetDeviceState.Request.DeviceState
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BACKGROUND | 0 |  |
+| FOREGROUND | 1 |  |
+
+
+
+<a name="anytype.Rpc.App.SetDeviceState.Response.Error.Code"></a>
+
+### Rpc.App.SetDeviceState.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 101 |  |
 
 
 
@@ -16382,13 +16447,13 @@ scope from which this relation have been aggregated |
 | Header4 | 4 | deprecated |
 | Quote | 5 |  |
 | Code | 6 |  |
-| Title | 7 | currently only only one block of this style can exists on a page |
+| Title | 7 | currently only one block of this style can exists on a page |
 | Checkbox | 8 |  |
 | Marked | 9 |  |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
-| Description | 12 | currently only only one block of this style can exists on a page |
-| Callout | 13 | currently only only one block of this style can exists on a page |
+| Description | 12 | currently only one block of this style can exists on a page |
+| Callout | 13 |  |
 
 
 

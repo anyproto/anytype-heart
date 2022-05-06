@@ -40,6 +40,35 @@ message Rpc {
                 }
             }
         }
+        message SetDeviceState {
+            message Request {
+                DeviceState deviceState = 1;
+
+                enum DeviceState {
+                    BACKGROUND = 0;
+                    FOREGROUND = 1;
+                }
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        NODE_NOT_STARTED = 101;
+                    }
+                }
+
+            }
+        }
+
+
         message Shutdown {
             message Request {
             }
@@ -794,19 +823,7 @@ message Rpc {
                 int32 limit = 2;
                 // additional filter by objectTypes
                 repeated string objectTypeFilter = 3;
-            }
-
-            message Node {
-                string id = 1;
-                string type = 2;
-                string name = 3;
-                int32 layout = 4;
-                string description = 5;
-                string iconImage = 6;
-                string iconEmoji = 7;
-                bool done = 8;
-                int32 relationFormat = 9;
-                string snippet = 10;
+                repeated string keys = 4;
             }
 
             message Edge {
@@ -826,7 +843,7 @@ message Rpc {
 
             message Response {
                 Error error = 1;
-                repeated Node nodes = 2;
+                repeated google.protobuf.Struct nodes = 2;
                 repeated Edge edges = 3;
 
                 message Error {

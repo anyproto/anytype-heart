@@ -206,13 +206,13 @@ message Block {
                 Header4 = 4; // deprecated
                 Quote = 5;
                 Code = 6;
-                Title = 7; // currently only only one block of this style can exists on a page
+                Title = 7; // currently only one block of this style can exists on a page
                 Checkbox = 8;
                 Marked = 9;
                 Numbered = 10;
                 Toggle = 11;
-                Description = 12; // currently only only one block of this style can exists on a page
-                Callout = 13; // currently only only one block of this style can exists on a page
+                Description = 12; // currently only one block of this style can exists on a page
+                Callout = 13;
 
             }
         }

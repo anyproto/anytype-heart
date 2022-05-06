@@ -197,7 +197,9 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 
 	// reset SelectDict because it is supposed to be aggregated and injected on-the-fly
 	relation.SelectDict = nil
-	tb.AddRelation(relation)
+	if err := tb.AddRelation(relation); err != nil {
+		return nil, err
+	}
 	err = d.Apply(s)
 	if err != nil {
 		return nil, err

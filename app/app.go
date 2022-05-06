@@ -41,12 +41,17 @@ type ComponentRunnable interface {
 	Close() (err error)
 }
 
+type ComponentStatable interface {
+	StateChange(state int)
+}
+
 // App is the central part of the application
 // It contains and manages all components
 type App struct {
-	components []Component
-	mu         sync.RWMutex
-	startStat  StartStat
+	components  []Component
+	mu          sync.RWMutex
+	startStat   StartStat
+	deviceState int
 }
 
 // Name returns app name
@@ -218,4 +223,16 @@ func (app *App) Close() error {
 	log.Debugf("All components have been closed")
 
 	return nil
+}
+
+func (app *App) SetDeviceState(state int) {
+	if app == nil {
+		return
+	}
+	app.deviceState = state
+	for _, component := range app.components {
+		if statable, ok := component.(ComponentStatable); ok {
+			statable.StateChange(state)
+		}
+	}
 }

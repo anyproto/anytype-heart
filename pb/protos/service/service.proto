@@ -7,6 +7,7 @@ import "pb/protos/events.proto";
 
 service ClientCommands {
     rpc AppGetVersion (anytype.Rpc.App.GetVersion.Request) returns (anytype.Rpc.App.GetVersion.Response);
+    rpc AppSetDeviceState (anytype.Rpc.App.SetDeviceState.Request) returns (anytype.Rpc.App.SetDeviceState.Response);
     rpc AppShutdown (anytype.Rpc.App.Shutdown.Request) returns (anytype.Rpc.App.Shutdown.Response);
 
     // Wallet

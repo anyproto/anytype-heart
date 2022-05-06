@@ -54,6 +54,16 @@ func (mw *Middleware) AppShutdown(request *pb.RpcAppShutdownRequest) *pb.RpcAppS
 	}
 }
 
+func (mw *Middleware) AppSetDeviceState(req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
+	mw.app.SetDeviceState(int(req.DeviceState))
+
+	return &pb.RpcAppSetDeviceStateResponse{
+		Error: &pb.RpcAppSetDeviceStateResponseError{
+			Code: pb.RpcAppSetDeviceStateResponseError_NULL,
+		},
+	}
+}
+
 func (mw *Middleware) getBlockService() (bs block.Service, err error) {
 	mw.m.RLock()
 	defer mw.m.RUnlock()
