@@ -492,15 +492,15 @@ func Test_ApplyChange(t *testing.T) {
 
 func TestRelationChanges(t *testing.T) {
 	a := NewDoc("root", nil).(*State)
-	a.relationIds = []string{"1", "2", "3"}
+	a.relationLinks = []string{"1", "2", "3"}
 	ac := a.Copy()
 	b := a.NewState()
-	b.relationIds = []string{"3", "4", "5"}
+	b.relationLinks = []string{"3", "4", "5"}
 	_, _, err := ApplyState(b, false)
 	require.NoError(t, err)
 	chs := a.GetChanges()
 	require.NoError(t, ac.ApplyChange(chs...))
-	require.Equal(t, a.relationIds, ac.relationIds)
+	require.Equal(t, a.relationLinks, ac.relationLinks)
 }
 
 func newMoveChange(targetId string, pos model.BlockPosition, ids ...string) *pb.ChangeContent {

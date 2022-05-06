@@ -71,17 +71,17 @@ func NewDoc(rootId string, blocks map[string]simple.Block) Doc {
 }
 
 type State struct {
-	ctx          *Context
-	parent       *State
-	blocks       map[string]simple.Block
-	rootId       string
-	newIds       []string
-	changeId     string
-	changes      []*pb.ChangeContent
-	fileKeys     []pb.ChangeFileKeys
-	details      *types.Struct
-	localDetails *types.Struct
-	relationIds  []string
+	ctx           *Context
+	parent        *State
+	blocks        map[string]simple.Block
+	rootId        string
+	newIds        []string
+	changeId      string
+	changes       []*pb.ChangeContent
+	fileKeys      []pb.ChangeFileKeys
+	details       *types.Struct
+	localDetails  *types.Struct
+	relationLinks pbtypes.RelationLinks
 
 	// deprecated
 	extraRelations              []*model.Relation
@@ -500,8 +500,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		}})
 	}
 
-	if s.parent != nil && s.relationIds != nil {
-		removed, added := slice.DifferenceRemovedAdded(s.parent.relationIds, s.relationIds)
+	if s.parent != nil && s.relationLinks != nil {
+		added, removed := s.relationLinks.Diff(s.parent.relationLinks)
 		if len(removed) > 0 {
 			msgs = append(msgs, WrapEventMessages(false, []*pb.EventMessage{
 				{
@@ -519,8 +519,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 				{
 					Value: &pb.EventMessageValueOfObjectRelationsAmend{
 						ObjectRelationsAmend: &pb.EventObjectRelationsAmend{
-							Id:          s.RootId(),
-							RelationIds: added,
+							Id:            s.RootId(),
+							RelationLinks: added,
 						},
 					},
 				},
@@ -574,8 +574,8 @@ func (s *State) apply(fast, one, withLayouts bool) (msgs []simple.EventMessage, 
 		s.parent.fileKeys = append(s.parent.fileKeys, s.fileKeys...)
 	}
 
-	if s.parent != nil && s.relationIds != nil {
-		s.parent.relationIds = s.relationIds
+	if s.parent != nil && s.relationLinks != nil {
+		s.parent.relationLinks = s.relationLinks
 	}
 
 	if len(msgs) == 0 && action.IsEmpty() && s.parent != nil {
@@ -630,8 +630,8 @@ func (s *State) intermediateApply() {
 	if s.aggregatedOptionsByRelation != nil {
 		s.parent.aggregatedOptionsByRelation = s.aggregatedOptionsByRelation
 	}
-	if s.relationIds != nil {
-		s.parent.relationIds = s.relationIds
+	if s.relationLinks != nil {
+		s.parent.relationLinks = s.relationLinks
 	}
 	if s.objectTypes != nil {
 		s.parent.objectTypes = s.objectTypes
@@ -711,7 +711,7 @@ func (s *State) StringDebug() string {
 	fmt.Fprintf(buf, "RootId: %s\n", s.RootId())
 	fmt.Fprintf(buf, "ObjectTypes: %v\n", s.ObjectTypes())
 	fmt.Fprintf(buf, "Relations:\n")
-	for _, rel := range s.relationIds {
+	for _, rel := range s.relationLinks {
 		fmt.Fprintf(buf, "\t%v\n", rel)
 	}
 
@@ -1307,15 +1307,15 @@ func (s *State) Copy() *State {
 	for k, v := range s.AggregatedOptionsByRelation() {
 		agOptsCopy[k] = pbtypes.CopyRelationOptions(v)
 	}
-	relationIds := make([]string, len(s.relationIds))
-	copy(relationIds, s.relationIds)
+	relationLinks := make([]*model.RelationLink, len(s.relationLinks))
+	copy(relationLinks, s.relationLinks)
 	copy := &State{
 		ctx:                         s.ctx,
 		blocks:                      blocks,
 		rootId:                      s.rootId,
 		details:                     pbtypes.CopyStruct(s.Details()),
 		localDetails:                pbtypes.CopyStruct(s.LocalDetails()),
-		relationIds:                 relationIds,
+		relationLinks:               relationLinks,
 		extraRelations:              pbtypes.CopyRelations(s.ExtraRelations()),
 		aggregatedOptionsByRelation: agOptsCopy,
 		objectTypes:                 objTypes,
@@ -1592,35 +1592,56 @@ func (s *State) SetContext(context *Context) {
 	s.ctx = context
 }
 
-func (s *State) AddRelationIds(ids ...string) {
-	relIds := slice.Copy(s.GetRelationIds())
-	for _, id := range ids {
-		if slice.FindPos(relIds, id) == -1 {
-			relIds = append(relIds, id)
+func (s *State) AddRelationLinks(links ...*model.RelationLink) {
+	relLinks := s.GetRelationLinks()
+	for _, l := range links {
+		if !relLinks.Has(l.Id) {
+			relLinks = append(relLinks, l)
 		}
 	}
-	s.relationIds = relIds
+	s.relationLinks = relLinks
 }
 
-func (s *State) GetRelationIds() []string {
-	if s.relationIds != nil {
-		return s.relationIds
+func (s *State) PickRelationLinks() pbtypes.RelationLinks {
+	if s.relationLinks != nil {
+		return s.relationLinks
 	}
 	if s.parent != nil {
-		return s.parent.relationIds
+		return s.parent.relationLinks
 	}
 	return nil
 }
 
-func (s *State) RemoveRelation(id string) (ok bool) {
-	if s.relationIds == nil {
-		s.relationIds = slice.Copy(s.GetRelationIds())
+func (s *State) GetRelationLinks() pbtypes.RelationLinks {
+	if s.relationLinks != nil {
+		return s.relationLinks
 	}
-	if slice.FindPos(s.relationIds, id) != -1 {
-		s.relationIds = slice.Remove(s.relationIds, id)
-		return true
+	if s.parent != nil {
+		s.relationLinks = s.parent.relationLinks.Copy()
+		return s.relationLinks
 	}
-	return false
+	return nil
+}
+
+func (s *State) RemoveRelation(ids ...string) {
+	relLinks := s.GetRelationLinks()
+	keysToRemove := make([]string, 0, len(ids))
+	for _, id := range ids {
+		if keyToRemove, ok := relLinks.Key(id); ok {
+			keysToRemove = append(keysToRemove, keyToRemove)
+			relLinks = relLinks.Remove(id)
+		}
+	}
+	// remove detail value
+	s.RemoveDetail(keysToRemove...)
+	// remove from the list of featured relations
+	featuredList := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
+	featuredList = slice.Filter(featuredList, func(s string) bool {
+		return slice.FindPos(keysToRemove, s) == -1
+	})
+	s.SetDetail(bundle.RelationKeyFeaturedRelations.String(), pbtypes.StringList(featuredList))
+	s.relationLinks = relLinks
+	return
 }
 
 type linkSource interface {

@@ -99,8 +99,16 @@ func (d *sdataview) AddRelation(ctx *state.Context, blockId string, relationId s
 	if err != nil {
 		return
 	}
-	tb.AddRelation(relationId)
-	return d.Apply(s)
+	relation, err := d.RelationService().FetchId(relationId)
+	if err != nil {
+		return
+	}
+	tb.AddRelation(relation.RelationLink())
+	if showEvent {
+		return d.Apply(s)
+	} else {
+		return d.Apply(s, smartblock.NoEvent)
+	}
 }
 
 func (d *sdataview) DeleteRelation(ctx *state.Context, blockId string, relationId string, showEvent bool) error {
@@ -110,7 +118,7 @@ func (d *sdataview) DeleteRelation(ctx *state.Context, blockId string, relationI
 		return err
 	}
 
-	if err = tb.DeleteRelation(relationId, ""); err != nil {
+	if err = tb.DeleteRelation(relationId); err != nil {
 		return err
 	}
 

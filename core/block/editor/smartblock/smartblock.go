@@ -18,7 +18,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/relation"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
@@ -91,6 +90,7 @@ type SmartBlock interface {
 	Apply(s *state.State, flags ...ApplyFlag) error
 	History() undo.History
 	Anytype() core.Service
+	RelationService() relation2.Service
 	SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error)
 	Relations() []*model.Relation
 	RelationsState(s *state.State, aggregateFromDS bool) []*model.Relation
@@ -124,6 +124,7 @@ type SmartBlock interface {
 type InitContext struct {
 	Source         source.Source
 	ObjectTypeUrls []string
+	RelationIds    []string
 	State          *state.State
 	App            *app.App
 }
@@ -236,6 +237,9 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		if err != nil {
 			return err
 		}
+	}
+	if err = sb.addRelations(ctx.State, ctx.RelationIds...); err != nil {
+		return
 	}
 
 	if err = sb.normalizeRelations(ctx.State); err != nil {
@@ -785,6 +789,10 @@ func (sb *smartBlock) Anytype() core.Service {
 	return sb.source.Anytype()
 }
 
+func (sb *smartBlock) RelationService() relation2.Service {
+	return sb.relationService
+}
+
 func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDetailsDetail, showEvent bool) (err error) {
 	s := sb.NewStateCtx(ctx)
 	detCopy := pbtypes.CopyStruct(s.CombinedDetails())
@@ -907,13 +915,25 @@ func (sb *smartBlock) SetDetails(ctx *state.Context, details []*pb.RpcBlockSetDe
 
 func (sb *smartBlock) AddExtraRelations(ctx *state.Context, relationIds ...string) (err error) {
 	s := sb.NewStateCtx(ctx)
-
-	s.AddRelationIds(relationIds...)
-
-	if err = sb.Apply(s); err != nil {
+	if err = sb.addRelations(s, relationIds...); err != nil {
 		return
 	}
+	return sb.Apply(s)
+}
 
+func (sb *smartBlock) addRelations(s *state.State, relationIds ...string) (err error) {
+	if len(relationIds) == 0 {
+		return
+	}
+	relations, err := sb.relationService.FetchIds(relationIds...)
+	if err != nil {
+		return
+	}
+	links := make([]*model.RelationLink, 0, len(relations))
+	for _, r := range relations {
+		links = append(links, r.RelationLink())
+	}
+	s.AddRelationLinks(links...)
 	return
 }
 
@@ -1071,38 +1091,8 @@ func (sb *smartBlock) setObjectTypes(s *state.State, objectTypes []string) (err 
 
 func (sb *smartBlock) RemoveExtraRelations(ctx *state.Context, relationIds []string) (err error) {
 	st := sb.NewStateCtx(ctx)
-	det := st.Details()
+	st.RemoveRelation(relationIds...)
 
-	// TODO: decide what to do with simple blocks
-	var simpleRelKeys []string
-	if err = st.Iterate(func(b simple.Block) (isContinue bool) {
-		if _, ok := b.(relation.Block); ok {
-			simpleRelKeys = append(simpleRelKeys, b.Model().GetRelation().Key)
-		}
-		return true
-	}); err != nil {
-		return
-	}
-
-	relationIdsFiltered := relationIds[:0]
-
-	for _, relId := range relationIds {
-		if st.RemoveRelation(relId) {
-			relationIdsFiltered = append(relationIdsFiltered, relId)
-		}
-	}
-
-	keysToRemove, err := sb.relationService.IdsToKeys(relationIdsFiltered...)
-	st.RemoveDetail(keysToRemove...)
-
-	// remove from the list of featured relations
-	featuredList := pbtypes.GetStringList(det, bundle.RelationKeyFeaturedRelations.String())
-	featuredList = slice.Filter(featuredList, func(s string) bool {
-		return slice.FindPos(keysToRemove, s) == -1
-	})
-	det.Fields[bundle.RelationKeyFeaturedRelations.String()] = pbtypes.StringList(featuredList)
-
-	st.SetDetails(det)
 	return sb.Apply(st)
 }
 

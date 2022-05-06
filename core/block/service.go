@@ -874,10 +874,11 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	id = csm.ID()
 	createState.SetRootId(id)
 	createState.SetObjectTypes(objectTypes)
-	createState.AddRelationIds(relationIds...)
+
 	initCtx := &smartblock.InitContext{
-		State:          createState,
 		ObjectTypeUrls: objectTypes,
+		State:          createState,
+		RelationIds:    relationIds,
 	}
 	var sb smartblock.SmartBlock
 	if sb, err = s.newSmartBlock(id, initCtx); err != nil {

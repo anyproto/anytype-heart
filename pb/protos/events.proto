@@ -171,7 +171,7 @@ message Event {
 
             message Amend {
                 string id = 1; // context objectId
-                repeated string relationIds = 2;
+                repeated anytype.model.RelationLink relationLinks = 2;
             }
 
             message Remove {
@@ -667,7 +667,7 @@ message Event {
             // sent when the dataview relation has been changed or added
             message RelationSet {
                 string id = 1; // dataview block's id
-                repeated string relationIds = 2; // relation id to update
+                repeated anytype.model.RelationLink relationLinks = 2; // relation id to update
             }
         }
     }

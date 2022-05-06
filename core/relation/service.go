@@ -1,6 +1,7 @@
 package relation
 
 import (
+	"errors"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
@@ -12,13 +13,17 @@ import (
 
 const CName = "relation"
 
+var (
+	ErrNotFound = errors.New("relation not found")
+)
+
 func New() Service {
 	return new(service)
 }
 
 type Service interface {
-	IdsToKeys(ids ...string) (keys []string, err error)
-	KeysToIds(keys ...string) (ids []string, err error)
+	FetchIds(ids ...string) (relations []*Relation, err error)
+	FetchId(id string) (relation *Relation, err error)
 	CheckExistsId(id string) (err error)
 	app.Component
 }
@@ -36,21 +41,30 @@ func (s *service) Name() (name string) {
 	return CName
 }
 
-func (s *service) IdsToKeys(ids ...string) (keys []string, err error) {
+func (s *service) FetchIds(ids ...string) (relations []*Relation, err error) {
 	records, err := s.objectStore.QueryById(ids)
 	if err != nil {
 		return
 	}
-	keys = make([]string, 0, len(records))
+	relations = make([]*Relation, 0, len(records))
 	for _, rec := range records {
 		if pbtypes.GetString(rec.Details, bundle.RelationKeyType.String()) != bundle.TypeKeyRelation.String() {
 			continue
 		}
-		if key := pbtypes.GetString(rec.Details, bundle.RelationKeyRelationKey.String()); key != "" {
-			keys = append(keys, key)
-		}
+		relations = append(relations, RelationFromStruct(rec.Details))
 	}
 	return
+}
+
+func (s *service) FetchId(id string) (relation *Relation, err error) {
+	rels, err := s.FetchIds(id)
+	if err != nil {
+		return
+	}
+	if len(rels) == 0 {
+		return nil, ErrNotFound
+	}
+	return rels[0], nil
 }
 
 func (s *service) KeysToIds(keys ...string) (ids []string, err error) {

@@ -994,6 +994,7 @@
     - [Range](#anytype.model.Range)
     - [Relation](#anytype.model.Relation)
     - [Relation.Option](#anytype.model.Relation.Option)
+    - [RelationLink](#anytype.model.RelationLink)
     - [RelationOptions](#anytype.model.RelationOptions)
     - [RelationWithValue](#anytype.model.RelationWithValue)
     - [Relations](#anytype.model.Relations)
@@ -1439,7 +1440,7 @@ the element of change tree used to store and internal apply smartBlock history
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relationId | [string](#string) | repeated |  |
+| relationLinks | [model.RelationLink](#anytype.model.RelationLink) | repeated |  |
 
 
 
@@ -12873,7 +12874,7 @@ sent when the dataview relation has been changed or added
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | dataview block&#39;s id |
-| relationIds | [string](#string) | repeated | relation id to update |
+| relationLinks | [model.RelationLink](#anytype.model.RelationLink) | repeated | relation id to update |
 
 
 
@@ -14354,7 +14355,7 @@ Unset existing detail keys
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  | context objectId |
-| relationIds | [string](#string) | repeated |  |
+| relationLinks | [model.RelationLink](#anytype.model.RelationLink) | repeated |  |
 
 
 
@@ -15214,7 +15215,7 @@ Bookmark is to keep a web-link and to preview a content.
 | views | [Block.Content.Dataview.View](#anytype.model.Block.Content.Dataview.View) | repeated |  |
 | relations | [Relation](#anytype.model.Relation) | repeated | deprecated |
 | activeView | [string](#string) |  | saved within a session |
-| relationIds | [string](#string) | repeated |  |
+| relationLinks | [RelationLink](#anytype.model.RelationLink) | repeated |  |
 
 
 
@@ -15655,6 +15656,22 @@ scope from which this relation have been aggregated |
 | text | [string](#string) |  |  |
 | color | [string](#string) |  | stored |
 | scope | [Relation.Option.Scope](#anytype.model.Relation.Option.Scope) |  | on-store contains only local-scope relations. All others injected on-the-fly |
+
+
+
+
+
+
+<a name="anytype.model.RelationLink"></a>
+
+### RelationLink
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| key | [string](#string) |  |  |
 
 
 

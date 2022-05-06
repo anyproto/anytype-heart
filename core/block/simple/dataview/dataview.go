@@ -45,8 +45,8 @@ type Block interface {
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
 
-	AddRelation(relationId string) error
-	DeleteRelation(relationId, relationKey string) error
+	AddRelation(relation *model.RelationLink) error
+	DeleteRelation(relationId string) error
 
 	GetSource() []string
 	SetSource(source []string) error
@@ -134,7 +134,7 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		}
 	}
 
-	removed, added := slice.DifferenceRemovedAdded(d.content.RelationIds, dv.content.RelationIds)
+	added, removed := pbtypes.RelationLinks(dv.content.RelationLinks).Diff(d.content.RelationLinks)
 	if len(removed) > 0 {
 		msgs = append(msgs, simple.EventMessage{
 			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationDelete{
@@ -149,8 +149,8 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		msgs = append(msgs, simple.EventMessage{
 			Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataviewRelationSet{
 				BlockDataviewRelationSet: &pb.EventBlockDataviewRelationSet{
-					Id:          dv.Id,
-					RelationIds: added,
+					Id:            dv.Id,
+					RelationLinks: added,
 				},
 			}},
 		})
@@ -257,27 +257,32 @@ func (l *Dataview) getActiveView() *model.BlockContentDataviewView {
 }
 
 func (l *Dataview) FillSmartIds(ids []string) []string {
-	return append(ids, l.content.GetRelationIds()...)
+	for _, rl := range l.content.RelationLinks {
+		ids = append(ids, rl.Id)
+	}
+	return ids
 }
 
 func (l *Dataview) HasSmartIds() bool {
-	return len(l.content.RelationIds) > 0
+	return len(l.content.RelationLinks) > 0
 }
 
-func (d *Dataview) AddRelation(relationId string) error {
-	if slice.FindPos(d.content.RelationIds, relationId) != -1 {
+func (d *Dataview) AddRelation(relation *model.RelationLink) error {
+	if pbtypes.RelationLinks(d.content.RelationLinks).Has(relation.Id) {
 		return ErrRelationExists
 	}
-	d.content.RelationIds = append(d.content.RelationIds, relationId)
+	d.content.RelationLinks = append(d.content.RelationLinks, relation)
 	return nil
 }
 
-func (d *Dataview) DeleteRelation(relationId, relationKey string) error {
+func (d *Dataview) DeleteRelation(relationId string) error {
 	var found bool
-	if slice.FindPos(d.content.RelationIds, relationId) == -1 {
-		found = true
-		d.content.RelationIds = slice.Remove(d.content.RelationIds, relationId)
+	relationKey, ok := pbtypes.RelationLinks(d.content.RelationLinks).Key(relationId)
+	if !ok {
+		return nil
 	}
+
+	d.content.RelationLinks = pbtypes.RelationLinks(d.content.RelationLinks).Remove(relationId)
 
 	for _, view := range d.content.Views {
 		var filteredFilters []*model.BlockContentDataviewFilter

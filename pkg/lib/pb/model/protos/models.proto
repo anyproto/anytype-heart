@@ -261,7 +261,7 @@ message Block {
             // deprecated
             repeated model.Relation relations = 4;
             string activeView = 3; // saved within a session
-            repeated string relationIds = 5;
+            repeated anytype.model.RelationLink relationLinks = 5;
 
             message View {
                 string id = 1;
@@ -584,6 +584,11 @@ enum RelationFormat {
     object = 100; // relation can has objectType to specify objectType
     relations = 101; // base64-encoded relation pb model
 
+}
+
+message RelationLink {
+    string id = 1;
+    string key = 2;
 }
 
 message Relations {

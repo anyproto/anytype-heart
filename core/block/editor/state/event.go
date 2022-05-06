@@ -158,8 +158,8 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 	case *pb.EventMessageValueOfBlockDataviewRelationSet:
 		if err = apply(o.BlockDataviewRelationSet.Id, func(b simple.Block) error {
 			if f, ok := b.(dataview.Block); ok {
-				for _, relId := range o.BlockDataviewRelationSet.RelationIds {
-					f.DeleteRelation(relId, "")
+				for _, rel := range o.BlockDataviewRelationSet.RelationLinks {
+					f.AddRelation(rel)
 				}
 				return nil
 			}

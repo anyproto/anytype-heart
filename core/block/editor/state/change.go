@@ -206,18 +206,18 @@ func (s *State) changeBlockDetailsUnset(unset *pb.ChangeDetailsUnset) error {
 }
 
 func (s *State) changeRelationAdd(add *pb.ChangeRelationAdd) error {
-	for _, id := range add.RelationId {
-		if slice.FindPos(s.relationIds, id) == -1 {
-			s.relationIds = append(s.relationIds, id)
+	rl := s.GetRelationLinks()
+	for _, r := range add.RelationLinks {
+		if !rl.Has(r.Id) {
+			rl = rl.Append(r)
 		}
 	}
+	s.relationLinks = rl
 	return nil
 }
 
 func (s *State) changeRelationRemove(rem *pb.ChangeRelationRemove) error {
-	for _, id := range rem.RelationId {
-		s.relationIds = slice.Remove(s.relationIds, id)
-	}
+	s.RemoveRelation(rem.RelationId...)
 	return nil
 }
 
@@ -364,7 +364,8 @@ func (s *State) GetChanges() []*pb.ChangeContent {
 
 func (s *State) fillChanges(msgs []simple.EventMessage) {
 	var updMsgs = make([]*pb.EventMessage, 0, len(msgs))
-	var delIds, delRelIds, newRelIds []string
+	var delIds, delRelIds []string
+	var newRelLinks pbtypes.RelationLinks
 	var structMsgs = make([]*pb.EventBlockSetChildrenIds, 0, len(msgs))
 	var b1, b2 []byte
 	for i, msg := range msgs {
@@ -429,7 +430,7 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 		case *pb.EventMessageValueOfBlockDataviewRelationDelete:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfObjectRelationsAmend:
-			newRelIds = append(newRelIds, msg.Msg.GetObjectRelationsAmend().RelationIds...)
+			newRelLinks = append(newRelLinks, msg.Msg.GetObjectRelationsAmend().RelationLinks...)
 		case *pb.EventMessageValueOfObjectRelationsRemove:
 			delRelIds = append(delRelIds, msg.Msg.GetObjectRelationsRemove().RelationIds...)
 		default:
@@ -449,11 +450,11 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			},
 		})
 	}
-	if len(newRelIds) > 0 {
+	if len(newRelLinks) > 0 {
 		cb.AddChange(&pb.ChangeContent{
 			Value: &pb.ChangeContentValueOfRelationAdd{
 				RelationAdd: &pb.ChangeRelationAdd{
-					RelationId: newRelIds,
+					RelationLinks: newRelLinks,
 				},
 			},
 		})

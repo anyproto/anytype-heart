@@ -98,7 +98,7 @@ message Change {
     }
 
     message RelationAdd {
-        repeated string relationId = 1;
+        repeated anytype.model.RelationLink relationLinks = 1;
     }
 
     message RelationRemove {
