@@ -1040,6 +1040,7 @@
     - [Block.Align](#anytype-model-Block-Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
+    - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
@@ -15794,6 +15795,7 @@ Bookmark is to keep a web-link and to preview a content.
 | relationProperty | [string](#string) |  |  |
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+| quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
 
 
 
@@ -16418,6 +16420,27 @@ scope from which this relation have been aggregated |
 | ---- | ------ | ----------- |
 | And | 0 |  |
 | Or | 1 |  |
+
+
+
+<a name="anytype-model-Block-Content-Dataview-Filter-QuickOption"></a>
+
+### Block.Content.Dataview.Filter.QuickOption
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| DateNone | 0 |  |
+| Today | 1 |  |
+| Tomorrow | 2 |  |
+| Yesterday | 3 |  |
+| OneWeekAgo | 4 |  |
+| OneWeekFromNow | 5 |  |
+| OneMonthAgo | 6 |  |
+| OneMonthFromNow | 7 |  |
+| NumberOfDaysAgo | 8 |  |
+| NumberOfDaysNow | 9 |  |
+| ExactDate | 10 |  |
 
 
 

@@ -290,7 +290,7 @@ message Block {
                 repeated Filter filters = 5;
                 repeated Relation relations = 6; // relations fields/columns options, also used to provide the order
 				string coverRelationKey = 7; // Relation used for cover in gallery
-                bool hideIcon = 8; // Hide icon near name 
+                bool hideIcon = 8; // Hide icon near name
                 Size cardSize = 9; // Gallery card size
                 bool coverFit = 10; // Image fits container
 
@@ -348,6 +348,7 @@ message Block {
                 string relationProperty = 5;
                 Condition condition = 3;
                 google.protobuf.Value value = 4;
+                QuickOption quickOption = 6;
 
                 enum Operator {
                     And = 0;
@@ -370,6 +371,20 @@ message Block {
                     NotEmpty = 12;
                     AllIn = 13;
                     NotAllIn = 14;
+                }
+
+                enum QuickOption {
+                    DateNone = 0;
+                    Today = 1;
+                    Tomorrow = 2;
+                    Yesterday = 3;
+                    OneWeekAgo = 4;
+                    OneWeekFromNow = 5;
+                    OneMonthAgo = 6;
+                    OneMonthFromNow = 7;
+                    NumberOfDaysAgo = 8;
+                    NumberOfDaysNow = 9;
+                    ExactDate = 10;
                 }
             }
         }
