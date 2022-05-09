@@ -145,6 +145,7 @@ type Service interface {
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
 	SetLayout(ctx *state.Context, id string, layout model.ObjectTypeLayout) error
+	SetLinkAppearance(ctx *state.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error)
 
 	FeaturedRelationAdd(ctx *state.Context, contextId string, relations ...string) error
 	FeaturedRelationRemove(ctx *state.Context, contextId string, relations ...string) error

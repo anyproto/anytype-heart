@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
@@ -549,6 +550,22 @@ func (s *service) SetBackgroundColor(ctx *state.Context, contextId string, color
 			b.Model().BackgroundColor = color
 			return nil
 		}, blockIds...)
+	})
+}
+
+func (s *service) SetLinkAppearance(ctx *state.Context, req pb.RpcBlockLinkListSetAppearanceRequest) (err error) {
+	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.Update(ctx, func(b simple.Block) error {
+			if linkBlock, ok := b.(link.Block); ok {
+				return linkBlock.SetAppearance(&model.BlockContentLink{
+					IconSize:    req.IconSize,
+					CardStyle:   req.CardStyle,
+					Description: req.Description,
+					Relations:   req.Relations,
+				})
+			}
+			return nil
+		}, req.BlockIds...)
 	})
 }
 

@@ -184,6 +184,7 @@ service ClientCommands {
     // Other specific block commands
     // ***
     rpc BlockLinkCreateWithObject (anytype.Rpc.BlockLink.CreateWithObject.Request) returns (anytype.Rpc.BlockLink.CreateWithObject.Response);
+    rpc BlockListSetLinkAppearance (anytype.Rpc.BlockLink.ListSetAppearance.Request) returns (anytype.Rpc.BlockLink.ListSetAppearance.Response);
     rpc BlockBookmarkFetch (anytype.Rpc.BlockBookmark.Fetch.Request) returns (anytype.Rpc.BlockBookmark.Fetch.Response);
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.BlockBookmark.CreateAndFetch.Request) returns (anytype.Rpc.BlockBookmark.CreateAndFetch.Response);
     rpc BlockRelationSetKey (anytype.Rpc.BlockRelation.SetKey.Request) returns (anytype.Rpc.BlockRelation.SetKey.Response);
