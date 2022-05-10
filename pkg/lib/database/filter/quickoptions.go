@@ -82,7 +82,7 @@ func getRange(f *model.BlockContentDataviewFilter) (int64, int64) {
 	case model.BlockContentDataviewFilter_NumberOfDaysAgo:
 		daysCnt := f.Value.GetNumberValue()
 		d1 = timeutil.DayNumStart(-int(daysCnt))
-		d2 = timeutil.DayNumStart(0)
+		d2 = timeutil.DayNumEnd(-1)
 	case model.BlockContentDataviewFilter_NumberOfDaysNow:
 		daysCnt := f.Value.GetNumberValue()
 		d1 = timeutil.DayNumStart(0)
@@ -91,7 +91,7 @@ func getRange(f *model.BlockContentDataviewFilter) (int64, int64) {
 		timestamp := f.GetValue().GetNumberValue()
 		t := time.Unix(int64(timestamp), 0)
 		d1 = timeutil.DayStart(t)
-		d1 = timeutil.DayEnd(t)
+		d2 = timeutil.DayEnd(t)
 	}
 
 	return d1.Unix(), d2.Unix()
