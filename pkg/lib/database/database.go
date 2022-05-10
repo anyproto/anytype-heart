@@ -136,6 +136,10 @@ func NewFilters(q Query, sch schema.Schema) (f *Filters, err error) {
 
 	filter.TransformQuickOption(&q.Filters)
 
+	for _, v := range q.Filters {
+		fmt.Printf(" --------------- FILTER: %+v, number: %+v \n", v, int(v.Value.GetNumberValue()))
+	}
+
 	f = new(Filters)
 	mainFilter := filter.AndFilters{}
 	if sch != nil {

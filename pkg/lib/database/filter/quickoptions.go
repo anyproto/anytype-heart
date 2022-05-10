@@ -18,12 +18,12 @@ func TransformQuickOption(reqFilters *[]*model.BlockContentDataviewFilter) {
 			d1, d2 := getRange(f)
 			switch f.Condition {
 			case model.BlockContentDataviewFilter_Equal:
-				f.Condition = model.BlockContentDataviewFilter_Greater
+				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pb.ToValue(d1)
 
 				*reqFilters = append(*reqFilters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
-					Condition:   model.BlockContentDataviewFilter_Less,
+					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pb.ToValue(d2),
 				})
 			case model.BlockContentDataviewFilter_Less:
@@ -35,12 +35,12 @@ func TransformQuickOption(reqFilters *[]*model.BlockContentDataviewFilter) {
 			case model.BlockContentDataviewFilter_GreaterOrEqual:
 				f.Value = pb.ToValue(d1)
 			case model.BlockContentDataviewFilter_In:
-				f.Condition = model.BlockContentDataviewFilter_Greater
+				f.Condition = model.BlockContentDataviewFilter_GreaterOrEqual
 				f.Value = pb.ToValue(d1)
 
 				*reqFilters = append(*reqFilters, &model.BlockContentDataviewFilter{
 					RelationKey: f.RelationKey,
-					Condition:   model.BlockContentDataviewFilter_Less,
+					Condition:   model.BlockContentDataviewFilter_LessOrEqual,
 					Value:       pb.ToValue(d2),
 				})
 			}
@@ -54,7 +54,7 @@ func getRange(f *model.BlockContentDataviewFilter) (int64, int64) {
 	switch f.QuickOption {
 	case model.BlockContentDataviewFilter_Yesterday:
 		d1 = timeutil.DayNumStart(-1)
-		d2 = timeutil.DayNumStart(-1)
+		d2 = timeutil.DayNumEnd(-1)
 	case model.BlockContentDataviewFilter_Today:
 		d1 = timeutil.DayNumStart(0)
 		d2 = timeutil.DayNumEnd(0)
@@ -82,11 +82,11 @@ func getRange(f *model.BlockContentDataviewFilter) (int64, int64) {
 	case model.BlockContentDataviewFilter_NumberOfDaysAgo:
 		daysCnt := f.Value.GetNumberValue()
 		d1 = timeutil.DayNumStart(-int(daysCnt))
-		d2 = timeutil.DayNumEnd(0)
+		d2 = timeutil.DayNumStart(0)
 	case model.BlockContentDataviewFilter_NumberOfDaysNow:
 		daysCnt := f.Value.GetNumberValue()
-		d1 = timeutil.DayNumEnd(0)
-		d2 = timeutil.DayNumStart(-int(daysCnt))
+		d1 = timeutil.DayNumStart(0)
+		d2 = timeutil.DayNumEnd(int(daysCnt))
 	case model.BlockContentDataviewFilter_ExactDate:
 		timestamp := f.GetValue().GetNumberValue()
 		t := time.Unix(int64(timestamp), 0)
