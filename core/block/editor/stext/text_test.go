@@ -5,11 +5,11 @@ import (
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -155,28 +155,21 @@ func TestTextImpl_Merge(t *testing.T) {
 		assert.Equal(t, []string{"ch1", "ch2"}, r.Pick("1").Model().ChildrenIds)
 	})
 
-	t.Run("shouldn't merge featured realation block", func(t *testing.T) {
+	t.Run("shouldn't merge blocks inside header block", func(t *testing.T) {
 		sb := smarttest.New("test")
 		tb1 := newTextBlock("1", "one")
 		tb1.Model().ChildrenIds = []string{"ch1"}
 		tb2 := newTextBlock("2", "two")
 		tb2.Model().ChildrenIds = []string{"ch2"}
-		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+		sb.AddBlock(simple.New(&model.Block{Id: template.HeaderLayoutId, ChildrenIds: []string{"1", "2"}})).
 			AddBlock(tb1).
 			AddBlock(tb2).
 			AddBlock(simple.New(&model.Block{Id: "ch1"})).
 			AddBlock(simple.New(&model.Block{Id: "ch2"}))
 
 		tb := NewText(sb)
-		err := sb.SetDetails(nil, []*pb.RpcBlockSetDetailsDetail{
-			{
-				Key:   bundle.RelationKeyFeaturedRelations.String(),
-				Value: pbtypes.StringList([]string{"2"}),
-			},
-		}, false)
-		require.NoError(t, err)
 
-		err = tb.Merge(nil, "1", "2")
+		err := tb.Merge(nil, "1", "2")
 		require.NoError(t, err)
 
 		r := sb.NewState()

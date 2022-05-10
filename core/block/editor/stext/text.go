@@ -13,10 +13,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/gogo/protobuf/types"
 )
@@ -159,9 +157,8 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
 
-	// Don't merge featured relations
-	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
-	if slice.FindPos(fr, secondId) != -1 {
+	// Don't merge blocks inside header block
+	if s.IsParentOf(template.HeaderLayoutId, secondId) {
 		return
 	}
 
