@@ -5,13 +5,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -1369,26 +1369,6 @@ func (s *service) ApplyTemplate(contextId, templateId string) error {
 
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
-}
-
-func (s *service) AllDescendantIds(rootBlockId string, allBlocks map[string]*model.Block) []string {
-	var (
-		// traversal queue
-		queue = []string{rootBlockId}
-		// traversed IDs collected (including root)
-		traversed = []string{rootBlockId}
-	)
-
-	for len(queue) > 0 {
-		next := queue[0]
-		queue = queue[1:]
-
-		chIDs := allBlocks[next].ChildrenIds
-		traversed = append(traversed, chIDs...)
-		queue = append(queue, chIDs...)
-	}
-
-	return traversed
 }
 
 func (s *service) ResetToState(pageId string, state *state.State) (err error) {

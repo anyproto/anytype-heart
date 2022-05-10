@@ -3,13 +3,14 @@ package block
 import (
 	"context"
 	"fmt"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
-	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
@@ -196,7 +197,12 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
 
-		children := s.AllDescendantIds(blockId, blocks)
+		children := allDescendantIds(blockId, blocks)
+		// remove visited blocks
+		for _, id := range children {
+			delete(blocks, id)
+		}
+
 		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewPageRequest{
 			ContextId: req.ContextId,
 			BlockIds:  children,
@@ -213,6 +219,26 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 	}
 
 	return linkIds, err
+}
+
+func allDescendantIds(rootBlockId string, allBlocks map[string]*model.Block) []string {
+	var (
+		// traversal queue
+		queue = []string{rootBlockId}
+		// traversed IDs collected (including root)
+		traversed = []string{rootBlockId}
+	)
+
+	for len(queue) > 0 {
+		next := queue[0]
+		queue = queue[1:]
+
+		chIDs := allBlocks[next].ChildrenIds
+		traversed = append(traversed, chIDs...)
+		queue = append(queue, chIDs...)
+	}
+
+	return traversed
 }
 
 func (s *service) UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error) {
