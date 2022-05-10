@@ -541,7 +541,7 @@ func (mw *Middleware) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgro
 	return response(pb.RpcBlockListSetBackgroundColorResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockListSetLinkAppearance(req *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse {
+func (mw *Middleware) BlockLinkListSetAppearance(req *pb.RpcBlockLinkListSetAppearanceRequest) *pb.RpcBlockLinkListSetAppearanceResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockLinkListSetAppearanceResponseErrorCode, err error) *pb.RpcBlockLinkListSetAppearanceResponse {
 		m := &pb.RpcBlockLinkListSetAppearanceResponse{Error: &pb.RpcBlockLinkListSetAppearanceResponseError{Code: code}}
