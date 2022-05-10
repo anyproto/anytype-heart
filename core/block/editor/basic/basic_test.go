@@ -162,7 +162,7 @@ func TestBasic_Move(t *testing.T) {
 
 		b := NewBasic(sb)
 
-		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{"2"},
 			DropTargetId: "1",
 			Position:     model.Block_InnerFirst,
@@ -185,7 +185,7 @@ func TestBasic_Move(t *testing.T) {
 
 		b := NewBasic(sb)
 
-		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{"2"},
 			DropTargetId: "1",
 			Position:     model.Block_InnerFirst,
