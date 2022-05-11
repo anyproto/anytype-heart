@@ -1,6 +1,7 @@
 package template
 
 import (
+	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	simpleDataview "github.com/anytypeio/go-anytype-middleware/core/block/simple/dataview"
@@ -680,6 +681,56 @@ func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	for _, template := range templates {
 		template(s)
 	}
+
+	return
+}
+
+var WithLink = func(s *state.State) {
+	var linkBlockId string
+	s.Iterate(func(b simple.Block) (isContinue bool) {
+		if b, ok := b.(*link.Link); !ok {
+			return true
+		} else {
+			if b.Model().Fields != nil {
+				link := b.Model().GetLink()
+
+				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
+					link.CardStyle = model.BlockContentLinkCardStyle(cardStyle.GetNumberValue())
+				}
+
+				if iconSize, ok := b.Model().GetFields().Fields["iconSize"]; ok {
+					if int(iconSize.GetNumberValue()) < 2 {
+						link.IconSize = model.BlockContentLink_Small
+					} else {
+						link.IconSize = model.BlockContentLink_Medium
+					}
+				}
+
+				if description, ok := b.Model().GetFields().Fields["description"]; ok {
+					link.Description = model.BlockContentLinkDescription(description.GetNumberValue())
+				}
+
+				featuredRelations := map[string]string{"withCover": "cover", "withIcon": "icon", "withName": "name", "withType": "type"}
+				for key, relName := range featuredRelations {
+					if rel, ok := b.Model().GetFields().Fields[key]; ok {
+						if rel.GetBoolValue() {
+							link.Relations = append(link.Relations, relName)
+						}
+					}
+				}
+
+				b.Model().Fields = nil
+			}
+
+			return true
+		}
+	})
+
+	if linkBlockId == "" {
+		return
+	}
+
+	s.Unlink(linkBlockId)
 
 	return
 }
