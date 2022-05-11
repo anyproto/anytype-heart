@@ -931,7 +931,28 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	return id, sb.CombinedDetails(), nil
 }
 
+// CreatePage creates a page and stores a link to it in the context block
 func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
+	return s.createPage(ctx, groupId, req, true, func(ctx context.Context) (string, error) {
+		pageId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+		if err != nil {
+			return pageId, fmt.Errorf("create smartblock error: %v", err)
+		}
+		return pageId, nil
+	})
+}
+
+func (s *service) CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
+	return s.createPage(ctx, groupId, req, false, func(ctx context.Context) (string, error) {
+		pageId, _, err = s.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, nil, state)
+		if err != nil {
+			return pageId, fmt.Errorf("create smartblock error: %v", err)
+		}
+		return pageId, nil
+	})
+}
+
+func (s *service) createPage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, storeLink bool, create func(context.Context) (pageId string, err error)) (linkId string, pageId string, err error) {
 	if req.ContextId != "" {
 		var contextBlockType model.SmartBlockType
 		if err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
@@ -959,13 +980,13 @@ func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlock
 		req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
 	}
 
-	pageId, _, err = s.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+	pageId, err = create(context.TODO())
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
 
-	if req.ContextId == "" && req.TargetId == "" {
-		// do not create a link
+	// do not create a link
+	if (!storeLink) || (req.ContextId == "" && req.TargetId == "") {
 		return "", pageId, err
 	}
 

@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
+	"github.com/globalsign/mgo/bson"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
 
@@ -24,6 +25,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -184,6 +186,14 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 		return linkIds, err
 	}
 
+	var toRemove []string
+
+	type linkAdd struct {
+		blockId string
+		pageId  string
+	}
+	var mods []linkAdd
+
 	for _, blockId := range req.BlockIds {
 		if blocks[blockId] == nil || blocks[blockId].GetText() == nil {
 			continue
@@ -197,48 +207,116 @@ func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPag
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
 
-		children := allDescendantIds(blockId, blocks)
-		// remove visited blocks
-		for _, id := range children {
-			delete(blocks, id)
+		subtree := extractBlocksSubtree(blockId, blocks)
+		if len(subtree) == 0 {
+			continue
+		}
+		newRoot, newBlocks := reassignSubtreeIds(blockId, subtree)
+		// Remove all child blocks
+		for _, b := range subtree {
+			if b.Id != blockId {
+				toRemove = append(toRemove, b.Id)
+			}
 		}
 
-		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewPageRequest{
+		st := state.NewDoc("", nil).NewState()
+		for _, b := range newBlocks {
+			st.Add(base.NewBase(b))
+		}
+		st.Add(base.NewBase(&model.Block{
+			Id:          "_root",
+			ChildrenIds: []string{newRoot},
+		}))
+
+		_, pageId, err := s.CreatePageFromState(nil, "", pb.RpcBlockCreatePageRequest{
 			ContextId: req.ContextId,
-			BlockIds:  children,
 			Details: &types.Struct{
 				Fields: fields,
 			},
-			DropTargetId: blockId,
-			Position:     model.Block_Replace,
-		})
-		linkIds = append(linkIds, linkId)
+		}, st)
 		if err != nil {
 			return linkIds, err
 		}
+		mods = append(mods, linkAdd{
+			blockId: blockId,
+			pageId:  pageId,
+		})
+
 	}
+
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		sb := b.(smartblock.SmartBlock)
+		st := sb.NewState()
+
+		t := basic.StateTransform{State: st}
+
+		for _, m := range mods {
+			linkId, err := t.CreateBlock("", pb.RpcBlockCreateRequest{
+				TargetId: m.blockId,
+				Block: &model.Block{
+					Content: &model.BlockContentOfLink{
+						Link: &model.BlockContentLink{
+							TargetBlockId: m.pageId,
+							Style:         model.BlockContentLink_Page,
+						},
+					},
+				},
+				Position: model.Block_Replace,
+			})
+			if err != nil {
+				return fmt.Errorf("create link: %w", err)
+			}
+			linkIds = append(linkIds, linkId)
+		}
+
+		t.CutBlocks(toRemove)
+
+		return sb.Apply(st)
+	})
 
 	return linkIds, err
 }
 
-func allDescendantIds(rootBlockId string, allBlocks map[string]*model.Block) []string {
+func extractBlocksSubtree(root string, blocks map[string]*model.Block) []*model.Block {
 	var (
-		// traversal queue
-		queue = []string{rootBlockId}
-		// traversed IDs collected (including root)
-		traversed = []string{rootBlockId}
+		queue     = []string{root}
+		extracted []*model.Block
 	)
 
 	for len(queue) > 0 {
 		next := queue[0]
 		queue = queue[1:]
 
-		chIDs := allBlocks[next].ChildrenIds
-		traversed = append(traversed, chIDs...)
-		queue = append(queue, chIDs...)
+		b, ok := blocks[next]
+		if !ok {
+			continue
+		}
+		delete(blocks, next)
+		extracted = append(extracted, b)
+		queue = append(queue, b.ChildrenIds...)
 	}
 
-	return traversed
+	return extracted
+}
+
+func reassignSubtreeIds(root string, blocks []*model.Block) (string, []*model.Block) {
+	res := make([]*model.Block, 0, len(blocks))
+	mapping := map[string]string{}
+	for _, b := range blocks {
+		newId := bson.NewObjectId().Hex()
+		mapping[b.Id] = newId
+
+		newBlock := pbtypes.CopyBlock(b)
+		newBlock.Id = newId
+		res = append(res, newBlock)
+	}
+
+	for _, b := range res {
+		for i, id := range b.ChildrenIds {
+			b.ChildrenIds[i] = mapping[id]
+		}
+	}
+	return mapping[root], res
 }
 
 func (s *service) UpdateBlockContent(ctx *state.Context, req pb.RpcBlockUpdateContentRequest) (err error) {

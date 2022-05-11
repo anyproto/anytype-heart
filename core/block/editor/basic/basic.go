@@ -42,6 +42,7 @@ type Basic interface {
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
 // InternalCut will only unlink blocks you've cut after you call apply()
+// TODO: remove req, use simple data
 func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (apply func() error, blocks []simple.Block, err error) {
 	s := bs.NewStateCtx(ctx)
 	var uniqMap = make(map[string]struct{})
@@ -101,32 +102,19 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 	if bs.Type() == model.SmartBlockType_Set {
 		return "", ErrNotSupported
 	}
+
 	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
-	if req.TargetId != "" {
-		if s.IsChild(template.HeaderLayoutId, req.TargetId) {
-			req.Position = model.Block_Bottom
-			req.TargetId = template.HeaderLayoutId
-		}
-	}
-	if req.Block.GetContent() == nil {
-		err = fmt.Errorf("no block content")
-		return
-	}
-	req.Block.Id = ""
-	block := simple.New(req.Block)
-	block.Model().ChildrenIds = nil
-	err = block.Validate()
+
+	t := StateTransform{s}
+	id, err = t.CreateBlock(groupId, req)
 	if err != nil {
-		return
+		return "", fmt.Errorf("create block: %w", err)
 	}
-	s.Add(block)
-	if err = s.InsertTo(req.TargetId, req.Position, block.Model().Id); err != nil {
-		return
-	}
+
 	if err = bs.Apply(s); err != nil {
 		return
 	}
-	return block.Model().Id, nil
+	return id, nil
 }
 
 func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error) {
