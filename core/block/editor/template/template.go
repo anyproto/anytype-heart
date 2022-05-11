@@ -686,13 +686,12 @@ func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 }
 
 var WithLink = func(s *state.State) {
-	var linkBlockId string
 	s.Iterate(func(b simple.Block) (isContinue bool) {
-		if b, ok := b.(*link.Link); !ok {
+		if _, ok := b.(*link.Link); !ok {
 			return true
 		} else {
 			if b.Model().Fields != nil {
-				link := b.Model().GetLink()
+				link := s.Get(b.Model().Id).(*link.Link).GetLink()
 
 				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
 					link.CardStyle = model.BlockContentLinkCardStyle(cardStyle.GetNumberValue())
@@ -725,12 +724,6 @@ var WithLink = func(s *state.State) {
 			return true
 		}
 	})
-
-	if linkBlockId == "" {
-		return
-	}
-
-	s.Unlink(linkBlockId)
 
 	return
 }
