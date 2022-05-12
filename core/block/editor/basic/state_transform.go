@@ -60,7 +60,6 @@ func (s StateTransformer) CutBlocks(blockIds []string) (blocks []simple.Block) {
 }
 
 func (s StateTransformer) PasteBlocks(blocks []simple.Block) error {
-	// TODO: use new functions for this
 	childIdsRewrite := make(map[string]string)
 	for _, b := range blocks {
 		for i, cId := range b.Model().ChildrenIds {

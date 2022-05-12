@@ -15,13 +15,16 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-func ExtractPages(
-	acquireBlock func(id string, apply func(b smartblock.SmartBlock) error) error,
-	createPageFromState func(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error),
-	req pb.RpcBlockListConvertChildrenToPagesRequest,
-) (linkIds []string, err error) {
+type PageCreator interface {
+	Do(id string, apply func(b smartblock.SmartBlock) error) error
+	CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error)
+}
+
+// ExtractBlocksToPages extracts child blocks from the page to separate pages and
+// replaces these blocks to the links to these pages
+func ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
 	blocks := make(map[string]*model.Block)
-	err = acquireBlock(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
+	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
 		for _, b := range contextBlock.Blocks() {
 			blocks[b.Id] = b
 		}
@@ -75,7 +78,7 @@ func ExtractPages(
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
-		_, pageId, err := createPageFromState(nil, "", pb.RpcBlockCreatePageRequest{
+		_, pageId, err := s.CreatePageFromState(nil, "", pb.RpcBlockCreatePageRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{
 				Fields: fields,
@@ -90,7 +93,7 @@ func ExtractPages(
 		})
 	}
 
-	err = acquireBlock(req.ContextId, func(b smartblock.SmartBlock) error {
+	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 
 		t := basic.NewStateTransformer(st)

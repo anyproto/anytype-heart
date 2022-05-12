@@ -19,15 +19,15 @@ type testExtractPages struct {
 	pages map[string]*smarttest.SmartTest
 }
 
-func (t *testExtractPages) Add(page *smarttest.SmartTest) {
+func (t testExtractPages) Add(page *smarttest.SmartTest) {
 	t.pages[page.Id()] = page
 }
 
-func (t *testExtractPages) Do(id string, apply func(b smartblock.SmartBlock) error) error {
+func (t testExtractPages) Do(id string, apply func(b smartblock.SmartBlock) error) error {
 	return apply(t.pages[id])
 }
 
-func (t *testExtractPages) CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
+func (t testExtractPages) CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
 	id := bson.NewObjectId().Hex()
 	page := smarttest.New(id)
 	t.pages[id] = page
@@ -165,7 +165,7 @@ func TestExtractPages(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: "page",
 			}
-			linkIds, err := ExtractPages(ts.Do, ts.CreatePageFromState, req)
+			linkIds, err := ExtractBlocksToPages(ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string

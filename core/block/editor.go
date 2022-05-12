@@ -986,12 +986,11 @@ func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations [
 	return
 }
 
-// ConvertChildrenToPages extracts child blocks from the page to separate pages and
-// replaces these blocks to the links to these pages
 func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
-	return editor.ExtractPages(s.Do, s.CreatePageFromState, req)
+	return editor.ExtractBlocksToPages(s, req)
 }
 
+// TODO This method has same semantics as ConvertChildrenToPages but works only with one target block id
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
 	// 1. Create new page, link
 	linkId, pageId, err := s.CreatePage(ctx, "", pb.RpcBlockCreatePageRequest{
