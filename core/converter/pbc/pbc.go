@@ -5,6 +5,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/converter"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/gogo/protobuf/types"
 )
 
 func NewConverter(s state.Doc) converter.Converter {
@@ -37,7 +38,7 @@ func (p *pbc) Ext() string {
 	return ".pb"
 }
 
-func (p *pbc) SetKnownLinks(ids []string) converter.Converter {
+func (p *pbc) SetKnownDocs(map[string]*types.Struct) converter.Converter {
 	return p
 }
 

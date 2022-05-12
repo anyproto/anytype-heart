@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"sort"
 	"strings"
 	"sync"
@@ -32,6 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
+	"github.com/ipfs/go-cid"
 )
 
 type ApplyFlag int

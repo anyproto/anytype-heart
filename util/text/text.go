@@ -5,8 +5,9 @@ import (
 	"unicode/utf8"
 )
 
+const TruncateEllipsis = " …"
+
 func Truncate(text string, length int) string {
-	var ellipsis = " …"
 	if utf8.RuneCountInString(text) <= length {
 		return text
 	}
@@ -27,7 +28,7 @@ func Truncate(text string, length int) string {
 				endTextPos = lastWordIndex
 			}
 			out := text[0:endTextPos]
-			return out + ellipsis
+			return out + TruncateEllipsis
 		}
 	}
 	return text

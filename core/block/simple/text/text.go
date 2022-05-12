@@ -168,6 +168,13 @@ func (t *Text) SetIconImage(imageHash string) {
 	t.content.IconImage = imageHash
 }
 
+func (t *Text) FillFileHashes(hashes []string) []string {
+	if h := t.content.IconImage; h != "" {
+		return append(hashes, h)
+	}
+	return hashes
+}
+
 func (t *Text) SetMarkForAllText(mark *model.BlockContentTextMark) {
 	mRange := &model.Range{
 		To: int32(utf8.RuneCountInString(t.content.Text)),
@@ -538,6 +545,11 @@ func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContent
 
 func (t *Text) Merge(b simple.Block) error {
 	text, ok := b.(*Text)
+
+	if t.content != nil && t.content.Text == "" {
+		t.SetStyle(text.content.Style)
+	}
+
 	if !ok {
 		return fmt.Errorf("unexpected block type for merge: %T", b)
 	}

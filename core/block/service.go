@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/hashicorp/go-multierror"
 	"net/url"
 	"strings"
 	"time"
@@ -208,6 +209,7 @@ type Service interface {
 	MakeTemplateByObjectType(otId string) (templateId string, err error)
 	CloneTemplate(id string) (templateId string, err error)
 	ObjectDuplicate(id string) (objectId string, err error)
+	ObjectsDuplicate(ids []string) (newIds []string, err error)
 	ApplyTemplate(contextId, templateId string) error
 
 	CreateWorkspace(req *pb.RpcWorkspaceCreateRequest) (string, error)
@@ -681,6 +683,28 @@ func (s *service) DeleteArchivedObjects(req pb.RpcObjectListDeleteRequest) (err 
 
 		return nil
 	})
+}
+
+func (s *service) ObjectsDuplicate(ids []string) (newIds []string, err error) {
+	var (
+		newId      string
+		anySucceed bool
+	)
+	var merr multierror.Error
+	for _, id := range ids {
+		if newId, err = s.ObjectDuplicate(id); err == nil {
+			newIds = append(newIds, newId)
+			anySucceed = true
+		} else {
+			merr.Errors = append(merr.Errors, err)
+		}
+	}
+	if !anySucceed {
+		err = merr.ErrorOrNil()
+	} else {
+		err = nil
+	}
+	return
 }
 
 func (s *service) DeleteArchivedObject(id string) (err error) {
@@ -1313,7 +1337,16 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	}); err != nil {
 		return
 	}
-	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypeTemplate, nil, nil, st)
+
+	sbt, err := coresb.SmartBlockTypeFromID(id)
+	if err != nil {
+		return
+	}
+	if sbt != coresb.SmartBlockTypePage && sbt != coresb.SmartBlockTypeSet {
+		return "", fmt.Errorf("invalid smartblockTYpe for duplicate")
+	}
+
+	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)
 	if err != nil {
 		return
 	}

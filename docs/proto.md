@@ -39,6 +39,10 @@
     - [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request)
     - [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response)
     - [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error)
+    - [Rpc.Account.Delete](#anytype.Rpc.Account.Delete)
+    - [Rpc.Account.Delete.Request](#anytype.Rpc.Account.Delete.Request)
+    - [Rpc.Account.Delete.Response](#anytype.Rpc.Account.Delete.Response)
+    - [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error)
     - [Rpc.Account.Recover](#anytype.Rpc.Account.Recover)
     - [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request)
     - [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response)
@@ -403,6 +407,10 @@
     - [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error)
     - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
     - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
+    - [Rpc.DeviceState](#anytype.Rpc.DeviceState)
+    - [Rpc.DeviceState.Request](#anytype.Rpc.DeviceState.Request)
+    - [Rpc.DeviceState.Response](#anytype.Rpc.DeviceState.Response)
+    - [Rpc.DeviceState.Response.Error](#anytype.Rpc.DeviceState.Response.Error)
     - [Rpc.DownloadFile](#anytype.Rpc.DownloadFile)
     - [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request)
     - [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response)
@@ -505,7 +513,6 @@
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error)
     - [Rpc.Object.Graph](#anytype.Rpc.Object.Graph)
     - [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge)
-    - [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node)
     - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
     - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
     - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
@@ -582,6 +589,10 @@
     - [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request)
     - [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response)
     - [Rpc.ObjectList.Delete.Response.Error](#anytype.Rpc.ObjectList.Delete.Response.Error)
+    - [Rpc.ObjectList.Duplicate](#anytype.Rpc.ObjectList.Duplicate)
+    - [Rpc.ObjectList.Duplicate.Request](#anytype.Rpc.ObjectList.Duplicate.Request)
+    - [Rpc.ObjectList.Duplicate.Response](#anytype.Rpc.ObjectList.Duplicate.Response)
+    - [Rpc.ObjectList.Duplicate.Response.Error](#anytype.Rpc.ObjectList.Duplicate.Response.Error)
     - [Rpc.ObjectList.Set](#anytype.Rpc.ObjectList.Set)
     - [Rpc.ObjectList.Set.IsArchived](#anytype.Rpc.ObjectList.Set.IsArchived)
     - [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request)
@@ -694,6 +705,7 @@
     - [Rpc.Workspace.SetIsHighlighted.Response.Error](#anytype.Rpc.Workspace.SetIsHighlighted.Response.Error)
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code)
+    - [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype.Rpc.Account.Recover.Response.Error.Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype.Rpc.Account.Select.Response.Error.Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype.Rpc.Account.Stop.Response.Error.Code)
@@ -779,6 +791,8 @@
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code)
+    - [Rpc.DeviceState.Request.DeviceState](#anytype.Rpc.DeviceState.Request.DeviceState)
+    - [Rpc.DeviceState.Response.Error.Code](#anytype.Rpc.DeviceState.Response.Error.Code)
     - [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
@@ -825,6 +839,7 @@
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
     - [Rpc.ObjectDuplicate.Response.Error.Code](#anytype.Rpc.ObjectDuplicate.Response.Error.Code)
     - [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code)
+    - [Rpc.ObjectList.Duplicate.Response.Error.Code](#anytype.Rpc.ObjectList.Duplicate.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsArchived.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsFavorite.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
@@ -858,6 +873,7 @@
     - [Event.Account.Config.Update](#anytype.Event.Account.Config.Update)
     - [Event.Account.Details](#anytype.Event.Account.Details)
     - [Event.Account.Show](#anytype.Event.Account.Show)
+    - [Event.Account.Update](#anytype.Event.Account.Update)
     - [Event.Block](#anytype.Event.Block)
     - [Event.Block.Add](#anytype.Event.Block.Add)
     - [Event.Block.Dataview](#anytype.Event.Block.Dataview)
@@ -1013,6 +1029,7 @@
     - [Account](#anytype.model.Account)
     - [Account.Avatar](#anytype.model.Account.Avatar)
     - [Account.Config](#anytype.model.Account.Config)
+    - [Account.Status](#anytype.model.Account.Status)
     - [Block](#anytype.model.Block)
     - [Block.Content](#anytype.model.Block.Content)
     - [Block.Content.Bookmark](#anytype.model.Block.Content.Bookmark)
@@ -1051,6 +1068,7 @@
     - [ThreadCreateQueueEntry](#anytype.model.ThreadCreateQueueEntry)
     - [ThreadDeeplinkPayload](#anytype.model.ThreadDeeplinkPayload)
   
+    - [Account.StatusType](#anytype.model.Account.StatusType)
     - [Block.Align](#anytype.model.Block.Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype.model.Block.Content.Dataview.Filter.Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype.model.Block.Content.Dataview.Filter.Operator)
@@ -1114,6 +1132,7 @@
 | WorkspaceSetIsHighlighted | [Rpc.Workspace.SetIsHighlighted.Request](#anytype.Rpc.Workspace.SetIsHighlighted.Request) | [Rpc.Workspace.SetIsHighlighted.Response](#anytype.Rpc.Workspace.SetIsHighlighted.Response) |  |
 | AccountRecover | [Rpc.Account.Recover.Request](#anytype.Rpc.Account.Recover.Request) | [Rpc.Account.Recover.Response](#anytype.Rpc.Account.Recover.Response) |  |
 | AccountCreate | [Rpc.Account.Create.Request](#anytype.Rpc.Account.Create.Request) | [Rpc.Account.Create.Response](#anytype.Rpc.Account.Create.Response) |  |
+| AccountDelete | [Rpc.Account.Delete.Request](#anytype.Rpc.Account.Delete.Request) | [Rpc.Account.Delete.Response](#anytype.Rpc.Account.Delete.Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype.Rpc.Account.Select.Request) | [Rpc.Account.Select.Response](#anytype.Rpc.Account.Select.Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype.Rpc.Account.Stop.Request) | [Rpc.Account.Stop.Response](#anytype.Rpc.Account.Stop.Response) |  |
 | FileOffload | [Rpc.File.Offload.Request](#anytype.Rpc.File.Offload.Request) | [Rpc.File.Offload.Response](#anytype.Rpc.File.Offload.Response) |  |
@@ -1122,6 +1141,7 @@
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
 | Shutdown | [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request) | [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response) |  |
+| SetDeviceState | [Rpc.DeviceState.Request](#anytype.Rpc.DeviceState.Request) | [Rpc.DeviceState.Response](#anytype.Rpc.DeviceState.Response) |  |
 | ExternalDropFiles | [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request) | [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response) |  |
 | ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype.Rpc.LinkPreview.Request) | [Rpc.LinkPreview.Response](#anytype.Rpc.LinkPreview.Response) |  |
@@ -1220,6 +1240,7 @@
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request) | [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request) | [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response) | ObjectToSet creates new set from given object and removes object |
+| ObjectListDuplicate | [Rpc.ObjectList.Duplicate.Request](#anytype.Rpc.ObjectList.Duplicate.Request) | [Rpc.ObjectList.Duplicate.Response](#anytype.Rpc.ObjectList.Duplicate.Response) |  |
 | ObjectListDelete | [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request) | [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response) |  |
 | ObjectListSetIsArchived | [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request) | [Rpc.ObjectList.Set.IsArchived.Response](#anytype.Rpc.ObjectList.Set.IsArchived.Response) |  |
 | ObjectListSetIsFavorite | [Rpc.ObjectList.Set.IsFavorite.Request](#anytype.Rpc.ObjectList.Set.IsFavorite.Request) | [Rpc.ObjectList.Set.IsFavorite.Response](#anytype.Rpc.ObjectList.Set.IsFavorite.Response) |  |
@@ -1685,7 +1706,7 @@ Namespace, that agregates subtopics and actions, that relates to account.
 <a name="anytype.Rpc.Account.Config"></a>
 
 ### Rpc.Account.Config
-
+TODO: use model from models.proto
 
 
 | Field | Type | Label | Description |
@@ -1738,7 +1759,7 @@ Middleware-to-front-end response for an account creation request, that can conta
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Create.Response.Error](#anytype.Rpc.Account.Create.Response.Error) |  | Error while trying to create an account |
 | account | [model.Account](#anytype.model.Account) |  | A newly created account; In case of a failure, i.e. error is non-NULL, the account model should contain empty/default-value fields |
-| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
 
 
 
@@ -1754,6 +1775,63 @@ Middleware-to-front-end response for an account creation request, that can conta
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Account.Create.Response.Error.Code](#anytype.Rpc.Account.Create.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete"></a>
+
+### Rpc.Account.Delete
+
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Request"></a>
+
+### Rpc.Account.Delete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| revert | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Response"></a>
+
+### Rpc.Account.Delete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Delete.Response.Error](#anytype.Rpc.Account.Delete.Response.Error) |  | Error while trying to recover an account |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.Account.Delete.Response.Error"></a>
+
+### Rpc.Account.Delete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Delete.Response.Error.Code](#anytype.Rpc.Account.Delete.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -1850,7 +1928,7 @@ Middleware-to-front-end response for an account select request, that can contain
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Account.Select.Response.Error](#anytype.Rpc.Account.Select.Response.Error) |  | Error while trying to launch/select an account |
 | account | [model.Account](#anytype.model.Account) |  | Selected account |
-| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  |  |
+| config | [Rpc.Account.Config](#anytype.Rpc.Account.Config) |  | deprecated, use account |
 
 
 
@@ -7120,6 +7198,62 @@ commands acceptable only for text blocks, others will be ignored
 
 
 
+<a name="anytype.Rpc.DeviceState"></a>
+
+### Rpc.DeviceState
+
+
+
+
+
+
+
+<a name="anytype.Rpc.DeviceState.Request"></a>
+
+### Rpc.DeviceState.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceState | [Rpc.DeviceState.Request.DeviceState](#anytype.Rpc.DeviceState.Request.DeviceState) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.DeviceState.Response"></a>
+
+### Rpc.DeviceState.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.DeviceState.Response.Error](#anytype.Rpc.DeviceState.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.DeviceState.Response.Error"></a>
+
+### Rpc.DeviceState.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.DeviceState.Response.Error.Code](#anytype.Rpc.DeviceState.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.DownloadFile"></a>
 
 ### Rpc.DownloadFile
@@ -8579,30 +8713,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.Graph.Node"></a>
-
-### Rpc.Object.Graph.Node
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| layout | [int32](#int32) |  |  |
-| description | [string](#string) |  |  |
-| iconImage | [string](#string) |  |  |
-| iconEmoji | [string](#string) |  |  |
-| done | [bool](#bool) |  |  |
-| relationFormat | [int32](#int32) |  |  |
-| snippet | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Object.Graph.Request"></a>
 
 ### Rpc.Object.Graph.Request
@@ -8614,6 +8724,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| keys | [string](#string) | repeated |  |
 
 
 
@@ -8629,7 +8740,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error) |  |  |
-| nodes | [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node) | repeated |  |
+| nodes | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
 | edges | [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge) | repeated |  |
 
 
@@ -9626,7 +9737,7 @@ deprecated, to be removed |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of template block for cloning |
+| contextId | [string](#string) |  |  |
 
 
 
@@ -9642,7 +9753,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectDuplicate.Response.Error](#anytype.Rpc.ObjectDuplicate.Response.Error) |  |  |
-| id | [string](#string) |  | created template id |
+| id | [string](#string) |  |  |
 
 
 
@@ -9725,6 +9836,63 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate"></a>
+
+### Rpc.ObjectList.Duplicate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Request"></a>
+
+### Rpc.ObjectList.Duplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response"></a>
+
+### Rpc.ObjectList.Duplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectList.Duplicate.Response.Error](#anytype.Rpc.ObjectList.Duplicate.Response.Error) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response.Error"></a>
+
+### Rpc.ObjectList.Duplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectList.Duplicate.Response.Error.Code](#anytype.Rpc.ObjectList.Duplicate.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11276,6 +11444,21 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.Account.Delete.Response.Error.Code"></a>
+
+### Rpc.Account.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 | No error; |
+| UNKNOWN_ERROR | 1 | Any other errors |
+| BAD_INPUT | 2 |  |
+| ACCOUNT_IS_ALREADY_DELETED | 101 |  |
+| ACCOUNT_IS_ACTIVE | 102 |  |
+
+
+
 <a name="anytype.Rpc.Account.Recover.Response.Error.Code"></a>
 
 ### Rpc.Account.Recover.Response.Error.Code
@@ -11294,6 +11477,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | WALLET_RECOVER_NOT_PERFORMED | 106 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 107 |  |
 | ANOTHER_ANYTYPE_PROCESS_IS_RUNNING | 108 |  |
+| ACCOUNT_IS_DELETED | 109 |  |
 
 
 
@@ -12411,6 +12595,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.DeviceState.Request.DeviceState"></a>
+
+### Rpc.DeviceState.Request.DeviceState
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BACKGROUND | 0 |  |
+| FOREGROUND | 1 |  |
+
+
+
+<a name="anytype.Rpc.DeviceState.Response.Error.Code"></a>
+
+### Rpc.DeviceState.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 101 |  |
+
+
+
 <a name="anytype.Rpc.DownloadFile.Response.Error.Code"></a>
 
 ### Rpc.DownloadFile.Response.Error.Code
@@ -13022,6 +13232,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.ObjectList.Duplicate.Response.Error.Code"></a>
+
+### Rpc.ObjectList.Duplicate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code"></a>
 
 ### Rpc.ObjectList.Set.IsArchived.Response.Error.Code
@@ -13409,7 +13632,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 <a name="anytype.Event.Account.Config"></a>
 
 ### Event.Account.Config
-
+Deprecated
 
 
 
@@ -13425,6 +13648,7 @@ Event – type of message, that could be sent from a middleware to the correspon
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -13457,6 +13681,22 @@ Message, that will be sent to the front on each account found after an AccountRe
 | ----- | ---- | ----- | ----------- |
 | index | [int32](#int32) |  | Number of an account in an all found accounts list |
 | account | [model.Account](#anytype.model.Account) |  | An Account, that has been found for the mnemonic |
+
+
+
+
+
+
+<a name="anytype.Event.Account.Update"></a>
+
+### Event.Account.Update
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| config | [model.Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [model.Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -14927,6 +15167,7 @@ Precondition: user A opened a block
 | accountShow | [Event.Account.Show](#anytype.Event.Account.Show) |  |  |
 | accountDetails | [Event.Account.Details](#anytype.Event.Account.Details) |  |  |
 | accountConfigUpdate | [Event.Account.Config.Update](#anytype.Event.Account.Config.Update) |  |  |
+| accountUpdate | [Event.Account.Update](#anytype.Event.Account.Update) |  |  |
 | objectDetailsSet | [Event.Object.Details.Set](#anytype.Event.Object.Details.Set) |  |  |
 | objectDetailsAmend | [Event.Object.Details.Amend](#anytype.Event.Object.Details.Amend) |  |  |
 | objectDetailsUnset | [Event.Object.Details.Unset](#anytype.Event.Object.Details.Unset) |  |  |
@@ -15873,6 +16114,8 @@ Contains basic information about a user account
 | id | [string](#string) |  | User&#39;s thread id |
 | name | [string](#string) |  | User name, that associated with this account |
 | avatar | [Account.Avatar](#anytype.model.Account.Avatar) |  | Avatar of a user&#39;s account |
+| config | [Account.Config](#anytype.model.Account.Config) |  |  |
+| status | [Account.Status](#anytype.model.Account.Status) |  |  |
 
 
 
@@ -15908,6 +16151,22 @@ Avatar of a user&#39;s account. It could be an image or color
 | enableReleaseChannelSwitch | [bool](#bool) |  |  |
 | enableSpaces | [bool](#bool) |  |  |
 | extra | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.model.Account.Status"></a>
+
+### Account.Status
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| statusType | [Account.StatusType](#anytype.model.Account.StatusType) |  |  |
+| deletionDate | [int64](#int64) |  |  |
 
 
 
@@ -16567,6 +16826,20 @@ scope from which this relation have been aggregated |
  
 
 
+<a name="anytype.model.Account.StatusType"></a>
+
+### Account.StatusType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Active | 0 |  |
+| PendingDeletion | 1 |  |
+| StartedDeletion | 2 |  |
+| Deleted | 3 |  |
+
+
+
 <a name="anytype.model.Block.Align"></a>
 
 ### Block.Align
@@ -16801,13 +17074,13 @@ scope from which this relation have been aggregated |
 | Header4 | 4 | deprecated |
 | Quote | 5 |  |
 | Code | 6 |  |
-| Title | 7 | currently only only one block of this style can exists on a page |
+| Title | 7 | currently only one block of this style can exists on a page |
 | Checkbox | 8 |  |
 | Marked | 9 |  |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
-| Description | 12 | currently only only one block of this style can exists on a page |
-| Callout | 13 | currently only only one block of this style can exists on a page |
+| Description | 12 | currently only one block of this style can exists on a page |
+| Callout | 13 |  |
 
 
 
