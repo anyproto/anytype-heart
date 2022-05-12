@@ -11,6 +11,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
+// StateTransformer performs more complex state modifications, i.e. create nested block
 type StateTransformer struct {
 	*state.State
 }
@@ -47,14 +48,16 @@ func (s StateTransformer) CreateBlock(groupId string, req pb.RpcBlockCreateReque
 }
 
 func (s StateTransformer) CutBlocks(blockIds []string) (blocks []simple.Block) {
-	var uniqMap = make(map[string]struct{})
-	for _, bId := range blockIds {
-		b := s.Pick(bId)
-		if b != nil {
-			descendants := s.getAllDescendants(uniqMap, b.Copy(), []simple.Block{})
-			blocks = append(blocks, descendants...)
-			s.Unlink(b.Model().Id)
+	visited := map[string]struct{}{}
+	for _, id := range blockIds {
+		b := s.Pick(id)
+		if b == nil {
+			continue
 		}
+
+		descendants := s.getAllDescendants(visited, b.Copy(), []simple.Block{})
+		blocks = append(blocks, descendants...)
+		s.Unlink(b.Model().Id)
 	}
 	return blocks
 }
@@ -87,14 +90,14 @@ func (s StateTransformer) PasteBlocks(blocks []simple.Block) error {
 	return nil
 }
 
-func (s StateTransformer) getAllDescendants(uniqMap map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
-	if _, ok := uniqMap[block.Model().Id]; ok {
+func (s StateTransformer) getAllDescendants(visited map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
+	if _, ok := visited[block.Model().Id]; ok {
 		return blocks
 	}
 	blocks = append(blocks, block)
-	uniqMap[block.Model().Id] = struct{}{}
+	visited[block.Model().Id] = struct{}{}
 	for _, cId := range block.Model().ChildrenIds {
-		blocks = s.getAllDescendants(uniqMap, s.Pick(cId).Copy(), blocks)
+		blocks = s.getAllDescendants(visited, s.Pick(cId).Copy(), blocks)
 	}
 	return blocks
 }

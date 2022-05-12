@@ -10,6 +10,7 @@ import (
 	"github.com/miolini/datacounter"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -766,7 +767,7 @@ func (mw *Middleware) BlockListConvertChildrenToPages(req *pb.RpcBlockListConver
 	}
 	var linkIds []string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		linkIds, err = bs.ConvertChildrenToPages(*req)
+		linkIds, err = editor.ExtractBlocksToPages(bs, *req)
 		return
 	})
 	if err != nil {

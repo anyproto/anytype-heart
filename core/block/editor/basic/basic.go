@@ -310,18 +310,6 @@ func (bs *basic) AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAd
 	return bs.Apply(s)
 }
 
-func (bs *basic) getAllDescendants(uniqMap map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
-	if _, ok := uniqMap[block.Model().Id]; ok {
-		return blocks
-	}
-	blocks = append(blocks, block)
-	uniqMap[block.Model().Id] = struct{}{}
-	for _, cId := range block.Model().ChildrenIds {
-		blocks = bs.getAllDescendants(uniqMap, bs.Pick(cId).Copy(), blocks)
-	}
-	return blocks
-}
-
 func (bs *basic) FeaturedRelationAdd(ctx *state.Context, relations ...string) (err error) {
 	s := bs.NewStateCtx(ctx)
 	fr := pbtypes.GetStringList(s.Details(), bundle.RelationKeyFeaturedRelations.String())
