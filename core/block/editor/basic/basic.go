@@ -29,8 +29,8 @@ type Basic interface {
 	SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
-	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (apply func() error, blocks []simple.Block, err error)
-	InternalPaste(blocks []simple.Block) (err error)
+
+	Paste(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
 	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
@@ -41,48 +41,11 @@ type Basic interface {
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
-// InternalCut will only unlink blocks you've cut after you call apply()
-// TODO: remove req, use simple data
-func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (apply func() error, blocks []simple.Block, err error) {
-	s := bs.NewStateCtx(ctx)
-	var uniqMap = make(map[string]struct{})
-	for _, bId := range req.BlockIds {
-		b := s.Pick(bId)
-		if b != nil {
-			descendants := bs.getAllDescendants(uniqMap, b.Copy(), []simple.Block{})
-			blocks = append(blocks, descendants...)
-			s.Unlink(b.Model().Id)
-		}
-	}
-
-	return func() error { return bs.Apply(s) }, blocks, err
-}
-
-func (bs *basic) InternalPaste(blocks []simple.Block) (err error) {
+func (bs *basic) Paste(blocks []simple.Block) (err error) {
 	s := bs.NewState()
-	childIdsRewrite := make(map[string]string)
-	for _, b := range blocks {
-		for i, cId := range b.Model().ChildrenIds {
-			newId := bson.NewObjectId().Hex()
-			childIdsRewrite[cId] = newId
-			b.Model().ChildrenIds[i] = newId
-		}
-	}
-	for _, b := range blocks {
-		var child bool
-		if newId, ok := childIdsRewrite[b.Model().Id]; ok {
-			b.Model().Id = newId
-			child = true
-		} else {
-			b.Model().Id = bson.NewObjectId().Hex()
-		}
-		s.Add(b)
-		if !child {
-			err := s.InsertTo("", model.Block_Inner, b.Model().Id)
-			if err != nil {
-				return err
-			}
-		}
+	t := NewStateTransformer(s)
+	if err := t.PasteBlocks(blocks); err != nil {
+		return fmt.Errorf("paste blocks: %w", err)
 	}
 	return bs.Apply(s)
 }
@@ -105,7 +68,7 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 
 	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
 
-	t := StateTransform{s}
+	t := StateTransformer{s}
 	id, err = t.CreateBlock(groupId, req)
 	if err != nil {
 		return "", fmt.Errorf("create block: %w", err)

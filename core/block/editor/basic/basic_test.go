@@ -1,8 +1,9 @@
 package basic
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"testing"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
@@ -251,27 +252,11 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
 
-func TestBasic_InternalCut(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
-	b := NewBasic(sb)
-	apply, blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveRequest{
-		BlockIds: []string{"1", "1.1", "1.1.1"},
-	})
-	require.NoError(t, err)
-	require.NoError(t, apply())
-
-	assert.Len(t, blocks, 3)
-}
-
-func TestBasic_InternalPaste(t *testing.T) {
+func TestBasic_Paste(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 	b := NewBasic(sb)
-	err := b.InternalPaste([]simple.Block{
+	err := b.Paste([]simple.Block{
 		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
 		simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}),
 		simple.New(&model.Block{Id: "1.1.1"}),
