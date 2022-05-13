@@ -47,7 +47,9 @@ var dumpTree = &cobra.Command{
 
 		dbg := app.MustComponent(debug.CName).(debug.Debug)
 
-		filename, err := dbg.DumpTree(debugThread, debugOutputFile, false)
+		isAnonymize := false
+		dumpWithSvg := false
+		filename, err := dbg.DumpTree(debugThread, debugOutputFile, isAnonymize, dumpWithSvg)
 		if err != nil {
 			console.Fatal("failed to dump tree: %s", err.Error())
 		}
