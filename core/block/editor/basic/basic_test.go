@@ -20,7 +20,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
+func newTextBlock(id, contentText string, childrenIds []string) simple.Block {
 	return text.NewText(&model.Block{
 		Id: id,
 		Content: &model.BlockContentOfText{
@@ -158,8 +158,8 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("replace empty", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-			AddBlock(newTextBlock("1", "")).
-			AddBlock(newTextBlock("2", "one"))
+			AddBlock(newTextBlock("1", "", nil)).
+			AddBlock(newTextBlock("2", "one", nil))
 
 		b := NewBasic(sb)
 
@@ -174,10 +174,10 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("replace background and color", func(t *testing.T) {
 		sb := smarttest.New("test")
 
-		firstBlock := newTextBlock("1", "")
+		firstBlock := newTextBlock("1", "", nil)
 		firstBlock.Model().BackgroundColor = "first_block_background_color"
 
-		secondBlock := newTextBlock("2", "two")
+		secondBlock := newTextBlock("2", "two", nil)
 		secondBlock.Model().GetText().Color = "second_block_text_color"
 
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).

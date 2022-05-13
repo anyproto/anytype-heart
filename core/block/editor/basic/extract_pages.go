@@ -1,9 +1,8 @@
-package editor
+package basic
 
 import (
 	"fmt"
 
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
@@ -96,10 +95,8 @@ func ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertChildrenToPag
 	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
 		st := b.NewState()
 
-		t := basic.NewStateTransformer(st)
-
 		for _, l := range linksToAdd {
-			linkId, err := t.CreateBlock("", pb.RpcBlockCreateRequest{
+			linkId, err := CreateBlock(st, "", pb.RpcBlockCreateRequest{
 				TargetId: l.blockId,
 				Block: &model.Block{
 					Content: &model.BlockContentOfLink{
@@ -116,7 +113,7 @@ func ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertChildrenToPag
 			}
 			linkIds = append(linkIds, linkId)
 		}
-		t.CutBlocks(toRemove)
+		CutBlocks(st, toRemove)
 
 		return b.Apply(st)
 	})

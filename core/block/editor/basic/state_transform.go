@@ -11,18 +11,7 @@ import (
 	"github.com/globalsign/mgo/bson"
 )
 
-// StateTransformer performs more complex state modifications, i.e. create nested block
-type StateTransformer struct {
-	*state.State
-}
-
-func NewStateTransformer(s *state.State) StateTransformer {
-	return StateTransformer{
-		State: s,
-	}
-}
-
-func (s StateTransformer) CreateBlock(groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
+func CreateBlock(s *state.State, groupId string, req pb.RpcBlockCreateRequest) (id string, err error) {
 	if req.TargetId != "" {
 		if s.IsChild(template.HeaderLayoutId, req.TargetId) {
 			req.Position = model.Block_Bottom
@@ -47,7 +36,7 @@ func (s StateTransformer) CreateBlock(groupId string, req pb.RpcBlockCreateReque
 	return block.Model().Id, nil
 }
 
-func (s StateTransformer) CutBlocks(blockIds []string) (blocks []simple.Block) {
+func CutBlocks(s *state.State, blockIds []string) (blocks []simple.Block) {
 	visited := map[string]struct{}{}
 	for _, id := range blockIds {
 		b := s.Pick(id)
@@ -55,14 +44,14 @@ func (s StateTransformer) CutBlocks(blockIds []string) (blocks []simple.Block) {
 			continue
 		}
 
-		descendants := s.getAllDescendants(visited, b.Copy(), []simple.Block{})
+		descendants := getAllDescendants(s, visited, b.Copy(), []simple.Block{})
 		blocks = append(blocks, descendants...)
 		s.Unlink(b.Model().Id)
 	}
 	return blocks
 }
 
-func (s StateTransformer) PasteBlocks(blocks []simple.Block) error {
+func PasteBlocks(s *state.State, blocks []simple.Block) error {
 	childIdsRewrite := make(map[string]string)
 	for _, b := range blocks {
 		for i, cId := range b.Model().ChildrenIds {
@@ -90,14 +79,14 @@ func (s StateTransformer) PasteBlocks(blocks []simple.Block) error {
 	return nil
 }
 
-func (s StateTransformer) getAllDescendants(visited map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
+func getAllDescendants(s *state.State, visited map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
 	if _, ok := visited[block.Model().Id]; ok {
 		return blocks
 	}
 	blocks = append(blocks, block)
 	visited[block.Model().Id] = struct{}{}
 	for _, cId := range block.Model().ChildrenIds {
-		blocks = s.getAllDescendants(visited, s.Pick(cId).Copy(), blocks)
+		blocks = getAllDescendants(s, visited, s.Pick(cId).Copy(), blocks)
 	}
 	return blocks
 }

@@ -987,7 +987,7 @@ func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations [
 }
 
 func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
-	return editor.ExtractBlocksToPages(s, req)
+	return basic.ExtractBlocksToPages(s, req)
 }
 
 func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewPageRequest) (linkId string, err error) {
@@ -1028,10 +1028,10 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveRequest)
 	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
 		return s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
 			cs := cb.NewState()
-			blocks := basic.NewStateTransformer(cs).CutBlocks(req.BlockIds)
+			blocks := basic.CutBlocks(cs, req.BlockIds)
 
 			ts := tb.NewState()
-			err := basic.NewStateTransformer(ts).PasteBlocks(blocks)
+			err := basic.PasteBlocks(ts, blocks)
 			if err != nil {
 				return fmt.Errorf("paste blocks: %w", err)
 			}

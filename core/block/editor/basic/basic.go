@@ -43,8 +43,7 @@ var ErrNotSupported = fmt.Errorf("operation not supported for this type of smart
 
 func (bs *basic) PasteBlocks(blocks []simple.Block) (err error) {
 	s := bs.NewState()
-	t := NewStateTransformer(s)
-	if err := t.PasteBlocks(blocks); err != nil {
+	if err := PasteBlocks(s, blocks); err != nil {
 		return fmt.Errorf("paste blocks: %w", err)
 	}
 	return bs.Apply(s)
@@ -68,8 +67,7 @@ func (bs *basic) Create(ctx *state.Context, groupId string, req pb.RpcBlockCreat
 
 	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
 
-	t := StateTransformer{s}
-	id, err = t.CreateBlock(groupId, req)
+	id, err = CreateBlock(s, groupId, req)
 	if err != nil {
 		return "", fmt.Errorf("create block: %w", err)
 	}

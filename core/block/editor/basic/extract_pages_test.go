@@ -1,4 +1,4 @@
-package editor
+package basic
 
 import (
 	"testing"
@@ -6,9 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 	"github.com/stretchr/testify/assert"
@@ -36,14 +34,6 @@ func (t testExtractPages) CreatePageFromState(ctx *state.Context, groupId string
 	page.Doc = state
 
 	return "", id, nil
-}
-
-func newTextBlock(id string, childrenIds []string, text string) simple.Block {
-	return simple.New(&model.Block{Id: id, ChildrenIds: childrenIds, Content: &model.BlockContentOfText{
-		Text: &model.BlockContentText{
-			Text: text,
-		},
-	}})
 }
 
 func assertNoCommonElements(t *testing.T, a, b []string) {
@@ -79,13 +69,13 @@ func assertLinkedPageHasTextBlocks(t *testing.T, ts testExtractPages, sourcePage
 func TestExtractPages(t *testing.T) {
 	makeTestPage := func() *smarttest.SmartTest {
 		sb := smarttest.New("test")
-		sb.AddBlock(newTextBlock("test", []string{"1", "2"}, ""))
-		sb.AddBlock(newTextBlock("1", []string{"1.1", "1.2"}, "text 1"))
-		sb.AddBlock(newTextBlock("1.1", []string{"1.1.1"}, "text 1.1"))
-		sb.AddBlock(newTextBlock("1.1.1", nil, "text 1.1.1"))
-		sb.AddBlock(newTextBlock("1.2", nil, "text 1.2"))
-		sb.AddBlock(newTextBlock("2", []string{"2.1"}, "text 2"))
-		sb.AddBlock(newTextBlock("2.1", nil, "text 2.1"))
+		sb.AddBlock(newTextBlock("test", "", []string{"1", "2"}))
+		sb.AddBlock(newTextBlock("1", "text 1", []string{"1.1", "1.2"}))
+		sb.AddBlock(newTextBlock("1.1", "text 1.1", []string{"1.1.1"}))
+		sb.AddBlock(newTextBlock("1.1.1", "text 1.1.1", nil))
+		sb.AddBlock(newTextBlock("1.2", "text 1.2", nil))
+		sb.AddBlock(newTextBlock("2", "text 2", []string{"2.1"}))
+		sb.AddBlock(newTextBlock("2.1", "text 2.1", nil))
 		return sb
 	}
 

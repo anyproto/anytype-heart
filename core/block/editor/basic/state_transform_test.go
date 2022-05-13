@@ -18,10 +18,9 @@ func TestCutBlocks(t *testing.T) {
 	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
 
 	s := sb.NewState()
-	st := NewStateTransformer(s)
 
 	blockIds := []string{"1", "1.1", "1.1.1"}
-	blocks := st.CutBlocks(blockIds)
+	blocks := CutBlocks(s, blockIds)
 
 	require.NoError(t, sb.Apply(s))
 
