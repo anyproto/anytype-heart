@@ -252,11 +252,11 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
 
-func TestBasic_Paste(t *testing.T) {
+func TestBasic_PasteBlocks(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 	b := NewBasic(sb)
-	err := b.Paste([]simple.Block{
+	err := b.PasteBlocks([]simple.Block{
 		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
 		simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}),
 		simple.New(&model.Block{Id: "1.1.1"}),

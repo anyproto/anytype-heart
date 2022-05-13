@@ -115,7 +115,7 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 	}
 
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.Paste(blocks)
+		return b.PasteBlocks(blocks)
 	})
 }
 
