@@ -95,7 +95,7 @@ type Service interface {
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error)
-	CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, st *state.State) (linkId string, pageId string, err error)
+	CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockCreatePageRequest, st *state.State) (linkId string, pageId string, err error)
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
@@ -934,17 +934,27 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 // CreatePage creates a page and stores a link to it in the context block
 func (s *service) CreatePage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest) (linkId string, pageId string, err error) {
-	return s.createPage(ctx, groupId, req, true, func(ctx context.Context) (string, error) {
+	pageCreator := func(ctx context.Context) (string, error) {
 		pageId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 		if err != nil {
 			return pageId, fmt.Errorf("create smartblock error: %v", err)
 		}
 		return pageId, nil
-	})
+	}
+
+	if req.ContextId != "" {
+		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+			linkId, pageId, err = s.createPage(ctx, sb, groupId, req, true, pageCreator)
+			return err
+		})
+		return
+	}
+
+	return s.createPage(ctx, nil, groupId, req, true, pageCreator)
 }
 
-func (s *service) CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
-	return s.createPage(ctx, groupId, req, false, func(ctx context.Context) (string, error) {
+func (s *service) CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
+	return s.createPage(ctx, contextBlock, groupId, req, false, func(ctx context.Context) (string, error) {
 		pageId, _, err = s.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, nil, state)
 		if err != nil {
 			return pageId, fmt.Errorf("create smartblock error: %v", err)
@@ -953,17 +963,9 @@ func (s *service) CreatePageFromState(ctx *state.Context, groupId string, req pb
 	})
 }
 
-func (s *service) createPage(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, storeLink bool, create func(context.Context) (pageId string, err error)) (linkId string, pageId string, err error) {
-	if req.ContextId != "" {
-		var contextBlockType model.SmartBlockType
-		if err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-			contextBlockType = b.Type()
-			return nil
-		}); err != nil {
-			return
-		}
-
-		if contextBlockType == model.SmartBlockType_Set {
+func (s *service) createPage(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockCreatePageRequest, storeLink bool, create func(context.Context) (pageId string, err error)) (linkId string, pageId string, err error) {
+	if contextBlock != nil {
+		if contextBlock.Type() == model.SmartBlockType_Set {
 			return "", "", basic.ErrNotSupported
 		}
 	}
@@ -987,29 +989,31 @@ func (s *service) createPage(ctx *state.Context, groupId string, req pb.RpcBlock
 	}
 
 	// do not create a link
-	if (!storeLink) || (req.ContextId == "" && req.TargetId == "") {
+	if (!storeLink) || contextBlock == nil {
 		return "", pageId, err
 	}
 
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
-			TargetId: req.TargetId,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: pageId,
-						Style:         model.BlockContentLink_Page,
-					},
+	b, ok := contextBlock.(basic.Basic)
+	if !ok {
+		err = fmt.Errorf("%T doesn't implement basic.Basic", contextBlock)
+		return
+	}
+	linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
+		TargetId: req.TargetId,
+		Block: &model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: pageId,
+					Style:         model.BlockContentLink_Page,
 				},
-				Fields: req.Fields,
 			},
-			Position: req.Position,
-		})
-		if err != nil {
-			err = fmt.Errorf("link create error: %v", err)
-		}
-		return err
+			Fields: req.Fields,
+		},
+		Position: req.Position,
 	})
+	if err != nil {
+		err = fmt.Errorf("link create error: %v", err)
+	}
 	return
 }
 

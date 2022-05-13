@@ -21,11 +21,7 @@ func (t testExtractPages) Add(page *smarttest.SmartTest) {
 	t.pages[page.Id()] = page
 }
 
-func (t testExtractPages) Do(id string, apply func(b smartblock.SmartBlock) error) error {
-	return apply(t.pages[id])
-}
-
-func (t testExtractPages) CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
+func (t testExtractPages) CreatePageFromState(ctx *state.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
 	id := bson.NewObjectId().Hex()
 	page := smarttest.New(id)
 	t.pages[id] = page
@@ -69,13 +65,16 @@ func assertLinkedPageHasTextBlocks(t *testing.T, ts testExtractPages, sourcePage
 func TestExtractPages(t *testing.T) {
 	makeTestPage := func() *smarttest.SmartTest {
 		sb := smarttest.New("test")
-		sb.AddBlock(newTextBlock("test", "", []string{"1", "2"}))
+		sb.AddBlock(newTextBlock("test", "", []string{"1", "2", "3"}))
 		sb.AddBlock(newTextBlock("1", "text 1", []string{"1.1", "1.2"}))
 		sb.AddBlock(newTextBlock("1.1", "text 1.1", []string{"1.1.1"}))
 		sb.AddBlock(newTextBlock("1.1.1", "text 1.1.1", nil))
 		sb.AddBlock(newTextBlock("1.2", "text 1.2", nil))
 		sb.AddBlock(newTextBlock("2", "text 2", []string{"2.1"}))
 		sb.AddBlock(newTextBlock("2.1", "text 2.1", nil))
+		sb.AddBlock(newTextBlock("3", "text 3", []string{"3.1"}))
+		sb.AddBlock(newTextBlock("3.1", "text 3.1", []string{"3.1.1"}))
+		sb.AddBlock(newTextBlock("3.1.1", "text 3.1.1", nil))
 		return sb
 	}
 
@@ -86,7 +85,7 @@ func TestExtractPages(t *testing.T) {
 	}{
 		{
 			name:               "undefined block",
-			blockIds:           []string{"3.1.1"},
+			blockIds:           []string{"4.1.1"},
 			wantPagesWithTexts: [][]string{},
 		},
 		{
@@ -122,7 +121,7 @@ func TestExtractPages(t *testing.T) {
 			},
 		},
 		{
-			name: "multiple blocks, all descendants present in requests",
+			name: "two blocks, all descendants present in requests",
 			blockIds: []string{
 				"1", "1.1", "1.1.1", "1.2",
 				"2", "2.1",
@@ -141,6 +140,26 @@ func TestExtractPages(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "two blocks, not all descendants present in requests",
+			blockIds: []string{
+				"1.1", "1.1.1",
+				"3", "3.1.1",
+			},
+			wantPagesWithTexts: [][]string{
+				// First page
+				{
+					"text 1.1",
+					"text 1.1.1",
+				},
+				// Second page
+				{
+					"text 3",
+					"text 3.1",
+					"text 3.1.1",
+				},
+			},
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			ts := testExtractPages{
@@ -155,7 +174,7 @@ func TestExtractPages(t *testing.T) {
 				BlockIds:   tc.blockIds,
 				ObjectType: "page",
 			}
-			linkIds, err := ExtractBlocksToPages(ts, req)
+			linkIds, err := NewBasic(sb).ExtractBlocksToPages(ts, req)
 			assert.NoError(t, err)
 
 			var gotBlockIds []string

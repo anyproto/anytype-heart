@@ -5,6 +5,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -15,156 +16,148 @@ import (
 )
 
 type PageCreator interface {
-	Do(id string, apply func(b smartblock.SmartBlock) error) error
-	CreatePageFromState(ctx *state.Context, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error)
+	CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error)
 }
 
 // ExtractBlocksToPages extracts child blocks from the page to separate pages and
 // replaces these blocks to the links to these pages
-func ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
-	blocks := make(map[string]*model.Block)
-	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
-		for _, b := range contextBlock.Blocks() {
-			blocks[b.Id] = b
+func (bs *basic) ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+	st := bs.NewState()
+
+	roots := listRoots(st, req.BlockIds)
+	for _, root := range roots {
+		children := listChildren(st, root)
+		newRoot, newBlocks := reassignSubtreeIds(root.Model().Id, append([]simple.Block{root}, children...))
+
+		// Remove children
+		for _, b := range children {
+			st.Unlink(b.Model().Id)
 		}
-		return nil
-	})
-	if err != nil {
-		return linkIds, err
-	}
-
-	var toRemove []string
-
-	type linkAdd struct {
-		blockId string
-		pageId  string
-	}
-	var linksToAdd []linkAdd
-
-	visited := map[string]struct{}{}
-	for _, blockId := range req.BlockIds {
-		if blocks[blockId] == nil || blocks[blockId].GetText() == nil {
-			continue
-		}
-
-		subtree := extractBlocksSubtree(blockId, blocks, visited)
-		if len(subtree) == 0 {
-			continue
-		}
-		// Collect all child blocks to remove later
-		for _, b := range subtree {
-			if b.Id != blockId {
-				toRemove = append(toRemove, b.Id)
-			}
-		}
-
-		newRoot, newBlocks := reassignSubtreeIds(blockId, subtree)
 
 		// Build a state for the new page from child blocks
-		st := state.NewDoc("", nil).NewState()
+		pageState := state.NewDoc("", nil).NewState()
 		for _, b := range newBlocks {
-			st.Add(base.NewBase(b))
+			pageState.Add(b)
 		}
-		st.Add(base.NewBase(&model.Block{
+		pageState.Add(base.NewBase(&model.Block{
 			// This id will be replaced by id of the new page
 			Id:          "_root",
 			ChildrenIds: []string{newRoot},
 		}))
 
 		fields := map[string]*types.Value{
-			"name": pbtypes.String(blocks[blockId].GetText().Text),
+			"name": pbtypes.String(root.Model().GetText().Text),
 		}
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
-		_, pageId, err := s.CreatePageFromState(nil, "", pb.RpcBlockCreatePageRequest{
+		_, pageId, err := s.CreatePageFromState(nil, bs, "", pb.RpcBlockCreatePageRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{
 				Fields: fields,
 			},
-		}, st)
+		}, pageState)
 		if err != nil {
-			return linkIds, err
+			return nil, fmt.Errorf("create child page: %w", err)
 		}
-		linksToAdd = append(linksToAdd, linkAdd{
-			blockId: blockId,
-			pageId:  pageId,
-		})
-	}
 
-	err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-		st := b.NewState()
-
-		for _, l := range linksToAdd {
-			linkId, err := CreateBlock(st, "", pb.RpcBlockCreateRequest{
-				TargetId: l.blockId,
-				Block: &model.Block{
-					Content: &model.BlockContentOfLink{
-						Link: &model.BlockContentLink{
-							TargetBlockId: l.pageId,
-							Style:         model.BlockContentLink_Page,
-						},
+		linkId, err := CreateBlock(st, "", pb.RpcBlockCreateRequest{
+			TargetId: root.Model().Id,
+			Block: &model.Block{
+				Content: &model.BlockContentOfLink{
+					Link: &model.BlockContentLink{
+						TargetBlockId: pageId,
+						Style:         model.BlockContentLink_Page,
 					},
 				},
-				Position: model.Block_Replace,
-			})
-			if err != nil {
-				return fmt.Errorf("create link to page %s: %w", l.pageId, err)
-			}
-			linkIds = append(linkIds, linkId)
+			},
+			Position: model.Block_Replace,
+		})
+		if err != nil {
+			return nil, fmt.Errorf("create link to page %s: %w", pageId, err)
 		}
-		CutBlocks(st, toRemove)
 
-		return b.Apply(st)
-	})
+		linkIds = append(linkIds, linkId)
+	}
 
-	return linkIds, err
+	return linkIds, bs.Apply(st)
 }
 
-// extractBlocksSubtree extracts a subtree with specific root from blocks and marks visited blocks
-func extractBlocksSubtree(root string, blocks map[string]*model.Block, visited map[string]struct{}) []*model.Block {
+// listRoots returns unique root blocks that are listed in blockIds
+func listRoots(st *state.State, blockIds []string) []simple.Block {
+	visited := map[string]struct{}{}
+
+	queue := blockIds
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+
+		b := st.Pick(id)
+		if b == nil {
+			continue
+		}
+
+		childrenIds := b.Model().ChildrenIds
+		for _, chId := range childrenIds {
+			visited[chId] = struct{}{}
+			queue = append(queue, childrenIds...)
+		}
+	}
+
+	var roots []simple.Block
+	for _, id := range blockIds {
+		if _, ok := visited[id]; ok {
+			continue
+		}
+		b := st.Pick(id)
+		if b == nil {
+			continue
+		}
+
+		roots = append(roots, b)
+	}
+	return roots
+}
+
+func listChildren(st *state.State, root simple.Block) []simple.Block {
 	var (
-		queue     = []string{root}
-		extracted []*model.Block
+		queue    = []simple.Block{root}
+		children []simple.Block
 	)
 
 	for len(queue) > 0 {
 		cur := queue[0]
 		queue = queue[1:]
-
-		b, ok := blocks[cur]
-		if !ok {
-			continue
+		for _, id := range cur.Model().ChildrenIds {
+			b := st.Pick(id)
+			if b == nil {
+				continue
+			}
+			children = append(children, b)
+			queue = append(queue, b)
 		}
-		if _, ok := visited[cur]; ok {
-			continue
-		}
-		visited[cur] = struct{}{}
-
-		extracted = append(extracted, b)
-		queue = append(queue, b.ChildrenIds...)
 	}
 
-	return extracted
+	return children
 }
 
 // reassignSubtreeIds makes a copy of a subtree of blocks and assign a new id for each block
-func reassignSubtreeIds(root string, blocks []*model.Block) (string, []*model.Block) {
-	res := make([]*model.Block, 0, len(blocks))
+func reassignSubtreeIds(rootId string, blocks []simple.Block) (string, []simple.Block) {
+	res := make([]simple.Block, 0, len(blocks))
 	mapping := map[string]string{}
 	for _, b := range blocks {
 		newId := bson.NewObjectId().Hex()
-		mapping[b.Id] = newId
+		mapping[b.Model().Id] = newId
 
-		newBlock := pbtypes.CopyBlock(b)
-		newBlock.Id = newId
+		newBlock := b.Copy()
+		newBlock.Model().Id = newId
 		res = append(res, newBlock)
 	}
 
 	for _, b := range res {
-		for i, id := range b.ChildrenIds {
-			b.ChildrenIds[i] = mapping[id]
+		for i, id := range b.Model().ChildrenIds {
+			b.Model().ChildrenIds[i] = mapping[id]
 		}
 	}
-	return mapping[root], res
+	return mapping[rootId], res
 }
