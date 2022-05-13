@@ -26,11 +26,11 @@ func (bs *basic) ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertC
 
 	roots := listRoots(st, req.BlockIds)
 	for _, root := range roots {
-		children := listChildren(st, root)
-		newRoot, newBlocks := reassignSubtreeIds(root.Model().Id, append([]simple.Block{root}, children...))
+		descendants := st.Descendants(root.Model().Id)
+		newRoot, newBlocks := reassignSubtreeIds(root.Model().Id, append(descendants, root))
 
 		// Remove children
-		for _, b := range children {
+		for _, b := range descendants {
 			st.Unlink(b.Model().Id)
 		}
 
@@ -117,28 +117,6 @@ func listRoots(st *state.State, blockIds []string) []simple.Block {
 		roots = append(roots, b)
 	}
 	return roots
-}
-
-func listChildren(st *state.State, root simple.Block) []simple.Block {
-	var (
-		queue    = []simple.Block{root}
-		children []simple.Block
-	)
-
-	for len(queue) > 0 {
-		cur := queue[0]
-		queue = queue[1:]
-		for _, id := range cur.Model().ChildrenIds {
-			b := st.Pick(id)
-			if b == nil {
-				continue
-			}
-			children = append(children, b)
-			queue = append(queue, b)
-		}
-	}
-
-	return children
 }
 
 // reassignSubtreeIds makes a copy of a subtree of blocks and assign a new id for each block

@@ -44,9 +44,15 @@ func CutBlocks(s *state.State, blockIds []string) (blocks []simple.Block) {
 			continue
 		}
 
-		descendants := getAllDescendants(s, visited, b.Copy(), []simple.Block{})
-		blocks = append(blocks, descendants...)
-		s.Unlink(b.Model().Id)
+		queue := append(s.Descendants(id), b)
+		for _, b := range queue {
+			if _, ok := visited[b.Model().Id]; ok {
+				continue
+			}
+			blocks = append(blocks, b.Copy())
+			visited[b.Model().Id] = struct{}{}
+			s.Unlink(b.Model().Id)
+		}
 	}
 	return blocks
 }
@@ -77,16 +83,4 @@ func PasteBlocks(s *state.State, blocks []simple.Block) error {
 		}
 	}
 	return nil
-}
-
-func getAllDescendants(s *state.State, visited map[string]struct{}, block simple.Block, blocks []simple.Block) []simple.Block {
-	if _, ok := visited[block.Model().Id]; ok {
-		return blocks
-	}
-	blocks = append(blocks, block)
-	visited[block.Model().Id] = struct{}{}
-	for _, cId := range block.Model().ChildrenIds {
-		blocks = getAllDescendants(s, visited, s.Pick(cId).Copy(), blocks)
-	}
-	return blocks
 }
