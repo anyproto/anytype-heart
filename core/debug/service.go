@@ -6,10 +6,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/gogo/protobuf/jsonpb"
-	"github.com/goccy/go-graphviz"
 	"io"
 	"os"
 	"path/filepath"
@@ -69,40 +67,20 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 
 	// 2 - create SVG file near ZIP
 	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.svg
-	t, _, err := change.BuildTree(block)
-	if err != nil {
-		logger.Fatal("build tree error:", err)
-		return "", err
-	}
-
-	gv, err := t.Graphviz()
-	if err != nil {
-		logger.Fatal("can't make graphviz data:", err)
-		return "", err
-	}
-
-	gvo, err := graphviz.ParseBytes([]byte(gv))
-	if err != nil {
-		logger.Fatal("can't open graphviz data:", err)
-		return "", err
-	}
-
+	//
+	// this will return "graphviz is not supported on the current platform" error if no graphviz!
 	// generate a filename just like zip file had
 	maxReplacements := 1
 	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
 
-	f, err := os.Create(svgFilename)
+	err = CreateSvg(block, svgFilename)
 	if err != nil {
-		logger.Fatal("can't create SVG file:", err)
+		logger.Fatal("svg build error:", err)
 		return "", err
 	}
-	defer f.Close()
 
-	g := graphviz.New()
-	err = g.Render(gvo, graphviz.SVG, f)
-
-	// Warning: returns filename of a ZIP file, not SVG
-	return zipFilename, err
+	// return zip filename, but not svgFilename
+	return zipFilename, nil
 }
 
 func (d *debug) DumpLocalstore(objIds []string, path string) (filename string, err error) {
