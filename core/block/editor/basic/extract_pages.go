@@ -35,7 +35,6 @@ func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.
 		}
 
 		// Build a state for the new page from child blocks
-		// TODO: maybe pass blocks here?
 		pageState := state.NewDoc("", nil).NewState()
 		for _, b := range newBlocks {
 			pageState.Add(b)
@@ -88,6 +87,7 @@ func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.
 func listRoots(st *state.State, blockIds []string) []simple.Block {
 	visited := map[string]struct{}{}
 
+	// Mark children as visited
 	queue := blockIds
 	for len(queue) > 0 {
 		id := queue[0]
@@ -105,6 +105,7 @@ func listRoots(st *state.State, blockIds []string) []simple.Block {
 		}
 	}
 
+	// Unvisited blocks are roots
 	var roots []simple.Block
 	for _, id := range blockIds {
 		if _, ok := visited[id]; ok {
