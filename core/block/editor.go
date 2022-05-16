@@ -986,9 +986,9 @@ func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations [
 	return
 }
 
-func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+func (s *service) ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
 	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		linkIds, err = b.ExtractBlocksToPages(s, req)
+		linkIds, err = b.ExtractBlocksToPages(ctx, s, req)
 		return err
 	})
 	return

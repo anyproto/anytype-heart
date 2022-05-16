@@ -21,7 +21,7 @@ type PageCreator interface {
 
 // ExtractBlocksToPages extracts child blocks from the page to separate pages and
 // replaces these blocks to the links to these pages
-func (bs *basic) ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
 	st := bs.NewState()
 
 	roots := listRoots(st, req.BlockIds)
@@ -35,6 +35,7 @@ func (bs *basic) ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertC
 		}
 
 		// Build a state for the new page from child blocks
+		// TODO: maybe pass blocks here?
 		pageState := state.NewDoc("", nil).NewState()
 		for _, b := range newBlocks {
 			pageState.Add(b)
@@ -51,7 +52,7 @@ func (bs *basic) ExtractBlocksToPages(s PageCreator, req pb.RpcBlockListConvertC
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
-		_, pageId, err := s.CreatePageFromState(nil, bs, "", pb.RpcBlockCreatePageRequest{
+		_, pageId, err := s.CreatePageFromState(ctx, bs, "", pb.RpcBlockCreatePageRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{
 				Fields: fields,
