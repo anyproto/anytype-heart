@@ -38,12 +38,11 @@ type Action struct {
 	Remove      []simple.Block
 	Details     *Details
 	Group       string
-	Relations   *Relations
 	ObjectTypes *ObjectType
 }
 
 func (a Action) IsEmpty() bool {
-	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.Relations == nil && a.ObjectTypes == nil
+	return len(a.Add)+len(a.Change)+len(a.Remove) == 0 && a.Details == nil && a.ObjectTypes == nil
 }
 
 func (a Action) Merge(b Action) (result Action) {

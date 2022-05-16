@@ -5,7 +5,6 @@ import (
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/gogo/protobuf/types"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -24,16 +23,12 @@ func New() Service {
 }
 
 type DocInfo struct {
-	Id              string
-	Links           []string
-	FileHashes      []string
-	LogHeads        map[string]string
-	SetRelations    []*model.Relation
-	Relations       []*types.Struct
-	RelationOptions []RelationOptionsInfo
-	SetSource       []string
-	Creator         string
-	State           *state.State
+	Id         string
+	Links      []string
+	FileHashes []string
+	LogHeads   map[string]string
+	Creator    string
+	State      *state.State
 }
 
 type RelationOptionsInfo struct {

@@ -84,26 +84,16 @@ func (v *bundledObjectType) ReadDoc(receiver ChangeReceiver, empty bool) (doc st
 	if err != nil {
 		return nil, err
 	}
-
-	s.SetExtraRelations(rels)
+	for _, r := range rels {
+		s.AddRelationLinks(&model.RelationLink{Id: addr.BundledRelationURLPrefix + r.Key, Key: r.Key})
+	}
 	s.SetDetails(d)
 	s.SetObjectType(bundle.TypeKeyObjectType.URL())
 	return s, nil
 }
 
 func (v *bundledObjectType) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
-	s := &state.State{}
-
-	rels, d, err := getDetailsForBundledObjectType(v.id)
-	if err != nil {
-		return nil, err
-	}
-
-	s.SetExtraRelations(rels)
-	s.SetDetails(d)
-	s.SetObjectType(bundle.TypeKeyObjectType.URL())
-	return s, nil
-
+	return v.ReadDoc(nil, false)
 }
 
 func (v *bundledObjectType) PushChange(params PushChangeParams) (id string, err error) {

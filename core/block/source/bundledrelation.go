@@ -47,51 +47,39 @@ func (v *bundledRelation) Virtual() bool {
 	return true
 }
 
-func (v *bundledRelation) getDetails(id string) (rels []*model.Relation, p *types.Struct, err error) {
+func (v *bundledRelation) getDetails(id string) (p *types.Struct, err error) {
 	if !strings.HasPrefix(id, addr.BundledRelationURLPrefix) {
-		return nil, nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
+		return nil, fmt.Errorf("incorrect relation id: not a bundled relation id")
 	}
 
 	rel, err := bundle.GetRelation(bundle.RelationKey(strings.TrimPrefix(id, addr.BundledRelationURLPrefix)))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-
 	rel.Creator = addr.AnytypeProfileId
-	rels, d := bundle.GetDetailsForRelation(true, rel)
-	return rels, d, nil
+	return bundle.GetDetailsForRelation(true, rel), nil
 }
 
-func (v *bundledRelation) ReadDoc(receiver ChangeReceiver, empty bool) (doc state.Doc, err error) {
+func (v *bundledRelation) ReadDoc(_ ChangeReceiver, empty bool) (doc state.Doc, err error) {
 	s := state.NewDoc(v.id, nil).(*state.State)
 
-	rels, d, err := v.getDetails(v.id)
+	d, err := v.getDetails(v.id)
 	if err != nil {
 		return nil, err
 	}
-
-	s.SetDetails(d)
-	s.SetExtraRelations(rels)
+	for k, v := range d.Fields {
+		s.SetDetailAndBundledRelation(bundle.RelationKey(k), v)
+	}
 	s.SetObjectType(bundle.TypeKeyRelation.URL())
 	return s, nil
 }
 
 func (v *bundledRelation) ReadMeta(_ ChangeReceiver) (doc state.Doc, err error) {
-	s := &state.State{}
-
-	rels, d, err := v.getDetails(v.id)
-	if err != nil {
-		return nil, err
-	}
-
-	s.SetDetails(d)
-	s.SetExtraRelations(rels)
-	s.SetObjectType(bundle.TypeKeyRelation.URL())
-	return s, nil
+	return v.ReadDoc(nil, false)
 }
 
 func (v *bundledRelation) PushChange(params PushChangeParams) (id string, err error) {
-	return "", nil
+	return "", ErrReadOnly
 }
 
 func (v *bundledRelation) FindFirstChange(ctx context.Context) (c *change.Change, err error) {

@@ -1177,10 +1177,6 @@ func hasDepIds(act *undo.Action) bool {
 	if act == nil {
 		return true
 	}
-	// todo: check details for exact object-relations changes
-	if act.Relations != nil || act.ObjectTypes != nil || act.Details != nil {
-		return true
-	}
 	for _, edit := range act.Change {
 		if ls, ok := edit.After.(linkSource); ok && ls.HasSmartIds() {
 			return true
@@ -1387,17 +1383,9 @@ func (sb *smartBlock) GetDocInfo() (doc.DocInfo, error) {
 
 func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	fileHashes := st.GetAllFileHashes(st.FileRelationKeys())
-	var setRelations []*model.Relation
-	var setSource []string
 	creator := pbtypes.GetString(st.Details(), bundle.RelationKeyCreator.String())
 	if creator == "" {
 		creator = sb.Anytype().ProfileID()
-	}
-	if st.ObjectType() == bundle.TypeKeySet.URL() {
-		if b := st.Get("dataview"); b != nil {
-			setRelations = b.Model().GetDataview().GetRelations()
-			setSource = b.Model().GetDataview().GetSource()
-		}
 	}
 
 	// we don't want any hidden or internal relations here. We want to capture the meaningful outgoing links only
@@ -1408,14 +1396,12 @@ func (sb *smartBlock) getDocInfo(st *state.State) doc.DocInfo {
 	// 1. Simple blocks: links, mentions in the text
 	// 2. Relations(format==Object)
 	return doc.DocInfo{
-		Id:           sb.Id(),
-		Links:        links,
-		LogHeads:     sb.source.LogHeads(),
-		FileHashes:   fileHashes,
-		SetRelations: setRelations,
-		SetSource:    setSource,
-		Creator:      creator,
-		State:        st.Copy(),
+		Id:         sb.Id(),
+		Links:      links,
+		LogHeads:   sb.source.LogHeads(),
+		FileHashes: fileHashes,
+		Creator:    creator,
+		State:      st.Copy(),
 	}
 }
 

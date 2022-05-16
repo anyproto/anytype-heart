@@ -26,7 +26,10 @@ import (
 )
 
 var log = logging.Logger("anytype-mw-source")
-var ErrObjectNotFound = errors.New("object not found")
+var (
+	ErrObjectNotFound = errors.New("object not found")
+	ErrReadOnly       = errors.New("object is read only")
+)
 
 type ChangeReceiver interface {
 	StateAppend(func(d state.Doc) (s *state.State, err error)) error

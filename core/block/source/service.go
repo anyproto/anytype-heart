@@ -63,8 +63,6 @@ func (s *service) NewSource(id string, listenToOwnChanges bool) (source Source, 
 		return NewBundledObjectType(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBundledRelation:
 		return NewBundledRelation(s.anytype, id), nil
-	case smartblock.SmartBlockTypeIndexedRelation:
-		return NewIndexedRelation(s.anytype, id), nil
 	case smartblock.SmartBlockTypeBreadcrumbs:
 		return NewVirtual(s.anytype, st.ToProto()), nil
 	case smartblock.SmartBlockTypeWorkspaceOld:

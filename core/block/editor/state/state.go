@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -754,8 +755,8 @@ func (s *State) SetDetails(d *types.Struct) *State {
 func (s *State) SetDetailAndBundledRelation(key bundle.RelationKey, value *types.Value) {
 	s.SetDetail(key.String(), value)
 	// AddRelation adds only in case of missing relation
-	s.AddRelation(bundle.MustGetRelation(key))
-
+	rel := bundle.MustGetRelation(key)
+	s.AddRelationLinks(&model.RelationLink{Id: addr.BundledRelationURLPrefix + rel.Key, Key: rel.Key})
 	return
 }
 
@@ -848,20 +849,6 @@ func (s *State) AddRelation(relation *model.Relation) *State {
 
 	s.normalizeRelationOptionsValues(relCopy)
 	s.extraRelations = append(pbtypes.CopyRelations(s.ExtraRelations()), relCopy)
-	return s
-}
-
-func (s *State) SetExtraRelations(relations []*model.Relation) *State {
-	relationsCopy := pbtypes.CopyRelations(relations)
-	for _, rel := range relationsCopy {
-		// reset scopes for all relations
-		rel.Scope = model.Relation_object
-		if !pbtypes.RelationFormatCanHaveListValue(rel.Format) && rel.MaxCount != 1 {
-			rel.MaxCount = 1
-		}
-		s.normalizeRelationOptionsValues(rel)
-	}
-	s.extraRelations = relationsCopy
 	return s
 }
 

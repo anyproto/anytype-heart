@@ -3,9 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/storage"
 	"io"
 )
@@ -73,7 +71,7 @@ func (a *Anytype) ImageAdd(ctx context.Context, options ...files.AddOption) (Ima
 		return nil, err
 	}
 
-	err = a.objectStore.UpdateObjectDetails(img.hash, details, &model.Relations{Relations: bundle.MustGetType(bundle.TypeKeyImage).Relations}, false)
+	err = a.objectStore.UpdateObjectDetails(img.hash, details, false)
 	if err != nil {
 		return nil, err
 	}

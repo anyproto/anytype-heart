@@ -7,10 +7,8 @@ import (
 	"io"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/filestore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 )
 
 var ErrFileNotFound = fmt.Errorf("file not found")
@@ -156,7 +154,7 @@ func (a *Anytype) FileAdd(ctx context.Context, options ...files.AddOption) (File
 		return nil, err
 	}
 
-	err = a.objectStore.UpdateObjectDetails(f.hash, details, &model.Relations{Relations: bundle.MustGetType(bundle.TypeKeyFile).Relations}, false)
+	err = a.objectStore.UpdateObjectDetails(f.hash, details, false)
 	if err != nil {
 		return nil, err
 	}

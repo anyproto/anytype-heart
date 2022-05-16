@@ -222,10 +222,10 @@ type ObjectStore interface {
 	database.Reader
 
 	// CreateObject create or overwrite an existing object. Should be used if
-	CreateObject(id string, details *types.Struct, relations *model.Relations, links []string, snippet string) error
+	CreateObject(id string, details *types.Struct, links []string, snippet string) error
 	// UpdateObjectDetails updates existing object or create if not missing. Should be used in order to amend existing indexes based on prev/new value
 	// set discardLocalDetailsChanges to true in case the caller doesn't have local details in the State
-	UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error
+	UpdateObjectDetails(id string, details *types.Struct, discardLocalDetailsChanges bool) error
 	UpdateObjectLinks(id string, links []string) error
 	UpdateObjectSnippet(id string, snippet string) error
 	UpdatePendingLocalDetails(id string, details *types.Struct) error
@@ -233,10 +233,6 @@ type ObjectStore interface {
 
 	DeleteObject(id string) error
 	DeleteDetails(id string) error
-
-	RemoveRelationFromCache(key string) error
-
-	UpdateRelationsInSetByObjectType(setId, objType, creatorId string, relations []*model.Relation) error
 
 	GetWithLinksInfoByID(id string) (*model.ObjectInfoWithLinks, error)
 	GetOutboundLinksById(id string) ([]string, error)
@@ -1281,7 +1277,7 @@ func (m *dsObjectStore) DeleteObject(id string) error {
 			bundle.RelationKeyId.String():        pbtypes.String(id),
 			bundle.RelationKeyIsDeleted.String(): pbtypes.Bool(true), // maybe we can store the date instead?
 		},
-	}, &model.Relations{Relations: []*model.Relation{}}, false)
+	}, false)
 	if err != nil {
 		return fmt.Errorf("failed to overwrite details and relations: %w", err)
 	}
@@ -1493,7 +1489,7 @@ func (m *dsObjectStore) GetByIDs(ids ...string) ([]*model.ObjectInfo, error) {
 	return m.getObjectsInfo(txn, ids)
 }
 
-func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations *model.Relations, links []string, snippet string) error {
+func (m *dsObjectStore) CreateObject(id string, details *types.Struct, links []string, snippet string) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -1507,7 +1503,7 @@ func (m *dsObjectStore) CreateObject(id string, details *types.Struct, relations
 		Details: &types.Struct{Fields: map[string]*types.Value{}},
 	}
 
-	err = m.updateObjectDetails(txn, id, before, details, relations)
+	err = m.updateObjectDetails(txn, id, before, details)
 	if err != nil {
 		return err
 	}
@@ -1590,7 +1586,7 @@ func (m *dsObjectStore) UpdatePendingLocalDetails(id string, details *types.Stru
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, relations *model.Relations, discardLocalDetailsChanges bool) error {
+func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, discardLocalDetailsChanges bool) error {
 	m.l.Lock()
 	defer m.l.Unlock()
 	txn, err := m.ds.NewTransaction(false)
@@ -1602,7 +1598,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 		before model.ObjectInfo
 	)
 
-	if details != nil || relations != nil {
+	if details != nil {
 		exInfo, err := m.getObjectInfo(txn, id)
 		if err != nil {
 			log.Debugf("UpdateObject failed to get ex state for object %s: %s", id, err.Error())
@@ -1625,7 +1621,7 @@ func (m *dsObjectStore) UpdateObjectDetails(id string, details *types.Struct, re
 		}
 	}
 
-	err = m.updateObjectDetails(txn, id, before, details, relations)
+	err = m.updateObjectDetails(txn, id, before, details)
 	if err != nil {
 		return err
 	}
@@ -1743,17 +1739,7 @@ func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *model.Relations) error {
-	objTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
-
-	creatorId := pbtypes.GetString(details, bundle.RelationKeyCreator.String())
-	if relations != nil && relations.Relations != nil {
-		// intentionally do not pass txn, as this tx may be huge
-		if err := m.updateObjectRelations(txn, before.ObjectTypeUrls, objTypes, id, creatorId, before.Relations, relations.Relations); err != nil {
-			return err
-		}
-	}
-
+func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct) error {
 	if details != nil {
 		if err := m.updateDetails(txn, id, &model.ObjectDetails{Details: before.Details}, &model.ObjectDetails{Details: details}); err != nil {
 			return err
@@ -1850,226 +1836,6 @@ func (m *dsObjectStore) ListIds() ([]string, error) {
 	defer txn.Discard()
 
 	return findByPrefix(txn, pagesDetailsBase.String()+"/", 0)
-}
-
-func (m *dsObjectStore) UpdateRelationsInSetByObjectType(setId, objType, creatorId string, relations []*model.Relation) error {
-	m.l.Lock()
-	defer m.l.Unlock()
-	txn, err := m.ds.NewTransaction(false)
-	if err != nil {
-		return err
-	}
-	defer txn.Discard()
-
-	relationsBefore, err := getSetRelations(txn, setId)
-	if err != nil {
-		return err
-	}
-
-	err = m.updateSetRelations(txn, setId, objType, creatorId, relationsBefore, relations)
-	if err != nil {
-		return err
-	}
-
-	return txn.Commit()
-}
-
-func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*model.Relation) error {
-	var relBytes []byte
-	var err error
-	for _, relation := range relations {
-		// do not store bundled relations
-		if bundle.HasRelation(relation.Key) {
-			continue
-		}
-
-		relCopy := pbtypes.CopyRelation(relation)
-		relCopy.SelectDict = nil
-
-		relationKey := relationsBase.ChildString(relation.Key)
-		relBytes, err = proto.Marshal(relCopy)
-		if err != nil {
-			return err
-		}
-
-		err = txn.Put(relationKey, relBytes)
-		if err != nil {
-			return err
-		}
-		_, details := bundle.GetDetailsForRelation(false, relCopy)
-		id := pbtypes.GetString(details, "id")
-		err = m.updateObjectDetails(txn, id, model.ObjectInfo{
-			Details: &types.Struct{Fields: map[string]*types.Value{}},
-		}, details, nil)
-		if err != nil {
-			return err
-		}
-
-		err = m.AddToIndexQueue(id)
-		if err != nil {
-			log.Errorf("failed to add indexed relation to the ft queue: %s", err.Error())
-		}
-
-		err = m.updateObjectLinksAndSnippet(txn, id, nil, relation.Description)
-		if err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf string, creatorId string, relationsBefore []*model.Relation, relations []*model.Relation) error {
-	if relations == nil {
-		return fmt.Errorf("relationsAfter is nil")
-	}
-
-	var updatedRelations []*model.Relation
-	var updatedOptions []*model.RelationOption
-
-	for _, relAfter := range relations {
-		if relBefore := pbtypes.GetRelation(relationsBefore, relAfter.Key); relBefore == nil || !pbtypes.RelationEqual(relBefore, relAfter) {
-			if relAfter.Creator != creatorId && !bundle.HasRelation(relAfter.Key) {
-				relAfter.Creator = creatorId
-			}
-			updatedRelations = append(updatedRelations, relAfter)
-			if relAfter.Format == model.RelationFormat_status || relAfter.Format == model.RelationFormat_tag {
-				if relBefore == nil {
-					updatedOptions = append(updatedOptions, relAfter.SelectDict...)
-				} else {
-					added, updated, _ := pbtypes.RelationSelectDictDiffOmitScope(relBefore.SelectDict, relAfter.SelectDict)
-					updatedOptions = append(updatedOptions, append(added, updated...)...)
-				}
-			}
-		}
-	}
-
-	err := m.storeRelations(txn, updatedRelations)
-	if err != nil {
-		return err
-	}
-
-	err = storeOptions(txn, updatedOptions)
-	if err != nil {
-		return err
-	}
-
-	relationKeys := pbtypes.GetRelationKeys(relations)
-	detailsBefore, err := getObjectDetails(txn, setId)
-	setOfOldSl := pbtypes.GetStringList(detailsBefore.GetDetails(), bundle.RelationKeySetOf.String())
-	if setOfOldSl == nil {
-		err = localstore.AddIndexWithTxn(indexObjectTypeRelationSetId, txn, &relationObjectType{
-			relationKeys: relationKeys,
-			objectTypes:  []string{setOf},
-		}, setId)
-		if err != nil {
-			return err
-		}
-	} else {
-		// only one source is supported
-		setOfOld := setOfOldSl[0]
-		err = localstore.UpdateIndexWithTxn(indexObjectTypeRelationSetId, txn, &relationObjectType{
-			relationKeys: pbtypes.GetRelationKeys(relationsBefore),
-			objectTypes:  []string{setOfOld},
-		}, &relationObjectType{
-			relationKeys: relationKeys,
-			objectTypes:  []string{setOf},
-		}, setId)
-		if err != nil {
-			return err
-		}
-	}
-
-	if pbtypes.RelationsEqual(relationsBefore, relations) {
-		return nil
-	}
-
-	b, err := proto.Marshal(&model.Relations{Relations: relations})
-	if err != nil {
-		return err
-	}
-
-	err = txn.Put(setRelationsBase.ChildString(setId), b)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id, creatorId string, relationsBefore []*model.Relation, relationsAfter []*model.Relation) error {
-	if relationsAfter == nil {
-		return fmt.Errorf("relationsAfter is nil")
-	}
-	var err error
-	var updatedRelations []*model.Relation
-	var updatedOptions []*model.RelationOption
-
-	for _, relAfter := range relationsAfter {
-		if relBefore := pbtypes.GetRelation(relationsBefore, relAfter.Key); relBefore == nil || !pbtypes.RelationEqual(relBefore, relAfter) {
-			if relAfter.Creator != creatorId && !bundle.HasRelation(relAfter.Key) {
-				relAfter.Creator = creatorId
-			}
-			updatedRelations = append(updatedRelations, relAfter)
-			// trigger index relation-option-object indexes updates
-			if relBefore == nil {
-				err = localstore.AddIndexesWithTxn(m, txn, relAfter, id)
-				if err != nil {
-					return err
-				}
-			} else {
-				err = localstore.UpdateIndexesWithTxn(m, txn, relBefore, relAfter, id)
-				if err != nil {
-					return err
-				}
-			}
-
-			if relAfter.Format == model.RelationFormat_status || relAfter.Format == model.RelationFormat_tag {
-				if relBefore == nil {
-					updatedOptions = append(updatedOptions, relAfter.SelectDict...)
-				} else {
-					added, updated, _ := pbtypes.RelationSelectDictDiffOmitScope(relBefore.SelectDict, relAfter.SelectDict)
-					updatedOptions = append(updatedOptions, append(added, updated...)...)
-				}
-			}
-		}
-	}
-
-	err = m.storeRelations(txn, updatedRelations)
-	if err != nil {
-		return err
-	}
-
-	err = storeOptions(txn, updatedOptions)
-	if err != nil {
-		return err
-	}
-
-	err = localstore.UpdateIndexWithTxn(indexObjectTypeRelationObjectId, txn, &relationObjectType{
-		relationKeys: pbtypes.GetRelationKeys(relationsBefore),
-		objectTypes:  objTypesBefore,
-	}, &relationObjectType{
-		relationKeys: pbtypes.GetRelationKeys(relationsAfter),
-		objectTypes:  objTypesAfter,
-	}, id)
-	if err != nil {
-		return err
-	}
-
-	if pbtypes.RelationsEqual(relationsBefore, relationsAfter) {
-		return nil
-	}
-
-	b, err := proto.Marshal(&model.Relations{Relations: relationsAfter})
-	if err != nil {
-		return err
-	}
-
-	err = txn.Put(pagesRelationsBase.ChildString(id), b)
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (m *dsObjectStore) updateSnippet(txn ds.Txn, id string, snippet string) error {

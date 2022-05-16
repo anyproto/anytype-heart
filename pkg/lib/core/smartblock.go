@@ -9,7 +9,6 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/vclock"
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
@@ -434,59 +433,4 @@ func (block *smartBlock) GetRecord(ctx context.Context, recordID string) (*Smart
 	}
 
 	return block.decodeRecord(ctx, rec, true)
-}
-
-func (block *smartBlock) indexSnapshot(details *types.Struct, relations *model.Relations, blocks []*model.Block) error {
-	if block.Type() == smartblock.SmartBlockTypeArchive {
-		return nil
-	}
-
-	outgoingLinks := findOutgoingLinks(blocks)
-	snippet := getSnippet(blocks)
-
-	return block.node.ObjectStore().CreateObject(block.ID(), details, relations, outgoingLinks, snippet)
-}
-
-func findOutgoingLinks(blocks []*model.Block) []string {
-	var (
-		linksMap = make(map[string]struct{})
-		linkIDs  []string
-	)
-
-	for _, block := range blocks {
-		if link := block.GetLink(); link != nil {
-			linksMap[link.TargetBlockId] = struct{}{}
-		}
-
-		if text := block.GetText(); text != nil && text.Marks != nil {
-			for _, m := range text.Marks.Marks {
-				if m.Type == model.BlockContentTextMark_Mention || m.Type == model.BlockContentTextMark_Object {
-					linksMap[m.Param] = struct{}{}
-				}
-			}
-		}
-	}
-
-	for id := range linksMap {
-		linkIDs = append(linkIDs, id)
-	}
-
-	return linkIDs
-}
-
-func getSnippet(blocks []*model.Block) string {
-	var s string
-	for _, block := range blocks {
-		if text := block.GetText(); text != nil {
-			if s != "" {
-				s += " "
-			}
-			s += text.Text
-			if len(s) >= snippetMinSize {
-				break
-			}
-		}
-	}
-
-	return util.TruncateText(s, snippetMaxSize)
 }

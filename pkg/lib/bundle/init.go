@@ -208,7 +208,7 @@ func ListTypesKeys() []TypeKey {
 	return keys
 }
 
-func GetDetailsForRelation(bundled bool, rel *model.Relation) ([]*model.Relation, *types2.Struct) {
+func GetDetailsForRelation(bundled bool, rel *model.Relation) *types2.Struct {
 	var prefix string
 	if bundled {
 		prefix = addr.BundledRelationURLPrefix
@@ -216,10 +216,11 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) ([]*model.Relation
 		prefix = addr.CustomRelationURLPrefix
 	}
 
-	d := &types2.Struct{Fields: map[string]*types2.Value{
+	return &types2.Struct{Fields: map[string]*types2.Value{
 		RelationKeyName.String():             pbtypes.String(rel.Name),
 		RelationKeyDescription.String():      pbtypes.String(rel.Description),
 		RelationKeyId.String():               pbtypes.String(prefix + rel.Key),
+		RelationKeyRelationKey.String():      pbtypes.String(rel.Key),
 		RelationKeyType.String():             pbtypes.String(TypeKeyRelation.URL()),
 		RelationKeyCreator.String():          pbtypes.String(rel.Creator),
 		RelationKeyLayout.String():           pbtypes.Float64(float64(model.ObjectType_relation)),
@@ -228,48 +229,6 @@ func GetDetailsForRelation(bundled bool, rel *model.Relation) ([]*model.Relation
 		RelationKeyIsReadonly.String():       pbtypes.Bool(rel.ReadOnlyRelation),
 		RelationKeyMpAddedToLibrary.String(): pbtypes.Bool(true), // temp
 	}}
-
-	var rels []*model.Relation
-	for k := range d.Fields {
-		rels = append(rels, MustGetRelation(RelationKey(k)))
-	}
-	return rels, d
-}
-
-func MergeRelationsKeys(rels1 []RelationKey, rels2 []RelationKey) []RelationKey {
-	if rels1 == nil {
-		return rels2
-	}
-	if rels2 == nil {
-		return rels1
-	}
-
-	rels := make([]RelationKey, 0, len(rels2)+len(rels1))
-	for _, rel := range rels2 {
-		rels = append(rels, rel)
-	}
-
-	for _, rel := range rels1 {
-		if HasRelationKey(rels, rel) {
-			continue
-		}
-		rels = append(rels, rel)
-	}
-
-	return rels
-}
-
-func GetRelationsKeys(rels []*model.Relation) []RelationKey {
-	if rels == nil {
-		return nil
-	}
-
-	relsKeys := make([]RelationKey, 0, len(rels))
-	for _, rel := range rels {
-		relsKeys = append(relsKeys, RelationKey(rel.Key))
-	}
-
-	return relsKeys
 }
 
 func HasRelationKey(rels []RelationKey, rel RelationKey) bool {

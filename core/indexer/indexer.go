@@ -599,11 +599,11 @@ func (i *indexer) reindexDoc(ctx context.Context, id string, indexesWereRemoved 
 	curDetailsObjectScope := pbtypes.StructCutKeys(curDetails, bundle.LocalRelationsKeys)
 	if indexesWereRemoved || curDetailsObjectScope == nil || !detailsObjectScope.Equal(curDetailsObjectScope) {
 		if indexesWereRemoved || curDetails.GetFields() == nil {
-			if err := i.store.CreateObject(id, details, &model.Relations{d.State.ExtraRelations()}, d.Links, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
+			if err := i.store.CreateObject(id, details, d.Links, pbtypes.GetString(details, bundle.RelationKeyDescription.String())); err != nil {
 				return fmt.Errorf("can't create object in the store: %v", err)
 			}
 		} else {
-			if err := i.store.UpdateObjectDetails(id, details, &model.Relations{d.State.ExtraRelations()}, true); err != nil {
+			if err := i.store.UpdateObjectDetails(id, details, true); err != nil {
 				return fmt.Errorf("can't update object in the store: %v", err)
 			}
 		}
@@ -670,25 +670,6 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 	if setCreator == "" {
 		setCreator = i.anytype.ProfileID()
 	}
-
-	if info.State.ObjectType() == bundle.TypeKeySet.URL() {
-		b := info.State.Get("dataview")
-		var dv *model.BlockContentDataview
-		if b != nil {
-			dv = b.Model().GetDataview()
-		}
-		if b != nil && dv != nil {
-			if len(dv.Source) == 1 {
-				sbt, err := smartblock.SmartBlockTypeFromID(dv.Source[0])
-				// in case we have set by objectType we need to store relations for improved aggregation
-				if err == nil && (sbt == smartblock.SmartBlockTypeObjectType || sbt == smartblock.SmartBlockTypeBundledObjectType) {
-					if err = i.store.UpdateRelationsInSetByObjectType(info.Id, dv.Source[0], setCreator, dv.Relations); err != nil {
-						log.With("thread", info.Id).Errorf("failed to index dataview relations: %s", err.Error())
-					}
-				}
-			}
-		}
-	}
 	indexSetTime := time.Now()
 	var hasError bool
 	if indexLinks {
@@ -700,7 +681,7 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 
 	indexLinksTime := time.Now()
 	if indexDetails {
-		if err := i.store.UpdateObjectDetails(info.Id, details, &model.Relations{Relations: info.State.ExtraRelations()}, false); err != nil {
+		if err := i.store.UpdateObjectDetails(info.Id, details, false); err != nil {
 			hasError = true
 			log.With("thread", info.Id).Errorf("can't update object store: %v", err)
 		}
@@ -729,7 +710,6 @@ func (i *indexer) index(ctx context.Context, info doc.DocInfo) error {
 		IndexSetRelationsTimeMs: indexSetTime.Sub(startTime).Milliseconds(),
 		RelationsCount:          len(info.State.ExtraRelations()),
 		DetailsCount:            detailsCount,
-		SetRelationsCount:       len(info.SetRelations),
 	})
 
 	return nil
@@ -803,15 +783,6 @@ func (i *indexer) ftIndexDoc(id string, _ time.Time) (err error) {
 				log.With("id", hash).Error(err.Error())
 			}
 		}
-	}
-
-	if len(info.SetRelations) > 1 && len(info.SetSource) == 1 {
-		if sbType == smartblock.SmartBlockTypeObjectType || sbType == smartblock.SmartBlockTypeBundledObjectType {
-			if err := i.store.UpdateRelationsInSetByObjectType(id, info.SetSource[0], info.Creator, info.SetRelations); err != nil {
-				log.With("thread", id).Errorf("failed to index dataview relations: %s", err.Error())
-			}
-		}
-
 	}
 
 	if fts := i.store.FTSearch(); fts != nil {
