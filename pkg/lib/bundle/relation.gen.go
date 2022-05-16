@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "0912ffb465d8863f60110bc4b8044672312b0ec9e0fdfbb183a07343d9a3acda"
+const RelationChecksum = "80e3ddbfa6999a1b05cc739b52e0e4f3b479fe25c9e220589cee6a2db4308b16"
 
 type RelationKey string
 
@@ -26,6 +26,7 @@ const (
 	RelationKeyRelationFormatObjectTypes RelationKey = "relationFormatObjectTypes"
 	RelationKeyInstructions              RelationKey = "instructions"
 	RelationKeyDone                      RelationKey = "done"
+	RelationKeyMediaArtistURL            RelationKey = "mediaArtistURL"
 	RelationKeyTemplateIsBundled         RelationKey = "templateIsBundled"
 	RelationKeyShipTo                    RelationKey = "shipTo"
 	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
@@ -74,6 +75,7 @@ const (
 	RelationKeySubsidiaries              RelationKey = "subsidiaries"
 	RelationKeyAdditional                RelationKey = "additional"
 	RelationKeyBudget                    RelationKey = "budget"
+	RelationKeyMediaArtistName           RelationKey = "mediaArtistName"
 	RelationKeyRating                    RelationKey = "rating"
 	RelationKeyEmail                     RelationKey = "email"
 	RelationKeyCompany                   RelationKey = "company"
@@ -1223,12 +1225,13 @@ var (
 		},
 		RelationKeyLinks: {
 
-			DataSource:       model.Relation_,
+			DataSource:       model.Relation_derived,
 			Description:      "Outgoing links",
-			Format:           model.RelationFormat_,
+			Format:           model.RelationFormat_object,
+			Hidden:           true,
 			Key:              "links",
-			Name:             "",
-			ReadOnly:         false,
+			Name:             "Outgoing links",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1277,6 +1280,30 @@ var (
 			MaxCount:         1,
 			Name:             "Measure of success",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMediaArtistName: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Artist name",
+			Format:           model.RelationFormat_longtext,
+			Hidden:           true,
+			Key:              "mediaArtistName",
+			Name:             "",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyMediaArtistURL: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Artist URL",
+			Format:           model.RelationFormat_url,
+			Hidden:           true,
+			Key:              "mediaArtistURL",
+			Name:             "",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

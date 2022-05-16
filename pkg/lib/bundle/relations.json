@@ -106,6 +106,15 @@
     "source": "details"
   },
   {
+    "description": "Artist URL",
+    "format": "url",
+    "hidden": true,
+    "key": "mediaArtistURL",
+    "maxCount": 0,
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Specifies whether template is provided by anytype",
     "format": "checkbox",
     "hidden": true,
@@ -566,6 +575,15 @@
     "maxCount": 1,
     "name": "Budget",
     "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Artist name",
+    "format": "longtext",
+    "hidden": true,
+    "key": "mediaArtistName",
+    "maxCount": 0,
+    "readonly": true,
     "source": "details"
   },
   {
@@ -1305,10 +1323,13 @@
   },
   {
     "description": "Outgoing links",
-    "hidden": false,
+    "format": "object",
+    "hidden": true,
     "key": "links",
     "maxCount": 0,
-    "readonly": false
+    "name": "Outgoing links",
+    "readonly": true,
+    "source": "derived"
   },
   {
     "format": "number",
