@@ -220,6 +220,45 @@
     ]
   },
   {
+    "description": "URL that is stored for later retrieval and may be categorised and linked with objects",
+    "emoji": "🔖 ",
+    "id": "bookmark",
+    "layout": "bookmark",
+    "name": "Bookmark",
+    "relations": [
+      "id",
+      "name",
+      "description",
+      "type",
+      "creator",
+      "createdDate",
+      "layout",
+      "lastModifiedBy",
+      "iconImage",
+      "iconEmoji",
+      "coverId",
+      "lastModifiedDate",
+      "lastOpenedDate",
+      "coverX",
+      "coverY",
+      "coverScale",
+      "toBeDeletedDate",
+      "featuredRelations",
+      "coverType",
+      "layoutAlign",
+      "isHidden",
+      "isArchived",
+      "tag",
+      "isFavorite",
+      "isDraft",
+      "workspaceId",
+      "notes"
+    ],
+    "types": [
+      "Page"
+    ]
+  },
+  {
     "description": "The act of organizing your activities and tasks for the week",
     "emoji": "🗓️",
     "id": "weeklyPlan",

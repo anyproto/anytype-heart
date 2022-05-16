@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "a4237ce5c66d6d645e608d5408dea2a98f07d78420b19b8d1ce9eb09243046b5"
+const TypeChecksum = "0ff4df1de833e8fc3488e418715265edb6ac014281abef867c2b84a92efda425"
 
 type TypeKey string
 
@@ -26,6 +26,7 @@ const (
 	TypeKeyNote            TypeKey = "note"
 	TypeKeyResume          TypeKey = "resume"
 	TypeKeyContact         TypeKey = "contact"
+	TypeKeyBookmark        TypeKey = "bookmark"
 	TypeKeyWeeklyPlan      TypeKey = "weeklyPlan"
 	TypeKeyDate            TypeKey = "date"
 	TypeKeyInvoice         TypeKey = "invoice"
@@ -105,6 +106,17 @@ var (
 			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId], relations[RelationKeyAuthor], relations[RelationKeyCategory], relations[RelationKeyRating], relations[RelationKeyStatus]},
 			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
 			Url:         TypePrefix + "book",
+		},
+		TypeKeyBookmark: {
+
+			Description: "URL that is stored for later retrieval and may be categorised and linked with objects",
+			IconEmoji:   "🔖 ",
+			Layout:      model.ObjectType_bookmark,
+			Name:        "Bookmark",
+			Readonly:    true,
+			Relations:   []*model.Relation{relations[RelationKeyId], relations[RelationKeyName], relations[RelationKeyDescription], relations[RelationKeyType], relations[RelationKeyCreator], relations[RelationKeyCreatedDate], relations[RelationKeyLayout], relations[RelationKeyLastModifiedBy], relations[RelationKeyIconImage], relations[RelationKeyIconEmoji], relations[RelationKeyCoverId], relations[RelationKeyLastModifiedDate], relations[RelationKeyLastOpenedDate], relations[RelationKeyCoverX], relations[RelationKeyCoverY], relations[RelationKeyCoverScale], relations[RelationKeyToBeDeletedDate], relations[RelationKeyFeaturedRelations], relations[RelationKeyCoverType], relations[RelationKeyLayoutAlign], relations[RelationKeyIsHidden], relations[RelationKeyIsArchived], relations[RelationKeyTag], relations[RelationKeyIsFavorite], relations[RelationKeyIsDraft], relations[RelationKeyWorkspaceId], relations[RelationKeyNotes]},
+			Types:       []model.SmartBlockType{model.SmartBlockType_Page},
+			Url:         TypePrefix + "bookmark",
 		},
 		TypeKeyBug: {
 
