@@ -407,3067 +407,1535 @@ func registerClientCommandsHandler(srv ClientCommandsHandler) {
 	clientCommandsHandler = srv
 }
 
-func ObjectAddWithObjectId(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectAddWithObjectIdResponse{Error: &pb.RpcObjectAddWithObjectIdResponseError{Code: pb.RpcObjectAddWithObjectIdResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectAddWithObjectId(b []byte) []byte {
 	in := new(pb.RpcObjectAddWithObjectIdRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectAddWithObjectIdResponse{Error: &pb.RpcObjectAddWithObjectIdResponseError{Code: pb.RpcObjectAddWithObjectIdResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectAddWithObjectIdResponse{Error: &pb.RpcObjectAddWithObjectIdResponseError{Code: pb.RpcObjectAddWithObjectIdResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectAddWithObjectId(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectAddWithObjectId(in).Marshal()
 	return resp
 }
 
-func ObjectShareByLink(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectShareByLinkResponse{Error: &pb.RpcObjectShareByLinkResponseError{Code: pb.RpcObjectShareByLinkResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectShareByLink(b []byte) []byte {
 	in := new(pb.RpcObjectShareByLinkRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectShareByLinkResponse{Error: &pb.RpcObjectShareByLinkResponseError{Code: pb.RpcObjectShareByLinkResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectShareByLinkResponse{Error: &pb.RpcObjectShareByLinkResponseError{Code: pb.RpcObjectShareByLinkResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectShareByLink(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectShareByLink(in).Marshal()
 	return resp
 }
 
-func WalletCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWalletCreateResponse{Error: &pb.RpcWalletCreateResponseError{Code: pb.RpcWalletCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WalletCreate(b []byte) []byte {
 	in := new(pb.RpcWalletCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWalletCreateResponse{Error: &pb.RpcWalletCreateResponseError{Code: pb.RpcWalletCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWalletCreateResponse{Error: &pb.RpcWalletCreateResponseError{Code: pb.RpcWalletCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WalletCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.WalletCreate(in).Marshal()
 	return resp
 }
 
-func WalletRecover(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWalletRecoverResponse{Error: &pb.RpcWalletRecoverResponseError{Code: pb.RpcWalletRecoverResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WalletRecover(b []byte) []byte {
 	in := new(pb.RpcWalletRecoverRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWalletRecoverResponse{Error: &pb.RpcWalletRecoverResponseError{Code: pb.RpcWalletRecoverResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWalletRecoverResponse{Error: &pb.RpcWalletRecoverResponseError{Code: pb.RpcWalletRecoverResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WalletRecover(in).Marshal()
+	resp, _ := clientCommandsHandler.WalletRecover(in).Marshal()
 	return resp
 }
 
-func WalletConvert(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWalletConvertResponse{Error: &pb.RpcWalletConvertResponseError{Code: pb.RpcWalletConvertResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WalletConvert(b []byte) []byte {
 	in := new(pb.RpcWalletConvertRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWalletConvertResponse{Error: &pb.RpcWalletConvertResponseError{Code: pb.RpcWalletConvertResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWalletConvertResponse{Error: &pb.RpcWalletConvertResponseError{Code: pb.RpcWalletConvertResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WalletConvert(in).Marshal()
+	resp, _ := clientCommandsHandler.WalletConvert(in).Marshal()
 	return resp
 }
 
-func WorkspaceCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWorkspaceCreateResponse{Error: &pb.RpcWorkspaceCreateResponseError{Code: pb.RpcWorkspaceCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WorkspaceCreate(b []byte) []byte {
 	in := new(pb.RpcWorkspaceCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWorkspaceCreateResponse{Error: &pb.RpcWorkspaceCreateResponseError{Code: pb.RpcWorkspaceCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWorkspaceCreateResponse{Error: &pb.RpcWorkspaceCreateResponseError{Code: pb.RpcWorkspaceCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WorkspaceCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.WorkspaceCreate(in).Marshal()
 	return resp
 }
 
-func WorkspaceSelect(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWorkspaceSelectResponse{Error: &pb.RpcWorkspaceSelectResponseError{Code: pb.RpcWorkspaceSelectResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WorkspaceSelect(b []byte) []byte {
 	in := new(pb.RpcWorkspaceSelectRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWorkspaceSelectResponse{Error: &pb.RpcWorkspaceSelectResponseError{Code: pb.RpcWorkspaceSelectResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWorkspaceSelectResponse{Error: &pb.RpcWorkspaceSelectResponseError{Code: pb.RpcWorkspaceSelectResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WorkspaceSelect(in).Marshal()
+	resp, _ := clientCommandsHandler.WorkspaceSelect(in).Marshal()
 	return resp
 }
 
-func WorkspaceGetCurrent(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWorkspaceGetCurrentResponse{Error: &pb.RpcWorkspaceGetCurrentResponseError{Code: pb.RpcWorkspaceGetCurrentResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WorkspaceGetCurrent(b []byte) []byte {
 	in := new(pb.RpcWorkspaceGetCurrentRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWorkspaceGetCurrentResponse{Error: &pb.RpcWorkspaceGetCurrentResponseError{Code: pb.RpcWorkspaceGetCurrentResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWorkspaceGetCurrentResponse{Error: &pb.RpcWorkspaceGetCurrentResponseError{Code: pb.RpcWorkspaceGetCurrentResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WorkspaceGetCurrent(in).Marshal()
+	resp, _ := clientCommandsHandler.WorkspaceGetCurrent(in).Marshal()
 	return resp
 }
 
-func WorkspaceGetAll(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWorkspaceGetAllResponse{Error: &pb.RpcWorkspaceGetAllResponseError{Code: pb.RpcWorkspaceGetAllResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WorkspaceGetAll(b []byte) []byte {
 	in := new(pb.RpcWorkspaceGetAllRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWorkspaceGetAllResponse{Error: &pb.RpcWorkspaceGetAllResponseError{Code: pb.RpcWorkspaceGetAllResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWorkspaceGetAllResponse{Error: &pb.RpcWorkspaceGetAllResponseError{Code: pb.RpcWorkspaceGetAllResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WorkspaceGetAll(in).Marshal()
+	resp, _ := clientCommandsHandler.WorkspaceGetAll(in).Marshal()
 	return resp
 }
 
-func WorkspaceSetIsHighlighted(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcWorkspaceSetIsHighlightedResponse{Error: &pb.RpcWorkspaceSetIsHighlightedResponseError{Code: pb.RpcWorkspaceSetIsHighlightedResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func WorkspaceSetIsHighlighted(b []byte) []byte {
 	in := new(pb.RpcWorkspaceSetIsHighlightedRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcWorkspaceSetIsHighlightedResponse{Error: &pb.RpcWorkspaceSetIsHighlightedResponseError{Code: pb.RpcWorkspaceSetIsHighlightedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcWorkspaceSetIsHighlightedResponse{Error: &pb.RpcWorkspaceSetIsHighlightedResponseError{Code: pb.RpcWorkspaceSetIsHighlightedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.WorkspaceSetIsHighlighted(in).Marshal()
+	resp, _ := clientCommandsHandler.WorkspaceSetIsHighlighted(in).Marshal()
 	return resp
 }
 
-func AccountRecover(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcAccountRecoverResponse{Error: &pb.RpcAccountRecoverResponseError{Code: pb.RpcAccountRecoverResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func AccountRecover(b []byte) []byte {
 	in := new(pb.RpcAccountRecoverRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcAccountRecoverResponse{Error: &pb.RpcAccountRecoverResponseError{Code: pb.RpcAccountRecoverResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountRecoverResponse{Error: &pb.RpcAccountRecoverResponseError{Code: pb.RpcAccountRecoverResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.AccountRecover(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountRecover(in).Marshal()
 	return resp
 }
 
-func AccountCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcAccountCreateResponse{Error: &pb.RpcAccountCreateResponseError{Code: pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func AccountCreate(b []byte) []byte {
 	in := new(pb.RpcAccountCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcAccountCreateResponse{Error: &pb.RpcAccountCreateResponseError{Code: pb.RpcAccountCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountCreateResponse{Error: &pb.RpcAccountCreateResponseError{Code: pb.RpcAccountCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.AccountCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountCreate(in).Marshal()
 	return resp
 }
 
-func AccountDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: pb.RpcAccountDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func AccountDelete(b []byte) []byte {
 	in := new(pb.RpcAccountDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: pb.RpcAccountDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountDeleteResponse{Error: &pb.RpcAccountDeleteResponseError{Code: pb.RpcAccountDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.AccountDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountDelete(in).Marshal()
 	return resp
 }
 
-func AccountSelect(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcAccountSelectResponse{Error: &pb.RpcAccountSelectResponseError{Code: pb.RpcAccountSelectResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func AccountSelect(b []byte) []byte {
 	in := new(pb.RpcAccountSelectRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcAccountSelectResponse{Error: &pb.RpcAccountSelectResponseError{Code: pb.RpcAccountSelectResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountSelectResponse{Error: &pb.RpcAccountSelectResponseError{Code: pb.RpcAccountSelectResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.AccountSelect(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountSelect(in).Marshal()
 	return resp
 }
 
-func AccountStop(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcAccountStopResponse{Error: &pb.RpcAccountStopResponseError{Code: pb.RpcAccountStopResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func AccountStop(b []byte) []byte {
 	in := new(pb.RpcAccountStopRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcAccountStopResponse{Error: &pb.RpcAccountStopResponseError{Code: pb.RpcAccountStopResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcAccountStopResponse{Error: &pb.RpcAccountStopResponseError{Code: pb.RpcAccountStopResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.AccountStop(in).Marshal()
+	resp, _ := clientCommandsHandler.AccountStop(in).Marshal()
 	return resp
 }
 
-func FileOffload(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcFileOffloadResponse{Error: &pb.RpcFileOffloadResponseError{Code: pb.RpcFileOffloadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func FileOffload(b []byte) []byte {
 	in := new(pb.RpcFileOffloadRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcFileOffloadResponse{Error: &pb.RpcFileOffloadResponseError{Code: pb.RpcFileOffloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcFileOffloadResponse{Error: &pb.RpcFileOffloadResponseError{Code: pb.RpcFileOffloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.FileOffload(in).Marshal()
+	resp, _ := clientCommandsHandler.FileOffload(in).Marshal()
 	return resp
 }
 
-func FileListOffload(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: pb.RpcFileListOffloadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func FileListOffload(b []byte) []byte {
 	in := new(pb.RpcFileListOffloadRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: pb.RpcFileListOffloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcFileListOffloadResponse{Error: &pb.RpcFileListOffloadResponseError{Code: pb.RpcFileListOffloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.FileListOffload(in).Marshal()
+	resp, _ := clientCommandsHandler.FileListOffload(in).Marshal()
 	return resp
 }
 
-func VersionGet(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcVersionGetResponse{Error: &pb.RpcVersionGetResponseError{Code: pb.RpcVersionGetResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func VersionGet(b []byte) []byte {
 	in := new(pb.RpcVersionGetRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcVersionGetResponse{Error: &pb.RpcVersionGetResponseError{Code: pb.RpcVersionGetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcVersionGetResponse{Error: &pb.RpcVersionGetResponseError{Code: pb.RpcVersionGetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.VersionGet(in).Marshal()
+	resp, _ := clientCommandsHandler.VersionGet(in).Marshal()
 	return resp
 }
 
-func LogSend(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcLogSendResponse{Error: &pb.RpcLogSendResponseError{Code: pb.RpcLogSendResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func LogSend(b []byte) []byte {
 	in := new(pb.RpcLogSendRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcLogSendResponse{Error: &pb.RpcLogSendResponseError{Code: pb.RpcLogSendResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcLogSendResponse{Error: &pb.RpcLogSendResponseError{Code: pb.RpcLogSendResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.LogSend(in).Marshal()
+	resp, _ := clientCommandsHandler.LogSend(in).Marshal()
 	return resp
 }
 
-func ConfigGet(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcConfigGetResponse{Error: &pb.RpcConfigGetResponseError{Code: pb.RpcConfigGetResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ConfigGet(b []byte) []byte {
 	in := new(pb.RpcConfigGetRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcConfigGetResponse{Error: &pb.RpcConfigGetResponseError{Code: pb.RpcConfigGetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcConfigGetResponse{Error: &pb.RpcConfigGetResponseError{Code: pb.RpcConfigGetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ConfigGet(in).Marshal()
+	resp, _ := clientCommandsHandler.ConfigGet(in).Marshal()
 	return resp
 }
 
-func Shutdown(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcShutdownResponse{Error: &pb.RpcShutdownResponseError{Code: pb.RpcShutdownResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func Shutdown(b []byte) []byte {
 	in := new(pb.RpcShutdownRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcShutdownResponse{Error: &pb.RpcShutdownResponseError{Code: pb.RpcShutdownResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcShutdownResponse{Error: &pb.RpcShutdownResponseError{Code: pb.RpcShutdownResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.Shutdown(in).Marshal()
+	resp, _ := clientCommandsHandler.Shutdown(in).Marshal()
 	return resp
 }
 
-func SetDeviceState(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcDeviceStateResponse{Error: &pb.RpcDeviceStateResponseError{Code: pb.RpcDeviceStateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func SetDeviceState(b []byte) []byte {
 	in := new(pb.RpcDeviceStateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcDeviceStateResponse{Error: &pb.RpcDeviceStateResponseError{Code: pb.RpcDeviceStateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcDeviceStateResponse{Error: &pb.RpcDeviceStateResponseError{Code: pb.RpcDeviceStateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.SetDeviceState(in).Marshal()
+	resp, _ := clientCommandsHandler.SetDeviceState(in).Marshal()
 	return resp
 }
 
-func ExternalDropFiles(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcExternalDropFilesResponse{Error: &pb.RpcExternalDropFilesResponseError{Code: pb.RpcExternalDropFilesResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ExternalDropFiles(b []byte) []byte {
 	in := new(pb.RpcExternalDropFilesRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcExternalDropFilesResponse{Error: &pb.RpcExternalDropFilesResponseError{Code: pb.RpcExternalDropFilesResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcExternalDropFilesResponse{Error: &pb.RpcExternalDropFilesResponseError{Code: pb.RpcExternalDropFilesResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ExternalDropFiles(in).Marshal()
+	resp, _ := clientCommandsHandler.ExternalDropFiles(in).Marshal()
 	return resp
 }
 
-func ExternalDropContent(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcExternalDropContentResponse{Error: &pb.RpcExternalDropContentResponseError{Code: pb.RpcExternalDropContentResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ExternalDropContent(b []byte) []byte {
 	in := new(pb.RpcExternalDropContentRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcExternalDropContentResponse{Error: &pb.RpcExternalDropContentResponseError{Code: pb.RpcExternalDropContentResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcExternalDropContentResponse{Error: &pb.RpcExternalDropContentResponseError{Code: pb.RpcExternalDropContentResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ExternalDropContent(in).Marshal()
+	resp, _ := clientCommandsHandler.ExternalDropContent(in).Marshal()
 	return resp
 }
 
-func LinkPreview(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcLinkPreviewResponse{Error: &pb.RpcLinkPreviewResponseError{Code: pb.RpcLinkPreviewResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func LinkPreview(b []byte) []byte {
 	in := new(pb.RpcLinkPreviewRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcLinkPreviewResponse{Error: &pb.RpcLinkPreviewResponseError{Code: pb.RpcLinkPreviewResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcLinkPreviewResponse{Error: &pb.RpcLinkPreviewResponseError{Code: pb.RpcLinkPreviewResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.LinkPreview(in).Marshal()
+	resp, _ := clientCommandsHandler.LinkPreview(in).Marshal()
 	return resp
 }
 
-func UploadFile(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcUploadFileResponse{Error: &pb.RpcUploadFileResponseError{Code: pb.RpcUploadFileResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func UploadFile(b []byte) []byte {
 	in := new(pb.RpcUploadFileRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcUploadFileResponse{Error: &pb.RpcUploadFileResponseError{Code: pb.RpcUploadFileResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcUploadFileResponse{Error: &pb.RpcUploadFileResponseError{Code: pb.RpcUploadFileResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.UploadFile(in).Marshal()
+	resp, _ := clientCommandsHandler.UploadFile(in).Marshal()
 	return resp
 }
 
-func DownloadFile(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcDownloadFileResponse{Error: &pb.RpcDownloadFileResponseError{Code: pb.RpcDownloadFileResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func DownloadFile(b []byte) []byte {
 	in := new(pb.RpcDownloadFileRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcDownloadFileResponse{Error: &pb.RpcDownloadFileResponseError{Code: pb.RpcDownloadFileResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcDownloadFileResponse{Error: &pb.RpcDownloadFileResponseError{Code: pb.RpcDownloadFileResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.DownloadFile(in).Marshal()
+	resp, _ := clientCommandsHandler.DownloadFile(in).Marshal()
 	return resp
 }
 
-func BlockUpload(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockUploadResponse{Error: &pb.RpcBlockUploadResponseError{Code: pb.RpcBlockUploadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockUpload(b []byte) []byte {
 	in := new(pb.RpcBlockUploadRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockUploadResponse{Error: &pb.RpcBlockUploadResponseError{Code: pb.RpcBlockUploadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockUploadResponse{Error: &pb.RpcBlockUploadResponseError{Code: pb.RpcBlockUploadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockUpload(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockUpload(in).Marshal()
 	return resp
 }
 
-func BlockReplace(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockReplaceResponse{Error: &pb.RpcBlockReplaceResponseError{Code: pb.RpcBlockReplaceResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockReplace(b []byte) []byte {
 	in := new(pb.RpcBlockReplaceRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockReplaceResponse{Error: &pb.RpcBlockReplaceResponseError{Code: pb.RpcBlockReplaceResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockReplaceResponse{Error: &pb.RpcBlockReplaceResponseError{Code: pb.RpcBlockReplaceResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockReplace(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockReplace(in).Marshal()
 	return resp
 }
 
-func BlockUpdateContent(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockUpdateContentResponse{Error: &pb.RpcBlockUpdateContentResponseError{Code: pb.RpcBlockUpdateContentResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockUpdateContent(b []byte) []byte {
 	in := new(pb.RpcBlockUpdateContentRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockUpdateContentResponse{Error: &pb.RpcBlockUpdateContentResponseError{Code: pb.RpcBlockUpdateContentResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockUpdateContentResponse{Error: &pb.RpcBlockUpdateContentResponseError{Code: pb.RpcBlockUpdateContentResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockUpdateContent(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockUpdateContent(in).Marshal()
 	return resp
 }
 
-func BlockOpen(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockOpenResponse{Error: &pb.RpcBlockOpenResponseError{Code: pb.RpcBlockOpenResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockOpen(b []byte) []byte {
 	in := new(pb.RpcBlockOpenRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockOpenResponse{Error: &pb.RpcBlockOpenResponseError{Code: pb.RpcBlockOpenResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockOpenResponse{Error: &pb.RpcBlockOpenResponseError{Code: pb.RpcBlockOpenResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockOpen(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockOpen(in).Marshal()
 	return resp
 }
 
-func BlockShow(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockShowResponse{Error: &pb.RpcBlockShowResponseError{Code: pb.RpcBlockShowResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockShow(b []byte) []byte {
 	in := new(pb.RpcBlockShowRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockShowResponse{Error: &pb.RpcBlockShowResponseError{Code: pb.RpcBlockShowResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockShowResponse{Error: &pb.RpcBlockShowResponseError{Code: pb.RpcBlockShowResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockShow(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockShow(in).Marshal()
 	return resp
 }
 
-func BlockGetPublicWebURL(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockGetPublicWebURLResponse{Error: &pb.RpcBlockGetPublicWebURLResponseError{Code: pb.RpcBlockGetPublicWebURLResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockGetPublicWebURL(b []byte) []byte {
 	in := new(pb.RpcBlockGetPublicWebURLRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockGetPublicWebURLResponse{Error: &pb.RpcBlockGetPublicWebURLResponseError{Code: pb.RpcBlockGetPublicWebURLResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockGetPublicWebURLResponse{Error: &pb.RpcBlockGetPublicWebURLResponseError{Code: pb.RpcBlockGetPublicWebURLResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockGetPublicWebURL(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockGetPublicWebURL(in).Marshal()
 	return resp
 }
 
-func BlockOpenBreadcrumbs(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockOpenBreadcrumbsResponse{Error: &pb.RpcBlockOpenBreadcrumbsResponseError{Code: pb.RpcBlockOpenBreadcrumbsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockOpenBreadcrumbs(b []byte) []byte {
 	in := new(pb.RpcBlockOpenBreadcrumbsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockOpenBreadcrumbsResponse{Error: &pb.RpcBlockOpenBreadcrumbsResponseError{Code: pb.RpcBlockOpenBreadcrumbsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockOpenBreadcrumbsResponse{Error: &pb.RpcBlockOpenBreadcrumbsResponseError{Code: pb.RpcBlockOpenBreadcrumbsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockOpenBreadcrumbs(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockOpenBreadcrumbs(in).Marshal()
 	return resp
 }
 
-func BlockSetBreadcrumbs(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetBreadcrumbsResponse{Error: &pb.RpcBlockSetBreadcrumbsResponseError{Code: pb.RpcBlockSetBreadcrumbsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetBreadcrumbs(b []byte) []byte {
 	in := new(pb.RpcBlockSetBreadcrumbsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetBreadcrumbsResponse{Error: &pb.RpcBlockSetBreadcrumbsResponseError{Code: pb.RpcBlockSetBreadcrumbsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetBreadcrumbsResponse{Error: &pb.RpcBlockSetBreadcrumbsResponseError{Code: pb.RpcBlockSetBreadcrumbsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetBreadcrumbs(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetBreadcrumbs(in).Marshal()
 	return resp
 }
 
-func BlockCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: pb.RpcBlockCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockCreate(b []byte) []byte {
 	in := new(pb.RpcBlockCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: pb.RpcBlockCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockCreateResponse{Error: &pb.RpcBlockCreateResponseError{Code: pb.RpcBlockCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockCreate(in).Marshal()
 	return resp
 }
 
-func BlockCreatePage(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockCreatePageResponse{Error: &pb.RpcBlockCreatePageResponseError{Code: pb.RpcBlockCreatePageResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockCreatePage(b []byte) []byte {
 	in := new(pb.RpcBlockCreatePageRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockCreatePageResponse{Error: &pb.RpcBlockCreatePageResponseError{Code: pb.RpcBlockCreatePageResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockCreatePageResponse{Error: &pb.RpcBlockCreatePageResponseError{Code: pb.RpcBlockCreatePageResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockCreatePage(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockCreatePage(in).Marshal()
 	return resp
 }
 
-func BlockCreateSet(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockCreateSetResponse{Error: &pb.RpcBlockCreateSetResponseError{Code: pb.RpcBlockCreateSetResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockCreateSet(b []byte) []byte {
 	in := new(pb.RpcBlockCreateSetRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockCreateSetResponse{Error: &pb.RpcBlockCreateSetResponseError{Code: pb.RpcBlockCreateSetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockCreateSetResponse{Error: &pb.RpcBlockCreateSetResponseError{Code: pb.RpcBlockCreateSetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockCreateSet(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockCreateSet(in).Marshal()
 	return resp
 }
 
-func BlockUnlink(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockUnlinkResponse{Error: &pb.RpcBlockUnlinkResponseError{Code: pb.RpcBlockUnlinkResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockUnlink(b []byte) []byte {
 	in := new(pb.RpcBlockUnlinkRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockUnlinkResponse{Error: &pb.RpcBlockUnlinkResponseError{Code: pb.RpcBlockUnlinkResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockUnlinkResponse{Error: &pb.RpcBlockUnlinkResponseError{Code: pb.RpcBlockUnlinkResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockUnlink(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockUnlink(in).Marshal()
 	return resp
 }
 
-func BlockClose(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockCloseResponse{Error: &pb.RpcBlockCloseResponseError{Code: pb.RpcBlockCloseResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockClose(b []byte) []byte {
 	in := new(pb.RpcBlockCloseRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockCloseResponse{Error: &pb.RpcBlockCloseResponseError{Code: pb.RpcBlockCloseResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockCloseResponse{Error: &pb.RpcBlockCloseResponseError{Code: pb.RpcBlockCloseResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockClose(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockClose(in).Marshal()
 	return resp
 }
 
-func BlockDownload(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDownloadResponse{Error: &pb.RpcBlockDownloadResponseError{Code: pb.RpcBlockDownloadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDownload(b []byte) []byte {
 	in := new(pb.RpcBlockDownloadRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDownloadResponse{Error: &pb.RpcBlockDownloadResponseError{Code: pb.RpcBlockDownloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDownloadResponse{Error: &pb.RpcBlockDownloadResponseError{Code: pb.RpcBlockDownloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDownload(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDownload(in).Marshal()
 	return resp
 }
 
-func BlockGetMarks(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockGetMarksResponse{Error: &pb.RpcBlockGetMarksResponseError{Code: pb.RpcBlockGetMarksResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockGetMarks(b []byte) []byte {
 	in := new(pb.RpcBlockGetMarksRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockGetMarksResponse{Error: &pb.RpcBlockGetMarksResponseError{Code: pb.RpcBlockGetMarksResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockGetMarksResponse{Error: &pb.RpcBlockGetMarksResponseError{Code: pb.RpcBlockGetMarksResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockGetMarks(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockGetMarks(in).Marshal()
 	return resp
 }
 
-func BlockUndo(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockUndoResponse{Error: &pb.RpcBlockUndoResponseError{Code: pb.RpcBlockUndoResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockUndo(b []byte) []byte {
 	in := new(pb.RpcBlockUndoRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockUndoResponse{Error: &pb.RpcBlockUndoResponseError{Code: pb.RpcBlockUndoResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockUndoResponse{Error: &pb.RpcBlockUndoResponseError{Code: pb.RpcBlockUndoResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockUndo(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockUndo(in).Marshal()
 	return resp
 }
 
-func BlockRedo(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockRedoResponse{Error: &pb.RpcBlockRedoResponseError{Code: pb.RpcBlockRedoResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockRedo(b []byte) []byte {
 	in := new(pb.RpcBlockRedoRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockRedoResponse{Error: &pb.RpcBlockRedoResponseError{Code: pb.RpcBlockRedoResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockRedoResponse{Error: &pb.RpcBlockRedoResponseError{Code: pb.RpcBlockRedoResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockRedo(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockRedo(in).Marshal()
 	return resp
 }
 
-func BlockSetFields(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetFieldsResponse{Error: &pb.RpcBlockSetFieldsResponseError{Code: pb.RpcBlockSetFieldsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetFields(b []byte) []byte {
 	in := new(pb.RpcBlockSetFieldsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetFieldsResponse{Error: &pb.RpcBlockSetFieldsResponseError{Code: pb.RpcBlockSetFieldsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetFieldsResponse{Error: &pb.RpcBlockSetFieldsResponseError{Code: pb.RpcBlockSetFieldsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetFields(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetFields(in).Marshal()
 	return resp
 }
 
-func BlockSetRestrictions(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetRestrictionsResponse{Error: &pb.RpcBlockSetRestrictionsResponseError{Code: pb.RpcBlockSetRestrictionsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetRestrictions(b []byte) []byte {
 	in := new(pb.RpcBlockSetRestrictionsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetRestrictionsResponse{Error: &pb.RpcBlockSetRestrictionsResponseError{Code: pb.RpcBlockSetRestrictionsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetRestrictionsResponse{Error: &pb.RpcBlockSetRestrictionsResponseError{Code: pb.RpcBlockSetRestrictionsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetRestrictions(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetRestrictions(in).Marshal()
 	return resp
 }
 
-func BlockListMove(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListMoveResponse{Error: &pb.RpcBlockListMoveResponseError{Code: pb.RpcBlockListMoveResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListMove(b []byte) []byte {
 	in := new(pb.RpcBlockListMoveRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListMoveResponse{Error: &pb.RpcBlockListMoveResponseError{Code: pb.RpcBlockListMoveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListMoveResponse{Error: &pb.RpcBlockListMoveResponseError{Code: pb.RpcBlockListMoveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListMove(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListMove(in).Marshal()
 	return resp
 }
 
-func BlockListMoveToNewPage(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListMoveToNewPageResponse{Error: &pb.RpcBlockListMoveToNewPageResponseError{Code: pb.RpcBlockListMoveToNewPageResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListMoveToNewPage(b []byte) []byte {
 	in := new(pb.RpcBlockListMoveToNewPageRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListMoveToNewPageResponse{Error: &pb.RpcBlockListMoveToNewPageResponseError{Code: pb.RpcBlockListMoveToNewPageResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListMoveToNewPageResponse{Error: &pb.RpcBlockListMoveToNewPageResponseError{Code: pb.RpcBlockListMoveToNewPageResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListMoveToNewPage(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListMoveToNewPage(in).Marshal()
 	return resp
 }
 
-func BlockListConvertChildrenToPages(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListConvertChildrenToPagesResponse{Error: &pb.RpcBlockListConvertChildrenToPagesResponseError{Code: pb.RpcBlockListConvertChildrenToPagesResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListConvertChildrenToPages(b []byte) []byte {
 	in := new(pb.RpcBlockListConvertChildrenToPagesRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListConvertChildrenToPagesResponse{Error: &pb.RpcBlockListConvertChildrenToPagesResponseError{Code: pb.RpcBlockListConvertChildrenToPagesResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListConvertChildrenToPagesResponse{Error: &pb.RpcBlockListConvertChildrenToPagesResponseError{Code: pb.RpcBlockListConvertChildrenToPagesResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListConvertChildrenToPages(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListConvertChildrenToPages(in).Marshal()
 	return resp
 }
 
-func BlockListSetFields(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetFieldsResponse{Error: &pb.RpcBlockListSetFieldsResponseError{Code: pb.RpcBlockListSetFieldsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetFields(b []byte) []byte {
 	in := new(pb.RpcBlockListSetFieldsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetFieldsResponse{Error: &pb.RpcBlockListSetFieldsResponseError{Code: pb.RpcBlockListSetFieldsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetFieldsResponse{Error: &pb.RpcBlockListSetFieldsResponseError{Code: pb.RpcBlockListSetFieldsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetFields(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetFields(in).Marshal()
 	return resp
 }
 
-func BlockListSetTextStyle(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetTextStyleResponse{Error: &pb.RpcBlockListSetTextStyleResponseError{Code: pb.RpcBlockListSetTextStyleResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetTextStyle(b []byte) []byte {
 	in := new(pb.RpcBlockListSetTextStyleRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetTextStyleResponse{Error: &pb.RpcBlockListSetTextStyleResponseError{Code: pb.RpcBlockListSetTextStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetTextStyleResponse{Error: &pb.RpcBlockListSetTextStyleResponseError{Code: pb.RpcBlockListSetTextStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetTextStyle(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetTextStyle(in).Marshal()
 	return resp
 }
 
-func BlockListDuplicate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListDuplicateResponse{Error: &pb.RpcBlockListDuplicateResponseError{Code: pb.RpcBlockListDuplicateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListDuplicate(b []byte) []byte {
 	in := new(pb.RpcBlockListDuplicateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListDuplicateResponse{Error: &pb.RpcBlockListDuplicateResponseError{Code: pb.RpcBlockListDuplicateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListDuplicateResponse{Error: &pb.RpcBlockListDuplicateResponseError{Code: pb.RpcBlockListDuplicateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListDuplicate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListDuplicate(in).Marshal()
 	return resp
 }
 
-func BlockListSetBackgroundColor(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetBackgroundColorResponse{Error: &pb.RpcBlockListSetBackgroundColorResponseError{Code: pb.RpcBlockListSetBackgroundColorResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetBackgroundColor(b []byte) []byte {
 	in := new(pb.RpcBlockListSetBackgroundColorRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetBackgroundColorResponse{Error: &pb.RpcBlockListSetBackgroundColorResponseError{Code: pb.RpcBlockListSetBackgroundColorResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetBackgroundColorResponse{Error: &pb.RpcBlockListSetBackgroundColorResponseError{Code: pb.RpcBlockListSetBackgroundColorResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetBackgroundColor(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetBackgroundColor(in).Marshal()
 	return resp
 }
 
-func BlockListSetAlign(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetAlignResponse{Error: &pb.RpcBlockListSetAlignResponseError{Code: pb.RpcBlockListSetAlignResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetAlign(b []byte) []byte {
 	in := new(pb.RpcBlockListSetAlignRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetAlignResponse{Error: &pb.RpcBlockListSetAlignResponseError{Code: pb.RpcBlockListSetAlignResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetAlignResponse{Error: &pb.RpcBlockListSetAlignResponseError{Code: pb.RpcBlockListSetAlignResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetAlign(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetAlign(in).Marshal()
 	return resp
 }
 
-func BlockListSetDivStyle(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetDivStyleResponse{Error: &pb.RpcBlockListSetDivStyleResponseError{Code: pb.RpcBlockListSetDivStyleResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetDivStyle(b []byte) []byte {
 	in := new(pb.RpcBlockListSetDivStyleRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetDivStyleResponse{Error: &pb.RpcBlockListSetDivStyleResponseError{Code: pb.RpcBlockListSetDivStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetDivStyleResponse{Error: &pb.RpcBlockListSetDivStyleResponseError{Code: pb.RpcBlockListSetDivStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetDivStyle(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetDivStyle(in).Marshal()
 	return resp
 }
 
-func BlockListSetFileStyle(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetFileStyleResponse{Error: &pb.RpcBlockListSetFileStyleResponseError{Code: pb.RpcBlockListSetFileStyleResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetFileStyle(b []byte) []byte {
 	in := new(pb.RpcBlockListSetFileStyleRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetFileStyleResponse{Error: &pb.RpcBlockListSetFileStyleResponseError{Code: pb.RpcBlockListSetFileStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetFileStyleResponse{Error: &pb.RpcBlockListSetFileStyleResponseError{Code: pb.RpcBlockListSetFileStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetFileStyle(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetFileStyle(in).Marshal()
 	return resp
 }
 
-func BlockListTurnInto(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListTurnIntoResponse{Error: &pb.RpcBlockListTurnIntoResponseError{Code: pb.RpcBlockListTurnIntoResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListTurnInto(b []byte) []byte {
 	in := new(pb.RpcBlockListTurnIntoRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListTurnIntoResponse{Error: &pb.RpcBlockListTurnIntoResponseError{Code: pb.RpcBlockListTurnIntoResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListTurnIntoResponse{Error: &pb.RpcBlockListTurnIntoResponseError{Code: pb.RpcBlockListTurnIntoResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListTurnInto(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListTurnInto(in).Marshal()
 	return resp
 }
 
-func BlockSetLatexText(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetLatexTextResponse{Error: &pb.RpcBlockSetLatexTextResponseError{Code: pb.RpcBlockSetLatexTextResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetLatexText(b []byte) []byte {
 	in := new(pb.RpcBlockSetLatexTextRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetLatexTextResponse{Error: &pb.RpcBlockSetLatexTextResponseError{Code: pb.RpcBlockSetLatexTextResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetLatexTextResponse{Error: &pb.RpcBlockSetLatexTextResponseError{Code: pb.RpcBlockSetLatexTextResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetLatexText(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetLatexText(in).Marshal()
 	return resp
 }
 
-func BlockSetTextText(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetTextTextResponse{Error: &pb.RpcBlockSetTextTextResponseError{Code: pb.RpcBlockSetTextTextResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetTextText(b []byte) []byte {
 	in := new(pb.RpcBlockSetTextTextRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetTextTextResponse{Error: &pb.RpcBlockSetTextTextResponseError{Code: pb.RpcBlockSetTextTextResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetTextTextResponse{Error: &pb.RpcBlockSetTextTextResponseError{Code: pb.RpcBlockSetTextTextResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetTextText(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetTextText(in).Marshal()
 	return resp
 }
 
-func BlockSetTextColor(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetTextColorResponse{Error: &pb.RpcBlockSetTextColorResponseError{Code: pb.RpcBlockSetTextColorResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetTextColor(b []byte) []byte {
 	in := new(pb.RpcBlockSetTextColorRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetTextColorResponse{Error: &pb.RpcBlockSetTextColorResponseError{Code: pb.RpcBlockSetTextColorResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetTextColorResponse{Error: &pb.RpcBlockSetTextColorResponseError{Code: pb.RpcBlockSetTextColorResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetTextColor(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetTextColor(in).Marshal()
 	return resp
 }
 
-func BlockListSetTextColor(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetTextColorResponse{Error: &pb.RpcBlockListSetTextColorResponseError{Code: pb.RpcBlockListSetTextColorResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetTextColor(b []byte) []byte {
 	in := new(pb.RpcBlockListSetTextColorRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetTextColorResponse{Error: &pb.RpcBlockListSetTextColorResponseError{Code: pb.RpcBlockListSetTextColorResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetTextColorResponse{Error: &pb.RpcBlockListSetTextColorResponseError{Code: pb.RpcBlockListSetTextColorResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetTextColor(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetTextColor(in).Marshal()
 	return resp
 }
 
-func BlockListSetTextMark(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockListSetTextMarkResponse{Error: &pb.RpcBlockListSetTextMarkResponseError{Code: pb.RpcBlockListSetTextMarkResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockListSetTextMark(b []byte) []byte {
 	in := new(pb.RpcBlockListSetTextMarkRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockListSetTextMarkResponse{Error: &pb.RpcBlockListSetTextMarkResponseError{Code: pb.RpcBlockListSetTextMarkResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockListSetTextMarkResponse{Error: &pb.RpcBlockListSetTextMarkResponseError{Code: pb.RpcBlockListSetTextMarkResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockListSetTextMark(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockListSetTextMark(in).Marshal()
 	return resp
 }
 
-func BlockSetTextStyle(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetTextStyleResponse{Error: &pb.RpcBlockSetTextStyleResponseError{Code: pb.RpcBlockSetTextStyleResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetTextStyle(b []byte) []byte {
 	in := new(pb.RpcBlockSetTextStyleRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetTextStyleResponse{Error: &pb.RpcBlockSetTextStyleResponseError{Code: pb.RpcBlockSetTextStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetTextStyleResponse{Error: &pb.RpcBlockSetTextStyleResponseError{Code: pb.RpcBlockSetTextStyleResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetTextStyle(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetTextStyle(in).Marshal()
 	return resp
 }
 
-func BlockSetTextChecked(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetTextCheckedResponse{Error: &pb.RpcBlockSetTextCheckedResponseError{Code: pb.RpcBlockSetTextCheckedResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetTextChecked(b []byte) []byte {
 	in := new(pb.RpcBlockSetTextCheckedRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetTextCheckedResponse{Error: &pb.RpcBlockSetTextCheckedResponseError{Code: pb.RpcBlockSetTextCheckedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetTextCheckedResponse{Error: &pb.RpcBlockSetTextCheckedResponseError{Code: pb.RpcBlockSetTextCheckedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetTextChecked(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetTextChecked(in).Marshal()
 	return resp
 }
 
-func BlockSetTextIcon(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetTextIconResponse{Error: &pb.RpcBlockSetTextIconResponseError{Code: pb.RpcBlockSetTextIconResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetTextIcon(b []byte) []byte {
 	in := new(pb.RpcBlockSetTextIconRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetTextIconResponse{Error: &pb.RpcBlockSetTextIconResponseError{Code: pb.RpcBlockSetTextIconResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetTextIconResponse{Error: &pb.RpcBlockSetTextIconResponseError{Code: pb.RpcBlockSetTextIconResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetTextIcon(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetTextIcon(in).Marshal()
 	return resp
 }
 
-func BlockSplit(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSplitResponse{Error: &pb.RpcBlockSplitResponseError{Code: pb.RpcBlockSplitResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSplit(b []byte) []byte {
 	in := new(pb.RpcBlockSplitRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSplitResponse{Error: &pb.RpcBlockSplitResponseError{Code: pb.RpcBlockSplitResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSplitResponse{Error: &pb.RpcBlockSplitResponseError{Code: pb.RpcBlockSplitResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSplit(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSplit(in).Marshal()
 	return resp
 }
 
-func BlockMerge(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockMergeResponse{Error: &pb.RpcBlockMergeResponseError{Code: pb.RpcBlockMergeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockMerge(b []byte) []byte {
 	in := new(pb.RpcBlockMergeRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockMergeResponse{Error: &pb.RpcBlockMergeResponseError{Code: pb.RpcBlockMergeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockMergeResponse{Error: &pb.RpcBlockMergeResponseError{Code: pb.RpcBlockMergeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockMerge(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockMerge(in).Marshal()
 	return resp
 }
 
-func BlockCopy(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockCopyResponse{Error: &pb.RpcBlockCopyResponseError{Code: pb.RpcBlockCopyResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockCopy(b []byte) []byte {
 	in := new(pb.RpcBlockCopyRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockCopyResponse{Error: &pb.RpcBlockCopyResponseError{Code: pb.RpcBlockCopyResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockCopyResponse{Error: &pb.RpcBlockCopyResponseError{Code: pb.RpcBlockCopyResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockCopy(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockCopy(in).Marshal()
 	return resp
 }
 
-func BlockPaste(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: pb.RpcBlockPasteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockPaste(b []byte) []byte {
 	in := new(pb.RpcBlockPasteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: pb.RpcBlockPasteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockPasteResponse{Error: &pb.RpcBlockPasteResponseError{Code: pb.RpcBlockPasteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockPaste(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockPaste(in).Marshal()
 	return resp
 }
 
-func BlockCut(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockCutResponse{Error: &pb.RpcBlockCutResponseError{Code: pb.RpcBlockCutResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockCut(b []byte) []byte {
 	in := new(pb.RpcBlockCutRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockCutResponse{Error: &pb.RpcBlockCutResponseError{Code: pb.RpcBlockCutResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockCutResponse{Error: &pb.RpcBlockCutResponseError{Code: pb.RpcBlockCutResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockCut(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockCut(in).Marshal()
 	return resp
 }
 
-func BlockExport(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockExportResponse{Error: &pb.RpcBlockExportResponseError{Code: pb.RpcBlockExportResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockExport(b []byte) []byte {
 	in := new(pb.RpcBlockExportRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockExportResponse{Error: &pb.RpcBlockExportResponseError{Code: pb.RpcBlockExportResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockExportResponse{Error: &pb.RpcBlockExportResponseError{Code: pb.RpcBlockExportResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockExport(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockExport(in).Marshal()
 	return resp
 }
 
-func BlockImportMarkdown(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockImportMarkdownResponse{Error: &pb.RpcBlockImportMarkdownResponseError{Code: pb.RpcBlockImportMarkdownResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockImportMarkdown(b []byte) []byte {
 	in := new(pb.RpcBlockImportMarkdownRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockImportMarkdownResponse{Error: &pb.RpcBlockImportMarkdownResponseError{Code: pb.RpcBlockImportMarkdownResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockImportMarkdownResponse{Error: &pb.RpcBlockImportMarkdownResponseError{Code: pb.RpcBlockImportMarkdownResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockImportMarkdown(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockImportMarkdown(in).Marshal()
 	return resp
 }
 
-func BlockSetFileName(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetFileNameResponse{Error: &pb.RpcBlockSetFileNameResponseError{Code: pb.RpcBlockSetFileNameResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetFileName(b []byte) []byte {
 	in := new(pb.RpcBlockSetFileNameRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetFileNameResponse{Error: &pb.RpcBlockSetFileNameResponseError{Code: pb.RpcBlockSetFileNameResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetFileNameResponse{Error: &pb.RpcBlockSetFileNameResponseError{Code: pb.RpcBlockSetFileNameResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetFileName(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetFileName(in).Marshal()
 	return resp
 }
 
-func BlockSetImageName(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetImageNameResponse{Error: &pb.RpcBlockSetImageNameResponseError{Code: pb.RpcBlockSetImageNameResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetImageName(b []byte) []byte {
 	in := new(pb.RpcBlockSetImageNameRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetImageNameResponse{Error: &pb.RpcBlockSetImageNameResponseError{Code: pb.RpcBlockSetImageNameResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetImageNameResponse{Error: &pb.RpcBlockSetImageNameResponseError{Code: pb.RpcBlockSetImageNameResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetImageName(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetImageName(in).Marshal()
 	return resp
 }
 
-func BlockSetImageWidth(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetImageWidthResponse{Error: &pb.RpcBlockSetImageWidthResponseError{Code: pb.RpcBlockSetImageWidthResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetImageWidth(b []byte) []byte {
 	in := new(pb.RpcBlockSetImageWidthRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetImageWidthResponse{Error: &pb.RpcBlockSetImageWidthResponseError{Code: pb.RpcBlockSetImageWidthResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetImageWidthResponse{Error: &pb.RpcBlockSetImageWidthResponseError{Code: pb.RpcBlockSetImageWidthResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetImageWidth(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetImageWidth(in).Marshal()
 	return resp
 }
 
-func BlockSetVideoName(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetVideoNameResponse{Error: &pb.RpcBlockSetVideoNameResponseError{Code: pb.RpcBlockSetVideoNameResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetVideoName(b []byte) []byte {
 	in := new(pb.RpcBlockSetVideoNameRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetVideoNameResponse{Error: &pb.RpcBlockSetVideoNameResponseError{Code: pb.RpcBlockSetVideoNameResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetVideoNameResponse{Error: &pb.RpcBlockSetVideoNameResponseError{Code: pb.RpcBlockSetVideoNameResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetVideoName(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetVideoName(in).Marshal()
 	return resp
 }
 
-func BlockSetVideoWidth(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetVideoWidthResponse{Error: &pb.RpcBlockSetVideoWidthResponseError{Code: pb.RpcBlockSetVideoWidthResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetVideoWidth(b []byte) []byte {
 	in := new(pb.RpcBlockSetVideoWidthRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetVideoWidthResponse{Error: &pb.RpcBlockSetVideoWidthResponseError{Code: pb.RpcBlockSetVideoWidthResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetVideoWidthResponse{Error: &pb.RpcBlockSetVideoWidthResponseError{Code: pb.RpcBlockSetVideoWidthResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetVideoWidth(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetVideoWidth(in).Marshal()
 	return resp
 }
 
-func BlockSetLinkTargetBlockId(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetLinkTargetBlockIdResponse{Error: &pb.RpcBlockSetLinkTargetBlockIdResponseError{Code: pb.RpcBlockSetLinkTargetBlockIdResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetLinkTargetBlockId(b []byte) []byte {
 	in := new(pb.RpcBlockSetLinkTargetBlockIdRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetLinkTargetBlockIdResponse{Error: &pb.RpcBlockSetLinkTargetBlockIdResponseError{Code: pb.RpcBlockSetLinkTargetBlockIdResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetLinkTargetBlockIdResponse{Error: &pb.RpcBlockSetLinkTargetBlockIdResponseError{Code: pb.RpcBlockSetLinkTargetBlockIdResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetLinkTargetBlockId(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetLinkTargetBlockId(in).Marshal()
 	return resp
 }
 
-func BlockBookmarkFetch(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockBookmarkFetchResponse{Error: &pb.RpcBlockBookmarkFetchResponseError{Code: pb.RpcBlockBookmarkFetchResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockBookmarkFetch(b []byte) []byte {
 	in := new(pb.RpcBlockBookmarkFetchRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockBookmarkFetchResponse{Error: &pb.RpcBlockBookmarkFetchResponseError{Code: pb.RpcBlockBookmarkFetchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockBookmarkFetchResponse{Error: &pb.RpcBlockBookmarkFetchResponseError{Code: pb.RpcBlockBookmarkFetchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockBookmarkFetch(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockBookmarkFetch(in).Marshal()
 	return resp
 }
 
-func BlockBookmarkCreateAndFetch(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockBookmarkCreateAndFetchResponse{Error: &pb.RpcBlockBookmarkCreateAndFetchResponseError{Code: pb.RpcBlockBookmarkCreateAndFetchResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockBookmarkCreateAndFetch(b []byte) []byte {
 	in := new(pb.RpcBlockBookmarkCreateAndFetchRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockBookmarkCreateAndFetchResponse{Error: &pb.RpcBlockBookmarkCreateAndFetchResponseError{Code: pb.RpcBlockBookmarkCreateAndFetchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockBookmarkCreateAndFetchResponse{Error: &pb.RpcBlockBookmarkCreateAndFetchResponseError{Code: pb.RpcBlockBookmarkCreateAndFetchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockBookmarkCreateAndFetch(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockBookmarkCreateAndFetch(in).Marshal()
 	return resp
 }
 
-func BlockFileCreateAndUpload(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockFileCreateAndUploadResponse{Error: &pb.RpcBlockFileCreateAndUploadResponseError{Code: pb.RpcBlockFileCreateAndUploadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockFileCreateAndUpload(b []byte) []byte {
 	in := new(pb.RpcBlockFileCreateAndUploadRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockFileCreateAndUploadResponse{Error: &pb.RpcBlockFileCreateAndUploadResponseError{Code: pb.RpcBlockFileCreateAndUploadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockFileCreateAndUploadResponse{Error: &pb.RpcBlockFileCreateAndUploadResponseError{Code: pb.RpcBlockFileCreateAndUploadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockFileCreateAndUpload(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockFileCreateAndUpload(in).Marshal()
 	return resp
 }
 
-func BlockRelationSetKey(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockRelationSetKeyResponse{Error: &pb.RpcBlockRelationSetKeyResponseError{Code: pb.RpcBlockRelationSetKeyResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockRelationSetKey(b []byte) []byte {
 	in := new(pb.RpcBlockRelationSetKeyRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockRelationSetKeyResponse{Error: &pb.RpcBlockRelationSetKeyResponseError{Code: pb.RpcBlockRelationSetKeyResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockRelationSetKeyResponse{Error: &pb.RpcBlockRelationSetKeyResponseError{Code: pb.RpcBlockRelationSetKeyResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockRelationSetKey(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockRelationSetKey(in).Marshal()
 	return resp
 }
 
-func BlockRelationAdd(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockRelationAddResponse{Error: &pb.RpcBlockRelationAddResponseError{Code: pb.RpcBlockRelationAddResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockRelationAdd(b []byte) []byte {
 	in := new(pb.RpcBlockRelationAddRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockRelationAddResponse{Error: &pb.RpcBlockRelationAddResponseError{Code: pb.RpcBlockRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockRelationAddResponse{Error: &pb.RpcBlockRelationAddResponseError{Code: pb.RpcBlockRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockRelationAdd(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockRelationAdd(in).Marshal()
 	return resp
 }
 
-func BlockDataviewViewCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewViewCreateResponse{Error: &pb.RpcBlockDataviewViewCreateResponseError{Code: pb.RpcBlockDataviewViewCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewViewCreate(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewViewCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewViewCreateResponse{Error: &pb.RpcBlockDataviewViewCreateResponseError{Code: pb.RpcBlockDataviewViewCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewViewCreateResponse{Error: &pb.RpcBlockDataviewViewCreateResponseError{Code: pb.RpcBlockDataviewViewCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewViewCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewViewCreate(in).Marshal()
 	return resp
 }
 
-func BlockDataviewViewDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewViewDeleteResponse{Error: &pb.RpcBlockDataviewViewDeleteResponseError{Code: pb.RpcBlockDataviewViewDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewViewDelete(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewViewDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewViewDeleteResponse{Error: &pb.RpcBlockDataviewViewDeleteResponseError{Code: pb.RpcBlockDataviewViewDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewViewDeleteResponse{Error: &pb.RpcBlockDataviewViewDeleteResponseError{Code: pb.RpcBlockDataviewViewDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewViewDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewViewDelete(in).Marshal()
 	return resp
 }
 
-func BlockDataviewViewUpdate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewViewUpdateResponse{Error: &pb.RpcBlockDataviewViewUpdateResponseError{Code: pb.RpcBlockDataviewViewUpdateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewViewUpdate(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewViewUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewViewUpdateResponse{Error: &pb.RpcBlockDataviewViewUpdateResponseError{Code: pb.RpcBlockDataviewViewUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewViewUpdateResponse{Error: &pb.RpcBlockDataviewViewUpdateResponseError{Code: pb.RpcBlockDataviewViewUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewViewUpdate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewViewUpdate(in).Marshal()
 	return resp
 }
 
-func BlockDataviewViewSetActive(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewViewSetActiveResponse{Error: &pb.RpcBlockDataviewViewSetActiveResponseError{Code: pb.RpcBlockDataviewViewSetActiveResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewViewSetActive(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewViewSetActiveRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewViewSetActiveResponse{Error: &pb.RpcBlockDataviewViewSetActiveResponseError{Code: pb.RpcBlockDataviewViewSetActiveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewViewSetActiveResponse{Error: &pb.RpcBlockDataviewViewSetActiveResponseError{Code: pb.RpcBlockDataviewViewSetActiveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewViewSetActive(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewViewSetActive(in).Marshal()
 	return resp
 }
 
-func BlockDataviewViewSetPosition(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewViewSetPositionResponse{Error: &pb.RpcBlockDataviewViewSetPositionResponseError{Code: pb.RpcBlockDataviewViewSetPositionResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewViewSetPosition(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewViewSetPositionRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewViewSetPositionResponse{Error: &pb.RpcBlockDataviewViewSetPositionResponseError{Code: pb.RpcBlockDataviewViewSetPositionResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewViewSetPositionResponse{Error: &pb.RpcBlockDataviewViewSetPositionResponseError{Code: pb.RpcBlockDataviewViewSetPositionResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewViewSetPosition(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewViewSetPosition(in).Marshal()
 	return resp
 }
 
-func BlockDataviewSetSource(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewSetSourceResponse{Error: &pb.RpcBlockDataviewSetSourceResponseError{Code: pb.RpcBlockDataviewSetSourceResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewSetSource(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewSetSourceRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewSetSourceResponse{Error: &pb.RpcBlockDataviewSetSourceResponseError{Code: pb.RpcBlockDataviewSetSourceResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewSetSourceResponse{Error: &pb.RpcBlockDataviewSetSourceResponseError{Code: pb.RpcBlockDataviewSetSourceResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewSetSource(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewSetSource(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRelationAdd(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRelationAddResponse{Error: &pb.RpcBlockDataviewRelationAddResponseError{Code: pb.RpcBlockDataviewRelationAddResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRelationAdd(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRelationAddRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRelationAddResponse{Error: &pb.RpcBlockDataviewRelationAddResponseError{Code: pb.RpcBlockDataviewRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRelationAddResponse{Error: &pb.RpcBlockDataviewRelationAddResponseError{Code: pb.RpcBlockDataviewRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRelationAdd(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRelationAdd(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRelationUpdate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRelationUpdateResponse{Error: &pb.RpcBlockDataviewRelationUpdateResponseError{Code: pb.RpcBlockDataviewRelationUpdateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRelationUpdate(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRelationUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRelationUpdateResponse{Error: &pb.RpcBlockDataviewRelationUpdateResponseError{Code: pb.RpcBlockDataviewRelationUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRelationUpdateResponse{Error: &pb.RpcBlockDataviewRelationUpdateResponseError{Code: pb.RpcBlockDataviewRelationUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRelationUpdate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRelationUpdate(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRelationDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRelationDeleteResponse{Error: &pb.RpcBlockDataviewRelationDeleteResponseError{Code: pb.RpcBlockDataviewRelationDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRelationDelete(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRelationDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRelationDeleteResponse{Error: &pb.RpcBlockDataviewRelationDeleteResponseError{Code: pb.RpcBlockDataviewRelationDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRelationDeleteResponse{Error: &pb.RpcBlockDataviewRelationDeleteResponseError{Code: pb.RpcBlockDataviewRelationDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRelationDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRelationDelete(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRelationListAvailable(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRelationListAvailableResponse{Error: &pb.RpcBlockDataviewRelationListAvailableResponseError{Code: pb.RpcBlockDataviewRelationListAvailableResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRelationListAvailable(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRelationListAvailableRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRelationListAvailableResponse{Error: &pb.RpcBlockDataviewRelationListAvailableResponseError{Code: pb.RpcBlockDataviewRelationListAvailableResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRelationListAvailableResponse{Error: &pb.RpcBlockDataviewRelationListAvailableResponseError{Code: pb.RpcBlockDataviewRelationListAvailableResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRelationListAvailable(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRelationListAvailable(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRecordCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRecordCreateResponse{Error: &pb.RpcBlockDataviewRecordCreateResponseError{Code: pb.RpcBlockDataviewRecordCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRecordCreate(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRecordCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRecordCreateResponse{Error: &pb.RpcBlockDataviewRecordCreateResponseError{Code: pb.RpcBlockDataviewRecordCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRecordCreateResponse{Error: &pb.RpcBlockDataviewRecordCreateResponseError{Code: pb.RpcBlockDataviewRecordCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRecordCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRecordCreate(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRecordUpdate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRecordUpdateResponse{Error: &pb.RpcBlockDataviewRecordUpdateResponseError{Code: pb.RpcBlockDataviewRecordUpdateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRecordUpdate(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRecordUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRecordUpdateResponse{Error: &pb.RpcBlockDataviewRecordUpdateResponseError{Code: pb.RpcBlockDataviewRecordUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRecordUpdateResponse{Error: &pb.RpcBlockDataviewRecordUpdateResponseError{Code: pb.RpcBlockDataviewRecordUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRecordUpdate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRecordUpdate(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRecordDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRecordDeleteResponse{Error: &pb.RpcBlockDataviewRecordDeleteResponseError{Code: pb.RpcBlockDataviewRecordDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRecordDelete(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRecordDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRecordDeleteResponse{Error: &pb.RpcBlockDataviewRecordDeleteResponseError{Code: pb.RpcBlockDataviewRecordDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRecordDeleteResponse{Error: &pb.RpcBlockDataviewRecordDeleteResponseError{Code: pb.RpcBlockDataviewRecordDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRecordDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRecordDelete(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRecordRelationOptionAdd(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRecordRelationOptionAddResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionAddResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionAddResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRecordRelationOptionAdd(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRecordRelationOptionAddRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRecordRelationOptionAddResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionAddResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRecordRelationOptionAddResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionAddResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRecordRelationOptionAdd(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRecordRelationOptionAdd(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRecordRelationOptionUpdate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRecordRelationOptionUpdateResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRecordRelationOptionUpdate(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRecordRelationOptionUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRecordRelationOptionUpdateResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRecordRelationOptionUpdateResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRecordRelationOptionUpdate(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRecordRelationOptionUpdate(in).Marshal()
 	return resp
 }
 
-func BlockDataviewRecordRelationOptionDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockDataviewRecordRelationOptionDeleteResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockDataviewRecordRelationOptionDelete(b []byte) []byte {
 	in := new(pb.RpcBlockDataviewRecordRelationOptionDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockDataviewRecordRelationOptionDeleteResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockDataviewRecordRelationOptionDeleteResponse{Error: &pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError{Code: pb.RpcBlockDataviewRecordRelationOptionDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockDataviewRecordRelationOptionDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockDataviewRecordRelationOptionDelete(in).Marshal()
 	return resp
 }
 
-func BlockObjectTypeSet(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockObjectTypeSetResponse{Error: &pb.RpcBlockObjectTypeSetResponseError{Code: pb.RpcBlockObjectTypeSetResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockObjectTypeSet(b []byte) []byte {
 	in := new(pb.RpcBlockObjectTypeSetRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockObjectTypeSetResponse{Error: &pb.RpcBlockObjectTypeSetResponseError{Code: pb.RpcBlockObjectTypeSetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockObjectTypeSetResponse{Error: &pb.RpcBlockObjectTypeSetResponseError{Code: pb.RpcBlockObjectTypeSetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockObjectTypeSet(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockObjectTypeSet(in).Marshal()
 	return resp
 }
 
-func NavigationListObjects(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcNavigationListObjectsResponse{Error: &pb.RpcNavigationListObjectsResponseError{Code: pb.RpcNavigationListObjectsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func NavigationListObjects(b []byte) []byte {
 	in := new(pb.RpcNavigationListObjectsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcNavigationListObjectsResponse{Error: &pb.RpcNavigationListObjectsResponseError{Code: pb.RpcNavigationListObjectsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcNavigationListObjectsResponse{Error: &pb.RpcNavigationListObjectsResponseError{Code: pb.RpcNavigationListObjectsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.NavigationListObjects(in).Marshal()
+	resp, _ := clientCommandsHandler.NavigationListObjects(in).Marshal()
 	return resp
 }
 
-func NavigationGetObjectInfoWithLinks(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcNavigationGetObjectInfoWithLinksResponse{Error: &pb.RpcNavigationGetObjectInfoWithLinksResponseError{Code: pb.RpcNavigationGetObjectInfoWithLinksResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func NavigationGetObjectInfoWithLinks(b []byte) []byte {
 	in := new(pb.RpcNavigationGetObjectInfoWithLinksRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcNavigationGetObjectInfoWithLinksResponse{Error: &pb.RpcNavigationGetObjectInfoWithLinksResponseError{Code: pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcNavigationGetObjectInfoWithLinksResponse{Error: &pb.RpcNavigationGetObjectInfoWithLinksResponseError{Code: pb.RpcNavigationGetObjectInfoWithLinksResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.NavigationGetObjectInfoWithLinks(in).Marshal()
+	resp, _ := clientCommandsHandler.NavigationGetObjectInfoWithLinks(in).Marshal()
 	return resp
 }
 
-func ObjectGraph(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: pb.RpcObjectGraphResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectGraph(b []byte) []byte {
 	in := new(pb.RpcObjectGraphRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: pb.RpcObjectGraphResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectGraphResponse{Error: &pb.RpcObjectGraphResponseError{Code: pb.RpcObjectGraphResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectGraph(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectGraph(in).Marshal()
 	return resp
 }
 
-func ObjectSearch(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectSearch(b []byte) []byte {
 	in := new(pb.RpcObjectSearchRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectSearchResponse{Error: &pb.RpcObjectSearchResponseError{Code: pb.RpcObjectSearchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectSearch(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectSearch(in).Marshal()
 	return resp
 }
 
-func ObjectSearchSubscribe(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectSearchSubscribeResponse{Error: &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectSearchSubscribe(b []byte) []byte {
 	in := new(pb.RpcObjectSearchSubscribeRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectSearchSubscribeResponse{Error: &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectSearchSubscribeResponse{Error: &pb.RpcObjectSearchSubscribeResponseError{Code: pb.RpcObjectSearchSubscribeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectSearchSubscribe(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectSearchSubscribe(in).Marshal()
 	return resp
 }
 
-func ObjectIdsSubscribe(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectIdsSubscribeResponse{Error: &pb.RpcObjectIdsSubscribeResponseError{Code: pb.RpcObjectIdsSubscribeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectIdsSubscribe(b []byte) []byte {
 	in := new(pb.RpcObjectIdsSubscribeRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectIdsSubscribeResponse{Error: &pb.RpcObjectIdsSubscribeResponseError{Code: pb.RpcObjectIdsSubscribeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectIdsSubscribeResponse{Error: &pb.RpcObjectIdsSubscribeResponseError{Code: pb.RpcObjectIdsSubscribeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectIdsSubscribe(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectIdsSubscribe(in).Marshal()
 	return resp
 }
 
-func ObjectSearchUnsubscribe(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectSearchUnsubscribeResponse{Error: &pb.RpcObjectSearchUnsubscribeResponseError{Code: pb.RpcObjectSearchUnsubscribeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectSearchUnsubscribe(b []byte) []byte {
 	in := new(pb.RpcObjectSearchUnsubscribeRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectSearchUnsubscribeResponse{Error: &pb.RpcObjectSearchUnsubscribeResponseError{Code: pb.RpcObjectSearchUnsubscribeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectSearchUnsubscribeResponse{Error: &pb.RpcObjectSearchUnsubscribeResponseError{Code: pb.RpcObjectSearchUnsubscribeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectSearchUnsubscribe(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectSearchUnsubscribe(in).Marshal()
 	return resp
 }
 
-func ObjectRelationAdd(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: pb.RpcObjectRelationAddResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectRelationAdd(b []byte) []byte {
 	in := new(pb.RpcObjectRelationAddRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: pb.RpcObjectRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectRelationAddResponse{Error: &pb.RpcObjectRelationAddResponseError{Code: pb.RpcObjectRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectRelationAdd(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectRelationAdd(in).Marshal()
 	return resp
 }
 
-func ObjectRelationUpdate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectRelationUpdateResponse{Error: &pb.RpcObjectRelationUpdateResponseError{Code: pb.RpcObjectRelationUpdateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectRelationUpdate(b []byte) []byte {
 	in := new(pb.RpcObjectRelationUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectRelationUpdateResponse{Error: &pb.RpcObjectRelationUpdateResponseError{Code: pb.RpcObjectRelationUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectRelationUpdateResponse{Error: &pb.RpcObjectRelationUpdateResponseError{Code: pb.RpcObjectRelationUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectRelationUpdate(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectRelationUpdate(in).Marshal()
 	return resp
 }
 
-func ObjectRelationDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectRelationDeleteResponse{Error: &pb.RpcObjectRelationDeleteResponseError{Code: pb.RpcObjectRelationDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectRelationDelete(b []byte) []byte {
 	in := new(pb.RpcObjectRelationDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectRelationDeleteResponse{Error: &pb.RpcObjectRelationDeleteResponseError{Code: pb.RpcObjectRelationDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectRelationDeleteResponse{Error: &pb.RpcObjectRelationDeleteResponseError{Code: pb.RpcObjectRelationDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectRelationDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectRelationDelete(in).Marshal()
 	return resp
 }
 
-func ObjectRelationOptionAdd(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectRelationOptionAddResponse{Error: &pb.RpcObjectRelationOptionAddResponseError{Code: pb.RpcObjectRelationOptionAddResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectRelationOptionAdd(b []byte) []byte {
 	in := new(pb.RpcObjectRelationOptionAddRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectRelationOptionAddResponse{Error: &pb.RpcObjectRelationOptionAddResponseError{Code: pb.RpcObjectRelationOptionAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectRelationOptionAddResponse{Error: &pb.RpcObjectRelationOptionAddResponseError{Code: pb.RpcObjectRelationOptionAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectRelationOptionAdd(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectRelationOptionAdd(in).Marshal()
 	return resp
 }
 
-func ObjectRelationOptionUpdate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectRelationOptionUpdateResponse{Error: &pb.RpcObjectRelationOptionUpdateResponseError{Code: pb.RpcObjectRelationOptionUpdateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectRelationOptionUpdate(b []byte) []byte {
 	in := new(pb.RpcObjectRelationOptionUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectRelationOptionUpdateResponse{Error: &pb.RpcObjectRelationOptionUpdateResponseError{Code: pb.RpcObjectRelationOptionUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectRelationOptionUpdateResponse{Error: &pb.RpcObjectRelationOptionUpdateResponseError{Code: pb.RpcObjectRelationOptionUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectRelationOptionUpdate(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectRelationOptionUpdate(in).Marshal()
 	return resp
 }
 
-func ObjectRelationOptionDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectRelationOptionDeleteResponse{Error: &pb.RpcObjectRelationOptionDeleteResponseError{Code: pb.RpcObjectRelationOptionDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectRelationOptionDelete(b []byte) []byte {
 	in := new(pb.RpcObjectRelationOptionDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectRelationOptionDeleteResponse{Error: &pb.RpcObjectRelationOptionDeleteResponseError{Code: pb.RpcObjectRelationOptionDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectRelationOptionDeleteResponse{Error: &pb.RpcObjectRelationOptionDeleteResponseError{Code: pb.RpcObjectRelationOptionDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectRelationOptionDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectRelationOptionDelete(in).Marshal()
 	return resp
 }
 
-func ObjectRelationListAvailable(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectRelationListAvailableResponse{Error: &pb.RpcObjectRelationListAvailableResponseError{Code: pb.RpcObjectRelationListAvailableResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectRelationListAvailable(b []byte) []byte {
 	in := new(pb.RpcObjectRelationListAvailableRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectRelationListAvailableResponse{Error: &pb.RpcObjectRelationListAvailableResponseError{Code: pb.RpcObjectRelationListAvailableResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectRelationListAvailableResponse{Error: &pb.RpcObjectRelationListAvailableResponseError{Code: pb.RpcObjectRelationListAvailableResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectRelationListAvailable(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectRelationListAvailable(in).Marshal()
 	return resp
 }
 
-func ObjectSetLayout(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectSetLayoutResponse{Error: &pb.RpcObjectSetLayoutResponseError{Code: pb.RpcObjectSetLayoutResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectSetLayout(b []byte) []byte {
 	in := new(pb.RpcObjectSetLayoutRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectSetLayoutResponse{Error: &pb.RpcObjectSetLayoutResponseError{Code: pb.RpcObjectSetLayoutResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectSetLayoutResponse{Error: &pb.RpcObjectSetLayoutResponseError{Code: pb.RpcObjectSetLayoutResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectSetLayout(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectSetLayout(in).Marshal()
 	return resp
 }
 
-func ObjectFeaturedRelationAdd(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectFeaturedRelationAddResponse{Error: &pb.RpcObjectFeaturedRelationAddResponseError{Code: pb.RpcObjectFeaturedRelationAddResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectFeaturedRelationAdd(b []byte) []byte {
 	in := new(pb.RpcObjectFeaturedRelationAddRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectFeaturedRelationAddResponse{Error: &pb.RpcObjectFeaturedRelationAddResponseError{Code: pb.RpcObjectFeaturedRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectFeaturedRelationAddResponse{Error: &pb.RpcObjectFeaturedRelationAddResponseError{Code: pb.RpcObjectFeaturedRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectFeaturedRelationAdd(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectFeaturedRelationAdd(in).Marshal()
 	return resp
 }
 
-func ObjectFeaturedRelationRemove(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectFeaturedRelationRemoveResponse{Error: &pb.RpcObjectFeaturedRelationRemoveResponseError{Code: pb.RpcObjectFeaturedRelationRemoveResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectFeaturedRelationRemove(b []byte) []byte {
 	in := new(pb.RpcObjectFeaturedRelationRemoveRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectFeaturedRelationRemoveResponse{Error: &pb.RpcObjectFeaturedRelationRemoveResponseError{Code: pb.RpcObjectFeaturedRelationRemoveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectFeaturedRelationRemoveResponse{Error: &pb.RpcObjectFeaturedRelationRemoveResponseError{Code: pb.RpcObjectFeaturedRelationRemoveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectFeaturedRelationRemove(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectFeaturedRelationRemove(in).Marshal()
 	return resp
 }
 
-func ObjectSetIsFavorite(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: pb.RpcObjectSetIsFavoriteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectSetIsFavorite(b []byte) []byte {
 	in := new(pb.RpcObjectSetIsFavoriteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: pb.RpcObjectSetIsFavoriteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectSetIsFavoriteResponse{Error: &pb.RpcObjectSetIsFavoriteResponseError{Code: pb.RpcObjectSetIsFavoriteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectSetIsFavorite(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectSetIsFavorite(in).Marshal()
 	return resp
 }
 
-func ObjectSetIsArchived(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectSetIsArchived(b []byte) []byte {
 	in := new(pb.RpcObjectSetIsArchivedRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectSetIsArchivedResponse{Error: &pb.RpcObjectSetIsArchivedResponseError{Code: pb.RpcObjectSetIsArchivedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectSetIsArchived(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectSetIsArchived(in).Marshal()
 	return resp
 }
 
-func ObjectToSet(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectToSetResponse{Error: &pb.RpcObjectToSetResponseError{Code: pb.RpcObjectToSetResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectToSet(b []byte) []byte {
 	in := new(pb.RpcObjectToSetRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectToSetResponse{Error: &pb.RpcObjectToSetResponseError{Code: pb.RpcObjectToSetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectToSetResponse{Error: &pb.RpcObjectToSetResponseError{Code: pb.RpcObjectToSetResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectToSet(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectToSet(in).Marshal()
 	return resp
 }
 
-func ObjectListDuplicate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectListDuplicateResponse{Error: &pb.RpcObjectListDuplicateResponseError{Code: pb.RpcObjectListDuplicateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectListDuplicate(b []byte) []byte {
 	in := new(pb.RpcObjectListDuplicateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectListDuplicateResponse{Error: &pb.RpcObjectListDuplicateResponseError{Code: pb.RpcObjectListDuplicateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectListDuplicateResponse{Error: &pb.RpcObjectListDuplicateResponseError{Code: pb.RpcObjectListDuplicateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectListDuplicate(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectListDuplicate(in).Marshal()
 	return resp
 }
 
-func ObjectListDelete(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectListDeleteResponse{Error: &pb.RpcObjectListDeleteResponseError{Code: pb.RpcObjectListDeleteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectListDelete(b []byte) []byte {
 	in := new(pb.RpcObjectListDeleteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectListDeleteResponse{Error: &pb.RpcObjectListDeleteResponseError{Code: pb.RpcObjectListDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectListDeleteResponse{Error: &pb.RpcObjectListDeleteResponseError{Code: pb.RpcObjectListDeleteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectListDelete(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectListDelete(in).Marshal()
 	return resp
 }
 
-func ObjectListSetIsArchived(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: pb.RpcObjectListSetIsArchivedResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectListSetIsArchived(b []byte) []byte {
 	in := new(pb.RpcObjectListSetIsArchivedRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: pb.RpcObjectListSetIsArchivedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectListSetIsArchivedResponse{Error: &pb.RpcObjectListSetIsArchivedResponseError{Code: pb.RpcObjectListSetIsArchivedResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectListSetIsArchived(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectListSetIsArchived(in).Marshal()
 	return resp
 }
 
-func ObjectListSetIsFavorite(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectListSetIsFavoriteResponse{Error: &pb.RpcObjectListSetIsFavoriteResponseError{Code: pb.RpcObjectListSetIsFavoriteResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectListSetIsFavorite(b []byte) []byte {
 	in := new(pb.RpcObjectListSetIsFavoriteRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectListSetIsFavoriteResponse{Error: &pb.RpcObjectListSetIsFavoriteResponseError{Code: pb.RpcObjectListSetIsFavoriteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectListSetIsFavoriteResponse{Error: &pb.RpcObjectListSetIsFavoriteResponseError{Code: pb.RpcObjectListSetIsFavoriteResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectListSetIsFavorite(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectListSetIsFavorite(in).Marshal()
 	return resp
 }
 
-func BlockSetDetails(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcBlockSetDetailsResponse{Error: &pb.RpcBlockSetDetailsResponseError{Code: pb.RpcBlockSetDetailsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func BlockSetDetails(b []byte) []byte {
 	in := new(pb.RpcBlockSetDetailsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcBlockSetDetailsResponse{Error: &pb.RpcBlockSetDetailsResponseError{Code: pb.RpcBlockSetDetailsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcBlockSetDetailsResponse{Error: &pb.RpcBlockSetDetailsResponseError{Code: pb.RpcBlockSetDetailsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.BlockSetDetails(in).Marshal()
+	resp, _ := clientCommandsHandler.BlockSetDetails(in).Marshal()
 	return resp
 }
 
-func PageCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcPageCreateResponse{Error: &pb.RpcPageCreateResponseError{Code: pb.RpcPageCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func PageCreate(b []byte) []byte {
 	in := new(pb.RpcPageCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcPageCreateResponse{Error: &pb.RpcPageCreateResponseError{Code: pb.RpcPageCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcPageCreateResponse{Error: &pb.RpcPageCreateResponseError{Code: pb.RpcPageCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.PageCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.PageCreate(in).Marshal()
 	return resp
 }
 
-func SetCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcSetCreateResponse{Error: &pb.RpcSetCreateResponseError{Code: pb.RpcSetCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func SetCreate(b []byte) []byte {
 	in := new(pb.RpcSetCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcSetCreateResponse{Error: &pb.RpcSetCreateResponseError{Code: pb.RpcSetCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcSetCreateResponse{Error: &pb.RpcSetCreateResponseError{Code: pb.RpcSetCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.SetCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.SetCreate(in).Marshal()
 	return resp
 }
 
-func MetricsSetParameters(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcMetricsSetParametersResponse{Error: &pb.RpcMetricsSetParametersResponseError{Code: pb.RpcMetricsSetParametersResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func MetricsSetParameters(b []byte) []byte {
 	in := new(pb.RpcMetricsSetParametersRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcMetricsSetParametersResponse{Error: &pb.RpcMetricsSetParametersResponseError{Code: pb.RpcMetricsSetParametersResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcMetricsSetParametersResponse{Error: &pb.RpcMetricsSetParametersResponseError{Code: pb.RpcMetricsSetParametersResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.MetricsSetParameters(in).Marshal()
+	resp, _ := clientCommandsHandler.MetricsSetParameters(in).Marshal()
 	return resp
 }
 
-func ObjectTypeCreate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectTypeCreateResponse{Error: &pb.RpcObjectTypeCreateResponseError{Code: pb.RpcObjectTypeCreateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectTypeCreate(b []byte) []byte {
 	in := new(pb.RpcObjectTypeCreateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectTypeCreateResponse{Error: &pb.RpcObjectTypeCreateResponseError{Code: pb.RpcObjectTypeCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectTypeCreateResponse{Error: &pb.RpcObjectTypeCreateResponseError{Code: pb.RpcObjectTypeCreateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectTypeCreate(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectTypeCreate(in).Marshal()
 	return resp
 }
 
-func ObjectTypeList(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectTypeListResponse{Error: &pb.RpcObjectTypeListResponseError{Code: pb.RpcObjectTypeListResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectTypeList(b []byte) []byte {
 	in := new(pb.RpcObjectTypeListRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectTypeListResponse{Error: &pb.RpcObjectTypeListResponseError{Code: pb.RpcObjectTypeListResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectTypeListResponse{Error: &pb.RpcObjectTypeListResponseError{Code: pb.RpcObjectTypeListResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectTypeList(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectTypeList(in).Marshal()
 	return resp
 }
 
-func ObjectTypeRelationList(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectTypeRelationListResponse{Error: &pb.RpcObjectTypeRelationListResponseError{Code: pb.RpcObjectTypeRelationListResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectTypeRelationList(b []byte) []byte {
 	in := new(pb.RpcObjectTypeRelationListRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectTypeRelationListResponse{Error: &pb.RpcObjectTypeRelationListResponseError{Code: pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectTypeRelationListResponse{Error: &pb.RpcObjectTypeRelationListResponseError{Code: pb.RpcObjectTypeRelationListResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectTypeRelationList(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectTypeRelationList(in).Marshal()
 	return resp
 }
 
-func ObjectTypeRelationAdd(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: pb.RpcObjectTypeRelationAddResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectTypeRelationAdd(b []byte) []byte {
 	in := new(pb.RpcObjectTypeRelationAddRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectTypeRelationAddResponse{Error: &pb.RpcObjectTypeRelationAddResponseError{Code: pb.RpcObjectTypeRelationAddResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectTypeRelationAdd(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectTypeRelationAdd(in).Marshal()
 	return resp
 }
 
-func ObjectTypeRelationUpdate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectTypeRelationUpdateResponse{Error: &pb.RpcObjectTypeRelationUpdateResponseError{Code: pb.RpcObjectTypeRelationUpdateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectTypeRelationUpdate(b []byte) []byte {
 	in := new(pb.RpcObjectTypeRelationUpdateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectTypeRelationUpdateResponse{Error: &pb.RpcObjectTypeRelationUpdateResponseError{Code: pb.RpcObjectTypeRelationUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectTypeRelationUpdateResponse{Error: &pb.RpcObjectTypeRelationUpdateResponseError{Code: pb.RpcObjectTypeRelationUpdateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectTypeRelationUpdate(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectTypeRelationUpdate(in).Marshal()
 	return resp
 }
 
-func ObjectTypeRelationRemove(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: pb.RpcObjectTypeRelationRemoveResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectTypeRelationRemove(b []byte) []byte {
 	in := new(pb.RpcObjectTypeRelationRemoveRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectTypeRelationRemoveResponse{Error: &pb.RpcObjectTypeRelationRemoveResponseError{Code: pb.RpcObjectTypeRelationRemoveResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectTypeRelationRemove(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectTypeRelationRemove(in).Marshal()
 	return resp
 }
 
-func Ping(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcPingResponse{Error: &pb.RpcPingResponseError{Code: pb.RpcPingResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func Ping(b []byte) []byte {
 	in := new(pb.RpcPingRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcPingResponse{Error: &pb.RpcPingResponseError{Code: pb.RpcPingResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcPingResponse{Error: &pb.RpcPingResponseError{Code: pb.RpcPingResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.Ping(in).Marshal()
+	resp, _ := clientCommandsHandler.Ping(in).Marshal()
 	return resp
 }
 
-func ProcessCancel(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcProcessCancelResponse{Error: &pb.RpcProcessCancelResponseError{Code: pb.RpcProcessCancelResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ProcessCancel(b []byte) []byte {
 	in := new(pb.RpcProcessCancelRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcProcessCancelResponse{Error: &pb.RpcProcessCancelResponseError{Code: pb.RpcProcessCancelResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcProcessCancelResponse{Error: &pb.RpcProcessCancelResponseError{Code: pb.RpcProcessCancelResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ProcessCancel(in).Marshal()
+	resp, _ := clientCommandsHandler.ProcessCancel(in).Marshal()
 	return resp
 }
 
-func HistoryShow(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcHistoryShowResponse{Error: &pb.RpcHistoryShowResponseError{Code: pb.RpcHistoryShowResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func HistoryShow(b []byte) []byte {
 	in := new(pb.RpcHistoryShowRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcHistoryShowResponse{Error: &pb.RpcHistoryShowResponseError{Code: pb.RpcHistoryShowResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcHistoryShowResponse{Error: &pb.RpcHistoryShowResponseError{Code: pb.RpcHistoryShowResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.HistoryShow(in).Marshal()
+	resp, _ := clientCommandsHandler.HistoryShow(in).Marshal()
 	return resp
 }
 
-func HistoryVersions(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcHistoryVersionsResponse{Error: &pb.RpcHistoryVersionsResponseError{Code: pb.RpcHistoryVersionsResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func HistoryVersions(b []byte) []byte {
 	in := new(pb.RpcHistoryVersionsRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcHistoryVersionsResponse{Error: &pb.RpcHistoryVersionsResponseError{Code: pb.RpcHistoryVersionsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcHistoryVersionsResponse{Error: &pb.RpcHistoryVersionsResponseError{Code: pb.RpcHistoryVersionsResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.HistoryVersions(in).Marshal()
+	resp, _ := clientCommandsHandler.HistoryVersions(in).Marshal()
 	return resp
 }
 
-func HistorySetVersion(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcHistorySetVersionResponse{Error: &pb.RpcHistorySetVersionResponseError{Code: pb.RpcHistorySetVersionResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func HistorySetVersion(b []byte) []byte {
 	in := new(pb.RpcHistorySetVersionRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcHistorySetVersionResponse{Error: &pb.RpcHistorySetVersionResponseError{Code: pb.RpcHistorySetVersionResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcHistorySetVersionResponse{Error: &pb.RpcHistorySetVersionResponseError{Code: pb.RpcHistorySetVersionResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.HistorySetVersion(in).Marshal()
+	resp, _ := clientCommandsHandler.HistorySetVersion(in).Marshal()
 	return resp
 }
 
-func Export(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcExportResponse{Error: &pb.RpcExportResponseError{Code: pb.RpcExportResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func Export(b []byte) []byte {
 	in := new(pb.RpcExportRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcExportResponse{Error: &pb.RpcExportResponseError{Code: pb.RpcExportResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcExportResponse{Error: &pb.RpcExportResponseError{Code: pb.RpcExportResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.Export(in).Marshal()
+	resp, _ := clientCommandsHandler.Export(in).Marshal()
 	return resp
 }
 
-func ExportWorkspace(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcExportWorkspaceResponse{Error: &pb.RpcExportWorkspaceResponseError{Code: pb.RpcExportWorkspaceResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ExportWorkspace(b []byte) []byte {
 	in := new(pb.RpcExportWorkspaceRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcExportWorkspaceResponse{Error: &pb.RpcExportWorkspaceResponseError{Code: pb.RpcExportWorkspaceResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcExportWorkspaceResponse{Error: &pb.RpcExportWorkspaceResponseError{Code: pb.RpcExportWorkspaceResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ExportWorkspace(in).Marshal()
+	resp, _ := clientCommandsHandler.ExportWorkspace(in).Marshal()
 	return resp
 }
 
-func ExportTemplates(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcExportTemplatesResponse{Error: &pb.RpcExportTemplatesResponseError{Code: pb.RpcExportTemplatesResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ExportTemplates(b []byte) []byte {
 	in := new(pb.RpcExportTemplatesRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcExportTemplatesResponse{Error: &pb.RpcExportTemplatesResponseError{Code: pb.RpcExportTemplatesResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcExportTemplatesResponse{Error: &pb.RpcExportTemplatesResponseError{Code: pb.RpcExportTemplatesResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ExportTemplates(in).Marshal()
+	resp, _ := clientCommandsHandler.ExportTemplates(in).Marshal()
 	return resp
 }
 
-func ExportLocalstore(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcExportLocalstoreResponse{Error: &pb.RpcExportLocalstoreResponseError{Code: pb.RpcExportLocalstoreResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ExportLocalstore(b []byte) []byte {
 	in := new(pb.RpcExportLocalstoreRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcExportLocalstoreResponse{Error: &pb.RpcExportLocalstoreResponseError{Code: pb.RpcExportLocalstoreResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcExportLocalstoreResponse{Error: &pb.RpcExportLocalstoreResponseError{Code: pb.RpcExportLocalstoreResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ExportLocalstore(in).Marshal()
+	resp, _ := clientCommandsHandler.ExportLocalstore(in).Marshal()
 	return resp
 }
 
-func MakeTemplate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcMakeTemplateResponse{Error: &pb.RpcMakeTemplateResponseError{Code: pb.RpcMakeTemplateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func MakeTemplate(b []byte) []byte {
 	in := new(pb.RpcMakeTemplateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcMakeTemplateResponse{Error: &pb.RpcMakeTemplateResponseError{Code: pb.RpcMakeTemplateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcMakeTemplateResponse{Error: &pb.RpcMakeTemplateResponseError{Code: pb.RpcMakeTemplateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.MakeTemplate(in).Marshal()
+	resp, _ := clientCommandsHandler.MakeTemplate(in).Marshal()
 	return resp
 }
 
-func MakeTemplateByObjectType(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcMakeTemplateByObjectTypeResponse{Error: &pb.RpcMakeTemplateByObjectTypeResponseError{Code: pb.RpcMakeTemplateByObjectTypeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func MakeTemplateByObjectType(b []byte) []byte {
 	in := new(pb.RpcMakeTemplateByObjectTypeRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcMakeTemplateByObjectTypeResponse{Error: &pb.RpcMakeTemplateByObjectTypeResponseError{Code: pb.RpcMakeTemplateByObjectTypeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcMakeTemplateByObjectTypeResponse{Error: &pb.RpcMakeTemplateByObjectTypeResponseError{Code: pb.RpcMakeTemplateByObjectTypeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.MakeTemplateByObjectType(in).Marshal()
+	resp, _ := clientCommandsHandler.MakeTemplateByObjectType(in).Marshal()
 	return resp
 }
 
-func CloneTemplate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcCloneTemplateResponse{Error: &pb.RpcCloneTemplateResponseError{Code: pb.RpcCloneTemplateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func CloneTemplate(b []byte) []byte {
 	in := new(pb.RpcCloneTemplateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcCloneTemplateResponse{Error: &pb.RpcCloneTemplateResponseError{Code: pb.RpcCloneTemplateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcCloneTemplateResponse{Error: &pb.RpcCloneTemplateResponseError{Code: pb.RpcCloneTemplateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.CloneTemplate(in).Marshal()
+	resp, _ := clientCommandsHandler.CloneTemplate(in).Marshal()
 	return resp
 }
 
-func ObjectDuplicate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcObjectDuplicateResponse{Error: &pb.RpcObjectDuplicateResponseError{Code: pb.RpcObjectDuplicateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ObjectDuplicate(b []byte) []byte {
 	in := new(pb.RpcObjectDuplicateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcObjectDuplicateResponse{Error: &pb.RpcObjectDuplicateResponseError{Code: pb.RpcObjectDuplicateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcObjectDuplicateResponse{Error: &pb.RpcObjectDuplicateResponseError{Code: pb.RpcObjectDuplicateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ObjectDuplicate(in).Marshal()
+	resp, _ := clientCommandsHandler.ObjectDuplicate(in).Marshal()
 	return resp
 }
 
-func UnsplashSearch(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcUnsplashSearchResponse{Error: &pb.RpcUnsplashSearchResponseError{Code: pb.RpcUnsplashSearchResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func UnsplashSearch(b []byte) []byte {
 	in := new(pb.RpcUnsplashSearchRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcUnsplashSearchResponse{Error: &pb.RpcUnsplashSearchResponseError{Code: pb.RpcUnsplashSearchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcUnsplashSearchResponse{Error: &pb.RpcUnsplashSearchResponseError{Code: pb.RpcUnsplashSearchResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.UnsplashSearch(in).Marshal()
+	resp, _ := clientCommandsHandler.UnsplashSearch(in).Marshal()
 	return resp
 }
 
-func UnsplashDownload(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcUnsplashDownloadResponse{Error: &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func UnsplashDownload(b []byte) []byte {
 	in := new(pb.RpcUnsplashDownloadRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcUnsplashDownloadResponse{Error: &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcUnsplashDownloadResponse{Error: &pb.RpcUnsplashDownloadResponseError{Code: pb.RpcUnsplashDownloadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.UnsplashDownload(in).Marshal()
+	resp, _ := clientCommandsHandler.UnsplashDownload(in).Marshal()
 	return resp
 }
 
-func ApplyTemplate(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcApplyTemplateResponse{Error: &pb.RpcApplyTemplateResponseError{Code: pb.RpcApplyTemplateResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func ApplyTemplate(b []byte) []byte {
 	in := new(pb.RpcApplyTemplateRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcApplyTemplateResponse{Error: &pb.RpcApplyTemplateResponseError{Code: pb.RpcApplyTemplateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcApplyTemplateResponse{Error: &pb.RpcApplyTemplateResponseError{Code: pb.RpcApplyTemplateResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.ApplyTemplate(in).Marshal()
+	resp, _ := clientCommandsHandler.ApplyTemplate(in).Marshal()
 	return resp
 }
 
-func DebugSync(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcDebugSyncResponse{Error: &pb.RpcDebugSyncResponseError{Code: pb.RpcDebugSyncResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func DebugSync(b []byte) []byte {
 	in := new(pb.RpcDebugSyncRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcDebugSyncResponse{Error: &pb.RpcDebugSyncResponseError{Code: pb.RpcDebugSyncResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcDebugSyncResponse{Error: &pb.RpcDebugSyncResponseError{Code: pb.RpcDebugSyncResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.DebugSync(in).Marshal()
+	resp, _ := clientCommandsHandler.DebugSync(in).Marshal()
 	return resp
 }
 
-func DebugThread(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcDebugThreadResponse{Error: &pb.RpcDebugThreadResponseError{Code: pb.RpcDebugThreadResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func DebugThread(b []byte) []byte {
 	in := new(pb.RpcDebugThreadRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcDebugThreadResponse{Error: &pb.RpcDebugThreadResponseError{Code: pb.RpcDebugThreadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcDebugThreadResponse{Error: &pb.RpcDebugThreadResponseError{Code: pb.RpcDebugThreadResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.DebugThread(in).Marshal()
+	resp, _ := clientCommandsHandler.DebugThread(in).Marshal()
 	return resp
 }
 
-func DebugTree(b []byte) (resp []byte) {
-	defer func() {
-		if PanicHandler != nil {
-			if r := recover(); r != nil {
-				resp, _ = (&pb.RpcDebugTreeResponse{Error: &pb.RpcDebugTreeResponseError{Code: pb.RpcDebugTreeResponseError_UNKNOWN_ERROR, Description: "panic recovered"}}).Marshal()
-				PanicHandler(r)
-			}
-		}
-	}()
-
+func DebugTree(b []byte) []byte {
 	in := new(pb.RpcDebugTreeRequest)
 	if err := in.Unmarshal(b); err != nil {
-		resp, _ = (&pb.RpcDebugTreeResponse{Error: &pb.RpcDebugTreeResponseError{Code: pb.RpcDebugTreeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
+		resp, _ := (&pb.RpcDebugTreeResponse{Error: &pb.RpcDebugTreeResponseError{Code: pb.RpcDebugTreeResponseError_BAD_INPUT, Description: err.Error()}}).Marshal()
 		return resp
 	}
-
-	resp, _ = clientCommandsHandler.DebugTree(in).Marshal()
+	resp, _ := clientCommandsHandler.DebugTree(in).Marshal()
 	return resp
 }
-
-var PanicHandler func(v interface{})
 
 func CommandAsync(cmd string, data []byte, callback func(data []byte)) {
 	go func() {

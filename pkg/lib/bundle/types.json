@@ -1209,9 +1209,7 @@
       "exposure",
       "addedDate",
       "focalRatio",
-      "fileExt",
-      "mediaArtistName",
-      "mediaArtistURL"
+      "fileExt"
     ],
     "types": [
       "File"
@@ -1291,6 +1289,7 @@
       "layoutAlign",
       "isHidden",
       "isArchived",
+      "tag",
       "isFavorite",
       "isDraft",
       "workspaceId"
