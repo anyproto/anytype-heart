@@ -134,6 +134,16 @@
     "source": "details"
   },
   {
+    "description": "Object restrictions list",
+    "format": "number",
+    "hidden": true,
+    "key": "restrictions",
+    "maxCount": 0,
+    "name": "Object restrictions",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "description": "Adds the object to the highlighted dataview in space",
     "format": "checkbox",
     "hidden": true,
@@ -194,10 +204,12 @@
     "source": "details"
   },
   {
+    "description": "Plaintext extracted from the object's blocks ",
     "format": "longtext",
     "hidden": true,
     "key": "snippet",
     "maxCount": 1,
+    "name": "Snippet",
     "readonly": true,
     "source": "derived"
   },
@@ -897,16 +909,6 @@
     "source": "details"
   },
   {
-    "description": "Object restrictions list",
-    "format": "number",
-    "hidden": true,
-    "key": "restrictions",
-    "maxCount": 1,
-    "name": "Object restrictions",
-    "readonly": true,
-    "source": "derived"
-  },
-  {
     "format": "longtext",
     "hidden": false,
     "key": "materials",
@@ -1274,24 +1276,6 @@
     "source": "details"
   },
   {
-    "format": "longtext",
-    "hidden": true,
-    "key": "mediaArtistName",
-    "maxCount": 1,
-    "name": "Artist name",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": true,
-    "key": "mediaArtistURL",
-    "maxCount": 1,
-    "name": "Artist URL",
-    "readonly": true,
-    "source": "details"
-  },
-  {
     "format": "number",
     "hidden": false,
     "key": "cameraIso",
@@ -1318,6 +1302,13 @@
     "name": "Is deleted",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Outgoing links",
+    "hidden": false,
+    "key": "links",
+    "maxCount": 0,
+    "readonly": false
   },
   {
     "format": "number",
@@ -1542,14 +1533,5 @@
     "name": "IMDb rating",
     "readonly": false,
     "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": true,
-    "key": "links",
-    "maxCount": 0,
-    "name": "Outgoing links",
-    "readonly": true,
-    "source": "derived"
   }
 ]

@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "c50645f3985a96c8680e89ba6930431951e6bbe9cfb96418063b320378c5fe1b"
+const RelationChecksum = "0912ffb465d8863f60110bc4b8044672312b0ec9e0fdfbb183a07343d9a3acda"
 
 type RelationKey string
 
@@ -29,6 +29,7 @@ const (
 	RelationKeyTemplateIsBundled         RelationKey = "templateIsBundled"
 	RelationKeyShipTo                    RelationKey = "shipTo"
 	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
+	RelationKeyRestrictions              RelationKey = "restrictions"
 	RelationKeyIsHighlighted             RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            RelationKey = "thumbnailImage"
 	RelationKeyAttachments               RelationKey = "attachments"
@@ -108,7 +109,6 @@ const (
 	RelationKeyAssignee                  RelationKey = "assignee"
 	RelationKeyExposure                  RelationKey = "exposure"
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
-	RelationKeyRestrictions              RelationKey = "restrictions"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
@@ -147,11 +147,10 @@ const (
 	RelationKeyId                        RelationKey = "id"
 	RelationKeyStockprice                RelationKey = "stockprice"
 	RelationKeyObjectives                RelationKey = "objectives"
-	RelationKeyMediaArtistName           RelationKey = "mediaArtistName"
-	RelationKeyMediaArtistURL            RelationKey = "mediaArtistURL"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
 	RelationKeyIsDeleted                 RelationKey = "isDeleted"
+	RelationKeyLinks                     RelationKey = "links"
 	RelationKeyServings                  RelationKey = "servings"
 	RelationKeyCategory                  RelationKey = "category"
 	RelationKeyShipToAddress             RelationKey = "shipToAddress"
@@ -175,7 +174,6 @@ const (
 	RelationKeyFeaturedRelations         RelationKey = "featuredRelations"
 	RelationKeyPhone                     RelationKey = "phone"
 	RelationKeyImdbRating                RelationKey = "imdbRating"
-	RelationKeyLinks                     RelationKey = "links"
 )
 
 var (
@@ -1225,13 +1223,12 @@ var (
 		},
 		RelationKeyLinks: {
 
-			DataSource:       model.Relation_derived,
-			Description:      "",
-			Format:           model.RelationFormat_object,
-			Hidden:           true,
+			DataSource:       model.Relation_,
+			Description:      "Outgoing links",
+			Format:           model.RelationFormat_,
 			Key:              "links",
-			Name:             "Outgoing links",
-			ReadOnly:         true,
+			Name:             "",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1280,32 +1277,6 @@ var (
 			MaxCount:         1,
 			Name:             "Measure of success",
 			ReadOnly:         false,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyMediaArtistName: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_longtext,
-			Hidden:           true,
-			Key:              "mediaArtistName",
-			MaxCount:         1,
-			Name:             "Artist name",
-			ReadOnly:         true,
-			ReadOnlyRelation: true,
-			Scope:            model.Relation_type,
-		},
-		RelationKeyMediaArtistURL: {
-
-			DataSource:       model.Relation_details,
-			Description:      "",
-			Format:           model.RelationFormat_url,
-			Hidden:           true,
-			Key:              "mediaArtistURL",
-			MaxCount:         1,
-			Name:             "Artist URL",
-			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
@@ -1676,7 +1647,6 @@ var (
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
 			Key:              "restrictions",
-			MaxCount:         1,
 			Name:             "Object restrictions",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
@@ -1793,12 +1763,12 @@ var (
 		RelationKeySnippet: {
 
 			DataSource:       model.Relation_derived,
-			Description:      "",
+			Description:      "Plaintext extracted from the object's blocks ",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Key:              "snippet",
 			MaxCount:         1,
-			Name:             "",
+			Name:             "Snippet",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
