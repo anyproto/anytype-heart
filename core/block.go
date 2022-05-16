@@ -762,6 +762,8 @@ func (mw *Middleware) BlockListConvertChildrenToPages(req *pb.RpcBlockListConver
 		m := &pb.RpcBlockListConvertChildrenToPagesResponse{Error: &pb.RpcBlockListConvertChildrenToPagesResponseError{Code: code}, LinkIds: linkIds}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
