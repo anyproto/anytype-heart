@@ -574,18 +574,22 @@ func (s *service) SetPagesIsArchived(req pb.RpcObjectListSetIsArchivedRequest) (
 		}
 
 		anySucceed := false
-		for _, blockId := range req.ObjectIds {
-			if restrErr := s.checkArchivedRestriction(req.IsArchived, blockId); restrErr != nil {
+		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
+			if restrErr := s.checkArchivedRestriction(req.IsArchived, id); restrErr != nil {
 				err = restrErr
 			} else {
 				if req.IsArchived {
-					err = archive.AddObject(blockId)
+					err = archive.AddObject(id)
 				} else {
-					err = archive.RemoveObject(blockId)
+					err = archive.RemoveObject(id)
 				}
 			}
 			if err != nil {
-				log.Errorf("failed to archive %s: %s", blockId, err.Error())
+				log.Errorf("failed to archive %s: %s", id, err.Error())
 			} else {
 				anySucceed = true
 			}
@@ -608,14 +612,18 @@ func (s *service) SetPagesIsFavorite(req pb.RpcObjectListSetIsFavoriteRequest) (
 		}
 
 		anySucceed := false
-		for _, blockId := range req.ObjectIds {
+		ids, err := s.objectStore.HasIDs(req.ObjectIds...)
+		if err != nil {
+			return err
+		}
+		for _, id := range ids {
 			if req.IsFavorite {
-				err = fav.AddObject(blockId)
+				err = fav.AddObject(id)
 			} else {
-				err = fav.RemoveObject(blockId)
+				err = fav.RemoveObject(id)
 			}
 			if err != nil {
-				log.Errorf("failed to favorite object %s: %s", blockId, err.Error())
+				log.Errorf("failed to favorite object %s: %s", id, err.Error())
 			} else {
 				anySucceed = true
 			}
