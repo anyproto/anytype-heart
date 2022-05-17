@@ -366,6 +366,11 @@
     - [Rpc.BlockList.Set.File.Style.Request](#anytype.Rpc.BlockList.Set.File.Style.Request)
     - [Rpc.BlockList.Set.File.Style.Response](#anytype.Rpc.BlockList.Set.File.Style.Response)
     - [Rpc.BlockList.Set.File.Style.Response.Error](#anytype.Rpc.BlockList.Set.File.Style.Response.Error)
+    - [Rpc.BlockList.Set.Link](#anytype.Rpc.BlockList.Set.Link)
+    - [Rpc.BlockList.Set.Link.Appearance](#anytype.Rpc.BlockList.Set.Link.Appearance)
+    - [Rpc.BlockList.Set.Link.Appearance.Request](#anytype.Rpc.BlockList.Set.Link.Appearance.Request)
+    - [Rpc.BlockList.Set.Link.Appearance.Response](#anytype.Rpc.BlockList.Set.Link.Appearance.Response)
+    - [Rpc.BlockList.Set.Link.Appearance.Response.Error](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
     - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
     - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
@@ -782,6 +787,7 @@
     - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
     - [Rpc.BlockList.Set.File.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.File.Style.Response.Error.Code)
+    - [Rpc.BlockList.Set.Link.Appearance.Response.Error.Code](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
@@ -952,7 +958,11 @@
     - [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex)
     - [Event.Block.Set.Latex.Text](#anytype.Event.Block.Set.Latex.Text)
     - [Event.Block.Set.Link](#anytype.Event.Block.Set.Link)
+    - [Event.Block.Set.Link.CardStyle](#anytype.Event.Block.Set.Link.CardStyle)
+    - [Event.Block.Set.Link.Description](#anytype.Event.Block.Set.Link.Description)
     - [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields)
+    - [Event.Block.Set.Link.IconSize](#anytype.Event.Block.Set.Link.IconSize)
+    - [Event.Block.Set.Link.Relations](#anytype.Event.Block.Set.Link.Relations)
     - [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style)
     - [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId)
     - [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation)
@@ -1082,6 +1092,9 @@
     - [Block.Content.File.Style](#anytype.model.Block.Content.File.Style)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
+    - [Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle)
+    - [Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description)
+    - [Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize)
     - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
@@ -1176,6 +1189,7 @@
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
 | BlockListSetFileStyle | [Rpc.BlockList.Set.File.Style.Request](#anytype.Rpc.BlockList.Set.File.Style.Request) | [Rpc.BlockList.Set.File.Style.Response](#anytype.Rpc.BlockList.Set.File.Style.Response) |  |
+| BlockListSetLinkAppearance | [Rpc.BlockList.Set.Link.Appearance.Request](#anytype.Rpc.BlockList.Set.Link.Appearance.Request) | [Rpc.BlockList.Set.Link.Appearance.Response](#anytype.Rpc.BlockList.Set.Link.Appearance.Response) |  |
 | BlockListTurnInto | [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request) | [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response) |  |
 | BlockSetLatexText | [Rpc.Block.Set.Latex.Text.Request](#anytype.Rpc.Block.Set.Latex.Text.Request) | [Rpc.Block.Set.Latex.Text.Response](#anytype.Rpc.Block.Set.Latex.Text.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
@@ -6573,6 +6587,78 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockList.Set.File.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.File.Style.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link"></a>
+
+### Rpc.BlockList.Set.Link
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance"></a>
+
+### Rpc.BlockList.Set.Link.Appearance
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Request"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| iconSize | [model.Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize) |  |  |
+| cardStyle | [model.Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle) |  |  |
+| description | [model.Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description) |  |  |
+| relations | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Response"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Link.Appearance.Response.Error](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Link.Appearance.Response.Error.Code](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12477,6 +12563,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Text.Color.Response.Error.Code
@@ -14931,6 +15030,40 @@ Precondition: user A opened a block
 | targetBlockId | [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId) |  |  |
 | style | [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style) |  |  |
 | fields | [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields) |  |  |
+| iconSize | [Event.Block.Set.Link.IconSize](#anytype.Event.Block.Set.Link.IconSize) |  |  |
+| cardStyle | [Event.Block.Set.Link.CardStyle](#anytype.Event.Block.Set.Link.CardStyle) |  |  |
+| description | [Event.Block.Set.Link.Description](#anytype.Event.Block.Set.Link.Description) |  |  |
+| relations | [Event.Block.Set.Link.Relations](#anytype.Event.Block.Set.Link.Relations) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.CardStyle"></a>
+
+### Event.Block.Set.Link.CardStyle
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Description"></a>
+
+### Event.Block.Set.Link.Description
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description) |  |  |
 
 
 
@@ -14946,6 +15079,36 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.IconSize"></a>
+
+### Event.Block.Set.Link.IconSize
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Relations"></a>
+
+### Event.Block.Set.Link.Relations
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) | repeated |  |
 
 
 
@@ -16437,6 +16600,10 @@ Link: block to link some content from an external sources.
 | targetBlockId | [string](#string) |  | id of the target block |
 | style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  | deprecated |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| iconSize | [Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize) |  |  |
+| cardStyle | [Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle) |  |  |
+| description | [Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description) |  |  |
+| relations | [string](#string) | repeated |  |
 
 
 
@@ -17022,6 +17189,44 @@ scope from which this relation have been aggregated |
 | Column | 1 |  |
 | Div | 2 |  |
 | Header | 3 |  |
+
+
+
+<a name="anytype.model.Block.Content.Link.CardStyle"></a>
+
+### Block.Content.Link.CardStyle
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Text | 0 |  |
+| Card | 1 |  |
+| Inline | 2 |  |
+
+
+
+<a name="anytype.model.Block.Content.Link.Description"></a>
+
+### Block.Content.Link.Description
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Added | 1 |  |
+| Content | 2 |  |
+
+
+
+<a name="anytype.model.Block.Content.Link.IconSize"></a>
+
+### Block.Content.Link.IconSize
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Small | 0 |  |
+| Medium | 1 |  |
 
 
 

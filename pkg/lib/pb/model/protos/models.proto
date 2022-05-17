@@ -124,6 +124,15 @@ message Block {
             string targetBlockId = 1; // id of the target block
             Style style = 2; // deprecated
             google.protobuf.Struct fields = 3;
+            IconSize iconSize = 4;
+            CardStyle cardStyle = 5;
+            Description description = 6;
+            repeated string relations = 7;
+
+            enum IconSize {
+                Small = 0;
+                Medium = 1;
+            }
 
             enum Style {
                 Page = 0;
@@ -131,6 +140,18 @@ message Block {
                 Dashboard = 2;
                 Archive = 3;
                 // ...
+            }
+
+            enum Description {
+                None = 0;
+                Added = 1;
+                Content = 2;
+            }
+
+            enum CardStyle {
+                Text = 0;
+                Card = 1;
+                Inline = 2;
             }
         }
 
