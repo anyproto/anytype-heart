@@ -112,7 +112,7 @@ func (w *Wallet) AccountAt(index int, passphrase string) (Keypair, error) {
 	seed, err := bip39.NewSeedWithErrorChecking(w.RecoveryPhrase, passphrase)
 	if err != nil {
 		if err == bip39.ErrInvalidMnemonic {
-			return nil, fmt.Errorf("invalid mnemonic phrase")
+			return nil, fmt.Errorf("invalid recovery phrase")
 		}
 		return nil, err
 	}

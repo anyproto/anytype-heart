@@ -1,6 +1,7 @@
 package basic
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -17,6 +18,18 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
+	return text.NewText(&model.Block{
+		Id: id,
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{
+				Text: contentText,
+			},
+		},
+		ChildrenIds: childrenIds,
+	})
+}
 
 func TestBasic_Create(t *testing.T) {
 	t.Run("generic", func(t *testing.T) {
@@ -140,6 +153,46 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, err)
 		s := sb.NewState()
 		assert.Equal(t, []string{template.HeaderLayoutId, id0, id1}, s.Pick(s.RootId()).Model().ChildrenIds)
+	})
+	t.Run("replace empty", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(newTextBlock("1", "")).
+			AddBlock(newTextBlock("2", "one"))
+
+		b := NewBasic(sb)
+
+		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+			BlockIds:     []string{"2"},
+			DropTargetId: "1",
+			Position:     model.Block_InnerFirst,
+		})
+		require.NoError(t, err)
+		assert.Len(t, sb.NewState().Pick("test").Model().ChildrenIds, 1)
+	})
+	t.Run("replace background and color", func(t *testing.T) {
+		sb := smarttest.New("test")
+
+		firstBlock := newTextBlock("1", "")
+		firstBlock.Model().BackgroundColor = "first_block_background_color"
+
+		secondBlock := newTextBlock("2", "two")
+		secondBlock.Model().GetText().Color = "second_block_text_color"
+
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
+			AddBlock(firstBlock).
+			AddBlock(secondBlock)
+
+		b := NewBasic(sb)
+
+		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+			BlockIds:     []string{"2"},
+			DropTargetId: "1",
+			Position:     model.Block_InnerFirst,
+		})
+		require.NoError(t, err)
+		assert.Equal(t, sb.NewState().Pick("2").Model().BackgroundColor, "first_block_background_color")
+		assert.Equal(t, sb.NewState().Pick("2").Model().GetText().Color, "second_block_text_color")
 	})
 }
 

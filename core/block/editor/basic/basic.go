@@ -157,7 +157,7 @@ func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateReque
 
 func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 	b := s.Get(sourceId)
-	if bs == nil {
+	if b == nil {
 		return "", smartblock.ErrSimpleBlockNotFound
 	}
 	m := b.Copy().Model()
@@ -198,11 +198,41 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 			req.DropTargetId = template.HeaderLayoutId
 		}
 	}
+
+	var replacementCandidate simple.Block
 	for _, id := range req.BlockIds {
 		if b := s.Pick(id); b != nil {
+			if replacementCandidate == nil {
+				replacementCandidate = s.Get(id)
+			}
 			s.Unlink(id)
 		}
 	}
+
+	target := s.Get(req.DropTargetId)
+	if target == nil {
+		return fmt.Errorf("target block not found")
+	}
+
+	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
+		if targetContent.Text.Style == model.BlockContentText_Paragraph && targetContent.Text.Text == "" {
+
+			req.Position = model.Block_Replace
+
+			if replacementCandidate != nil {
+				if replacementCandidate.Model().BackgroundColor == "" {
+					replacementCandidate.Model().BackgroundColor = target.Model().BackgroundColor
+				}
+			}
+
+			if replacementContent, ok := replacementCandidate.Model().Content.(*model.BlockContentOfText); ok {
+				if replacementContent.Text.Color == "" {
+					replacementContent.Text.Color = targetContent.Text.Color
+				}
+			}
+		}
+	}
+
 	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
 		return
 	}

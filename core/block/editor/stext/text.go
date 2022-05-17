@@ -2,7 +2,6 @@ package stext
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"sort"
 	"strings"
 	"time"
@@ -12,6 +11,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
+	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -156,6 +156,12 @@ func (t *textImpl) Split(ctx *state.Context, req pb.RpcBlockSplitRequest) (newId
 func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err error) {
 	startTime := time.Now()
 	s := t.NewStateCtx(ctx)
+
+	// Don't merge blocks inside header block
+	if s.IsParentOf(template.HeaderLayoutId, secondId) {
+		return
+	}
+
 	first, err := getText(s, firstId)
 	if err != nil {
 		return
