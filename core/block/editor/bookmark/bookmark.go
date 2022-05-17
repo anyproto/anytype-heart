@@ -1,6 +1,7 @@
 package bookmark
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -9,14 +10,19 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
+	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/globalsign/mgo/bson"
+	"github.com/gogo/protobuf/types"
 )
 
-func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBookmark) Bookmark {
-	return &sbookmark{SmartBlock: sb, lp: lp, ctrl: ctrl}
+func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBookmark, pageManager PageManager) Bookmark {
+	return &sbookmark{SmartBlock: sb, lp: lp, ctrl: ctrl, manager: pageManager}
 }
 
 type Bookmark interface {
@@ -31,8 +37,14 @@ type DoBookmark interface {
 
 type sbookmark struct {
 	smartblock.SmartBlock
-	lp   linkpreview.LinkPreview
-	ctrl DoBookmark
+	lp      linkpreview.LinkPreview
+	ctrl    DoBookmark
+	manager PageManager
+}
+
+type PageManager interface {
+	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
+	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
 }
 
 func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
@@ -54,25 +66,28 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	}
 	groupId := s.GroupId()
 	var updMu sync.Mutex
-	if bm, ok := bb.(bookmark.Block); ok {
-		return bm.Fetch(bookmark.FetchParams{
-			Url:     url,
-			Anytype: b.Anytype(),
-			Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
-				if isSync {
-					updMu.Lock()
-					defer updMu.Unlock()
-					return apply(bm)
-				}
-				return b.ctrl.DoBookmark(b.Id(), func(b Bookmark) error {
-					return b.UpdateBookmark(id, groupId, apply)
-				})
-			},
-			LinkPreview: b.lp,
-			Sync:        isSync,
-		})
+	bm, ok := bb.(bookmark.Block)
+	if !ok {
+		return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 	}
-	return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
+
+	err = bm.Fetch(bookmark.FetchParams{
+		Url:     url,
+		Anytype: b.Anytype(),
+		Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
+			if isSync {
+				updMu.Lock()
+				defer updMu.Unlock()
+				return apply(bm)
+			}
+			return b.ctrl.DoBookmark(b.Id(), func(b Bookmark) error {
+				return b.UpdateBookmark(id, groupId, apply)
+			})
+		},
+		LinkPreview: b.lp,
+		Sync:        isSync,
+	})
+	return err
 }
 
 func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error) {
@@ -98,6 +113,83 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
+func (b *sbookmark) createBookmarkObject(bm bookmark.Block) error {
+	store := b.Anytype().ObjectStore()
+
+	content := bm.Content()
+
+	records, _, err := store.Query(nil, database.Query{
+		Sorts: []*model.BlockContentDataviewSort{
+			{
+				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
+				Type:        model.BlockContentDataviewSort_Desc,
+			},
+		},
+		Filters: []*model.BlockContentDataviewFilter{
+			{
+				Condition:   model.BlockContentDataviewFilter_Equal,
+				RelationKey: bundle.RelationKeyWebsite.String(),
+				Value:       pbtypes.String(content.Url),
+			},
+		},
+		Limit: 10,
+		ObjectTypeFilter: []string{
+			bundle.TypeKeyBookmark.URL(),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("query: %w", err)
+	}
+
+	// TODO: if no image hash then set favicon
+
+	if len(records) > 0 {
+		rec := records[0]
+
+		details := []*pb.RpcBlockSetDetailsDetail{
+			{
+				Key:   bundle.RelationKeyDescription.String(),
+				Value: pbtypes.String(content.Description),
+			},
+			{
+				Key:   bundle.RelationKeyWebsite.String(),
+				Value: pbtypes.String(content.Url),
+			},
+			{
+				Key:   bundle.RelationKeyIconImage.String(),
+				Value: pbtypes.String(content.ImageHash),
+			},
+		}
+
+		return b.manager.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+			ContextId: rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+			Details:   details,
+		})
+	}
+
+	details := &types.Struct{
+		Fields: map[string]*types.Value{
+			bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyBookmark.URL()),
+			bundle.RelationKeyName.String():        pbtypes.String(content.Title),
+			bundle.RelationKeyLayout.String():      pbtypes.String(bundle.MustGetLayout(model.ObjectType_bookmark).Name),
+			bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
+			bundle.RelationKeyWebsite.String():     pbtypes.String(content.Url),
+			// TODO: consider other relations
+			bundle.RelationKeyIconImage.String(): pbtypes.String(content.ImageHash),
+		},
+	}
+
+	// TODO fix bundled relations
+	relations := []*model.Relation{
+		bundle.MustGetRelation(bundle.RelationKeyWebsite),
+	}
+
+	_, newDetails, err := b.manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, relations)
+	_ = newDetails
+
+	return err
+}
+
 func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error) {
 	s := b.NewState().SetGroupId(groupId)
 	if bb := s.Get(id); bb != nil {
@@ -105,6 +197,11 @@ func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Blo
 			if err = apply(bm); err != nil {
 				return
 			}
+
+			if err := b.createBookmarkObject(bm); err != nil {
+				return err
+			}
+
 		} else {
 			return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 		}

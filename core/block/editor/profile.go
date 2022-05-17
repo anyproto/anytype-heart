@@ -16,7 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewProfile(fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
+func NewProfile(fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event), pageManager bookmark.PageManager) *Profile {
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
@@ -26,7 +26,7 @@ func NewProfile(fileSource file.BlockService, bCtrl bookmark.DoBookmark, lp link
 		Text:       stext.NewText(sb),
 		File:       f,
 		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
+		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl, pageManager),
 		sendEvent:  sendEvent,
 	}
 }

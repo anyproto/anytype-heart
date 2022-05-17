@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const TypeChecksum = "0ff4df1de833e8fc3488e418715265edb6ac014281abef867c2b84a92efda425"
+const TypeChecksum = "6aedfdaa51104a31818b14d86fe6ae2675eaf42d13ac0dd9f9b5bc4cc8398e8e"
 
 type TypeKey string
 
@@ -110,7 +110,7 @@ var (
 		TypeKeyBookmark: {
 
 			Description: "URL that is stored for later retrieval and may be categorised and linked with objects",
-			IconEmoji:   "🔖 ",
+			IconEmoji:   "🔖",
 			Layout:      model.ObjectType_bookmark,
 			Name:        "Bookmark",
 			Readonly:    true,

@@ -20,8 +20,9 @@ func NewTemplate(
 	bCtrl bookmark.DoBookmark,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
+	pageManager bookmark.PageManager,
 ) *Template {
-	page := NewPage(fileSource, bCtrl, importServices, lp)
+	page := NewPage(fileSource, bCtrl, importServices, lp, pageManager)
 	return &Template{Page: page}
 }
 

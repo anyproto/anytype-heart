@@ -21,6 +21,7 @@ func NewPage(
 	bCtrl bookmark.DoBookmark,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
+	pageManager bookmark.PageManager,
 ) *Page {
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
@@ -31,7 +32,7 @@ func NewPage(
 		Text:       stext.NewText(sb),
 		File:       f,
 		Clipboard:  clipboard.NewClipboard(sb, f),
-		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
+		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl, pageManager),
 		Import:     _import.NewImport(sb, importServices),
 	}
 }

@@ -221,7 +221,7 @@
   },
   {
     "description": "URL that is stored for later retrieval and may be categorised and linked with objects",
-    "emoji": "🔖 ",
+    "emoji": "🔖",
     "id": "bookmark",
     "layout": "bookmark",
     "name": "Bookmark",

@@ -41,7 +41,6 @@ enum SmartBlockType {
     Date = 0x204;
     WorkspaceOld = 0x205; // deprecated thread-based workspace
     Workspace = 0x206;
-
 }
 
 message Block {

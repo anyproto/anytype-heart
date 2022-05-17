@@ -43,6 +43,7 @@ type Block interface {
 	SetImageHash(hash string)
 	SetFaviconHash(hash string)
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
+	Content() *model.BlockContentBookmark
 }
 
 type FetchParams struct {
@@ -58,6 +59,10 @@ type Updater func(id string, apply func(b Block) error) (err error)
 type Bookmark struct {
 	*base.Base
 	content *model.BlockContentBookmark
+}
+
+func (f *Bookmark) Content() *model.BlockContentBookmark {
+	return f.content
 }
 
 func (f *Bookmark) SetLinkPreview(data model.LinkPreview) {
@@ -78,7 +83,9 @@ func (f *Bookmark) SetFaviconHash(hash string) {
 func (f *Bookmark) Fetch(params FetchParams) (err error) {
 	f.content.Url = params.Url
 	if !params.Sync {
-		go fetcher(f.Id, params)
+		go func() {
+			fetcher(f.Id, params)
+		}()
 	} else {
 		fetcher(f.Id, params)
 	}
@@ -161,6 +168,7 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	if e.Url != nil {
 		b.content.Url = e.Url.GetValue()
 	}
+
 	return
 }
 
@@ -173,14 +181,12 @@ func fetcher(id string, params FetchParams) {
 		return
 	}
 
-	err = params.Updater(id, func(bm Block) error {
+	updaters := make(chan func(bm Block) error, 3)
+	updaters <- func(bm Block) error {
 		bm.SetLinkPreview(data)
 		return nil
-	})
-	if err != nil {
-		fmt.Println("can't set linkpreview data:", id, err)
-		return
 	}
+
 	var wg sync.WaitGroup
 	if data.ImageUrl != "" {
 		wg.Add(1)
@@ -191,13 +197,9 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load image url:", data.ImageUrl, err)
 				return
 			}
-			err = params.Updater(id, func(bm Block) error {
+			updaters <- func(bm Block) error {
 				bm.SetImageHash(hash)
 				return nil
-			})
-			if err != nil {
-				fmt.Println("can't set image hash:", id, err)
-				return
 			}
 		}()
 	}
@@ -210,17 +212,32 @@ func fetcher(id string, params FetchParams) {
 				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
 				return
 			}
-			err = params.Updater(id, func(bm Block) error {
+			updaters <- func(bm Block) error {
 				bm.SetFaviconHash(hash)
 				return nil
-			})
-			if err != nil {
-				fmt.Println("can't set favicon hash:", id, err)
-				return
 			}
 		}()
 	}
 	wg.Wait()
+	close(updaters)
+
+	var upds []func(bm Block) error
+	for u := range updaters {
+		upds = append(upds, u)
+	}
+
+	err = params.Updater(id, func(bm Block) error {
+		for _, u := range upds {
+			if err := u(bm); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		fmt.Println("can't update bookmark data:", id, err)
+		return
+	}
 }
 
 func (f *Bookmark) FillFileHashes(hashes []string) []string {
