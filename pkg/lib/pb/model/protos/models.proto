@@ -155,6 +155,7 @@ message Block {
             string imageHash = 4;
             string faviconHash = 5;
             LinkPreview.Type type = 6;
+            string targetObjectId = 7;
         }
 
         message Icon {

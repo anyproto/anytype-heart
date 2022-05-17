@@ -17,12 +17,11 @@ import (
 
 func NewTemplate(
 	fileSource file.BlockService,
-	bCtrl bookmark.DoBookmark,
+	pageManager bookmark.PageManager,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
-	pageManager bookmark.PageManager,
 ) *Template {
-	page := NewPage(fileSource, bCtrl, importServices, lp, pageManager)
+	page := NewPage(fileSource, pageManager, importServices, lp)
 	return &Template{Page: page}
 }
 

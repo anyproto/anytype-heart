@@ -1026,7 +1026,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.linkPreview, s)
+		sb = editor.NewPage(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
@@ -1034,7 +1034,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet(s)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent, s)
+		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType(s)
@@ -1050,9 +1050,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate(s)
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview, s)
+		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview, s)
+		sb = editor.NewTemplate(s, s, s, s.linkPreview)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:

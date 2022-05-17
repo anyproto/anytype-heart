@@ -42,6 +42,7 @@ type Block interface {
 	SetLinkPreview(data model.LinkPreview)
 	SetImageHash(hash string)
 	SetFaviconHash(hash string)
+	SetTargetObjectId(pageId string)
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
 	Content() *model.BlockContentBookmark
 }
@@ -78,6 +79,10 @@ func (f *Bookmark) SetImageHash(hash string) {
 
 func (f *Bookmark) SetFaviconHash(hash string) {
 	f.content.FaviconHash = hash
+}
+
+func (f *Bookmark) SetTargetObjectId(pageId string) {
+	f.content.TargetObjectId = pageId
 }
 
 func (f *Bookmark) Fetch(params FetchParams) (err error) {
@@ -142,6 +147,10 @@ func (f *Bookmark) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		hasChanges = true
 		changes.FaviconHash = &pb.EventBlockSetBookmarkFaviconHash{Value: bookmark.content.FaviconHash}
 	}
+	if f.content.TargetObjectId != bookmark.content.TargetObjectId {
+		hasChanges = true
+		changes.TargetObjectId = &pb.EventBlockSetBookmarkTargetObjectId{Value: bookmark.content.TargetObjectId}
+	}
 
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes}}})
@@ -167,6 +176,9 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	}
 	if e.Url != nil {
 		b.content.Url = e.Url.GetValue()
+	}
+	if e.TargetObjectId != nil {
+		b.content.TargetObjectId = e.TargetObjectId.GetValue()
 	}
 
 	return

@@ -21,8 +21,8 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, ctrl DoBookmark, pageManager PageManager) Bookmark {
-	return &sbookmark{SmartBlock: sb, lp: lp, ctrl: ctrl, manager: pageManager}
+func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, pageManager PageManager) Bookmark {
+	return &sbookmark{SmartBlock: sb, lp: lp, manager: pageManager}
 }
 
 type Bookmark interface {
@@ -31,20 +31,16 @@ type Bookmark interface {
 	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
 }
 
-type DoBookmark interface {
-	DoBookmark(id string, apply func(b Bookmark) error) error
-}
-
 type sbookmark struct {
 	smartblock.SmartBlock
 	lp      linkpreview.LinkPreview
-	ctrl    DoBookmark
 	manager PageManager
 }
 
 type PageManager interface {
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
+	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
 func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
@@ -80,7 +76,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 				defer updMu.Unlock()
 				return apply(bm)
 			}
-			return b.ctrl.DoBookmark(b.Id(), func(b Bookmark) error {
+			return b.manager.DoBookmark(b.Id(), func(b Bookmark) error {
 				return b.UpdateBookmark(id, groupId, apply)
 			})
 		},
@@ -113,7 +109,7 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
-func (b *sbookmark) createBookmarkObject(bm bookmark.Block) error {
+func (b *sbookmark) createBookmarkObject(bm bookmark.Block) (pageId string, err error) {
 	store := b.Anytype().ObjectStore()
 
 	content := bm.Content()
@@ -132,13 +128,13 @@ func (b *sbookmark) createBookmarkObject(bm bookmark.Block) error {
 				Value:       pbtypes.String(content.Url),
 			},
 		},
-		Limit: 10,
+		Limit: 1,
 		ObjectTypeFilter: []string{
 			bundle.TypeKeyBookmark.URL(),
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("query: %w", err)
+		return "", fmt.Errorf("query: %w", err)
 	}
 
 	// TODO: if no image hash then set favicon
@@ -161,8 +157,9 @@ func (b *sbookmark) createBookmarkObject(bm bookmark.Block) error {
 			},
 		}
 
-		return b.manager.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
-			ContextId: rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue(),
+		pageId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		return pageId, b.manager.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+			ContextId: pageId,
 			Details:   details,
 		})
 	}
@@ -184,23 +181,24 @@ func (b *sbookmark) createBookmarkObject(bm bookmark.Block) error {
 		bundle.MustGetRelation(bundle.RelationKeyWebsite),
 	}
 
-	_, newDetails, err := b.manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, relations)
-	_ = newDetails
-
-	return err
+	pageId, _, err = b.manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, relations)
+	return
 }
 
-func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error) {
+func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) error {
 	s := b.NewState().SetGroupId(groupId)
 	if bb := s.Get(id); bb != nil {
 		if bm, ok := bb.(bookmark.Block); ok {
-			if err = apply(bm); err != nil {
-				return
-			}
-
-			if err := b.createBookmarkObject(bm); err != nil {
+			if err := apply(bm); err != nil {
 				return err
 			}
+
+			pageId, err := b.createBookmarkObject(bm)
+			if err != nil {
+				return fmt.Errorf("create bookmark object: %w", err)
+			}
+
+			bm.SetTargetObjectId(pageId)
 
 		} else {
 			return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)

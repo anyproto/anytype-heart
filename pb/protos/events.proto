@@ -432,6 +432,7 @@ message Event {
                 ImageHash imageHash = 5;
                 FaviconHash faviconHash = 6;
                 Type type = 7;
+                TargetObjectId targetObjectId = 8;
 
                 message Url {
                     string value = 1;
@@ -455,6 +456,10 @@ message Event {
 
                 message Type {
                     anytype.model.LinkPreview.Type value = 1;
+                }
+
+                message TargetObjectId {
+                    string value = 1;
                 }
 
             }
@@ -611,6 +616,8 @@ message Event {
                 ImageHash imageHash = 5;
                 FaviconHash faviconHash = 6;
                 Type type = 7;
+                TargetObjectId targetObjectId = 8;
+                
 
                 message Url {
                     string value = 1;
@@ -636,6 +643,9 @@ message Event {
                     anytype.model.LinkPreview.Type value = 1;
                 }
 
+                message TargetObjectId {
+                    string value = 1;
+                }
             }
         }
 
