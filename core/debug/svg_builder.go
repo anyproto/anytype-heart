@@ -1,5 +1,5 @@
+//go:build (!linux && !darwin) || android || ios || windows || nographviz
 // +build !linux,!darwin android ios windows nographviz
-// +build !amd64
 
 package debug
 

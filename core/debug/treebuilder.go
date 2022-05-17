@@ -1,8 +1,3 @@
-// +build linux darwin
-// +build !android
-// +build !ios
-// +build amd64 arm64
-
 package debug
 
 import (
