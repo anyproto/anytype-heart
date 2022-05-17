@@ -115,7 +115,7 @@ setup-protoc-jsweb:
 	@rm -rf grpc-web
 	@git clone http://github.com/grpc/grpc-web
 	git apply ./clientlibrary/jsaddon/grpcweb_mac.patch
-	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew/bin" $(MAKE) -C grpc-web install-plugin || $(MAKE) -C grpc-web install-plugin
+	@[ -d "/opt/homebrew" ] && PREFIX="/opt/homebrew" $(MAKE) -C grpc-web install-plugin || $(MAKE) -C grpc-web install-plugin
 	@rm -rf grpc-web
 
 setup-protoc-doc:

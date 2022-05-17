@@ -660,6 +660,26 @@ func (mw *Middleware) BlockListSetBackgroundColor(req *pb.RpcBlockListSetBackgro
 	return response(pb.RpcBlockListSetBackgroundColorResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockListSetLinkAppearance(req *pb.RpcBlockListSetLinkAppearanceRequest) *pb.RpcBlockListSetLinkAppearanceResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockListSetLinkAppearanceResponseErrorCode, err error) *pb.RpcBlockListSetLinkAppearanceResponse {
+		m := &pb.RpcBlockListSetLinkAppearanceResponse{Error: &pb.RpcBlockListSetLinkAppearanceResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetLinkAppearance(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListSetLinkAppearanceResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetLinkAppearanceResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb.RpcBlockListSetAlignResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListSetAlignResponseErrorCode, err error) *pb.RpcBlockListSetAlignResponse {

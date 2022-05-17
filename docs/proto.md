@@ -366,6 +366,11 @@
     - [Rpc.BlockList.Set.File.Style.Request](#anytype.Rpc.BlockList.Set.File.Style.Request)
     - [Rpc.BlockList.Set.File.Style.Response](#anytype.Rpc.BlockList.Set.File.Style.Response)
     - [Rpc.BlockList.Set.File.Style.Response.Error](#anytype.Rpc.BlockList.Set.File.Style.Response.Error)
+    - [Rpc.BlockList.Set.Link](#anytype.Rpc.BlockList.Set.Link)
+    - [Rpc.BlockList.Set.Link.Appearance](#anytype.Rpc.BlockList.Set.Link.Appearance)
+    - [Rpc.BlockList.Set.Link.Appearance.Request](#anytype.Rpc.BlockList.Set.Link.Appearance.Request)
+    - [Rpc.BlockList.Set.Link.Appearance.Response](#anytype.Rpc.BlockList.Set.Link.Appearance.Response)
+    - [Rpc.BlockList.Set.Link.Appearance.Response.Error](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error)
     - [Rpc.BlockList.Set.Text](#anytype.Rpc.BlockList.Set.Text)
     - [Rpc.BlockList.Set.Text.Color](#anytype.Rpc.BlockList.Set.Text.Color)
     - [Rpc.BlockList.Set.Text.Color.Request](#anytype.Rpc.BlockList.Set.Text.Color.Request)
@@ -407,6 +412,10 @@
     - [Rpc.Debug.Tree.Response.Error](#anytype.Rpc.Debug.Tree.Response.Error)
     - [Rpc.Debug.logInfo](#anytype.Rpc.Debug.logInfo)
     - [Rpc.Debug.threadInfo](#anytype.Rpc.Debug.threadInfo)
+    - [Rpc.DeviceState](#anytype.Rpc.DeviceState)
+    - [Rpc.DeviceState.Request](#anytype.Rpc.DeviceState.Request)
+    - [Rpc.DeviceState.Response](#anytype.Rpc.DeviceState.Response)
+    - [Rpc.DeviceState.Response.Error](#anytype.Rpc.DeviceState.Response.Error)
     - [Rpc.DownloadFile](#anytype.Rpc.DownloadFile)
     - [Rpc.DownloadFile.Request](#anytype.Rpc.DownloadFile.Request)
     - [Rpc.DownloadFile.Response](#anytype.Rpc.DownloadFile.Response)
@@ -509,7 +518,6 @@
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error](#anytype.Rpc.Object.FeaturedRelation.Remove.Response.Error)
     - [Rpc.Object.Graph](#anytype.Rpc.Object.Graph)
     - [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge)
-    - [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node)
     - [Rpc.Object.Graph.Request](#anytype.Rpc.Object.Graph.Request)
     - [Rpc.Object.Graph.Response](#anytype.Rpc.Object.Graph.Response)
     - [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error)
@@ -586,6 +594,10 @@
     - [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request)
     - [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response)
     - [Rpc.ObjectList.Delete.Response.Error](#anytype.Rpc.ObjectList.Delete.Response.Error)
+    - [Rpc.ObjectList.Duplicate](#anytype.Rpc.ObjectList.Duplicate)
+    - [Rpc.ObjectList.Duplicate.Request](#anytype.Rpc.ObjectList.Duplicate.Request)
+    - [Rpc.ObjectList.Duplicate.Response](#anytype.Rpc.ObjectList.Duplicate.Response)
+    - [Rpc.ObjectList.Duplicate.Response.Error](#anytype.Rpc.ObjectList.Duplicate.Response.Error)
     - [Rpc.ObjectList.Set](#anytype.Rpc.ObjectList.Set)
     - [Rpc.ObjectList.Set.IsArchived](#anytype.Rpc.ObjectList.Set.IsArchived)
     - [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request)
@@ -775,6 +787,7 @@
     - [Rpc.BlockList.Set.Div.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Div.Style.Response.Error.Code)
     - [Rpc.BlockList.Set.Fields.Response.Error.Code](#anytype.Rpc.BlockList.Set.Fields.Response.Error.Code)
     - [Rpc.BlockList.Set.File.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.File.Style.Response.Error.Code)
+    - [Rpc.BlockList.Set.Link.Appearance.Response.Error.Code](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Color.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Mark.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Mark.Response.Error.Code)
     - [Rpc.BlockList.Set.Text.Style.Response.Error.Code](#anytype.Rpc.BlockList.Set.Text.Style.Response.Error.Code)
@@ -784,6 +797,8 @@
     - [Rpc.Debug.Sync.Response.Error.Code](#anytype.Rpc.Debug.Sync.Response.Error.Code)
     - [Rpc.Debug.Thread.Response.Error.Code](#anytype.Rpc.Debug.Thread.Response.Error.Code)
     - [Rpc.Debug.Tree.Response.Error.Code](#anytype.Rpc.Debug.Tree.Response.Error.Code)
+    - [Rpc.DeviceState.Request.DeviceState](#anytype.Rpc.DeviceState.Request.DeviceState)
+    - [Rpc.DeviceState.Response.Error.Code](#anytype.Rpc.DeviceState.Response.Error.Code)
     - [Rpc.DownloadFile.Response.Error.Code](#anytype.Rpc.DownloadFile.Response.Error.Code)
     - [Rpc.Export.Format](#anytype.Rpc.Export.Format)
     - [Rpc.Export.Response.Error.Code](#anytype.Rpc.Export.Response.Error.Code)
@@ -830,6 +845,7 @@
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype.Rpc.Object.ToSet.Response.Error.Code)
     - [Rpc.ObjectDuplicate.Response.Error.Code](#anytype.Rpc.ObjectDuplicate.Response.Error.Code)
     - [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code)
+    - [Rpc.ObjectList.Duplicate.Response.Error.Code](#anytype.Rpc.ObjectList.Duplicate.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsArchived.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsArchived.Response.Error.Code)
     - [Rpc.ObjectList.Set.IsFavorite.Response.Error.Code](#anytype.Rpc.ObjectList.Set.IsFavorite.Response.Error.Code)
     - [Rpc.ObjectType.Create.Response.Error.Code](#anytype.Rpc.ObjectType.Create.Response.Error.Code)
@@ -942,7 +958,11 @@
     - [Event.Block.Set.Latex](#anytype.Event.Block.Set.Latex)
     - [Event.Block.Set.Latex.Text](#anytype.Event.Block.Set.Latex.Text)
     - [Event.Block.Set.Link](#anytype.Event.Block.Set.Link)
+    - [Event.Block.Set.Link.CardStyle](#anytype.Event.Block.Set.Link.CardStyle)
+    - [Event.Block.Set.Link.Description](#anytype.Event.Block.Set.Link.Description)
     - [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields)
+    - [Event.Block.Set.Link.IconSize](#anytype.Event.Block.Set.Link.IconSize)
+    - [Event.Block.Set.Link.Relations](#anytype.Event.Block.Set.Link.Relations)
     - [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style)
     - [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId)
     - [Event.Block.Set.Relation](#anytype.Event.Block.Set.Relation)
@@ -1072,6 +1092,9 @@
     - [Block.Content.File.Style](#anytype.model.Block.Content.File.Style)
     - [Block.Content.File.Type](#anytype.model.Block.Content.File.Type)
     - [Block.Content.Layout.Style](#anytype.model.Block.Content.Layout.Style)
+    - [Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle)
+    - [Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description)
+    - [Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize)
     - [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style)
     - [Block.Content.Text.Mark.Type](#anytype.model.Block.Content.Text.Mark.Type)
     - [Block.Content.Text.Style](#anytype.model.Block.Content.Text.Style)
@@ -1131,6 +1154,7 @@
 | LogSend | [Rpc.Log.Send.Request](#anytype.Rpc.Log.Send.Request) | [Rpc.Log.Send.Response](#anytype.Rpc.Log.Send.Response) |  |
 | ConfigGet | [Rpc.Config.Get.Request](#anytype.Rpc.Config.Get.Request) | [Rpc.Config.Get.Response](#anytype.Rpc.Config.Get.Response) |  |
 | Shutdown | [Rpc.Shutdown.Request](#anytype.Rpc.Shutdown.Request) | [Rpc.Shutdown.Response](#anytype.Rpc.Shutdown.Response) |  |
+| SetDeviceState | [Rpc.DeviceState.Request](#anytype.Rpc.DeviceState.Request) | [Rpc.DeviceState.Response](#anytype.Rpc.DeviceState.Response) |  |
 | ExternalDropFiles | [Rpc.ExternalDrop.Files.Request](#anytype.Rpc.ExternalDrop.Files.Request) | [Rpc.ExternalDrop.Files.Response](#anytype.Rpc.ExternalDrop.Files.Response) |  |
 | ExternalDropContent | [Rpc.ExternalDrop.Content.Request](#anytype.Rpc.ExternalDrop.Content.Request) | [Rpc.ExternalDrop.Content.Response](#anytype.Rpc.ExternalDrop.Content.Response) |  |
 | LinkPreview | [Rpc.LinkPreview.Request](#anytype.Rpc.LinkPreview.Request) | [Rpc.LinkPreview.Response](#anytype.Rpc.LinkPreview.Response) |  |
@@ -1165,6 +1189,7 @@
 | BlockListSetAlign | [Rpc.BlockList.Set.Align.Request](#anytype.Rpc.BlockList.Set.Align.Request) | [Rpc.BlockList.Set.Align.Response](#anytype.Rpc.BlockList.Set.Align.Response) |  |
 | BlockListSetDivStyle | [Rpc.BlockList.Set.Div.Style.Request](#anytype.Rpc.BlockList.Set.Div.Style.Request) | [Rpc.BlockList.Set.Div.Style.Response](#anytype.Rpc.BlockList.Set.Div.Style.Response) |  |
 | BlockListSetFileStyle | [Rpc.BlockList.Set.File.Style.Request](#anytype.Rpc.BlockList.Set.File.Style.Request) | [Rpc.BlockList.Set.File.Style.Response](#anytype.Rpc.BlockList.Set.File.Style.Response) |  |
+| BlockListSetLinkAppearance | [Rpc.BlockList.Set.Link.Appearance.Request](#anytype.Rpc.BlockList.Set.Link.Appearance.Request) | [Rpc.BlockList.Set.Link.Appearance.Response](#anytype.Rpc.BlockList.Set.Link.Appearance.Response) |  |
 | BlockListTurnInto | [Rpc.BlockList.TurnInto.Request](#anytype.Rpc.BlockList.TurnInto.Request) | [Rpc.BlockList.TurnInto.Response](#anytype.Rpc.BlockList.TurnInto.Response) |  |
 | BlockSetLatexText | [Rpc.Block.Set.Latex.Text.Request](#anytype.Rpc.Block.Set.Latex.Text.Request) | [Rpc.Block.Set.Latex.Text.Response](#anytype.Rpc.Block.Set.Latex.Text.Response) |  |
 | BlockSetTextText | [Rpc.Block.Set.Text.Text.Request](#anytype.Rpc.Block.Set.Text.Text.Request) | [Rpc.Block.Set.Text.Text.Response](#anytype.Rpc.Block.Set.Text.Text.Response) |  |
@@ -1229,6 +1254,7 @@
 | ObjectSetIsFavorite | [Rpc.Object.SetIsFavorite.Request](#anytype.Rpc.Object.SetIsFavorite.Request) | [Rpc.Object.SetIsFavorite.Response](#anytype.Rpc.Object.SetIsFavorite.Response) |  |
 | ObjectSetIsArchived | [Rpc.Object.SetIsArchived.Request](#anytype.Rpc.Object.SetIsArchived.Request) | [Rpc.Object.SetIsArchived.Response](#anytype.Rpc.Object.SetIsArchived.Response) |  |
 | ObjectToSet | [Rpc.Object.ToSet.Request](#anytype.Rpc.Object.ToSet.Request) | [Rpc.Object.ToSet.Response](#anytype.Rpc.Object.ToSet.Response) | ObjectToSet creates new set from given object and removes object |
+| ObjectListDuplicate | [Rpc.ObjectList.Duplicate.Request](#anytype.Rpc.ObjectList.Duplicate.Request) | [Rpc.ObjectList.Duplicate.Response](#anytype.Rpc.ObjectList.Duplicate.Response) |  |
 | ObjectListDelete | [Rpc.ObjectList.Delete.Request](#anytype.Rpc.ObjectList.Delete.Request) | [Rpc.ObjectList.Delete.Response](#anytype.Rpc.ObjectList.Delete.Response) |  |
 | ObjectListSetIsArchived | [Rpc.ObjectList.Set.IsArchived.Request](#anytype.Rpc.ObjectList.Set.IsArchived.Request) | [Rpc.ObjectList.Set.IsArchived.Response](#anytype.Rpc.ObjectList.Set.IsArchived.Response) |  |
 | ObjectListSetIsFavorite | [Rpc.ObjectList.Set.IsFavorite.Request](#anytype.Rpc.ObjectList.Set.IsFavorite.Request) | [Rpc.ObjectList.Set.IsFavorite.Response](#anytype.Rpc.ObjectList.Set.IsFavorite.Response) |  |
@@ -6568,6 +6594,78 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Link"></a>
+
+### Rpc.BlockList.Set.Link
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance"></a>
+
+### Rpc.BlockList.Set.Link.Appearance
+
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Request"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+| iconSize | [model.Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize) |  |  |
+| cardStyle | [model.Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle) |  |  |
+| description | [model.Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description) |  |  |
+| relations | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Response"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockList.Set.Link.Appearance.Response.Error](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error) |  |  |
+| event | [ResponseEvent](#anytype.ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockList.Set.Link.Appearance.Response.Error.Code](#anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text"></a>
 
 ### Rpc.BlockList.Set.Text
@@ -7095,6 +7193,7 @@ commands acceptable only for text blocks, others will be ignored
 | blockId | [string](#string) |  |  |
 | path | [string](#string) |  |  |
 | unanonymized | [bool](#bool) |  | set to true to disable mocking of the actual data inside changes |
+| generateSvg | [bool](#bool) |  | set to true to write both ZIP and SVG files |
 
 
 
@@ -7179,6 +7278,62 @@ commands acceptable only for text blocks, others will be ignored
 | totalRecords | [int32](#int32) |  |  |
 | totalSize | [int32](#int32) |  |  |
 | error | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.DeviceState"></a>
+
+### Rpc.DeviceState
+
+
+
+
+
+
+
+<a name="anytype.Rpc.DeviceState.Request"></a>
+
+### Rpc.DeviceState.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| deviceState | [Rpc.DeviceState.Request.DeviceState](#anytype.Rpc.DeviceState.Request.DeviceState) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.DeviceState.Response"></a>
+
+### Rpc.DeviceState.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.DeviceState.Response.Error](#anytype.Rpc.DeviceState.Response.Error) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.DeviceState.Response.Error"></a>
+
+### Rpc.DeviceState.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.DeviceState.Response.Error.Code](#anytype.Rpc.DeviceState.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -8644,30 +8799,6 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
-<a name="anytype.Rpc.Object.Graph.Node"></a>
-
-### Rpc.Object.Graph.Node
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| type | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| layout | [int32](#int32) |  |  |
-| description | [string](#string) |  |  |
-| iconImage | [string](#string) |  |  |
-| iconEmoji | [string](#string) |  |  |
-| done | [bool](#bool) |  |  |
-| relationFormat | [int32](#int32) |  |  |
-| snippet | [string](#string) |  |  |
-
-
-
-
-
-
 <a name="anytype.Rpc.Object.Graph.Request"></a>
 
 ### Rpc.Object.Graph.Request
@@ -8679,6 +8810,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | filters | [model.Block.Content.Dataview.Filter](#anytype.model.Block.Content.Dataview.Filter) | repeated |  |
 | limit | [int32](#int32) |  |  |
 | objectTypeFilter | [string](#string) | repeated | additional filter by objectTypes |
+| keys | [string](#string) | repeated |  |
 
 
 
@@ -8694,7 +8826,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.Graph.Response.Error](#anytype.Rpc.Object.Graph.Response.Error) |  |  |
-| nodes | [Rpc.Object.Graph.Node](#anytype.Rpc.Object.Graph.Node) | repeated |  |
+| nodes | [google.protobuf.Struct](#google.protobuf.Struct) | repeated |  |
 | edges | [Rpc.Object.Graph.Edge](#anytype.Rpc.Object.Graph.Edge) | repeated |  |
 
 
@@ -9691,7 +9823,7 @@ deprecated, to be removed |
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of template block for cloning |
+| contextId | [string](#string) |  |  |
 
 
 
@@ -9707,7 +9839,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.ObjectDuplicate.Response.Error](#anytype.Rpc.ObjectDuplicate.Response.Error) |  |  |
-| id | [string](#string) |  | created template id |
+| id | [string](#string) |  |  |
 
 
 
@@ -9790,6 +9922,63 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.ObjectList.Delete.Response.Error.Code](#anytype.Rpc.ObjectList.Delete.Response.Error.Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate"></a>
+
+### Rpc.ObjectList.Duplicate
+
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Request"></a>
+
+### Rpc.ObjectList.Duplicate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| objectIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response"></a>
+
+### Rpc.ObjectList.Duplicate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.ObjectList.Duplicate.Response.Error](#anytype.Rpc.ObjectList.Duplicate.Response.Error) |  |  |
+| ids | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response.Error"></a>
+
+### Rpc.ObjectList.Duplicate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.ObjectList.Duplicate.Response.Error.Code](#anytype.Rpc.ObjectList.Duplicate.Response.Error.Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12374,6 +12563,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype.Rpc.BlockList.Set.Link.Appearance.Response.Error.Code"></a>
+
+### Rpc.BlockList.Set.Link.Appearance.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype.Rpc.BlockList.Set.Text.Color.Response.Error.Code"></a>
 
 ### Rpc.BlockList.Set.Text.Color.Response.Error.Code
@@ -12489,6 +12691,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
 | BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.DeviceState.Request.DeviceState"></a>
+
+### Rpc.DeviceState.Request.DeviceState
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| BACKGROUND | 0 |  |
+| FOREGROUND | 1 |  |
+
+
+
+<a name="anytype.Rpc.DeviceState.Response.Error.Code"></a>
+
+### Rpc.DeviceState.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| NODE_NOT_STARTED | 101 |  |
 
 
 
@@ -13093,6 +13321,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype.Rpc.ObjectList.Delete.Response.Error.Code"></a>
 
 ### Rpc.ObjectList.Delete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype.Rpc.ObjectList.Duplicate.Response.Error.Code"></a>
+
+### Rpc.ObjectList.Duplicate.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -14789,6 +15030,40 @@ Precondition: user A opened a block
 | targetBlockId | [Event.Block.Set.Link.TargetBlockId](#anytype.Event.Block.Set.Link.TargetBlockId) |  |  |
 | style | [Event.Block.Set.Link.Style](#anytype.Event.Block.Set.Link.Style) |  |  |
 | fields | [Event.Block.Set.Link.Fields](#anytype.Event.Block.Set.Link.Fields) |  |  |
+| iconSize | [Event.Block.Set.Link.IconSize](#anytype.Event.Block.Set.Link.IconSize) |  |  |
+| cardStyle | [Event.Block.Set.Link.CardStyle](#anytype.Event.Block.Set.Link.CardStyle) |  |  |
+| description | [Event.Block.Set.Link.Description](#anytype.Event.Block.Set.Link.Description) |  |  |
+| relations | [Event.Block.Set.Link.Relations](#anytype.Event.Block.Set.Link.Relations) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.CardStyle"></a>
+
+### Event.Block.Set.Link.CardStyle
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Description"></a>
+
+### Event.Block.Set.Link.Description
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description) |  |  |
 
 
 
@@ -14804,6 +15079,36 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.IconSize"></a>
+
+### Event.Block.Set.Link.IconSize
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize) |  |  |
+
+
+
+
+
+
+<a name="anytype.Event.Block.Set.Link.Relations"></a>
+
+### Event.Block.Set.Link.Relations
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [string](#string) | repeated |  |
 
 
 
@@ -16295,6 +16600,10 @@ Link: block to link some content from an external sources.
 | targetBlockId | [string](#string) |  | id of the target block |
 | style | [Block.Content.Link.Style](#anytype.model.Block.Content.Link.Style) |  | deprecated |
 | fields | [google.protobuf.Struct](#google.protobuf.Struct) |  |  |
+| iconSize | [Block.Content.Link.IconSize](#anytype.model.Block.Content.Link.IconSize) |  |  |
+| cardStyle | [Block.Content.Link.CardStyle](#anytype.model.Block.Content.Link.CardStyle) |  |  |
+| description | [Block.Content.Link.Description](#anytype.model.Block.Content.Link.Description) |  |  |
+| relations | [string](#string) | repeated |  |
 
 
 
@@ -16883,6 +17192,44 @@ scope from which this relation have been aggregated |
 
 
 
+<a name="anytype.model.Block.Content.Link.CardStyle"></a>
+
+### Block.Content.Link.CardStyle
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Text | 0 |  |
+| Card | 1 |  |
+| Inline | 2 |  |
+
+
+
+<a name="anytype.model.Block.Content.Link.Description"></a>
+
+### Block.Content.Link.Description
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| None | 0 |  |
+| Added | 1 |  |
+| Content | 2 |  |
+
+
+
+<a name="anytype.model.Block.Content.Link.IconSize"></a>
+
+### Block.Content.Link.IconSize
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Small | 0 |  |
+| Medium | 1 |  |
+
+
+
 <a name="anytype.model.Block.Content.Link.Style"></a>
 
 ### Block.Content.Link.Style
@@ -16932,13 +17279,13 @@ scope from which this relation have been aggregated |
 | Header4 | 4 | deprecated |
 | Quote | 5 |  |
 | Code | 6 |  |
-| Title | 7 | currently only only one block of this style can exists on a page |
+| Title | 7 | currently only one block of this style can exists on a page |
 | Checkbox | 8 |  |
 | Marked | 9 |  |
 | Numbered | 10 |  |
 | Toggle | 11 |  |
-| Description | 12 | currently only only one block of this style can exists on a page |
-| Callout | 13 | currently only only one block of this style can exists on a page |
+| Description | 12 | currently only one block of this style can exists on a page |
+| Callout | 13 |  |
 
 
 
