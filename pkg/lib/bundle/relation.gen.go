@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "80e3ddbfa6999a1b05cc739b52e0e4f3b479fe25c9e220589cee6a2db4308b16"
+const RelationChecksum = "abb6448ca7891b4f210c4b89c8472e23d4a8c503d988a1927ad86fada5125b62"
 
 type RelationKey string
 
@@ -114,6 +114,7 @@ const (
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
+	RelationKeyQuote                     RelationKey = "quote"
 	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -146,8 +147,10 @@ const (
 	RelationKeyDescription               RelationKey = "description"
 	RelationKeyFacebook                  RelationKey = "facebook"
 	RelationKeyAddress                   RelationKey = "address"
+	RelationKeyPicture                   RelationKey = "picture"
 	RelationKeyId                        RelationKey = "id"
 	RelationKeyStockprice                RelationKey = "stockprice"
+	RelationKeyUrl                       RelationKey = "url"
 	RelationKeyObjectives                RelationKey = "objectives"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
@@ -1290,7 +1293,7 @@ var (
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Key:              "mediaArtistName",
-			Name:             "",
+			Name:             "Media Artist Name",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1302,7 +1305,7 @@ var (
 			Format:           model.RelationFormat_url,
 			Hidden:           true,
 			Key:              "mediaArtistURL",
-			Name:             "",
+			Name:             "Media Artist URL",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1450,6 +1453,17 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyPicture: {
+
+			DataSource:       model.Relation_details,
+			Description:      "An image is an artifact that depicts visual perception, such as a photograph or other two-dimensional picture",
+			Format:           model.RelationFormat_file,
+			Key:              "picture",
+			Name:             "Picture",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyPlaceOfBirth: {
 
 			DataSource:       model.Relation_details,
@@ -1506,6 +1520,17 @@ var (
 			Key:              "questions",
 			MaxCount:         1,
 			Name:             "Questions",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyQuote: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Repeat words that someone else has said or written",
+			Format:           model.RelationFormat_longtext,
+			Key:              "quote",
+			Name:             "Quote",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1674,6 +1699,7 @@ var (
 			Format:           model.RelationFormat_number,
 			Hidden:           true,
 			Key:              "restrictions",
+			MaxCount:         1,
 			Name:             "Object restrictions",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
@@ -2063,6 +2089,17 @@ var (
 			Name:             "Object type",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUrl: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Web address, a reference to a web resource that specifies its location on a computer network and a mechanism for retrieving it",
+			Format:           model.RelationFormat_url,
+			Key:              "url",
+			Name:             "URL",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
