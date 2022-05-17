@@ -6,14 +6,18 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/gogo/protobuf/jsonpb"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
+	"strings"
 )
 
 const CName = "debug"
+
+var logger = logging.Logger("anytype-debug")
 
 func New() Debug {
 	return new(debug)
@@ -21,7 +25,7 @@ func New() Debug {
 
 type Debug interface {
 	app.Component
-	DumpTree(blockId, path string, anonymize bool) (filename string, err error)
+	DumpTree(blockId, path string, anonymize bool, withSvg bool) (filename string, err error)
 	DumpLocalstore(objectIds []string, path string) (filename string, err error)
 }
 
@@ -40,13 +44,43 @@ func (d *debug) Name() (name string) {
 	return CName
 }
 
-func (d *debug) DumpTree(blockId, path string, anonymize bool) (filename string, err error) {
+func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (filename string, err error) {
+	// 0 - get first block
 	block, err := d.core.GetBlock(blockId)
 	if err != nil {
 		return
 	}
+
+	// 1 - create ZIP file
+	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.zip
 	builder := &treeBuilder{b: block, s: d.store, anonymized: anonymize}
-	return builder.Build(path)
+	zipFilename, err := builder.Build(path)
+	if err != nil {
+		logger.Fatal("build tree error:", err)
+		return "", err
+	}
+
+	// if client never asked for SVG generation -> return
+	if !withSvg {
+		return zipFilename, err
+	}
+
+	// 2 - create SVG file near ZIP
+	// <path>/at.dbg.bafkudtugh626rrqzah3kam4yj4lqbaw4bjayn2rz4ah4n5fpayppbvmq.20220322.121049.23.svg
+	//
+	// this will return "graphviz is not supported on the current platform" error if no graphviz!
+	// generate a filename just like zip file had
+	maxReplacements := 1
+	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
+
+	err = CreateSvg(block, svgFilename)
+	if err != nil {
+		logger.Fatal("svg build error:", err)
+		return "", err
+	}
+
+	// return zip filename, but not svgFilename
+	return zipFilename, nil
 }
 
 func (d *debug) DumpLocalstore(objIds []string, path string) (filename string, err error) {

@@ -6288,6 +6288,7 @@ Get marks list in the selected range in text block.
 | objectId | [string](#string) |  |  |
 | path | [string](#string) |  |  |
 | unanonymized | [bool](#bool) |  | set to true to disable mocking of the actual data inside changes |
+| generateSvg | [bool](#bool) |  | set to true to write both ZIP and SVG files |
 
 
 
