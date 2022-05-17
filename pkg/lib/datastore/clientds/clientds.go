@@ -3,7 +3,6 @@ package clientds
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/multids"
 	"os"
 	"path/filepath"
 	"sort"
@@ -42,10 +41,9 @@ const (
 var log = logging.Logger("anytype-clientds")
 
 type clientds struct {
-	running             bool
-	litestoreOldDS      *dsbadgerv1.Datastore
-	litestoreDS         *dsbadgerv3.Datastore
-	litestoreCombinedDS ds.Batching
+	running        bool
+	litestoreOldDS *dsbadgerv1.Datastore
+	litestoreDS    *dsbadgerv3.Datastore
 
 	logstoreOldDS *dsbadgerv1.Datastore // logstore moved to localstoreDS
 	localstoreDS  *dsbadgerv3.Datastore
@@ -151,19 +149,17 @@ func (r *clientds) Init(a *app.App) (err error) {
 func (r *clientds) Run() error {
 	var err error
 
-	r.litestoreDS, err = dsbadgerv3.NewDatastore(filepath.Join(r.repoPath, liteDSDir), &r.cfg.Litestore)
-	if err != nil {
-		return err
-	}
-
 	litestoreOldPath := filepath.Join(r.repoPath, liteOldDSDir)
 	if _, err := os.Stat(litestoreOldPath); !os.IsNotExist(err) {
 		r.litestoreOldDS, err = dsbadgerv1.NewDatastore(litestoreOldPath, &r.cfg.LitestoreOld)
 		if err != nil {
 			return err
 		}
-
-		r.litestoreCombinedDS = multids.New(r.litestoreDS, r.litestoreOldDS)
+	} else {
+		r.litestoreDS, err = dsbadgerv3.NewDatastore(filepath.Join(r.repoPath, liteDSDir), &r.cfg.Litestore)
+		if err != nil {
+			return err
+		}
 	}
 
 	logstoreOldDSDirPath := filepath.Join(r.repoPath, logstoreOldDSDir)
@@ -397,8 +393,8 @@ func (r *clientds) PeerstoreDS() (ds.Batching, error) {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 
-	if r.litestoreCombinedDS != nil {
-		return r.litestoreCombinedDS, nil
+	if r.litestoreOldDS != nil {
+		return r.litestoreOldDS, nil
 	}
 
 	return r.litestoreDS, nil
@@ -409,8 +405,8 @@ func (r *clientds) BlockstoreDS() (ds.Batching, error) {
 		return nil, fmt.Errorf("exact ds may be requested only after Run")
 	}
 
-	if r.litestoreCombinedDS != nil {
-		return r.litestoreCombinedDS, nil
+	if r.litestoreOldDS != nil {
+		return r.litestoreOldDS, nil
 	}
 
 	return r.litestoreDS, nil
