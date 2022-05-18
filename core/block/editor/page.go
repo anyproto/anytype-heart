@@ -75,7 +75,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	return smartblock.ApplyTemplate(p, ctx.State,
+	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.ByLayout(
 			layout,
 			tmpls...,

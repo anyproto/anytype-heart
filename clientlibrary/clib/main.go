@@ -43,7 +43,7 @@ func Command(cmd *C.char, data unsafe.Pointer, dataLen C.int, callback C.proxyFu
 
 //export Shutdown
 func Shutdown() {
-	service.Shutdown(nil)
+	service.AppShutdown(nil)
 }
 
 func main() {

@@ -1060,7 +1060,6 @@ func (m *EventAccountDetails) GetDetails() *types.Struct {
 	return nil
 }
 
-// Deprecated
 type EventAccountConfig struct {
 }
 

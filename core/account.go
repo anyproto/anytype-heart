@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/gogo/status"
 	"io/ioutil"
 	"net"
@@ -24,6 +25,8 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/anytype"
 	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
 	"github.com/anytypeio/go-anytype-middleware/core/block"
+	walletComp "github.com/anytypeio/go-anytype-middleware/core/wallet"
+
 	"github.com/anytypeio/go-anytype-middleware/core/configfetcher"
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -165,6 +168,33 @@ func (mw *Middleware) refetch() {
 	fetcher.Refetch()
 }
 
+func (mw *Middleware) getInfo() *model.AccountInfo {
+	at := mw.app.MustComponent(core.CName).(core.Service)
+	gwAddr := mw.app.MustComponent(gateway.CName).(gateway.Gateway).Addr()
+	wallet := mw.app.MustComponent(walletComp.CName).(walletComp.Wallet)
+	var deviceId string
+	deviceKey, err := wallet.GetDevicePrivkey()
+	if err == nil {
+		deviceId = deviceKey.Address()
+	}
+
+	if gwAddr != "" {
+		gwAddr = "http://" + gwAddr
+	}
+
+	pBlocks := at.PredefinedBlocks()
+	return &model.AccountInfo{
+		HomeObjectId:                pBlocks.Home,
+		ArchiveObjectId:             pBlocks.Archive,
+		ProfileObjectId:             pBlocks.Profile,
+		MarketplaceTypeObjectId:     pBlocks.MarketplaceType,
+		MarketplaceRelationObjectId: pBlocks.MarketplaceRelation,
+		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
+		GatewayUrl:                  gwAddr,
+		DeviceId:                    deviceId,
+	}
+}
+
 func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAccountCreateResponse {
 	mw.accountSearchCancel()
 	mw.m.Lock()
@@ -249,9 +279,9 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	newAcc.Name = req.Name
 	bs := mw.app.MustComponent(block.CName).(block.Service)
-	details := []*pb.RpcBlockSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
+	details := []*pb.RpcObjectSetDetailsDetail{{Key: "name", Value: pbtypes.String(req.Name)}}
 	if req.GetAvatarLocalPath() != "" {
-		hash, err := bs.UploadFile(pb.RpcUploadFileRequest{
+		hash, err := bs.UploadFile(pb.RpcFileUploadRequest{
 			LocalPath: req.GetAvatarLocalPath(),
 			Type:      model.BlockContentFile_Image,
 		})
@@ -259,14 +289,15 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			log.Warnf("can't add avatar: %v", err)
 		} else {
 			newAcc.Avatar = &model.AccountAvatar{Avatar: &model.AccountAvatarAvatarOfImage{Image: &model.BlockContentFile{Hash: hash}}}
-			details = append(details, &pb.RpcBlockSetDetailsDetail{
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
 				Key:   "iconImage",
 				Value: pbtypes.String(hash),
 			})
 		}
 	}
+	newAcc.Info = mw.getInfo()
 
-	if err = bs.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+	if err = bs.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 		ContextId: coreService.PredefinedBlocks().Profile,
 		Details:   details,
 	}); err != nil {
@@ -476,7 +507,9 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 	// we already have this account running, lets just stop events
 	if mw.app != nil && req.Id == mw.app.MustComponent(core.CName).(core.Service).Account() {
 		mw.app.MustComponent("blockService").(block.Service).CloseBlocks()
-		return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
+		acc := &model.Account{Id: req.Id}
+		acc.Info = mw.getInfo()
+		return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 	}
 
 	// in case user selected account other than the first one(used to perform search)
@@ -551,12 +584,15 @@ func (mw *Middleware) AccountSelect(req *pb.RpcAccountSelectRequest) *pb.RpcAcco
 		log.Errorf("AccountSelect app start takes %dms: %v", stat.SpentMsTotal, stat.SpentMsPerComp)
 	}
 
+	acc := &model.Account{Id: req.Id}
+	acc.Info = mw.getInfo()
+
 	metrics.SharedClient.RecordEvent(metrics.AppStart{
 		Type:      "select",
 		TotalMs:   stat.SpentMsTotal,
 		PerCompMs: stat.SpentMsPerComp})
 
-	return response(&model.Account{Id: req.Id}, pb.RpcAccountSelectResponseError_NULL, nil)
+	return response(acc, pb.RpcAccountSelectResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountStopResponse {
