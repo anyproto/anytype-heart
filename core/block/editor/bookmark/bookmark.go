@@ -137,24 +137,22 @@ func (b *sbookmark) createBookmarkObject(bm bookmark.Block) (pageId string, err 
 		return "", fmt.Errorf("query: %w", err)
 	}
 
-	// TODO: if no image hash then set favicon
+	ogDetails := map[string]*types.Value{
+		bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
+		bundle.RelationKeyUrl.String():         pbtypes.String(content.Url),
+		bundle.RelationKeyPicture.String():     pbtypes.String(content.ImageHash),
+		bundle.RelationKeyIconImage.String():   pbtypes.String(content.FaviconHash),
+	}
 
 	if len(records) > 0 {
 		rec := records[0]
 
-		details := []*pb.RpcBlockSetDetailsDetail{
-			{
-				Key:   bundle.RelationKeyDescription.String(),
-				Value: pbtypes.String(content.Description),
-			},
-			{
-				Key:   bundle.RelationKeyWebsite.String(),
-				Value: pbtypes.String(content.Url),
-			},
-			{
-				Key:   bundle.RelationKeyIconImage.String(),
-				Value: pbtypes.String(content.ImageHash),
-			},
+		details := make([]*pb.RpcBlockSetDetailsDetail, 0, len(ogDetails))
+		for k, v := range ogDetails {
+			details = append(details, &pb.RpcBlockSetDetailsDetail{
+				Key:   k,
+				Value: v,
+			})
 		}
 
 		pageId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
@@ -166,21 +164,15 @@ func (b *sbookmark) createBookmarkObject(bm bookmark.Block) (pageId string, err 
 
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
-			bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyBookmark.URL()),
-			bundle.RelationKeyName.String():        pbtypes.String(content.Title),
-			bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
-			bundle.RelationKeyWebsite.String():     pbtypes.String(content.Url),
-			// TODO: consider other relations
-			bundle.RelationKeyIconImage.String(): pbtypes.String(content.ImageHash),
+			bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyBookmark.URL()),
+			bundle.RelationKeyName.String(): pbtypes.String(content.Title),
 		},
 	}
-
-	// TODO fix bundled relations
-	relations := []*model.Relation{
-		bundle.MustGetRelation(bundle.RelationKeyWebsite),
+	for k, v := range ogDetails {
+		details.Fields[k] = v
 	}
 
-	pageId, _, err = b.manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, relations)
+	pageId, _, err = b.manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
 	return
 }
 
