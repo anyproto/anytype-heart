@@ -168,7 +168,6 @@ func (b *sbookmark) createBookmarkObject(bm bookmark.Block) (pageId string, err 
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyType.String():        pbtypes.String(bundle.TypeKeyBookmark.URL()),
 			bundle.RelationKeyName.String():        pbtypes.String(content.Title),
-			bundle.RelationKeyLayout.String():      pbtypes.String(bundle.MustGetLayout(model.ObjectType_bookmark).Name),
 			bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
 			bundle.RelationKeyWebsite.String():     pbtypes.String(content.Url),
 			// TODO: consider other relations
