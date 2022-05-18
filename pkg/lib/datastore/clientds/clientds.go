@@ -41,7 +41,7 @@ const (
 
 var log = logging.Logger("anytype-clientds")
 
-var dirsForMoving =  []string{liteDSDir, logstoreDSDir, localstoreDSDir, threadsDbDSDir}
+var dirsForMoving =  []string{liteDSDir, logstoreOldDSDir, localstoreDSDir, threadsDbDSDir}
 
 type clientds struct {
 	running        bool
