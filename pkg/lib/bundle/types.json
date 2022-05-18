@@ -220,7 +220,7 @@
     ]
   },
   {
-    "description": "URL that is stored for later retrieval and may be categorised and linked with objects",
+    "description": "URL that is stored as Object and may be categorised and linked with objects",
     "emoji": "🔖",
     "id": "bookmark",
     "layout": "bookmark",
@@ -252,7 +252,10 @@
       "isFavorite",
       "isDraft",
       "workspaceId",
-      "notes"
+      "url",
+      "picture",
+      "notes",
+      "quote"
     ],
     "types": [
       "Page"
