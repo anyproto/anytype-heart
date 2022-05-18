@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
 	"github.com/gogo/status"
 	"io/ioutil"
@@ -627,6 +628,45 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	}
 
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+	mw.accountSearchCancel()
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
+	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
+		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+
+		return m
+	}
+
+	store:= mw.app.MustComponent(clientds.CName).(clientds.StorageMover)
+	fc := mw.app.MustComponent(config.CName).(config.FileConfig)
+
+	newPath, err := store.MoveStorage(req.NewPath)
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+	}
+
+	_, err = fc.WriteFileConfig(config.ConfigRequired{LocalStorageAddr: newPath})
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
+	}
+
+	if err := store.RemoveStorage(); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+	}
+
+	err = mw.stop()
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
+	}
+
+	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {

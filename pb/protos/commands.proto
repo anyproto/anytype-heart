@@ -365,6 +365,35 @@ message Rpc {
             }
         }
 
+        message Move {
+            /**
+            * Front-end-to-middleware request to move a account to a new disk location
+            */
+            message Request {
+                string newPath = 1;
+            }
+
+            message Response {
+                Error error = 1;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+
+                        FAILED_TO_STOP_NODE = 101;
+                        FAILED_TO_REMOVE_ACCOUNT_DATA = 102;
+                        FAILED_TO_CREATE_LOCAL_REPO = 103;
+                        FAILED_TO_WRITE_CONFIG = 104;
+                    }
+                }
+            }
+        }
+
         message GetConfig {
             message Get {
                 message Request {
