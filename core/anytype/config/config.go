@@ -2,6 +2,7 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"os"
@@ -25,8 +26,14 @@ const (
 	CName = "config"
 )
 
+type FileConfig interface {
+	GetFileConfig() (ConfigRequired, error)
+	WriteFileConfig(cfg ConfigRequired) (ConfigRequired, error)
+}
+
 type ConfigRequired struct {
-	HostAddr string
+	HostAddr         string `json:",omitempty"`
+	LocalStorageAddr string `json:",omitempty"`
 }
 
 type Config struct {
@@ -34,6 +41,8 @@ type Config struct {
 	NewAccount               bool `ignored:"true"` // set to true if a new account is creating. This option controls whether mw should wait for the existing data to arrive before creating the new log
 	Offline                  bool
 	DisableThreadsSyncEvents bool
+
+	RepoPath string
 
 	PrivateNetworkSecret string
 
@@ -50,6 +59,7 @@ type Config struct {
 
 	Threads           threads.Config
 	DS                clientds.Config
+	FS                clientds.FSConfig
 	DisableFileConfig bool `ignored:"true"` // set in order to skip reading/writing config from/to file
 }
 
@@ -145,24 +155,14 @@ func (c *Config) Init(a *app.App) (err error) {
 }
 
 func (c *Config) initFromFileAndEnv(repoPath string) error {
-	var configFileNotExists bool
+	c.RepoPath = repoPath
 
 	if !c.DisableFileConfig {
-		cfgFilePath := filepath.Join(repoPath, configFileName)
-		cfgFile, err := os.OpenFile(cfgFilePath, os.O_RDONLY, 0655)
+		cfgRequired, err := c.GetFileConfig()
 		if err != nil {
-			if !os.IsNotExist(err) {
-				return err
-			}
-			configFileNotExists = true
+			return fmt.Errorf("failed to get config from file: %s", err.Error())
 		}
-		if err == nil {
-			defer cfgFile.Close()
-			err = json.NewDecoder(cfgFile).Decode(&c)
-			if err != nil {
-				return fmt.Errorf("invalid format: %w", err)
-			}
-		}
+		c.ConfigRequired = cfgRequired
 
 		saveRandomHostAddr := func() error {
 			port, err := getRandomPort()
@@ -173,26 +173,14 @@ func (c *Config) initFromFileAndEnv(repoPath string) error {
 
 			c.HostAddr = fmt.Sprintf("/ip4/0.0.0.0/tcp/%d", port)
 
-			// we need to save selected port in order in order to increase chances of incoming connections
-			if cfgFile != nil {
-				// close the readonly-mode file first
-				_ = cfgFile.Close()
-			}
-
-			cfgFile, err = os.OpenFile(cfgFilePath, os.O_RDWR|os.O_CREATE, 0640)
-			if err != nil {
-				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
-			}
-
-			defer cfgFile.Close()
-
-			err = json.NewEncoder(cfgFile).Encode(c.ConfigRequired)
+			_, err = c.WriteFileConfig(c.ConfigRequired)
 			if err != nil {
 				return fmt.Errorf("failed to save port to the cfg file: %s", err.Error())
 			}
 			return nil
 		}
-		if c.HostAddr == "" && configFileNotExists {
+
+		if c.HostAddr == "" {
 			err = saveRandomHostAddr()
 			if err != nil {
 				return err
@@ -238,8 +226,74 @@ func (c *Config) DSConfig() clientds.Config {
 	return c.DS
 }
 
+func (c *Config) FSConfig() (clientds.FSConfig, error) {
+	cf, err := c.GetFileConfig()
+	if err != nil {
+		return clientds.FSConfig{}, err
+	}
+
+	return clientds.FSConfig{LocalStorageAddr: cf.LocalStorageAddr}, nil
+}
+
 func (c *Config) ThreadsConfig() threads.Config {
 	return c.Threads
+}
+
+func (c *Config) GetFileConfig() (ConfigRequired, error) {
+	cfg := ConfigRequired{}
+	cfgFilePath := filepath.Join(c.RepoPath, configFileName)
+	cfgFile, err := os.OpenFile(cfgFilePath, os.O_RDONLY, 0655)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return cfg, err
+	}
+	defer cfgFile.Close()
+
+	if !errors.Is(err, os.ErrNotExist) {
+		err = json.NewDecoder(cfgFile).Decode(&cfg)
+		if err != nil {
+			return cfg, fmt.Errorf("invalid file config format: %w", err)
+		}
+	}
+
+	return cfg, nil
+}
+
+// overwrite in file only specified params wich passed in cfg
+func (c *Config) WriteFileConfig(cfg ConfigRequired) (ConfigRequired, error) {
+	fileConfig, err := c.GetFileConfig()
+	if err != nil {
+		return ConfigRequired{}, err
+	}
+
+	oldConfig, err := c.toMapInterface(fileConfig)
+	if err != nil {
+		return ConfigRequired{}, fmt.Errorf("failed to marshal old config: %s", err.Error())
+	}
+
+	newConfig, err := c.toMapInterface(cfg)
+	if err != nil {
+		return ConfigRequired{}, fmt.Errorf("failed to marshal new config: %s", err.Error())
+	}
+
+	for oldKey, oldData := range oldConfig {
+		if _, ok := newConfig[oldKey]; !ok {
+			newConfig[oldKey] = oldData
+		}
+	}
+
+	cfgFilePath := filepath.Join(c.RepoPath, configFileName)
+	cfgFile, err := os.OpenFile(cfgFilePath, os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0640)
+	if err != nil {
+		return ConfigRequired{}, fmt.Errorf("failed to open cfg file for updating: %s", err.Error())
+	}
+	defer cfgFile.Close()
+
+	err = json.NewEncoder(cfgFile).Encode(newConfig)
+	if err != nil {
+		return ConfigRequired{}, fmt.Errorf("failed to save data to the config file: %s", err.Error())
+	}
+
+	return cfg, nil
 }
 
 func getRandomPort() (int, error) {
@@ -255,4 +309,14 @@ func getRandomPort() (int, error) {
 
 	defer l.Close()
 	return l.Addr().(*net.TCPAddr).Port, nil
+}
+
+func (c *Config) toMapInterface(data ConfigRequired) (map[string]interface{}, error) {
+	var m map[string]interface{}
+	byteDate, err := json.Marshal(data)
+	if err != nil {
+		return nil, err
+	}
+	err = json.Unmarshal(byteDate, &m)
+	return m, err
 }

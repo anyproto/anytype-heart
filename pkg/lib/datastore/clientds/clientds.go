@@ -17,6 +17,7 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	dsbadgerv1 "github.com/ipfs/go-ds-badger"
+	cp "github.com/otiai10/copy"
 	textileBadger "github.com/textileio/go-ds-badger"
 	"github.com/textileio/go-threads/db/keytransform"
 
@@ -40,6 +41,8 @@ const (
 
 var log = logging.Logger("anytype-clientds")
 
+var dirsForMoving =  []string{liteDSDir, logstoreDSDir, localstoreDSDir, threadsDbDSDir}
+
 type clientds struct {
 	running        bool
 	litestoreOldDS *dsbadgerv1.Datastore
@@ -62,6 +65,10 @@ type Config struct {
 	TextileDb  dsbadgerv1.Options
 }
 
+type FSConfig struct {
+	LocalStorageAddr string
+}
+
 var DefaultConfig = Config{
 	Litestore:    dsbadgerv3.DefaultOptions,
 	LitestoreOld: dsbadgerv1.DefaultOptions,
@@ -72,6 +79,15 @@ var DefaultConfig = Config{
 
 type DSConfigGetter interface {
 	DSConfig() Config
+}
+
+type StorageMover interface {
+	MoveStorage(newPath string) (string, error)
+	RemoveStorage() error
+}
+
+type FIleConfigGetter interface {
+	FSConfig() (FSConfig, error)
 }
 
 type migration struct {
@@ -117,9 +133,24 @@ func init() {
 }
 
 func (r *clientds) Init(a *app.App) (err error) {
-	wl := a.Component(wallet.CName)
-	if wl == nil {
-		return fmt.Errorf("need wallet to be inited first")
+	fc := a.Component("config").(FIleConfigGetter)
+	if fc == nil {
+		return fmt.Errorf("need config to be inited first")
+	}
+
+	fileCfg, err := fc.FSConfig()
+	if err != nil {
+		return fmt.Errorf("fail to get file config: %s", err)
+	}
+
+	if fileCfg.LocalStorageAddr == "" {
+		wl := a.Component(wallet.CName)
+		if wl == nil {
+			return fmt.Errorf("need wallet to be inited first")
+		}
+		r.repoPath = wl.(wallet.Wallet).RepoPath()
+	} else {
+		r.repoPath = fileCfg.LocalStorageAddr
 	}
 
 	if cfgGetter, ok := a.Component("config").(DSConfigGetter); ok {
@@ -128,7 +159,6 @@ func (r *clientds) Init(a *app.App) (err error) {
 		return fmt.Errorf("ds config is missing")
 	}
 
-	r.repoPath = wl.(wallet.Wallet).RepoPath()
 	r.migrations = []migration{
 		{
 			migrationFunc: r.migrateLocalStoreBadger,
@@ -478,4 +508,34 @@ func (r *clientds) Close() (err error) {
 
 func New() datastore.Datastore {
 	return &clientds{}
+}
+
+func (r *clientds) MoveStorage(newPath string) (string, error) {
+	if r.running {
+		if err := r.Close(); err != nil {
+			return "", err
+		}
+	}
+
+	parts := strings.Split(r.repoPath, string(os.PathSeparator))
+	accoundDir := parts[len(parts)-1]
+	destination := filepath.Join(newPath, accoundDir)
+
+	for _, dir := range dirsForMoving {
+		if err := cp.Copy(filepath.Join(r.repoPath, dir), filepath.Join(destination, dir)); err != nil {
+			return "", fmt.Errorf("fail to copy dir %s, err: %s", dir, err)
+		}
+	}
+
+	return destination, nil
+}
+
+func (r *clientds) RemoveStorage() error {
+	for _, dir := range dirsForMoving {
+		err := os.RemoveAll(filepath.Join(r.repoPath, dir))
+		if err != nil {
+			return err
+		}
+	}
+	return nil
 }
