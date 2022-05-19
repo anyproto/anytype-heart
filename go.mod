@@ -14,6 +14,7 @@ require (
 	github.com/cheggaaa/mb v1.0.3
 	github.com/dave/jennifer v1.4.1
 	github.com/davecgh/go-spew v1.1.1
+	github.com/deff7/go-naturaldate/v2 v2.0.0
 	github.com/dgraph-io/badger v1.6.2
 	github.com/dgtony/collections v0.1.6
 	github.com/dhowden/tag v0.0.0-20201120070457-d52dcb253c63
@@ -24,6 +25,7 @@ require (
 	github.com/gobwas/glob v0.2.3
 	github.com/goccy/go-graphviz v0.0.9
 	github.com/gogo/protobuf v1.3.2
+	github.com/gogo/status v1.1.0
 	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.3.0
 	github.com/gosimple/slug v1.12.0 // indirect
@@ -80,11 +82,9 @@ require (
 	github.com/stretchr/testify v1.7.0
 	github.com/textileio/go-ds-badger v0.2.7-0.20201204225019-4ee78c4a40e2
 	github.com/textileio/go-threads v1.0.2-0.20210304072541-d0f91da84404
-	github.com/tj/go-naturaldate v1.3.0
 	github.com/tyler-smith/go-bip39 v1.0.1-0.20190808214741-c55f737395bc
 	github.com/uber/jaeger-client-go v2.28.0+incompatible
 	github.com/uber/jaeger-lib v2.4.0+incompatible // indirect
-	github.com/gogo/status v1.1.0
 	github.com/yuin/goldmark v1.4.0
 	go.uber.org/zap v1.16.0
 	golang.org/x/crypto v0.0.0-20220112180741-5e0467b6c7ce // indirect
@@ -101,8 +101,6 @@ require (
 	gopkg.in/yaml.v3 v3.0.0-20200313102051-9f266ea9e77c
 	nhooyr.io/websocket v1.8.7 // indirect
 )
-
-replace github.com/tj/go-naturaldate => ../go-naturaldate
 
 replace github.com/JohannesKaufmann/html-to-markdown => github.com/anytypeio/html-to-markdown v0.0.0-20200617145221-2afd2a14bae1
 

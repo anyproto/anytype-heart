@@ -2,6 +2,9 @@ package core
 
 import (
 	"fmt"
+	"github.com/deff7/go-naturaldate/v2"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -12,7 +15,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/araddon/dateparse"
 	"github.com/gogo/protobuf/types"
-	"github.com/tj/go-naturaldate"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -184,6 +186,10 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 			return t
 		},
 		func() time.Time {
+			// Don't use plain numbers, because they will be represented as years
+			if _, err := strconv.Atoi(strings.TrimSpace(raw)); err == nil {
+				return time.Time{}
+			}
 			// todo: use system locale to get preferred date format
 			t, err := dateparse.ParseIn(raw, now.Location(), dateparse.PreferMonthFirst(false))
 			if err != nil {
@@ -210,17 +216,6 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 		_, month, day := t.Date()
 		h, m, s := t.Clock()
 		t = time.Date(now.Year(), month, day, h, m, s, 0, t.Location())
-	}
-
-	// Only year
-	{
-		year, month, day := t.Date()
-		h, m, s := t.Clock()
-
-		if year != 0 && month == 1 && day == 1 &&
-			h == 0 && m == 0 && s == 0 {
-			t = time.Time{}
-		}
 	}
 
 	return t
