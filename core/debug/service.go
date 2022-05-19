@@ -4,6 +4,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/change"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -11,8 +12,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"time"
 	"strings"
+	"time"
 )
 
 const CName = "debug"
@@ -73,7 +74,7 @@ func (d *debug) DumpTree(blockId, path string, anonymize bool, withSvg bool) (fi
 	maxReplacements := 1
 	svgFilename := strings.Replace(zipFilename, ".zip", ".svg", maxReplacements)
 
-	err = CreateSvg(block, svgFilename)
+	err = change.CreateSvg(block, svgFilename)
 	if err != nil {
 		logger.Fatal("svg build error:", err)
 		return "", err

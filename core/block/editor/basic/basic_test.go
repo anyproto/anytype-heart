@@ -46,7 +46,7 @@ func TestBasic_Create(t *testing.T) {
 	t.Run("title", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.TitleBlockId,
@@ -66,7 +66,7 @@ func TestBasic_Create(t *testing.T) {
 			},
 		}
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		_, err := b.Create(nil, "", pb.RpcBlockCreateRequest{})
 		assert.Equal(t, restriction.ErrRestricted, err)
@@ -115,7 +115,7 @@ func TestBasic_Move(t *testing.T) {
 
 		b := NewBasic(sb)
 
-		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{"3"},
 			DropTargetId: "4",
 			Position:     model.Block_Inner,
@@ -128,7 +128,7 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("header", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test"}))
-		require.NoError(t, smartblock.ApplyTemplate(sb, sb.NewState(), template.WithTitle))
+		require.NoError(t, smartblock.ObjectApplyTemplate(sb, sb.NewState(), template.WithTitle))
 		b := NewBasic(sb)
 		id1, err := b.Create(nil, "", pb.RpcBlockCreateRequest{
 			TargetId: template.HeaderLayoutId,
@@ -145,7 +145,7 @@ func TestBasic_Move(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, id0)
 
-		err = b.Move(nil, pb.RpcBlockListMoveRequest{
+		err = b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{id0},
 			DropTargetId: template.TitleBlockId,
 			Position:     model.Block_Top,
@@ -162,7 +162,7 @@ func TestBasic_Move(t *testing.T) {
 
 		b := NewBasic(sb)
 
-		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{"2"},
 			DropTargetId: "1",
 			Position:     model.Block_InnerFirst,
@@ -185,7 +185,7 @@ func TestBasic_Move(t *testing.T) {
 
 		b := NewBasic(sb)
 
-		err := b.Move(nil, pb.RpcBlockListMoveRequest{
+		err := b.Move(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 			BlockIds:     []string{"2"},
 			DropTargetId: "1",
 			Position:     model.Block_InnerFirst,
@@ -258,7 +258,7 @@ func TestBasic_InternalCut(t *testing.T) {
 	sb.AddBlock(simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}))
 	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
 	b := NewBasic(sb)
-	apply, blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveRequest{
+	apply, blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveToExistingObjectRequest{
 		BlockIds: []string{"1", "1.1", "1.1.1"},
 	})
 	require.NoError(t, err)

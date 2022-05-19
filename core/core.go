@@ -43,23 +43,23 @@ func New() *Middleware {
 	return mw
 }
 
-func (mw *Middleware) Shutdown(request *pb.RpcShutdownRequest) *pb.RpcShutdownResponse {
+func (mw *Middleware) AppShutdown(request *pb.RpcAppShutdownRequest) *pb.RpcAppShutdownResponse {
 	mw.m.Lock()
 	defer mw.m.Unlock()
 	mw.stop()
-	return &pb.RpcShutdownResponse{
-		Error: &pb.RpcShutdownResponseError{
-			Code: pb.RpcShutdownResponseError_NULL,
+	return &pb.RpcAppShutdownResponse{
+		Error: &pb.RpcAppShutdownResponseError{
+			Code: pb.RpcAppShutdownResponseError_NULL,
 		},
 	}
 }
 
-func (mw *Middleware) SetDeviceState(req *pb.RpcDeviceStateRequest) *pb.RpcDeviceStateResponse {
+func (mw *Middleware) AppSetDeviceState(req *pb.RpcAppSetDeviceStateRequest) *pb.RpcAppSetDeviceStateResponse {
 	mw.app.SetDeviceState(int(req.DeviceState))
 
-	return &pb.RpcDeviceStateResponse{
-		Error: &pb.RpcDeviceStateResponseError{
-			Code: pb.RpcDeviceStateResponseError_NULL,
+	return &pb.RpcAppSetDeviceStateResponse{
+		Error: &pb.RpcAppSetDeviceStateResponseError{
+			Code: pb.RpcAppSetDeviceStateResponseError_NULL,
 		},
 	}
 }

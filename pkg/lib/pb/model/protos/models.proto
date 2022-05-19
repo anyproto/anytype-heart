@@ -123,6 +123,15 @@ message Block {
             string targetBlockId = 1; // id of the target block
             Style style = 2; // deprecated
             google.protobuf.Struct fields = 3;
+            IconSize iconSize = 4;
+            CardStyle cardStyle = 5;
+            Description description = 6;
+            repeated string relations = 7;
+
+            enum IconSize {
+                Small = 0;
+                Medium = 1;
+            }
 
             enum Style {
                 Page = 0;
@@ -130,6 +139,18 @@ message Block {
                 Dashboard = 2;
                 Archive = 3;
                 // ...
+            }
+
+            enum Description {
+                None = 0;
+                Added = 1;
+                Content = 2;
+            }
+
+            enum CardStyle {
+                Text = 0;
+                Card = 1;
+                Inline = 2;
             }
         }
 
@@ -391,6 +412,7 @@ message Account {
     Avatar avatar = 3; // Avatar of a user's account
     Config config = 4;
     Status status = 5;
+    Info info = 6;
 
     /**
     * Avatar of a user's account. It could be an image or color
@@ -401,7 +423,6 @@ message Account {
             string color = 2; // Color of the avatar, used if image not set.
         }
     }
-
     message Config {
         bool enableDataview = 1;
         bool enableDebug = 2;
@@ -422,6 +443,18 @@ message Account {
         StartedDeletion = 2;
         Deleted = 3;
     }
+
+    message Info {
+        string homeObjectId = 2; // home dashboard block id
+        string archiveObjectId = 3; // archive block id
+        string profileObjectId = 4; // profile block id
+        string marketplaceTypeObjectId = 5; // marketplace type id
+        string marketplaceRelationObjectId = 6; // marketplace relation id
+        string marketplaceTemplateObjectId = 7; // marketplace template id
+        string deviceId = 8;
+        string gatewayUrl = 101; // gateway url for fetching static files
+    }
+
 }
 
 message LinkPreview {
