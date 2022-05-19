@@ -511,14 +511,11 @@ func New() datastore.Datastore {
 }
 
 func (r *clientds) MoveStorage(newPath string) (string, error) {
-	if r.running {
-		if err := r.Close(); err != nil {
-			return "", err
-		}
-	}
-
 	parts := strings.Split(r.repoPath, string(os.PathSeparator))
 	accountDir := parts[len(parts)-1]
+	if accountDir == "" {
+		return "", fmt.Errorf("fail to identify account dir")
+	}
 	destination := filepath.Join(newPath, accountDir)
 
 	if _, err := os.Stat(destination); !os.IsNotExist(err) { // remove all if already exist
@@ -527,10 +524,15 @@ func (r *clientds) MoveStorage(newPath string) (string, error) {
 		}
 	}
 
-
 	err := os.MkdirAll(destination, 0700)
 	if err != nil {
-		return "", fmt.Errorf("fail to create dir")
+		return "", fmt.Errorf("fail to create dir: %s, err: %s", destination, err)
+	}
+
+	if r.running {
+		if err := r.Close(); err != nil {
+			return "", err
+		}
 	}
 
 	for _, dir := range dirsForMoving {
