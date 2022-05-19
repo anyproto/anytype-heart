@@ -2,7 +2,6 @@ package core
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
@@ -103,11 +102,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_BAD_INPUT, nil, fmt.Errorf("account must be started"))
 	}
 
-	at := mw.app.MustComponent(core.CName).(core.Service)
 	if req.FullText != "" {
 		mw.app.MustComponent(indexer.CName).(indexer.Indexer).ForceFTIndex()
 	}
-	records, _, err := at.ObjectStore().Query(nil, database.Query{
+
+	ds := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	records, _, err := ds.Query(nil, database.Query{
 		Filters:          req.Filters,
 		Sorts:            req.Sorts,
 		Offset:           int(req.Offset),
@@ -119,7 +119,7 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	records, err = enrichWithDateSuggestion(records, at.ObjectStore(), req)
+	records, err = enrichWithDateSuggestion(records, req)
 	if err != nil {
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
@@ -132,17 +132,13 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 	return response(pb.RpcObjectSearchResponseError_NULL, records2, nil)
 }
 
-func enrichWithDateSuggestion(records []database.Record, store objectstore.ObjectStore, req *pb.RpcObjectSearchRequest) ([]database.Record, error) {
-	dt := suggestDateForSearch(req.FullText)
-	if dt == nil {
+func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearchRequest) ([]database.Record, error) {
+	dt := suggestDateForSearch(time.Now(), req.FullText)
+	if dt.IsZero() {
 		return records, nil
 	}
 
-	id := deriveDateId(*dt)
-	// dateRecords, err := store.QueryById([]string{id})
-	// if err != nil {
-	// 	return nil, fmt.Errorf("query by id %s: %w", id, err)
-	// }
+	id := deriveDateId(dt)
 
 	// Don't duplicate search suggestions
 	var found bool
@@ -150,7 +146,7 @@ func enrichWithDateSuggestion(records []database.Record, store objectstore.Objec
 		if r.Details.Fields == nil {
 			continue
 		}
-		if v, ok := r.Details.Fields["id"]; ok {
+		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
 			if v.GetStringValue() == id {
 				found = true
 				break
@@ -163,7 +159,7 @@ func enrichWithDateSuggestion(records []database.Record, store objectstore.Objec
 	}
 
 	var rec database.Record
-	rec = makeSuggestedDateRecord(*dt)
+	rec = makeSuggestedDateRecord(dt)
 	f, _ := filter.MakeAndFilter(req.Filters)
 	if vg := pbtypes.ValueGetter(rec.Details); f.FilterObject(vg) {
 		return append([]database.Record{rec}, records...), nil
@@ -171,34 +167,63 @@ func enrichWithDateSuggestion(records []database.Record, store objectstore.Objec
 	return records, nil
 }
 
-func suggestDateForSearch(raw string) *time.Time {
-	n := time.Now()
+func suggestDateForSearch(now time.Time, raw string) time.Time {
+	suggesters := []func() time.Time{
+		func() time.Time {
+			var exprType naturaldate.ExprType
+			t, exprType, err := naturaldate.Parse(raw, now)
+			if err != nil {
+				return time.Time{}
+			}
 
-	// todo: use system locale to get preferred date format
-	t, err := dateparse.ParseAny(raw, dateparse.PreferMonthFirst(false))
-
-	if err != nil {
-		var exprType naturaldate.ExprType
-		t, exprType, err = naturaldate.Parse(raw, n)
-		if t.Equal(n) && !strings.EqualFold(raw, "now") {
-			// naturaldate pkg returns NOW by default, but we don't need it
-			t = time.Time{}
-		}
-		if exprType == naturaldate.ExprTypeRelHour {
-			t = time.Time{}
-		}
+			// naturaldate parses numbers without qualifiers (m,s) as hours in 24 hours clock format. It leads to weird behavior
+			// when inputs like "123" represented as "current time + 123 hours"
+			if (exprType & naturaldate.ExprTypeClock24Hour) != 0 {
+				t = time.Time{}
+			}
+			return t
+		},
+		func() time.Time {
+			// todo: use system locale to get preferred date format
+			t, err := dateparse.ParseIn(raw, now.Location(), dateparse.PreferMonthFirst(false))
+			if err != nil {
+				return time.Time{}
+			}
+			return t
+		},
 	}
 
+	var t time.Time
+	for _, s := range suggesters {
+		if t = s(); !t.IsZero() {
+			break
+		}
+	}
+	if t.IsZero() {
+		return t
+	}
+
+	// Sanitize date
+
+	// Date without year
 	if t.Year() == 0 {
 		_, month, day := t.Date()
 		h, m, s := t.Clock()
-		t = time.Date(n.Year(), month, day, h, m, s, 0, t.Location())
+		t = time.Date(now.Year(), month, day, h, m, s, 0, t.Location())
 	}
 
-	if !t.IsZero() {
-		return &t
+	// Only year
+	{
+		year, month, day := t.Date()
+		h, m, s := t.Clock()
+
+		if year != 0 && month == 1 && day == 1 &&
+			h == 0 && m == 0 && s == 0 {
+			t = time.Time{}
+		}
 	}
-	return nil
+
+	return t
 }
 
 func deriveDateId(t time.Time) string {
