@@ -29,22 +29,26 @@ func NewBookmark(m *model.Block) simple.Block {
 	if bookmark := m.GetBookmark(); bookmark != nil {
 		return &Bookmark{
 			Base:    base.NewBase(m).(*base.Base),
-			content: bookmark,
+			content: (*content)(bookmark),
 		}
 	}
 	return nil
 }
 
-type Block interface {
-	simple.Block
-	simple.FileHashes
-	Fetch(params FetchParams) (err error)
+type BlockContent interface {
+	Content() *model.BlockContentBookmark
 	SetLinkPreview(data model.LinkPreview)
 	SetImageHash(hash string)
 	SetFaviconHash(hash string)
 	SetTargetObjectId(pageId string)
+}
+
+type Block interface {
+	simple.Block
+	simple.FileHashes
+	BlockContent
+	Fetch(params FetchParams) (err error)
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
-	Content() *model.BlockContentBookmark
 }
 
 type FetchParams struct {
@@ -59,63 +63,65 @@ type Updater func(id string, apply func(b Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
-	content *model.BlockContentBookmark
+	*content
 }
 
-func (f *Bookmark) Content() *model.BlockContentBookmark {
-	return f.content
+type content model.BlockContentBookmark
+
+func (f *content) Content() *model.BlockContentBookmark {
+	return (*model.BlockContentBookmark)(f)
 }
 
-func (f *Bookmark) SetLinkPreview(data model.LinkPreview) {
-	f.content.Url = data.Url
-	f.content.Title = data.Title
-	f.content.Description = data.Description
-	f.content.Type = data.Type
+func (f *content) SetLinkPreview(data model.LinkPreview) {
+	f.Url = data.Url
+	f.Title = data.Title
+	f.Description = data.Description
+	f.Type = data.Type
 }
 
-func (f *Bookmark) SetImageHash(hash string) {
-	f.content.ImageHash = hash
+func (f *content) SetImageHash(hash string) {
+	f.ImageHash = hash
 }
 
-func (f *Bookmark) SetFaviconHash(hash string) {
-	f.content.FaviconHash = hash
+func (f *content) SetFaviconHash(hash string) {
+	f.FaviconHash = hash
 }
 
-func (f *Bookmark) SetTargetObjectId(pageId string) {
-	f.content.TargetObjectId = pageId
+func (f *content) SetTargetObjectId(pageId string) {
+	f.TargetObjectId = pageId
 }
 
-func (f *Bookmark) Fetch(params FetchParams) (err error) {
-	f.content.Url = params.Url
+func (b *Bookmark) Fetch(params FetchParams) (err error) {
+	b.content.Url = params.Url
 	if !params.Sync {
 		go func() {
-			fetcher(f.Id, params)
+			fetcher(b.Id, params)
 		}()
 	} else {
-		fetcher(f.Id, params)
+		fetcher(b.Id, params)
 	}
 	return
 }
 
-func (f *Bookmark) Copy() simple.Block {
-	copy := pbtypes.CopyBlock(f.Model())
+func (b *Bookmark) Copy() simple.Block {
+	copy := pbtypes.CopyBlock(b.Model())
 	return &Bookmark{
 		Base:    base.NewBase(copy).(*base.Base),
-		content: copy.GetBookmark(),
+		content: (*content)(copy.GetBookmark()),
 	}
 }
 
 // Validate TODO: add validation rules
-func (f *Bookmark) Validate() error {
+func (b *Bookmark) Validate() error {
 	return nil
 }
 
-func (f *Bookmark) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
-	bookmark, ok := b.(*Bookmark)
+func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err error) {
+	bookmark, ok := other.(*Bookmark)
 	if !ok {
 		return nil, fmt.Errorf("can't make diff with different block type")
 	}
-	if msgs, err = f.Base.Diff(bookmark); err != nil {
+	if msgs, err = b.Base.Diff(bookmark); err != nil {
 		return
 	}
 	changes := &pb.EventBlockSetBookmark{
@@ -123,31 +129,31 @@ func (f *Bookmark) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 	}
 	hasChanges := false
 
-	if f.content.Type != bookmark.content.Type {
+	if b.content.Type != bookmark.content.Type {
 		hasChanges = true
 		changes.Type = &pb.EventBlockSetBookmarkType{Value: bookmark.content.Type}
 	}
-	if f.content.Url != bookmark.content.Url {
+	if b.content.Url != bookmark.content.Url {
 		hasChanges = true
 		changes.Url = &pb.EventBlockSetBookmarkUrl{Value: bookmark.content.Url}
 	}
-	if f.content.Title != bookmark.content.Title {
+	if b.content.Title != bookmark.content.Title {
 		hasChanges = true
 		changes.Title = &pb.EventBlockSetBookmarkTitle{Value: bookmark.content.Title}
 	}
-	if f.content.Description != bookmark.content.Description {
+	if b.content.Description != bookmark.content.Description {
 		hasChanges = true
 		changes.Description = &pb.EventBlockSetBookmarkDescription{Value: bookmark.content.Description}
 	}
-	if f.content.ImageHash != bookmark.content.ImageHash {
+	if b.content.ImageHash != bookmark.content.ImageHash {
 		hasChanges = true
 		changes.ImageHash = &pb.EventBlockSetBookmarkImageHash{Value: bookmark.content.ImageHash}
 	}
-	if f.content.FaviconHash != bookmark.content.FaviconHash {
+	if b.content.FaviconHash != bookmark.content.FaviconHash {
 		hasChanges = true
 		changes.FaviconHash = &pb.EventBlockSetBookmarkFaviconHash{Value: bookmark.content.FaviconHash}
 	}
-	if f.content.TargetObjectId != bookmark.content.TargetObjectId {
+	if b.content.TargetObjectId != bookmark.content.TargetObjectId {
 		hasChanges = true
 		changes.TargetObjectId = &pb.EventBlockSetBookmarkTargetObjectId{Value: bookmark.content.TargetObjectId}
 	}
@@ -184,32 +190,35 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	return
 }
 
-func fetcher(id string, params FetchParams) {
+func ContentFetcher(url string, linkPreview linkpreview.LinkPreview, svc core.Service) (chan func(blockContent BlockContent) error, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
-	data, err := params.LinkPreview.Fetch(ctx, params.Url)
+	data, err := linkPreview.Fetch(ctx, url)
 	cancel()
 	if err != nil {
-		fmt.Println("bookmark: can't fetch link:", params.Url, err)
-		return
-	}
-
-	updaters := make(chan func(bm Block) error, 3)
-	updaters <- func(bm Block) error {
-		bm.SetLinkPreview(data)
-		return nil
+		return nil, fmt.Errorf("bookmark: can't fetch link %s: %w", url, err)
 	}
 
 	var wg sync.WaitGroup
+	updaters := make(chan func(blockContent BlockContent) error)
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		updaters <- func(bm BlockContent) error {
+			bm.SetLinkPreview(data)
+			return nil
+		}
+	}()
+
 	if data.ImageUrl != "" {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(params.Anytype, data.ImageUrl)
+			hash, err := loadImage(svc, data.ImageUrl)
 			if err != nil {
 				fmt.Println("can't load image url:", data.ImageUrl, err)
 				return
 			}
-			updaters <- func(bm Block) error {
+			updaters <- func(bm BlockContent) error {
 				bm.SetImageHash(hash)
 				return nil
 			}
@@ -219,21 +228,33 @@ func fetcher(id string, params FetchParams) {
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
-			hash, err := loadImage(params.Anytype, data.FaviconUrl)
+			hash, err := loadImage(svc, data.FaviconUrl)
 			if err != nil {
 				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
 				return
 			}
-			updaters <- func(bm Block) error {
+			updaters <- func(bm BlockContent) error {
 				bm.SetFaviconHash(hash)
 				return nil
 			}
 		}()
 	}
-	wg.Wait()
-	close(updaters)
 
-	var upds []func(bm Block) error
+	go func() {
+		wg.Wait()
+		close(updaters)
+	}()
+
+	return updaters, nil
+}
+
+func fetcher(id string, params FetchParams) {
+	updaters, err := ContentFetcher(params.Url, params.LinkPreview, params.Anytype)
+	if err != nil {
+		fmt.Println("can't get updates:", id, err)
+		return
+	}
+	var upds []func(bm BlockContent) error
 	for u := range updaters {
 		upds = append(upds, u)
 	}
@@ -252,12 +273,12 @@ func fetcher(id string, params FetchParams) {
 	}
 }
 
-func (f *Bookmark) FillFileHashes(hashes []string) []string {
-	if f.content.ImageHash != "" {
-		hashes = append(hashes, f.content.ImageHash)
+func (b *Bookmark) FillFileHashes(hashes []string) []string {
+	if b.content.ImageHash != "" {
+		hashes = append(hashes, b.content.ImageHash)
 	}
-	if f.content.FaviconHash != "" {
-		hashes = append(hashes, f.content.FaviconHash)
+	if b.content.FaviconHash != "" {
+		hashes = append(hashes, b.content.FaviconHash)
 	}
 	return hashes
 }

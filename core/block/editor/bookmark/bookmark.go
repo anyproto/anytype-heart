@@ -109,10 +109,8 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
-func (b *sbookmark) createBookmarkObject(bm bookmark.Block) (pageId string, err error) {
+func (b *sbookmark) createBookmarkObject(content *model.BlockContentBookmark) (pageId string, err error) {
 	store := b.Anytype().ObjectStore()
-
-	content := bm.Content()
 
 	records, _, err := store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
@@ -184,7 +182,7 @@ func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Blo
 				return err
 			}
 
-			pageId, err := b.createBookmarkObject(bm)
+			pageId, err := b.createBookmarkObject(bm.Content())
 			if err != nil {
 				return fmt.Errorf("create bookmark object: %w", err)
 			}

@@ -107,6 +107,7 @@ service ClientCommands {
 
     rpc BlockBookmarkFetch (anytype.Rpc.Block.Bookmark.Fetch.Request) returns (anytype.Rpc.Block.Bookmark.Fetch.Response);
     rpc BlockBookmarkCreateAndFetch (anytype.Rpc.Block.Bookmark.CreateAndFetch.Request) returns (anytype.Rpc.Block.Bookmark.CreateAndFetch.Response);
+    rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
     rpc BlockFileCreateAndUpload (anytype.Rpc.Block.File.CreateAndUpload.Request) returns (anytype.Rpc.Block.File.CreateAndUpload.Response);
 
     rpc BlockRelationSetKey (anytype.Rpc.Block.Relation.SetKey.Request) returns (anytype.Rpc.Block.Relation.SetKey.Response);

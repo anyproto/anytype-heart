@@ -651,3 +651,28 @@ func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectTo
 	})
 	return response(setId, err)
 }
+
+func (mw *Middleware) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
+	ctx := state.NewContext(nil)
+	response := func(id string, code pb.RpcObjectCreateBookmarkResponseErrorCode, err error) *pb.RpcObjectCreateBookmarkResponse {
+		m := &pb.RpcObjectCreateBookmarkResponse{Id: id, Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		// no events generated
+		return m
+	}
+
+	var details *types.Struct
+	if err := mw.doBlockService(func(bs block.Service) (err error) {
+		details, err = bs.CreateDataviewRecord(ctx, pb.RpcBlockDataviewRecordCreateRequest{
+			ContextId: req.ContextId,
+			BlockId:   req.BlockId,
+		})
+		return err
+	}); err != nil {
+		return response("", pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, err)
+	}
+
+	return response("", pb.RpcObjectCreateBookmarkResponseError_NULL, nil)
+}

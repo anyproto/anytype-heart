@@ -502,6 +502,10 @@
     - [Rpc.Object.AddWithObjectId.Request](#anytype-Rpc-Object-AddWithObjectId-Request)
     - [Rpc.Object.AddWithObjectId.Response](#anytype-Rpc-Object-AddWithObjectId-Response)
     - [Rpc.Object.AddWithObjectId.Response.Error](#anytype-Rpc-Object-AddWithObjectId-Response-Error)
+    - [Rpc.Object.CreateBookmark](#anytype-Rpc-Object-CreateBookmark)
+    - [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request)
+    - [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response)
+    - [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error)
     - [Rpc.Object.FeaturedRelation](#anytype-Rpc-Object-FeaturedRelation)
     - [Rpc.Object.FeaturedRelation.Add](#anytype-Rpc-Object-FeaturedRelation-Add)
     - [Rpc.Object.FeaturedRelation.Add.Request](#anytype-Rpc-Object-FeaturedRelation-Add-Request)
@@ -817,6 +821,7 @@
     - [Rpc.Navigation.GetObjectInfoWithLinks.Response.Error.Code](#anytype-Rpc-Navigation-GetObjectInfoWithLinks-Response-Error-Code)
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
     - [Rpc.Object.AddWithObjectId.Response.Error.Code](#anytype-Rpc-Object-AddWithObjectId-Response-Error-Code)
+    - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
     - [Rpc.Object.FeaturedRelation.Add.Response.Error.Code](#anytype-Rpc-Object-FeaturedRelation-Add-Response-Error-Code)
     - [Rpc.Object.FeaturedRelation.Remove.Response.Error.Code](#anytype-Rpc-Object-FeaturedRelation-Remove-Response-Error-Code)
     - [Rpc.Object.Graph.Edge.Type](#anytype-Rpc-Object-Graph-Edge-Type)
@@ -1202,6 +1207,7 @@
 | BlockSetLinkTargetBlockId | [Rpc.Block.Set.Link.TargetBlockId.Request](#anytype-Rpc-Block-Set-Link-TargetBlockId-Request) | [Rpc.Block.Set.Link.TargetBlockId.Response](#anytype-Rpc-Block-Set-Link-TargetBlockId-Response) |  |
 | BlockBookmarkFetch | [Rpc.Block.Bookmark.Fetch.Request](#anytype-Rpc-Block-Bookmark-Fetch-Request) | [Rpc.Block.Bookmark.Fetch.Response](#anytype-Rpc-Block-Bookmark-Fetch-Response) |  |
 | BlockBookmarkCreateAndFetch | [Rpc.Block.Bookmark.CreateAndFetch.Request](#anytype-Rpc-Block-Bookmark-CreateAndFetch-Request) | [Rpc.Block.Bookmark.CreateAndFetch.Response](#anytype-Rpc-Block-Bookmark-CreateAndFetch-Response) |  |
+| ObjectCreateBookmark | [Rpc.Object.CreateBookmark.Request](#anytype-Rpc-Object-CreateBookmark-Request) | [Rpc.Object.CreateBookmark.Response](#anytype-Rpc-Object-CreateBookmark-Response) |  |
 | BlockFileCreateAndUpload | [Rpc.Block.File.CreateAndUpload.Request](#anytype-Rpc-Block-File-CreateAndUpload-Request) | [Rpc.Block.File.CreateAndUpload.Response](#anytype-Rpc-Block-File-CreateAndUpload-Response) |  |
 | BlockRelationSetKey | [Rpc.Block.Relation.SetKey.Request](#anytype-Rpc-Block-Relation-SetKey-Request) | [Rpc.Block.Relation.SetKey.Response](#anytype-Rpc-Block-Relation-SetKey-Response) |  |
 | BlockRelationAdd | [Rpc.Block.Relation.Add.Request](#anytype-Rpc-Block-Relation-Add-Request) | [Rpc.Block.Relation.Add.Response](#anytype-Rpc-Block-Relation-Add-Response) |  |
@@ -8557,6 +8563,65 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-CreateBookmark"></a>
+
+### Rpc.Object.CreateBookmark
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Request"></a>
+
+### Rpc.Object.CreateBookmark.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Response"></a>
+
+### Rpc.Object.CreateBookmark.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.CreateBookmark.Response.Error](#anytype-Rpc-Object-CreateBookmark-Response-Error) |  |  |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Response-Error"></a>
+
+### Rpc.Object.CreateBookmark.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-FeaturedRelation"></a>
 
 ### Rpc.Object.FeaturedRelation
@@ -12937,6 +13002,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-AddWithObjectId-Response-Error-Code"></a>
 
 ### Rpc.Object.AddWithObjectId.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-CreateBookmark-Response-Error-Code"></a>
+
+### Rpc.Object.CreateBookmark.Response.Error.Code
 
 
 | Name | Number | Description |
