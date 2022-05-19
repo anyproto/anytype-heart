@@ -29,14 +29,14 @@ func NewBookmark(m *model.Block) simple.Block {
 	if bookmark := m.GetBookmark(); bookmark != nil {
 		return &Bookmark{
 			Base:    base.NewBase(m).(*base.Base),
-			content: (*content)(bookmark),
+			Content: (*Content)(bookmark),
 		}
 	}
 	return nil
 }
 
 type BlockContent interface {
-	Content() *model.BlockContentBookmark
+	GetContent() *model.BlockContentBookmark
 	SetLinkPreview(data model.LinkPreview)
 	SetImageHash(hash string)
 	SetFaviconHash(hash string)
@@ -63,36 +63,38 @@ type Updater func(id string, apply func(b Block) error) (err error)
 
 type Bookmark struct {
 	*base.Base
-	*content
+	*Content
 }
 
-type content model.BlockContentBookmark
+var _ Block = &Bookmark{}
 
-func (f *content) Content() *model.BlockContentBookmark {
+type Content model.BlockContentBookmark
+
+func (f *Content) GetContent() *model.BlockContentBookmark {
 	return (*model.BlockContentBookmark)(f)
 }
 
-func (f *content) SetLinkPreview(data model.LinkPreview) {
+func (f *Content) SetLinkPreview(data model.LinkPreview) {
 	f.Url = data.Url
 	f.Title = data.Title
 	f.Description = data.Description
 	f.Type = data.Type
 }
 
-func (f *content) SetImageHash(hash string) {
+func (f *Content) SetImageHash(hash string) {
 	f.ImageHash = hash
 }
 
-func (f *content) SetFaviconHash(hash string) {
+func (f *Content) SetFaviconHash(hash string) {
 	f.FaviconHash = hash
 }
 
-func (f *content) SetTargetObjectId(pageId string) {
+func (f *Content) SetTargetObjectId(pageId string) {
 	f.TargetObjectId = pageId
 }
 
 func (b *Bookmark) Fetch(params FetchParams) (err error) {
-	b.content.Url = params.Url
+	b.Content.Url = params.Url
 	if !params.Sync {
 		go func() {
 			fetcher(b.Id, params)
@@ -107,7 +109,7 @@ func (b *Bookmark) Copy() simple.Block {
 	copy := pbtypes.CopyBlock(b.Model())
 	return &Bookmark{
 		Base:    base.NewBase(copy).(*base.Base),
-		content: (*content)(copy.GetBookmark()),
+		Content: (*Content)(copy.GetBookmark()),
 	}
 }
 
@@ -129,33 +131,33 @@ func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err err
 	}
 	hasChanges := false
 
-	if b.content.Type != bookmark.content.Type {
+	if b.Content.Type != bookmark.Content.Type {
 		hasChanges = true
-		changes.Type = &pb.EventBlockSetBookmarkType{Value: bookmark.content.Type}
+		changes.Type = &pb.EventBlockSetBookmarkType{Value: bookmark.Content.Type}
 	}
-	if b.content.Url != bookmark.content.Url {
+	if b.Content.Url != bookmark.Content.Url {
 		hasChanges = true
-		changes.Url = &pb.EventBlockSetBookmarkUrl{Value: bookmark.content.Url}
+		changes.Url = &pb.EventBlockSetBookmarkUrl{Value: bookmark.Content.Url}
 	}
-	if b.content.Title != bookmark.content.Title {
+	if b.Content.Title != bookmark.Content.Title {
 		hasChanges = true
-		changes.Title = &pb.EventBlockSetBookmarkTitle{Value: bookmark.content.Title}
+		changes.Title = &pb.EventBlockSetBookmarkTitle{Value: bookmark.Content.Title}
 	}
-	if b.content.Description != bookmark.content.Description {
+	if b.Content.Description != bookmark.Content.Description {
 		hasChanges = true
-		changes.Description = &pb.EventBlockSetBookmarkDescription{Value: bookmark.content.Description}
+		changes.Description = &pb.EventBlockSetBookmarkDescription{Value: bookmark.Content.Description}
 	}
-	if b.content.ImageHash != bookmark.content.ImageHash {
+	if b.Content.ImageHash != bookmark.Content.ImageHash {
 		hasChanges = true
-		changes.ImageHash = &pb.EventBlockSetBookmarkImageHash{Value: bookmark.content.ImageHash}
+		changes.ImageHash = &pb.EventBlockSetBookmarkImageHash{Value: bookmark.Content.ImageHash}
 	}
-	if b.content.FaviconHash != bookmark.content.FaviconHash {
+	if b.Content.FaviconHash != bookmark.Content.FaviconHash {
 		hasChanges = true
-		changes.FaviconHash = &pb.EventBlockSetBookmarkFaviconHash{Value: bookmark.content.FaviconHash}
+		changes.FaviconHash = &pb.EventBlockSetBookmarkFaviconHash{Value: bookmark.Content.FaviconHash}
 	}
-	if b.content.TargetObjectId != bookmark.content.TargetObjectId {
+	if b.Content.TargetObjectId != bookmark.Content.TargetObjectId {
 		hasChanges = true
-		changes.TargetObjectId = &pb.EventBlockSetBookmarkTargetObjectId{Value: bookmark.content.TargetObjectId}
+		changes.TargetObjectId = &pb.EventBlockSetBookmarkTargetObjectId{Value: bookmark.Content.TargetObjectId}
 	}
 
 	if hasChanges {
@@ -166,30 +168,31 @@ func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err err
 
 func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	if e.Type != nil {
-		b.content.Type = e.Type.GetValue()
+		b.Content.Type = e.Type.GetValue()
 	}
 	if e.Description != nil {
-		b.content.Description = e.Description.GetValue()
+		b.Content.Description = e.Description.GetValue()
 	}
 	if e.FaviconHash != nil {
-		b.content.FaviconHash = e.FaviconHash.GetValue()
+		b.Content.FaviconHash = e.FaviconHash.GetValue()
 	}
 	if e.ImageHash != nil {
-		b.content.ImageHash = e.ImageHash.GetValue()
+		b.Content.ImageHash = e.ImageHash.GetValue()
 	}
 	if e.Title != nil {
-		b.content.Title = e.Title.GetValue()
+		b.Content.Title = e.Title.GetValue()
 	}
 	if e.Url != nil {
-		b.content.Url = e.Url.GetValue()
+		b.Content.Url = e.Url.GetValue()
 	}
 	if e.TargetObjectId != nil {
-		b.content.TargetObjectId = e.TargetObjectId.GetValue()
+		b.Content.TargetObjectId = e.TargetObjectId.GetValue()
 	}
 
 	return
 }
 
+// TODO: move to bookmark service?
 func ContentFetcher(url string, linkPreview linkpreview.LinkPreview, svc core.Service) (chan func(blockContent BlockContent) error, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	data, err := linkPreview.Fetch(ctx, url)
@@ -274,11 +277,11 @@ func fetcher(id string, params FetchParams) {
 }
 
 func (b *Bookmark) FillFileHashes(hashes []string) []string {
-	if b.content.ImageHash != "" {
-		hashes = append(hashes, b.content.ImageHash)
+	if b.Content.ImageHash != "" {
+		hashes = append(hashes, b.Content.ImageHash)
 	}
-	if b.content.FaviconHash != "" {
-		hashes = append(hashes, b.content.FaviconHash)
+	if b.Content.FaviconHash != "" {
+		hashes = append(hashes, b.Content.FaviconHash)
 	}
 	return hashes
 }

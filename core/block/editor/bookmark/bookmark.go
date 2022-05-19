@@ -3,6 +3,7 @@ package bookmark
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -21,8 +22,8 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, pageManager PageManager) Bookmark {
-	return &sbookmark{SmartBlock: sb, lp: lp, manager: pageManager}
+func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, blockService BlockService) Bookmark {
+	return &sbookmark{SmartBlock: sb, lp: lp, blockService: blockService}
 }
 
 type Bookmark interface {
@@ -33,14 +34,18 @@ type Bookmark interface {
 
 type sbookmark struct {
 	smartblock.SmartBlock
-	lp      linkpreview.LinkPreview
-	manager PageManager
+	lp           linkpreview.LinkPreview
+	blockService BlockService
+}
+
+type BlockService interface {
+	PageManager
+	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
 type PageManager interface {
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
-	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
 func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
@@ -76,7 +81,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 				defer updMu.Unlock()
 				return apply(bm)
 			}
-			return b.manager.DoBookmark(b.Id(), func(b Bookmark) error {
+			return b.blockService.DoBookmark(b.Id(), func(b Bookmark) error {
 				return b.UpdateBookmark(id, groupId, apply)
 			})
 		},
@@ -109,9 +114,7 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
-func (b *sbookmark) createBookmarkObject(content *model.BlockContentBookmark) (pageId string, err error) {
-	store := b.Anytype().ObjectStore()
-
+func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, content *model.BlockContentBookmark) (pageId string, err error) {
 	records, _, err := store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
@@ -154,7 +157,7 @@ func (b *sbookmark) createBookmarkObject(content *model.BlockContentBookmark) (p
 		}
 
 		pageId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-		return pageId, b.manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		return pageId, manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 			ContextId: pageId,
 			Details:   details,
 		})
@@ -170,7 +173,7 @@ func (b *sbookmark) createBookmarkObject(content *model.BlockContentBookmark) (p
 		details.Fields[k] = v
 	}
 
-	pageId, _, err = b.manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+	pageId, _, err = manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
 	return
 }
 
@@ -182,7 +185,9 @@ func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Blo
 				return err
 			}
 
-			pageId, err := b.createBookmarkObject(bm.Content())
+			store := b.Anytype().ObjectStore()
+
+			pageId, err := CreateBookmarkObject(store, b.blockService, bm.GetContent())
 			if err != nil {
 				return fmt.Errorf("create bookmark object: %w", err)
 			}

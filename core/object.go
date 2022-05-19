@@ -2,25 +2,27 @@ package core
 
 import (
 	"fmt"
+	bookmark2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
+	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"strings"
 	"time"
 
-	"github.com/anytypeio/go-anytype-middleware/core/subscription"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
-	"github.com/araddon/dateparse"
-	"github.com/gogo/protobuf/types"
-	"github.com/tj/go-naturaldate"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/subscription"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database/filter"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
+	"github.com/araddon/dateparse"
+	"github.com/gogo/protobuf/types"
+	"github.com/tj/go-naturaldate"
 )
 
 // To be renamed to ObjectSetDetails
@@ -656,26 +658,37 @@ func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectTo
 }
 
 func (mw *Middleware) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkRequest) *pb.RpcObjectCreateBookmarkResponse {
-	ctx := state.NewContext(nil)
-	response := func(id string, code pb.RpcObjectCreateBookmarkResponseErrorCode, err error) *pb.RpcObjectCreateBookmarkResponse {
-		m := &pb.RpcObjectCreateBookmarkResponse{Id: id, Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}}
+	response := func(code pb.RpcObjectCreateBookmarkResponseErrorCode, id string, err error) *pb.RpcObjectCreateBookmarkResponse {
+		m := &pb.RpcObjectCreateBookmarkResponse{Error: &pb.RpcObjectCreateBookmarkResponseError{Code: code}, PageId: id}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-		// no events generated
 		return m
 	}
 
-	var details *types.Struct
-	if err := mw.doBlockService(func(bs block.Service) (err error) {
-		details, err = bs.CreateDataviewRecord(ctx, pb.RpcBlockDataviewRecordCreateRequest{
-			ContextId: req.ContextId,
-			BlockId:   req.BlockId,
-		})
-		return err
-	}); err != nil {
-		return response("", pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, err)
-	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) error {
+		// TODO: temp in-place logic
+		content := &bookmark.Content{
+			Url: req.Url,
+		}
+		lp := mw.app.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
+		updaters, err := bookmark.ContentFetcher(req.Url, lp, mw.GetAnytype())
+		if err != nil {
+			return err
+		}
+		for upd := range updaters {
+			if err := upd(content); err != nil {
+				return err
+			}
+		}
 
-	return response("", pb.RpcObjectCreateBookmarkResponseError_NULL, nil)
+		id, err = bookmark2.CreateBookmarkObject(mw.GetAnytype().ObjectStore(), bs, (*model.BlockContentBookmark)(content))
+		return err
+	})
+
+	if err != nil {
+		return response(pb.RpcObjectCreateBookmarkResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcObjectCreateBookmarkResponseError_NULL, id, nil)
 }

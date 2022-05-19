@@ -40,6 +40,7 @@ service ClientCommands {
     rpc ObjectShow (anytype.Rpc.Object.Show.Request) returns (anytype.Rpc.Object.Show.Response);
     // ObjectCreate just creates the new page, without adding the link to it from some other page
     rpc ObjectCreate (anytype.Rpc.Object.Create.Request) returns (anytype.Rpc.Object.Create.Response);
+    rpc ObjectCreateBookmark (anytype.Rpc.Object.CreateBookmark.Request) returns (anytype.Rpc.Object.CreateBookmark.Response);
     // ObjectCreateSet just creates the new set, without adding the link to it from some other page
     rpc ObjectCreateSet (anytype.Rpc.Object.CreateSet.Request) returns (anytype.Rpc.Object.CreateSet.Response);
     rpc ObjectGraph (anytype.Rpc.Object.Graph.Request) returns (anytype.Rpc.Object.Graph.Response);

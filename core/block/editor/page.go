@@ -18,7 +18,7 @@ import (
 
 func NewPage(
 	fileSource file.BlockService,
-	pageManager bookmark.PageManager,
+	pageManager bookmark.BlockService,
 	importServices _import.Services,
 	lp linkpreview.LinkPreview,
 ) *Page {

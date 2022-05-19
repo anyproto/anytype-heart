@@ -16,7 +16,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
-func NewProfile(fileSource file.BlockService, pageManager bookmark.PageManager, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
+func NewProfile(fileSource file.BlockService, pageManager bookmark.BlockService, lp linkpreview.LinkPreview, sendEvent func(e *pb.Event)) *Profile {
 	sb := smartblock.New()
 	f := file.NewFile(sb, fileSource)
 	return &Profile{
