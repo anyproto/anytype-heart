@@ -2,6 +2,7 @@ package link
 
 import (
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"unicode/utf8"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -33,6 +34,7 @@ type Block interface {
 	HasSmartIds() bool
 	ApplyEvent(e *pb.EventBlockSetLink) error
 	ToText(targetDetails *types.Struct) simple.Block
+	SetAppearance(content *model.BlockContentLink) error
 }
 
 type Link struct {
@@ -52,6 +54,14 @@ func (l *Link) Validate() error {
 	if l.content.TargetBlockId == "" {
 		return fmt.Errorf("targetBlockId is empty")
 	}
+	return nil
+}
+
+func (l *Link) SetAppearance(content *model.BlockContentLink) error {
+	l.content.IconSize = content.IconSize
+	l.content.CardStyle = content.CardStyle
+	l.content.Description = content.Description
+	l.content.Relations = content.Relations
 	return nil
 }
 
@@ -75,6 +85,26 @@ func (l *Link) Diff(b simple.Block) (msgs []simple.EventMessage, err error) {
 	if l.content.TargetBlockId != link.content.TargetBlockId {
 		hasChanges = true
 		changes.TargetBlockId = &pb.EventBlockSetLinkTargetBlockId{Value: link.content.TargetBlockId}
+	}
+
+	if l.content.IconSize != link.content.IconSize {
+		hasChanges = true
+		changes.IconSize = &pb.EventBlockSetLinkIconSize{Value: link.content.IconSize}
+	}
+
+	if l.content.CardStyle != link.content.CardStyle {
+		hasChanges = true
+		changes.CardStyle = &pb.EventBlockSetLinkCardStyle{Value: link.content.CardStyle}
+	}
+
+	if l.content.Description != link.content.Description {
+		hasChanges = true
+		changes.Description = &pb.EventBlockSetLinkDescription{Value: link.content.Description}
+	}
+
+	if !slice.SortedEquals(l.content.Relations, link.content.Relations) {
+		hasChanges = true
+		changes.Relations = &pb.EventBlockSetLinkRelations{Value: link.content.Relations}
 	}
 
 	if hasChanges {

@@ -7,14 +7,14 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoResponse {
+func (mw *Middleware) ObjectUndo(req *pb.RpcObjectUndoRequest) *pb.RpcObjectUndoResponse {
 	ctx := state.NewContext(nil)
 	var (
-		counters pb.RpcBlockUndoRedoCounter
+		counters pb.RpcObjectUndoRedoCounter
 		err      error
 	)
-	response := func(code pb.RpcBlockUndoResponseErrorCode, err error) *pb.RpcBlockUndoResponse {
-		m := &pb.RpcBlockUndoResponse{Error: &pb.RpcBlockUndoResponseError{Code: code}}
+	response := func(code pb.RpcObjectUndoResponseErrorCode, err error) *pb.RpcObjectUndoResponse {
+		m := &pb.RpcObjectUndoResponse{Error: &pb.RpcObjectUndoResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -29,21 +29,21 @@ func (mw *Middleware) BlockUndo(req *pb.RpcBlockUndoRequest) *pb.RpcBlockUndoRes
 	})
 	if err != nil {
 		if err == undo.ErrNoHistory {
-			return response(pb.RpcBlockUndoResponseError_CAN_NOT_MOVE, err)
+			return response(pb.RpcObjectUndoResponseError_CAN_NOT_MOVE, err)
 		}
-		return response(pb.RpcBlockUndoResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectUndoResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockUndoResponseError_NULL, nil)
+	return response(pb.RpcObjectUndoResponseError_NULL, nil)
 }
 
-func (mw *Middleware) BlockRedo(req *pb.RpcBlockRedoRequest) *pb.RpcBlockRedoResponse {
+func (mw *Middleware) ObjectRedo(req *pb.RpcObjectRedoRequest) *pb.RpcObjectRedoResponse {
 	ctx := state.NewContext(nil)
 	var (
-		counters pb.RpcBlockUndoRedoCounter
+		counters pb.RpcObjectUndoRedoCounter
 		err      error
 	)
-	response := func(code pb.RpcBlockRedoResponseErrorCode, err error) *pb.RpcBlockRedoResponse {
-		m := &pb.RpcBlockRedoResponse{Error: &pb.RpcBlockRedoResponseError{Code: code}}
+	response := func(code pb.RpcObjectRedoResponseErrorCode, err error) *pb.RpcObjectRedoResponse {
+		m := &pb.RpcObjectRedoResponse{Error: &pb.RpcObjectRedoResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -59,9 +59,9 @@ func (mw *Middleware) BlockRedo(req *pb.RpcBlockRedoRequest) *pb.RpcBlockRedoRes
 	})
 	if err != nil {
 		if err == undo.ErrNoHistory {
-			return response(pb.RpcBlockRedoResponseError_CAN_NOT_MOVE, err)
+			return response(pb.RpcObjectRedoResponseError_CAN_NOT_MOVE, err)
 		}
-		return response(pb.RpcBlockRedoResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectRedoResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockRedoResponseError_NULL, nil)
+	return response(pb.RpcObjectRedoResponseError_NULL, nil)
 }

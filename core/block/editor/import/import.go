@@ -40,7 +40,7 @@ var (
 )
 
 type Import interface {
-	ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error)
+	ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error)
 }
 
 func NewImport(sb smartblock.SmartBlock, ctrl Services) Import {
@@ -64,14 +64,14 @@ type fileInfo struct {
 
 type Services interface {
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
-	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
+	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 	SimplePaste(contextId string, anySlot []*model.Block) (err error)
 	UploadBlockFileSync(ctx *state.Context, req pb.RpcBlockUploadRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	ProcessAdd(p process.Process) (err error)
 }
 
-func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportMarkdownRequest) (rootLinks []*model.Block, err error) {
+func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcObjectImportMarkdownRequest) (rootLinks []*model.Block, err error) {
 	progress := process.NewProgress(pb.ModelProcess_Import)
 	defer progress.Finish()
 	imp.ctrl.ProcessAdd(progress)
@@ -195,16 +195,16 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 
 		file.title = title
 
-		var details = []*pb.RpcBlockSetDetailsDetail{}
+		var details = []*pb.RpcObjectSetDetailsDetail{}
 
 		for name, val := range fields {
-			details = append(details, &pb.RpcBlockSetDetailsDetail{
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
 				Key:   name,
 				Value: val,
 			})
 		}
 
-		err = imp.ctrl.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+		err = imp.ctrl.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 			ContextId: file.pageID,
 			Details:   details,
 		})
@@ -279,16 +279,16 @@ func (imp *importImpl) ImportMarkdown(ctx *state.Context, req pb.RpcBlockImportM
 				"iconEmoji": pbtypes.String(slice.GetRandomString(dbIcons, name)),
 			}
 
-			var details = []*pb.RpcBlockSetDetailsDetail{}
+			var details = []*pb.RpcObjectSetDetailsDetail{}
 
 			for name, val := range fields {
-				details = append(details, &pb.RpcBlockSetDetailsDetail{
+				details = append(details, &pb.RpcObjectSetDetailsDetail{
 					Key:   name,
 					Value: val,
 				})
 			}
 
-			err = imp.ctrl.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+			err = imp.ctrl.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 				ContextId: pageID,
 				Details:   details,
 			})

@@ -39,7 +39,7 @@ type sbookmark struct {
 
 type PageManager interface {
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
-	SetDetails(ctx *state.Context, req pb.RpcBlockSetDetailsRequest) (err error)
+	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 	DoBookmark(id string, apply func(b Bookmark) error) error
 }
 
@@ -147,16 +147,16 @@ func (b *sbookmark) createBookmarkObject(bm bookmark.Block) (pageId string, err 
 	if len(records) > 0 {
 		rec := records[0]
 
-		details := make([]*pb.RpcBlockSetDetailsDetail, 0, len(ogDetails))
+		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(ogDetails))
 		for k, v := range ogDetails {
-			details = append(details, &pb.RpcBlockSetDetailsDetail{
+			details = append(details, &pb.RpcObjectSetDetailsDetail{
 				Key:   k,
 				Value: v,
 			})
 		}
 
 		pageId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-		return pageId, b.manager.SetDetails(nil, pb.RpcBlockSetDetailsRequest{
+		return pageId, b.manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 			ContextId: pageId,
 			Details:   details,
 		})
