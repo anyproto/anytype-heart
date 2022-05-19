@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "ef2fd3f906f7e58942074caf82cb1457b52c1e1b0d17a7f06a3a7f9bdc1aa18b"
+const RelationChecksum = "d4933235f2b80c7655cb165b4e89688bc6a33ae363249ea5fd81996ab8deb735"
 
 type RelationKey string
 
@@ -1461,7 +1461,9 @@ var (
 			Description:      "An image is an artifact that depicts visual perception, such as a photograph or other two-dimensional picture",
 			Format:           model.RelationFormat_file,
 			Key:              "picture",
+			MaxCount:         1,
 			Name:             "Picture",
+			ObjectTypes:      []string{TypePrefix + "image"},
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,

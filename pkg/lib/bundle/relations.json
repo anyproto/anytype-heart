@@ -1282,8 +1282,11 @@
     "format": "file",
     "hidden": false,
     "key": "picture",
-    "maxCount": 0,
+    "maxCount": 1,
     "name": "Picture",
+    "objectTypes": [
+      "image"
+    ],
     "readonly": false,
     "source": "details"
   },

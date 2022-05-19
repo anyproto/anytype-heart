@@ -619,7 +619,6 @@ message Rpc {
         message CreateBookmark {
             message Request {
                 string url = 1;
-                google.protobuf.Struct details = 2; // object details
             }
 
             message Response {

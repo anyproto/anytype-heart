@@ -125,7 +125,7 @@ func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, co
 		Filters: []*model.BlockContentDataviewFilter{
 			{
 				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyWebsite.String(),
+				RelationKey: bundle.RelationKeyUrl.String(),
 				Value:       pbtypes.String(content.Url),
 			},
 		},
@@ -157,10 +157,14 @@ func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, co
 		}
 
 		pageId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-		return pageId, manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		err = manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
 			ContextId: pageId,
 			Details:   details,
 		})
+		if err != nil {
+			return "", fmt.Errorf("set details: %w", err)
+		}
+		return pageId, nil
 	}
 
 	details := &types.Struct{
