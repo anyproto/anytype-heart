@@ -684,12 +684,13 @@ func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	return
 }
 
-var WithLink = func(s *state.State) {
+var WithLinkFieldsMigration = func(s *state.State) {
+	const linkMigratedKey = "_link_migrated"
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if _, ok := b.(*link.Link); !ok {
 			return true
 		} else {
-			if b.Model().Fields != nil {
+			if b.Model().GetFields() != nil && !pbtypes.GetBool(b.Model().GetFields(), linkMigratedKey) {
 				link := s.Get(b.Model().Id).(*link.Link).GetLink()
 
 				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
@@ -717,7 +718,7 @@ var WithLink = func(s *state.State) {
 					}
 				}
 
-				b.Model().Fields = nil
+				b.Model().Fields.Fields[linkMigratedKey] = pbtypes.Bool(true)
 			}
 
 			return true
