@@ -3,6 +3,7 @@ package bookmark
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"sync"
 
@@ -44,7 +45,9 @@ type BlockService interface {
 }
 
 type PageManager interface {
+	// TODO: remove
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
+	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
 }
 
@@ -56,6 +59,7 @@ func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool
 	return b.Apply(s)
 }
 
+// TODO isSync is controversial, it muds the logic
 func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err error) {
 	bb := s.Get(id)
 	if b == nil {
@@ -72,14 +76,14 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 		return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 	}
 
-	err = bm.Fetch(bookmark.FetchParams{
+	err = Fetch(id, FetchParams{
 		Url:     url,
 		Anytype: b.Anytype(),
 		Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
 			if isSync {
 				updMu.Lock()
 				defer updMu.Unlock()
-				return apply(bm)
+				return b.updateBlock(bm, apply)
 			}
 			return b.blockService.DoBookmark(b.Id(), func(b Bookmark) error {
 				return b.UpdateBookmark(id, groupId, apply)
@@ -177,7 +181,34 @@ func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, co
 		details.Fields[k] = v
 	}
 
-	pageId, _, err = manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+	// pageId, _, err = manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
+	st := state.NewDoc("", nil).NewState()
+
+	relationKeys := []bundle.RelationKey{
+		bundle.RelationKeyUrl,
+		bundle.RelationKeyPicture,
+		bundle.RelationKeyCreatedDate,
+		bundle.RelationKeyTag,
+		bundle.RelationKeyNotes,
+		bundle.RelationKeyQuote,
+	}
+	blocks := make([]*model.Block, 0, len(relationKeys))
+	for _, k := range relationKeys {
+		blocks = append(blocks, &model.Block{
+			Id: k.String(),
+			Content: &model.BlockContentOfRelation{
+				Relation: &model.BlockContentRelation{
+					Key: k.String(),
+				},
+			},
+		})
+	}
+
+	if err = template.InitTemplate(st, template.WithRootBlocks(blocks)); err != nil {
+		return "", fmt.Errorf("init template: %w", err)
+	}
+
+	pageId, _, err = manager.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil, st)
 	return
 }
 
@@ -185,19 +216,9 @@ func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Blo
 	s := b.NewState().SetGroupId(groupId)
 	if bb := s.Get(id); bb != nil {
 		if bm, ok := bb.(bookmark.Block); ok {
-			if err := apply(bm); err != nil {
-				return err
+			if err := b.updateBlock(bm, apply); err != nil {
+				return fmt.Errorf("update block: %w", err)
 			}
-
-			store := b.Anytype().ObjectStore()
-
-			pageId, err := CreateBookmarkObject(store, b.blockService, bm.GetContent())
-			if err != nil {
-				return fmt.Errorf("create bookmark object: %w", err)
-			}
-
-			bm.SetTargetObjectId(pageId)
-
 		} else {
 			return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 		}
@@ -205,4 +226,20 @@ func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Blo
 		return smartblock.ErrSimpleBlockNotFound
 	}
 	return b.Apply(s)
+}
+
+// updateBlock updates a block and creates associated Bookmark object
+func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block) error) error {
+	if err := apply(block); err != nil {
+		return err
+	}
+
+	store := b.Anytype().ObjectStore()
+	pageId, err := CreateBookmarkObject(store, b.blockService, block.GetContent())
+	if err != nil {
+		return fmt.Errorf("create bookmark object: %w", err)
+	}
+
+	block.SetTargetObjectId(pageId)
+	return nil
 }

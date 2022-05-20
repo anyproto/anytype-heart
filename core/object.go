@@ -673,7 +673,7 @@ func (mw *Middleware) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkReques
 			Url: req.Url,
 		}
 		lp := mw.app.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-		updaters, err := bookmark.ContentFetcher(req.Url, lp, mw.GetAnytype())
+		updaters, err := bookmark2.ContentFetcher(req.Url, lp, mw.GetAnytype())
 		if err != nil {
 			return err
 		}
