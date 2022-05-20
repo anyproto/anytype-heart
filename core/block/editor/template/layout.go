@@ -13,7 +13,7 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		WithFeaturedRelations,
 		WithRequiredRelations(),
 		WithMaxCountMigration,
-		WithLink,
+		WithLinkFieldsMigration,
 	)
 
 	switch layout {
