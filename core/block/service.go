@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"net/url"
 	"strings"
 	"time"
@@ -30,7 +31,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	sbookmark "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -193,6 +194,7 @@ type Service interface {
 	BookmarkFetch(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) error
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
+	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
@@ -1403,6 +1405,28 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 	return s.Do(pageId, func(sb smartblock.SmartBlock) error {
 		return sb.ResetToVersion(state)
 	})
+}
+
+// ObjectCreateBookmark creates a new Bookmark object for provided URL or returns id of existing one
+func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error) {
+	url, err := uri.ProcessURI(req.Url)
+	if err != nil {
+		return "", fmt.Errorf("process uri: %w", err)
+	}
+	content := &sbookmark.Content{
+		Url: url,
+	}
+	updaters, err := bookmark.ContentFetcher(url, s.linkPreview, s.anytype)
+	if err != nil {
+		return "", err
+	}
+	for upd := range updaters {
+		if err := upd(content); err != nil {
+			return "", err
+		}
+	}
+
+	return bookmark.CreateBookmarkObject(s.objectStore, s, (*model.BlockContentBookmark)(content))
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {

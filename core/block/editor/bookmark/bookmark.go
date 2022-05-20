@@ -57,7 +57,6 @@ func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool
 	return b.Apply(s)
 }
 
-// TODO isSync is controversial, it muds the logic
 func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err error) {
 	bb := s.Get(id)
 	if b == nil {

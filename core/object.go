@@ -2,11 +2,7 @@ package core
 
 import (
 	"fmt"
-	bookmark2 "github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/indexer"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"strings"
 	"time"
 
@@ -669,26 +665,8 @@ func (mw *Middleware) ObjectCreateBookmark(req *pb.RpcObjectCreateBookmarkReques
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) error {
-		// TODO: temp in-place logic
-		url, err := uri.ProcessURI(req.Url)
-		if err != nil {
-			return fmt.Errorf("process uri: %w", err)
-		}
-		content := &bookmark.Content{
-			Url: url,
-		}
-		lp := mw.app.MustComponent(linkpreview.CName).(linkpreview.LinkPreview)
-		updaters, err := bookmark2.ContentFetcher(url, lp, mw.GetAnytype())
-		if err != nil {
-			return err
-		}
-		for upd := range updaters {
-			if err := upd(content); err != nil {
-				return err
-			}
-		}
-
-		id, err = bookmark2.CreateBookmarkObject(mw.GetAnytype().ObjectStore(), bs, (*model.BlockContentBookmark)(content))
+		var err error
+		id, err = bs.ObjectCreateBookmark(*req)
 		return err
 	})
 
