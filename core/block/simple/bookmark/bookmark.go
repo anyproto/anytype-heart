@@ -52,7 +52,6 @@ func (f *Content) GetContent() *model.BlockContentBookmark {
 }
 
 func (f *Content) SetLinkPreview(data model.LinkPreview) {
-	// TODO: don't reset url
 	f.Url = data.Url
 	f.Title = data.Title
 	f.Description = data.Description
