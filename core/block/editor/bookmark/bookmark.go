@@ -231,12 +231,14 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 		return err
 	}
 
-	store := b.Anytype().ObjectStore()
+	store := b.ObjectStore()
 	pageId, err := CreateBookmarkObject(store, b.blockService, block.GetContent())
 	if err != nil {
 		return fmt.Errorf("create bookmark object: %w", err)
 	}
 
-	block.SetTargetObjectId(pageId)
+	block.UpdateContent(func(content *model.BlockContentBookmark) {
+		content.TargetObjectId = pageId
+	})
 	return nil
 }

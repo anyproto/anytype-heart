@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/files"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"io"
 	"io/ioutil"
@@ -39,7 +40,7 @@ func Fetch(id string, params FetchParams) (err error) {
 	return
 }
 
-func ContentFetcher(url string, linkPreview linkpreview.LinkPreview, svc core.Service) (chan func(blockContent bookmark.BlockContent) error, error) {
+func ContentFetcher(url string, linkPreview linkpreview.LinkPreview, svc core.Service) (chan func(contentBookmark *model.BlockContentBookmark), error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	data, err := linkPreview.Fetch(ctx, url)
 	cancel()
@@ -48,13 +49,15 @@ func ContentFetcher(url string, linkPreview linkpreview.LinkPreview, svc core.Se
 	}
 
 	var wg sync.WaitGroup
-	updaters := make(chan func(blockContent bookmark.BlockContent) error)
+	updaters := make(chan func(contentBookmark *model.BlockContentBookmark))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		updaters <- func(bm bookmark.BlockContent) error {
-			bm.SetLinkPreview(data)
-			return nil
+		updaters <- func(c *model.BlockContentBookmark) {
+			c.Url = data.Url
+			c.Title = data.Title
+			c.Description = data.Description
+			c.Type = data.Type
 		}
 	}()
 
@@ -67,9 +70,8 @@ func ContentFetcher(url string, linkPreview linkpreview.LinkPreview, svc core.Se
 				fmt.Println("can't load image url:", data.ImageUrl, err)
 				return
 			}
-			updaters <- func(bm bookmark.BlockContent) error {
-				bm.SetImageHash(hash)
-				return nil
+			updaters <- func(c *model.BlockContentBookmark) {
+				c.ImageHash = hash
 			}
 		}()
 	}
@@ -82,9 +84,8 @@ func ContentFetcher(url string, linkPreview linkpreview.LinkPreview, svc core.Se
 				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
 				return
 			}
-			updaters <- func(bm bookmark.BlockContent) error {
-				bm.SetFaviconHash(hash)
-				return nil
+			updaters <- func(c *model.BlockContentBookmark) {
+				c.FaviconHash = hash
 			}
 		}()
 	}
@@ -103,16 +104,14 @@ func fetcher(id string, params FetchParams) {
 		fmt.Println("can't get updates:", id, err)
 		return
 	}
-	var upds []func(bm bookmark.BlockContent) error
+	var upds []func(*model.BlockContentBookmark)
 	for u := range updaters {
 		upds = append(upds, u)
 	}
 
 	err = params.Updater(id, func(bm bookmark.Block) error {
 		for _, u := range upds {
-			if err := u(bm); err != nil {
-				return err
-			}
+			bm.UpdateContent(u)
 		}
 		return nil
 	})

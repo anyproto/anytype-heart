@@ -31,7 +31,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
-	sbookmark "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -1413,7 +1412,7 @@ func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (i
 	if err != nil {
 		return "", fmt.Errorf("process uri: %w", err)
 	}
-	content := &sbookmark.Content{
+	content := &model.BlockContentBookmark{
 		Url: url,
 	}
 	updaters, err := bookmark.ContentFetcher(url, s.linkPreview, s.anytype)
@@ -1421,9 +1420,7 @@ func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (i
 		return "", err
 	}
 	for upd := range updaters {
-		if err := upd(content); err != nil {
-			return "", err
-		}
+		upd(content)
 	}
 
 	return bookmark.CreateBookmarkObject(s.objectStore, s, (*model.BlockContentBookmark)(content))
