@@ -386,9 +386,10 @@ message Rpc {
                         BAD_INPUT = 2;
 
                         FAILED_TO_STOP_NODE = 101;
-                        FAILED_TO_REMOVE_ACCOUNT_DATA = 102;
-                        FAILED_TO_CREATE_LOCAL_REPO = 103;
-                        FAILED_TO_WRITE_CONFIG = 104;
+                        FAILED_TO_IDENTIFY_ACCOUNT_DIR = 102;
+                        FAILED_TO_REMOVE_ACCOUNT_DATA = 103;
+                        FAILED_TO_CREATE_LOCAL_REPO = 104;
+                        FAILED_TO_WRITE_CONFIG = 105;
                     }
                 }
             }

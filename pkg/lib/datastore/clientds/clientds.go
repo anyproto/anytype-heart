@@ -17,7 +17,6 @@ import (
 	ds "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	dsbadgerv1 "github.com/ipfs/go-ds-badger"
-	cp "github.com/otiai10/copy"
 	textileBadger "github.com/textileio/go-ds-badger"
 	"github.com/textileio/go-threads/db/keytransform"
 
@@ -40,8 +39,6 @@ const (
 )
 
 var log = logging.Logger("anytype-clientds")
-
-var dirsForMoving =  []string{liteDSDir, logstoreOldDSDir, localstoreDSDir, threadsDbDSDir}
 
 type clientds struct {
 	running        bool
@@ -79,11 +76,6 @@ var DefaultConfig = Config{
 
 type DSConfigGetter interface {
 	DSConfig() Config
-}
-
-type StorageMover interface {
-	MoveStorage(newPath string) (string, error)
-	RemoveStorage() error
 }
 
 type FIleConfigGetter interface {
@@ -510,48 +502,6 @@ func New() datastore.Datastore {
 	return &clientds{}
 }
 
-func (r *clientds) MoveStorage(newPath string) (string, error) {
-	parts := strings.Split(r.repoPath, string(os.PathSeparator))
-	accountDir := parts[len(parts)-1]
-	if accountDir == "" {
-		return "", fmt.Errorf("fail to identify account dir")
-	}
-	destination := filepath.Join(newPath, accountDir)
-
-	if _, err := os.Stat(destination); !os.IsNotExist(err) { // remove all if already exist
-		if err := os.RemoveAll(destination); err != nil {
-			return "", fmt.Errorf("fail to remove existing dir: %s, err: %s", destination, err)
-		}
-	}
-
-	err := os.MkdirAll(destination, 0700)
-	if err != nil {
-		return "", fmt.Errorf("fail to create dir: %s, err: %s", destination, err)
-	}
-
-	if r.running {
-		if err := r.Close(); err != nil {
-			return "", err
-		}
-	}
-
-	for _, dir := range dirsForMoving {
-		if _, err := os.Stat(filepath.Join(r.repoPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
-			if err := cp.Copy(filepath.Join(r.repoPath, dir), filepath.Join(destination, dir), cp.Options{PreserveOwner: true}); err != nil {
-				return "", fmt.Errorf("fail to copy dir %s, err: %s", dir, err)
-			}
-		}
-	}
-
-	return destination, nil
-}
-
-func (r *clientds) RemoveStorage() error {
-	for _, dir := range dirsForMoving {
-		err := os.RemoveAll(filepath.Join(r.repoPath, dir))
-		if err != nil {
-			return err
-		}
-	}
-	return nil
+func GetDirsForMoving() []string {
+	return []string{liteDSDir, logstoreOldDSDir}
 }

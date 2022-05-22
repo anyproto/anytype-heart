@@ -5,13 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/gogo/status"
+	cp "github.com/otiai10/copy"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -641,30 +643,56 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
-
 		return m
 	}
 
-	store:= mw.app.MustComponent(clientds.CName).(clientds.StorageMover)
-	fc := mw.app.MustComponent(config.CName).(config.FileConfig)
+	dirs:= clientds.GetDirsForMoving()
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
 
-	newPath, err := store.MoveStorage(req.NewPath)
+	srcPath := conf.RepoPath
+	configPath := filepath.Join(srcPath, config.ConfigFileName)
+
+	parts := strings.Split(srcPath, string(os.PathSeparator))
+	accountDir := parts[len(parts)-1]
+	if accountDir == "" {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR, errors.New("fail to identify account dir"))
+	}
+
+	destination := filepath.Join(req.NewPath, accountDir)
+	if _, err := os.Stat(destination); !os.IsNotExist(err) { // remove all if already exist
+		if err := os.RemoveAll(destination); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	err := os.MkdirAll(destination, 0700)
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
-	}
-
-	_, err = fc.WriteFileConfig(config.ConfigRequired{LocalStorageAddr: newPath})
-	if err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
-	}
-
-	if err := store.RemoveStorage(); err != nil {
-		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
 	}
 
 	err = mw.stop()
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
+	}
+
+	for _, dir := range dirs {
+		if _, err := os.Stat(filepath.Join(srcPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
+			if err := cp.Copy(filepath.Join(srcPath, dir), filepath.Join(destination, dir), cp.Options{PreserveOwner: true}); err != nil {
+				return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			}
+		}
+	}
+
+	err = files.WriteFileConfig(configPath, config.ConfigRequired{LocalStorageAddr: destination})
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
+	}
+
+	for _, dir := range dirs {
+		err := os.RemoveAll(filepath.Join(srcPath, dir))
+		if err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
 	}
 
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
