@@ -11077,6 +11077,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | FAILED_TO_REMOVE_ACCOUNT_DATA | 103 |  |
 | FAILED_TO_CREATE_LOCAL_REPO | 104 |  |
 | FAILED_TO_WRITE_CONFIG | 105 |  |
+| FAILED_TO_GET_CONFIG | 106 |  |
 
 
 

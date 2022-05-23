@@ -390,6 +390,7 @@ message Rpc {
                         FAILED_TO_REMOVE_ACCOUNT_DATA = 103;
                         FAILED_TO_CREATE_LOCAL_REPO = 104;
                         FAILED_TO_WRITE_CONFIG = 105;
+                        FAILED_TO_GET_CONFIG = 106;
                     }
                 }
             }

@@ -638,6 +638,9 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
+	//proc := process.New()
+	//proc.Init()
+
 	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
 		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
 		if err != nil {
@@ -658,8 +661,15 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	dirs:= clientds.GetDirsForMoving()
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 
+	configPath := filepath.Join(conf.RepoPath, config.ConfigFileName)
 	srcPath := conf.RepoPath
-	configPath := filepath.Join(srcPath, config.ConfigFileName)
+	fileConf := config.ConfigRequired{}
+	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
+	}
+	if fileConf.LocalStorageAddr != "" {
+		srcPath = fileConf.LocalStorageAddr
+	}
 
 	parts := strings.Split(srcPath, string(os.PathSeparator))
 	accountDir := parts[len(parts)-1]
@@ -703,6 +713,12 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 
 	if err := removeDirs(srcPath, dirs); err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+	}
+
+	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
+		if err := os.Remove(srcPath); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
 	}
 
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
