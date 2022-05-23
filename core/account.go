@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
+	"github.com/anytypeio/go-anytype-middleware/core/block/process"
+	"github.com/anytypeio/go-anytype-middleware/core/event"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
@@ -186,6 +188,10 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		gwAddr = "http://" + gwAddr
 	}
 
+	cfg := config.ConfigRequired{}
+	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg);
+
+
 	pBlocks := at.PredefinedBlocks()
 	return &model.AccountInfo{
 		HomeObjectId:                pBlocks.Home,
@@ -196,6 +202,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
+		LocalStoragePath: 			 cfg.LocalStorageAddr,
 	}
 }
 
@@ -255,6 +262,21 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	if err = core.WalletInitRepo(mw.rootPath, seedRaw); err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
+	}
+
+	if req.StorePath != "" {
+		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
+
+		storePath := filepath.Join(req.StorePath, account.Address())
+
+		err := os.MkdirAll(storePath, 0700)
+		if err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+		}
+
+		if err := files.WriteFileConfig(configPath, config.ConfigRequired{LocalStorageAddr: storePath}); err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
+		}
 	}
 
 	newAcc := &model.Account{Id: account.Address()}
@@ -638,12 +660,6 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
-	//a := new(app.App)
-	//a.Register(process.New()).
-	//	Register(event.NewCallbackSender())
-	//proc := process.New()
-	//proc.Init()
-
 	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
 		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
 		if err != nil {
@@ -651,6 +667,25 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		}
 		return m
 	}
+
+	a := new(app.App)
+	proc := process.New()
+
+	a.Register(proc).
+		Register(event.NewGrpcSender())
+	if err := a.Start(); err != nil {
+		return response(pb.RpcAccountMoveResponseError_UNKNOWN_ERROR, err)
+	}
+
+	progress := process.NewProgress(pb.ModelProcess_AccountMove)
+	defer progress.Finish()
+	if err := proc.Add(progress); err != nil {
+		return response(pb.RpcAccountMoveResponseError_UNKNOWN_ERROR, err)
+	}
+
+	progress.SetProgressMessage("Moving account data")
+
+	progress.SetTotal(5)
 
 	removeDirs := func(src string, dirs []string) error {
 		for _, dir := range dirs {
@@ -661,7 +696,7 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		return nil
 	}
 
-	dirs:= clientds.GetDirsForMoving()
+	dirs := clientds.GetDirsForMoving()
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 
 	configPath := filepath.Join(conf.RepoPath, config.ConfigFileName)
@@ -696,10 +731,14 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
+	progress.SetDone(1)
+
 	err = mw.stop()
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
 	}
+
+	progress.SetDone(2)
 
 	for _, dir := range dirs {
 		if _, err := os.Stat(filepath.Join(srcPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
@@ -709,10 +748,14 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		}
 	}
 
+	progress.SetDone(3)
+
 	err = files.WriteFileConfig(configPath, config.ConfigRequired{LocalStorageAddr: destination})
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
+
+	progress.SetDone(4)
 
 	if err := removeDirs(srcPath, dirs); err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
@@ -723,6 +766,8 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
 		}
 	}
+
+	progress.SetDone(5)
 
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }

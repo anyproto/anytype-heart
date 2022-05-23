@@ -1712,6 +1712,7 @@ Front end to middleware request-to-create-an account
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
+| storePath | [string](#string) |  | Path to local storage |
 | alphaInviteCode | [string](#string) |  |  |
 
 
@@ -11040,6 +11041,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME | 102 |  |
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
+| FAILED_TO_WRITE_CONFIG | 105 |  |
+| FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
 | BAD_INVITE_CODE | 900 |  |
 | NET_ERROR | 901 | means general network error |
 | NET_CONNECTION_REFUSED | 902 | means we wasn&#39;t able to connect to the cafe server |
@@ -15520,6 +15523,7 @@ Precondition: user A and user B opened the same block
 | Export | 2 |  |
 | SaveFile | 3 |  |
 | RecoverAccount | 4 |  |
+| AccountMove | 5 |  |
 
 
  
@@ -15766,6 +15770,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
 | deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
+| localStoragePath | [string](#string) |  | path to local storage |
 
 
 
