@@ -38,6 +38,8 @@ const (
 	valueLogExtenderSize = 1024
 )
 
+var dirsForMoving = map[string]bool{liteOldDSDir: true, liteDSDir: true}
+
 var log = logging.Logger("anytype-clientds")
 
 type clientds struct {
@@ -45,12 +47,13 @@ type clientds struct {
 	litestoreOldDS *dsbadgerv1.Datastore
 	litestoreDS    *dsbadgerv3.Datastore
 
-	logstoreOldDS *dsbadgerv1.Datastore // logstore moved to localstoreDS
-	localstoreDS  *dsbadgerv3.Datastore
-	threadsDbDS   *textileBadger.Datastore
-	cfg           Config
-	repoPath      string
-	migrations    []migration
+	logstoreOldDS   *dsbadgerv1.Datastore // logstore moved to localstoreDS
+	localstoreDS    *dsbadgerv3.Datastore
+	threadsDbDS     *textileBadger.Datastore
+	cfg             Config
+	repoPath        string
+	dynamicRepoPath string
+	migrations      []migration
 }
 
 type Config struct {
@@ -135,18 +138,19 @@ func (r *clientds) Init(a *app.App) (err error) {
 		return fmt.Errorf("fail to get file config: %s", err)
 	}
 
+	wl := a.Component(wallet.CName)
+	if wl == nil {
+		return fmt.Errorf("need wallet to be inited first")
+	}
+	r.repoPath = wl.(wallet.Wallet).RepoPath()
+
 	if fileCfg.LocalStorageAddr == "" {
-		wl := a.Component(wallet.CName)
-		if wl == nil {
-			return fmt.Errorf("need wallet to be inited first")
-		}
-		r.repoPath = wl.(wallet.Wallet).RepoPath()
+		r.dynamicRepoPath = r.repoPath
 	} else {
 		if _, err := os.Stat(fileCfg.LocalStorageAddr); os.IsNotExist(err) {
 			return fmt.Errorf("local storage by address: %s not found", fileCfg.LocalStorageAddr)
 		}
-
-		r.repoPath = fileCfg.LocalStorageAddr
+		r.dynamicRepoPath = fileCfg.LocalStorageAddr
 	}
 
 	if cfgGetter, ok := a.Component("config").(DSConfigGetter); ok {
@@ -175,20 +179,20 @@ func (r *clientds) Init(a *app.App) (err error) {
 func (r *clientds) Run() error {
 	var err error
 
-	litestoreOldPath := filepath.Join(r.repoPath, liteOldDSDir)
+	litestoreOldPath := r.getRepoPath(liteOldDSDir)
 	if _, err := os.Stat(litestoreOldPath); !os.IsNotExist(err) {
 		r.litestoreOldDS, err = dsbadgerv1.NewDatastore(litestoreOldPath, &r.cfg.LitestoreOld)
 		if err != nil {
 			return err
 		}
 	} else {
-		r.litestoreDS, err = dsbadgerv3.NewDatastore(filepath.Join(r.repoPath, liteDSDir), &r.cfg.Litestore)
+		r.litestoreDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(liteDSDir), &r.cfg.Litestore)
 		if err != nil {
 			return err
 		}
 	}
 
-	logstoreOldDSDirPath := filepath.Join(r.repoPath, logstoreOldDSDir)
+	logstoreOldDSDirPath := r.getRepoPath(logstoreOldDSDir)
 	if _, err := os.Stat(logstoreOldDSDirPath); !os.IsNotExist(err) {
 		r.logstoreOldDS, err = dsbadgerv1.NewDatastore(logstoreOldDSDirPath, &r.cfg.LogstoreOld)
 		if err != nil {
@@ -196,7 +200,7 @@ func (r *clientds) Run() error {
 		}
 	}
 
-	r.localstoreDS, err = dsbadgerv3.NewDatastore(filepath.Join(r.repoPath, localstoreDSDir), &r.cfg.Localstore)
+	r.localstoreDS, err = dsbadgerv3.NewDatastore(r.getRepoPath(localstoreDSDir), &r.cfg.Localstore)
 	if err != nil {
 		return err
 	}
@@ -207,13 +211,13 @@ func (r *clientds) Run() error {
 	}
 
 	threadsDbOpts := textileBadger.Options(r.cfg.TextileDb)
-	tdbPath := filepath.Join(r.repoPath, threadsDbDSDir)
+	tdbPath := r.getRepoPath(threadsDbDSDir)
 	err = os.MkdirAll(tdbPath, os.ModePerm)
 	if err != nil {
 		return err
 	}
 
-	r.threadsDbDS, err = textileBadger.NewDatastore(filepath.Join(r.repoPath, threadsDbDSDir), &threadsDbOpts)
+	r.threadsDbDS, err = textileBadger.NewDatastore(r.getRepoPath(threadsDbDSDir), &threadsDbOpts)
 	if err != nil {
 		return err
 	}
@@ -307,7 +311,7 @@ type ValueLogInfo struct {
 
 func (r *clientds) RunBlockstoreGC() (freed int64, err error) {
 	if r.litestoreOldDS != nil {
-		freed1, err := runBlockstoreGC(filepath.Join(r.repoPath, liteOldDSDir), r.litestoreOldDS, DefaultConfig.LitestoreOld.ValueLogFileSize)
+		freed1, err := runBlockstoreGC(r.getRepoPath(liteOldDSDir), r.litestoreOldDS, DefaultConfig.LitestoreOld.ValueLogFileSize)
 		if err != nil {
 			return 0, err
 		}
@@ -315,7 +319,7 @@ func (r *clientds) RunBlockstoreGC() (freed int64, err error) {
 	}
 
 	if r.litestoreDS != nil {
-		freed2, err := runBlockstoreGC(filepath.Join(r.repoPath, liteDSDir), r.litestoreDS, DefaultConfig.Litestore.ValueLogFileSize)
+		freed2, err := runBlockstoreGC(r.getRepoPath(liteDSDir), r.litestoreDS, DefaultConfig.Litestore.ValueLogFileSize)
 		if err != nil {
 			return 0, err
 		}
@@ -506,6 +510,18 @@ func New() datastore.Datastore {
 	return &clientds{}
 }
 
+func (r *clientds) getRepoPath(dir string) string {
+	if dirsForMoving[dir] {
+		return filepath.Join(r.dynamicRepoPath, dir)
+	} else {
+		return filepath.Join(r.repoPath, dir)
+	}
+}
+
 func GetDirsForMoving() []string {
-	return []string{liteDSDir, logstoreOldDSDir}
+	res := make([]string, 0)
+	for dir := range dirsForMoving {
+		res = append(res, dir)
+	}
+	return res
 }

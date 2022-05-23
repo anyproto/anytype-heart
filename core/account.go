@@ -646,6 +646,15 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		return m
 	}
 
+	removeDirs := func(src string, dirs []string) error {
+		for _, dir := range dirs {
+			if err := os.RemoveAll(filepath.Join(src, dir)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
 	dirs:= clientds.GetDirsForMoving()
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 
@@ -659,8 +668,12 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	}
 
 	destination := filepath.Join(req.NewPath, accountDir)
-	if _, err := os.Stat(destination); !os.IsNotExist(err) { // remove all if already exist
-		if err := os.RemoveAll(destination); err != nil {
+	if srcPath == destination {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, errors.New("source path should not be equal destination path"))
+	}
+
+	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
+		if err := removeDirs(destination, dirs); err != nil {
 			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
 		}
 	}
@@ -688,11 +701,8 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
 
-	for _, dir := range dirs {
-		err := os.RemoveAll(filepath.Join(srcPath, dir))
-		if err != nil {
-			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
-		}
+	if err := removeDirs(srcPath, dirs); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
 	}
 
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
