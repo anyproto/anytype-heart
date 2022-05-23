@@ -24,15 +24,15 @@ type Basic interface {
 	Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
 	Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(ctx *state.Context, id ...string) (err error)
-	Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
+	Move(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
 	Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error)
 	SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
 	SetDivStyle(ctx *state.Context, style model.BlockContentDivStyle, ids ...string) (err error)
-	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (apply func() error, blocks []simple.Block, err error)
+	InternalCut(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (apply func() error, blocks []simple.Block, err error)
 	InternalPaste(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
-	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
+	SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
 	FeaturedRelationAdd(ctx *state.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
@@ -42,7 +42,7 @@ type Basic interface {
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
 
 // InternalCut will only unlink blocks you've cut after you call apply()
-func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveRequest) (apply func() error, blocks []simple.Block, err error) {
+func (bs *basic) InternalCut(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (apply func() error, blocks []simple.Block, err error) {
 	s := bs.NewStateCtx(ctx)
 	var uniqMap = make(map[string]struct{})
 	for _, bId := range req.BlockIds {
@@ -157,7 +157,7 @@ func (bs *basic) Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateReque
 
 func (bs *basic) copy(s *state.State, sourceId string) (id string, err error) {
 	b := s.Get(sourceId)
-	if bs == nil {
+	if b == nil {
 		return "", smartblock.ErrSimpleBlockNotFound
 	}
 	m := b.Copy().Model()
@@ -186,7 +186,7 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 	return bs.Apply(s)
 }
 
-func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
+func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (err error) {
 	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
@@ -198,11 +198,41 @@ func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err e
 			req.DropTargetId = template.HeaderLayoutId
 		}
 	}
+
+	var replacementCandidate simple.Block
 	for _, id := range req.BlockIds {
 		if b := s.Pick(id); b != nil {
+			if replacementCandidate == nil {
+				replacementCandidate = s.Get(id)
+			}
 			s.Unlink(id)
 		}
 	}
+
+	target := s.Get(req.DropTargetId)
+	if target == nil {
+		return fmt.Errorf("target block not found")
+	}
+
+	if targetContent, ok := target.Model().Content.(*model.BlockContentOfText); ok && targetContent.Text != nil {
+		if targetContent.Text.Style == model.BlockContentText_Paragraph && targetContent.Text.Text == "" {
+
+			req.Position = model.Block_Replace
+
+			if replacementCandidate != nil {
+				if replacementCandidate.Model().BackgroundColor == "" {
+					replacementCandidate.Model().BackgroundColor = target.Model().BackgroundColor
+				}
+			}
+
+			if replacementContent, ok := replacementCandidate.Model().Content.(*model.BlockContentOfText); ok {
+				if replacementContent.Text.Color == "" {
+					replacementContent.Text.Color = targetContent.Text.Color
+				}
+			}
+		}
+	}
+
 	if err = s.InsertTo(req.DropTargetId, req.Position, req.BlockIds...); err != nil {
 		return
 	}
@@ -293,7 +323,7 @@ func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKe
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) (err error) {
+func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {

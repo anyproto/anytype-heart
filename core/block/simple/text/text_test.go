@@ -230,6 +230,28 @@ func TestText_Merge(t *testing.T) {
 		assert.Equal(t, model.Range{From: 3, To: 4}, *b1.content.Marks.Marks[1].Range)
 		assert.Equal(t, model.Range{From: 13, To: 14}, *b1.content.Marks.Marks[2].Range)
 	})
+
+	t.Run("merge styled blocks", func(t *testing.T) {
+		b1 := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "",
+				},
+			},
+		}).(*Text)
+		b2 := NewText(&model.Block{
+			Content: &model.BlockContentOfText{
+				Text: &model.BlockContentText{
+					Text: "One",
+					Style: model.BlockContentText_Header1,
+				},
+			},
+		}).(*Text)
+		err := b1.Merge(b2)
+		require.NoError(t, err)
+
+		assert.Equal(t, b1.content.Style, model.BlockContentText_Header1)
+	})
 }
 
 func TestText_SetMarkForAllText(t *testing.T) {

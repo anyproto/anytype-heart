@@ -63,7 +63,7 @@ type Dataview interface {
 	WithSystemObjects(yes bool)
 	SetNewRecordDefaultFields(blockId string, defaultRecordFields *types.Struct) error
 
-	smartblock.SmartblockOpenListner
+	smartblock.SmartObjectOpenListner
 }
 
 func NewDataview(sb smartblock.SmartBlock) Dataview {
@@ -197,7 +197,9 @@ func (d *dataviewCollectionImpl) AddRelation(ctx *state.Context, blockId string,
 
 	// reset SelectDict because it is supposed to be aggregated and injected on-the-fly
 	relation.SelectDict = nil
-	tb.AddRelation(relation)
+	if err := tb.AddRelation(relation); err != nil {
+		return nil, err
+	}
 	err = d.Apply(s)
 	if err != nil {
 		return nil, err
@@ -890,7 +892,7 @@ func (d *dataviewCollectionImpl) fillAggregatedOptions(b dataview.Block) {
 	}
 }
 
-func (d *dataviewCollectionImpl) SmartblockOpened(ctx *state.Context) {
+func (d *dataviewCollectionImpl) SmartObjectOpened(ctx *state.Context) {
 	st := d.NewStateCtx(ctx)
 	st.Iterate(func(b simple.Block) (isContinue bool) {
 		if dvBlock, ok := b.(dataview.Block); !ok {

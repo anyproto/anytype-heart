@@ -545,6 +545,11 @@ func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContent
 
 func (t *Text) Merge(b simple.Block) error {
 	text, ok := b.(*Text)
+
+	if t.content != nil && t.content.Text == "" {
+		t.SetStyle(text.content.Style)
+	}
+
 	if !ok {
 		return fmt.Errorf("unexpected block type for merge: %T", b)
 	}

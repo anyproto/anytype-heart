@@ -284,7 +284,7 @@ func (p *Workspaces) Init(ctx *smartblock.InitContext) (err error) {
 	}
 
 	p.AddHook(p.updateObjects, smartblock.HookAfterApply)
-	err = smartblock.ApplyTemplate(p, ctx.State,
+	err = smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.WithEmpty,
 		template.WithTitle,
 		template.WithFeaturedRelations,

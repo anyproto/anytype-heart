@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	dsbadgerv3 "github.com/anytypeio/go-ds-badger3"
 	"github.com/gogo/protobuf/types"
-	dsbadgerv1 "github.com/ipfs/go-ds-badger"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -67,10 +66,10 @@ func initBadgerV3(o *options) (*dsbadgerv3.Datastore, error) {
 	return localstoreDS, nil
 }
 
-func initBadgerV1(o *options) (*dsbadgerv1.Datastore, error) {
-	cfg := clientds.DefaultConfig.Logstore
+func initBadgerV1(o *options) (*dsbadgerv3.Datastore, error) {
+	cfg := clientds.DefaultConfig.Localstore
 	cfg.SyncWrites = o.sync
-	localstoreDS, err := dsbadgerv1.NewDatastore(filepath.Join(o.path, localstoreDir), &cfg)
+	localstoreDS, err := dsbadgerv3.NewDatastore(filepath.Join(o.path, localstoreDir), &cfg)
 	if err != nil {
 		return nil, err
 	}
