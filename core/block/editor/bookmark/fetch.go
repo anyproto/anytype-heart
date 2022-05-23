@@ -28,8 +28,6 @@ type FetchParams struct {
 type Updater func(id string, apply func(b bookmark.Block) error) (err error)
 
 func Fetch(id string, params FetchParams) (err error) {
-	// TODO: is it needed?
-	// b.Content.Url = params.Url
 	if !params.Sync {
 		go func() {
 			fetcher(id, params)
