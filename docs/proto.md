@@ -16430,7 +16430,7 @@ scope from which this relation have been aggregated |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| DateNone | 0 |  |
+| ExactDate | 0 |  |
 | Yesterday | 1 |  |
 | Today | 2 |  |
 | Tomorrow | 3 |  |
@@ -16442,7 +16442,6 @@ scope from which this relation have been aggregated |
 | NextMonth | 9 |  |
 | NumberOfDaysAgo | 10 |  |
 | NumberOfDaysNow | 11 |  |
-| ExactDate | 12 |  |
 
 
 
