@@ -38,6 +38,7 @@ func GetFileConfig(configPath string, cfg interface{}) error {
 }
 
 //WriteFileConfig - overwrites params in file only specified params which passed in cfg
+// `json:",omitempty"` - is required tag for every field in cfg !!!
 func WriteFileConfig(configPath string, cfg interface{}) error {
 	oldCfg := make(map[string]interface{})
 	if err := GetFileConfig(configPath, &oldCfg); err != nil {

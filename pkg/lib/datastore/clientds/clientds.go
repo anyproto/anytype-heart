@@ -142,6 +142,10 @@ func (r *clientds) Init(a *app.App) (err error) {
 		}
 		r.repoPath = wl.(wallet.Wallet).RepoPath()
 	} else {
+		if _, err := os.Stat(fileCfg.LocalStorageAddr); os.IsNotExist(err) {
+			return fmt.Errorf("local storage by address: %s not found", fileCfg.LocalStorageAddr)
+		}
+
 		r.repoPath = fileCfg.LocalStorageAddr
 	}
 
