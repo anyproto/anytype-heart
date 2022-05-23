@@ -1418,9 +1418,12 @@ func (s *service) getSmartblock(ctx context.Context, id string) (ob *openedBlock
 	if err != nil {
 		return
 	}
-	ob = val.(*openedBlock)
-	if err != nil {
-		return nil, err
+	var ok bool
+	ob, ok = val.(*openedBlock)
+	if !ok {
+		return nil, fmt.Errorf("got unexpected object from cache: %t", val)
+	} else if ob == nil {
+		return nil, fmt.Errorf("got nil object from cache")
 	}
 	return ob, nil
 }

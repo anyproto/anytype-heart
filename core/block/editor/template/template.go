@@ -690,7 +690,7 @@ var WithLinkFieldsMigration = func(s *state.State) {
 		if _, ok := b.(*link.Link); !ok {
 			return true
 		} else {
-			if b.Model().GetFields() != nil && !pbtypes.GetBool(b.Model().GetFields(), linkMigratedKey) {
+			if b.Model().GetFields().GetFields() != nil && !pbtypes.GetBool(b.Model().GetFields(), linkMigratedKey) {
 				link := s.Get(b.Model().Id).(*link.Link).GetLink()
 
 				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
