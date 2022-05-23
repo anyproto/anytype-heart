@@ -2,7 +2,7 @@ package core
 
 import (
 	"fmt"
-	"github.com/deff7/go-naturaldate/v2"
+	"github.com/anytypeio/go-naturaldate/v2"
 	"strconv"
 	"strings"
 	"time"
