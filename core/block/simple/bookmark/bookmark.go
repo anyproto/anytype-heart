@@ -142,3 +142,14 @@ func (b *Bookmark) FillFileHashes(hashes []string) []string {
 	}
 	return hashes
 }
+
+func (b *Bookmark) FillSmartIds(ids []string) []string {
+	if b.content.TargetObjectId != "" {
+		ids = append(ids, b.content.TargetObjectId)
+	}
+	return ids
+}
+
+func (b *Bookmark) HasSmartIds() bool {
+	return b.content.TargetObjectId != ""
+}
