@@ -5,6 +5,8 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	bookmark2 "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"net/url"
 	"strings"
@@ -358,6 +360,12 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	}
 	afterDataviewTime := time.Now()
 	st := ob.NewState()
+
+	if err = s.migrateBlocks(st); err != nil {
+		return fmt.Errorf("migrate blocks: %w", err)
+	}
+
+	st.MigrateObjectTypes()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
@@ -393,6 +401,40 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
 		SmartblockType: int(tp),
 	})
+	return nil
+}
+
+func (s *service) migrateBlocks(st *state.State) error {
+	var createErr error
+	err := st.Iterate(func(b simple.Block) bool {
+		bm, ok := b.(bookmark2.Block)
+		if !ok {
+			return true
+		}
+
+		content := bm.GetContent()
+		if content.TargetObjectId != "" {
+			return true
+		}
+
+		var pageId string
+		pageId, createErr = bookmark.CreateBookmarkObject(s.objectStore, s, content)
+		if createErr != nil {
+			createErr = fmt.Errorf("block %s: create bookmark object: %w", b.Model().Id, createErr)
+			return false
+		}
+
+		bm.UpdateContent(func(content *model.BlockContentBookmark) {
+			content.TargetObjectId = pageId
+		})
+		return true
+	})
+	if createErr != nil {
+		return createErr
+	}
+	if err != nil {
+		return fmt.Errorf("iterate: %w", err)
+	}
 	return nil
 }
 
