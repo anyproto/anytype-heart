@@ -638,6 +638,9 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	mw.m.Lock()
 	defer mw.m.Unlock()
 
+	//a := new(app.App)
+	//a.Register(process.New()).
+	//	Register(event.NewCallbackSender())
 	//proc := process.New()
 	//proc.Init()
 
