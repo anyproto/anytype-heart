@@ -6,7 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	bookmark2 "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
+	sbookmark "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"net/url"
 	"strings"
@@ -365,7 +365,6 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		return fmt.Errorf("migrate blocks: %w", err)
 	}
 
-	st.MigrateObjectTypes()
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
@@ -407,7 +406,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 func (s *service) migrateBlocks(st *state.State) error {
 	var createErr error
 	err := st.Iterate(func(b simple.Block) bool {
-		bm, ok := b.(bookmark2.Block)
+		bm, ok := b.(sbookmark.Block)
 		if !ok {
 			return true
 		}
