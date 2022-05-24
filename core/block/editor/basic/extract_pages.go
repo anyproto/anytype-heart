@@ -16,12 +16,12 @@ import (
 )
 
 type PageCreator interface {
-	CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error)
+	CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, pageId string, err error)
 }
 
 // ExtractBlocksToPages extracts child blocks from the page to separate pages and
 // replaces these blocks to the links to these pages
-func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error) {
+func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
 	st := bs.NewStateCtx(ctx)
 
 	roots := listRoots(st, req.BlockIds)
@@ -51,7 +51,7 @@ func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
-		_, pageId, err := s.CreatePageFromState(nil, bs, "", pb.RpcBlockCreatePageRequest{
+		_, pageId, err := s.CreatePageFromState(nil, bs, "", pb.RpcBlockLinkCreateWithObjectRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{
 				Fields: fields,

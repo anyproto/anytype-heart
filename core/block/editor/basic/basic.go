@@ -24,7 +24,7 @@ type Basic interface {
 	Create(ctx *state.Context, groupId string, req pb.RpcBlockCreateRequest) (id string, err error)
 	Duplicate(ctx *state.Context, req pb.RpcBlockListDuplicateRequest) (newIds []string, err error)
 	Unlink(ctx *state.Context, id ...string) (err error)
-	Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) error
+	Move(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
 	Replace(ctx *state.Context, id string, block *model.Block) (newId string, err error)
 	SetFields(ctx *state.Context, fields ...*pb.RpcBlockListSetFieldsRequestBlockField) (err error)
 	Update(ctx *state.Context, apply func(b simple.Block) error, blockIds ...string) (err error)
@@ -32,13 +32,13 @@ type Basic interface {
 
 	PasteBlocks(blocks []simple.Block) (err error)
 	SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKeyRequest) error
-	SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) error
+	SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextRequest) error
 	AddRelationAndSet(ctx *state.Context, req pb.RpcBlockRelationAddRequest) error
 	FeaturedRelationAdd(ctx *state.Context, relations ...string) error
 	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
 	ReplaceLink(oldId, newId string) error
 
-	ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.RpcBlockListConvertChildrenToPagesRequest) (linkIds []string, err error)
+	ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -137,7 +137,7 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 	return bs.Apply(s)
 }
 
-func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveRequest) (err error) {
+func (bs *basic) Move(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (err error) {
 	if bs.Type() == model.SmartBlockType_Set {
 		return ErrNotSupported
 	}
@@ -274,7 +274,7 @@ func (bs *basic) SetRelationKey(ctx *state.Context, req pb.RpcBlockRelationSetKe
 	return bs.Apply(s)
 }
 
-func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockSetLatexTextRequest) (err error) {
+func (bs *basic) SetLatexText(ctx *state.Context, req pb.RpcBlockLatexSetTextRequest) (err error) {
 	s := bs.NewStateCtx(ctx)
 	b := s.Get(req.BlockId)
 	if b == nil {

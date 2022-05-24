@@ -21,7 +21,7 @@ func (t testExtractPages) Add(page *smarttest.SmartTest) {
 	t.pages[page.Id()] = page
 }
 
-func (t testExtractPages) CreatePageFromState(ctx *state.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockCreatePageRequest, state *state.State) (linkId string, pageId string, err error) {
+func (t testExtractPages) CreatePageFromState(ctx *state.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, pageId string, err error) {
 	id := bson.NewObjectId().Hex()
 	page := smarttest.New(id)
 	t.pages[id] = page
@@ -169,7 +169,7 @@ func TestExtractPages(t *testing.T) {
 			sb := makeTestPage()
 			ts.Add(sb)
 
-			req := pb.RpcBlockListConvertChildrenToPagesRequest{
+			req := pb.RpcBlockListConvertToObjectsRequest{
 				ContextId:  "test",
 				BlockIds:   tc.blockIds,
 				ObjectType: "page",

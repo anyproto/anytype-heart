@@ -121,10 +121,10 @@ func (g *gateway) Addr() string {
 }
 
 func (g *gateway) StateChange(state int) {
-	switch pb.RpcDeviceStateRequestDeviceState(state) {
-	case pb.RpcDeviceStateRequest_FOREGROUND:
+	switch pb.RpcAppSetDeviceStateRequestDeviceState(state) {
+	case pb.RpcAppSetDeviceStateRequest_FOREGROUND:
 		g.startServer()
-	case pb.RpcDeviceStateRequest_BACKGROUND:
+	case pb.RpcAppSetDeviceStateRequest_BACKGROUND:
 		if err := g.stopServer(); err != nil {
 			log.Errorf("err gateway close: %+v", err)
 		}

@@ -6,15 +6,15 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 )
 
-func (mw *Middleware) Export(req *pb.RpcExportRequest) *pb.RpcExportResponse {
-	response := func(path string, succeed int, err error) (res *pb.RpcExportResponse) {
-		res = &pb.RpcExportResponse{
-			Error: &pb.RpcExportResponseError{
-				Code: pb.RpcExportResponseError_NULL,
+func (mw *Middleware) ObjectListExport(req *pb.RpcObjectListExportRequest) *pb.RpcObjectListExportResponse {
+	response := func(path string, succeed int, err error) (res *pb.RpcObjectListExportResponse) {
+		res = &pb.RpcObjectListExportResponse{
+			Error: &pb.RpcObjectListExportResponseError{
+				Code: pb.RpcObjectListExportResponseError_NULL,
 			},
 		}
 		if err != nil {
-			res.Error.Code = pb.RpcExportResponseError_UNKNOWN_ERROR
+			res.Error.Code = pb.RpcObjectListExportResponseError_UNKNOWN_ERROR
 			res.Error.Description = err.Error()
 			return
 		} else {

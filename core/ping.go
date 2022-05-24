@@ -12,12 +12,12 @@ func nsToMs(n int64) int64 {
 	return (n - int64(n/1000000)*1000000)
 }
 
-func (mw *Middleware) Ping(req *pb.RpcPingRequest) *pb.RpcPingResponse {
+func (mw *Middleware) DebugPing(req *pb.RpcDebugPingRequest) *pb.RpcDebugPingResponse {
 	n := time.Now()
 	fmt.Printf("%d.%d go got ping req\n", n.Unix(), nsToMs(n.UnixNano()))
 
-	response := func(index int32, code pb.RpcPingResponseErrorCode, err error) *pb.RpcPingResponse {
-		m := &pb.RpcPingResponse{Index: index, Error: &pb.RpcPingResponseError{Code: code}}
+	response := func(index int32, code pb.RpcDebugPingResponseErrorCode, err error) *pb.RpcDebugPingResponse {
+		m := &pb.RpcDebugPingResponse{Index: index, Error: &pb.RpcDebugPingResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		}
@@ -42,5 +42,5 @@ func (mw *Middleware) Ping(req *pb.RpcPingRequest) *pb.RpcPingResponse {
 		})
 	}
 
-	return response(req.Index, pb.RpcPingResponseError_NULL, nil)
+	return response(req.Index, pb.RpcDebugPingResponseError_NULL, nil)
 }

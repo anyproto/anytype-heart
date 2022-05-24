@@ -1,5 +1,8 @@
+//go:build (linux || darwin) && !android && !ios && !nographviz && (amd64 || arm64)
 // +build linux darwin
-// +build !android,!ios,!nographviz
+// +build !android
+// +build !ios
+// +build !nographviz
 // +build amd64 arm64
 
 package change
@@ -7,6 +10,9 @@ package change
 import (
 	"bytes"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
+	"os"
 	"strings"
 	"time"
 	"unicode"
@@ -14,6 +20,8 @@ import (
 	"github.com/goccy/go-graphviz"
 	"github.com/goccy/go-graphviz/cgraph"
 )
+
+var logger = logging.Logger("anytype-debug")
 
 func (t *Tree) Graphviz() (data string, err error) {
 	var order = make(map[string]string)
@@ -142,4 +150,35 @@ func (t *Tree) Graphviz() (data string, err error) {
 		return
 	}
 	return buf.String(), nil
+}
+
+// This will create SVG image of the SmartBlock (i.e a DAG)
+func CreateSvg(block core.SmartBlock, svgFilename string) (err error) {
+	t, _, err := BuildTree(block)
+	if err != nil {
+		logger.Fatal("build tree error:", err)
+		return err
+	}
+
+	gv, err := t.Graphviz()
+	if err != nil {
+		logger.Fatal("can't make graphviz data:", err)
+		return err
+	}
+
+	gvo, err := graphviz.ParseBytes([]byte(gv))
+	if err != nil {
+		logger.Fatal("can't open graphviz data:", err)
+		return err
+	}
+
+	f, err := os.Create(svgFilename)
+	if err != nil {
+		logger.Fatal("can't create SVG file:", err)
+		return err
+	}
+	defer f.Close()
+
+	g := graphviz.New()
+	return g.Render(gvo, graphviz.SVG, f)
 }

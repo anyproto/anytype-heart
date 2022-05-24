@@ -24,10 +24,10 @@ import (
 )
 
 // To be renamed to ObjectSetDetails
-func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.RpcBlockSetDetailsResponse {
+func (mw *Middleware) ObjectSetDetails(req *pb.RpcObjectSetDetailsRequest) *pb.RpcObjectSetDetailsResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockSetDetailsResponseErrorCode, err error) *pb.RpcBlockSetDetailsResponse {
-		m := &pb.RpcBlockSetDetailsResponse{Error: &pb.RpcBlockSetDetailsResponseError{Code: code}}
+	response := func(code pb.RpcObjectSetDetailsResponseErrorCode, err error) *pb.RpcObjectSetDetailsResponse {
+		m := &pb.RpcObjectSetDetailsResponse{Error: &pb.RpcObjectSetDetailsResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -39,9 +39,9 @@ func (mw *Middleware) BlockSetDetails(req *pb.RpcBlockSetDetailsRequest) *pb.Rpc
 		return bs.SetDetails(ctx, *req)
 	})
 	if err != nil {
-		return response(pb.RpcBlockSetDetailsResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectSetDetailsResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcBlockSetDetailsResponseError_NULL, nil)
+	return response(pb.RpcObjectSetDetailsResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.RpcObjectDuplicateResponse {
@@ -56,12 +56,15 @@ func (mw *Middleware) ObjectDuplicate(req *pb.RpcObjectDuplicateRequest) *pb.Rpc
 		}
 		return m
 	}
-	var objectId string
+	var objectIds []string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		objectId, err = bs.ObjectDuplicate(req.ContextId)
+		objectIds, err = bs.ObjectsDuplicate([]string{req.ContextId})
 		return
 	})
-	return response(objectId, err)
+	if len(objectIds) == 0 {
+		return response("", err)
+	}
+	return response(objectIds[0], err)
 }
 
 func (mw *Middleware) ObjectListDuplicate(req *pb.RpcObjectListDuplicateRequest) *pb.RpcObjectListDuplicateResponse {
@@ -185,11 +188,11 @@ func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequ
 	return resp
 }
 
-func (mw *Middleware) ObjectIdsSubscribe(req *pb.RpcObjectIdsSubscribeRequest) *pb.RpcObjectIdsSubscribeResponse {
-	errResponse := func(err error) *pb.RpcObjectIdsSubscribeResponse {
-		r := &pb.RpcObjectIdsSubscribeResponse{
-			Error: &pb.RpcObjectIdsSubscribeResponseError{
-				Code: pb.RpcObjectIdsSubscribeResponseError_UNKNOWN_ERROR,
+func (mw *Middleware) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
+	errResponse := func(err error) *pb.RpcObjectSubscribeIdsResponse {
+		r := &pb.RpcObjectSubscribeIdsResponse{
+			Error: &pb.RpcObjectSubscribeIdsResponseError{
+				Code: pb.RpcObjectSubscribeIdsResponseError_UNKNOWN_ERROR,
 			},
 		}
 		if err != nil {
@@ -391,7 +394,7 @@ func (mw *Middleware) ObjectRelationAdd(req *pb.RpcObjectRelationAddRequest) *pb
 	}
 
 	if len(relations) == 0 {
-		return response(nil, pb.RpcObjectRelationAddResponseError_ALREADY_EXISTS, nil)
+		return response(nil, pb.RpcObjectRelationAddResponseError_BAD_INPUT, nil)
 	}
 
 	return response(relations[0], pb.RpcObjectRelationAddResponseError_NULL, nil)
@@ -585,10 +588,10 @@ func (mw *Middleware) ObjectSetIsFavorite(req *pb.RpcObjectSetIsFavoriteRequest)
 	return response(pb.RpcObjectSetIsFavoriteResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectFeaturedRelationAdd(req *pb.RpcObjectFeaturedRelationAddRequest) *pb.RpcObjectFeaturedRelationAddResponse {
+func (mw *Middleware) ObjectRelationAddFeatured(req *pb.RpcObjectRelationAddFeaturedRequest) *pb.RpcObjectRelationAddFeaturedResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectFeaturedRelationAddResponseErrorCode, err error) *pb.RpcObjectFeaturedRelationAddResponse {
-		m := &pb.RpcObjectFeaturedRelationAddResponse{Error: &pb.RpcObjectFeaturedRelationAddResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationAddFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationAddFeaturedResponse {
+		m := &pb.RpcObjectRelationAddFeaturedResponse{Error: &pb.RpcObjectRelationAddFeaturedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -600,15 +603,15 @@ func (mw *Middleware) ObjectFeaturedRelationAdd(req *pb.RpcObjectFeaturedRelatio
 		return bs.FeaturedRelationAdd(ctx, req.ContextId, req.Relations...)
 	})
 	if err != nil {
-		return response(pb.RpcObjectFeaturedRelationAddResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectRelationAddFeaturedResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcObjectFeaturedRelationAddResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationAddFeaturedResponseError_NULL, nil)
 }
 
-func (mw *Middleware) ObjectFeaturedRelationRemove(req *pb.RpcObjectFeaturedRelationRemoveRequest) *pb.RpcObjectFeaturedRelationRemoveResponse {
+func (mw *Middleware) ObjectRelationRemoveFeatured(req *pb.RpcObjectRelationRemoveFeaturedRequest) *pb.RpcObjectRelationRemoveFeaturedResponse {
 	ctx := state.NewContext(nil)
-	response := func(code pb.RpcObjectFeaturedRelationRemoveResponseErrorCode, err error) *pb.RpcObjectFeaturedRelationRemoveResponse {
-		m := &pb.RpcObjectFeaturedRelationRemoveResponse{Error: &pb.RpcObjectFeaturedRelationRemoveResponseError{Code: code}}
+	response := func(code pb.RpcObjectRelationRemoveFeaturedResponseErrorCode, err error) *pb.RpcObjectRelationRemoveFeaturedResponse {
+		m := &pb.RpcObjectRelationRemoveFeaturedResponse{Error: &pb.RpcObjectRelationRemoveFeaturedResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -620,9 +623,9 @@ func (mw *Middleware) ObjectFeaturedRelationRemove(req *pb.RpcObjectFeaturedRela
 		return bs.FeaturedRelationRemove(ctx, req.ContextId, req.Relations...)
 	})
 	if err != nil {
-		return response(pb.RpcObjectFeaturedRelationRemoveResponseError_UNKNOWN_ERROR, err)
+		return response(pb.RpcObjectRelationRemoveFeaturedResponseError_UNKNOWN_ERROR, err)
 	}
-	return response(pb.RpcObjectFeaturedRelationRemoveResponseError_NULL, nil)
+	return response(pb.RpcObjectRelationRemoveFeaturedResponseError_NULL, nil)
 }
 
 func (mw *Middleware) ObjectToSet(req *pb.RpcObjectToSetRequest) *pb.RpcObjectToSetResponse {

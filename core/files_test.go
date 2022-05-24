@@ -87,26 +87,25 @@ func TestFile(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, int64(1024*1024*3), f.Meta().Size)
 		}
-		m, err := getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
+		m, err := getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite_v3"))
 		require.NoError(t, err)
 		require.Equal(t, 10, m.NumVLOG)
 		fmt.Printf("BADGER METRICS AFTER ADD: %+v\n", m)
 		resp := mw.FileListOffload(&pb.RpcFileListOffloadRequest{IncludeNotPinned: true})
 		require.Equal(t, 0, int(resp.Error.Code), resp.Error.Description)
-		require.Equal(t, int32(200), resp.FilesOffloaded)
+		require.Equal(t, int32(201), resp.FilesOffloaded)
 		require.Equal(t, uint64(1024*1024*3*200+247400), resp.BytesOffloaded) // 247400 is the overhead for the links and meta
 
-		m, err = getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite"))
+		m, err = getMetrics(filepath.Join(rootPath, coreService.Account(), "ipfslite_v3"))
 		require.NoError(t, err)
 		fmt.Printf("BADGER METRICS AFTER OFFLOAD: %+v\n", m)
 		require.LessOrEqual(t, m.NumVLOG, 3)
-
 	})
 	t.Run("image_should_open_as_object", func(t *testing.T) {
-		respUploadImage := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+		respUploadImage := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
 		require.Equal(t, 0, int(respUploadImage.Error.Code), respUploadImage.Error.Description)
 
-		respOpenImage := mw.BlockOpen(&pb.RpcBlockOpenRequest{BlockId: respUploadImage.Hash})
+		respOpenImage := mw.ObjectOpen(&pb.RpcObjectOpenRequest{ObjectId: respUploadImage.Hash})
 		require.Equal(t, 0, int(respOpenImage.Error.Code), respOpenImage.Error.Description)
 		require.Len(t, respOpenImage.Event.Messages, 1)
 		show := getEventObjectShow(respOpenImage.Event.Messages)
@@ -122,19 +121,19 @@ func TestFile(t *testing.T) {
 	})
 
 	t.Run("file_should_be_reused", func(t *testing.T) {
-		respUploadFile1 := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		respUploadFile2 := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		require.Equal(t, respUploadFile1.Hash, respUploadFile2.Hash)
+		respFileUpload1 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		respFileUpload2 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a/a.txt"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		require.Equal(t, respFileUpload1.Hash, respFileUpload2.Hash)
 	})
 
 	t.Run("image_should_be_reused", func(t *testing.T) {
-		respUploadFile1 := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		respUploadFile2 := mw.UploadFile(&pb.RpcUploadFileRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
-		require.Equal(t, 0, int(respUploadFile1.Error.Code), respUploadFile1.Error.Description)
-		require.Equal(t, respUploadFile1.Hash, respUploadFile2.Hash)
+		respFileUpload1 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		respFileUpload2 := mw.FileUpload(&pb.RpcFileUploadRequest{LocalPath: "./block/testdata/testdir/a.jpg"})
+		require.Equal(t, 0, int(respFileUpload1.Error.Code), respFileUpload1.Error.Description)
+		require.Equal(t, respFileUpload1.Hash, respFileUpload2.Hash)
 	})
 
 }
