@@ -196,6 +196,7 @@ type Service interface {
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error)
+	ObjectBookmarkFetch(ctx *state.Context, req pb.RpcObjectBookmarkFetchRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
@@ -1452,7 +1453,26 @@ func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (i
 		upd(content)
 	}
 
-	return bookmark.CreateBookmarkObject(s.objectStore, s, (*model.BlockContentBookmark)(content))
+	return bookmark.CreateBookmarkObject(nil, s.objectStore, s, (*model.BlockContentBookmark)(content))
+}
+
+func (s *service) ObjectBookmarkFetch(ctx *state.Context, req pb.RpcObjectBookmarkFetchRequest) (err error) {
+	url, err := uri.ProcessURI(req.Url)
+	if err != nil {
+		return fmt.Errorf("process uri: %w", err)
+	}
+	content := &model.BlockContentBookmark{
+		Url: url,
+	}
+	updaters, err := bookmark.ContentFetcher(url, s.linkPreview, s.anytype)
+	if err != nil {
+		return err
+	}
+	for upd := range updaters {
+		upd(content)
+	}
+
+	return bookmark.UpdateBookmarkObject(ctx, s, req.ContextId, bookmark.DetailsFromContent(content))
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {

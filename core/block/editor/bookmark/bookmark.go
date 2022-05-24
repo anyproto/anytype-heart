@@ -47,6 +47,7 @@ type BlockService interface {
 type PageManager interface {
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
+	Do(id string, apply func(b smartblock.SmartBlock) error) error
 }
 
 func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
@@ -115,7 +116,26 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
-func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, content *model.BlockContentBookmark) (pageId string, err error) {
+func DetailsFromContent(content *model.BlockContentBookmark) map[string]*types.Value {
+	return map[string]*types.Value{
+		bundle.RelationKeyName.String():        pbtypes.String(content.Title),
+		bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
+		bundle.RelationKeyUrl.String():         pbtypes.String(content.Url),
+		bundle.RelationKeyPicture.String():     pbtypes.String(content.ImageHash),
+		bundle.RelationKeyIconImage.String():   pbtypes.String(content.FaviconHash),
+	}
+}
+
+var relationBlockKeys = []string{
+	bundle.RelationKeyUrl.String(),
+	bundle.RelationKeyPicture.String(),
+	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeyTag.String(),
+	bundle.RelationKeyNotes.String(),
+	bundle.RelationKeyQuote.String(),
+}
+
+func CreateBookmarkObject(ctx *state.Context, store objectstore.ObjectStore, manager PageManager, content *model.BlockContentBookmark) (objectId string, err error) {
 	records, _, err := store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
@@ -139,63 +159,31 @@ func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, co
 		return "", fmt.Errorf("query: %w", err)
 	}
 
-	ogDetails := map[string]*types.Value{
-		bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
-		bundle.RelationKeyUrl.String():         pbtypes.String(content.Url),
-		bundle.RelationKeyPicture.String():     pbtypes.String(content.ImageHash),
-		bundle.RelationKeyIconImage.String():   pbtypes.String(content.FaviconHash),
-	}
+	ogDetails := DetailsFromContent(content)
 
 	if len(records) > 0 {
 		rec := records[0]
-
-		details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(ogDetails))
-		for k, v := range ogDetails {
-			details = append(details, &pb.RpcObjectSetDetailsDetail{
-				Key:   k,
-				Value: v,
-			})
-		}
-
-		pageId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-		err = manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-			ContextId: pageId,
-			Details:   details,
-		})
-		if err != nil {
-			return "", fmt.Errorf("set details: %w", err)
-		}
-		return pageId, nil
+		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
+		return objectId, UpdateBookmarkObject(ctx, manager, objectId, ogDetails)
 	}
 
 	details := &types.Struct{
 		Fields: map[string]*types.Value{
 			bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyBookmark.URL()),
-			bundle.RelationKeyName.String(): pbtypes.String(content.Title),
 		},
 	}
 	for k, v := range ogDetails {
 		details.Fields[k] = v
 	}
 
-	// pageId, _, err = manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
 	st := state.NewDoc("", nil).NewState()
-
-	relationKeys := []bundle.RelationKey{
-		bundle.RelationKeyUrl,
-		bundle.RelationKeyPicture,
-		bundle.RelationKeyCreatedDate,
-		bundle.RelationKeyTag,
-		bundle.RelationKeyNotes,
-		bundle.RelationKeyQuote,
-	}
-	blocks := make([]*model.Block, 0, len(relationKeys))
-	for _, k := range relationKeys {
+	blocks := make([]*model.Block, 0, len(relationBlockKeys))
+	for _, k := range relationBlockKeys {
 		blocks = append(blocks, &model.Block{
-			Id: k.String(),
+			Id: k,
 			Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{
-					Key: k.String(),
+					Key: k,
 				},
 			},
 		})
@@ -205,8 +193,57 @@ func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, co
 		return "", fmt.Errorf("init template: %w", err)
 	}
 
-	pageId, _, err = manager.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil, st)
+	objectId, _, err = manager.CreateSmartBlockFromState(context.TODO(), coresb.SmartBlockTypePage, details, nil, st)
 	return
+}
+
+func UpdateBookmarkObject(ctx *state.Context, manager PageManager, objectId string, detailsMap map[string]*types.Value) error {
+	err := manager.Do(objectId, func(sb smartblock.SmartBlock) error {
+		st := sb.NewStateCtx(ctx)
+
+		for _, k := range relationBlockKeys {
+			if b := st.Pick(k); b != nil {
+				if ok := st.Unlink(b.Model().Id); !ok {
+					return fmt.Errorf("can't unlink block %s", b.Model().Id)
+				}
+				continue
+			}
+
+			ok := st.Add(simple.New(&model.Block{
+				Id: k,
+				Content: &model.BlockContentOfRelation{
+					Relation: &model.BlockContentRelation{
+						Key: k,
+					},
+				},
+			}))
+			if !ok {
+				return fmt.Errorf("can't add block %s", k)
+			}
+		}
+
+		if err := st.InsertTo(st.RootId(), model.Block_InnerFirst, relationBlockKeys...); err != nil {
+			return fmt.Errorf("insert relation blocks: %w", err)
+		}
+
+		return sb.Apply(st)
+	})
+	if err != nil {
+		return fmt.Errorf("update blocks: %w", err)
+	}
+
+	details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(detailsMap))
+	for k, v := range detailsMap {
+		details = append(details, &pb.RpcObjectSetDetailsDetail{
+			Key:   k,
+			Value: v,
+		})
+	}
+
+	return manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
+		ContextId: objectId,
+		Details:   details,
+	})
 }
 
 func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) error {
@@ -232,7 +269,7 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 	}
 
 	store := b.ObjectStore()
-	pageId, err := CreateBookmarkObject(store, b.blockService, block.GetContent())
+	pageId, err := CreateBookmarkObject(nil, store, b.blockService, block.GetContent())
 	if err != nil {
 		return fmt.Errorf("create bookmark object: %w", err)
 	}
@@ -249,7 +286,7 @@ func MigrateBlock(store objectstore.ObjectStore, manager PageManager, bm bookmar
 		return nil
 	}
 
-	pageId, err := CreateBookmarkObject(store, manager, content)
+	pageId, err := CreateBookmarkObject(nil, store, manager, content)
 	if err != nil {
 		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
 	}

@@ -428,6 +428,10 @@
     - [Rpc.Object.ApplyTemplate.Request](#anytype-Rpc-Object-ApplyTemplate-Request)
     - [Rpc.Object.ApplyTemplate.Response](#anytype-Rpc-Object-ApplyTemplate-Response)
     - [Rpc.Object.ApplyTemplate.Response.Error](#anytype-Rpc-Object-ApplyTemplate-Response-Error)
+    - [Rpc.Object.BookmarkFetch](#anytype-Rpc-Object-BookmarkFetch)
+    - [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request)
+    - [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response)
+    - [Rpc.Object.BookmarkFetch.Response.Error](#anytype-Rpc-Object-BookmarkFetch-Response-Error)
     - [Rpc.Object.Close](#anytype-Rpc-Object-Close)
     - [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request)
     - [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response)
@@ -776,6 +780,7 @@
     - [Rpc.Navigation.ListObjects.Response.Error.Code](#anytype-Rpc-Navigation-ListObjects-Response-Error-Code)
     - [Rpc.Object.AddWithObjectId.Response.Error.Code](#anytype-Rpc-Object-AddWithObjectId-Response-Error-Code)
     - [Rpc.Object.ApplyTemplate.Response.Error.Code](#anytype-Rpc-Object-ApplyTemplate-Response-Error-Code)
+    - [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code)
     - [Rpc.Object.Close.Response.Error.Code](#anytype-Rpc-Object-Close-Response-Error-Code)
     - [Rpc.Object.Create.Response.Error.Code](#anytype-Rpc-Object-Create-Response-Error-Code)
     - [Rpc.Object.CreateBookmark.Response.Error.Code](#anytype-Rpc-Object-CreateBookmark-Response-Error-Code)
@@ -1151,6 +1156,7 @@
 | ObjectRedo | [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request) | [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response) |  |
 | ObjectImportMarkdown | [Rpc.Object.ImportMarkdown.Request](#anytype-Rpc-Object-ImportMarkdown-Request) | [Rpc.Object.ImportMarkdown.Response](#anytype-Rpc-Object-ImportMarkdown-Response) |  |
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
+| ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request) | [Rpc.ObjectRelation.Add.Response](#anytype-Rpc-ObjectRelation-Add-Response) | Object Relations *** |
 | ObjectRelationUpdate | [Rpc.ObjectRelation.Update.Request](#anytype-Rpc-ObjectRelation-Update-Request) | [Rpc.ObjectRelation.Update.Response](#anytype-Rpc-ObjectRelation-Update-Response) |  |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype-Rpc-ObjectRelation-Delete-Request) | [Rpc.ObjectRelation.Delete.Response](#anytype-Rpc-ObjectRelation-Delete-Response) |  |
@@ -7437,6 +7443,64 @@ Get the info for page alongside with info for all inbound and outbound links fro
 
 
 
+<a name="anytype-Rpc-Object-BookmarkFetch"></a>
+
+### Rpc.Object.BookmarkFetch
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-BookmarkFetch-Request"></a>
+
+### Rpc.Object.BookmarkFetch.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-BookmarkFetch-Response"></a>
+
+### Rpc.Object.BookmarkFetch.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.BookmarkFetch.Response.Error](#anytype-Rpc-Object-BookmarkFetch-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-BookmarkFetch-Response-Error"></a>
+
+### Rpc.Object.BookmarkFetch.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.BookmarkFetch.Response.Error.Code](#anytype-Rpc-Object-BookmarkFetch-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Close"></a>
 
 ### Rpc.Object.Close
@@ -12342,6 +12406,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-ApplyTemplate-Response-Error-Code"></a>
 
 ### Rpc.Object.ApplyTemplate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-BookmarkFetch-Response-Error-Code"></a>
+
+### Rpc.Object.BookmarkFetch.Response.Error.Code
 
 
 | Name | Number | Description |
