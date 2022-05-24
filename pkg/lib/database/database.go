@@ -161,7 +161,7 @@ func NewFilters(q Query, sch schema.Schema) (f *Filters, err error) {
 	if err != nil {
 		return
 	}
-
+	
 	if len(qFilter.(filter.AndFilters)) > 0 {
 		mainFilter = append(mainFilter, qFilter)
 	}
