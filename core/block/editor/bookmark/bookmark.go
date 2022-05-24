@@ -242,3 +242,20 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 	})
 	return nil
 }
+
+func MigrateBlock(store objectstore.ObjectStore, manager PageManager, bm bookmark.Block) error {
+	content := bm.GetContent()
+	if content.TargetObjectId != "" {
+		return nil
+	}
+
+	pageId, err := CreateBookmarkObject(store, manager, content)
+	if err != nil {
+		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
+	}
+
+	bm.UpdateContent(func(content *model.BlockContentBookmark) {
+		content.TargetObjectId = pageId
+	})
+	return nil
+}

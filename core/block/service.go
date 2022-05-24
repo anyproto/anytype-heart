@@ -404,32 +404,20 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 }
 
 func (s *service) migrateBlocks(st *state.State) error {
-	var createErr error
+	var migrateErr error
 	err := st.Iterate(func(b simple.Block) bool {
 		bm, ok := b.(sbookmark.Block)
 		if !ok {
 			return true
 		}
 
-		content := bm.GetContent()
-		if content.TargetObjectId != "" {
-			return true
-		}
-
-		var pageId string
-		pageId, createErr = bookmark.CreateBookmarkObject(s.objectStore, s, content)
-		if createErr != nil {
-			createErr = fmt.Errorf("block %s: create bookmark object: %w", b.Model().Id, createErr)
+		if migrateErr = bookmark.MigrateBlock(s.objectStore, s, bm); migrateErr != nil {
 			return false
 		}
-
-		bm.UpdateContent(func(content *model.BlockContentBookmark) {
-			content.TargetObjectId = pageId
-		})
 		return true
 	})
-	if createErr != nil {
-		return createErr
+	if migrateErr != nil {
+		return migrateErr
 	}
 	if err != nil {
 		return fmt.Errorf("iterate: %w", err)
