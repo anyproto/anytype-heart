@@ -1352,10 +1352,7 @@ func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.O
 		}
 		if sbO, ok := value.(SmartblockOpener); ok {
 			var sb smartblock.SmartBlock
-			sb.Lock()
-			sb, err = sbO.Open(subId)
-			sb.Unlock()
-			if err != nil {
+			if sb, err = sbO.Open(subId); err != nil {
 				return
 			}
 			return newOpenedBlock(sb), nil
