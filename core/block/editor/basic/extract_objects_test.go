@@ -13,21 +13,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type testExtractPages struct {
-	pages map[string]*smarttest.SmartTest
+type testExtractObjects struct {
+	objects map[string]*smarttest.SmartTest
 }
 
-func (t testExtractPages) Add(page *smarttest.SmartTest) {
-	t.pages[page.Id()] = page
+func (t testExtractObjects) Add(object *smarttest.SmartTest) {
+	t.objects[object.Id()] = object
 }
 
-func (t testExtractPages) CreateObjectFromState(ctx *state.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, pageId string, err error) {
+func (t testExtractObjects) CreateObjectFromState(ctx *state.Context, _ smartblock.SmartBlock, _ string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
 	id := bson.NewObjectId().Hex()
-	page := smarttest.New(id)
-	t.pages[id] = page
+	object := smarttest.New(id)
+	t.objects[id] = object
 
 	state.SetRootId(id)
-	page.Doc = state
+	object.Doc = state
 
 	return "", id, nil
 }
@@ -38,10 +38,10 @@ func assertNoCommonElements(t *testing.T, a, b []string) {
 	assert.Equal(t, got, a)
 }
 
-func assertHasTextBlocks(t *testing.T, page *smarttest.SmartTest, texts []string) {
+func assertHasTextBlocks(t *testing.T, object *smarttest.SmartTest, texts []string) {
 	var gotTexts []string
 
-	for _, b := range page.Blocks() {
+	for _, b := range object.Blocks() {
 		if b.GetText() != nil {
 			gotTexts = append(gotTexts, b.GetText().Text)
 		}
@@ -50,20 +50,20 @@ func assertHasTextBlocks(t *testing.T, page *smarttest.SmartTest, texts []string
 	assert.Subset(t, gotTexts, texts)
 }
 
-func assertLinkedPageHasTextBlocks(t *testing.T, ts testExtractPages, sourcePage *smarttest.SmartTest, linkId string, texts []string) {
-	b := sourcePage.Pick(linkId).Model()
+func assertLinkedObjectHasTextBlocks(t *testing.T, ts testExtractObjects, sourceObject *smarttest.SmartTest, linkId string, texts []string) {
+	b := sourceObject.Pick(linkId).Model()
 
 	link := b.GetLink()
 	require.NotNil(t, link)
 
-	page := ts.pages[link.TargetBlockId]
-	require.NotNil(t, page)
+	object := ts.objects[link.TargetBlockId]
+	require.NotNil(t, object)
 
-	assertHasTextBlocks(t, page, texts)
+	assertHasTextBlocks(t, object, texts)
 }
 
-func TestExtractPages(t *testing.T) {
-	makeTestPage := func() *smarttest.SmartTest {
+func TestExtractObjects(t *testing.T) {
+	makeTestObject := func() *smarttest.SmartTest {
 		sb := smarttest.New("test")
 		sb.AddBlock(newTextBlock("test", "", []string{"1", "2", "3"}))
 		sb.AddBlock(newTextBlock("1", "text 1", []string{"1.1", "1.2"}))
@@ -79,40 +79,40 @@ func TestExtractPages(t *testing.T) {
 	}
 
 	for _, tc := range []struct {
-		name               string
-		blockIds           []string
-		wantPagesWithTexts [][]string
+		name                 string
+		blockIds             []string
+		wantObjectsWithTexts [][]string
 	}{
 		{
-			name:               "undefined block",
-			blockIds:           []string{"4.1.1"},
-			wantPagesWithTexts: [][]string{},
+			name:                 "undefined block",
+			blockIds:             []string{"4.1.1"},
+			wantObjectsWithTexts: [][]string{},
 		},
 		{
 			name:     "leaf block",
 			blockIds: []string{"1.1.1"},
-			wantPagesWithTexts: [][]string{
+			wantObjectsWithTexts: [][]string{
 				{"text 1.1.1"},
 			},
 		},
 		{
 			name:     "block with one child",
 			blockIds: []string{"2"},
-			wantPagesWithTexts: [][]string{
+			wantObjectsWithTexts: [][]string{
 				{"text 2", "text 2.1"},
 			},
 		},
 		{
 			name:     "block with one child, child id also presents in request",
 			blockIds: []string{"2", "2.1"},
-			wantPagesWithTexts: [][]string{
+			wantObjectsWithTexts: [][]string{
 				{"text 2", "text 2.1"},
 			},
 		},
 		{
 			name:     "block with multiple children",
 			blockIds: []string{"1"},
-			wantPagesWithTexts: [][]string{
+			wantObjectsWithTexts: [][]string{
 				{
 					"text 1",
 					"text 1.1", "text 1.1.1",
@@ -126,14 +126,14 @@ func TestExtractPages(t *testing.T) {
 				"1", "1.1", "1.1.1", "1.2",
 				"2", "2.1",
 			},
-			wantPagesWithTexts: [][]string{
-				// First page
+			wantObjectsWithTexts: [][]string{
+				// First object
 				{
 					"text 1",
 					"text 1.1", "text 1.1.1",
 					"text 1.2",
 				},
-				// Second page
+				// Second object
 				{
 					"text 2",
 					"text 2.1",
@@ -146,13 +146,13 @@ func TestExtractPages(t *testing.T) {
 				"1.1", "1.1.1",
 				"3", "3.1.1",
 			},
-			wantPagesWithTexts: [][]string{
-				// First page
+			wantObjectsWithTexts: [][]string{
+				// First object
 				{
 					"text 1.1",
 					"text 1.1.1",
 				},
-				// Second page
+				// Second object
 				{
 					"text 3",
 					"text 3.1",
@@ -162,11 +162,11 @@ func TestExtractPages(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			ts := testExtractPages{
-				pages: map[string]*smarttest.SmartTest{},
+			ts := testExtractObjects{
+				objects: map[string]*smarttest.SmartTest{},
 			}
 
-			sb := makeTestPage()
+			sb := makeTestObject()
 			ts.Add(sb)
 
 			req := pb.RpcBlockListConvertToObjectsRequest{
@@ -183,13 +183,13 @@ func TestExtractPages(t *testing.T) {
 				gotBlockIds = append(gotBlockIds, b.Id)
 			}
 
-			// Check that requested blocks are removed from page
+			// Check that requested blocks are removed from object
 			assertNoCommonElements(t, gotBlockIds, req.BlockIds)
 
-			// Check that linked pages has desired text blocks
-			require.Len(t, linkIds, len(tc.wantPagesWithTexts))
-			for i, wantTexts := range tc.wantPagesWithTexts {
-				assertLinkedPageHasTextBlocks(t, ts, sb, linkIds[i], wantTexts)
+			// Check that linked objects has desired text blocks
+			require.Len(t, linkIds, len(tc.wantObjectsWithTexts))
+			for i, wantTexts := range tc.wantObjectsWithTexts {
+				assertLinkedObjectHasTextBlocks(t, ts, sb, linkIds[i], wantTexts)
 			}
 
 		})
