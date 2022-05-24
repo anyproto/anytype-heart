@@ -148,7 +148,7 @@ func enrichWithDateSuggestion(records []database.Record, req *pb.RpcObjectSearch
 	// Don't duplicate search suggestions
 	var found bool
 	for _, r := range records {
-		if r.Details.Fields == nil {
+		if r.Details == nil || r.Details.Fields == nil {
 			continue
 		}
 		if v, ok := r.Details.Fields[bundle.RelationKeyId.String()]; ok {
