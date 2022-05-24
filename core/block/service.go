@@ -95,7 +95,7 @@ type Service interface {
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error)
-	CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, st *state.State) (linkId string, pageId string, err error)
+	CreateObjectFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, st *state.State) (linkId string, pageId string, err error)
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
@@ -106,7 +106,7 @@ type Service interface {
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error)
-	ConvertChildrenToPages(ctx *state.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ListConvertToObjects(ctx *state.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 	SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
@@ -940,37 +940,37 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 }
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
-func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error) {
-	pageCreator := func(ctx context.Context) (string, error) {
-		pageId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+	creator := func(ctx context.Context) (string, error) {
+		objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 		if err != nil {
-			return pageId, fmt.Errorf("create smartblock error: %v", err)
+			return objectId, fmt.Errorf("create smartblock error: %v", err)
 		}
-		return pageId, nil
+		return objectId, nil
 	}
 
 	if req.ContextId != "" {
 		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
-			linkId, pageId, err = s.createPage(ctx, sb, groupId, req, true, pageCreator)
+			linkId, objectId, err = s.createObject(ctx, sb, groupId, req, true, creator)
 			return err
 		})
 		return
 	}
 
-	return s.createPage(ctx, nil, groupId, req, true, pageCreator)
+	return s.createObject(ctx, nil, groupId, req, true, creator)
 }
 
-func (s *service) CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, pageId string, err error) {
-	return s.createPage(ctx, contextBlock, groupId, req, false, func(ctx context.Context) (string, error) {
-		pageId, _, err = s.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, nil, state)
+func (s *service) CreateObjectFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
+	return s.createObject(ctx, contextBlock, groupId, req, false, func(ctx context.Context) (string, error) {
+		objectId, _, err = s.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, nil, state)
 		if err != nil {
-			return pageId, fmt.Errorf("create smartblock error: %v", err)
+			return objectId, fmt.Errorf("create smartblock error: %v", err)
 		}
-		return pageId, nil
+		return objectId, nil
 	})
 }
 
-func (s *service) createPage(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, storeLink bool, create func(context.Context) (pageId string, err error)) (linkId string, pageId string, err error) {
+func (s *service) createObject(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, storeLink bool, create func(context.Context) (objectId string, err error)) (linkId string, objectId string, err error) {
 	if contextBlock != nil {
 		if contextBlock.Type() == model.SmartBlockType_Set {
 			return "", "", basic.ErrNotSupported
@@ -990,14 +990,14 @@ func (s *service) createPage(ctx *state.Context, contextBlock smartblock.SmartBl
 		req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
 	}
 
-	pageId, err = create(context.TODO())
+	objectId, err = create(context.TODO())
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
 
 	// do not create a link
 	if (!storeLink) || contextBlock == nil {
-		return "", pageId, err
+		return "", objectId, err
 	}
 
 	b, ok := contextBlock.(basic.Basic)
@@ -1010,7 +1010,7 @@ func (s *service) createPage(ctx *state.Context, contextBlock smartblock.SmartBl
 		Block: &model.Block{
 			Content: &model.BlockContentOfLink{
 				Link: &model.BlockContentLink{
-					TargetBlockId: pageId,
+					TargetBlockId: objectId,
 					Style:         model.BlockContentLink_Page,
 				},
 			},

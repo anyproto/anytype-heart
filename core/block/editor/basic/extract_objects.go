@@ -15,13 +15,13 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
-type PageCreator interface {
-	CreatePageFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, pageId string, err error)
+type ObjectCreator interface {
+	CreateObjectFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error)
 }
 
-// ExtractBlocksToPages extracts child blocks from the page to separate pages and
-// replaces these blocks to the links to these pages
-func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+// ExtractBlocksToObjects extracts child blocks from the object to separate objects and
+// replaces these blocks to the links to these objects
+func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
 	st := bs.NewStateCtx(ctx)
 
 	roots := listRoots(st, req.BlockIds)
@@ -34,13 +34,13 @@ func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.
 			st.Unlink(b.Model().Id)
 		}
 
-		// Build a state for the new page from child blocks
-		pageState := state.NewDoc("", nil).NewState()
+		// Build a state for the new object from child blocks
+		objState := state.NewDoc("", nil).NewState()
 		for _, b := range newBlocks {
-			pageState.Add(b)
+			objState.Add(b)
 		}
-		pageState.Add(base.NewBase(&model.Block{
-			// This id will be replaced by id of the new page
+		objState.Add(base.NewBase(&model.Block{
+			// This id will be replaced by id of the new object
 			Id:          "_root",
 			ChildrenIds: []string{newRoot},
 		}))
@@ -51,14 +51,14 @@ func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
 		}
-		_, pageId, err := s.CreatePageFromState(nil, bs, "", pb.RpcBlockLinkCreateWithObjectRequest{
+		_, objectId, err := s.CreateObjectFromState(nil, bs, "", pb.RpcBlockLinkCreateWithObjectRequest{
 			ContextId: req.ContextId,
 			Details: &types.Struct{
 				Fields: fields,
 			},
-		}, pageState)
+		}, objState)
 		if err != nil {
-			return nil, fmt.Errorf("create child page: %w", err)
+			return nil, fmt.Errorf("create child object: %w", err)
 		}
 
 		linkId, err := CreateBlock(st, "", pb.RpcBlockCreateRequest{
@@ -66,7 +66,7 @@ func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.
 			Block: &model.Block{
 				Content: &model.BlockContentOfLink{
 					Link: &model.BlockContentLink{
-						TargetBlockId: pageId,
+						TargetBlockId: objectId,
 						Style:         model.BlockContentLink_Page,
 					},
 				},
@@ -74,7 +74,7 @@ func (bs *basic) ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.
 			Position: model.Block_Replace,
 		})
 		if err != nil {
-			return nil, fmt.Errorf("create link to page %s: %w", pageId, err)
+			return nil, fmt.Errorf("create link to object %s: %w", objectId, err)
 		}
 
 		linkIds = append(linkIds, linkId)

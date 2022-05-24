@@ -658,7 +658,7 @@ func (mw *Middleware) BlockListConvertToObjects(req *pb.RpcBlockListConvertToObj
 	}
 	var linkIds []string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		linkIds, err = bs.ConvertChildrenToPages(ctx, *req)
+		linkIds, err = bs.ListConvertToObjects(ctx, *req)
 		return
 	})
 	if err != nil {

@@ -38,7 +38,7 @@ type Basic interface {
 	FeaturedRelationRemove(ctx *state.Context, relations ...string) error
 	ReplaceLink(oldId, newId string) error
 
-	ExtractBlocksToPages(ctx *state.Context, s PageCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
