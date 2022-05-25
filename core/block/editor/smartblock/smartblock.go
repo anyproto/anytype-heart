@@ -1029,21 +1029,47 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (err error) {
 	s := sb.NewStateCtx(ctx)
 
-	if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
-		textBlock, err := s.GetFirstTextBlock()
+	if len(objectTypes) > 0 {
+		ot, err := objectstore.GetObjectType(sb.objectStore, objectTypes[0])
 		if err != nil {
 			return err
 		}
-		if textBlock != nil {
-			s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
-			if err := s.Iterate(func(b simple.Block) (isContinue bool) {
-				if b.Model().Content == textBlock {
-					s.Unlink(b.Model().Id)
-					return false
+
+		if ot.Layout == model.ObjectType_note {
+			if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; ok && name.GetStringValue() != "" {
+				newBlock := simple.New(&model.Block{
+					Content: &model.BlockContentOfText{
+						Text: &model.BlockContentText{Text: name.GetStringValue()},
+					},
+				})
+				s.Add(newBlock)
+
+				if err := s.InsertTo(template.HeaderLayoutId, model.Block_Bottom, newBlock.Model().Id); err != nil {
+					return err
 				}
-				return true
-			}); err != nil {
+
+				s.RemoveDetail(bundle.RelationKeyName.String())
+			}
+		}
+	}
+
+	if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+		if name, ok := s.Details().Fields[bundle.RelationKeyName.String()]; !ok || name.GetStringValue() == "" {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
 				return err
+			}
+			if textBlock != nil {
+				s.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+				if err := s.Iterate(func(b simple.Block) (isContinue bool) {
+					if b.Model().Content == textBlock {
+						s.Unlink(b.Model().Id)
+						return false
+					}
+					return true
+				}); err != nil {
+					return err
+				}
 			}
 		}
 	}
