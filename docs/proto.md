@@ -542,6 +542,10 @@
     - [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request)
     - [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response)
     - [Rpc.Object.SubscribeIds.Response.Error](#anytype-Rpc-Object-SubscribeIds-Response-Error)
+    - [Rpc.Object.ToBookmark](#anytype-Rpc-Object-ToBookmark)
+    - [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request)
+    - [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response)
+    - [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error)
     - [Rpc.Object.ToSet](#anytype-Rpc-Object-ToSet)
     - [Rpc.Object.ToSet.Request](#anytype-Rpc-Object-ToSet-Request)
     - [Rpc.Object.ToSet.Response](#anytype-Rpc-Object-ToSet-Response)
@@ -810,6 +814,7 @@
     - [Rpc.Object.ShareByLink.Response.Error.Code](#anytype-Rpc-Object-ShareByLink-Response-Error-Code)
     - [Rpc.Object.Show.Response.Error.Code](#anytype-Rpc-Object-Show-Response-Error-Code)
     - [Rpc.Object.SubscribeIds.Response.Error.Code](#anytype-Rpc-Object-SubscribeIds-Response-Error-Code)
+    - [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code)
     - [Rpc.Object.ToSet.Response.Error.Code](#anytype-Rpc-Object-ToSet-Response-Error-Code)
     - [Rpc.Object.Undo.Response.Error.Code](#anytype-Rpc-Object-Undo-Response-Error-Code)
     - [Rpc.ObjectRelation.Add.Response.Error.Code](#anytype-Rpc-ObjectRelation-Add-Response-Error-Code)
@@ -1157,6 +1162,7 @@
 | ObjectImportMarkdown | [Rpc.Object.ImportMarkdown.Request](#anytype-Rpc-Object-ImportMarkdown-Request) | [Rpc.Object.ImportMarkdown.Response](#anytype-Rpc-Object-ImportMarkdown-Response) |  |
 | ObjectListExport | [Rpc.Object.ListExport.Request](#anytype-Rpc-Object-ListExport-Request) | [Rpc.Object.ListExport.Response](#anytype-Rpc-Object-ListExport-Response) |  |
 | ObjectBookmarkFetch | [Rpc.Object.BookmarkFetch.Request](#anytype-Rpc-Object-BookmarkFetch-Request) | [Rpc.Object.BookmarkFetch.Response](#anytype-Rpc-Object-BookmarkFetch-Response) |  |
+| ObjectToBookmark | [Rpc.Object.ToBookmark.Request](#anytype-Rpc-Object-ToBookmark-Request) | [Rpc.Object.ToBookmark.Response](#anytype-Rpc-Object-ToBookmark-Response) |  |
 | ObjectRelationAdd | [Rpc.ObjectRelation.Add.Request](#anytype-Rpc-ObjectRelation-Add-Request) | [Rpc.ObjectRelation.Add.Response](#anytype-Rpc-ObjectRelation-Add-Response) | Object Relations *** |
 | ObjectRelationUpdate | [Rpc.ObjectRelation.Update.Request](#anytype-Rpc-ObjectRelation-Update-Request) | [Rpc.ObjectRelation.Update.Response](#anytype-Rpc-ObjectRelation-Update-Response) |  |
 | ObjectRelationDelete | [Rpc.ObjectRelation.Delete.Request](#anytype-Rpc-ObjectRelation-Delete-Request) | [Rpc.ObjectRelation.Delete.Response](#anytype-Rpc-ObjectRelation-Delete-Response) |  |
@@ -9133,6 +9139,65 @@ deprecated, to be removed |
 
 
 
+<a name="anytype-Rpc-Object-ToBookmark"></a>
+
+### Rpc.Object.ToBookmark
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Request"></a>
+
+### Rpc.Object.ToBookmark.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| url | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Response"></a>
+
+### Rpc.Object.ToBookmark.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error) |  |  |
+| newId | [string](#string) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Response-Error"></a>
+
+### Rpc.Object.ToBookmark.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.ToBookmark.Response.Error.Code](#anytype-Rpc-Object-ToBookmark-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-ToSet"></a>
 
 ### Rpc.Object.ToSet
@@ -12805,6 +12870,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Object-SubscribeIds-Response-Error-Code"></a>
 
 ### Rpc.Object.SubscribeIds.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Object-ToBookmark-Response-Error-Code"></a>
+
+### Rpc.Object.ToBookmark.Response.Error.Code
 
 
 | Name | Number | Description |

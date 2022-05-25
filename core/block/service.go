@@ -197,6 +197,7 @@ type Service interface {
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 	ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (id string, err error)
 	ObjectBookmarkFetch(ctx *state.Context, req pb.RpcObjectBookmarkFetchRequest) (err error)
+	ObjectToBookmark(id string, url string) (newId string, err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
@@ -1473,6 +1474,33 @@ func (s *service) ObjectBookmarkFetch(ctx *state.Context, req pb.RpcObjectBookma
 	}
 
 	return bookmark.UpdateBookmarkObject(ctx, s, req.ContextId, bookmark.DetailsFromContent(content))
+}
+
+func (s *service) ObjectToBookmark(id string, url string) (newId string, err error) {
+	newId, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
+		Url: url,
+	})
+	if err != nil {
+		return
+	}
+
+	oStore := s.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	res, err := oStore.GetWithLinksInfoByID(id)
+	if err != nil {
+		return
+	}
+	for _, il := range res.Links.Inbound {
+		if err = s.replaceLink(il.Id, id, newId); err != nil {
+			return
+		}
+	}
+	err = s.DeleteObject(id)
+	if err != nil {
+		// intentionally do not return error here
+		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())
+	}
+
+	return
 }
 
 func (s *service) loadSmartblock(ctx context.Context, id string) (value ocache.Object, err error) {
