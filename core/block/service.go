@@ -5,6 +5,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	sbookmark "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
@@ -266,6 +267,7 @@ type service struct {
 	cache       ocache.OCache
 	objectStore objectstore.ObjectStore
 	restriction restriction.Service
+	bookmark    bookmarksvc.Service
 }
 
 func (s *service) Name() string {
@@ -282,6 +284,7 @@ func (s *service) Init(a *app.App) (err error) {
 	s.doc = a.MustComponent(doc.CName).(doc.Service)
 	s.objectStore = a.MustComponent(objectstore.CName).(objectstore.ObjectStore)
 	s.restriction = a.MustComponent(restriction.CName).(restriction.Service)
+	s.bookmark = a.MustComponent(bookmarksvc.CName).(bookmarksvc.Service)
 	s.app = a
 	s.cache = ocache.New(s.loadSmartblock)
 	return
@@ -413,7 +416,7 @@ func (s *service) migrateBlocks(st *state.State) error {
 			return true
 		}
 
-		if migrateErr = bookmark.MigrateBlock(s.objectStore, s, bm); migrateErr != nil {
+		if migrateErr = s.bookmark.MigrateBlock(bm); migrateErr != nil {
 			return false
 		}
 		return true
@@ -1065,7 +1068,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	}
 	switch sc.Type() {
 	case model.SmartBlockType_Page, model.SmartBlockType_Date:
-		sb = editor.NewPage(s, s, s, s.linkPreview)
+		sb = editor.NewPage(s, s, s, s.bookmark)
 	case model.SmartBlockType_Archive:
 		sb = editor.NewArchive(s)
 	case model.SmartBlockType_Home:
@@ -1073,7 +1076,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_Set:
 		sb = editor.NewSet(s)
 	case model.SmartBlockType_ProfilePage, model.SmartBlockType_AnytypeProfile:
-		sb = editor.NewProfile(s, s, s.linkPreview, s.sendEvent)
+		sb = editor.NewProfile(s, s, s.bookmark, s.sendEvent)
 	case model.SmartBlockType_STObjectType,
 		model.SmartBlockType_BundledObjectType:
 		sb = editor.NewObjectType(s)
@@ -1089,9 +1092,9 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_MarketplaceTemplate:
 		sb = editor.NewMarketplaceTemplate(s)
 	case model.SmartBlockType_Template:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.bookmark)
 	case model.SmartBlockType_BundledTemplate:
-		sb = editor.NewTemplate(s, s, s, s.linkPreview)
+		sb = editor.NewTemplate(s, s, s, s.bookmark)
 	case model.SmartBlockType_Breadcrumbs:
 		sb = editor.NewBreadcrumbs()
 	case model.SmartBlockType_Workspace:
@@ -1446,7 +1449,7 @@ func (s *service) fetchBookmarkContent(url string) func() (*model.BlockContentBo
 		content := &model.BlockContentBookmark{
 			Url: url,
 		}
-		updaters, err := bookmark.ContentFetcher(url, s.linkPreview, s.anytype)
+		updaters, err := s.bookmark.ContentFetcher(url)
 		if err != nil {
 			errCh <- fmt.Errorf("fetch bookmark content: %w", err)
 			return
@@ -1474,7 +1477,7 @@ func (s *service) ObjectCreateBookmark(req pb.RpcObjectCreateBookmarkRequest) (i
 		return "", fmt.Errorf("process uri: %w", err)
 	}
 	res := s.fetchBookmarkContent(url)
-	return bookmark.CreateBookmarkObject(s.objectStore, s, url, res)
+	return s.bookmark.CreateBookmarkObject(url, res)
 }
 
 func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err error) {
@@ -1484,7 +1487,7 @@ func (s *service) ObjectBookmarkFetch(req pb.RpcObjectBookmarkFetchRequest) (err
 	}
 	res := s.fetchBookmarkContent(url)
 	go func() {
-		if err := bookmark.UpdateBookmarkObject(s, req.ContextId, res); err != nil {
+		if err := s.bookmark.UpdateBookmarkObject(req.ContextId, res); err != nil {
 			log.Errorf("update bookmark object %s: %s", req.ContextId, err)
 		}
 	}()

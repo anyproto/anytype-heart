@@ -46,6 +46,14 @@ func (b *Bookmark) UpdateContent(updater func(bookmark *model.BlockContentBookma
 
 var _ Block = &Bookmark{}
 
+type FetchParams struct {
+	Url     string
+	Updater Updater
+	Sync    bool
+}
+
+type Updater func(id string, apply func(b Block) error) (err error)
+
 func (b *Bookmark) Copy() simple.Block {
 	copy := pbtypes.CopyBlock(b.Model())
 	return &Bookmark{

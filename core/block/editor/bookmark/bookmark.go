@@ -1,10 +1,7 @@
 package bookmark
 
 import (
-	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -12,19 +9,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
-	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"github.com/globalsign/mgo/bson"
-	"github.com/gogo/protobuf/types"
 )
 
-func NewBookmark(sb smartblock.SmartBlock, lp linkpreview.LinkPreview, blockService BlockService) Bookmark {
-	return &sbookmark{SmartBlock: sb, lp: lp, blockService: blockService}
+func NewBookmark(sb smartblock.SmartBlock, blockService BlockService, bookmarkSvc BookmarkService) Bookmark {
+	return &sbookmark{SmartBlock: sb, blockService: blockService, bookmarkSvc: bookmarkSvc}
 }
 
 type Bookmark interface {
@@ -33,21 +24,19 @@ type Bookmark interface {
 	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
 }
 
+type BookmarkService interface {
+	CreateBookmarkObject(url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error)
+	Fetch(id string, params bookmark.FetchParams) (err error)
+}
+
 type sbookmark struct {
 	smartblock.SmartBlock
-	lp           linkpreview.LinkPreview
 	blockService BlockService
+	bookmarkSvc  BookmarkService
 }
 
 type BlockService interface {
-	PageManager
 	DoBookmark(id string, apply func(b Bookmark) error) error
-}
-
-type PageManager interface {
-	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
-	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
-	Do(id string, apply func(b smartblock.SmartBlock) error) error
 }
 
 func (b *sbookmark) Fetch(ctx *state.Context, id string, url string, isSync bool) (err error) {
@@ -74,9 +63,8 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 		return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 	}
 
-	err = Fetch(id, FetchParams{
-		Url:     url,
-		Anytype: b.Anytype(),
+	err = b.bookmarkSvc.Fetch(id, bookmark.FetchParams{
+		Url: url,
 		Updater: func(id string, apply func(b bookmark.Block) error) (err error) {
 			if isSync {
 				updMu.Lock()
@@ -87,8 +75,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 				return b.UpdateBookmark(id, groupId, apply)
 			})
 		},
-		LinkPreview: b.lp,
-		Sync:        isSync,
+		Sync: isSync,
 	})
 	return err
 }
@@ -116,130 +103,6 @@ func (b *sbookmark) CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCr
 	return
 }
 
-func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.Value {
-	return map[string]*types.Value{
-		bundle.RelationKeyName.String():        pbtypes.String(content.Title),
-		bundle.RelationKeyDescription.String(): pbtypes.String(content.Description),
-		bundle.RelationKeyUrl.String():         pbtypes.String(content.Url),
-		bundle.RelationKeyPicture.String():     pbtypes.String(content.ImageHash),
-		bundle.RelationKeyIconImage.String():   pbtypes.String(content.FaviconHash),
-	}
-}
-
-var relationBlockKeys = []string{
-	bundle.RelationKeyUrl.String(),
-	bundle.RelationKeyPicture.String(),
-	bundle.RelationKeyCreatedDate.String(),
-	bundle.RelationKeyTag.String(),
-	bundle.RelationKeyNotes.String(),
-	bundle.RelationKeyQuote.String(),
-}
-
-var log = logging.Logger("anytype-mw-bookmark")
-
-func CreateBookmarkObject(store objectstore.ObjectStore, manager PageManager, url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error) {
-	records, _, err := store.Query(nil, database.Query{
-		Sorts: []*model.BlockContentDataviewSort{
-			{
-				RelationKey: bundle.RelationKeyLastModifiedDate.String(),
-				Type:        model.BlockContentDataviewSort_Desc,
-			},
-		},
-		Filters: []*model.BlockContentDataviewFilter{
-			{
-				Condition:   model.BlockContentDataviewFilter_Equal,
-				RelationKey: bundle.RelationKeyUrl.String(),
-				Value:       pbtypes.String(url),
-			},
-		},
-		Limit: 1,
-		ObjectTypeFilter: []string{
-			bundle.TypeKeyBookmark.URL(),
-		},
-	})
-	if err != nil {
-		return "", fmt.Errorf("query: %w", err)
-	}
-
-	if len(records) > 0 {
-		rec := records[0]
-		objectId = rec.Details.Fields[bundle.RelationKeyId.String()].GetStringValue()
-	} else {
-		details := &types.Struct{
-			Fields: map[string]*types.Value{
-				bundle.RelationKeyType.String(): pbtypes.String(bundle.TypeKeyBookmark.URL()),
-				bundle.RelationKeyUrl.String():  pbtypes.String(url),
-			},
-		}
-		objectId, _, err = manager.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, details, nil)
-	}
-
-	go func() {
-		if err := UpdateBookmarkObject(manager, objectId, getContent); err != nil {
-
-			log.Errorf("update bookmark object %s: %s", objectId, err)
-			return
-		}
-	}()
-
-	return objectId, nil
-}
-
-func UpdateBookmarkObject(manager PageManager, objectId string, getContent func() (*model.BlockContentBookmark, error)) error {
-	content, err := getContent()
-	if err != nil {
-		return fmt.Errorf("get content: %w", err)
-	}
-	detailsMap := detailsFromContent(content)
-
-	err = manager.Do(objectId, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-
-		for _, k := range relationBlockKeys {
-			if b := st.Pick(k); b != nil {
-				if ok := st.Unlink(b.Model().Id); !ok {
-					return fmt.Errorf("can't unlink block %s", b.Model().Id)
-				}
-				continue
-			}
-
-			ok := st.Add(simple.New(&model.Block{
-				Id: k,
-				Content: &model.BlockContentOfRelation{
-					Relation: &model.BlockContentRelation{
-						Key: k,
-					},
-				},
-			}))
-			if !ok {
-				return fmt.Errorf("can't add block %s", k)
-			}
-		}
-
-		if err := st.InsertTo(st.RootId(), model.Block_InnerFirst, relationBlockKeys...); err != nil {
-			return fmt.Errorf("insert relation blocks: %w", err)
-		}
-
-		return sb.Apply(st)
-	})
-	if err != nil {
-		return fmt.Errorf("update blocks: %w", err)
-	}
-
-	details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(detailsMap))
-	for k, v := range detailsMap {
-		details = append(details, &pb.RpcObjectSetDetailsDetail{
-			Key:   k,
-			Value: v,
-		})
-	}
-
-	return manager.SetDetails(nil, pb.RpcObjectSetDetailsRequest{
-		ContextId: objectId,
-		Details:   details,
-	})
-}
-
 func (b *sbookmark) UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) error {
 	s := b.NewState().SetGroupId(groupId)
 	if bb := s.Get(id); bb != nil {
@@ -263,8 +126,7 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 	}
 
 	content := block.GetContent()
-	store := b.ObjectStore()
-	pageId, err := CreateBookmarkObject(store, b.blockService, content.Url, func() (*model.BlockContentBookmark, error) {
+	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() (*model.BlockContentBookmark, error) {
 		return content, nil
 	})
 	if err != nil {
@@ -272,25 +134,6 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 	}
 
 	block.UpdateContent(func(content *model.BlockContentBookmark) {
-		content.TargetObjectId = pageId
-	})
-	return nil
-}
-
-func MigrateBlock(store objectstore.ObjectStore, manager PageManager, bm bookmark.Block) error {
-	content := bm.GetContent()
-	if content.TargetObjectId != "" {
-		return nil
-	}
-
-	pageId, err := CreateBookmarkObject(store, manager, content.Url, func() (*model.BlockContentBookmark, error) {
-		return content, nil
-	})
-	if err != nil {
-		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
-	}
-
-	bm.UpdateContent(func(content *model.BlockContentBookmark) {
 		content.TargetObjectId = pageId
 	})
 	return nil

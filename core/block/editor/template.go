@@ -11,7 +11,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/template"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 )
 
@@ -19,9 +18,9 @@ func NewTemplate(
 	fileSource file.BlockService,
 	pageManager bookmark.BlockService,
 	importServices _import.Services,
-	lp linkpreview.LinkPreview,
+	bookmarkSvc bookmark.BookmarkService,
 ) *Template {
-	page := NewPage(fileSource, pageManager, importServices, lp)
+	page := NewPage(fileSource, pageManager, importServices, bookmarkSvc)
 	return &Template{Page: page}
 }
 
