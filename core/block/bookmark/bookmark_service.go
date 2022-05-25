@@ -34,7 +34,6 @@ const CName = "bookmark"
 type Service interface {
 	CreateBookmarkObject(url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error)
 	UpdateBookmarkObject(objectId string, getContent func() (*model.BlockContentBookmark, error)) error
-	MigrateBlock(bm bookmark.Block) error
 	Fetch(id string, params bookmark.FetchParams) (err error)
 	ContentFetcher(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
 
@@ -139,6 +138,17 @@ var relationBlockKeys = []string{
 	bundle.RelationKeyQuote.String(),
 }
 
+func makeRelationBlock(k string) *model.Block {
+	return &model.Block{
+		Id: k,
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: k,
+			},
+		},
+	}
+}
+
 func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model.BlockContentBookmark, error)) error {
 	content, err := getContent()
 	if err != nil {
@@ -146,6 +156,7 @@ func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model
 	}
 	detailsMap := detailsFromContent(content)
 
+	// Ensure that object has required relation blocks in correct order
 	err = s.objectManager.Do(objectId, func(sb smartblock.SmartBlock) error {
 		st := sb.NewState()
 
@@ -154,17 +165,16 @@ func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model
 				if ok := st.Unlink(b.Model().Id); !ok {
 					return fmt.Errorf("can't unlink block %s", b.Model().Id)
 				}
-				continue
+
+				if _, ok := b.Model().Content.(*model.BlockContentOfRelation); ok {
+					continue
+				}
+
+				// Delete block if it has wrong type, it will be created from scratch
+				st.CleanupBlock(b.Model().Id)
 			}
 
-			ok := st.Add(simple.New(&model.Block{
-				Id: k,
-				Content: &model.BlockContentOfRelation{
-					Relation: &model.BlockContentRelation{
-						Key: k,
-					},
-				},
-			}))
+			ok := st.Add(simple.New(makeRelationBlock(k)))
 			if !ok {
 				return fmt.Errorf("can't add block %s", k)
 			}
@@ -192,25 +202,6 @@ func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model
 		ContextId: objectId,
 		Details:   details,
 	})
-}
-
-func (s service) MigrateBlock(bm bookmark.Block) error {
-	content := bm.GetContent()
-	if content.TargetObjectId != "" {
-		return nil
-	}
-
-	pageId, err := s.CreateBookmarkObject(content.Url, func() (*model.BlockContentBookmark, error) {
-		return content, nil
-	})
-	if err != nil {
-		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
-	}
-
-	bm.UpdateContent(func(content *model.BlockContentBookmark) {
-		content.TargetObjectId = pageId
-	})
-	return nil
 }
 
 func (s service) Fetch(id string, params bookmark.FetchParams) (err error) {
@@ -253,7 +244,7 @@ func (s service) ContentFetcher(url string) (chan func(contentBookmark *model.Bl
 			defer wg.Done()
 			hash, err := loadImage(s.svc, data.ImageUrl)
 			if err != nil {
-				fmt.Println("can't load image url:", data.ImageUrl, err)
+				log.Errorf("can't load image url %s: %s", data.ImageUrl, err)
 				return
 			}
 			updaters <- func(c *model.BlockContentBookmark) {
@@ -267,7 +258,7 @@ func (s service) ContentFetcher(url string) (chan func(contentBookmark *model.Bl
 			defer wg.Done()
 			hash, err := loadImage(s.svc, data.FaviconUrl)
 			if err != nil {
-				fmt.Println("can't load favicon url:", data.FaviconUrl, err)
+				log.Errorf("can't load favicon url %s: %s", data.FaviconUrl, err)
 				return
 			}
 			updaters <- func(c *model.BlockContentBookmark) {

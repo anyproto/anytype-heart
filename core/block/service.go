@@ -366,7 +366,7 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	afterDataviewTime := time.Now()
 	st := ob.NewState()
 
-	if err = s.migrateBlocks(st); err != nil {
+	if err = s.migrateBlocks(ob.SmartBlock, st); err != nil {
 		return fmt.Errorf("migrate blocks: %w", err)
 	}
 
@@ -408,15 +408,19 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	return nil
 }
 
-func (s *service) migrateBlocks(st *state.State) error {
+func (s *service) migrateBlocks(sb smartblock.SmartBlock, st *state.State) error {
 	var migrateErr error
 	err := st.Iterate(func(b simple.Block) bool {
-		bm, ok := b.(sbookmark.Block)
+		bm, ok := sb.(bookmark.Bookmark)
+		if !ok {
+			return true
+		}
+		block, ok := b.(sbookmark.Block)
 		if !ok {
 			return true
 		}
 
-		if migrateErr = s.bookmark.MigrateBlock(bm); migrateErr != nil {
+		if migrateErr = bm.MigrateBlock(block); migrateErr != nil {
 			return false
 		}
 		return true

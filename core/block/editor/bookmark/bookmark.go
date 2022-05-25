@@ -22,6 +22,7 @@ type Bookmark interface {
 	Fetch(ctx *state.Context, id string, url string, isSync bool) (err error)
 	CreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (newId string, err error)
 	UpdateBookmark(id, groupId string, apply func(b bookmark.Block) error) (err error)
+	MigrateBlock(bm bookmark.Block) (err error)
 }
 
 type BookmarkService interface {
@@ -134,6 +135,25 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 	}
 
 	block.UpdateContent(func(content *model.BlockContentBookmark) {
+		content.TargetObjectId = pageId
+	})
+	return nil
+}
+
+func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
+	content := bm.GetContent()
+	if content.TargetObjectId != "" {
+		return nil
+	}
+
+	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() (*model.BlockContentBookmark, error) {
+		return content, nil
+	})
+	if err != nil {
+		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)
+	}
+
+	bm.UpdateContent(func(content *model.BlockContentBookmark) {
 		content.TargetObjectId = pageId
 	})
 	return nil
