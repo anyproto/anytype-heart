@@ -9174,8 +9174,7 @@ deprecated, to be removed |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.ToBookmark.Response.Error](#anytype-Rpc-Object-ToBookmark-Response-Error) |  |  |
-| newId | [string](#string) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+| objectId | [string](#string) |  |  |
 
 
 

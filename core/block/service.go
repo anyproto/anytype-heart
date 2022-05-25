@@ -1476,8 +1476,8 @@ func (s *service) ObjectBookmarkFetch(ctx *state.Context, req pb.RpcObjectBookma
 	return bookmark.UpdateBookmarkObject(ctx, s, req.ContextId, bookmark.DetailsFromContent(content))
 }
 
-func (s *service) ObjectToBookmark(id string, url string) (newId string, err error) {
-	newId, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
+func (s *service) ObjectToBookmark(id string, url string) (objectId string, err error) {
+	objectId, err = s.ObjectCreateBookmark(pb.RpcObjectCreateBookmarkRequest{
 		Url: url,
 	})
 	if err != nil {
@@ -1490,7 +1490,7 @@ func (s *service) ObjectToBookmark(id string, url string) (newId string, err err
 		return
 	}
 	for _, il := range res.Links.Inbound {
-		if err = s.replaceLink(il.Id, id, newId); err != nil {
+		if err = s.replaceLink(il.Id, id, objectId); err != nil {
 			return
 		}
 	}
