@@ -4,10 +4,11 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
-	"github.com/ipfs/go-cid"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/ipfs/go-cid"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/undo"
@@ -1612,6 +1613,33 @@ func (s *State) Layout() (model.ObjectTypeLayout, bool) {
 
 func (s *State) SetContext(context *Context) {
 	s.ctx = context
+}
+
+func (s *State) Descendants(rootId string) []simple.Block {
+	var (
+		queue    = []string{rootId}
+		children []simple.Block
+	)
+
+	for len(queue) > 0 {
+		id := queue[0]
+		queue = queue[1:]
+
+		cur := s.Pick(id)
+		if cur == nil {
+			continue
+		}
+		for _, id := range cur.Model().ChildrenIds {
+			b := s.Pick(id)
+			if b == nil {
+				continue
+			}
+			children = append(children, b)
+			queue = append(queue, id)
+		}
+	}
+
+	return children
 }
 
 type linkSource interface {

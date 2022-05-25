@@ -1,3 +1,4 @@
+//go:build !nogrpcserver && !_test
 // +build !nogrpcserver,!_test
 
 package main

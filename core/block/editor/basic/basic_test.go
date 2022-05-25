@@ -1,7 +1,6 @@
 package basic
 
 import (
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -10,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -19,7 +19,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func newTextBlock(id, contentText string, childrenIds ...string) simple.Block {
+func newTextBlock(id, contentText string, childrenIds []string) simple.Block {
 	return text.NewText(&model.Block{
 		Id: id,
 		Content: &model.BlockContentOfText{
@@ -157,8 +157,8 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("replace empty", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
-			AddBlock(newTextBlock("1", "")).
-			AddBlock(newTextBlock("2", "one"))
+			AddBlock(newTextBlock("1", "", nil)).
+			AddBlock(newTextBlock("2", "one", nil))
 
 		b := NewBasic(sb)
 
@@ -173,10 +173,10 @@ func TestBasic_Move(t *testing.T) {
 	t.Run("replace background and color", func(t *testing.T) {
 		sb := smarttest.New("test")
 
-		firstBlock := newTextBlock("1", "")
+		firstBlock := newTextBlock("1", "", nil)
 		firstBlock.Model().BackgroundColor = "first_block_background_color"
 
-		secondBlock := newTextBlock("2", "two")
+		secondBlock := newTextBlock("2", "two", nil)
 		secondBlock.Model().GetText().Color = "second_block_text_color"
 
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1", "2"}})).
@@ -251,27 +251,11 @@ func TestBasic_SetDivStyle(t *testing.T) {
 	assert.Equal(t, model.BlockContentDiv_Dots, r.Pick("2").Model().GetDiv().Style)
 }
 
-func TestBasic_InternalCut(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}))
-	sb.AddBlock(simple.New(&model.Block{Id: "1.1.1"}))
-	b := NewBasic(sb)
-	apply, blocks, err := b.InternalCut(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-		BlockIds: []string{"1", "1.1", "1.1.1"},
-	})
-	require.NoError(t, err)
-	require.NoError(t, apply())
-
-	assert.Len(t, blocks, 3)
-}
-
-func TestBasic_InternalPaste(t *testing.T) {
+func TestBasic_PasteBlocks(t *testing.T) {
 	sb := smarttest.New("test")
 	sb.AddBlock(simple.New(&model.Block{Id: "test"}))
 	b := NewBasic(sb)
-	err := b.InternalPaste([]simple.Block{
+	err := b.PasteBlocks([]simple.Block{
 		simple.New(&model.Block{Id: "1", ChildrenIds: []string{"1.1"}}),
 		simple.New(&model.Block{Id: "1.1", ChildrenIds: []string{"1.1.1"}}),
 		simple.New(&model.Block{Id: "1.1.1"}),

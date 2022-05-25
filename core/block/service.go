@@ -5,13 +5,13 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/hashicorp/go-multierror"
 	"net/url"
 	"strings"
 	"time"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
 	"github.com/textileio/go-threads/core/thread"
 
 	"github.com/anytypeio/go-anytype-middleware/app"
@@ -95,6 +95,7 @@ type Service interface {
 	CloseBlocks()
 	CreateBlock(ctx *state.Context, req pb.RpcBlockCreateRequest) (string, error)
 	CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error)
+	CreateObjectFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, st *state.State) (linkId string, pageId string, err error)
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromTemplate(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, templateId string) (id string, newDetails *types.Struct, err error)
 	CreateSmartBlockFromState(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation, createState *state.State) (id string, newDetails *types.Struct, err error)
@@ -105,7 +106,7 @@ type Service interface {
 
 	MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error
 	MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error)
-	ConvertChildrenToPages(req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+	ListConvertToObjects(ctx *state.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
 	SetFields(ctx *state.Context, req pb.RpcBlockSetFieldsRequest) error
 	SetFieldsList(ctx *state.Context, req pb.RpcBlockListSetFieldsRequest) error
 
@@ -938,17 +939,40 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 	return id, sb.CombinedDetails(), nil
 }
 
-func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, pageId string, err error) {
-	if req.ContextId != "" {
-		var contextBlockType model.SmartBlockType
-		if err = s.Do(req.ContextId, func(b smartblock.SmartBlock) error {
-			contextBlockType = b.Type()
-			return nil
-		}); err != nil {
-			return
+// CreateLinkToTheNewObject creates an object and stores the link to it in the context block
+func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+	creator := func(ctx context.Context) (string, error) {
+		objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+		if err != nil {
+			return objectId, fmt.Errorf("create smartblock error: %v", err)
 		}
+		return objectId, nil
+	}
 
-		if contextBlockType == model.SmartBlockType_Set {
+	if req.ContextId != "" {
+		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+			linkId, objectId, err = s.createObject(ctx, sb, groupId, req, true, creator)
+			return err
+		})
+		return
+	}
+
+	return s.createObject(ctx, nil, groupId, req, true, creator)
+}
+
+func (s *service) CreateObjectFromState(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, state *state.State) (linkId string, objectId string, err error) {
+	return s.createObject(ctx, contextBlock, groupId, req, false, func(ctx context.Context) (string, error) {
+		objectId, _, err = s.CreateSmartBlockFromState(ctx, coresb.SmartBlockTypePage, req.Details, nil, state)
+		if err != nil {
+			return objectId, fmt.Errorf("create smartblock error: %v", err)
+		}
+		return objectId, nil
+	})
+}
+
+func (s *service) createObject(ctx *state.Context, contextBlock smartblock.SmartBlock, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest, storeLink bool, create func(context.Context) (objectId string, err error)) (linkId string, objectId string, err error) {
+	if contextBlock != nil {
+		if contextBlock.Type() == model.SmartBlockType_Set {
 			return "", "", basic.ErrNotSupported
 		}
 	}
@@ -966,35 +990,37 @@ func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, r
 		req.Details.Fields[bundle.RelationKeyWorkspaceId.String()] = pbtypes.String(workspaceId)
 	}
 
-	pageId, _, err = s.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
+	objectId, err = create(context.TODO())
 	if err != nil {
 		err = fmt.Errorf("create smartblock error: %v", err)
 	}
 
-	if req.ContextId == "" && req.TargetId == "" {
-		// do not create a link
-		return "", pageId, err
+	// do not create a link
+	if (!storeLink) || contextBlock == nil {
+		return "", objectId, err
 	}
 
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
-			TargetId: req.TargetId,
-			Block: &model.Block{
-				Content: &model.BlockContentOfLink{
-					Link: &model.BlockContentLink{
-						TargetBlockId: pageId,
-						Style:         model.BlockContentLink_Page,
-					},
+	b, ok := contextBlock.(basic.Basic)
+	if !ok {
+		err = fmt.Errorf("%T doesn't implement basic.Basic", contextBlock)
+		return
+	}
+	linkId, err = b.Create(ctx, groupId, pb.RpcBlockCreateRequest{
+		TargetId: req.TargetId,
+		Block: &model.Block{
+			Content: &model.BlockContentOfLink{
+				Link: &model.BlockContentLink{
+					TargetBlockId: objectId,
+					Style:         model.BlockContentLink_Page,
 				},
-				Fields: req.Fields,
 			},
-			Position: req.Position,
-		})
-		if err != nil {
-			err = fmt.Errorf("link create error: %v", err)
-		}
-		return err
+			Fields: req.Fields,
+		},
+		Position: req.Position,
 	})
+	if err != nil {
+		err = fmt.Errorf("link create error: %v", err)
+	}
 	return
 }
 
@@ -1376,26 +1402,6 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})
-}
-
-func (s *service) AllDescendantIds(rootBlockId string, allBlocks map[string]*model.Block) []string {
-	var (
-		// traversal queue
-		queue = []string{rootBlockId}
-		// traversed IDs collected (including root)
-		traversed = []string{rootBlockId}
-	)
-
-	for len(queue) > 0 {
-		next := queue[0]
-		queue = queue[1:]
-
-		chIDs := allBlocks[next].ChildrenIds
-		traversed = append(traversed, chIDs...)
-		queue = append(queue, chIDs...)
-	}
-
-	return traversed
 }
 
 func (s *service) ResetToState(pageId string, state *state.State) (err error) {

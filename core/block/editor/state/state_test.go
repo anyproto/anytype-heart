@@ -311,3 +311,99 @@ func TestState_IsEmpty(t *testing.T) {
 	s.Pick("emptyText").Model().GetText().Text = "1"
 	assert.False(t, s.IsEmpty())
 }
+
+func TestState_Descendants(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		blocks []*model.Block
+		rootId string
+		want   []string
+	}{
+		{
+			name: "root is absent",
+			blocks: []*model.Block{
+				{Id: "test"},
+			},
+			rootId: "foo",
+			want:   []string{},
+		},
+		{
+			name: "root without descendants",
+			blocks: []*model.Block{
+				{Id: "test"},
+			},
+			rootId: "test",
+			want:   []string{},
+		},
+		{
+			name: "root with one level of descendants",
+			blocks: []*model.Block{
+				{Id: "test", ChildrenIds: []string{"1", "2"}},
+				{Id: "1"},
+				{Id: "2"},
+			},
+			rootId: "test",
+			want:   []string{"1", "2"},
+		},
+		{
+			name: "root with one level of descendants and some blocks are nil",
+			blocks: []*model.Block{
+				{Id: "test", ChildrenIds: []string{"1", "2"}},
+				{Id: "1"},
+			},
+			rootId: "test",
+			want:   []string{"1"},
+		},
+		{
+			name: "root with multiple level of descendants",
+			blocks: []*model.Block{
+				{Id: "test", ChildrenIds: []string{"1", "2"}},
+				{Id: "1", ChildrenIds: []string{"1.1", "1.2"}},
+				{Id: "1.1"},
+				{Id: "1.2", ChildrenIds: []string{"1.2.1", "1.2.2"}},
+				{Id: "1.2.1"},
+				{Id: "1.2.2"},
+				{Id: "2", ChildrenIds: []string{"2.1"}},
+				{Id: "2.1"},
+			},
+			rootId: "test",
+			want:   []string{"1", "2", "1.1", "1.2", "1.2.1", "1.2.2", "2.1"},
+		},
+
+		{
+			name: "complex tree and request for descendants of middle node",
+			blocks: []*model.Block{
+				{Id: "test", ChildrenIds: []string{"1", "2"}},
+				{Id: "1", ChildrenIds: []string{"1.1", "1.2"}},
+				{Id: "1.1"},
+				{Id: "1.2", ChildrenIds: []string{"1.2.1", "1.2.2"}},
+				{Id: "1.2.1"},
+				{Id: "1.2.2"},
+				{Id: "2", ChildrenIds: []string{"2.1"}},
+				{Id: "2.1"},
+			},
+			rootId: "1.2",
+			want:   []string{"1.2.1", "1.2.2"},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			s := NewDoc("root", nil).NewState()
+			for _, b := range tc.blocks {
+				s.Add(simple.New(b))
+			}
+
+			got := s.Descendants(tc.rootId)
+
+			gotIds := make([]string, 0, len(got))
+			for _, b := range got {
+				b2 := s.Pick(b.Model().Id)
+				require.NotNil(t, b2)
+				assert.Equal(t, b2, b)
+
+				gotIds = append(gotIds, b.Model().Id)
+			}
+
+			assert.ElementsMatch(t, tc.want, gotIds)
+		})
+	}
+}
