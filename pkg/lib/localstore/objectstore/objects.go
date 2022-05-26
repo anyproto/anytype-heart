@@ -3,6 +3,7 @@ package objectstore
 import (
 	"encoding/binary"
 	"fmt"
+	noctxds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
 	"runtime/debug"
 	"strings"
 	"sync"
@@ -188,7 +189,7 @@ func New() ObjectStore {
 	return &dsObjectStore{}
 }
 
-func NewWithLocalstore(ds datastore.DSTxnBatching) ObjectStore {
+func NewWithLocalstore(ds noctxds.DSTxnBatching) ObjectStore {
 	return &dsObjectStore{
 		ds: ds,
 	}
@@ -336,7 +337,7 @@ func (m *filterSmartblockTypes) Filter(e query.Entry) bool {
 
 type dsObjectStore struct {
 	// underlying storage
-	ds            datastore.DSTxnBatching
+	ds            noctxds.DSTxnBatching
 	dsIface       datastore.Datastore
 	sourceService SourceIdEncodedDetails
 
@@ -621,7 +622,8 @@ func (m *dsObjectStore) eraseLinks() (err error) {
 }
 
 func (m *dsObjectStore) Run() (err error) {
-	m.ds, err = m.dsIface.LocalstoreDS()
+	lds, err := m.dsIface.LocalstoreDS()
+	m.ds = noctxds.New(lds)
 	return
 }
 
@@ -1705,7 +1707,7 @@ func (m *dsObjectStore) SaveChecksums(checksums *model.ObjectStoreChecksums) (er
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string) error {
+func (m *dsObjectStore) updateObjectLinks(txn noctxds.Txn, id string, links []string) error {
 	exLinks, _ := findOutboundLinks(txn, id)
 	var addedLinks, removedLinks []string
 
@@ -1729,7 +1731,7 @@ func (m *dsObjectStore) updateObjectLinks(txn ds.Txn, id string, links []string)
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links []string, snippet string) error {
+func (m *dsObjectStore) updateObjectLinksAndSnippet(txn noctxds.Txn, id string, links []string, snippet string) error {
 	err := m.updateObjectLinks(txn, id, links)
 	if err != nil {
 		return err
@@ -1744,7 +1746,7 @@ func (m *dsObjectStore) updateObjectLinksAndSnippet(txn ds.Txn, id string, links
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectDetails(txn ds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *model.Relations) error {
+func (m *dsObjectStore) updateObjectDetails(txn noctxds.Txn, id string, before model.ObjectInfo, details *types.Struct, relations *model.Relations) error {
 	objTypes := pbtypes.GetStringList(details, bundle.RelationKeyType.String())
 
 	creatorId := pbtypes.GetString(details, bundle.RelationKeyCreator.String())
@@ -1875,7 +1877,7 @@ func (m *dsObjectStore) UpdateRelationsInSetByObjectType(setId, objType, creator
 	return txn.Commit()
 }
 
-func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*model.Relation) error {
+func (m *dsObjectStore) storeRelations(txn noctxds.Txn, relations []*model.Relation) error {
 	var relBytes []byte
 	var err error
 	for _, relation := range relations {
@@ -1919,7 +1921,7 @@ func (m *dsObjectStore) storeRelations(txn ds.Txn, relations []*model.Relation) 
 	return nil
 }
 
-func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf string, creatorId string, relationsBefore []*model.Relation, relations []*model.Relation) error {
+func (m *dsObjectStore) updateSetRelations(txn noctxds.Txn, setId string, setOf string, creatorId string, relationsBefore []*model.Relation, relations []*model.Relation) error {
 	if relations == nil {
 		return fmt.Errorf("relationsAfter is nil")
 	}
@@ -1997,7 +1999,7 @@ func (m *dsObjectStore) updateSetRelations(txn ds.Txn, setId string, setOf strin
 	return nil
 }
 
-func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []string, objTypesAfter []string, id, creatorId string, relationsBefore []*model.Relation, relationsAfter []*model.Relation) error {
+func (m *dsObjectStore) updateObjectRelations(txn noctxds.Txn, objTypesBefore []string, objTypesAfter []string, id, creatorId string, relationsBefore []*model.Relation, relationsAfter []*model.Relation) error {
 	if relationsAfter == nil {
 		return fmt.Errorf("relationsAfter is nil")
 	}
@@ -2073,12 +2075,12 @@ func (m *dsObjectStore) updateObjectRelations(txn ds.Txn, objTypesBefore []strin
 	return nil
 }
 
-func (m *dsObjectStore) updateSnippet(txn ds.Txn, id string, snippet string) error {
+func (m *dsObjectStore) updateSnippet(txn noctxds.Txn, id string, snippet string) error {
 	snippetKey := pagesSnippetBase.ChildString(id)
 	return txn.Put(snippetKey, []byte(snippet))
 }
 
-func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
+func (m *dsObjectStore) updateDetails(txn noctxds.Txn, id string, oldDetails *model.ObjectDetails, newDetails *model.ObjectDetails) error {
 	t, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		log.Errorf("updateDetails: failed to detect smartblock type for %s: %s", id, err.Error())
@@ -2134,7 +2136,7 @@ func (m *dsObjectStore) updateDetails(txn ds.Txn, id string, oldDetails *model.O
 	return nil
 }
 
-func storeOptions(txn ds.Txn, options []*model.RelationOption) error {
+func storeOptions(txn noctxds.Txn, options []*model.RelationOption) error {
 	var err error
 	for _, opt := range options {
 		err = storeOption(txn, opt)
@@ -2145,7 +2147,7 @@ func storeOptions(txn ds.Txn, options []*model.RelationOption) error {
 	return nil
 }
 
-func storeOption(txn ds.Txn, option *model.RelationOption) error {
+func storeOption(txn noctxds.Txn, option *model.RelationOption) error {
 	b, err := proto.Marshal(option)
 	if err != nil {
 		return err
@@ -2181,7 +2183,7 @@ func (m *dsObjectStore) makeFTSQuery(text string, dsq query.Query) (query.Query,
 	return dsq, nil
 }
 
-func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
+func (m *dsObjectStore) listIdsOfType(txn noctxds.Txn, ot string) ([]string, error) {
 	res, err := localstore.GetKeysByIndexParts(txn, pagesPrefix, indexObjectTypeObject.Name, []string{ot}, "", false, 0)
 	if err != nil {
 		return nil, err
@@ -2190,7 +2192,7 @@ func (m *dsObjectStore) listIdsOfType(txn ds.Txn, ot string) ([]string, error) {
 	return localstore.GetLeavesFromResults(res)
 }
 
-func (m *dsObjectStore) listRelationsKeys(txn ds.Txn) ([]string, error) {
+func (m *dsObjectStore) listRelationsKeys(txn noctxds.Txn) ([]string, error) {
 	txn, err := m.ds.NewTransaction(true)
 	if err != nil {
 		return nil, fmt.Errorf("error creating txn in datastore: %w", err)
@@ -2200,7 +2202,7 @@ func (m *dsObjectStore) listRelationsKeys(txn ds.Txn) ([]string, error) {
 	return findByPrefix(txn, relationsBase.String()+"/", 0)
 }
 
-func getRelation(txn ds.Txn, key string) (*model.Relation, error) {
+func getRelation(txn noctxds.Txn, key string) (*model.Relation, error) {
 	br, err := bundle.GetRelation(bundle.RelationKey(key))
 	if br != nil {
 		return br, nil
@@ -2219,7 +2221,7 @@ func getRelation(txn ds.Txn, key string) (*model.Relation, error) {
 	return &rel, nil
 }
 
-func (m *dsObjectStore) listRelations(txn ds.Txn, limit int) ([]*model.Relation, error) {
+func (m *dsObjectStore) listRelations(txn noctxds.Txn, limit int) ([]*model.Relation, error) {
 	var rels []*model.Relation
 
 	res, err := txn.Query(query.Query{
@@ -2243,7 +2245,7 @@ func (m *dsObjectStore) listRelations(txn ds.Txn, limit int) ([]*model.Relation,
 	return rels, nil
 }
 
-func isObjectBelongToType(txn ds.Txn, id, objType string) (bool, error) {
+func isObjectBelongToType(txn noctxds.Txn, id, objType string) (bool, error) {
 	objTypeCompact, err := objTypeCompactEncode(objType)
 	if err != nil {
 		return false, err
@@ -2254,7 +2256,7 @@ func isObjectBelongToType(txn ds.Txn, id, objType string) (bool, error) {
 
 /* internal */
 // getObjectDetails returns empty(not nil) details when not found in the DS
-func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
+func getObjectDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
 	var details model.ObjectDetails
 	if val, err := txn.Get(pagesDetailsBase.ChildString(id)); err != nil {
 		if err != ds.ErrNotFound {
@@ -2282,7 +2284,7 @@ func getObjectDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
 	return &details, nil
 }
 
-func (m *dsObjectStore) getPendingLocalDetails(txn ds.Txn, id string) (*model.ObjectDetails, error) {
+func (m *dsObjectStore) getPendingLocalDetails(txn noctxds.Txn, id string) (*model.ObjectDetails, error) {
 	var details model.ObjectDetails
 	if val, err := txn.Get(pendingDetailsBase.ChildString(id)); err != nil {
 		return nil, err
@@ -2292,7 +2294,7 @@ func (m *dsObjectStore) getPendingLocalDetails(txn ds.Txn, id string) (*model.Ob
 	return &details, nil
 }
 
-func hasObjectId(txn ds.Txn, id string) (bool, error) {
+func hasObjectId(txn noctxds.Txn, id string) (bool, error) {
 	if exists, err := txn.Has(pagesDetailsBase.ChildString(id)); err != nil {
 		return false, fmt.Errorf("failed to get details: %w", err)
 	} else {
@@ -2301,7 +2303,7 @@ func hasObjectId(txn ds.Txn, id string) (bool, error) {
 }
 
 // getSetRelations returns the list of relations last time indexed for the set's dataview
-func getSetRelations(txn ds.Txn, id string) ([]*model.Relation, error) {
+func getSetRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	var relations model.Relations
 	if val, err := txn.Get(setRelationsBase.ChildString(id)); err != nil {
 		if err != ds.ErrNotFound {
@@ -2315,7 +2317,7 @@ func getSetRelations(txn ds.Txn, id string) ([]*model.Relation, error) {
 }
 
 // getObjectRelations returns the list of relations last time indexed for the object
-func getObjectRelations(txn ds.Txn, id string) ([]*model.Relation, error) {
+func getObjectRelations(txn noctxds.Txn, id string) ([]*model.Relation, error) {
 	var relations model.Relations
 	if val, err := txn.Get(pagesRelationsBase.ChildString(id)); err != nil {
 		if err != ds.ErrNotFound {
@@ -2328,7 +2330,7 @@ func getObjectRelations(txn ds.Txn, id string) ([]*model.Relation, error) {
 	return relations.GetRelations(), nil
 }
 
-func getOption(txn ds.Txn, optionId string) (*model.RelationOption, error) {
+func getOption(txn noctxds.Txn, optionId string) (*model.RelationOption, error) {
 	var opt model.RelationOption
 	if val, err := txn.Get(relationsOptionsBase.ChildString(optionId)); err != nil {
 		log.Debugf("getOption %s: not found", optionId)
@@ -2350,7 +2352,7 @@ func getObjectTypeFromDetails(det *types.Struct) ([]string, error) {
 	return pbtypes.GetStringList(det, bundle.RelationKeyType.String()), nil
 }
 
-func (m *dsObjectStore) getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo, error) {
+func (m *dsObjectStore) getObjectInfo(txn noctxds.Txn, id string) (*model.ObjectInfo, error) {
 	sbt, err := smartblock.SmartBlockTypeFromID(id)
 	if err != nil {
 		log.With("thread", id).Errorf("failed to extract smartblock type %s", id)
@@ -2404,7 +2406,7 @@ func (m *dsObjectStore) getObjectInfo(txn ds.Txn, id string) (*model.ObjectInfo,
 	}, nil
 }
 
-func (m *dsObjectStore) getObjectsInfo(txn ds.Txn, ids []string) ([]*model.ObjectInfo, error) {
+func (m *dsObjectStore) getObjectsInfo(txn noctxds.Txn, ids []string) ([]*model.ObjectInfo, error) {
 	var objects []*model.ObjectInfo
 	for _, id := range ids {
 		info, err := m.getObjectInfo(txn, id)
@@ -2426,7 +2428,7 @@ func (m *dsObjectStore) getObjectsInfo(txn ds.Txn, ids []string) ([]*model.Objec
 	return objects, nil
 }
 
-func hasInboundLinks(txn ds.Txn, id string) (bool, error) {
+func hasInboundLinks(txn noctxds.Txn, id string) (bool, error) {
 	inboundResults, err := txn.Query(query.Query{
 		Prefix:   pagesInboundLinksBase.String() + "/" + id + "/",
 		Limit:    1, // we only need to know if there is at least 1 inbound link
@@ -2442,16 +2444,16 @@ func hasInboundLinks(txn ds.Txn, id string) (bool, error) {
 }
 
 // Find to which IDs specified one has outbound links.
-func findOutboundLinks(txn ds.Txn, id string) ([]string, error) {
+func findOutboundLinks(txn noctxds.Txn, id string) ([]string, error) {
 	return findByPrefix(txn, pagesOutboundLinksBase.String()+"/"+id+"/", 0)
 }
 
 // Find from which IDs specified one has inbound links.
-func findInboundLinks(txn ds.Txn, id string) ([]string, error) {
+func findInboundLinks(txn noctxds.Txn, id string) ([]string, error) {
 	return findByPrefix(txn, pagesInboundLinksBase.String()+"/"+id+"/", 0)
 }
 
-func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
+func findByPrefix(txn noctxds.Txn, prefix string, limit int) ([]string, error) {
 	results, err := txn.Query(query.Query{
 		Prefix:   prefix,
 		Limit:    limit,
@@ -2465,7 +2467,7 @@ func findByPrefix(txn ds.Txn, prefix string, limit int) ([]string, error) {
 }
 
 // removeByPrefix query prefix and then remove keys in multiple TXs
-func removeByPrefix(d datastore.DSTxnBatching, prefix string) (int, error) {
+func removeByPrefix(d noctxds.DSTxnBatching, prefix string) (int, error) {
 	results, err := d.Query(query.Query{
 		Prefix:   prefix,
 		KeysOnly: true,
@@ -2493,7 +2495,7 @@ func removeByPrefix(d datastore.DSTxnBatching, prefix string) (int, error) {
 	return removed, b.Commit()
 }
 
-func removeByPrefixInTx(txn ds.Txn, prefix string) (int, error) {
+func removeByPrefixInTx(txn noctxds.Txn, prefix string) (int, error) {
 	results, err := txn.Query(query.Query{
 		Prefix:   prefix,
 		KeysOnly: true,

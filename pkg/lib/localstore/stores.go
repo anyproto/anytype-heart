@@ -3,14 +3,15 @@ package localstore
 import (
 	"crypto/sha256"
 	"fmt"
-	datastore2 "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"strings"
 
+	ds "github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/noctxds"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+
 	"github.com/dgtony/collections/polymorph"
 	"github.com/dgtony/collections/slices"
-	ds "github.com/ipfs/go-datastore"
+	dsCtx "github.com/ipfs/go-datastore"
 	"github.com/ipfs/go-datastore/query"
 	"github.com/multiformats/go-base32"
 )
@@ -23,7 +24,7 @@ var (
 
 var (
 	log       = logging.Logger("anytype-localstore")
-	IndexBase = ds.NewKey("/idx")
+	IndexBase = dsCtx.NewKey("/idx")
 )
 
 type Indexable interface {
@@ -78,7 +79,7 @@ func AddIndex(index Index, ds ds.TxnDatastore, newVal interface{}, newValPrimary
 
 func UpdateIndexWithTxn(index Index, txn ds.Txn, oldVal interface{}, newVal interface{}, newValPrimary string) error {
 	oldKeys := index.JoinedKeys(oldVal)
-	getFullKey := func(key string) ds.Key {
+	getFullKey := func(key string) dsCtx.Key {
 		return IndexBase.ChildString(index.Prefix).ChildString(index.Name).ChildString(key).ChildString(newValPrimary)
 	}
 
@@ -169,7 +170,7 @@ func AddIndexWithTxn(index Index, ds ds.Txn, newVal interface{}, newValPrimary s
 }
 
 // EraseIndex deletes the whole index
-func EraseIndex(index Index, datastore datastore2.DSTxnBatching) error {
+func EraseIndex(index Index, datastore ds.DSTxnBatching) error {
 	key := IndexBase.ChildString(index.Prefix).ChildString(index.Name)
 	txn, err := datastore.NewTransaction(true)
 	if err != nil {
@@ -187,7 +188,7 @@ func EraseIndex(index Index, datastore datastore2.DSTxnBatching) error {
 		return err
 	}
 	for _, key := range keys {
-		err = b.Delete(ds.NewKey(key))
+		err = b.Delete(dsCtx.NewKey(key))
 		if err != nil {
 			return err
 		}
@@ -305,13 +306,13 @@ func GetKeyByIndex(index Index, txn ds.Txn, val interface{}) (string, error) {
 		return "", res.Error
 	}
 
-	key := ds.RawKey(res.Key)
+	key := dsCtx.RawKey(res.Key)
 	keyParts := key.List()
 
 	return keyParts[len(keyParts)-1], nil
 }
 
-func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool) ds.Key {
+func getDsKeyByIndexParts(prefix string, keyIndexName string, keyIndexValue []string, separator string, hash bool) dsCtx.Key {
 	key := IndexBase.ChildString(prefix).ChildString(keyIndexName)
 	if len(keyIndexValue) == 0 {
 		return key
@@ -419,7 +420,7 @@ func ExtractKeysFromResults(results query.Results) ([]string, error) {
 }
 
 func CarveKeyParts(key string, from, to int) (string, error) {
-	var keyParts = ds.RawKey(key).List()
+	var keyParts = dsCtx.RawKey(key).List()
 
 	carved, err := slices.Carve(polymorph.FromStrings(keyParts), from, to)
 	if err != nil {
