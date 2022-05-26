@@ -24,7 +24,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
 	"github.com/libp2p/go-libp2p-core/peer"
 	pstore "github.com/libp2p/go-libp2p-core/peerstore"
-	"github.com/libp2p/go-libp2p/p2p/discovery"
+	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 	"github.com/textileio/go-threads/core/net"
 	"io"
 	"os"
@@ -105,7 +105,7 @@ type CreatorInfoAdder interface {
 type Anytype struct {
 	files            *files.Service
 	cafe             cafe.Client
-	mdns             discovery.Service
+	mdns             mdns.Service
 	objectStore      objectstore.ObjectStore
 	fileStore        filestore.FileStore
 	fetcher          configfetcher.ConfigFetcher

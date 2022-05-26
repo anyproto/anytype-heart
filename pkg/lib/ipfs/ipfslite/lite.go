@@ -153,18 +153,23 @@ func (ln *liteNet) Run() error {
 		return err
 	}
 
+	cnmgr, err := connmgr.NewConnManager(ln.cfg.SwarmLowWater, ln.cfg.SwarmHighWater, connmgr.WithGracePeriod(time.Minute))
+	if err != nil {
+		return err
+	}
+
 	ln.host, ln.dht, err = ipfslite.SetupLibp2p(
 		ctx,
 		ln.cfg.PrivKey,
 		privateNetworkKey,
 		[]ma.Multiaddr{ln.cfg.HostAddr},
 		blockDS,
-		libp2p.ConnectionManager(connmgr.NewConnManager(ln.cfg.SwarmLowWater, ln.cfg.SwarmHighWater, time.Minute)),
+		libp2p.ConnectionManager(cnmgr),
 		libp2p.Peerstore(pstore),
 		libp2p.Security(libp2ptls.ID, libp2ptls.New),
-		libp2p.Transport(tcp.NewTCPTransport),  // connection timeout overridden in core.go init
-		libp2p.EnableAutoRelay(),               // if our network state changes we will try to connect to one of the relay specified below
-		libp2p.StaticRelays(ln.cfg.RelayNodes), // in case we are under NAT we will announce our addresses through these nodes
+		libp2p.Transport(tcp.NewTCPTransport, tcp.WithConnectionTimeout(time.Second*10)), // connection timeout overridden in core.go init
+		libp2p.EnableAutoRelay(),                                                         // if our network state changes we will try to connect to one of the relay specified below
+		libp2p.StaticRelays(ln.cfg.RelayNodes),                                           // in case we are under NAT we will announce our addresses through these nodes
 	)
 	if err != nil {
 		return err
@@ -255,7 +260,7 @@ func (i *liteNet) BlockStore() blockstore.Blockstore {
 }
 
 func (i *liteNet) HasBlock(c cid.Cid) (bool, error) {
-	return i.Peer.HasBlock(c)
+	return i.Peer.HasBlock(context.Background(), c)
 }
 
 func (i *liteNet) Remove(ctx context.Context, c cid.Cid) error {

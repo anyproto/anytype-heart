@@ -15,7 +15,6 @@ import (
 	walletUtil "github.com/anytypeio/go-anytype-middleware/pkg/lib/wallet"
 	grpc_prometheus "github.com/grpc-ecosystem/go-grpc-prometheus"
 	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-tcp-transport"
 	"github.com/textileio/go-threads/logstore/lstoreds"
 	threadsNet "github.com/textileio/go-threads/net"
 	threadsQueue "github.com/textileio/go-threads/net/queue"
@@ -103,8 +102,7 @@ func New() Service {
 	threadsNet.PullInterval = 3 * time.Minute
 
 	// communication timeouts
-	threadsNet.DialTimeout = 20 * time.Second          // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
-	tcp.DefaultConnectTimeout = threadsNet.DialTimeout // override default tcp dial timeout because it has a priority over the passing context's deadline
+	threadsNet.DialTimeout = 20 * time.Second // we can set safely set a long dial timeout because unavailable peer are cached for some time and local network timeouts are overridden with 5s
 	threadsNet.PushTimeout = 30 * time.Second
 	threadsNet.PullTimeout = 2 * time.Minute
 
