@@ -181,6 +181,31 @@ func TestTextImpl_Merge(t *testing.T) {
 		assert.Equal(t, []string{"ch1"}, r.Pick("1").Model().ChildrenIds)
 		assert.Equal(t, []string{"ch2"}, r.Pick("2").Model().ChildrenIds)
 	})
+
+	// Issue #2dexn9f
+	t.Run("don't set style in empty header blocks", func(t *testing.T) {
+		sb := smarttest.New("test")
+
+		tb1 := newTextBlock("title", "")
+		tb1.Model().GetText().Style = model.BlockContentText_Title
+
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{template.HeaderLayoutId}})).
+			AddBlock(simple.New(&model.Block{Id: template.HeaderLayoutId, ChildrenIds: []string{"title"}})).
+			AddBlock(tb1).
+			AddBlock(newTextBlock("123", "one"))
+
+		tb := NewText(sb)
+
+		err := tb.Merge(nil, "title", "123")
+		require.NoError(t, err)
+
+		r := sb.NewState()
+		require.True(t, r.Exists("title"))
+
+		assert.Equal(t, "one", r.Pick("title").Model().GetText().Text)
+		assert.Equal(t, []string{"title"}, r.Pick(template.HeaderLayoutId).Model().ChildrenIds)
+		assert.Equal(t, model.BlockContentText_Title, r.Pick("title").Model().GetText().GetStyle())
+	})
 }
 
 func TestTextImpl_SetMark(t *testing.T) {
