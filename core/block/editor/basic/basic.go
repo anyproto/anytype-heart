@@ -130,15 +130,14 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 
 	s := bs.NewStateCtx(ctx)
 
-	// Filter out children blocks to prevent unlinking of blocks with unlinked parents
-	rootIds := s.SelectRoots(ids)
-	if len(rootIds) == 0 {
-		return fmt.Errorf("no blocks to unlink")
-	}
-	for _, id := range rootIds {
-		if !s.Unlink(id) {
-			return smartblock.ErrSimpleBlockNotFound
+	var someUnlinked bool
+	for _, id := range ids {
+		if s.Unlink(id) {
+			someUnlinked = true
 		}
+	}
+	if !someUnlinked {
+		return smartblock.ErrSimpleBlockNotFound
 	}
 	return bs.Apply(s)
 }
