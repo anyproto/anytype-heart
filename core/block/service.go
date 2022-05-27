@@ -194,6 +194,8 @@ type Service interface {
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
+	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (string, error)
+
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
 

@@ -1011,3 +1011,11 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 		})
 	})
 }
+
+func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		id, err = b.CreateTable(ctx, "", req)
+		return err
+	})
+	return
+}

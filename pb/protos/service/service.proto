@@ -181,6 +181,10 @@ service ClientCommands {
     rpc BlockDataviewRecordRelationOptionUpdate (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Update.Response);
     rpc BlockDataviewRecordRelationOptionDelete (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Request) returns (anytype.Rpc.BlockDataviewRecord.RelationOption.Delete.Response);
 
+    // Simple table block commands
+    // ***
+    rpc BlockTableCreate (anytype.Rpc.BlockTable.Create.Request) returns (anytype.Rpc.BlockTable.Create.Response);
+
     // Other specific block commands
     // ***
     rpc BlockLinkCreateWithObject (anytype.Rpc.BlockLink.CreateWithObject.Request) returns (anytype.Rpc.BlockLink.CreateWithObject.Response);

@@ -3005,6 +3005,36 @@ message Rpc {
         }
     }
 
+    message BlockTable {
+        message Create {
+            message Request {
+                string contextId = 1; // id of the context object
+                string targetId = 2; // id of the closest block
+                anytype.model.Block.Position position = 3;
+                uint32 rows = 4;
+                uint32 columns = 5;
+            }
+
+            message Response {
+                Error error = 1;
+                string blockId = 2;
+                ResponseEvent event = 3;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
+    }
+
     message BlockFile {
         message SetName {
             message Request {

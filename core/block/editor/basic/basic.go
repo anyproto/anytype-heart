@@ -39,6 +39,9 @@ type Basic interface {
 	ReplaceLink(oldId, newId string) error
 
 	ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error)
+
+	// TODO Temp
+	CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error)
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -372,4 +375,111 @@ func (bs *basic) ReplaceLink(oldId, newId string) error {
 		}
 	}
 	return bs.Apply(s)
+}
+
+func (bs *basic) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error) {
+	if err = bs.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
+		return
+	}
+	if bs.Type() == model.SmartBlockType_Set {
+		return "", ErrNotSupported
+	}
+
+	s := bs.NewStateCtx(ctx).SetGroupId(groupId)
+
+	id, err = CreateBlock(s, groupId, pb.RpcBlockCreateRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.TargetId,
+		Position:  req.Position,
+		Block: &model.Block{
+			Content: &model.BlockContentOfTable{},
+		},
+	})
+	if err != nil {
+		return "", fmt.Errorf("create block: %w", err)
+	}
+
+	columnIds := make([]string, 0, req.Columns)
+	for i := uint32(0); i < req.Columns; i++ {
+		b := simple.New(&model.Block{
+			Content: &model.BlockContentOfTableColumn{
+				TableColumn: &model.BlockContentTableColumn{},
+			},
+		})
+
+		columnIds = append(columnIds, b.Model().Id)
+		if !s.Add(b) {
+			return "", fmt.Errorf("can't add column block")
+		}
+	}
+	columnsLayout := simple.New(&model.Block{
+		ChildrenIds: columnIds,
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Columns,
+			},
+		},
+	})
+	if !s.Add(columnsLayout) {
+		return "", fmt.Errorf("can't add columns block")
+	}
+
+	rowIds := make([]string, 0, req.Rows)
+	for i := uint32(0); i < req.Rows; i++ {
+		cellIds := make([]string, 0, req.Columns)
+		for j := uint32(0); j < req.Columns; j++ {
+			tb := simple.New(&model.Block{
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{
+						Style: model.BlockContentText_Paragraph,
+					},
+				},
+			})
+			if !s.Add(tb) {
+				return "", fmt.Errorf("can't add text block")
+			}
+			cell := simple.New(&model.Block{
+				ChildrenIds: []string{tb.Model().Id},
+				Content: &model.BlockContentOfLayout{
+					Layout: &model.BlockContentLayout{
+						Style: model.BlockContentLayout_Columns,
+					},
+				},
+			})
+			cellIds = append(cellIds, cell.Model().Id)
+			if !s.Add(cell) {
+				return "", fmt.Errorf("can't add cell block")
+			}
+		}
+
+		row := simple.New(&model.Block{
+			ChildrenIds: cellIds,
+			Content: &model.BlockContentOfTableRow{
+				TableRow: &model.BlockContentTableRow{},
+			},
+		})
+		rowIds = append(rowIds, row.Model().Id)
+		if !s.Add(row) {
+			return "", fmt.Errorf("can't add row block")
+		}
+	}
+	rowsLayout := simple.New(&model.Block{
+		ChildrenIds: rowIds,
+		Content: &model.BlockContentOfLayout{
+			Layout: &model.BlockContentLayout{
+				Style: model.BlockContentLayout_Rows,
+			},
+		},
+	})
+	if !s.Add(rowsLayout) {
+		return "", fmt.Errorf("can't add rows block")
+	}
+
+	table := s.Pick(id)
+	table.Model().ChildrenIds = []string{columnsLayout.Model().Id, rowsLayout.Model().Id}
+
+	if err = bs.Apply(s); err != nil {
+		return
+	}
+	return id, nil
 }
