@@ -1022,10 +1022,10 @@
     - [Block.Content.Relation](#anytype-model-Block-Content-Relation)
     - [Block.Content.Smartblock](#anytype-model-Block-Content-Smartblock)
     - [Block.Content.Table](#anytype-model-Block-Content-Table)
-    - [Block.Content.Table.Cell](#anytype-model-Block-Content-Table-Cell)
-    - [Block.Content.Table.Column](#anytype-model-Block-Content-Table-Column)
-    - [Block.Content.Table.Row](#anytype-model-Block-Content-Table-Row)
+    - [Block.Content.TableCell](#anytype-model-Block-Content-TableCell)
+    - [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn)
     - [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents)
+    - [Block.Content.TableRow](#anytype-model-Block-Content-TableRow)
     - [Block.Content.Text](#anytype-model-Block-Content-Text)
     - [Block.Content.Text.Mark](#anytype-model-Block-Content-Text-Mark)
     - [Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks)
@@ -15824,9 +15824,9 @@ Avatar of a user&#39;s account. It could be an image or color
 | latex | [Block.Content.Latex](#anytype-model-Block-Content-Latex) |  |  |
 | tableOfContents | [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents) |  |  |
 | table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
-| tableColumn | [Block.Content.Table.Column](#anytype-model-Block-Content-Table-Column) |  |  |
-| tableRow | [Block.Content.Table.Row](#anytype-model-Block-Content-Table-Row) |  |  |
-| tableCell | [Block.Content.Table.Cell](#anytype-model-Block-Content-Table-Cell) |  |  |
+| tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
+| tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
+| tableCell | [Block.Content.TableCell](#anytype-model-Block-Content-TableCell) |  |  |
 
 
 
@@ -16109,19 +16109,9 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype-model-Block-Content-Table-Cell"></a>
+<a name="anytype-model-Block-Content-TableCell"></a>
 
-### Block.Content.Table.Cell
-
-
-
-
-
-
-
-<a name="anytype-model-Block-Content-Table-Column"></a>
-
-### Block.Content.Table.Column
+### Block.Content.TableCell
 
 
 
@@ -16129,9 +16119,9 @@ Link: block to link some content from an external sources.
 
 
 
-<a name="anytype-model-Block-Content-Table-Row"></a>
+<a name="anytype-model-Block-Content-TableColumn"></a>
 
-### Block.Content.Table.Row
+### Block.Content.TableColumn
 
 
 
@@ -16142,6 +16132,16 @@ Link: block to link some content from an external sources.
 <a name="anytype-model-Block-Content-TableOfContents"></a>
 
 ### Block.Content.TableOfContents
+
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-TableRow"></a>
+
+### Block.Content.TableRow
 
 
 

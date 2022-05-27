@@ -392,7 +392,9 @@ func (bs *basic) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlock
 		TargetId:  req.TargetId,
 		Position:  req.Position,
 		Block: &model.Block{
-			Content: &model.BlockContentOfTable{},
+			Content: &model.BlockContentOfTable{
+				Table: &model.BlockContentTable{},
+			},
 		},
 	})
 	if err != nil {

@@ -68,9 +68,9 @@ message Block {
         Content.Latex latex = 24;
         Content.TableOfContents tableOfContents = 25;
         Content.Table table = 26;
-        Content.Table.Column tableColumn = 27;
-        Content.Table.Row tableRow = 28;
-        Content.Table.Cell tableCell = 29;
+        Content.TableColumn tableColumn = 27;
+        Content.TableRow tableRow = 28;
+        Content.TableCell tableCell = 29;
     }
 
     message Restrictions {
@@ -391,19 +391,10 @@ message Block {
         message TableOfContents {
         }
 
-        message Table {
-            message Column {
-
-            }
-
-            message Row {
-
-            }
-
-            message Cell {
-
-            }
-        }
+        message Table {}
+		message TableColumn {}
+		message TableRow {}
+		message TableCell {}
     }
 }
 
