@@ -165,13 +165,7 @@ func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model
 				if ok := st.Unlink(b.Model().Id); !ok {
 					return fmt.Errorf("can't unlink block %s", b.Model().Id)
 				}
-
-				if _, ok := b.Model().Content.(*model.BlockContentOfRelation); ok {
-					continue
-				}
-
-				// Delete block if it has wrong type, it will be created from scratch
-				st.CleanupBlock(b.Model().Id)
+				continue
 			}
 
 			ok := st.Add(simple.New(makeRelationBlock(k)))
@@ -219,12 +213,12 @@ func (s service) Fetch(id string, params bookmark.FetchParams) (err error) {
 
 func (s service) ContentFetcher(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
+	defer cancel()
+
 	data, err := s.linkPreview.Fetch(ctx, url)
-	cancel()
 	if err != nil {
 		return nil, fmt.Errorf("bookmark: can't fetch link %s: %w", url, err)
 	}
-
 	var wg sync.WaitGroup
 	updaters := make(chan func(contentBookmark *model.BlockContentBookmark))
 	wg.Add(1)

@@ -61,26 +61,6 @@ func TestUpdateBookmarkObject(t *testing.T) {
 		assertUpdatedObject(t, sb, oldBlocks, newContent)
 	})
 
-	t.Run("required block has wrong type", func(t *testing.T) {
-		sb := smarttest.New("test")
-		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"url"}}))
-		sb.AddBlock(simple.New(&model.Block{Id: "url"}))
-		oldBlocks := sb.Blocks()
-
-		m := &testObjectManager{sb}
-		svc := service{
-			objectManager: m,
-		}
-
-		err := svc.UpdateBookmarkObject("test", func() (*model.BlockContentBookmark, error) {
-			return newContent, nil
-		})
-
-		assert.NoError(t, err)
-
-		assertUpdatedObject(t, sb, oldBlocks, newContent)
-	})
-
 	t.Run("extra blocks", func(t *testing.T) {
 		sb := smarttest.New("test")
 		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"extra1"}}))
