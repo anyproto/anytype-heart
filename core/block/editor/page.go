@@ -65,6 +65,7 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 
 	tmpls := []template.StateTransformer{
 		template.WithObjectTypesAndLayout(ctx.ObjectTypeUrls),
+		bookmarksvc.WithFixedBookmarks(p.Bookmark),
 	}
 
 	// replace title to text block for note

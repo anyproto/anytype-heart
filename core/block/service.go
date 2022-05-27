@@ -6,8 +6,6 @@ import (
 	"errors"
 	"fmt"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	sbookmark "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
 	"net/url"
 	"strings"
@@ -366,10 +364,6 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 	afterDataviewTime := time.Now()
 	st := ob.NewState()
 
-	if err = s.migrateBlocks(ob.SmartBlock, st); err != nil {
-		return fmt.Errorf("migrate blocks: %w", err)
-	}
-
 	st.SetLocalDetail(bundle.RelationKeyLastOpenedDate.String(), pbtypes.Int64(time.Now().Unix()))
 	if err = ob.Apply(st, smartblock.NoHistory); err != nil {
 		log.Errorf("failed to update lastOpenedDate: %s", err.Error())
@@ -405,32 +399,6 @@ func (s *service) OpenBlock(ctx *state.Context, id string) (err error) {
 		FileWatcherMs:  afterHashesTime.Sub(afterShowTime).Milliseconds(),
 		SmartblockType: int(tp),
 	})
-	return nil
-}
-
-func (s *service) migrateBlocks(sb smartblock.SmartBlock, st *state.State) error {
-	var migrateErr error
-	err := st.Iterate(func(b simple.Block) bool {
-		bm, ok := sb.(bookmark.Bookmark)
-		if !ok {
-			return true
-		}
-		block, ok := b.(sbookmark.Block)
-		if !ok {
-			return true
-		}
-
-		if migrateErr = bm.MigrateBlock(block); migrateErr != nil {
-			return false
-		}
-		return true
-	})
-	if migrateErr != nil {
-		return migrateErr
-	}
-	if err != nil {
-		return fmt.Errorf("iterate: %w", err)
-	}
 	return nil
 }
 

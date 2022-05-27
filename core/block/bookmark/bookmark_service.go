@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
@@ -124,50 +123,6 @@ func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.V
 		bundle.RelationKeyUrl.String():         pbtypes.String(content.Url),
 		bundle.RelationKeyPicture.String():     pbtypes.String(content.ImageHash),
 		bundle.RelationKeyIconImage.String():   pbtypes.String(content.FaviconHash),
-	}
-}
-
-var relationBlockKeys = []string{
-	bundle.RelationKeyUrl.String(),
-	bundle.RelationKeyPicture.String(),
-	bundle.RelationKeyCreatedDate.String(),
-	bundle.RelationKeyTag.String(),
-	bundle.RelationKeyNotes.String(),
-	bundle.RelationKeyQuote.String(),
-}
-
-func makeRelationBlock(k string) *model.Block {
-	return &model.Block{
-		Id: k,
-		Content: &model.BlockContentOfRelation{
-			Relation: &model.BlockContentRelation{
-				Key: k,
-			},
-		},
-	}
-}
-
-// WithBookmarkBlocks is state transformer for using in templates
-func WithBookmarkBlocks(st *state.State) {
-	for _, k := range relationBlockKeys {
-		if b := st.Pick(k); b != nil {
-			if ok := st.Unlink(b.Model().Id); !ok {
-				log.Errorf("can't unlink block %s", b.Model().Id)
-				return
-			}
-			continue
-		}
-
-		ok := st.Add(simple.New(makeRelationBlock(k)))
-		if !ok {
-			log.Errorf("can't add block %s", k)
-			return
-		}
-	}
-
-	if err := st.InsertTo(st.RootId(), model.Block_InnerFirst, relationBlockKeys...); err != nil {
-		log.Errorf("insert relation blocks: %w", err)
-		return
 	}
 }
 
