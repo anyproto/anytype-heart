@@ -203,11 +203,19 @@ func (cb *clipboard) Cut(ctx *state.Context, req pb.RpcBlockCutRequest) (textSlo
 	htmlSlot = html.NewHTMLConverter(cb.Anytype(), cb.blocksToState(req.Blocks)).Convert()
 	anySlot = req.Blocks
 
+	blockIds := make([]string, 0, len(req.Blocks))
 	for _, b := range req.Blocks {
-		if b.GetLayout() != nil {
+		blockIds = append(blockIds, b.Id)
+	}
+
+	// Filter out children blocks to prevent unlinking of blocks with already unlinked parents
+	rootIds := s.SelectRoots(blockIds)
+	for _, id := range rootIds {
+		b := s.Pick(id)
+		if b.Model().GetLayout() != nil {
 			continue
 		}
-		ok := s.Unlink(b.Id)
+		ok := s.Unlink(id)
 		if !ok {
 			return textSlot, htmlSlot, anySlot, fmt.Errorf("can't remove block")
 		}

@@ -1642,6 +1642,46 @@ func (s *State) Descendants(rootId string) []simple.Block {
 	return children
 }
 
+// SelectRoots returns unique root blocks that are listed in ids AND present in the state
+// "root" here means the block that hasn't any parents listed in input ids
+func (s *State) SelectRoots(ids []string) []string {
+	resCount := len(ids)
+	discarded := make([]bool, len(ids))
+	for i := 0; i < len(ids); i++ {
+
+		if discarded[i] {
+			continue
+		}
+		ai := ids[i]
+		if !s.Exists(ai) {
+			discarded[i] = true
+			resCount--
+		}
+		for j := 0; j < len(ids); j++ {
+			if i == j {
+				continue
+			}
+			if discarded[j] {
+				continue
+			}
+
+			aj := ids[j]
+			if s.IsChild(ai, aj) {
+				discarded[j] = true
+				resCount--
+			}
+		}
+	}
+
+	res := make([]string, 0, resCount)
+	for i, id := range ids {
+		if !discarded[i] {
+			res = append(res, id)
+		}
+	}
+	return res
+}
+
 type linkSource interface {
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
