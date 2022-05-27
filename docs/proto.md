@@ -16693,8 +16693,8 @@ scope from which this relation have been aggregated |
 | Column | 1 |  |
 | Div | 2 |  |
 | Header | 3 |  |
-| Rows | 4 |  |
-| Columns | 5 |  |
+| TableRows | 4 |  |
+| TableColumns | 5 |  |
 
 
 

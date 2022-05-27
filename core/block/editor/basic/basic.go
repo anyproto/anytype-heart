@@ -418,7 +418,7 @@ func (bs *basic) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlock
 		ChildrenIds: columnIds,
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_Columns,
+				Style: model.BlockContentLayout_TableColumns,
 			},
 		},
 	})
@@ -442,10 +442,8 @@ func (bs *basic) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlock
 			}
 			cell := simple.New(&model.Block{
 				ChildrenIds: []string{tb.Model().Id},
-				Content: &model.BlockContentOfLayout{
-					Layout: &model.BlockContentLayout{
-						Style: model.BlockContentLayout_Columns,
-					},
+				Content: &model.BlockContentOfTableCell{
+					TableCell: &model.BlockContentTableCell{},
 				},
 			})
 			cellIds = append(cellIds, cell.Model().Id)
@@ -469,7 +467,7 @@ func (bs *basic) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlock
 		ChildrenIds: rowIds,
 		Content: &model.BlockContentOfLayout{
 			Layout: &model.BlockContentLayout{
-				Style: model.BlockContentLayout_Rows,
+				Style: model.BlockContentLayout_TableRows,
 			},
 		},
 	})
