@@ -1,6 +1,7 @@
 package badger
 
 import (
+	"context"
 	"crypto/rand"
 	"fmt"
 	"github.com/ipfs/go-datastore"
@@ -64,7 +65,7 @@ func benchmarkWithOpts(b *testing.B, opts *badger.Options, valueSize, numKeys, u
 				_, err = rand.Read(val)
 				require.NoError(b, err)
 				k := datastore.NewKey(fmt.Sprintf("a%d", i))
-				err = ds.Put(k, val)
+				err = ds.Put(context.Background(), k, val)
 				require.NoError(b, err)
 			}
 		}
@@ -82,7 +83,7 @@ func benchmarkWithOpts(b *testing.B, opts *badger.Options, valueSize, numKeys, u
 
 	b.Run("iterate key only", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			res, err := ds.Query(query.Query{
+			res, err := ds.Query(context.Background(), query.Query{
 				Prefix:   "",
 				Limit:    0,
 				Offset:   0,
@@ -97,7 +98,7 @@ func benchmarkWithOpts(b *testing.B, opts *badger.Options, valueSize, numKeys, u
 
 	b.Run("iterate", func(b *testing.B) {
 		for n := 0; n < b.N; n++ {
-			res, err := ds.Query(query.Query{
+			res, err := ds.Query(context.Background(), query.Query{
 				Prefix:   "",
 				Limit:    0,
 				Offset:   0,

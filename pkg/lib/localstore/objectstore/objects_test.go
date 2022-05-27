@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
@@ -241,11 +242,11 @@ func getId() string {
 }
 func TestDsObjectStore_PrefixQuery(t *testing.T) {
 	bds := sync.MutexWrap(ds.NewMapDatastore())
-	err := bds.Put(ds.NewKey("/p1/abc/def/1"), []byte{})
+	err := bds.Put(context.Background(), ds.NewKey("/p1/abc/def/1"), []byte{})
 
 	require.NoError(t, err)
 
-	res, err := bds.Query(query.Query{Prefix: "/p1/abc", KeysOnly: true})
+	res, err := bds.Query(context.Background(), query.Query{Prefix: "/p1/abc", KeysOnly: true})
 	require.NoError(t, err)
 
 	entries, err := res.Rest()
