@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/app"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -43,7 +42,6 @@ type Service interface {
 type ObjectManager interface {
 	CreateSmartBlock(ctx context.Context, sbType coresb.SmartBlockType, details *types.Struct, relations []*model.Relation) (id string, newDetails *types.Struct, err error)
 	SetDetails(ctx *state.Context, req pb.RpcObjectSetDetailsRequest) (err error)
-	Do(id string, apply func(b smartblock.SmartBlock) error) error
 }
 
 type service struct {
@@ -149,40 +147,36 @@ func makeRelationBlock(k string) *model.Block {
 	}
 }
 
+// WithBookmarkBlocks is state transformer for using in templates
+func WithBookmarkBlocks(st *state.State) {
+	for _, k := range relationBlockKeys {
+		if b := st.Pick(k); b != nil {
+			if ok := st.Unlink(b.Model().Id); !ok {
+				log.Errorf("can't unlink block %s", b.Model().Id)
+				return
+			}
+			continue
+		}
+
+		ok := st.Add(simple.New(makeRelationBlock(k)))
+		if !ok {
+			log.Errorf("can't add block %s", k)
+			return
+		}
+	}
+
+	if err := st.InsertTo(st.RootId(), model.Block_InnerFirst, relationBlockKeys...); err != nil {
+		log.Errorf("insert relation blocks: %w", err)
+		return
+	}
+}
+
 func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model.BlockContentBookmark, error)) error {
 	content, err := getContent()
 	if err != nil {
 		return fmt.Errorf("get content: %w", err)
 	}
 	detailsMap := detailsFromContent(content)
-
-	// Ensure that object has required relation blocks in correct order
-	err = s.objectManager.Do(objectId, func(sb smartblock.SmartBlock) error {
-		st := sb.NewState()
-
-		for _, k := range relationBlockKeys {
-			if b := st.Pick(k); b != nil {
-				if ok := st.Unlink(b.Model().Id); !ok {
-					return fmt.Errorf("can't unlink block %s", b.Model().Id)
-				}
-				continue
-			}
-
-			ok := st.Add(simple.New(makeRelationBlock(k)))
-			if !ok {
-				return fmt.Errorf("can't add block %s", k)
-			}
-		}
-
-		if err := st.InsertTo(st.RootId(), model.Block_InnerFirst, relationBlockKeys...); err != nil {
-			return fmt.Errorf("insert relation blocks: %w", err)
-		}
-
-		return sb.Apply(st)
-	})
-	if err != nil {
-		return fmt.Errorf("update blocks: %w", err)
-	}
 
 	details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(detailsMap))
 	for k, v := range detailsMap {

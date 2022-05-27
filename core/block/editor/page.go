@@ -1,6 +1,7 @@
 package editor
 
 import (
+	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/clipboard"
@@ -72,6 +73,10 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 			ctx.State.RemoveDetail(bundle.RelationKeyName.String())
 			tmpls = append(tmpls, template.WithFirstTextBlockContent(name))
 		}
+	}
+
+	if layout == model.ObjectType_bookmark {
+		tmpls = append(tmpls, bookmarksvc.WithBookmarkBlocks)
 	}
 
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
