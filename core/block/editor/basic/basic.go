@@ -43,6 +43,7 @@ type Basic interface {
 	// TODO Temp
 	CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error)
 	TableCreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowRequest) error
+	TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumnRequest) error
 }
 
 var ErrNotSupported = fmt.Errorf("operation not supported for this type of smartblock")
@@ -404,16 +405,11 @@ func (bs *basic) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlock
 
 	columnIds := make([]string, 0, req.Columns)
 	for i := uint32(0); i < req.Columns; i++ {
-		b := simple.New(&model.Block{
-			Content: &model.BlockContentOfTableColumn{
-				TableColumn: &model.BlockContentTableColumn{},
-			},
-		})
-
-		columnIds = append(columnIds, b.Model().Id)
-		if !s.Add(b) {
-			return "", fmt.Errorf("can't add column block")
+		id, err := addColumnHeader(s)
+		if err != nil {
+			return "", err
 		}
+		columnIds = append(columnIds, id)
 	}
 	columnsLayout := simple.New(&model.Block{
 		ChildrenIds: columnIds,
@@ -487,33 +483,55 @@ func (bs *basic) TableCreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRo
 	return bs.Apply(s)
 }
 
+func addCell(s *state.State, cellBlockProto *model.Block) (string, error) {
+	tb := simple.New(&model.Block{
+		Content: &model.BlockContentOfText{
+			Text: &model.BlockContentText{},
+		},
+	})
+	if !s.Add(tb) {
+		return "", fmt.Errorf("can't add text block")
+	}
+	cell := simple.New(&model.Block{
+		Align:           cellBlockProto.GetAlign(),
+		BackgroundColor: cellBlockProto.GetBackgroundColor(),
+		ChildrenIds:     []string{tb.Model().Id},
+		Content: &model.BlockContentOfTableCell{
+			TableCell: &model.BlockContentTableCell{
+				Color:         cellBlockProto.GetTableCell().GetColor(),
+				Style:         cellBlockProto.GetTableCell().GetStyle(),
+				VerticalAlign: cellBlockProto.GetTableCell().GetVerticalAlign(),
+			},
+		},
+	})
+	if !s.Add(cell) {
+		return "", fmt.Errorf("can't add cell block")
+	}
+
+	return cell.Model().Id, nil
+}
+
+func addColumnHeader(s *state.State) (string, error) {
+	b := simple.New(&model.Block{
+		Content: &model.BlockContentOfTableColumn{
+			TableColumn: &model.BlockContentTableColumn{},
+		},
+	})
+
+	if !s.Add(b) {
+		return "", fmt.Errorf("can't add column block")
+	}
+	return b.Model().Id, nil
+}
+
 func addRow(s *state.State, columns uint32, cellBlockProto *model.Block) (string, error) {
 	cellIds := make([]string, 0, columns)
 	for j := uint32(0); j < columns; j++ {
-		tb := simple.New(&model.Block{
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{},
-			},
-		})
-		if !s.Add(tb) {
-			return "", fmt.Errorf("can't add text block")
+		id, err := addCell(s, cellBlockProto)
+		if err != nil {
+			return "", err
 		}
-		cell := simple.New(&model.Block{
-			Align:           cellBlockProto.GetAlign(),
-			BackgroundColor: cellBlockProto.GetBackgroundColor(),
-			ChildrenIds:     []string{tb.Model().Id},
-			Content: &model.BlockContentOfTableCell{
-				TableCell: &model.BlockContentTableCell{
-					Color:         cellBlockProto.GetTableCell().GetColor(),
-					Style:         cellBlockProto.GetTableCell().GetStyle(),
-					VerticalAlign: cellBlockProto.GetTableCell().GetVerticalAlign(),
-				},
-			},
-		})
-		cellIds = append(cellIds, cell.Model().Id)
-		if !s.Add(cell) {
-			return "", fmt.Errorf("can't add cell block")
-		}
+		cellIds = append(cellIds, id)
 	}
 
 	row := simple.New(&model.Block{
@@ -527,4 +545,74 @@ func addRow(s *state.State, columns uint32, cellBlockProto *model.Block) (string
 		return "", fmt.Errorf("can't add row block")
 	}
 	return row.Model().Id, nil
+}
+
+func (bs *basic) TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumnRequest) error {
+	s := bs.NewStateCtx(ctx)
+
+	colTarget := s.Pick(req.TargetColumnId)
+	if colTarget == nil {
+		return fmt.Errorf("target block not found")
+	}
+	if colTarget.Model().GetTableColumn() == nil {
+		return fmt.Errorf("target block in not a column")
+	}
+	switch req.Position {
+	// TODO: crutch
+	case model.Block_Left:
+		req.Position = model.Block_Top
+	case model.Block_Right:
+		req.Position = model.Block_Bottom
+	default:
+		return fmt.Errorf("position is not supported")
+	}
+
+	// TODO: use declarative model of table !!!
+	columns := s.GetParentOf(req.TargetColumnId)
+	if columns == nil || columns.Model().GetLayout().GetStyle() != model.BlockContentLayout_TableColumns {
+		return fmt.Errorf("inconsistent columns state")
+	}
+
+	colPos := slice.FindPos(columns.Model().ChildrenIds, req.TargetColumnId)
+	if colPos < 0 {
+		return fmt.Errorf("can't find target column")
+	}
+
+	table := s.GetParentOf(columns.Model().Id)
+	if table == nil || table.Model().GetTable() == nil || len(table.Model().ChildrenIds) != 2 {
+		return fmt.Errorf("inconsistent table state")
+	}
+
+	rows := s.Pick(table.Model().ChildrenIds[1])
+	if rows == nil || rows.Model().GetLayout().GetStyle() != model.BlockContentLayout_TableRows {
+		return fmt.Errorf("inconsistent rows state")
+	}
+	rowsCount := len(rows.Model().ChildrenIds)
+
+	for i := 0; i < rowsCount; i++ {
+		cellId, err := addCell(s, nil)
+		if err != nil {
+			return fmt.Errorf("add cell: %w", err)
+		}
+
+		row := s.Pick(rows.Model().ChildrenIds[i])
+		if row == nil || row.Model().GetTableRow() == nil || len(row.Model().ChildrenIds) <= colPos {
+			return fmt.Errorf("inconsistent row state")
+		}
+
+		targetColumnId := row.Model().ChildrenIds[colPos]
+		if err = s.InsertTo(targetColumnId, req.Position, cellId); err != nil {
+			return fmt.Errorf("insert cell: %w", err)
+		}
+	}
+
+	id, err := addColumnHeader(s)
+	if err != nil {
+		return err
+	}
+	if err = s.InsertTo(req.TargetColumnId, req.Position, id); err != nil {
+		return fmt.Errorf("insert column header: %w", err)
+	}
+
+	return bs.Apply(s)
 }

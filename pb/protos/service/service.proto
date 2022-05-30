@@ -185,6 +185,7 @@ service ClientCommands {
     // ***
     rpc BlockTableCreate (anytype.Rpc.BlockTable.Create.Request) returns (anytype.Rpc.BlockTable.Create.Response);
     rpc BlockTableCreateRow (anytype.Rpc.BlockTable.CreateRow.Request) returns (anytype.Rpc.BlockTable.CreateRow.Response);
+    rpc BlockTableCreateColumn (anytype.Rpc.BlockTable.CreateColumn.Request) returns (anytype.Rpc.BlockTable.CreateColumn.Response);
 
     // Other specific block commands
     // ***
