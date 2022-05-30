@@ -27,12 +27,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/stext"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/process"
 	"github.com/anytypeio/go-anytype-middleware/core/block/restriction"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
-	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
@@ -1161,6 +1162,20 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 		return apply(bb)
 	}
 	return fmt.Errorf("basic operation not available for this block type: %T", sb)
+}
+
+func (s *service) DoTable(id string, apply func(b table.Table) error) error {
+	sb, release, err := s.pickBlock(context.TODO(), id)
+	if err != nil {
+		return err
+	}
+	defer release()
+	if bb, ok := sb.(table.Table); ok {
+		sb.Lock()
+		defer sb.Unlock()
+		return apply(bb)
+	}
+	return fmt.Errorf("table operation not available for this block type: %T", sb)
 }
 
 func (s *service) DoLinksCollection(id string, apply func(b basic.Basic) error) error {

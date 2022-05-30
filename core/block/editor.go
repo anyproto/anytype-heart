@@ -3,6 +3,7 @@ package block
 import (
 	"context"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
@@ -1013,23 +1014,23 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 }
 
 func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		id, err = b.CreateTable(ctx, "", req)
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		id, err = t.CreateTable(ctx, "", req)
 		return err
 	})
 	return
 }
 
 func (s *service) TableCreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowRequest) (err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.TableCreateRow(ctx, req)
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.CreateRow(ctx, req)
 	})
 	return
 }
 
 func (s *service) TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumnRequest) (err error) {
-	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return b.TableCreateColumn(ctx, req)
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.CreateColumn(ctx, req)
 	})
 	return
 }
