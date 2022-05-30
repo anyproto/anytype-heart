@@ -1034,3 +1034,17 @@ func (s *service) TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableCrea
 	})
 	return
 }
+
+func (s *service) TableDeleteRow(ctx *state.Context, req pb.RpcBlockTableDeleteRowRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.DeleteRow(ctx, req)
+	})
+	return
+}
+
+func (s *service) TableDeleteColumn(ctx *state.Context, req pb.RpcBlockTableDeleteColumnRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.DeleteColumn(ctx, req)
+	})
+	return
+}

@@ -199,6 +199,8 @@ type Service interface {
 	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (string, error)
 	TableCreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowRequest) (err error)
 	TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumnRequest) (err error)
+	TableDeleteRow(ctx *state.Context, req pb.RpcBlockTableDeleteRowRequest) (err error)
+	TableDeleteColumn(ctx *state.Context, req pb.RpcBlockTableDeleteColumnRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error

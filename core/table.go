@@ -71,3 +71,47 @@ func (mw *Middleware) BlockTableCreateColumn(req *pb.RpcBlockTableCreateColumnRe
 	}
 	return response(pb.RpcBlockTableCreateColumnResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableDeleteRow(req *pb.RpcBlockTableDeleteRowRequest) *pb.RpcBlockTableDeleteRowResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableDeleteRowResponseErrorCode, id string, err error) *pb.RpcBlockTableDeleteRowResponse {
+		m := &pb.RpcBlockTableDeleteRowResponse{Error: &pb.RpcBlockTableDeleteRowResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableDeleteRow(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableDeleteRowResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableDeleteRowResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) BlockTableDeleteColumn(req *pb.RpcBlockTableDeleteColumnRequest) *pb.RpcBlockTableDeleteColumnResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableDeleteColumnResponseErrorCode, id string, err error) *pb.RpcBlockTableDeleteColumnResponse {
+		m := &pb.RpcBlockTableDeleteColumnResponse{Error: &pb.RpcBlockTableDeleteColumnResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableDeleteColumn(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableDeleteColumnResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableDeleteColumnResponseError_NULL, id, nil)
+}

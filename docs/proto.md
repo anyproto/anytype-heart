@@ -298,6 +298,14 @@
     - [Rpc.BlockTable.CreateRow.Request](#anytype-Rpc-BlockTable-CreateRow-Request)
     - [Rpc.BlockTable.CreateRow.Response](#anytype-Rpc-BlockTable-CreateRow-Response)
     - [Rpc.BlockTable.CreateRow.Response.Error](#anytype-Rpc-BlockTable-CreateRow-Response-Error)
+    - [Rpc.BlockTable.DeleteColumn](#anytype-Rpc-BlockTable-DeleteColumn)
+    - [Rpc.BlockTable.DeleteColumn.Request](#anytype-Rpc-BlockTable-DeleteColumn-Request)
+    - [Rpc.BlockTable.DeleteColumn.Response](#anytype-Rpc-BlockTable-DeleteColumn-Response)
+    - [Rpc.BlockTable.DeleteColumn.Response.Error](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error)
+    - [Rpc.BlockTable.DeleteRow](#anytype-Rpc-BlockTable-DeleteRow)
+    - [Rpc.BlockTable.DeleteRow.Request](#anytype-Rpc-BlockTable-DeleteRow-Request)
+    - [Rpc.BlockTable.DeleteRow.Response](#anytype-Rpc-BlockTable-DeleteRow-Response)
+    - [Rpc.BlockTable.DeleteRow.Response.Error](#anytype-Rpc-BlockTable-DeleteRow-Response-Error)
     - [Rpc.BlockText](#anytype-Rpc-BlockText)
     - [Rpc.BlockText.ListSetColor](#anytype-Rpc-BlockText-ListSetColor)
     - [Rpc.BlockText.ListSetColor.Request](#anytype-Rpc-BlockText-ListSetColor-Request)
@@ -749,6 +757,8 @@
     - [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code)
     - [Rpc.BlockTable.CreateColumn.Response.Error.Code](#anytype-Rpc-BlockTable-CreateColumn-Response-Error-Code)
     - [Rpc.BlockTable.CreateRow.Response.Error.Code](#anytype-Rpc-BlockTable-CreateRow-Response-Error-Code)
+    - [Rpc.BlockTable.DeleteColumn.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error-Code)
+    - [Rpc.BlockTable.DeleteRow.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype-Rpc-BlockText-ListSetColor-Response-Error-Code)
     - [Rpc.BlockText.ListSetMark.Response.Error.Code](#anytype-Rpc-BlockText-ListSetMark-Response-Error-Code)
     - [Rpc.BlockText.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListSetStyle-Response-Error-Code)
@@ -1242,6 +1252,8 @@
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
 | BlockTableCreateRow | [Rpc.BlockTable.CreateRow.Request](#anytype-Rpc-BlockTable-CreateRow-Request) | [Rpc.BlockTable.CreateRow.Response](#anytype-Rpc-BlockTable-CreateRow-Response) |  |
 | BlockTableCreateColumn | [Rpc.BlockTable.CreateColumn.Request](#anytype-Rpc-BlockTable-CreateColumn-Request) | [Rpc.BlockTable.CreateColumn.Response](#anytype-Rpc-BlockTable-CreateColumn-Response) |  |
+| BlockTableDeleteRow | [Rpc.BlockTable.DeleteRow.Request](#anytype-Rpc-BlockTable-DeleteRow-Request) | [Rpc.BlockTable.DeleteRow.Response](#anytype-Rpc-BlockTable-DeleteRow-Response) |  |
+| BlockTableDeleteColumn | [Rpc.BlockTable.DeleteColumn.Request](#anytype-Rpc-BlockTable-DeleteColumn-Request) | [Rpc.BlockTable.DeleteColumn.Response](#anytype-Rpc-BlockTable-DeleteColumn-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -5545,6 +5557,122 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockTable.CreateRow.Response.Error.Code](#anytype-Rpc-BlockTable-CreateRow-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteColumn"></a>
+
+### Rpc.BlockTable.DeleteColumn
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteColumn-Request"></a>
+
+### Rpc.BlockTable.DeleteColumn.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetColumnId | [string](#string) |  | id of the closest column |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteColumn-Response"></a>
+
+### Rpc.BlockTable.DeleteColumn.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.DeleteColumn.Response.Error](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteColumn-Response-Error"></a>
+
+### Rpc.BlockTable.DeleteColumn.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.DeleteColumn.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteRow"></a>
+
+### Rpc.BlockTable.DeleteRow
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteRow-Request"></a>
+
+### Rpc.BlockTable.DeleteRow.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetRowId | [string](#string) |  | id of the closest row |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteRow-Response"></a>
+
+### Rpc.BlockTable.DeleteRow.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.DeleteRow.Response.Error](#anytype-Rpc-BlockTable-DeleteRow-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteRow-Response-Error"></a>
+
+### Rpc.BlockTable.DeleteRow.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.DeleteRow.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12003,6 +12131,32 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockTable-CreateRow-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.CreateRow.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteColumn-Response-Error-Code"></a>
+
+### Rpc.BlockTable.DeleteColumn.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code"></a>
+
+### Rpc.BlockTable.DeleteRow.Response.Error.Code
 
 
 | Name | Number | Description |
