@@ -76,10 +76,6 @@ func (p *Page) Init(ctx *smartblock.InitContext) (err error) {
 		}
 	}
 
-	if layout == model.ObjectType_bookmark {
-		tmpls = append(tmpls, bookmarksvc.WithBookmarkBlocks)
-	}
-
 	return smartblock.ObjectApplyTemplate(p, ctx.State,
 		template.ByLayout(
 			layout,

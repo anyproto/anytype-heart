@@ -1,4 +1,4 @@
-package bookmark
+package template
 
 import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"

@@ -726,3 +726,46 @@ var WithLink = func(s *state.State) {
 
 	return
 }
+
+var relationBlockKeys = []string{
+	bundle.RelationKeyUrl.String(),
+	bundle.RelationKeyPicture.String(),
+	bundle.RelationKeyCreatedDate.String(),
+	bundle.RelationKeyTag.String(),
+	bundle.RelationKeyNotes.String(),
+	bundle.RelationKeyQuote.String(),
+}
+
+func makeRelationBlock(k string) *model.Block {
+	return &model.Block{
+		Id: k,
+		Content: &model.BlockContentOfRelation{
+			Relation: &model.BlockContentRelation{
+				Key: k,
+			},
+		},
+	}
+}
+
+var WithBookmarkBlocks = func(s *state.State) {
+	for _, k := range relationBlockKeys {
+		if b := s.Pick(k); b != nil {
+			if ok := s.Unlink(b.Model().Id); !ok {
+				log.Errorf("can't unlink block %s", b.Model().Id)
+				return
+			}
+			continue
+		}
+
+		ok := s.Add(simple.New(makeRelationBlock(k)))
+		if !ok {
+			log.Errorf("can't add block %s", k)
+			return
+		}
+	}
+
+	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, relationBlockKeys...); err != nil {
+		log.Errorf("insert relation blocks: %w", err)
+		return
+	}
+}
