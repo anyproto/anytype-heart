@@ -394,7 +394,17 @@ message Block {
         message Table {}
 		    message TableColumn {}
 		    message TableRow {}
-		    message TableCell {}
+		    message TableCell {
+            string color = 1;
+            Text.Style style = 2;
+            Align verticalAlign = 3;
+
+            enum Align {
+                Top = 0;
+                Middle = 1;
+                Bottom = 2;
+            }
+        }
     }
 }
 

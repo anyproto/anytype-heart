@@ -32,6 +32,7 @@ import (
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/file"
 	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
+	_ "github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
 	"github.com/anytypeio/go-anytype-middleware/core/event"
 	"github.com/anytypeio/go-anytype-middleware/core/status"
@@ -195,6 +196,7 @@ type Service interface {
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (string, error)
+	TableCreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error

@@ -1019,3 +1019,10 @@ func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreat
 	})
 	return
 }
+
+func (s *service) TableCreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowRequest) (err error) {
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		return b.TableCreateRow(ctx, req)
+	})
+	return
+}

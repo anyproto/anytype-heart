@@ -27,3 +27,25 @@ func (mw *Middleware) BlockTableCreate(req *pb.RpcBlockTableCreateRequest) *pb.R
 	}
 	return response(pb.RpcBlockTableCreateResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableCreateRow(req *pb.RpcBlockTableCreateRowRequest) *pb.RpcBlockTableCreateRowResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableCreateRowResponseErrorCode, id string, err error) *pb.RpcBlockTableCreateRowResponse {
+		m := &pb.RpcBlockTableCreateRowResponse{Error: &pb.RpcBlockTableCreateRowResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableCreateRow(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableCreateRowResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableCreateRowResponseError_NULL, id, nil)
+}

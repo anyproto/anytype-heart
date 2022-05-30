@@ -290,6 +290,10 @@
     - [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request)
     - [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response)
     - [Rpc.BlockTable.Create.Response.Error](#anytype-Rpc-BlockTable-Create-Response-Error)
+    - [Rpc.BlockTable.CreateRow](#anytype-Rpc-BlockTable-CreateRow)
+    - [Rpc.BlockTable.CreateRow.Request](#anytype-Rpc-BlockTable-CreateRow-Request)
+    - [Rpc.BlockTable.CreateRow.Response](#anytype-Rpc-BlockTable-CreateRow-Response)
+    - [Rpc.BlockTable.CreateRow.Response.Error](#anytype-Rpc-BlockTable-CreateRow-Response-Error)
     - [Rpc.BlockText](#anytype-Rpc-BlockText)
     - [Rpc.BlockText.ListSetColor](#anytype-Rpc-BlockText-ListSetColor)
     - [Rpc.BlockText.ListSetColor.Request](#anytype-Rpc-BlockText-ListSetColor-Request)
@@ -739,6 +743,7 @@
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype-Rpc-BlockRelation-Add-Response-Error-Code)
     - [Rpc.BlockRelation.SetKey.Response.Error.Code](#anytype-Rpc-BlockRelation-SetKey-Response-Error-Code)
     - [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code)
+    - [Rpc.BlockTable.CreateRow.Response.Error.Code](#anytype-Rpc-BlockTable-CreateRow-Response-Error-Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype-Rpc-BlockText-ListSetColor-Response-Error-Code)
     - [Rpc.BlockText.ListSetMark.Response.Error.Code](#anytype-Rpc-BlockText-ListSetMark-Response-Error-Code)
     - [Rpc.BlockText.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListSetStyle-Response-Error-Code)
@@ -1064,6 +1069,7 @@
     - [Block.Content.Link.Description](#anytype-model-Block-Content-Link-Description)
     - [Block.Content.Link.IconSize](#anytype-model-Block-Content-Link-IconSize)
     - [Block.Content.Link.Style](#anytype-model-Block-Content-Link-Style)
+    - [Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align)
     - [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type)
     - [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style)
     - [Block.Position](#anytype-model-Block-Position)
@@ -1229,6 +1235,7 @@
 | BlockDataviewRecordRelationOptionUpdate | [Rpc.BlockDataviewRecord.RelationOption.Update.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Request) | [Rpc.BlockDataviewRecord.RelationOption.Update.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response) |  |
 | BlockDataviewRecordRelationOptionDelete | [Rpc.BlockDataviewRecord.RelationOption.Delete.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Request) | [Rpc.BlockDataviewRecord.RelationOption.Delete.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response) |  |
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
+| BlockTableCreateRow | [Rpc.BlockTable.CreateRow.Request](#anytype-Rpc-BlockTable-CreateRow-Request) | [Rpc.BlockTable.CreateRow.Response](#anytype-Rpc-BlockTable-CreateRow-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -5414,6 +5421,65 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CreateRow"></a>
+
+### Rpc.BlockTable.CreateRow
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CreateRow-Request"></a>
+
+### Rpc.BlockTable.CreateRow.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetRowId | [string](#string) |  | id of the closest row |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CreateRow-Response"></a>
+
+### Rpc.BlockTable.CreateRow.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.CreateRow.Response.Error](#anytype-Rpc-BlockTable-CreateRow-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CreateRow-Response-Error"></a>
+
+### Rpc.BlockTable.CreateRow.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.CreateRow.Response.Error.Code](#anytype-Rpc-BlockTable-CreateRow-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11856,6 +11922,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockTable-CreateRow-Response-Error-Code"></a>
+
+### Rpc.BlockTable.CreateRow.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockText-ListSetColor-Response-Error-Code"></a>
 
 ### Rpc.BlockText.ListSetColor.Response.Error.Code
@@ -16115,6 +16194,13 @@ Link: block to link some content from an external sources.
 
 
 
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| color | [string](#string) |  |  |
+| style | [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  |  |
+| verticalAlign | [Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align) |  |  |
+
+
 
 
 
@@ -16747,6 +16833,19 @@ scope from which this relation have been aggregated |
 | Dataview | 1 |  |
 | Dashboard | 2 |  |
 | Archive | 3 | ... |
+
+
+
+<a name="anytype-model-Block-Content-TableCell-Align"></a>
+
+### Block.Content.TableCell.Align
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Top | 0 |  |
+| Middle | 1 |  |
+| Bottom | 2 |  |
 
 
 
