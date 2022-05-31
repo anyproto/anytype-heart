@@ -3033,10 +3033,10 @@ message Rpc {
                 }
             }
         }
-        message CreateRow {
+        message RowCreate {
             message Request {
                 string contextId = 1; // id of the context object
-                string targetRowId = 2; // id of the closest row
+                string targetId = 2; // id of the closest row
                 anytype.model.Block.Position position = 3;
             }
 
@@ -3057,10 +3057,10 @@ message Rpc {
                 }
             }
         }
-        message CreateColumn {
+        message ColumnCreate {
             message Request {
                 string contextId = 1; // id of the context object
-                string targetColumnId = 2; // id of the closest column
+                string targetId = 2; // id of the closest column
                 anytype.model.Block.Position position = 3;
             }
 
@@ -3081,10 +3081,10 @@ message Rpc {
                 }
             }
         }
-        message DeleteRow {
+        message RowDelete {
             message Request {
                 string contextId = 1; // id of the context object
-                string targetRowId = 2; // id of the closest row
+                string targetId = 2; // id of the closest row
             }
 
             message Response {
@@ -3104,10 +3104,10 @@ message Rpc {
                 }
             }
         }
-        message DeleteColumn {
+        message ColumnDelete {
             message Request {
                 string contextId = 1; // id of the context object
-                string targetColumnId = 2; // id of the closest column
+                string targetId = 2; // id of the closest column
             }
 
             message Response {
@@ -3128,7 +3128,7 @@ message Rpc {
             }
         }
 
-        message MoveRow {
+        message RowMove {
             message Request {
                 string contextId = 1;
                 string targetId = 2;
@@ -3154,7 +3154,7 @@ message Rpc {
             }
         }
 
-        message MoveColumn {
+        message ColumnMove {
             message Request {
                 string contextId = 1;
                 string targetId = 2;

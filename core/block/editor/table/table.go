@@ -20,12 +20,12 @@ func New(sb smartblock.SmartBlock) Table {
 
 type Table interface {
 	CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error)
-	CreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowRequest) error
-	CreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumnRequest) error
-	DeleteRow(ctx *state.Context, req pb.RpcBlockTableDeleteRowRequest) error
-	DeleteColumn(ctx *state.Context, req pb.RpcBlockTableDeleteColumnRequest) error
-	MoveRow(ctx *state.Context, req pb.RpcBlockTableMoveRowRequest) error
-	MoveColumn(ctx *state.Context, req pb.RpcBlockTableMoveColumnRequest) error
+	CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error
+	CreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error
+	DeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error
+	DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
+	MoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
+	MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
 }
 
 type table struct {
@@ -107,7 +107,7 @@ func (t table) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTa
 	return id, nil
 }
 
-func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowRequest) error {
+func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error {
 	switch req.Position {
 	case model.Block_Top, model.Block_Bottom:
 	default:
@@ -116,7 +116,7 @@ func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowReques
 
 	s := t.NewStateCtx(ctx)
 
-	rowTarget, err := getRow(s, req.TargetRowId)
+	rowTarget, err := getRow(s, req.TargetId)
 	// TODO: move cols/rows to table block ?
 	columns := uint32(len(rowTarget.Model().ChildrenIds))
 	rowId, err := addRow(s, columns, nil)
@@ -124,28 +124,28 @@ func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableCreateRowReques
 		return err
 	}
 
-	if err = s.InsertTo(req.TargetRowId, req.Position, rowId); err != nil {
+	if err = s.InsertTo(req.TargetId, req.Position, rowId); err != nil {
 		return fmt.Errorf("insert row: %w", err)
 	}
 
 	return t.Apply(s)
 }
 
-func (t table) DeleteRow(ctx *state.Context, req pb.RpcBlockTableDeleteRowRequest) error {
+func (t table) DeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error {
 	s := t.NewStateCtx(ctx)
 
-	_, err := getRow(s, req.TargetRowId)
+	_, err := getRow(s, req.TargetId)
 	if err != nil {
 		return err
 	}
-	if !s.Unlink(req.TargetRowId) {
+	if !s.Unlink(req.TargetId) {
 		return fmt.Errorf("can't unlink row block")
 	}
 
 	return t.Apply(s)
 }
 
-func (t table) MoveRow(ctx *state.Context, req pb.RpcBlockTableMoveRowRequest) error {
+func (t table) MoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error {
 	switch req.Position {
 	case model.Block_Top, model.Block_Bottom:
 	default:
@@ -185,10 +185,10 @@ func getRow(s *state.State, id string) (simple.Block, error) {
 	return b, nil
 }
 
-func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumnRequest) error {
+func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error {
 	s := t.NewStateCtx(ctx)
 
-	_, err := getColumn(s, req.TargetColumnId)
+	_, err := getColumn(s, req.TargetId)
 	if err != nil {
 		return fmt.Errorf("get column: %w", err)
 	}
@@ -202,12 +202,12 @@ func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumn
 		return fmt.Errorf("position is not supported")
 	}
 
-	tb, err := newTableBlockFromState(s, req.TargetColumnId)
+	tb, err := newTableBlockFromState(s, req.TargetId)
 	if err != nil {
 		return fmt.Errorf("initialize table state: %w", err)
 	}
 
-	colPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetColumnId)
+	colPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
 	if colPos < 0 {
 		return fmt.Errorf("can't find target column")
 	}
@@ -235,27 +235,27 @@ func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumn
 	if err != nil {
 		return err
 	}
-	if err = s.InsertTo(req.TargetColumnId, req.Position, id); err != nil {
+	if err = s.InsertTo(req.TargetId, req.Position, id); err != nil {
 		return fmt.Errorf("insert column header: %w", err)
 	}
 
 	return t.Apply(s)
 }
 
-func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableDeleteColumnRequest) error {
+func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error {
 	s := t.NewStateCtx(ctx)
 
-	tb, err := newTableBlockFromState(s, req.TargetColumnId)
+	tb, err := newTableBlockFromState(s, req.TargetId)
 	if err != nil {
 		return fmt.Errorf("initialize table state: %w", err)
 	}
 
-	colPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetColumnId)
+	colPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
 	if colPos < 0 {
 		return fmt.Errorf("can't find target column")
 	}
 
-	if !s.Unlink(req.TargetColumnId) {
+	if !s.Unlink(req.TargetId) {
 		return fmt.Errorf("can't unlink column in header")
 	}
 
@@ -275,7 +275,7 @@ func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableDeleteColumn
 	return t.Apply(s)
 }
 
-func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableMoveColumnRequest) error {
+func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error {
 	switch req.Position {
 	// TODO: crutch
 	case model.Block_Left:

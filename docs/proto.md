@@ -286,34 +286,34 @@
     - [Rpc.BlockRelation.SetKey.Response](#anytype-Rpc-BlockRelation-SetKey-Response)
     - [Rpc.BlockRelation.SetKey.Response.Error](#anytype-Rpc-BlockRelation-SetKey-Response-Error)
     - [Rpc.BlockTable](#anytype-Rpc-BlockTable)
+    - [Rpc.BlockTable.ColumnCreate](#anytype-Rpc-BlockTable-ColumnCreate)
+    - [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request)
+    - [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response)
+    - [Rpc.BlockTable.ColumnCreate.Response.Error](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error)
+    - [Rpc.BlockTable.ColumnDelete](#anytype-Rpc-BlockTable-ColumnDelete)
+    - [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request)
+    - [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response)
+    - [Rpc.BlockTable.ColumnDelete.Response.Error](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error)
+    - [Rpc.BlockTable.ColumnMove](#anytype-Rpc-BlockTable-ColumnMove)
+    - [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request)
+    - [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response)
+    - [Rpc.BlockTable.ColumnMove.Response.Error](#anytype-Rpc-BlockTable-ColumnMove-Response-Error)
     - [Rpc.BlockTable.Create](#anytype-Rpc-BlockTable-Create)
     - [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request)
     - [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response)
     - [Rpc.BlockTable.Create.Response.Error](#anytype-Rpc-BlockTable-Create-Response-Error)
-    - [Rpc.BlockTable.CreateColumn](#anytype-Rpc-BlockTable-CreateColumn)
-    - [Rpc.BlockTable.CreateColumn.Request](#anytype-Rpc-BlockTable-CreateColumn-Request)
-    - [Rpc.BlockTable.CreateColumn.Response](#anytype-Rpc-BlockTable-CreateColumn-Response)
-    - [Rpc.BlockTable.CreateColumn.Response.Error](#anytype-Rpc-BlockTable-CreateColumn-Response-Error)
-    - [Rpc.BlockTable.CreateRow](#anytype-Rpc-BlockTable-CreateRow)
-    - [Rpc.BlockTable.CreateRow.Request](#anytype-Rpc-BlockTable-CreateRow-Request)
-    - [Rpc.BlockTable.CreateRow.Response](#anytype-Rpc-BlockTable-CreateRow-Response)
-    - [Rpc.BlockTable.CreateRow.Response.Error](#anytype-Rpc-BlockTable-CreateRow-Response-Error)
-    - [Rpc.BlockTable.DeleteColumn](#anytype-Rpc-BlockTable-DeleteColumn)
-    - [Rpc.BlockTable.DeleteColumn.Request](#anytype-Rpc-BlockTable-DeleteColumn-Request)
-    - [Rpc.BlockTable.DeleteColumn.Response](#anytype-Rpc-BlockTable-DeleteColumn-Response)
-    - [Rpc.BlockTable.DeleteColumn.Response.Error](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error)
-    - [Rpc.BlockTable.DeleteRow](#anytype-Rpc-BlockTable-DeleteRow)
-    - [Rpc.BlockTable.DeleteRow.Request](#anytype-Rpc-BlockTable-DeleteRow-Request)
-    - [Rpc.BlockTable.DeleteRow.Response](#anytype-Rpc-BlockTable-DeleteRow-Response)
-    - [Rpc.BlockTable.DeleteRow.Response.Error](#anytype-Rpc-BlockTable-DeleteRow-Response-Error)
-    - [Rpc.BlockTable.MoveColumn](#anytype-Rpc-BlockTable-MoveColumn)
-    - [Rpc.BlockTable.MoveColumn.Request](#anytype-Rpc-BlockTable-MoveColumn-Request)
-    - [Rpc.BlockTable.MoveColumn.Response](#anytype-Rpc-BlockTable-MoveColumn-Response)
-    - [Rpc.BlockTable.MoveColumn.Response.Error](#anytype-Rpc-BlockTable-MoveColumn-Response-Error)
-    - [Rpc.BlockTable.MoveRow](#anytype-Rpc-BlockTable-MoveRow)
-    - [Rpc.BlockTable.MoveRow.Request](#anytype-Rpc-BlockTable-MoveRow-Request)
-    - [Rpc.BlockTable.MoveRow.Response](#anytype-Rpc-BlockTable-MoveRow-Response)
-    - [Rpc.BlockTable.MoveRow.Response.Error](#anytype-Rpc-BlockTable-MoveRow-Response-Error)
+    - [Rpc.BlockTable.RowCreate](#anytype-Rpc-BlockTable-RowCreate)
+    - [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request)
+    - [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response)
+    - [Rpc.BlockTable.RowCreate.Response.Error](#anytype-Rpc-BlockTable-RowCreate-Response-Error)
+    - [Rpc.BlockTable.RowDelete](#anytype-Rpc-BlockTable-RowDelete)
+    - [Rpc.BlockTable.RowDelete.Request](#anytype-Rpc-BlockTable-RowDelete-Request)
+    - [Rpc.BlockTable.RowDelete.Response](#anytype-Rpc-BlockTable-RowDelete-Response)
+    - [Rpc.BlockTable.RowDelete.Response.Error](#anytype-Rpc-BlockTable-RowDelete-Response-Error)
+    - [Rpc.BlockTable.RowMove](#anytype-Rpc-BlockTable-RowMove)
+    - [Rpc.BlockTable.RowMove.Request](#anytype-Rpc-BlockTable-RowMove-Request)
+    - [Rpc.BlockTable.RowMove.Response](#anytype-Rpc-BlockTable-RowMove-Response)
+    - [Rpc.BlockTable.RowMove.Response.Error](#anytype-Rpc-BlockTable-RowMove-Response-Error)
     - [Rpc.BlockText](#anytype-Rpc-BlockText)
     - [Rpc.BlockText.ListSetColor](#anytype-Rpc-BlockText-ListSetColor)
     - [Rpc.BlockText.ListSetColor.Request](#anytype-Rpc-BlockText-ListSetColor-Request)
@@ -762,13 +762,13 @@
     - [Rpc.BlockLink.ListSetAppearance.Response.Error.Code](#anytype-Rpc-BlockLink-ListSetAppearance-Response-Error-Code)
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype-Rpc-BlockRelation-Add-Response-Error-Code)
     - [Rpc.BlockRelation.SetKey.Response.Error.Code](#anytype-Rpc-BlockRelation-SetKey-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnCreate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnDelete.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code)
+    - [Rpc.BlockTable.ColumnMove.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code)
     - [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code)
-    - [Rpc.BlockTable.CreateColumn.Response.Error.Code](#anytype-Rpc-BlockTable-CreateColumn-Response-Error-Code)
-    - [Rpc.BlockTable.CreateRow.Response.Error.Code](#anytype-Rpc-BlockTable-CreateRow-Response-Error-Code)
-    - [Rpc.BlockTable.DeleteColumn.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error-Code)
-    - [Rpc.BlockTable.DeleteRow.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code)
-    - [Rpc.BlockTable.MoveColumn.Response.Error.Code](#anytype-Rpc-BlockTable-MoveColumn-Response-Error-Code)
-    - [Rpc.BlockTable.MoveRow.Response.Error.Code](#anytype-Rpc-BlockTable-MoveRow-Response-Error-Code)
+    - [Rpc.BlockTable.RowCreate.Response.Error.Code](#anytype-Rpc-BlockTable-RowCreate-Response-Error-Code)
+    - [Rpc.BlockTable.RowDelete.Response.Error.Code](#anytype-Rpc-BlockTable-RowDelete-Response-Error-Code)
+    - [Rpc.BlockTable.RowMove.Response.Error.Code](#anytype-Rpc-BlockTable-RowMove-Response-Error-Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype-Rpc-BlockText-ListSetColor-Response-Error-Code)
     - [Rpc.BlockText.ListSetMark.Response.Error.Code](#anytype-Rpc-BlockText-ListSetMark-Response-Error-Code)
     - [Rpc.BlockText.ListSetStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListSetStyle-Response-Error-Code)
@@ -1260,12 +1260,12 @@
 | BlockDataviewRecordRelationOptionUpdate | [Rpc.BlockDataviewRecord.RelationOption.Update.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Request) | [Rpc.BlockDataviewRecord.RelationOption.Update.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response) |  |
 | BlockDataviewRecordRelationOptionDelete | [Rpc.BlockDataviewRecord.RelationOption.Delete.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Request) | [Rpc.BlockDataviewRecord.RelationOption.Delete.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response) |  |
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
-| BlockTableCreateRow | [Rpc.BlockTable.CreateRow.Request](#anytype-Rpc-BlockTable-CreateRow-Request) | [Rpc.BlockTable.CreateRow.Response](#anytype-Rpc-BlockTable-CreateRow-Response) |  |
-| BlockTableCreateColumn | [Rpc.BlockTable.CreateColumn.Request](#anytype-Rpc-BlockTable-CreateColumn-Request) | [Rpc.BlockTable.CreateColumn.Response](#anytype-Rpc-BlockTable-CreateColumn-Response) |  |
-| BlockTableDeleteRow | [Rpc.BlockTable.DeleteRow.Request](#anytype-Rpc-BlockTable-DeleteRow-Request) | [Rpc.BlockTable.DeleteRow.Response](#anytype-Rpc-BlockTable-DeleteRow-Response) |  |
-| BlockTableDeleteColumn | [Rpc.BlockTable.DeleteColumn.Request](#anytype-Rpc-BlockTable-DeleteColumn-Request) | [Rpc.BlockTable.DeleteColumn.Response](#anytype-Rpc-BlockTable-DeleteColumn-Response) |  |
-| BlockTableMoveRow | [Rpc.BlockTable.MoveRow.Request](#anytype-Rpc-BlockTable-MoveRow-Request) | [Rpc.BlockTable.MoveRow.Response](#anytype-Rpc-BlockTable-MoveRow-Response) |  |
-| BlockTableMoveColumn | [Rpc.BlockTable.MoveColumn.Request](#anytype-Rpc-BlockTable-MoveColumn-Request) | [Rpc.BlockTable.MoveColumn.Response](#anytype-Rpc-BlockTable-MoveColumn-Response) |  |
+| BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
+| BlockTableRowMove | [Rpc.BlockTable.RowMove.Request](#anytype-Rpc-BlockTable-RowMove-Request) | [Rpc.BlockTable.RowMove.Response](#anytype-Rpc-BlockTable-RowMove-Response) |  |
+| BlockTableRowDelete | [Rpc.BlockTable.RowDelete.Request](#anytype-Rpc-BlockTable-RowDelete-Request) | [Rpc.BlockTable.RowDelete.Response](#anytype-Rpc-BlockTable-RowDelete-Response) |  |
+| BlockTableColumnCreate | [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request) | [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response) |  |
+| BlockTableColumnMove | [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request) | [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response) |  |
+| BlockTableColumnDelete | [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request) | [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -5396,6 +5396,183 @@ id of the closest simple block |
 
 
 
+<a name="anytype-Rpc-BlockTable-ColumnCreate"></a>
+
+### Rpc.BlockTable.ColumnCreate
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Request"></a>
+
+### Rpc.BlockTable.ColumnCreate.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest column |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Response"></a>
+
+### Rpc.BlockTable.ColumnCreate.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnCreate.Response.Error](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnCreate.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnCreate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete"></a>
+
+### Rpc.BlockTable.ColumnDelete
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Request"></a>
+
+### Rpc.BlockTable.ColumnDelete.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  | id of the closest column |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Response"></a>
+
+### Rpc.BlockTable.ColumnDelete.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnDelete.Response.Error](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnDelete.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnDelete.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove"></a>
+
+### Rpc.BlockTable.ColumnMove
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Request"></a>
+
+### Rpc.BlockTable.ColumnMove.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| dropTargetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Response"></a>
+
+### Rpc.BlockTable.ColumnMove.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.ColumnMove.Response.Error](#anytype-Rpc-BlockTable-ColumnMove-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Response-Error"></a>
+
+### Rpc.BlockTable.ColumnMove.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.ColumnMove.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-BlockTable-Create"></a>
 
 ### Rpc.BlockTable.Create
@@ -5458,26 +5635,26 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateColumn"></a>
+<a name="anytype-Rpc-BlockTable-RowCreate"></a>
 
-### Rpc.BlockTable.CreateColumn
-
-
+### Rpc.BlockTable.RowCreate
 
 
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateColumn-Request"></a>
 
-### Rpc.BlockTable.CreateColumn.Request
+
+<a name="anytype-Rpc-BlockTable-RowCreate-Request"></a>
+
+### Rpc.BlockTable.RowCreate.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context object |
-| targetColumnId | [string](#string) |  | id of the closest column |
+| targetId | [string](#string) |  | id of the closest row |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 
 
@@ -5485,15 +5662,15 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateColumn-Response"></a>
+<a name="anytype-Rpc-BlockTable-RowCreate-Response"></a>
 
-### Rpc.BlockTable.CreateColumn.Response
+### Rpc.BlockTable.RowCreate.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.CreateColumn.Response.Error](#anytype-Rpc-BlockTable-CreateColumn-Response-Error) |  |  |
+| error | [Rpc.BlockTable.RowCreate.Response.Error](#anytype-Rpc-BlockTable-RowCreate-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -5501,15 +5678,15 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateColumn-Response-Error"></a>
+<a name="anytype-Rpc-BlockTable-RowCreate-Response-Error"></a>
 
-### Rpc.BlockTable.CreateColumn.Response.Error
+### Rpc.BlockTable.RowCreate.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.CreateColumn.Response.Error.Code](#anytype-Rpc-BlockTable-CreateColumn-Response-Error-Code) |  |  |
+| code | [Rpc.BlockTable.RowCreate.Response.Error.Code](#anytype-Rpc-BlockTable-RowCreate-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -5517,42 +5694,41 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateRow"></a>
+<a name="anytype-Rpc-BlockTable-RowDelete"></a>
 
-### Rpc.BlockTable.CreateRow
-
-
+### Rpc.BlockTable.RowDelete
 
 
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateRow-Request"></a>
 
-### Rpc.BlockTable.CreateRow.Request
+
+<a name="anytype-Rpc-BlockTable-RowDelete-Request"></a>
+
+### Rpc.BlockTable.RowDelete.Request
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context object |
-| targetRowId | [string](#string) |  | id of the closest row |
-| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+| targetId | [string](#string) |  | id of the closest row |
 
 
 
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateRow-Response"></a>
+<a name="anytype-Rpc-BlockTable-RowDelete-Response"></a>
 
-### Rpc.BlockTable.CreateRow.Response
+### Rpc.BlockTable.RowDelete.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.CreateRow.Response.Error](#anytype-Rpc-BlockTable-CreateRow-Response-Error) |  |  |
+| error | [Rpc.BlockTable.RowDelete.Response.Error](#anytype-Rpc-BlockTable-RowDelete-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -5560,15 +5736,15 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateRow-Response-Error"></a>
+<a name="anytype-Rpc-BlockTable-RowDelete-Response-Error"></a>
 
-### Rpc.BlockTable.CreateRow.Response.Error
+### Rpc.BlockTable.RowDelete.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.CreateRow.Response.Error.Code](#anytype-Rpc-BlockTable-CreateRow-Response-Error-Code) |  |  |
+| code | [Rpc.BlockTable.RowDelete.Response.Error.Code](#anytype-Rpc-BlockTable-RowDelete-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -5576,9 +5752,9 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-DeleteColumn"></a>
+<a name="anytype-Rpc-BlockTable-RowMove"></a>
 
-### Rpc.BlockTable.DeleteColumn
+### Rpc.BlockTable.RowMove
 
 
 
@@ -5586,125 +5762,9 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-DeleteColumn-Request"></a>
+<a name="anytype-Rpc-BlockTable-RowMove-Request"></a>
 
-### Rpc.BlockTable.DeleteColumn.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context object |
-| targetColumnId | [string](#string) |  | id of the closest column |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-DeleteColumn-Response"></a>
-
-### Rpc.BlockTable.DeleteColumn.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.DeleteColumn.Response.Error](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-DeleteColumn-Response-Error"></a>
-
-### Rpc.BlockTable.DeleteColumn.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.DeleteColumn.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-DeleteRow"></a>
-
-### Rpc.BlockTable.DeleteRow
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-DeleteRow-Request"></a>
-
-### Rpc.BlockTable.DeleteRow.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context object |
-| targetRowId | [string](#string) |  | id of the closest row |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-DeleteRow-Response"></a>
-
-### Rpc.BlockTable.DeleteRow.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.DeleteRow.Response.Error](#anytype-Rpc-BlockTable-DeleteRow-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-DeleteRow-Response-Error"></a>
-
-### Rpc.BlockTable.DeleteRow.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.DeleteRow.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-MoveColumn"></a>
-
-### Rpc.BlockTable.MoveColumn
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-MoveColumn-Request"></a>
-
-### Rpc.BlockTable.MoveColumn.Request
+### Rpc.BlockTable.RowMove.Request
 
 
 
@@ -5720,15 +5780,15 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-MoveColumn-Response"></a>
+<a name="anytype-Rpc-BlockTable-RowMove-Response"></a>
 
-### Rpc.BlockTable.MoveColumn.Response
+### Rpc.BlockTable.RowMove.Response
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.MoveColumn.Response.Error](#anytype-Rpc-BlockTable-MoveColumn-Response-Error) |  |  |
+| error | [Rpc.BlockTable.RowMove.Response.Error](#anytype-Rpc-BlockTable-RowMove-Response-Error) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -5736,75 +5796,15 @@ id of the closest simple block |
 
 
 
-<a name="anytype-Rpc-BlockTable-MoveColumn-Response-Error"></a>
+<a name="anytype-Rpc-BlockTable-RowMove-Response-Error"></a>
 
-### Rpc.BlockTable.MoveColumn.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.MoveColumn.Response.Error.Code](#anytype-Rpc-BlockTable-MoveColumn-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-MoveRow"></a>
-
-### Rpc.BlockTable.MoveRow
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-MoveRow-Request"></a>
-
-### Rpc.BlockTable.MoveRow.Request
+### Rpc.BlockTable.RowMove.Response.Error
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-MoveRow-Response"></a>
-
-### Rpc.BlockTable.MoveRow.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.MoveRow.Response.Error](#anytype-Rpc-BlockTable-MoveRow-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-MoveRow-Response-Error"></a>
-
-### Rpc.BlockTable.MoveRow.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.MoveRow.Response.Error.Code](#anytype-Rpc-BlockTable-MoveRow-Response-Error-Code) |  |  |
+| code | [Rpc.BlockTable.RowMove.Response.Error.Code](#anytype-Rpc-BlockTable-RowMove-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12234,6 +12234,45 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnCreate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnDelete.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code"></a>
+
+### Rpc.BlockTable.ColumnMove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockTable-Create-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.Create.Response.Error.Code
@@ -12247,22 +12286,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockTable-CreateColumn-Response-Error-Code"></a>
+<a name="anytype-Rpc-BlockTable-RowCreate-Response-Error-Code"></a>
 
-### Rpc.BlockTable.CreateColumn.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockTable-CreateRow-Response-Error-Code"></a>
-
-### Rpc.BlockTable.CreateRow.Response.Error.Code
+### Rpc.BlockTable.RowCreate.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -12273,22 +12299,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockTable-DeleteColumn-Response-Error-Code"></a>
+<a name="anytype-Rpc-BlockTable-RowDelete-Response-Error-Code"></a>
 
-### Rpc.BlockTable.DeleteColumn.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code"></a>
-
-### Rpc.BlockTable.DeleteRow.Response.Error.Code
+### Rpc.BlockTable.RowDelete.Response.Error.Code
 
 
 | Name | Number | Description |
@@ -12299,22 +12312,9 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockTable-MoveColumn-Response-Error-Code"></a>
+<a name="anytype-Rpc-BlockTable-RowMove-Response-Error-Code"></a>
 
-### Rpc.BlockTable.MoveColumn.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockTable-MoveRow-Response-Error-Code"></a>
-
-### Rpc.BlockTable.MoveRow.Response.Error.Code
+### Rpc.BlockTable.RowMove.Response.Error.Code
 
 
 | Name | Number | Description |
