@@ -120,9 +120,9 @@ func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateReques
 	s := t.NewStateCtx(ctx)
 
 	rowTarget, err := pickRow(s, req.TargetId)
-	// TODO: move cols/rows to table block ?
-	columns := uint32(len(rowTarget.Model().ChildrenIds))
-	rowId, err := addRow(s, columns, nil)
+
+	count := uint32(len(rowTarget.Model().ChildrenIds))
+	rowId, err := addRow(s, count, nil)
 	if err != nil {
 		return err
 	}
@@ -215,16 +215,17 @@ func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreate
 		return fmt.Errorf("can't find target column")
 	}
 
-	rowsCount := len(tb.rows.Model().ChildrenIds)
-
-	for i := 0; i < rowsCount; i++ {
+	for _, rowId := range tb.rows.Model().ChildrenIds {
 		cellId, err := addCell(s, nil)
 		if err != nil {
 			return fmt.Errorf("add cell: %w", err)
 		}
 
-		row := s.Pick(tb.rows.Model().ChildrenIds[i])
-		if row == nil || row.Model().GetTableRow() == nil || len(row.Model().ChildrenIds) <= colPos {
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row %s: %w", rowId, err)
+		}
+		if len(row.Model().ChildrenIds) != tb.columnsCount() {
 			return fmt.Errorf("inconsistent row state")
 		}
 
@@ -262,11 +263,13 @@ func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDelete
 		return fmt.Errorf("can't unlink column in header")
 	}
 
-	for _, id := range tb.rows.Model().ChildrenIds {
-		// TODO: make tb.rows a slice: rows []simple.Block or make helper tb.pickRow(id)
-		row := s.Pick(id)
-		if row == nil || row.Model().GetTableRow() == nil || len(row.Model().ChildrenIds) <= colPos {
-			return fmt.Errorf("inconsistent row state %s", id)
+	for _, rowId := range tb.rows.Model().ChildrenIds {
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row %s: %w", rowId, err)
+		}
+		if len(row.Model().ChildrenIds) != tb.columnsCount() {
+			return fmt.Errorf("inconsistent row state")
 		}
 
 		cellId := row.Model().ChildrenIds[colPos]
@@ -319,9 +322,8 @@ func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequ
 		if err != nil {
 			return fmt.Errorf("can't get row %s: %w", id, err)
 		}
-
-		// TODO: move pickRow to tableBlock, make tableBlock lazy, assert columns count in row
-		if len(row.Model().ChildrenIds) < len(tb.columns.Model().ChildrenIds) {
+		
+		if len(row.Model().ChildrenIds) != tb.columnsCount() {
 			return fmt.Errorf("invalid number of columns in row %s", id)
 		}
 		// TODO: write own implementation of inserting?
@@ -448,6 +450,14 @@ type tableBlock struct {
 	block   simple.Block
 	columns simple.Block
 	rows    simple.Block
+}
+
+func (b tableBlock) columnsCount() int {
+	return len(b.columns.Model().ChildrenIds)
+}
+
+func (b tableBlock) rowsCount() int {
+	return len(b.rows.Model().ChildrenIds)
 }
 
 func newTableBlockFromState(s *state.State, id string) (*tableBlock, error) {
