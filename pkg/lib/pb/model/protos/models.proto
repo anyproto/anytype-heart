@@ -395,9 +395,7 @@ message Block {
 		    message TableColumn {}
 		    message TableRow {}
 		    message TableCell {
-            string color = 1;
-            Text.Style style = 2;
-            Align verticalAlign = 3;
+            Align verticalAlign = 1;
 
             enum Align {
                 Top = 0;

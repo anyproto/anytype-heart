@@ -190,6 +190,7 @@ service ClientCommands {
     rpc BlockTableColumnCreate (anytype.Rpc.BlockTable.ColumnCreate.Request) returns (anytype.Rpc.BlockTable.ColumnCreate.Response);
     rpc BlockTableColumnMove (anytype.Rpc.BlockTable.ColumnMove.Request) returns (anytype.Rpc.BlockTable.ColumnMove.Response);
     rpc BlockTableColumnDelete (anytype.Rpc.BlockTable.ColumnDelete.Request) returns (anytype.Rpc.BlockTable.ColumnDelete.Response);
+    rpc BlockTableCellSetVerticalAlign (anytype.Rpc.BlockTable.CellSetVerticalAlign.Request) returns (anytype.Rpc.BlockTable.CellSetVerticalAlign.Response);
 
     // Other specific block commands
     // ***

@@ -159,3 +159,25 @@ func (mw *Middleware) BlockTableColumnMove(req *pb.RpcBlockTableColumnMoveReques
 	}
 	return response(pb.RpcBlockTableColumnMoveResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableCellSetVerticalAlign(req *pb.RpcBlockTableCellSetVerticalAlignRequest) *pb.RpcBlockTableCellSetVerticalAlignResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableCellSetVerticalAlignResponseErrorCode, id string, err error) *pb.RpcBlockTableCellSetVerticalAlignResponse {
+		m := &pb.RpcBlockTableCellSetVerticalAlignResponse{Error: &pb.RpcBlockTableCellSetVerticalAlignResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableCellSetVerticalAlign(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableCellSetVerticalAlignResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableCellSetVerticalAlignResponseError_NULL, id, nil)
+}

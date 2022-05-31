@@ -6,6 +6,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	blocktable "github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -26,6 +27,8 @@ type Table interface {
 	DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
 	MoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
 	MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
+
+	CellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) error
 }
 
 type table struct {
@@ -116,7 +119,7 @@ func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateReques
 
 	s := t.NewStateCtx(ctx)
 
-	rowTarget, err := getRow(s, req.TargetId)
+	rowTarget, err := pickRow(s, req.TargetId)
 	// TODO: move cols/rows to table block ?
 	columns := uint32(len(rowTarget.Model().ChildrenIds))
 	rowId, err := addRow(s, columns, nil)
@@ -134,7 +137,7 @@ func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateReques
 func (t table) DeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error {
 	s := t.NewStateCtx(ctx)
 
-	_, err := getRow(s, req.TargetId)
+	_, err := pickRow(s, req.TargetId)
 	if err != nil {
 		return err
 	}
@@ -154,11 +157,11 @@ func (t table) MoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) e
 
 	s := t.NewStateCtx(ctx)
 
-	_, err := getRow(s, req.TargetId)
+	_, err := pickRow(s, req.TargetId)
 	if err != nil {
 		return fmt.Errorf("get target row: %w", err)
 	}
-	_, err = getRow(s, req.DropTargetId)
+	_, err = pickRow(s, req.DropTargetId)
 	if err != nil {
 		return fmt.Errorf("get drop target row: %w", err)
 	}
@@ -174,7 +177,7 @@ func (t table) MoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) e
 	return t.Apply(s)
 }
 
-func getRow(s *state.State, id string) (simple.Block, error) {
+func pickRow(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {
 		return nil, fmt.Errorf("row is not found")
@@ -188,7 +191,7 @@ func getRow(s *state.State, id string) (simple.Block, error) {
 func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error {
 	s := t.NewStateCtx(ctx)
 
-	_, err := getColumn(s, req.TargetId)
+	_, err := pickColumn(s, req.TargetId)
 	if err != nil {
 		return fmt.Errorf("get column: %w", err)
 	}
@@ -260,7 +263,7 @@ func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDelete
 	}
 
 	for _, id := range tb.rows.Model().ChildrenIds {
-		// TODO: make tb.rows a slice: rows []simple.Block or make helper tb.getRow(id)
+		// TODO: make tb.rows a slice: rows []simple.Block or make helper tb.pickRow(id)
 		row := s.Pick(id)
 		if row == nil || row.Model().GetTableRow() == nil || len(row.Model().ChildrenIds) <= colPos {
 			return fmt.Errorf("inconsistent row state %s", id)
@@ -288,11 +291,11 @@ func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequ
 
 	s := t.NewStateCtx(ctx)
 
-	_, err := getColumn(s, req.TargetId)
+	_, err := pickColumn(s, req.TargetId)
 	if err != nil {
 		return fmt.Errorf("get target column: %w", err)
 	}
-	_, err = getColumn(s, req.DropTargetId)
+	_, err = pickColumn(s, req.DropTargetId)
 	if err != nil {
 		return fmt.Errorf("get drop target column: %w", err)
 	}
@@ -312,12 +315,12 @@ func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequ
 	}
 
 	for _, id := range tb.rows.Model().ChildrenIds {
-		row, err := getRow(s, id)
+		row, err := pickRow(s, id)
 		if err != nil {
 			return fmt.Errorf("can't get row %s: %w", id, err)
 		}
 
-		// TODO: move getRow to tableBlock, make tableBlock lazy, assert columns count in row
+		// TODO: move pickRow to tableBlock, make tableBlock lazy, assert columns count in row
 		if len(row.Model().ChildrenIds) < len(tb.columns.Model().ChildrenIds) {
 			return fmt.Errorf("invalid number of columns in row %s", id)
 		}
@@ -344,7 +347,31 @@ func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequ
 	return t.Apply(s)
 }
 
-func getColumn(s *state.State, id string) (simple.Block, error) {
+func (t table) CellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) error {
+	s := t.NewStateCtx(ctx)
+
+	cell, err := getCell(s, req.BlockId)
+	if err != nil {
+		return fmt.Errorf("get cell: %w", err)
+	}
+	cell.SetVerticalAlign(req.VerticalAlign)
+
+	return t.Apply(s)
+}
+
+func getCell(s *state.State, id string) (blocktable.Cell, error) {
+	b := s.Get(id)
+	if b == nil {
+		return nil, fmt.Errorf("block is not found")
+	}
+	c, ok := b.(blocktable.Cell)
+	if !ok {
+		return nil, fmt.Errorf("block is not a cell: %T", b)
+	}
+	return c, nil
+}
+
+func pickColumn(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {
 		return nil, fmt.Errorf("block is not found")
@@ -370,8 +397,6 @@ func addCell(s *state.State, cellBlockProto *model.Block) (string, error) {
 		ChildrenIds:     []string{tb.Model().Id},
 		Content: &model.BlockContentOfTableCell{
 			TableCell: &model.BlockContentTableCell{
-				Color:         cellBlockProto.GetTableCell().GetColor(),
-				Style:         cellBlockProto.GetTableCell().GetStyle(),
 				VerticalAlign: cellBlockProto.GetTableCell().GetVerticalAlign(),
 			},
 		},

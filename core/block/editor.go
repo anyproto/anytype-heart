@@ -1062,3 +1062,10 @@ func (s *service) TableMoveColumn(ctx *state.Context, req pb.RpcBlockTableColumn
 	})
 	return
 }
+
+func (s *service) TableCellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.CellSetVerticalAlign(ctx, req)
+	})
+	return
+}

@@ -286,6 +286,10 @@
     - [Rpc.BlockRelation.SetKey.Response](#anytype-Rpc-BlockRelation-SetKey-Response)
     - [Rpc.BlockRelation.SetKey.Response.Error](#anytype-Rpc-BlockRelation-SetKey-Response-Error)
     - [Rpc.BlockTable](#anytype-Rpc-BlockTable)
+    - [Rpc.BlockTable.CellSetVerticalAlign](#anytype-Rpc-BlockTable-CellSetVerticalAlign)
+    - [Rpc.BlockTable.CellSetVerticalAlign.Request](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Request)
+    - [Rpc.BlockTable.CellSetVerticalAlign.Response](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response)
+    - [Rpc.BlockTable.CellSetVerticalAlign.Response.Error](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error)
     - [Rpc.BlockTable.ColumnCreate](#anytype-Rpc-BlockTable-ColumnCreate)
     - [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request)
     - [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response)
@@ -762,6 +766,7 @@
     - [Rpc.BlockLink.ListSetAppearance.Response.Error.Code](#anytype-Rpc-BlockLink-ListSetAppearance-Response-Error-Code)
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype-Rpc-BlockRelation-Add-Response-Error-Code)
     - [Rpc.BlockRelation.SetKey.Response.Error.Code](#anytype-Rpc-BlockRelation-SetKey-Response-Error-Code)
+    - [Rpc.BlockTable.CellSetVerticalAlign.Response.Error.Code](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error-Code)
     - [Rpc.BlockTable.ColumnCreate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code)
     - [Rpc.BlockTable.ColumnDelete.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code)
     - [Rpc.BlockTable.ColumnMove.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code)
@@ -961,6 +966,8 @@
     - [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation)
     - [Event.Block.Set.Relation.Key](#anytype-Event-Block-Set-Relation-Key)
     - [Event.Block.Set.Restrictions](#anytype-Event-Block-Set-Restrictions)
+    - [Event.Block.Set.TableCell](#anytype-Event-Block-Set-TableCell)
+    - [Event.Block.Set.TableCell.Align](#anytype-Event-Block-Set-TableCell-Align)
     - [Event.Block.Set.Text](#anytype-Event-Block-Set-Text)
     - [Event.Block.Set.Text.Checked](#anytype-Event-Block-Set-Text-Checked)
     - [Event.Block.Set.Text.Color](#anytype-Event-Block-Set-Text-Color)
@@ -1266,6 +1273,7 @@
 | BlockTableColumnCreate | [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request) | [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response) |  |
 | BlockTableColumnMove | [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request) | [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response) |  |
 | BlockTableColumnDelete | [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request) | [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response) |  |
+| BlockTableCellSetVerticalAlign | [Rpc.BlockTable.CellSetVerticalAlign.Request](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Request) | [Rpc.BlockTable.CellSetVerticalAlign.Response](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -5390,6 +5398,65 @@ id of the closest simple block |
 
 ### Rpc.BlockTable
 
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign"></a>
+
+### Rpc.BlockTable.CellSetVerticalAlign
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Request"></a>
+
+### Rpc.BlockTable.CellSetVerticalAlign.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| blockId | [string](#string) |  |  |
+| verticalAlign | [model.Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Response"></a>
+
+### Rpc.BlockTable.CellSetVerticalAlign.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.CellSetVerticalAlign.Response.Error](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error"></a>
+
+### Rpc.BlockTable.CellSetVerticalAlign.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.CellSetVerticalAlign.Response.Error.Code](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -12234,6 +12301,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error-Code"></a>
+
+### Rpc.BlockTable.CellSetVerticalAlign.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.ColumnCreate.Response.Error.Code
@@ -15098,6 +15178,37 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-TableCell"></a>
+
+### Event.Block.Set.TableCell
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| verticalAlign | [Event.Block.Set.TableCell.Align](#anytype-Event-Block-Set-TableCell-Align) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-TableCell-Align"></a>
+
+### Event.Block.Set.TableCell.Align
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Set-Text"></a>
 
 ### Event.Block.Set.Text
@@ -15265,6 +15376,7 @@ Precondition: user A opened a block
 | blockSetDiv | [Event.Block.Set.Div](#anytype-Event-Block-Set-Div) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation) |  |  |
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
+| blockSetTableCell | [Event.Block.Set.TableCell](#anytype-Event-Block-Set-TableCell) |  |  |
 | blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet) |  |  |
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype-Event-Block-Dataview-RecordsUpdate) |  |  |
 | blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert) |  |  |
@@ -16586,8 +16698,6 @@ Link: block to link some content from an external sources.
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| color | [string](#string) |  |  |
-| style | [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style) |  |  |
 | verticalAlign | [Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align) |  |  |
 
 

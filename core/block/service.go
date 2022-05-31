@@ -203,6 +203,7 @@ type Service interface {
 	TableDeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error)
 	TableMoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error)
 	TableMoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
+	TableCellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error

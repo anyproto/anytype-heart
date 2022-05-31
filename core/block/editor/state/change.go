@@ -365,6 +365,8 @@ func (s *State) fillChanges(msgs []simple.EventMessage) {
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetBookmark:
 			updMsgs = append(updMsgs, msg.Msg)
+		case *pb.EventMessageValueOfBlockSetTableCell:
+			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetDiv:
 			updMsgs = append(updMsgs, msg.Msg)
 		case *pb.EventMessageValueOfBlockSetText:
