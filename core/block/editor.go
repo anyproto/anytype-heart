@@ -1015,7 +1015,7 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 
 func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		id, err = t.CreateTable(ctx, "", req)
+		id, err = t.TableCreate(ctx, "", req)
 		return err
 	})
 	return
@@ -1023,42 +1023,42 @@ func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreat
 
 func (s *service) TableCreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		return t.CreateRow(ctx, req)
+		return t.RowCreate(ctx, req)
 	})
 	return
 }
 
 func (s *service) TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		return t.CreateColumn(ctx, req)
+		return t.ColumnCreate(ctx, req)
 	})
 	return
 }
 
 func (s *service) TableDeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		return t.DeleteRow(ctx, req)
+		return t.RowDelete(ctx, req)
 	})
 	return
 }
 
 func (s *service) TableDeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		return t.DeleteColumn(ctx, req)
+		return t.ColumnDelete(ctx, req)
 	})
 	return
 }
 
 func (s *service) TableMoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		return t.MoveRow(ctx, req)
+		return t.RowMove(ctx, req)
 	})
 	return
 }
 
 func (s *service) TableMoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		return t.MoveColumn(ctx, req)
+		return t.ColumnMove(ctx, req)
 	})
 	return
 }

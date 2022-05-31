@@ -20,13 +20,13 @@ func New(sb smartblock.SmartBlock) Table {
 }
 
 type Table interface {
-	CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error)
-	CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error
-	CreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error
-	DeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error
-	DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
-	MoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
-	MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
+	TableCreate(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error)
+	RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error
+	ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error
+	RowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error
+	ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
+	RowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
+	ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
 
 	CellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) error
 }
@@ -37,7 +37,7 @@ type table struct {
 	basic basic.Basic
 }
 
-func (t table) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error) {
+func (t table) TableCreate(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error) {
 	if err = t.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 		return
 	}
@@ -110,7 +110,7 @@ func (t table) CreateTable(ctx *state.Context, groupId string, req pb.RpcBlockTa
 	return id, nil
 }
 
-func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error {
+func (t table) RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error {
 	switch req.Position {
 	case model.Block_Top, model.Block_Bottom:
 	default:
@@ -134,7 +134,7 @@ func (t table) CreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateReques
 	return t.Apply(s)
 }
 
-func (t table) DeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error {
+func (t table) RowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error {
 	s := t.NewStateCtx(ctx)
 
 	_, err := pickRow(s, req.TargetId)
@@ -148,7 +148,7 @@ func (t table) DeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteReques
 	return t.Apply(s)
 }
 
-func (t table) MoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error {
+func (t table) RowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error {
 	switch req.Position {
 	case model.Block_Top, model.Block_Bottom:
 	default:
@@ -188,7 +188,7 @@ func pickRow(s *state.State, id string) (simple.Block, error) {
 	return b, nil
 }
 
-func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error {
+func (t table) ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error {
 	s := t.NewStateCtx(ctx)
 
 	_, err := pickColumn(s, req.TargetId)
@@ -246,7 +246,7 @@ func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreate
 	return t.Apply(s)
 }
 
-func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error {
+func (t table) ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error {
 	s := t.NewStateCtx(ctx)
 
 	tb, err := newTableBlockFromState(s, req.TargetId)
@@ -281,7 +281,7 @@ func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDelete
 	return t.Apply(s)
 }
 
-func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error {
+func (t table) ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error {
 	switch req.Position {
 	// TODO: crutch
 	case model.Block_Left:
@@ -322,7 +322,7 @@ func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequ
 		if err != nil {
 			return fmt.Errorf("can't get row %s: %w", id, err)
 		}
-		
+
 		if len(row.Model().ChildrenIds) != tb.columnsCount() {
 			return fmt.Errorf("invalid number of columns in row %s", id)
 		}
