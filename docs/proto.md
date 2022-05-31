@@ -306,6 +306,10 @@
     - [Rpc.BlockTable.DeleteRow.Request](#anytype-Rpc-BlockTable-DeleteRow-Request)
     - [Rpc.BlockTable.DeleteRow.Response](#anytype-Rpc-BlockTable-DeleteRow-Response)
     - [Rpc.BlockTable.DeleteRow.Response.Error](#anytype-Rpc-BlockTable-DeleteRow-Response-Error)
+    - [Rpc.BlockTable.MoveColumn](#anytype-Rpc-BlockTable-MoveColumn)
+    - [Rpc.BlockTable.MoveColumn.Request](#anytype-Rpc-BlockTable-MoveColumn-Request)
+    - [Rpc.BlockTable.MoveColumn.Response](#anytype-Rpc-BlockTable-MoveColumn-Response)
+    - [Rpc.BlockTable.MoveColumn.Response.Error](#anytype-Rpc-BlockTable-MoveColumn-Response-Error)
     - [Rpc.BlockTable.MoveRow](#anytype-Rpc-BlockTable-MoveRow)
     - [Rpc.BlockTable.MoveRow.Request](#anytype-Rpc-BlockTable-MoveRow-Request)
     - [Rpc.BlockTable.MoveRow.Response](#anytype-Rpc-BlockTable-MoveRow-Response)
@@ -763,6 +767,7 @@
     - [Rpc.BlockTable.CreateRow.Response.Error.Code](#anytype-Rpc-BlockTable-CreateRow-Response-Error-Code)
     - [Rpc.BlockTable.DeleteColumn.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteColumn-Response-Error-Code)
     - [Rpc.BlockTable.DeleteRow.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code)
+    - [Rpc.BlockTable.MoveColumn.Response.Error.Code](#anytype-Rpc-BlockTable-MoveColumn-Response-Error-Code)
     - [Rpc.BlockTable.MoveRow.Response.Error.Code](#anytype-Rpc-BlockTable-MoveRow-Response-Error-Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype-Rpc-BlockText-ListSetColor-Response-Error-Code)
     - [Rpc.BlockText.ListSetMark.Response.Error.Code](#anytype-Rpc-BlockText-ListSetMark-Response-Error-Code)
@@ -1260,6 +1265,7 @@
 | BlockTableDeleteRow | [Rpc.BlockTable.DeleteRow.Request](#anytype-Rpc-BlockTable-DeleteRow-Request) | [Rpc.BlockTable.DeleteRow.Response](#anytype-Rpc-BlockTable-DeleteRow-Response) |  |
 | BlockTableDeleteColumn | [Rpc.BlockTable.DeleteColumn.Request](#anytype-Rpc-BlockTable-DeleteColumn-Request) | [Rpc.BlockTable.DeleteColumn.Response](#anytype-Rpc-BlockTable-DeleteColumn-Response) |  |
 | BlockTableMoveRow | [Rpc.BlockTable.MoveRow.Request](#anytype-Rpc-BlockTable-MoveRow-Request) | [Rpc.BlockTable.MoveRow.Response](#anytype-Rpc-BlockTable-MoveRow-Response) |  |
+| BlockTableMoveColumn | [Rpc.BlockTable.MoveColumn.Request](#anytype-Rpc-BlockTable-MoveColumn-Request) | [Rpc.BlockTable.MoveColumn.Response](#anytype-Rpc-BlockTable-MoveColumn-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -5679,6 +5685,66 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockTable.DeleteRow.Response.Error.Code](#anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-MoveColumn"></a>
+
+### Rpc.BlockTable.MoveColumn
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-MoveColumn-Request"></a>
+
+### Rpc.BlockTable.MoveColumn.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| targetId | [string](#string) |  |  |
+| dropTargetId | [string](#string) |  |  |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-MoveColumn-Response"></a>
+
+### Rpc.BlockTable.MoveColumn.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.MoveColumn.Response.Error](#anytype-Rpc-BlockTable-MoveColumn-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-MoveColumn-Response-Error"></a>
+
+### Rpc.BlockTable.MoveColumn.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.MoveColumn.Response.Error.Code](#anytype-Rpc-BlockTable-MoveColumn-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12223,6 +12289,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockTable-DeleteRow-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.DeleteRow.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-MoveColumn-Response-Error-Code"></a>
+
+### Rpc.BlockTable.MoveColumn.Response.Error.Code
 
 
 | Name | Number | Description |

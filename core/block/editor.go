@@ -1055,3 +1055,10 @@ func (s *service) TableMoveRow(ctx *state.Context, req pb.RpcBlockTableMoveRowRe
 	})
 	return
 }
+
+func (s *service) TableMoveColumn(ctx *state.Context, req pb.RpcBlockTableMoveColumnRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.MoveColumn(ctx, req)
+	})
+	return
+}

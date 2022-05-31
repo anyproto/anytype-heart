@@ -189,6 +189,7 @@ service ClientCommands {
     rpc BlockTableDeleteRow (anytype.Rpc.BlockTable.DeleteRow.Request) returns (anytype.Rpc.BlockTable.DeleteRow.Response);
     rpc BlockTableDeleteColumn (anytype.Rpc.BlockTable.DeleteColumn.Request) returns (anytype.Rpc.BlockTable.DeleteColumn.Response);
     rpc BlockTableMoveRow (anytype.Rpc.BlockTable.MoveRow.Request) returns (anytype.Rpc.BlockTable.MoveRow.Response);
+    rpc BlockTableMoveColumn (anytype.Rpc.BlockTable.MoveColumn.Request) returns (anytype.Rpc.BlockTable.MoveColumn.Response);
 
     // Other specific block commands
     // ***

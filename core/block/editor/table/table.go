@@ -25,6 +25,7 @@ type Table interface {
 	DeleteRow(ctx *state.Context, req pb.RpcBlockTableDeleteRowRequest) error
 	DeleteColumn(ctx *state.Context, req pb.RpcBlockTableDeleteColumnRequest) error
 	MoveRow(ctx *state.Context, req pb.RpcBlockTableMoveRowRequest) error
+	MoveColumn(ctx *state.Context, req pb.RpcBlockTableMoveColumnRequest) error
 }
 
 type table struct {
@@ -187,12 +188,9 @@ func getRow(s *state.State, id string) (simple.Block, error) {
 func (t table) CreateColumn(ctx *state.Context, req pb.RpcBlockTableCreateColumnRequest) error {
 	s := t.NewStateCtx(ctx)
 
-	colTarget := s.Pick(req.TargetColumnId)
-	if colTarget == nil {
-		return fmt.Errorf("target block not found")
-	}
-	if colTarget.Model().GetTableColumn() == nil {
-		return fmt.Errorf("target block is not a column")
+	_, err := getColumn(s, req.TargetColumnId)
+	if err != nil {
+		return fmt.Errorf("get column: %w", err)
 	}
 	switch req.Position {
 	// TODO: crutch
@@ -275,6 +273,86 @@ func (t table) DeleteColumn(ctx *state.Context, req pb.RpcBlockTableDeleteColumn
 	}
 
 	return t.Apply(s)
+}
+
+func (t table) MoveColumn(ctx *state.Context, req pb.RpcBlockTableMoveColumnRequest) error {
+	switch req.Position {
+	// TODO: crutch
+	case model.Block_Left:
+		req.Position = model.Block_Top
+	case model.Block_Right:
+		req.Position = model.Block_Bottom
+	default:
+		return fmt.Errorf("position is not supported")
+	}
+
+	s := t.NewStateCtx(ctx)
+
+	_, err := getColumn(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("get target column: %w", err)
+	}
+	_, err = getColumn(s, req.DropTargetId)
+	if err != nil {
+		return fmt.Errorf("get drop target column: %w", err)
+	}
+
+	tb, err := newTableBlockFromState(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("can't init table block: %w", err)
+	}
+
+	targetPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
+	if targetPos < 0 {
+		return fmt.Errorf("can't find target column position")
+	}
+	dropPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.DropTargetId)
+	if dropPos < 0 {
+		return fmt.Errorf("can't find target column position")
+	}
+
+	for _, id := range tb.rows.Model().ChildrenIds {
+		row, err := getRow(s, id)
+		if err != nil {
+			return fmt.Errorf("can't get row %s: %w", id, err)
+		}
+
+		// TODO: move getRow to tableBlock, make tableBlock lazy, assert columns count in row
+		if len(row.Model().ChildrenIds) < len(tb.columns.Model().ChildrenIds) {
+			return fmt.Errorf("invalid number of columns in row %s", id)
+		}
+		// TODO: write own implementation of inserting?
+
+		targetId := row.Model().ChildrenIds[targetPos]
+		dropId := row.Model().ChildrenIds[dropPos]
+
+		if !s.Unlink(targetId) {
+			return fmt.Errorf("can't unlink column in row %s", id)
+		}
+		if err = s.InsertTo(dropId, req.Position, targetId); err != nil {
+			return fmt.Errorf("can't insert column: %w", err)
+		}
+	}
+
+	if !s.Unlink(req.TargetId) {
+		return fmt.Errorf("can't unlink target column")
+	}
+	if err = s.InsertTo(req.DropTargetId, req.Position, req.TargetId); err != nil {
+		return fmt.Errorf("can't insert column: %w", err)
+	}
+
+	return t.Apply(s)
+}
+
+func getColumn(s *state.State, id string) (simple.Block, error) {
+	b := s.Pick(id)
+	if b == nil {
+		return nil, fmt.Errorf("block is not found")
+	}
+	if b.Model().GetTableColumn() == nil {
+		return nil, fmt.Errorf("block is not a column")
+	}
+	return b, nil
 }
 
 func addCell(s *state.State, cellBlockProto *model.Block) (string, error) {
