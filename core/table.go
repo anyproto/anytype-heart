@@ -115,3 +115,25 @@ func (mw *Middleware) BlockTableDeleteColumn(req *pb.RpcBlockTableDeleteColumnRe
 	}
 	return response(pb.RpcBlockTableDeleteColumnResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableMoveRow(req *pb.RpcBlockTableMoveRowRequest) *pb.RpcBlockTableMoveRowResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableMoveRowResponseErrorCode, id string, err error) *pb.RpcBlockTableMoveRowResponse {
+		m := &pb.RpcBlockTableMoveRowResponse{Error: &pb.RpcBlockTableMoveRowResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableMoveRow(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableMoveRowResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableMoveRowResponseError_NULL, id, nil)
+}
