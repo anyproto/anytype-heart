@@ -1027,42 +1027,42 @@ func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreat
 	return
 }
 
-func (s *service) TableCreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
+func (s *service) TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
 		return t.RowCreate(ctx, req)
 	})
 	return
 }
 
-func (s *service) TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
+func (s *service) TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
 		return t.ColumnCreate(ctx, req)
 	})
 	return
 }
 
-func (s *service) TableDeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
+func (s *service) TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
 		return t.RowDelete(ctx, req)
 	})
 	return
 }
 
-func (s *service) TableDeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
+func (s *service) TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
 		return t.ColumnDelete(ctx, req)
 	})
 	return
 }
 
-func (s *service) TableMoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error) {
+func (s *service) TableRowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
 		return t.RowMove(ctx, req)
 	})
 	return
 }
 
-func (s *service) TableMoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
+func (s *service) TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
 		return t.ColumnMove(ctx, req)
 	})

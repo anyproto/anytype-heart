@@ -41,7 +41,7 @@ func (mw *Middleware) BlockTableRowCreate(req *pb.RpcBlockTableRowCreateRequest)
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableCreateRow(ctx, *req)
+		err = bs.TableRowCreate(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -63,7 +63,7 @@ func (mw *Middleware) BlockTableColumnCreate(req *pb.RpcBlockTableColumnCreateRe
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableCreateColumn(ctx, *req)
+		err = bs.TableColumnCreate(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -85,7 +85,7 @@ func (mw *Middleware) BlockTableRowDelete(req *pb.RpcBlockTableRowDeleteRequest)
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableDeleteRow(ctx, *req)
+		err = bs.TableRowDelete(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -107,7 +107,7 @@ func (mw *Middleware) BlockTableColumnDelete(req *pb.RpcBlockTableColumnDeleteRe
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableDeleteColumn(ctx, *req)
+		err = bs.TableColumnDelete(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -129,7 +129,7 @@ func (mw *Middleware) BlockTableRowMove(req *pb.RpcBlockTableRowMoveRequest) *pb
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableMoveRow(ctx, *req)
+		err = bs.TableRowMove(ctx, *req)
 		return
 	})
 	if err != nil {
@@ -151,7 +151,7 @@ func (mw *Middleware) BlockTableColumnMove(req *pb.RpcBlockTableColumnMoveReques
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableMoveColumn(ctx, *req)
+		err = bs.TableColumnMove(ctx, *req)
 		return
 	})
 	if err != nil {

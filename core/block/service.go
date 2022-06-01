@@ -198,14 +198,14 @@ type Service interface {
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
 	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (string, error)
-	TableCreateRow(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error)
-	TableCreateColumn(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error)
-	TableDeleteRow(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error)
-	TableDeleteColumn(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error)
-	TableMoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error)
-	TableMoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
+	TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error)
 	TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error)
+	TableRowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error)
+	TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error)
+	TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error)
 	TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (err error)
+	TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
+	TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error
