@@ -438,6 +438,20 @@ func (r *clientds) Name() (name string) {
 }
 
 func (r *clientds) Close() (err error) {
+	if r.litestoreOldDS != nil {
+		err2 := r.litestoreOldDS.Close()
+		if err2 != nil {
+			err = multierror.Append(err, err2)
+		}
+	}
+
+	if r.logstoreOldDS != nil {
+		err2 := r.logstoreOldDS.Close()
+		if err2 != nil {
+			err = multierror.Append(err, err2)
+		}
+	}
+
 	if r.litestoreDS != nil {
 		err2 := r.litestoreDS.Close()
 		if err2 != nil {
