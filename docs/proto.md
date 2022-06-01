@@ -125,6 +125,10 @@
     - [Rpc.Block.ListSetFields.Request.BlockField](#anytype-Rpc-Block-ListSetFields-Request-BlockField)
     - [Rpc.Block.ListSetFields.Response](#anytype-Rpc-Block-ListSetFields-Response)
     - [Rpc.Block.ListSetFields.Response.Error](#anytype-Rpc-Block-ListSetFields-Response-Error)
+    - [Rpc.Block.ListSetVerticalAlign](#anytype-Rpc-Block-ListSetVerticalAlign)
+    - [Rpc.Block.ListSetVerticalAlign.Request](#anytype-Rpc-Block-ListSetVerticalAlign-Request)
+    - [Rpc.Block.ListSetVerticalAlign.Response](#anytype-Rpc-Block-ListSetVerticalAlign-Response)
+    - [Rpc.Block.ListSetVerticalAlign.Response.Error](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error)
     - [Rpc.Block.ListTurnInto](#anytype-Rpc-Block-ListTurnInto)
     - [Rpc.Block.ListTurnInto.Request](#anytype-Rpc-Block-ListTurnInto-Request)
     - [Rpc.Block.ListTurnInto.Response](#anytype-Rpc-Block-ListTurnInto-Response)
@@ -733,6 +737,7 @@
     - [Rpc.Block.ListSetAlign.Response.Error.Code](#anytype-Rpc-Block-ListSetAlign-Response-Error-Code)
     - [Rpc.Block.ListSetBackgroundColor.Response.Error.Code](#anytype-Rpc-Block-ListSetBackgroundColor-Response-Error-Code)
     - [Rpc.Block.ListSetFields.Response.Error.Code](#anytype-Rpc-Block-ListSetFields-Response-Error-Code)
+    - [Rpc.Block.ListSetVerticalAlign.Response.Error.Code](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error-Code)
     - [Rpc.Block.ListTurnInto.Response.Error.Code](#anytype-Rpc-Block-ListTurnInto-Response-Error-Code)
     - [Rpc.Block.Merge.Response.Error.Code](#anytype-Rpc-Block-Merge-Response-Error-Code)
     - [Rpc.Block.Paste.Response.Error.Code](#anytype-Rpc-Block-Paste-Response-Error-Code)
@@ -1239,6 +1244,7 @@
 | BlockListDuplicate | [Rpc.Block.ListDuplicate.Request](#anytype-Rpc-Block-ListDuplicate-Request) | [Rpc.Block.ListDuplicate.Response](#anytype-Rpc-Block-ListDuplicate-Response) |  |
 | BlockListSetBackgroundColor | [Rpc.Block.ListSetBackgroundColor.Request](#anytype-Rpc-Block-ListSetBackgroundColor-Request) | [Rpc.Block.ListSetBackgroundColor.Response](#anytype-Rpc-Block-ListSetBackgroundColor-Response) |  |
 | BlockListSetAlign | [Rpc.Block.ListSetAlign.Request](#anytype-Rpc-Block-ListSetAlign-Request) | [Rpc.Block.ListSetAlign.Response](#anytype-Rpc-Block-ListSetAlign-Response) |  |
+| BlockListSetVerticalAlign | [Rpc.Block.ListSetVerticalAlign.Request](#anytype-Rpc-Block-ListSetVerticalAlign-Request) | [Rpc.Block.ListSetVerticalAlign.Response](#anytype-Rpc-Block-ListSetVerticalAlign-Response) |  |
 | BlockListTurnInto | [Rpc.Block.ListTurnInto.Request](#anytype-Rpc-Block-ListTurnInto-Request) | [Rpc.Block.ListTurnInto.Response](#anytype-Rpc-Block-ListTurnInto-Response) |  |
 | BlockTextSetText | [Rpc.BlockText.SetText.Request](#anytype-Rpc-BlockText-SetText-Request) | [Rpc.BlockText.SetText.Response](#anytype-Rpc-BlockText-SetText-Response) | Text Block commands *** |
 | BlockTextSetColor | [Rpc.BlockText.SetColor.Request](#anytype-Rpc-BlockText-SetColor-Request) | [Rpc.BlockText.SetColor.Response](#anytype-Rpc-BlockText-SetColor-Response) |  |
@@ -1277,7 +1283,7 @@
 | BlockTableColumnCreate | [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request) | [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response) |  |
 | BlockTableColumnMove | [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request) | [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response) |  |
 | BlockTableColumnDelete | [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request) | [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response) |  |
-| BlockTableColumnDuplicate | [Rpc.BlockTable.ColumnDuplicate.Request](#anytype-Rpc-BlockTable-ColumnDuplicate-Request) | [Rpc.BlockTable.ColumnDuplicate.Response](#anytype-Rpc-BlockTable-ColumnDuplicate-Response) | TODO after restructure rpc BlockTableCellSetVerticalAlign (anytype.Rpc.BlockTable.CellSetVerticalAlign.Request) returns (anytype.Rpc.BlockTable.CellSetVerticalAlign.Response); |
+| BlockTableColumnDuplicate | [Rpc.BlockTable.ColumnDuplicate.Request](#anytype-Rpc-BlockTable-ColumnDuplicate-Request) | [Rpc.BlockTable.ColumnDuplicate.Response](#anytype-Rpc-BlockTable-ColumnDuplicate-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -3038,6 +3044,65 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.Block.ListSetFields.Response.Error.Code](#anytype-Rpc-Block-ListSetFields-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign"></a>
+
+### Rpc.Block.ListSetVerticalAlign
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Request"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| blockIds | [string](#string) | repeated |  |
+| verticalAlign | [model.Block.VerticalAlign](#anytype-model-Block-VerticalAlign) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Response"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Block.ListSetVerticalAlign.Response.Error](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Response-Error"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Block.ListSetVerticalAlign.Response.Error.Code](#anytype-Rpc-Block-ListSetVerticalAlign-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11869,6 +11934,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-Block-ListSetFields-Response-Error-Code"></a>
 
 ### Rpc.Block.ListSetFields.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-Block-ListSetVerticalAlign-Response-Error-Code"></a>
+
+### Rpc.Block.ListSetVerticalAlign.Response.Error.Code
 
 
 | Name | Number | Description |

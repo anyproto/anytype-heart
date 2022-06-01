@@ -61,6 +61,10 @@ func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ..
 	return nil
 }
 
+func (st *SmartTest) SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) error {
+	return nil
+}
+
 func (st *SmartTest) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error {
 	return nil
 }

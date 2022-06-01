@@ -104,6 +104,7 @@ type SmartBlock interface {
 	TemplateCreateFromObjectState() (*state.State, error)
 	SetObjectTypes(ctx *state.Context, objectTypes []string) (err error)
 	SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error
+	SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) error
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	SetIsDeleted()
 	IsDeleted() bool
@@ -1071,6 +1072,16 @@ func (sb *smartBlock) setAlign(s *state.State, align model.BlockAlign, ids ...st
 		}
 	}
 	return
+}
+
+func (sb *smartBlock) SetVerticalAlign(ctx *state.Context, align model.BlockVerticalAlign, ids ...string) (err error) {
+	s := sb.NewStateCtx(ctx)
+	for _, id := range ids {
+		if b := s.Get(id); b != nil {
+			b.Model().VerticalAlign = align
+		}
+	}
+	return sb.Apply(s)
 }
 
 func (sb *smartBlock) SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) (err error) {

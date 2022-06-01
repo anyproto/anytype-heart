@@ -581,6 +581,26 @@ func (mw *Middleware) BlockListSetAlign(req *pb.RpcBlockListSetAlignRequest) *pb
 	return response(pb.RpcBlockListSetAlignResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockListSetVerticalAlign(req *pb.RpcBlockListSetVerticalAlignRequest) *pb.RpcBlockListSetVerticalAlignResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockListSetVerticalAlignResponseErrorCode, err error) *pb.RpcBlockListSetVerticalAlignResponse {
+		m := &pb.RpcBlockListSetVerticalAlignResponse{Error: &pb.RpcBlockListSetVerticalAlignResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.SetVerticalAlign(ctx, req.ContextId, req.VerticalAlign, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockListSetVerticalAlignResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockListSetVerticalAlignResponseError_NULL, nil)
+}
+
 func (mw *Middleware) FileDrop(req *pb.RpcFileDropRequest) *pb.RpcFileDropResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcFileDropResponseErrorCode, err error) *pb.RpcFileDropResponse {

@@ -480,6 +480,12 @@ func (s *service) SetAlign(ctx *state.Context, contextId string, align model.Blo
 	})
 }
 
+func (s *service) SetVerticalAlign(ctx *state.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error) {
+	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
+		return sb.SetVerticalAlign(ctx, align, blockIds...)
+	})
+}
+
 func (s *service) SetLayout(ctx *state.Context, contextId string, layout model.ObjectTypeLayout) (err error) {
 	return s.Do(contextId, func(sb smartblock.SmartBlock) error {
 		return sb.SetLayout(ctx, layout)

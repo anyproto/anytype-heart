@@ -140,6 +140,7 @@ service ClientCommands {
     rpc BlockListDuplicate (anytype.Rpc.Block.ListDuplicate.Request) returns (anytype.Rpc.Block.ListDuplicate.Response);
     rpc BlockListSetBackgroundColor (anytype.Rpc.Block.ListSetBackgroundColor.Request) returns (anytype.Rpc.Block.ListSetBackgroundColor.Response);
     rpc BlockListSetAlign (anytype.Rpc.Block.ListSetAlign.Request) returns (anytype.Rpc.Block.ListSetAlign.Response);
+    rpc BlockListSetVerticalAlign (anytype.Rpc.Block.ListSetVerticalAlign.Request) returns (anytype.Rpc.Block.ListSetVerticalAlign.Response);
     rpc BlockListTurnInto (anytype.Rpc.Block.ListTurnInto.Request) returns (anytype.Rpc.Block.ListTurnInto.Response);
 
     // Text Block commands
@@ -192,8 +193,6 @@ service ClientCommands {
     rpc BlockTableColumnMove (anytype.Rpc.BlockTable.ColumnMove.Request) returns (anytype.Rpc.BlockTable.ColumnMove.Response);
     rpc BlockTableColumnDelete (anytype.Rpc.BlockTable.ColumnDelete.Request) returns (anytype.Rpc.BlockTable.ColumnDelete.Response);
     rpc BlockTableColumnDuplicate (anytype.Rpc.BlockTable.ColumnDuplicate.Request) returns (anytype.Rpc.BlockTable.ColumnDuplicate.Response);
-    // TODO after restructure
-//    rpc BlockTableCellSetVerticalAlign (anytype.Rpc.BlockTable.CellSetVerticalAlign.Request) returns (anytype.Rpc.BlockTable.CellSetVerticalAlign.Response);
 
     // Other specific block commands
     // ***
