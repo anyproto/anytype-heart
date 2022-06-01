@@ -286,10 +286,6 @@
     - [Rpc.BlockRelation.SetKey.Response](#anytype-Rpc-BlockRelation-SetKey-Response)
     - [Rpc.BlockRelation.SetKey.Response.Error](#anytype-Rpc-BlockRelation-SetKey-Response-Error)
     - [Rpc.BlockTable](#anytype-Rpc-BlockTable)
-    - [Rpc.BlockTable.CellSetVerticalAlign](#anytype-Rpc-BlockTable-CellSetVerticalAlign)
-    - [Rpc.BlockTable.CellSetVerticalAlign.Request](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Request)
-    - [Rpc.BlockTable.CellSetVerticalAlign.Response](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response)
-    - [Rpc.BlockTable.CellSetVerticalAlign.Response.Error](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error)
     - [Rpc.BlockTable.ColumnCreate](#anytype-Rpc-BlockTable-ColumnCreate)
     - [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request)
     - [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response)
@@ -774,7 +770,6 @@
     - [Rpc.BlockLink.ListSetAppearance.Response.Error.Code](#anytype-Rpc-BlockLink-ListSetAppearance-Response-Error-Code)
     - [Rpc.BlockRelation.Add.Response.Error.Code](#anytype-Rpc-BlockRelation-Add-Response-Error-Code)
     - [Rpc.BlockRelation.SetKey.Response.Error.Code](#anytype-Rpc-BlockRelation-SetKey-Response-Error-Code)
-    - [Rpc.BlockTable.CellSetVerticalAlign.Response.Error.Code](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error-Code)
     - [Rpc.BlockTable.ColumnCreate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code)
     - [Rpc.BlockTable.ColumnDelete.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDelete-Response-Error-Code)
     - [Rpc.BlockTable.ColumnDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error-Code)
@@ -976,8 +971,6 @@
     - [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation)
     - [Event.Block.Set.Relation.Key](#anytype-Event-Block-Set-Relation-Key)
     - [Event.Block.Set.Restrictions](#anytype-Event-Block-Set-Restrictions)
-    - [Event.Block.Set.TableCell](#anytype-Event-Block-Set-TableCell)
-    - [Event.Block.Set.TableCell.Align](#anytype-Event-Block-Set-TableCell-Align)
     - [Event.Block.Set.Text](#anytype-Event-Block-Set-Text)
     - [Event.Block.Set.Text.Checked](#anytype-Event-Block-Set-Text-Checked)
     - [Event.Block.Set.Text.Color](#anytype-Event-Block-Set-Text-Color)
@@ -986,6 +979,7 @@
     - [Event.Block.Set.Text.Marks](#anytype-Event-Block-Set-Text-Marks)
     - [Event.Block.Set.Text.Style](#anytype-Event-Block-Set-Text-Style)
     - [Event.Block.Set.Text.Text](#anytype-Event-Block-Set-Text-Text)
+    - [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign)
     - [Event.Message](#anytype-Event-Message)
     - [Event.Object](#anytype-Event-Object)
     - [Event.Object.Details](#anytype-Event-Object-Details)
@@ -1069,7 +1063,6 @@
     - [Block.Content.Relation](#anytype-model-Block-Content-Relation)
     - [Block.Content.Smartblock](#anytype-model-Block-Content-Smartblock)
     - [Block.Content.Table](#anytype-model-Block-Content-Table)
-    - [Block.Content.TableCell](#anytype-model-Block-Content-TableCell)
     - [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn)
     - [Block.Content.TableOfContents](#anytype-model-Block-Content-TableOfContents)
     - [Block.Content.TableRow](#anytype-model-Block-Content-TableRow)
@@ -1111,10 +1104,10 @@
     - [Block.Content.Link.Description](#anytype-model-Block-Content-Link-Description)
     - [Block.Content.Link.IconSize](#anytype-model-Block-Content-Link-IconSize)
     - [Block.Content.Link.Style](#anytype-model-Block-Content-Link-Style)
-    - [Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align)
     - [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type)
     - [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style)
     - [Block.Position](#anytype-model-Block-Position)
+    - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
@@ -1284,8 +1277,7 @@
 | BlockTableColumnCreate | [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request) | [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response) |  |
 | BlockTableColumnMove | [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request) | [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response) |  |
 | BlockTableColumnDelete | [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request) | [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response) |  |
-| BlockTableColumnDuplicate | [Rpc.BlockTable.ColumnDuplicate.Request](#anytype-Rpc-BlockTable-ColumnDuplicate-Request) | [Rpc.BlockTable.ColumnDuplicate.Response](#anytype-Rpc-BlockTable-ColumnDuplicate-Response) |  |
-| BlockTableCellSetVerticalAlign | [Rpc.BlockTable.CellSetVerticalAlign.Request](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Request) | [Rpc.BlockTable.CellSetVerticalAlign.Response](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response) |  |
+| BlockTableColumnDuplicate | [Rpc.BlockTable.ColumnDuplicate.Request](#anytype-Rpc-BlockTable-ColumnDuplicate-Request) | [Rpc.BlockTable.ColumnDuplicate.Response](#anytype-Rpc-BlockTable-ColumnDuplicate-Response) | TODO after restructure rpc BlockTableCellSetVerticalAlign (anytype.Rpc.BlockTable.CellSetVerticalAlign.Request) returns (anytype.Rpc.BlockTable.CellSetVerticalAlign.Response); |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -5410,65 +5402,6 @@ id of the closest simple block |
 
 ### Rpc.BlockTable
 
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign"></a>
-
-### Rpc.BlockTable.CellSetVerticalAlign
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Request"></a>
-
-### Rpc.BlockTable.CellSetVerticalAlign.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  | id of the context object |
-| blockId | [string](#string) |  |  |
-| verticalAlign | [model.Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Response"></a>
-
-### Rpc.BlockTable.CellSetVerticalAlign.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.CellSetVerticalAlign.Response.Error](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error"></a>
-
-### Rpc.BlockTable.CellSetVerticalAlign.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.CellSetVerticalAlign.Response.Error.Code](#anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
 
 
 
@@ -12429,19 +12362,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
-<a name="anytype-Rpc-BlockTable-CellSetVerticalAlign-Response-Error-Code"></a>
-
-### Rpc.BlockTable.CellSetVerticalAlign.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
 <a name="anytype-Rpc-BlockTable-ColumnCreate-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.ColumnCreate.Response.Error.Code
@@ -15332,37 +15252,6 @@ Precondition: user A opened a block
 
 
 
-<a name="anytype-Event-Block-Set-TableCell"></a>
-
-### Event.Block.Set.TableCell
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| verticalAlign | [Event.Block.Set.TableCell.Align](#anytype-Event-Block-Set-TableCell-Align) |  |  |
-
-
-
-
-
-
-<a name="anytype-Event-Block-Set-TableCell-Align"></a>
-
-### Event.Block.Set.TableCell.Align
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| value | [model.Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align) |  |  |
-
-
-
-
-
-
 <a name="anytype-Event-Block-Set-Text"></a>
 
 ### Event.Block.Set.Text
@@ -15490,6 +15379,22 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-VerticalAlign"></a>
+
+### Event.Block.Set.VerticalAlign
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| verticalAlign | [model.Block.VerticalAlign](#anytype-model-Block-VerticalAlign) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Message"></a>
 
 ### Event.Message
@@ -15530,7 +15435,7 @@ Precondition: user A opened a block
 | blockSetDiv | [Event.Block.Set.Div](#anytype-Event-Block-Set-Div) |  |  |
 | blockSetRelation | [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation) |  |  |
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
-| blockSetTableCell | [Event.Block.Set.TableCell](#anytype-Event-Block-Set-TableCell) |  |  |
+| blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
 | blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet) |  |  |
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype-Event-Block-Dataview-RecordsUpdate) |  |  |
 | blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert) |  |  |
@@ -16545,6 +16450,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | childrenIds | [string](#string) | repeated |  |
 | backgroundColor | [string](#string) |  |  |
 | align | [Block.Align](#anytype-model-Block-Align) |  |  |
+| verticalAlign | [Block.VerticalAlign](#anytype-model-Block-VerticalAlign) |  |  |
 | smartblock | [Block.Content.Smartblock](#anytype-model-Block-Content-Smartblock) |  |  |
 | text | [Block.Content.Text](#anytype-model-Block-Content-Text) |  |  |
 | file | [Block.Content.File](#anytype-model-Block-Content-File) |  |  |
@@ -16561,7 +16467,6 @@ Avatar of a user&#39;s account. It could be an image or color
 | table | [Block.Content.Table](#anytype-model-Block-Content-Table) |  |  |
 | tableColumn | [Block.Content.TableColumn](#anytype-model-Block-Content-TableColumn) |  |  |
 | tableRow | [Block.Content.TableRow](#anytype-model-Block-Content-TableRow) |  |  |
-| tableCell | [Block.Content.TableCell](#anytype-model-Block-Content-TableCell) |  |  |
 
 
 
@@ -16838,21 +16743,6 @@ Link: block to link some content from an external sources.
 
 ### Block.Content.Table
 
-
-
-
-
-
-
-<a name="anytype-model-Block-Content-TableCell"></a>
-
-### Block.Content.TableCell
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| verticalAlign | [Block.Content.TableCell.Align](#anytype-model-Block-Content-TableCell-Align) |  |  |
 
 
 
@@ -17490,19 +17380,6 @@ scope from which this relation have been aggregated |
 
 
 
-<a name="anytype-model-Block-Content-TableCell-Align"></a>
-
-### Block.Content.TableCell.Align
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| Top | 0 |  |
-| Middle | 1 |  |
-| Bottom | 2 |  |
-
-
-
 <a name="anytype-model-Block-Content-Text-Mark-Type"></a>
 
 ### Block.Content.Text.Mark.Type
@@ -17563,6 +17440,19 @@ scope from which this relation have been aggregated |
 | Inner | 5 | inside target block, as last block |
 | Replace | 6 | replace target block |
 | InnerFirst | 7 | inside target block, as first block |
+
+
+
+<a name="anytype-model-Block-VerticalAlign"></a>
+
+### Block.VerticalAlign
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| VerticalAlignTop | 0 |  |
+| VerticalAlignMiddle | 1 |  |
+| VerticalAlignBottom | 2 |  |
 
 
 

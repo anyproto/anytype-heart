@@ -51,6 +51,13 @@ message Block {
     repeated string childrenIds = 4;
     string backgroundColor = 5;
     Align align = 6;
+    VerticalAlign verticalAlign = 7;
+
+    enum VerticalAlign {
+        VerticalAlignTop = 0;
+        VerticalAlignMiddle = 1;
+        VerticalAlignBottom = 2;
+    }
 
     oneof content {
         Content.Smartblock smartblock = 11;
@@ -70,7 +77,6 @@ message Block {
         Content.Table table = 26;
         Content.TableColumn tableColumn = 27;
         Content.TableRow tableRow = 28;
-        Content.TableCell tableCell = 29;
     }
 
     message Restrictions {
@@ -394,15 +400,6 @@ message Block {
         message Table {}
 		    message TableColumn {}
 		    message TableRow {}
-		    message TableCell {
-            Align verticalAlign = 1;
-
-            enum Align {
-                Top = 0;
-                Middle = 1;
-                Bottom = 2;
-            }
-        }
     }
 }
 

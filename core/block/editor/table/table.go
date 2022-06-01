@@ -6,7 +6,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
-	blocktable "github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -29,8 +28,6 @@ type Table interface {
 	ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
 	RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) error
 	ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) error
-
-	CellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) error
 }
 
 type table struct {
@@ -359,30 +356,6 @@ func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDup
 	return fmt.Errorf("not implemented")
 }
 
-func (t table) CellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) error {
-	s := t.NewStateCtx(ctx)
-
-	cell, err := getCell(s, req.BlockId)
-	if err != nil {
-		return fmt.Errorf("get cell: %w", err)
-	}
-	cell.SetVerticalAlign(req.VerticalAlign)
-
-	return t.Apply(s)
-}
-
-func getCell(s *state.State, id string) (blocktable.Cell, error) {
-	b := s.Get(id)
-	if b == nil {
-		return nil, fmt.Errorf("block is not found")
-	}
-	c, ok := b.(blocktable.Cell)
-	if !ok {
-		return nil, fmt.Errorf("block is not a cell: %T", b)
-	}
-	return c, nil
-}
-
 func pickColumn(s *state.State, id string) (simple.Block, error) {
 	b := s.Pick(id)
 	if b == nil {
@@ -403,17 +376,7 @@ func addCell(s *state.State) (string, error) {
 	if !s.Add(tb) {
 		return "", fmt.Errorf("can't add text block")
 	}
-	cell := simple.New(&model.Block{
-		ChildrenIds: []string{tb.Model().Id},
-		Content: &model.BlockContentOfTableCell{
-			TableCell: &model.BlockContentTableCell{},
-		},
-	})
-	if !s.Add(cell) {
-		return "", fmt.Errorf("can't add cell block")
-	}
-
-	return cell.Model().Id, nil
+	return tb.Model().Id, nil
 }
 
 func addColumnHeader(s *state.State) (string, error) {

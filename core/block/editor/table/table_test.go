@@ -150,57 +150,27 @@ func TestTable_TableCreate(t *testing.T) {
 			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
 		},
 		{
-			Id:          "c11",
-			ChildrenIds: []string{"t11"},
-			Content:     &model.BlockContentOfTableCell{TableCell: &model.BlockContentTableCell{}},
-		},
-		{
-			Id:      "t11",
+			Id:      "c11",
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 		},
 		{
-			Id:          "c12",
-			ChildrenIds: []string{"t12"},
-			Content:     &model.BlockContentOfTableCell{TableCell: &model.BlockContentTableCell{}},
-		},
-		{
-			Id:      "t12",
+			Id:      "c12",
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 		},
 		{
-			Id:          "c13",
-			ChildrenIds: []string{"t13"},
-			Content:     &model.BlockContentOfTableCell{TableCell: &model.BlockContentTableCell{}},
-		},
-		{
-			Id:      "t13",
+			Id:      "c13",
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 		},
 		{
-			Id:          "c21",
-			ChildrenIds: []string{"t21"},
-			Content:     &model.BlockContentOfTableCell{TableCell: &model.BlockContentTableCell{}},
-		},
-		{
-			Id:      "t21",
+			Id:      "c21",
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 		},
 		{
-			Id:          "c22",
-			ChildrenIds: []string{"t22"},
-			Content:     &model.BlockContentOfTableCell{TableCell: &model.BlockContentTableCell{}},
-		},
-		{
-			Id:      "t22",
+			Id:      "c22",
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 		},
 		{
-			Id:          "c23",
-			ChildrenIds: []string{"t23"},
-			Content:     &model.BlockContentOfTableCell{TableCell: &model.BlockContentTableCell{}},
-		},
-		{
-			Id:      "t23",
+			Id:      "c23",
 			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 		},
 	} {

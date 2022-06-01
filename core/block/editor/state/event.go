@@ -2,8 +2,6 @@ package state
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
-
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
@@ -35,6 +33,13 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+	case *pb.EventMessageValueOfBlockSetVerticalAlign:
+		if err = apply(o.BlockSetVerticalAlign.Id, func(b simple.Block) error {
+			b.Model().VerticalAlign = o.BlockSetVerticalAlign.VerticalAlign
+			return nil
+		}); err != nil {
+			return
+		}
 	case *pb.EventMessageValueOfBlockSetBackgroundColor:
 		if err = apply(o.BlockSetBackgroundColor.Id, func(b simple.Block) error {
 			b.Model().BackgroundColor = o.BlockSetBackgroundColor.BackgroundColor
@@ -51,15 +56,7 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
-	case *pb.EventMessageValueOfBlockSetTableCell:
-		if err = apply(o.BlockSetTableCell.Id, func(b simple.Block) error {
-			if c, ok := b.(table.Cell); ok {
-				return c.ApplyEvent(o.BlockSetTableCell)
-			}
-			return fmt.Errorf("not a table block")
-		}); err != nil {
-			return
-		}
+
 	case *pb.EventMessageValueOfBlockSetDiv:
 		if err = apply(o.BlockSetDiv.Id, func(b simple.Block) error {
 			if d, ok := b.(base.DivBlock); ok {

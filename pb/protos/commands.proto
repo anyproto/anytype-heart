@@ -2508,6 +2508,32 @@ message Rpc {
             }
         }
 
+        // TODO: after restructure
+//        message ListSetVerticalAlign {
+//            message Request {
+//                string contextId = 1; // id of the context object
+//                repeated string blockIds = 2;
+//                anytype.model.Block.VerticalAlign verticalAlign = 3;
+//            }
+//
+//            message Response {
+//                Error error = 1;
+//                ResponseEvent event = 2;
+//
+//                message Error {
+//                    Code code = 1;
+//                    string description = 2;
+//
+//                    enum Code {
+//                        NULL = 0;
+//                        UNKNOWN_ERROR = 1;
+//                        BAD_INPUT = 2;
+//                        // ...
+//                    }
+//                }
+//            }
+//        }
+
         message ListSetFields {
             message Request {
                 string contextId = 1;
@@ -3208,31 +3234,6 @@ message Rpc {
             message Request {
                 string contextId = 1; // id of the context object
                 string targetId = 2;
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-
-        message CellSetVerticalAlign {
-            message Request {
-                string contextId = 1; // id of the context object
-                string blockId = 2;
-                anytype.model.Block.Content.TableCell.Align verticalAlign = 3;
             }
 
             message Response {
