@@ -27,6 +27,8 @@ type Table interface {
 	ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
 	RowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
 	ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
+	RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) error
+	ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) error
 
 	CellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) error
 }
@@ -347,6 +349,14 @@ func (t table) ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequ
 	}
 
 	return t.Apply(s)
+}
+
+func (t table) RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) error {
+	return fmt.Errorf("not implemented")
+}
+
+func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) error {
+	return fmt.Errorf("not implemented")
 }
 
 func (t table) CellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) error {

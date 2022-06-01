@@ -181,3 +181,47 @@ func (mw *Middleware) BlockTableCellSetVerticalAlign(req *pb.RpcBlockTableCellSe
 	}
 	return response(pb.RpcBlockTableCellSetVerticalAlignResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableRowDuplicate(req *pb.RpcBlockTableRowDuplicateRequest) *pb.RpcBlockTableRowDuplicateResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableRowDuplicateResponseErrorCode, id string, err error) *pb.RpcBlockTableRowDuplicateResponse {
+		m := &pb.RpcBlockTableRowDuplicateResponse{Error: &pb.RpcBlockTableRowDuplicateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableRowDuplicate(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableRowDuplicateResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableRowDuplicateResponseError_NULL, id, nil)
+}
+
+func (mw *Middleware) BlockTableColumnDuplicate(req *pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableColumnDuplicateResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnDuplicateResponse {
+		m := &pb.RpcBlockTableColumnDuplicateResponse{Error: &pb.RpcBlockTableColumnDuplicateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableColumnDuplicate(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableColumnDuplicateResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableColumnDuplicateResponseError_NULL, id, nil)
+}

@@ -204,6 +204,8 @@ type Service interface {
 	TableMoveRow(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error)
 	TableMoveColumn(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
 	TableCellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockTableCellSetVerticalAlignRequest) (err error)
+	TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error)
+	TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error
 	AddRelationBlock(ctx *state.Context, request pb.RpcBlockRelationAddRequest) error

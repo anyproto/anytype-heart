@@ -187,9 +187,11 @@ service ClientCommands {
     rpc BlockTableRowCreate (anytype.Rpc.BlockTable.RowCreate.Request) returns (anytype.Rpc.BlockTable.RowCreate.Response);
     rpc BlockTableRowMove (anytype.Rpc.BlockTable.RowMove.Request) returns (anytype.Rpc.BlockTable.RowMove.Response);
     rpc BlockTableRowDelete (anytype.Rpc.BlockTable.RowDelete.Request) returns (anytype.Rpc.BlockTable.RowDelete.Response);
+    rpc BlockTableRowDuplicate (anytype.Rpc.BlockTable.RowDuplicate.Request) returns (anytype.Rpc.BlockTable.RowDuplicate.Response);
     rpc BlockTableColumnCreate (anytype.Rpc.BlockTable.ColumnCreate.Request) returns (anytype.Rpc.BlockTable.ColumnCreate.Response);
     rpc BlockTableColumnMove (anytype.Rpc.BlockTable.ColumnMove.Request) returns (anytype.Rpc.BlockTable.ColumnMove.Response);
     rpc BlockTableColumnDelete (anytype.Rpc.BlockTable.ColumnDelete.Request) returns (anytype.Rpc.BlockTable.ColumnDelete.Response);
+    rpc BlockTableColumnDuplicate (anytype.Rpc.BlockTable.ColumnDuplicate.Request) returns (anytype.Rpc.BlockTable.ColumnDuplicate.Response);
     rpc BlockTableCellSetVerticalAlign (anytype.Rpc.BlockTable.CellSetVerticalAlign.Request) returns (anytype.Rpc.BlockTable.CellSetVerticalAlign.Response);
 
     // Other specific block commands

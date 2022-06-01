@@ -1069,3 +1069,17 @@ func (s *service) TableCellSetVerticalAlign(ctx *state.Context, req pb.RpcBlockT
 	})
 	return
 }
+
+func (s *service) TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.RowDuplicate(ctx, req)
+	})
+	return
+}
+
+func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.ColumnDuplicate(ctx, req)
+	})
+	return
+}
