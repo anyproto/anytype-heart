@@ -12,6 +12,95 @@ import (
 	"testing"
 )
 
+func TestTable_TableCreate(t *testing.T) {
+	sb := smarttest.New("root")
+	sb.AddBlock(simple.New(&model.Block{
+		Id: "root",
+	}))
+
+	tb := New(sb)
+
+	id, err := tb.TableCreate(nil, pb.RpcBlockTableCreateRequest{
+		ContextId: "",
+		TargetId:  "root",
+		Position:  model.Block_Inner,
+		Columns:   3,
+		Rows:      2,
+	})
+
+	s := sb.NewState()
+
+	assert.NoError(t, err)
+	assert.True(t, s.Exists(id))
+
+	want := mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, []string{"c11", "c12", "c13", "c21", "c22", "c23"})
+
+	assertIsomorphic(t, want, s, map[string]string{}, map[string]string{})
+}
+
+func TestTable_TableColumnCreate(t *testing.T) {
+	sb := smarttest.New("root")
+	sb.AddBlock(simple.New(&model.Block{
+		Id: "root",
+	}))
+
+	editor := New(sb)
+
+	id, err := editor.TableCreate(nil, pb.RpcBlockTableCreateRequest{
+		ContextId: "",
+		TargetId:  "root",
+		Position:  model.Block_Inner,
+		Columns:   2,
+		Rows:      2,
+	})
+
+	s := sb.NewState()
+
+	assert.NoError(t, err)
+	assert.True(t, s.Exists(id))
+
+	want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"})
+
+	wantMapping := map[string]string{}
+	gotMapping := map[string]string{}
+	assertIsomorphic(t, want, s, wantMapping, gotMapping)
+
+	t.Run("to the right of target", func(t *testing.T) {
+		tb, err := newTableBlockFromState(s, id)
+		require.NoError(t, err)
+
+		target := tb.columns.Model().ChildrenIds[0]
+		err = editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
+			TargetId: target,
+			Position: model.Block_Right,
+		})
+
+		require.NoError(t, err)
+
+		want = mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c11", "c13", "c12", "c21", "c23", "c22"})
+
+		assertIsomorphic(t, want, s, wantMapping, gotMapping)
+	})
+
+	t.Run("to the left of target", func(t *testing.T) {
+		tb, err := newTableBlockFromState(s, id)
+		require.NoError(t, err)
+
+		target := tb.columns.Model().ChildrenIds[0]
+		err = editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
+			TargetId: target,
+			Position: model.Block_Left,
+		})
+
+		require.NoError(t, err)
+
+		// Remember that we operate under the same table, so previous modifications preserved
+		want = mkTestTable([]string{"col4", "col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c14", "c11", "c13", "c12", "c24", "c21", "c23", "c22"})
+
+		assertIsomorphic(t, want, s, wantMapping, gotMapping)
+	})
+}
+
 func idGenerator() func() string {
 	var id int
 
@@ -62,6 +151,7 @@ func reassignIds(s *state.State, mapping map[string]string) *state.State {
 }
 
 // assertIsomorphic checks that two states have same structure
+// Preserves mappings for tracking structure changes
 func assertIsomorphic(t *testing.T, want, got *state.State, wantMapping, gotMapping map[string]string) {
 	want = reassignIds(want, wantMapping)
 	got = reassignIds(got, gotMapping)
@@ -81,33 +171,12 @@ func assertIsomorphic(t *testing.T, want, got *state.State, wantMapping, gotMapp
 	assert.Equal(t, wantBlocks, gotBlocks)
 }
 
-func TestTable_TableCreate(t *testing.T) {
-	sb := smarttest.New("root")
-	sb.AddBlock(simple.New(&model.Block{
-		Id: "root",
-	}))
-
-	tb := New(sb)
-
-	id, err := tb.TableCreate(nil, pb.RpcBlockTableCreateRequest{
-		ContextId: "",
-		TargetId:  "root",
-		Position:  model.Block_Inner,
-		Columns:   3,
-		Rows:      2,
-	})
-
-	s := sb.NewState()
-
-	assert.NoError(t, err)
-	assert.True(t, s.Exists(id))
-
-	want := state.NewDoc("root", nil).NewState()
-	for _, b := range []*model.Block{
+func mkTestTable(columns []string, rows []string, cells []string) *state.State {
+	s := state.NewDoc("root", nil).NewState()
+	blocks := []*model.Block{
 		{
-			Id:           "root",
-			ChildrenIds:  []string{"table"},
-			Restrictions: &model.BlockRestrictions{},
+			Id:          "root",
+			ChildrenIds: []string{"table"},
 		},
 		{
 			Id:          "table",
@@ -116,7 +185,7 @@ func TestTable_TableCreate(t *testing.T) {
 		},
 		{
 			Id:          "columns",
-			ChildrenIds: []string{"col1", "col2", "col3"},
+			ChildrenIds: columns,
 			Content: &model.BlockContentOfLayout{
 				Layout: &model.BlockContentLayout{
 					Style: model.BlockContentLayout_TableColumns,
@@ -124,250 +193,44 @@ func TestTable_TableCreate(t *testing.T) {
 			},
 		},
 		{
-			Id:      "col1",
-			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
-			Id:      "col2",
-			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
-			Id:      "col3",
-			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
 			Id:          "rows",
-			ChildrenIds: []string{"row1", "row2"},
+			ChildrenIds: rows,
 			Content: &model.BlockContentOfLayout{
 				Layout: &model.BlockContentLayout{
 					Style: model.BlockContentLayout_TableRows,
 				},
 			},
 		},
-		{
-			Id:          "row1",
-			ChildrenIds: []string{"c11", "c12", "c13"},
-			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
-		},
-		{
-			Id:          "row2",
-			ChildrenIds: []string{"c21", "c22", "c23"},
-			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
-		},
-		{
-			Id:      "c11",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c12",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c13",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c21",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c22",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c23",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-	} {
-		want.Add(simple.New(b))
 	}
 
-	assertIsomorphic(t, want, s, map[string]string{}, map[string]string{})
-}
-
-func TestTable_TableColumnCreate(t *testing.T) {
-	sb := smarttest.New("root")
-	sb.AddBlock(simple.New(&model.Block{
-		Id: "root",
-	}))
-
-	editor := New(sb)
-
-	id, err := editor.TableCreate(nil, pb.RpcBlockTableCreateRequest{
-		ContextId: "",
-		TargetId:  "root",
-		Position:  model.Block_Inner,
-		Columns:   2,
-		Rows:      2,
-	})
-
-	s := sb.NewState()
-
-	assert.NoError(t, err)
-	assert.True(t, s.Exists(id))
-
-	want := state.NewDoc("root", nil).NewState()
-	for _, b := range []*model.Block{
-		{
-			Id:           "root",
-			ChildrenIds:  []string{"table"},
-			Restrictions: &model.BlockRestrictions{},
-		},
-		{
-			Id:          "table",
-			ChildrenIds: []string{"columns", "rows"},
-			Content:     &model.BlockContentOfTable{Table: &model.BlockContentTable{}},
-		},
-		{
-			Id:          "columns",
-			ChildrenIds: []string{"col1", "col2"},
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_TableColumns,
-				},
-			},
-		},
-		{
-			Id:      "col1",
+	for _, c := range columns {
+		blocks = append(blocks, &model.Block{
+			Id:      c,
 			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
-			Id:      "col2",
-			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
-			Id:          "rows",
-			ChildrenIds: []string{"row1", "row2"},
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_TableRows,
-				},
-			},
-		},
-		{
-			Id:          "row1",
-			ChildrenIds: []string{"c11", "c12"},
-			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
-		},
-		{
-			Id:          "row2",
-			ChildrenIds: []string{"c21", "c22"},
-			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
-		},
-		{
-			Id:      "c11",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c12",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c21",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c22",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-	} {
-		want.Add(simple.New(b))
+		})
 	}
 
-	wantMapping := map[string]string{}
-	gotMapping := map[string]string{}
-	assertIsomorphic(t, want, s, wantMapping, gotMapping)
+	for i, r := range rows {
+		from := i * len(columns)
+		to := from + len(columns)
+		cc := cells[from:to]
 
-	tb, err := newTableBlockFromState(s, id)
-	require.NoError(t, err)
-
-	target := tb.columns.Model().ChildrenIds[0]
-	err = editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
-		TargetId: target,
-		Position: model.Block_Right,
-	})
-
-	require.NoError(t, err)
-
-	want = state.NewDoc("root", nil).NewState()
-	for _, b := range []*model.Block{
-		{
-			Id:           "root",
-			ChildrenIds:  []string{"table"},
-			Restrictions: &model.BlockRestrictions{},
-		},
-		{
-			Id:          "table",
-			ChildrenIds: []string{"columns", "rows"},
-			Content:     &model.BlockContentOfTable{Table: &model.BlockContentTable{}},
-		},
-		{
-			Id:          "columns",
-			ChildrenIds: []string{"col1", "col3", "col2"},
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_TableColumns,
-				},
-			},
-		},
-		{
-			Id:      "col1",
-			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
-			Id:      "col3",
-			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
-			Id:      "col2",
-			Content: &model.BlockContentOfTableColumn{TableColumn: &model.BlockContentTableColumn{}},
-		},
-		{
-			Id:          "rows",
-			ChildrenIds: []string{"row1", "row2"},
-			Content: &model.BlockContentOfLayout{
-				Layout: &model.BlockContentLayout{
-					Style: model.BlockContentLayout_TableRows,
-				},
-			},
-		},
-		{
-			Id:          "row1",
-			ChildrenIds: []string{"c11", "c13", "c12"},
+		blocks = append(blocks, &model.Block{
+			Id:          r,
+			ChildrenIds: cc,
 			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
-		},
-		{
-			Id:          "row2",
-			ChildrenIds: []string{"c21", "c23", "c22"},
-			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
-		},
-		{
-			Id:      "c11",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c13",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c12",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c21",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c23",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-		{
-			Id:      "c22",
-			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-		},
-	} {
-		want.Add(simple.New(b))
+		})
 	}
 
-	assertIsomorphic(t, want, s, wantMapping, gotMapping)
+	for _, c := range cells {
+		blocks = append(blocks, &model.Block{
+			Id:      c,
+			Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
+		})
+	}
+
+	for _, b := range blocks {
+		s.Add(simple.New(b))
+	}
+	return s
 }
