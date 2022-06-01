@@ -1015,7 +1015,7 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 
 func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		id, err = t.TableCreate(ctx, "", req)
+		id, err = t.TableCreate(ctx, req)
 		return err
 	})
 	return

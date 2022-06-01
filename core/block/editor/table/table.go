@@ -20,7 +20,7 @@ func New(sb smartblock.SmartBlock) Table {
 }
 
 type Table interface {
-	TableCreate(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error)
+	TableCreate(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error)
 	RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error
 	ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error
 	RowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error
@@ -37,7 +37,7 @@ type table struct {
 	basic basic.Basic
 }
 
-func (t table) TableCreate(ctx *state.Context, groupId string, req pb.RpcBlockTableCreateRequest) (id string, err error) {
+func (t table) TableCreate(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
 	if err = t.Restrictions().Object.Check(model.Restrictions_Blocks); err != nil {
 		return
 	}
@@ -45,9 +45,9 @@ func (t table) TableCreate(ctx *state.Context, groupId string, req pb.RpcBlockTa
 		return "", basic.ErrNotSupported
 	}
 
-	s := t.NewStateCtx(ctx).SetGroupId(groupId)
+	s := t.NewStateCtx(ctx)
 
-	id, err = basic.CreateBlock(s, groupId, pb.RpcBlockCreateRequest{
+	id, err = basic.CreateBlock(s, "", pb.RpcBlockCreateRequest{
 		ContextId: req.ContextId,
 		TargetId:  req.TargetId,
 		Position:  req.Position,
@@ -83,7 +83,7 @@ func (t table) TableCreate(ctx *state.Context, groupId string, req pb.RpcBlockTa
 
 	rowIds := make([]string, 0, req.Rows)
 	for i := uint32(0); i < req.Rows; i++ {
-		id, err := addRow(s, req.Columns, nil)
+		id, err := addRow(s, req.Columns)
 		if err != nil {
 			return "", err
 		}
@@ -122,7 +122,7 @@ func (t table) RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateReques
 	rowTarget, err := pickRow(s, req.TargetId)
 
 	count := uint32(len(rowTarget.Model().ChildrenIds))
-	rowId, err := addRow(s, count, nil)
+	rowId, err := addRow(s, count)
 	if err != nil {
 		return err
 	}
@@ -216,7 +216,7 @@ func (t table) ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreate
 	}
 
 	for _, rowId := range tb.rows.Model().ChildrenIds {
-		cellId, err := addCell(s, nil)
+		cellId, err := addCell(s)
 		if err != nil {
 			return fmt.Errorf("add cell: %w", err)
 		}
@@ -384,7 +384,7 @@ func pickColumn(s *state.State, id string) (simple.Block, error) {
 	return b, nil
 }
 
-func addCell(s *state.State, cellBlockProto *model.Block) (string, error) {
+func addCell(s *state.State) (string, error) {
 	tb := simple.New(&model.Block{
 		Content: &model.BlockContentOfText{
 			Text: &model.BlockContentText{},
@@ -394,13 +394,9 @@ func addCell(s *state.State, cellBlockProto *model.Block) (string, error) {
 		return "", fmt.Errorf("can't add text block")
 	}
 	cell := simple.New(&model.Block{
-		Align:           cellBlockProto.GetAlign(),
-		BackgroundColor: cellBlockProto.GetBackgroundColor(),
-		ChildrenIds:     []string{tb.Model().Id},
+		ChildrenIds: []string{tb.Model().Id},
 		Content: &model.BlockContentOfTableCell{
-			TableCell: &model.BlockContentTableCell{
-				VerticalAlign: cellBlockProto.GetTableCell().GetVerticalAlign(),
-			},
+			TableCell: &model.BlockContentTableCell{},
 		},
 	})
 	if !s.Add(cell) {
@@ -423,10 +419,10 @@ func addColumnHeader(s *state.State) (string, error) {
 	return b.Model().Id, nil
 }
 
-func addRow(s *state.State, columns uint32, cellBlockProto *model.Block) (string, error) {
+func addRow(s *state.State, columns uint32) (string, error) {
 	cellIds := make([]string, 0, columns)
 	for j := uint32(0); j < columns; j++ {
-		id, err := addCell(s, cellBlockProto)
+		id, err := addCell(s)
 		if err != nil {
 			return "", err
 		}
