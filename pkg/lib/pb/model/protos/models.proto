@@ -53,12 +53,6 @@ message Block {
     Align align = 6;
     VerticalAlign verticalAlign = 7;
 
-    enum VerticalAlign {
-        VerticalAlignTop = 0;
-        VerticalAlignMiddle = 1;
-        VerticalAlignBottom = 2;
-    }
-
     oneof content {
         Content.Smartblock smartblock = 11;
 
@@ -109,6 +103,12 @@ message Block {
         AlignLeft = 0;
         AlignCenter = 1;
         AlignRight = 2;
+    }
+
+    enum VerticalAlign {
+        VerticalAlignTop = 0;
+        VerticalAlignMiddle = 1;
+        VerticalAlignBottom = 2;
     }
 
     message Content {
