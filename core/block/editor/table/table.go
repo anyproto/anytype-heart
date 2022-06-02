@@ -119,6 +119,9 @@ func (t table) RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateReques
 	s := t.NewStateCtx(ctx)
 
 	rowTarget, err := pickRow(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("pick row: %w", err)
+	}
 
 	count := uint32(len(rowTarget.Model().ChildrenIds))
 	rowId, err := addRow(s, count)
