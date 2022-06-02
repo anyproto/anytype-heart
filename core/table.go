@@ -185,7 +185,7 @@ func (mw *Middleware) BlockTableRowDuplicate(req *pb.RpcBlockTableRowDuplicateRe
 func (mw *Middleware) BlockTableColumnDuplicate(req *pb.RpcBlockTableColumnDuplicateRequest) *pb.RpcBlockTableColumnDuplicateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockTableColumnDuplicateResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnDuplicateResponse {
-		m := &pb.RpcBlockTableColumnDuplicateResponse{Error: &pb.RpcBlockTableColumnDuplicateResponseError{Code: code}}
+		m := &pb.RpcBlockTableColumnDuplicateResponse{Error: &pb.RpcBlockTableColumnDuplicateResponseError{Code: code, BlockId: id}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -195,7 +195,7 @@ func (mw *Middleware) BlockTableColumnDuplicate(req *pb.RpcBlockTableColumnDupli
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableColumnDuplicate(ctx, *req)
+		id, err = bs.TableColumnDuplicate(ctx, *req)
 		return
 	})
 	if err != nil {

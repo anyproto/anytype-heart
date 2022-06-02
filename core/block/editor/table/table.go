@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
+	"github.com/globalsign/mgo/bson"
 )
 
 func New(sb smartblock.SmartBlock) Table {
@@ -27,7 +28,7 @@ type Table interface {
 	RowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
 	ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
 	RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) error
-	ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) error
+	ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
 }
 
 type table struct {
@@ -355,8 +356,82 @@ func (t table) RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicate
 	return fmt.Errorf("not implemented")
 }
 
-func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) error {
-	return fmt.Errorf("not implemented")
+func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
+	switch req.Position {
+	// TODO: crutch
+	case model.Block_Left:
+		req.Position = model.Block_Top
+	case model.Block_Right:
+		req.Position = model.Block_Bottom
+	default:
+		return "", fmt.Errorf("position is not supported")
+	}
+
+	s := t.NewStateCtx(ctx)
+
+	srcCol, err := pickColumn(s, req.BlockId)
+	if err != nil {
+		return "", fmt.Errorf("pick source column: %w", err)
+	}
+
+	_, err = pickColumn(s, req.TargetId)
+	if err != nil {
+		return "", fmt.Errorf("pick target column: %w", err)
+	}
+
+	tb, err := newTableBlockFromState(s, req.TargetId)
+	if err != nil {
+		return "", fmt.Errorf("can't init table block: %w", err)
+	}
+
+	srcPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.BlockId)
+	if srcPos < 0 {
+		return "", fmt.Errorf("can't find source column position")
+	}
+	targetPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
+	if targetPos < 0 {
+		return "", fmt.Errorf("can't find target column position")
+	}
+
+	for _, id := range tb.rows.Model().ChildrenIds {
+		row, err := pickRow(s, id)
+		if err != nil {
+			return "", fmt.Errorf("can't get row %s: %w", id, err)
+		}
+
+		if len(row.Model().ChildrenIds) != tb.columnsCount() {
+			return "", fmt.Errorf("invalid number of columns in row %s", id)
+		}
+
+		srcId := row.Model().ChildrenIds[srcPos]
+		targetId := row.Model().ChildrenIds[targetPos]
+
+		cell := s.Pick(srcId)
+		if cell == nil {
+			return "", fmt.Errorf("cell %s is not found", srcId)
+		}
+		cell = cell.Copy()
+		cell.Model().Id = bson.NewObjectId().Hex()
+
+		if !s.Add(cell) {
+			return "", fmt.Errorf("can't add cell block")
+		}
+
+		if err = s.InsertTo(targetId, req.Position, cell.Model().Id); err != nil {
+			return "", fmt.Errorf("can't insert cell: %w", err)
+		}
+	}
+
+	newCol := srcCol.Copy()
+	newCol.Model().Id = bson.NewObjectId().Hex()
+	if !s.Add(newCol) {
+		return "", fmt.Errorf("can't add column block")
+	}
+	if err = s.InsertTo(req.TargetId, req.Position, newCol.Model().Id); err != nil {
+		return "", fmt.Errorf("can't insert column: %w", err)
+	}
+
+	return newCol.Model().Id, t.Apply(s)
 }
 
 func pickColumn(s *state.State, id string) (simple.Block, error) {

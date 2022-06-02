@@ -5610,6 +5610,8 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context object |
 | targetId | [string](#string) |  |  |
+| blockId | [string](#string) |  | block to duplicate |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 
 
 
@@ -5625,6 +5627,7 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.BlockTable.ColumnDuplicate.Response.Error](#anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error) |  |  |
+| blockId | [string](#string) |  |  |
 | event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
 
 
@@ -5907,6 +5910,8 @@ id of the closest simple block |
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  | id of the context object |
 | targetId | [string](#string) |  |  |
+| blockId | [string](#string) |  | block to duplicate |
+| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 
 
 

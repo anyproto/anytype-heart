@@ -1076,9 +1076,10 @@ func (s *service) TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowD
 	return
 }
 
-func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (err error) {
+func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
-		return t.ColumnDuplicate(ctx, req)
+		id, err = t.ColumnDuplicate(ctx, req)
+		return err
 	})
-	return
+	return id, err
 }

@@ -175,6 +175,50 @@ func TestTable_TableColumnCreate(t *testing.T) {
 	})
 }
 
+func TestTable_TableColumnDuplicate(t *testing.T) {
+	t.Run("to the right of the target", func(t *testing.T) {
+		ctx := newTableTestContext(t, 2, 2,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"}))
+
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
+		require.NoError(t, err)
+
+		id, err := ctx.editor.ColumnDuplicate(nil, pb.RpcBlockTableColumnDuplicateRequest{
+			BlockId:  tb.columns.Model().ChildrenIds[0],
+			TargetId: tb.columns.Model().ChildrenIds[0],
+			Position: model.Block_Right,
+		})
+
+		require.NoError(t, err)
+		require.True(t, ctx.s.Exists(id))
+
+		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c11", "c13", "c12", "c21", "c23", "c22"})
+
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+	})
+
+	t.Run("to the left of the target", func(t *testing.T) {
+		ctx := newTableTestContext(t, 2, 2,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"}))
+
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
+		require.NoError(t, err)
+
+		id, err := ctx.editor.ColumnDuplicate(nil, pb.RpcBlockTableColumnDuplicateRequest{
+			BlockId:  tb.columns.Model().ChildrenIds[1],
+			TargetId: tb.columns.Model().ChildrenIds[0],
+			Position: model.Block_Left,
+		})
+
+		require.NoError(t, err)
+		require.True(t, ctx.s.Exists(id))
+
+		want := mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2"}, []string{"c13", "c11", "c12", "c23", "c21", "c22"})
+
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+	})
+}
+
 func TestTable_TableColumnMove(t *testing.T) {
 	t.Run("to the right of the drop target", func(t *testing.T) {
 		ctx := newTableTestContext(t, 3, 2,
