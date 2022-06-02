@@ -258,10 +258,6 @@ func (t table) ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDelete
 		return fmt.Errorf("can't find target column")
 	}
 
-	if !s.Unlink(req.TargetId) {
-		return fmt.Errorf("can't unlink column in header")
-	}
-
 	for _, rowId := range tb.rows.Model().ChildrenIds {
 		row, err := pickRow(s, rowId)
 		if err != nil {
@@ -275,6 +271,10 @@ func (t table) ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDelete
 		if !s.Unlink(cellId) {
 			return fmt.Errorf("can't unlink cell %s", cellId)
 		}
+	}
+
+	if !s.Unlink(req.TargetId) {
+		return fmt.Errorf("can't unlink column in header")
 	}
 
 	return t.Apply(s)
@@ -429,6 +429,8 @@ func (b tableBlock) rowsCount() int {
 	return len(b.rows.Model().ChildrenIds)
 }
 
+// newTableBlockFromState creates helper for easy access to various parts of the table.
+// It receives any id that belongs to table structure and search for the root table block
 func newTableBlockFromState(s *state.State, id string) (*tableBlock, error) {
 	tb := tableBlock{}
 

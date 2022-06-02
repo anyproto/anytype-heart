@@ -39,55 +39,32 @@ func TestTable_TableCreate(t *testing.T) {
 }
 
 func TestTable_TableColumnCreate(t *testing.T) {
-	sb := smarttest.New("root")
-	sb.AddBlock(simple.New(&model.Block{
-		Id: "root",
-	}))
-
-	editor := New(sb)
-
-	id, err := editor.TableCreate(nil, pb.RpcBlockTableCreateRequest{
-		ContextId: "",
-		TargetId:  "root",
-		Position:  model.Block_Inner,
-		Columns:   2,
-		Rows:      2,
-	})
-
-	s := sb.NewState()
-
-	assert.NoError(t, err)
-	assert.True(t, s.Exists(id))
-
-	want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"})
-
-	wantMapping := map[string]string{}
-	gotMapping := map[string]string{}
-	assertIsomorphic(t, want, s, wantMapping, gotMapping)
+	ctx := newTableTestContext(t, 2, 2,
+		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"}))
 
 	t.Run("to the right of target", func(t *testing.T) {
-		tb, err := newTableBlockFromState(s, id)
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
 
 		target := tb.columns.Model().ChildrenIds[0]
-		err = editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
+		err = ctx.editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
 			TargetId: target,
 			Position: model.Block_Right,
 		})
 
 		require.NoError(t, err)
 
-		want = mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c11", "c13", "c12", "c21", "c23", "c22"})
+		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c11", "c13", "c12", "c21", "c23", "c22"})
 
-		assertIsomorphic(t, want, s, wantMapping, gotMapping)
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 
 	t.Run("to the left of target", func(t *testing.T) {
-		tb, err := newTableBlockFromState(s, id)
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
 
 		target := tb.columns.Model().ChildrenIds[0]
-		err = editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
+		err = ctx.editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
 			TargetId: target,
 			Position: model.Block_Left,
 		})
@@ -95,10 +72,105 @@ func TestTable_TableColumnCreate(t *testing.T) {
 		require.NoError(t, err)
 
 		// Remember that we operate under the same table, so previous modifications preserved
-		want = mkTestTable([]string{"col4", "col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c14", "c11", "c13", "c12", "c24", "c21", "c23", "c22"})
+		want := mkTestTable([]string{"col4", "col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c14", "c11", "c13", "c12", "c24", "c21", "c23", "c22"})
 
-		assertIsomorphic(t, want, s, wantMapping, gotMapping)
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
+}
+
+func TestTable_TableColumnMove(t *testing.T) {
+	ctx := newTableTestContext(t, 3, 2,
+		mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, []string{"c11", "c12", "c13", "c21", "c22", "c23"}))
+
+	t.Run("to the right of the drop target", func(t *testing.T) {
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
+		require.NoError(t, err)
+
+		target := tb.columns.Model().ChildrenIds[2]
+		err = ctx.editor.ColumnMove(nil, pb.RpcBlockTableColumnMoveRequest{
+			TargetId:     target,
+			DropTargetId: tb.columns.Model().ChildrenIds[0],
+			Position:     model.Block_Right,
+		})
+
+		require.NoError(t, err)
+
+		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, []string{"c11", "c13", "c12", "c21", "c23", "c22"})
+
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+	})
+
+	t.Run("to the left of the drop target", func(t *testing.T) {
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
+		require.NoError(t, err)
+
+		err = ctx.editor.ColumnMove(nil, pb.RpcBlockTableColumnMoveRequest{
+			TargetId:     tb.columns.Model().ChildrenIds[2],
+			DropTargetId: tb.columns.Model().ChildrenIds[0],
+			Position:     model.Block_Left,
+		})
+
+		require.NoError(t, err)
+
+		want := mkTestTable([]string{"col2", "col1", "col3"}, []string{"row1", "row2"}, []string{"c12", "c11", "c13", "c22", "c21", "c23"})
+
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+	})
+}
+
+func TestTable_TableColumnDelete(t *testing.T) {
+	ctx := newTableTestContext(t, 3, 2,
+		mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, []string{"c11", "c12", "c13", "c21", "c22", "c23"}))
+
+	tb, err := newTableBlockFromState(ctx.s, ctx.id)
+	require.NoError(t, err)
+
+	err = ctx.editor.ColumnDelete(nil, pb.RpcBlockTableColumnDeleteRequest{
+		TargetId: tb.columns.Model().ChildrenIds[0],
+	})
+	require.NoError(t, err)
+
+	want := mkTestTable([]string{"col2", "col3"}, []string{"row1", "row2"}, []string{"c12", "c13", "c22", "c23"})
+
+	assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+}
+
+type tableTestContext struct {
+	id          string
+	editor      Table
+	s           *state.State
+	wantMapping map[string]string
+	gotMapping  map[string]string
+}
+
+func newTableTestContext(t *testing.T, columnsCount, rowsCount uint32, wantTable *state.State) tableTestContext {
+	sb := smarttest.New("root")
+	sb.AddBlock(simple.New(&model.Block{
+		Id: "root",
+	}))
+
+	ctx := tableTestContext{}
+
+	ctx.editor = New(sb)
+
+	id, err := ctx.editor.TableCreate(nil, pb.RpcBlockTableCreateRequest{
+		ContextId: "",
+		TargetId:  "root",
+		Position:  model.Block_Inner,
+		Columns:   columnsCount,
+		Rows:      rowsCount,
+	})
+	ctx.id = id
+	ctx.s = sb.NewState()
+
+	assert.NoError(t, err)
+	assert.True(t, ctx.s.Exists(id))
+
+	ctx.wantMapping = map[string]string{}
+	ctx.gotMapping = map[string]string{}
+	assertIsomorphic(t, wantTable, ctx.s, ctx.wantMapping, ctx.gotMapping)
+
+	return ctx
 }
 
 func idGenerator() func() string {
