@@ -888,6 +888,18 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 	var details *types.Struct
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
+
+		s := b.NewState()
+		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] =  pbtypes.String(textBlock.Text.Text)
+			}
+		}
+
 		return nil
 	}); err != nil {
 		return

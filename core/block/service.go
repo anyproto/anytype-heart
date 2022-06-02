@@ -1395,6 +1395,17 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		}
 		ts.SetRootId(contextId)
 		ts.SetParent(orig)
+
+		if layout, ok := orig.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := orig.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				orig.SetDetail(bundle.RelationKeyName.String(), pbtypes.String(textBlock.Text.Text))
+			}
+		}
+
 		ts.BlocksInit(orig)
 		objType := ts.ObjectType()
 		// stateFromTemplate returns state without the localdetails, so they will be taken from the orig state
