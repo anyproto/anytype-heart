@@ -35,11 +35,12 @@ type Gateway interface {
 }
 
 type gateway struct {
-	Node    core.Service
-	server  *http.Server
-	handler *http.ServeMux
-	addr    string
-	mu      sync.Mutex
+	Node         core.Service
+	server       *http.Server
+	handler      *http.ServeMux
+	addr         string
+	mu           sync.Mutex
+	serverDownCh chan struct{}
 }
 
 func getRandomPort() (int, error) {
@@ -74,6 +75,7 @@ func GatewayAddr() string {
 func (g *gateway) Init(a *app.App) (err error) {
 	g.Node = a.MustComponent(core.CName).(core.Service)
 	g.addr = GatewayAddr()
+	g.serverDownCh = make(chan struct{})
 	log.Debugf("gateway.Init: %s", g.addr)
 	return nil
 }
@@ -148,6 +150,7 @@ func (g *gateway) startServer() {
 	go func() {
 		err := g.server.ListenAndServe()
 		g.server = nil
+		g.serverDownCh <- struct{}{}
 		if err != nil && err != http.ErrServerClosed {
 			log.Errorf("gateway error: %s", err)
 			return
@@ -169,7 +172,7 @@ func (g *gateway) stopServer() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	err := g.server.Shutdown(ctx)
-	g.server = nil
+	<-g.serverDownCh
 	return err
 }
 
