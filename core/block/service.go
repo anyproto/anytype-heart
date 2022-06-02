@@ -197,7 +197,8 @@ type Service interface {
 	BookmarkFetchSync(ctx *state.Context, req pb.RpcBlockBookmarkFetchRequest) (err error)
 	BookmarkCreateAndFetch(ctx *state.Context, req pb.RpcBlockBookmarkCreateAndFetchRequest) (id string, err error)
 
-	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (string, error)
+	CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error)
+	TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error)
 	TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error)
 	TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error)
 	TableRowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error)

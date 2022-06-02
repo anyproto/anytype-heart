@@ -310,6 +310,10 @@
     - [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request)
     - [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response)
     - [Rpc.BlockTable.Create.Response.Error](#anytype-Rpc-BlockTable-Create-Response-Error)
+    - [Rpc.BlockTable.Expand](#anytype-Rpc-BlockTable-Expand)
+    - [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request)
+    - [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response)
+    - [Rpc.BlockTable.Expand.Response.Error](#anytype-Rpc-BlockTable-Expand-Response-Error)
     - [Rpc.BlockTable.RowCreate](#anytype-Rpc-BlockTable-RowCreate)
     - [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request)
     - [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response)
@@ -780,6 +784,7 @@
     - [Rpc.BlockTable.ColumnDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnDuplicate-Response-Error-Code)
     - [Rpc.BlockTable.ColumnMove.Response.Error.Code](#anytype-Rpc-BlockTable-ColumnMove-Response-Error-Code)
     - [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code)
+    - [Rpc.BlockTable.Expand.Response.Error.Code](#anytype-Rpc-BlockTable-Expand-Response-Error-Code)
     - [Rpc.BlockTable.RowCreate.Response.Error.Code](#anytype-Rpc-BlockTable-RowCreate-Response-Error-Code)
     - [Rpc.BlockTable.RowDelete.Response.Error.Code](#anytype-Rpc-BlockTable-RowDelete-Response-Error-Code)
     - [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code)
@@ -1276,6 +1281,7 @@
 | BlockDataviewRecordRelationOptionUpdate | [Rpc.BlockDataviewRecord.RelationOption.Update.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Request) | [Rpc.BlockDataviewRecord.RelationOption.Update.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Update-Response) |  |
 | BlockDataviewRecordRelationOptionDelete | [Rpc.BlockDataviewRecord.RelationOption.Delete.Request](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Request) | [Rpc.BlockDataviewRecord.RelationOption.Delete.Response](#anytype-Rpc-BlockDataviewRecord-RelationOption-Delete-Response) |  |
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
+| BlockTableExpand | [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request) | [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response) |  |
 | BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
 | BlockTableRowMove | [Rpc.BlockTable.RowMove.Request](#anytype-Rpc-BlockTable-RowMove-Request) | [Rpc.BlockTable.RowMove.Response](#anytype-Rpc-BlockTable-RowMove-Response) |  |
 | BlockTableRowDelete | [Rpc.BlockTable.RowDelete.Request](#anytype-Rpc-BlockTable-RowDelete-Request) | [Rpc.BlockTable.RowDelete.Response](#anytype-Rpc-BlockTable-RowDelete-Response) |  |
@@ -5766,6 +5772,66 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockTable.Create.Response.Error.Code](#anytype-Rpc-BlockTable-Create-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand"></a>
+
+### Rpc.BlockTable.Expand
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Request"></a>
+
+### Rpc.BlockTable.Expand.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  |  |
+| columns | [uint32](#uint32) |  | number of columns to append |
+| rows | [uint32](#uint32) |  | number of rows to append |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Response"></a>
+
+### Rpc.BlockTable.Expand.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.Expand.Response.Error](#anytype-Rpc-BlockTable-Expand-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Response-Error"></a>
+
+### Rpc.BlockTable.Expand.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.Expand.Response.Error.Code](#anytype-Rpc-BlockTable-Expand-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12500,6 +12566,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockTable-Create-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.Create.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-Expand-Response-Error-Code"></a>
+
+### Rpc.BlockTable.Expand.Response.Error.Code
 
 
 | Name | Number | Description |

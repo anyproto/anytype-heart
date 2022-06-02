@@ -1083,3 +1083,10 @@ func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableC
 	})
 	return id, err
 }
+
+func (s *service) TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.Expand(ctx, req)
+	})
+	return err
+}

@@ -47,7 +47,7 @@ func TestTable_TableRowCreate(t *testing.T) {
 		require.NoError(t, err)
 
 		err = ctx.editor.RowCreate(nil, pb.RpcBlockTableRowCreateRequest{
-			TargetId: tb.rows.Model().ChildrenIds[0],
+			TargetId: tb.rows().ChildrenIds[0],
 			Position: model.Block_Top,
 		})
 
@@ -63,7 +63,7 @@ func TestTable_TableRowCreate(t *testing.T) {
 		require.NoError(t, err)
 
 		err = ctx.editor.RowCreate(nil, pb.RpcBlockTableRowCreateRequest{
-			TargetId: tb.rows.Model().ChildrenIds[0],
+			TargetId: tb.rows().ChildrenIds[0],
 			Position: model.Block_Bottom,
 		})
 
@@ -83,7 +83,7 @@ func TestTable_TableRowDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	err = ctx.editor.RowDelete(nil, pb.RpcBlockTableRowDeleteRequest{
-		TargetId: tb.rows.Model().ChildrenIds[1],
+		TargetId: tb.rows().ChildrenIds[1],
 	})
 
 	require.NoError(t, err)
@@ -102,8 +102,8 @@ func TestTable_TableRowMove(t *testing.T) {
 		require.NoError(t, err)
 
 		err = ctx.editor.RowMove(nil, pb.RpcBlockTableRowMoveRequest{
-			TargetId:     tb.rows.Model().ChildrenIds[0],
-			DropTargetId: tb.rows.Model().ChildrenIds[2],
+			TargetId:     tb.rows().ChildrenIds[0],
+			DropTargetId: tb.rows().ChildrenIds[2],
 			Position:     model.Block_Top,
 		})
 
@@ -122,8 +122,8 @@ func TestTable_TableRowMove(t *testing.T) {
 		require.NoError(t, err)
 
 		err = ctx.editor.RowMove(nil, pb.RpcBlockTableRowMoveRequest{
-			TargetId:     tb.rows.Model().ChildrenIds[2],
-			DropTargetId: tb.rows.Model().ChildrenIds[0],
+			TargetId:     tb.rows().ChildrenIds[2],
+			DropTargetId: tb.rows().ChildrenIds[0],
 			Position:     model.Block_Bottom,
 		})
 
@@ -143,7 +143,7 @@ func TestTable_TableColumnCreate(t *testing.T) {
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
 
-		target := tb.columns.Model().ChildrenIds[0]
+		target := tb.columns().ChildrenIds[0]
 		err = ctx.editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
 			TargetId: target,
 			Position: model.Block_Right,
@@ -160,7 +160,7 @@ func TestTable_TableColumnCreate(t *testing.T) {
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
 
-		target := tb.columns.Model().ChildrenIds[0]
+		target := tb.columns().ChildrenIds[0]
 		err = ctx.editor.ColumnCreate(nil, pb.RpcBlockTableColumnCreateRequest{
 			TargetId: target,
 			Position: model.Block_Left,
@@ -184,8 +184,8 @@ func TestTable_TableColumnDuplicate(t *testing.T) {
 		require.NoError(t, err)
 
 		id, err := ctx.editor.ColumnDuplicate(nil, pb.RpcBlockTableColumnDuplicateRequest{
-			BlockId:  tb.columns.Model().ChildrenIds[0],
-			TargetId: tb.columns.Model().ChildrenIds[0],
+			BlockId:  tb.columns().ChildrenIds[0],
+			TargetId: tb.columns().ChildrenIds[0],
 			Position: model.Block_Right,
 		})
 
@@ -205,8 +205,8 @@ func TestTable_TableColumnDuplicate(t *testing.T) {
 		require.NoError(t, err)
 
 		id, err := ctx.editor.ColumnDuplicate(nil, pb.RpcBlockTableColumnDuplicateRequest{
-			BlockId:  tb.columns.Model().ChildrenIds[1],
-			TargetId: tb.columns.Model().ChildrenIds[0],
+			BlockId:  tb.columns().ChildrenIds[1],
+			TargetId: tb.columns().ChildrenIds[0],
 			Position: model.Block_Left,
 		})
 
@@ -227,10 +227,10 @@ func TestTable_TableColumnMove(t *testing.T) {
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
 
-		target := tb.columns.Model().ChildrenIds[2]
+		target := tb.columns().ChildrenIds[2]
 		err = ctx.editor.ColumnMove(nil, pb.RpcBlockTableColumnMoveRequest{
 			TargetId:     target,
-			DropTargetId: tb.columns.Model().ChildrenIds[0],
+			DropTargetId: tb.columns().ChildrenIds[0],
 			Position:     model.Block_Right,
 		})
 
@@ -249,8 +249,8 @@ func TestTable_TableColumnMove(t *testing.T) {
 		require.NoError(t, err)
 
 		err = ctx.editor.ColumnMove(nil, pb.RpcBlockTableColumnMoveRequest{
-			TargetId:     tb.columns.Model().ChildrenIds[2],
-			DropTargetId: tb.columns.Model().ChildrenIds[0],
+			TargetId:     tb.columns().ChildrenIds[2],
+			DropTargetId: tb.columns().ChildrenIds[0],
 			Position:     model.Block_Left,
 		})
 
@@ -270,13 +270,66 @@ func TestTable_TableColumnDelete(t *testing.T) {
 	require.NoError(t, err)
 
 	err = ctx.editor.ColumnDelete(nil, pb.RpcBlockTableColumnDeleteRequest{
-		TargetId: tb.columns.Model().ChildrenIds[0],
+		TargetId: tb.columns().ChildrenIds[0],
 	})
 	require.NoError(t, err)
 
 	want := mkTestTable([]string{"col2", "col3"}, []string{"row1", "row2"}, []string{"c12", "c13", "c22", "c23"})
 
 	assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+}
+
+func TestTable_TableExpand(t *testing.T) {
+	t.Run("columns only", func(t *testing.T) {
+		ctx := newTableTestContext(t, 2, 2,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"}))
+
+		err := ctx.editor.Expand(nil, pb.RpcBlockTableExpandRequest{
+			TargetId: ctx.id,
+			Columns:  2,
+			Rows:     0,
+		})
+		require.NoError(t, err)
+
+		want := mkTestTable([]string{"col1", "col2", "col3", "col4"}, []string{"row1", "row2"},
+			[]string{"c11", "c12", "c13", "c14", "c21", "c22", "c23", "c24"})
+
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+	})
+
+	t.Run("rows only", func(t *testing.T) {
+		ctx := newTableTestContext(t, 2, 2,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"}))
+
+		err := ctx.editor.Expand(nil, pb.RpcBlockTableExpandRequest{
+			TargetId: ctx.id,
+			Columns:  0,
+			Rows:     2,
+		})
+		require.NoError(t, err)
+
+		want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4"},
+			[]string{"c11", "c12", "c21", "c22", "c31", "c32", "c41", "c42"})
+
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+	})
+
+	t.Run("cols and rows", func(t *testing.T) {
+		ctx := newTableTestContext(t, 2, 2,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, []string{"c11", "c12", "c21", "c22"}))
+
+		err := ctx.editor.Expand(nil, pb.RpcBlockTableExpandRequest{
+			TargetId: ctx.id,
+			Columns:  2,
+			Rows:     2,
+		})
+		require.NoError(t, err)
+
+		want := mkTestTable([]string{"col1", "col2", "col3", "col4"}, []string{"row1", "row2", "row3", "row4"},
+			[]string{"c11", "c12", "c13", "c14", "c21", "c22", "c23", "c24", "c31", "c32", "c33", "c34", "c41", "c42", "c43", "c44"})
+
+		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+	})
 }
 
 type tableTestContext struct {
@@ -317,60 +370,49 @@ func newTableTestContext(t *testing.T, columnsCount, rowsCount uint32, wantTable
 	return ctx
 }
 
-func idGenerator() func() string {
-	var id int
-
-	return func() string {
-		id++
-		return strconv.Itoa(id)
-	}
-}
-
-func reassignIds(s *state.State, mapping map[string]string) *state.State {
-	genId := idGenerator()
-
-	var iter func(b simple.Block)
-	iter = func(b simple.Block) {
-		if b == nil {
-			return
-		}
+func reassignIds(s *state.State, mapping map[string]string) (*state.State, error) {
+	err := s.Iterate(func(b simple.Block) bool {
 		if _, ok := mapping[b.Model().Id]; !ok {
-			id := genId()
+			id := strconv.Itoa(len(mapping) + 1)
 			mapping[b.Model().Id] = id
 		}
-
-		for _, id := range b.Model().ChildrenIds {
-			iter(s.Pick(id))
-		}
+		return true
+	})
+	if err != nil {
+		return nil, err
 	}
-	iter(s.Pick(s.RootId()))
 
-	res := state.NewDoc("", nil).NewState()
-	iter = func(b simple.Block) {
-		if b == nil {
-			return
-		}
+	res := state.NewDoc("root", nil).NewState()
+	err = s.Iterate(func(b simple.Block) bool {
 		b = b.Copy()
 
 		b.Model().Id = mapping[b.Model().Id]
 		// Don't care about restrictions here
 		b.Model().Restrictions = nil
 		for i, id := range b.Model().ChildrenIds {
-			iter(s.Pick(id))
 			b.Model().ChildrenIds[i] = mapping[id]
 		}
-		res.Add(b)
-	}
-	iter(s.Pick(s.RootId()))
 
-	return res
+		res.Add(b)
+		return true
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	res.SetRootId(mapping["root"])
+
+	return res, nil
 }
 
 // assertIsomorphic checks that two states have same structure
 // Preserves mappings for tracking structure changes
 func assertIsomorphic(t *testing.T, want, got *state.State, wantMapping, gotMapping map[string]string) {
-	want = reassignIds(want, wantMapping)
-	got = reassignIds(got, gotMapping)
+	var err error
+	want, err = reassignIds(want, wantMapping)
+	require.NoError(t, err)
+	got, err = reassignIds(got, gotMapping)
+	require.NoError(t, err)
 
 	var gotBlocks []simple.Block
 	got.Iterate(func(b simple.Block) bool {

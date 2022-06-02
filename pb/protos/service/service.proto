@@ -185,6 +185,7 @@ service ClientCommands {
     // Simple table block commands
     // ***
     rpc BlockTableCreate (anytype.Rpc.BlockTable.Create.Request) returns (anytype.Rpc.BlockTable.Create.Response);
+    rpc BlockTableExpand (anytype.Rpc.BlockTable.Expand.Request) returns (anytype.Rpc.BlockTable.Expand.Response);
     rpc BlockTableRowCreate (anytype.Rpc.BlockTable.RowCreate.Request) returns (anytype.Rpc.BlockTable.RowCreate.Response);
     rpc BlockTableRowMove (anytype.Rpc.BlockTable.RowMove.Request) returns (anytype.Rpc.BlockTable.RowMove.Response);
     rpc BlockTableRowDelete (anytype.Rpc.BlockTable.RowDelete.Request) returns (anytype.Rpc.BlockTable.RowDelete.Response);

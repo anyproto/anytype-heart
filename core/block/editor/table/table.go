@@ -21,13 +21,14 @@ func New(sb smartblock.SmartBlock) Table {
 
 type Table interface {
 	TableCreate(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error)
+	Expand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) error
 	RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error
-	ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error
 	RowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error
-	ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
 	RowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
-	ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
 	RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) error
+	ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error
+	ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
+	ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
 	ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
 }
 
@@ -111,13 +112,21 @@ func (t table) TableCreate(ctx *state.Context, req pb.RpcBlockTableCreateRequest
 }
 
 func (t table) RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) error {
+	s := t.NewStateCtx(ctx)
+
+	if err := rowCreate(s, req); err != nil {
+		return err
+	}
+
+	return t.Apply(s)
+}
+
+func rowCreate(s *state.State, req pb.RpcBlockTableRowCreateRequest) error {
 	switch req.Position {
 	case model.Block_Top, model.Block_Bottom:
 	default:
 		return fmt.Errorf("position is not supported")
 	}
-
-	s := t.NewStateCtx(ctx)
 
 	rowTarget, err := pickRow(s, req.TargetId)
 	if err != nil {
@@ -134,7 +143,7 @@ func (t table) RowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateReques
 		return fmt.Errorf("insert row: %w", err)
 	}
 
-	return t.Apply(s)
+	return nil
 }
 
 func (t table) RowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error {
@@ -194,6 +203,14 @@ func pickRow(s *state.State, id string) (simple.Block, error) {
 func (t table) ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error {
 	s := t.NewStateCtx(ctx)
 
+	if err := columnCreate(s, req); err != nil {
+		return err
+	}
+
+	return t.Apply(s)
+}
+
+func columnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) error {
 	_, err := pickColumn(s, req.TargetId)
 	if err != nil {
 		return fmt.Errorf("get column: %w", err)
@@ -213,12 +230,12 @@ func (t table) ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreate
 		return fmt.Errorf("initialize table state: %w", err)
 	}
 
-	colPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
+	colPos := slice.FindPos(tb.columns().ChildrenIds, req.TargetId)
 	if colPos < 0 {
 		return fmt.Errorf("can't find target column")
 	}
 
-	for _, rowId := range tb.rows.Model().ChildrenIds {
+	for _, rowId := range tb.rows().ChildrenIds {
 		cellId, err := addCell(s)
 		if err != nil {
 			return fmt.Errorf("add cell: %w", err)
@@ -246,7 +263,7 @@ func (t table) ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreate
 		return fmt.Errorf("insert column header: %w", err)
 	}
 
-	return t.Apply(s)
+	return nil
 }
 
 func (t table) ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error {
@@ -257,12 +274,12 @@ func (t table) ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDelete
 		return fmt.Errorf("initialize table state: %w", err)
 	}
 
-	colPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
+	colPos := slice.FindPos(tb.columns().ChildrenIds, req.TargetId)
 	if colPos < 0 {
 		return fmt.Errorf("can't find target column")
 	}
 
-	for _, rowId := range tb.rows.Model().ChildrenIds {
+	for _, rowId := range tb.rows().ChildrenIds {
 		row, err := pickRow(s, rowId)
 		if err != nil {
 			return fmt.Errorf("pick row %s: %w", rowId, err)
@@ -311,16 +328,16 @@ func (t table) ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequ
 		return fmt.Errorf("can't init table block: %w", err)
 	}
 
-	targetPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
+	targetPos := slice.FindPos(tb.columns().ChildrenIds, req.TargetId)
 	if targetPos < 0 {
 		return fmt.Errorf("can't find target column position")
 	}
-	dropPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.DropTargetId)
+	dropPos := slice.FindPos(tb.columns().ChildrenIds, req.DropTargetId)
 	if dropPos < 0 {
 		return fmt.Errorf("can't find target column position")
 	}
 
-	for _, id := range tb.rows.Model().ChildrenIds {
+	for _, id := range tb.rows().ChildrenIds {
 		row, err := pickRow(s, id)
 		if err != nil {
 			return fmt.Errorf("can't get row %s: %w", id, err)
@@ -384,16 +401,16 @@ func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDup
 		return "", fmt.Errorf("can't init table block: %w", err)
 	}
 
-	srcPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.BlockId)
+	srcPos := slice.FindPos(tb.columns().ChildrenIds, req.BlockId)
 	if srcPos < 0 {
 		return "", fmt.Errorf("can't find source column position")
 	}
-	targetPos := slice.FindPos(tb.columns.Model().ChildrenIds, req.TargetId)
+	targetPos := slice.FindPos(tb.columns().ChildrenIds, req.TargetId)
 	if targetPos < 0 {
 		return "", fmt.Errorf("can't find target column position")
 	}
 
-	for _, id := range tb.rows.Model().ChildrenIds {
+	for _, id := range tb.rows().ChildrenIds {
 		row, err := pickRow(s, id)
 		if err != nil {
 			return "", fmt.Errorf("can't get row %s: %w", id, err)
@@ -432,6 +449,37 @@ func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDup
 	}
 
 	return newCol.Model().Id, t.Apply(s)
+}
+
+func (t table) Expand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) error {
+	s := t.NewStateCtx(ctx)
+
+	tb, err := newTableBlockFromState(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("can't init table block: %w", err)
+	}
+
+	for i := uint32(0); i < req.Columns; i++ {
+		err := columnCreate(s, pb.RpcBlockTableColumnCreateRequest{
+			TargetId: tb.columns().ChildrenIds[tb.columnsCount()-1],
+			Position: model.Block_Right,
+		})
+		if err != nil {
+			return fmt.Errorf("create column: %w", err)
+		}
+	}
+
+	for i := uint32(0); i < req.Rows; i++ {
+		err := rowCreate(s, pb.RpcBlockTableRowCreateRequest{
+			TargetId: tb.rows().ChildrenIds[tb.rowsCount()-1],
+			Position: model.Block_Bottom,
+		})
+		if err != nil {
+			return fmt.Errorf("create row: %w", err)
+		}
+	}
+
+	return t.Apply(s)
 }
 
 func pickColumn(s *state.State, id string) (simple.Block, error) {
@@ -486,7 +534,6 @@ func addRow(s *state.State, columns uint32) (string, error) {
 			TableRow: &model.BlockContentTableRow{},
 		},
 	})
-
 	if !s.Add(row) {
 		return "", fmt.Errorf("can't add row block")
 	}
@@ -494,23 +541,44 @@ func addRow(s *state.State, columns uint32) (string, error) {
 }
 
 type tableBlock struct {
-	block   simple.Block
-	columns simple.Block
-	rows    simple.Block
+	s     *state.State
+	block simple.Block
 }
 
-func (b tableBlock) columnsCount() int {
-	return len(b.columns.Model().ChildrenIds)
+func (tb tableBlock) columns() *model.Block {
+	b := tb.s.Pick(tb.block.Model().ChildrenIds[0])
+	if b == nil ||
+		b.Model().GetLayout() == nil ||
+		b.Model().GetLayout().GetStyle() != model.BlockContentLayout_TableColumns {
+		return nil
+	}
+	return b.Model()
 }
 
-func (b tableBlock) rowsCount() int {
-	return len(b.rows.Model().ChildrenIds)
+func (tb tableBlock) columnsCount() int {
+	return len(tb.columns().ChildrenIds)
+}
+
+func (tb tableBlock) rows() *model.Block {
+	b := tb.s.Pick(tb.block.Model().ChildrenIds[1])
+	if b == nil ||
+		b.Model().GetLayout() == nil ||
+		b.Model().GetLayout().GetStyle() != model.BlockContentLayout_TableRows {
+		return nil
+	}
+	return b.Model()
+}
+
+func (tb tableBlock) rowsCount() int {
+	return len(tb.rows().ChildrenIds)
 }
 
 // newTableBlockFromState creates helper for easy access to various parts of the table.
 // It receives any id that belongs to table structure and search for the root table block
 func newTableBlockFromState(s *state.State, id string) (*tableBlock, error) {
-	tb := tableBlock{}
+	tb := tableBlock{
+		s: s,
+	}
 
 	next := s.Pick(id)
 	for next != nil {
@@ -518,7 +586,7 @@ func newTableBlockFromState(s *state.State, id string) (*tableBlock, error) {
 			tb.block = next
 			break
 		}
-		next = s.GetParentOf(next.Model().Id)
+		next = s.PickParentOf(next.Model().Id)
 	}
 	if tb.block == nil {
 		return nil, fmt.Errorf("root table block is not found")
@@ -528,24 +596,11 @@ func newTableBlockFromState(s *state.State, id string) (*tableBlock, error) {
 		return nil, fmt.Errorf("inconsistent state: table block")
 	}
 
-	{
-		b := s.Pick(tb.block.Model().ChildrenIds[0])
-		if b == nil ||
-			b.Model().GetLayout() == nil ||
-			b.Model().GetLayout().GetStyle() != model.BlockContentLayout_TableColumns {
-			return nil, fmt.Errorf("inconsistent state: columns block")
-		}
-		tb.columns = b
+	if tb.columns() == nil {
+		return nil, fmt.Errorf("columns block is not found")
 	}
-
-	{
-		b := s.Pick(tb.block.Model().ChildrenIds[1])
-		if b == nil ||
-			b.Model().GetLayout() == nil ||
-			b.Model().GetLayout().GetStyle() != model.BlockContentLayout_TableRows {
-			return nil, fmt.Errorf("inconsistent state: rows block")
-		}
-		tb.rows = b
+	if tb.rows() == nil {
+		return nil, fmt.Errorf("rows block is not found")
 	}
 
 	return &tb, nil

@@ -203,3 +203,25 @@ func (mw *Middleware) BlockTableColumnDuplicate(req *pb.RpcBlockTableColumnDupli
 	}
 	return response(pb.RpcBlockTableColumnDuplicateResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableExpand(req *pb.RpcBlockTableExpandRequest) *pb.RpcBlockTableExpandResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableExpandResponseErrorCode, id string, err error) *pb.RpcBlockTableExpandResponse {
+		m := &pb.RpcBlockTableExpandResponse{Error: &pb.RpcBlockTableExpandResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableExpand(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableExpandResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableExpandResponseError_NULL, id, nil)
+}
