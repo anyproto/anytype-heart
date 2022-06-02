@@ -147,10 +147,12 @@ func (g *gateway) startServer() {
 		Handler: g.handler,
 	}
 
+	g.serverDownCh = make(chan struct{})
+
 	go func() {
 		err := g.server.ListenAndServe()
 		g.server = nil
-		g.serverDownCh <- struct{}{}
+		close(g.serverDownCh)
 		if err != nil && err != http.ErrServerClosed {
 			log.Errorf("gateway error: %s", err)
 			return
@@ -172,7 +174,14 @@ func (g *gateway) stopServer() error {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 	err := g.server.Shutdown(ctx)
-	<-g.serverDownCh
+
+	select {
+	case <-g.serverDownCh:
+	case <-ctx.Done():
+	}
+
+	g.server = nil
+
 	return err
 }
 
