@@ -130,8 +130,9 @@ message Block {
             repeated string relations = 7;
 
             enum IconSize {
-                Small = 0;
-                Medium = 1;
+                SizeNone = 0;
+                SizeSmall = 1;
+                SizeMedium = 2;
             }
 
             enum Style {

@@ -16613,8 +16613,9 @@ scope from which this relation have been aggregated |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Small | 0 |  |
-| Medium | 1 |  |
+| SizeNone | 0 |  |
+| SizeSmall | 1 |  |
+| SizeMedium | 2 |  |
 
 
 
