@@ -157,6 +157,7 @@ func (g *gateway) startServer() {
 	}
 
 	go func(srv *http.Server, l net.Listener) {
+		err := srv.Serve(l)
 		if err != nil && err != http.ErrServerClosed {
 			log.Errorf("gateway error: %s", err)
 			return
