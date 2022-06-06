@@ -91,18 +91,33 @@ func TestBasic_Duplicate(t *testing.T) {
 }
 
 func TestBasic_Unlink(t *testing.T) {
-	sb := smarttest.New("test")
-	sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
-		AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
-		AddBlock(simple.New(&model.Block{Id: "3"}))
+	t.Run("base case", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
+			AddBlock(simple.New(&model.Block{Id: "3"}))
 
-	b := NewBasic(sb)
+		b := NewBasic(sb)
 
-	err := b.Unlink(nil, "2")
-	require.NoError(t, err)
-	assert.Nil(t, sb.NewState().Pick("2"))
+		err := b.Unlink(nil, "2")
+		require.NoError(t, err)
+		assert.Nil(t, sb.NewState().Pick("2"))
 
-	assert.Equal(t, smartblock.ErrSimpleBlockNotFound, b.Unlink(nil, "2"))
+		assert.Error(t, b.Unlink(nil, "2"))
+	})
+	t.Run("unlink parent and its child", func(t *testing.T) {
+		sb := smarttest.New("test")
+		sb.AddBlock(simple.New(&model.Block{Id: "test", ChildrenIds: []string{"2"}})).
+			AddBlock(simple.New(&model.Block{Id: "2", ChildrenIds: []string{"3"}})).
+			AddBlock(simple.New(&model.Block{Id: "3"}))
+
+		b := NewBasic(sb)
+
+		err := b.Unlink(nil, "2", "3")
+		require.NoError(t, err)
+		assert.False(t, sb.NewState().Exists("2"))
+		assert.False(t, sb.NewState().Exists("3"))
+	})
 }
 
 func TestBasic_Move(t *testing.T) {

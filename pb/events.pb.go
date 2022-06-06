@@ -4345,7 +4345,7 @@ func (m *EventBlockSetLinkIconSize) GetValue() model.BlockContentLinkIconSize {
 	if m != nil {
 		return m.Value
 	}
-	return model.BlockContentLink_Small
+	return model.BlockContentLink_SizeNone
 }
 
 type EventBlockSetLinkCardStyle struct {

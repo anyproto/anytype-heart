@@ -1,6 +1,7 @@
 package state
 
 import (
+	"math/rand"
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -405,5 +406,74 @@ func TestState_Descendants(t *testing.T) {
 
 			assert.ElementsMatch(t, tc.want, gotIds)
 		})
+	}
+}
+
+func TestState_SelectRoots(t *testing.T) {
+	t.Run("simple state", func(t *testing.T) {
+		s := NewDoc("root", nil).NewState()
+		s.Add(mkBlock("root", "1", "2", "3"))
+		s.Add(mkBlock("1"))
+		s.Add(mkBlock("2", "2.1"))
+		s.Add(mkBlock("3"))
+
+		assert.Equal(t, []string{"root"}, s.SelectRoots([]string{"root", "2", "3"}))
+		assert.Equal(t, []string{"root"}, s.SelectRoots([]string{"3", "root", "2"}))
+		assert.Equal(t, []string{"1", "2"}, s.SelectRoots([]string{"1", "2", "2.1"}))
+		assert.Equal(t, []string{}, s.SelectRoots([]string{"4"}))
+	})
+
+	t.Run("with complex state", func(t *testing.T) {
+		s := mkComplexState()
+
+		assert.Equal(t, []string{"root"}, s.SelectRoots([]string{"root", "1.3.4"}))
+		assert.Equal(t, []string{"1.3.4"}, s.SelectRoots([]string{"1.3.4"}))
+		assert.Equal(t, []string{"1.1", "1.2", "1.3"}, s.SelectRoots([]string{"1.1", "1.2", "1.3"}))
+		assert.Equal(t, []string{"1.1", "1.2", "1.3"}, s.SelectRoots([]string{"1.1", "1.2", "1.3"}))
+
+		t.Run("chaotic args", func(t *testing.T) {
+			var allIds []string
+			for _, b := range s.Blocks() {
+				allIds = append(allIds, b.Id)
+			}
+			for i := 0; i < len(allIds); i++ {
+				rand.Shuffle(len(allIds), func(i, j int) { allIds[i], allIds[j] = allIds[j], allIds[i] })
+				assert.Equal(t, []string{"root"}, s.SelectRoots(allIds))
+			}
+		})
+	})
+}
+
+func mkBlock(id string, children ...string) simple.Block {
+	return simple.New(&model.Block{Id: id, ChildrenIds: children})
+}
+
+func mkComplexState() *State {
+	s := NewDoc("root", nil).NewState()
+	for _, b := range []simple.Block{
+		mkBlock("root", "1", "2", "3"),
+		mkBlock("1", "1.1", "1.2", "1.3"),
+		mkBlock("1.1"),
+		mkBlock("1.2"),
+		mkBlock("1.3", "1.3.1", "1.3.2", "1.3.3", "1.3.4"),
+		mkBlock("1.3.1"),
+		mkBlock("1.3.2"),
+		mkBlock("1.3.3"),
+		mkBlock("1.3.4"),
+		mkBlock("2"),
+		mkBlock("3"),
+	} {
+		s.Add(b)
+	}
+	return s
+}
+
+func BenchmarkState_SelectRoots(b *testing.B) {
+	s := mkComplexState()
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = s.SelectRoots([]string{"3", "root", "2", "1.3.1", "1.2", "1.3", "1.1"})
 	}
 }

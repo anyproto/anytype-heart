@@ -1105,6 +1105,7 @@
     - [Block.Align](#anytype-model-Block-Align)
     - [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
+    - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
     - [Block.Content.Dataview.Relation.DateFormat](#anytype-model-Block-Content-Dataview-Relation-DateFormat)
     - [Block.Content.Dataview.Relation.TimeFormat](#anytype-model-Block-Content-Dataview-Relation-TimeFormat)
     - [Block.Content.Dataview.Sort.Type](#anytype-model-Block-Content-Dataview-Sort-Type)
@@ -16773,6 +16774,7 @@ Bookmark is to keep a web-link and to preview a content.
 | relationProperty | [string](#string) |  |  |
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
+| quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
 
 
 
@@ -17430,6 +17432,28 @@ scope from which this relation have been aggregated |
 
 
 
+<a name="anytype-model-Block-Content-Dataview-Filter-QuickOption"></a>
+
+### Block.Content.Dataview.Filter.QuickOption
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| ExactDate | 0 |  |
+| Yesterday | 1 |  |
+| Today | 2 |  |
+| Tomorrow | 3 |  |
+| LastWeek | 4 |  |
+| CurrentWeek | 5 |  |
+| NextWeek | 6 |  |
+| LastMonth | 7 |  |
+| CurrentMonth | 8 |  |
+| NextMonth | 9 |  |
+| NumberOfDaysAgo | 10 |  |
+| NumberOfDaysNow | 11 |  |
+
+
+
 <a name="anytype-model-Block-Content-Dataview-Relation-DateFormat"></a>
 
 ### Block.Content.Dataview.Relation.DateFormat
@@ -17600,8 +17624,9 @@ scope from which this relation have been aggregated |
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| Small | 0 |  |
-| Medium | 1 |  |
+| SizeNone | 0 |  |
+| SizeSmall | 1 |  |
+| SizeMedium | 2 |  |
 
 
 

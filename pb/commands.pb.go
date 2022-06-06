@@ -32625,7 +32625,7 @@ func (m *RpcBlockLinkListSetAppearanceRequest) GetIconSize() model.BlockContentL
 	if m != nil {
 		return m.IconSize
 	}
-	return model.BlockContentLink_Small
+	return model.BlockContentLink_SizeNone
 }
 
 func (m *RpcBlockLinkListSetAppearanceRequest) GetCardStyle() model.BlockContentLinkCardStyle {

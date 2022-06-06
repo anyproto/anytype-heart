@@ -170,7 +170,13 @@ func (t *textImpl) Merge(ctx *state.Context, firstId, secondId string) (err erro
 	if err != nil {
 		return
 	}
-	if err = first.Merge(second); err != nil {
+
+	var mergeOpts []text.MergeOption
+	// Don't set style for target block placed inside header block
+	if s.IsParentOf(template.HeaderLayoutId, firstId) {
+		mergeOpts = append(mergeOpts, text.DontSetStyle())
+	}
+	if err = first.Merge(second, mergeOpts...); err != nil {
 		return
 	}
 	s.Unlink(second.Model().Id)

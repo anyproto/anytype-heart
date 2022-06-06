@@ -57,6 +57,10 @@ func (st *SmartTest) IsDeleted() bool {
 	return st.isDeleted
 }
 
+func (st *SmartTest) GetFirstTextBlock() (*model.BlockContentOfText, error) {
+	return nil, nil
+}
+
 func (st *SmartTest) SetAlign(ctx *state.Context, align model.BlockAlign, ids ...string) error {
 	return nil
 }

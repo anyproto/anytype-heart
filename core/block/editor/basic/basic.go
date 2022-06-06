@@ -129,10 +129,15 @@ func (bs *basic) Unlink(ctx *state.Context, ids ...string) (err error) {
 	}
 
 	s := bs.NewStateCtx(ctx)
+
+	var someUnlinked bool
 	for _, id := range ids {
-		if !s.Unlink(id) {
-			return smartblock.ErrSimpleBlockNotFound
+		if s.Unlink(id) {
+			someUnlinked = true
 		}
+	}
+	if !someUnlinked {
+		return smartblock.ErrSimpleBlockNotFound
 	}
 	return bs.Apply(s)
 }
