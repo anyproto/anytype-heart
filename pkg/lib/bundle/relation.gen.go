@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "c50645f3985a96c8680e89ba6930431951e6bbe9cfb96418063b320378c5fe1b"
+const RelationChecksum = "fb2b9fc8db542608eac404e15a7c5886679c7b5192f9d90b0109d08f93ee4103"
 
 type RelationKey string
 
@@ -26,9 +26,11 @@ const (
 	RelationKeyRelationFormatObjectTypes RelationKey = "relationFormatObjectTypes"
 	RelationKeyInstructions              RelationKey = "instructions"
 	RelationKeyDone                      RelationKey = "done"
+	RelationKeyMediaArtistURL            RelationKey = "mediaArtistURL"
 	RelationKeyTemplateIsBundled         RelationKey = "templateIsBundled"
 	RelationKeyShipTo                    RelationKey = "shipTo"
 	RelationKeyDateOfBirth               RelationKey = "dateOfBirth"
+	RelationKeyRestrictions              RelationKey = "restrictions"
 	RelationKeyIsHighlighted             RelationKey = "isHighlighted"
 	RelationKeyThumbnailImage            RelationKey = "thumbnailImage"
 	RelationKeyAttachments               RelationKey = "attachments"
@@ -73,6 +75,7 @@ const (
 	RelationKeySubsidiaries              RelationKey = "subsidiaries"
 	RelationKeyAdditional                RelationKey = "additional"
 	RelationKeyBudget                    RelationKey = "budget"
+	RelationKeyMediaArtistName           RelationKey = "mediaArtistName"
 	RelationKeyRating                    RelationKey = "rating"
 	RelationKeyEmail                     RelationKey = "email"
 	RelationKeyCompany                   RelationKey = "company"
@@ -108,10 +111,10 @@ const (
 	RelationKeyAssignee                  RelationKey = "assignee"
 	RelationKeyExposure                  RelationKey = "exposure"
 	RelationKeyTargetObjectType          RelationKey = "targetObjectType"
-	RelationKeyRestrictions              RelationKey = "restrictions"
 	RelationKeyMaterials                 RelationKey = "materials"
 	RelationKeyIsFavorite                RelationKey = "isFavorite"
 	RelationKeyStars                     RelationKey = "stars"
+	RelationKeyQuote                     RelationKey = "quote"
 	RelationKeyWorkspaceId               RelationKey = "workspaceId"
 	RelationKeyJournaling                RelationKey = "journaling"
 	RelationKeyBillTo                    RelationKey = "billTo"
@@ -137,6 +140,7 @@ const (
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
 	RelationKeyPlaceOfBirth              RelationKey = "placeOfBirth"
 	RelationKeyComposer                  RelationKey = "composer"
+	RelationKeyInternalFlags             RelationKey = "internalFlags"
 	RelationKeySocialProfile             RelationKey = "socialProfile"
 	RelationKeyOccupation                RelationKey = "occupation"
 	RelationKey7hourssleep               RelationKey = "7hourssleep"
@@ -144,14 +148,15 @@ const (
 	RelationKeyDescription               RelationKey = "description"
 	RelationKeyFacebook                  RelationKey = "facebook"
 	RelationKeyAddress                   RelationKey = "address"
+	RelationKeyPicture                   RelationKey = "picture"
 	RelationKeyId                        RelationKey = "id"
 	RelationKeyStockprice                RelationKey = "stockprice"
+	RelationKeyUrl                       RelationKey = "url"
 	RelationKeyObjectives                RelationKey = "objectives"
-	RelationKeyMediaArtistName           RelationKey = "mediaArtistName"
-	RelationKeyMediaArtistURL            RelationKey = "mediaArtistURL"
 	RelationKeyCameraIso                 RelationKey = "cameraIso"
 	RelationKeyHealthyEating             RelationKey = "healthyEating"
 	RelationKeyIsDeleted                 RelationKey = "isDeleted"
+	RelationKeyLinks                     RelationKey = "links"
 	RelationKeyServings                  RelationKey = "servings"
 	RelationKeyCategory                  RelationKey = "category"
 	RelationKeyShipToAddress             RelationKey = "shipToAddress"
@@ -175,7 +180,6 @@ const (
 	RelationKeyFeaturedRelations         RelationKey = "featuredRelations"
 	RelationKeyPhone                     RelationKey = "phone"
 	RelationKeyImdbRating                RelationKey = "imdbRating"
-	RelationKeyLinks                     RelationKey = "links"
 )
 
 var (
@@ -1022,6 +1026,18 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyInternalFlags: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Set of internal flags",
+			Format:           model.RelationFormat_tag,
+			Hidden:           true,
+			Key:              "internalFlags",
+			Name:             "Internal flags",
+			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyIsArchived: {
 
 			DataSource:       model.Relation_account,
@@ -1226,7 +1242,7 @@ var (
 		RelationKeyLinks: {
 
 			DataSource:       model.Relation_derived,
-			Description:      "",
+			Description:      "Outgoing links",
 			Format:           model.RelationFormat_object,
 			Hidden:           true,
 			Key:              "links",
@@ -1286,12 +1302,12 @@ var (
 		RelationKeyMediaArtistName: {
 
 			DataSource:       model.Relation_details,
-			Description:      "",
+			Description:      "Artist name",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Key:              "mediaArtistName",
 			MaxCount:         1,
-			Name:             "Artist name",
+			Name:             "Media Artist Name",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1299,12 +1315,12 @@ var (
 		RelationKeyMediaArtistURL: {
 
 			DataSource:       model.Relation_details,
-			Description:      "",
+			Description:      "Artist URL",
 			Format:           model.RelationFormat_url,
 			Hidden:           true,
 			Key:              "mediaArtistURL",
 			MaxCount:         1,
-			Name:             "Artist URL",
+			Name:             "Media Artist URL",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1452,6 +1468,19 @@ var (
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},
+		RelationKeyPicture: {
+
+			DataSource:       model.Relation_details,
+			Description:      "An image is an artifact that depicts visual perception, such as a photograph or other two-dimensional picture",
+			Format:           model.RelationFormat_file,
+			Key:              "picture",
+			MaxCount:         1,
+			Name:             "Picture",
+			ObjectTypes:      []string{TypePrefix + "image"},
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
 		RelationKeyPlaceOfBirth: {
 
 			DataSource:       model.Relation_details,
@@ -1508,6 +1537,18 @@ var (
 			Key:              "questions",
 			MaxCount:         1,
 			Name:             "Questions",
+			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyQuote: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Repeat words that someone else has said or written",
+			Format:           model.RelationFormat_longtext,
+			Key:              "quote",
+			MaxCount:         1,
+			Name:             "Quote",
 			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -1793,12 +1834,12 @@ var (
 		RelationKeySnippet: {
 
 			DataSource:       model.Relation_derived,
-			Description:      "",
+			Description:      "Plaintext extracted from the object's blocks ",
 			Format:           model.RelationFormat_longtext,
 			Hidden:           true,
 			Key:              "snippet",
 			MaxCount:         1,
-			Name:             "",
+			Name:             "Snippet",
 			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
@@ -2066,6 +2107,18 @@ var (
 			Name:             "Object type",
 			ObjectTypes:      []string{TypePrefix + "objectType"},
 			ReadOnly:         true,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyUrl: {
+
+			DataSource:       model.Relation_details,
+			Description:      "Web address, a reference to a web resource that specifies its location on a computer network and a mechanism for retrieving it",
+			Format:           model.RelationFormat_url,
+			Key:              "url",
+			MaxCount:         1,
+			Name:             "URL",
+			ReadOnly:         false,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

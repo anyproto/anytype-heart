@@ -16727,6 +16727,7 @@ scope from which this relation have been aggregated |
 | image | 8 |  |
 | note | 9 |  |
 | space | 10 |  |
+| bookmark | 11 |  |
 | database | 20 | to be released later |
 
 
