@@ -779,7 +779,7 @@ func (mw *Middleware) BlockTextListClearStyle(req *pb.RpcBlockTextListClearStyle
 		return m
 	}
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		return bs.ClearStyle(ctx, req.ContextId, req.BlockIds...)
+		return bs.ClearTextStyle(ctx, req.ContextId, req.BlockIds...)
 	})
 	if err != nil {
 		return response(pb.RpcBlockTextListClearStyleResponseError_UNKNOWN_ERROR, err)

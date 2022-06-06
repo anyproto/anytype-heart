@@ -437,7 +437,7 @@ func (s *service) SetTextColor(ctx *state.Context, contextId string, color strin
 	})
 }
 
-func (s *service) ClearStyle(ctx *state.Context, contextId string, blockIds ...string) error {
+func (s *service) ClearTextStyle(ctx *state.Context, contextId string, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
 			t.Model().BackgroundColor = ""

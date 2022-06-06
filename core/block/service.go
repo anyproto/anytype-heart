@@ -145,7 +145,7 @@ type Service interface {
 	SetTextColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetTextMark(ctx *state.Context, id string, mark *model.BlockContentTextMark, ids ...string) error
 	SetTextIcon(ctx *state.Context, contextId, image, emoji string, blockIds ...string) error
-	ClearStyle(ctx *state.Context, contextId string, blockIds ...string) error
+	ClearTextStyle(ctx *state.Context, contextId string, blockIds ...string) error
 	SetBackgroundColor(ctx *state.Context, contextId string, color string, blockIds ...string) error
 	SetAlign(ctx *state.Context, contextId string, align model.BlockAlign, blockIds ...string) (err error)
 	SetVerticalAlign(ctx *state.Context, contextId string, align model.BlockVerticalAlign, blockIds ...string) (err error)
