@@ -153,6 +153,7 @@ service ClientCommands {
     rpc BlockTextListSetColor (anytype.Rpc.BlockText.ListSetColor.Request) returns (anytype.Rpc.BlockText.ListSetColor.Response);
     rpc BlockTextListSetMark (anytype.Rpc.BlockText.ListSetMark.Request) returns (anytype.Rpc.BlockText.ListSetMark.Response);
     rpc BlockTextListSetStyle (anytype.Rpc.BlockText.ListSetStyle.Request) returns (anytype.Rpc.BlockText.ListSetStyle.Response);
+    rpc BlockTextListClearStyle (anytype.Rpc.BlockText.ListClearStyle.Request) returns (anytype.Rpc.BlockText.ListClearStyle.Response);
 
     // File block commands
     // ***

@@ -767,6 +767,26 @@ func (mw *Middleware) BlockTextListSetMark(req *pb.RpcBlockTextListSetMarkReques
 	return response(pb.RpcBlockTextListSetMarkResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockTextListClearStyle(req *pb.RpcBlockTextListClearStyleRequest) *pb.RpcBlockTextListClearStyleResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTextListClearStyleResponseErrorCode, err error) *pb.RpcBlockTextListClearStyleResponse {
+		m := &pb.RpcBlockTextListClearStyleResponse{Error: &pb.RpcBlockTextListClearStyleResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.ClearStyle(ctx, req.ContextId, req.BlockIds...)
+	})
+	if err != nil {
+		return response(pb.RpcBlockTextListClearStyleResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockTextListClearStyleResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockTextSetText(req *pb.RpcBlockTextSetTextRequest) *pb.RpcBlockTextSetTextResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockTextSetTextResponseErrorCode, err error) *pb.RpcBlockTextSetTextResponse {

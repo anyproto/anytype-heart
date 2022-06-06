@@ -437,6 +437,19 @@ func (s *service) SetTextColor(ctx *state.Context, contextId string, color strin
 	})
 }
 
+func (s *service) ClearStyle(ctx *state.Context, contextId string, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
+			t.Model().BackgroundColor = ""
+			t.Model().Align = model.Block_AlignLeft
+			t.Model().VerticalAlign = model.Block_VerticalAlignTop
+			t.SetTextColor("")
+			t.SetStyle(model.BlockContentText_Paragraph)
+			return nil
+		})
+	})
+}
+
 func (s *service) SetTextMark(ctx *state.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.SetMark(ctx, mark, blockIds...)
