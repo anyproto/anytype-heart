@@ -7,7 +7,7 @@ require (
 	github.com/JohannesKaufmann/html-to-markdown v0.0.0-00010101000000-000000000000
 	github.com/PuerkitoBio/goquery v1.7.1
 	github.com/anytypeio/go-ds-badger3 v0.2.8-0.20220504140742-6dcb75660602
-	github.com/anytypeio/go-naturaldate/v2 v2.0.0
+	github.com/anytypeio/go-naturaldate/v2 v2.0.1
 	github.com/anytypeio/go-slip10 v0.0.0-20200330112030-a352ca8495e4
 	github.com/anytypeio/go-slip21 v0.0.0-20200218204727-e2e51e20ab51
 	github.com/araddon/dateparse v0.0.0-20210429162001-6b43995a97de

@@ -124,9 +124,12 @@ func (mw *Middleware) ObjectSearch(req *pb.RpcObjectSearchRequest) *pb.RpcObject
 		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
 	}
 
-	records, err = enrichWithDateSuggestion(records, req)
-	if err != nil {
-		return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
+	// Add dates only to the first page of search results
+	if req.Offset == 0 {
+		records, err = enrichWithDateSuggestion(records, req)
+		if err != nil {
+			return response(pb.RpcObjectSearchResponseError_UNKNOWN_ERROR, nil, err)
+		}
 	}
 
 	var records2 = make([]*types.Struct, 0, len(records))
@@ -178,6 +181,9 @@ func suggestDateForSearch(now time.Time, raw string) time.Time {
 			var exprType naturaldate.ExprType
 			t, exprType, err := naturaldate.Parse(raw, now)
 			if err != nil {
+				return time.Time{}
+			}
+			if exprType == naturaldate.ExprTypeInvalid {
 				return time.Time{}
 			}
 
