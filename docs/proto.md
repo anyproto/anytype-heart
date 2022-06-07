@@ -7446,6 +7446,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 
 
 
@@ -7506,6 +7507,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | if omitted the name of page will be the same with object type |
 | templateId | [string](#string) |  | optional template id for creating from template |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 
 
 
