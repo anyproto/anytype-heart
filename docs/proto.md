@@ -8259,6 +8259,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error) |  |  |
 | relationKey | [string](#string) |  |  |
+| relationFormat | [model.RelationFormat](#anytype-model-RelationFormat) |  |  |
 | groups | [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group) | repeated |  |
 
 

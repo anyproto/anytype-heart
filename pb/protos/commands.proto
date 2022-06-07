@@ -926,7 +926,9 @@ message Rpc {
 
                 string relationKey = 2;
 
-                repeated Group groups = 3;
+                anytype.model.RelationFormat relationFormat = 3;
+
+                repeated Group groups = 4;
 
                 message Group {
                     string name = 1;

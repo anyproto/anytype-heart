@@ -335,10 +335,10 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 	default:
 		return errResponse(errors.New("unsupported relation format"))
 	}
-	
+
 	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
 		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
-	}, RelationKey: req.RelationKey, Groups: groups}
+	}, RelationKey: req.RelationKey, RelationFormat: rel.Format, Groups: groups}
 }
 
 func (mw *Middleware) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
