@@ -657,3 +657,12 @@ message RelationOptions {
     repeated Relation.Option options = 1;
 }
 
+// TODO
+message InternalFlag {
+    Value value = 1;
+
+    enum Value {
+        editorAskTypeSelection = 0;
+        editorAskTemplateSelection = 1;
+    }
+}

@@ -1215,7 +1215,7 @@
   },
   {
     "description": "Set of internal flags",
-    "format": "tag",
+    "format": "number",
     "hidden": true,
     "key": "internalFlags",
     "maxCount": 0,

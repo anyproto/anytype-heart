@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "fb2b9fc8db542608eac404e15a7c5886679c7b5192f9d90b0109d08f93ee4103"
+const RelationChecksum = "627e65aaabbaf3066f3f49f3f6ae6e3c5b89868925ba4b337e9b4d7a18ceac39"
 
 type RelationKey string
 
@@ -1030,7 +1030,7 @@ var (
 
 			DataSource:       model.Relation_derived,
 			Description:      "Set of internal flags",
-			Format:           model.RelationFormat_tag,
+			Format:           model.RelationFormat_number,
 			Hidden:           true,
 			Key:              "internalFlags",
 			Name:             "Internal flags",

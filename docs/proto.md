@@ -1021,6 +1021,7 @@
     - [Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1058,6 +1059,7 @@
     - [Block.Content.Text.Mark.Type](#anytype-model-Block-Content-Text-Mark-Type)
     - [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style)
     - [Block.Position](#anytype-model-Block-Position)
+    - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
@@ -5104,6 +5106,7 @@ Add may return existing option in case object specified with recordId already ha
 | contextId | [string](#string) |  | id of the context object |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | new object details |
 | templateId | [string](#string) |  | optional template id for creating from template |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
@@ -16099,6 +16102,21 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-InternalFlag"></a>
+
+### InternalFlag
+TODO
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [InternalFlag.Value](#anytype-model-InternalFlag-Value) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Layout"></a>
 
 ### Layout
@@ -16692,6 +16710,18 @@ scope from which this relation have been aggregated |
 | Inner | 5 | inside target block, as last block |
 | Replace | 6 | replace target block |
 | InnerFirst | 7 | inside target block, as first block |
+
+
+
+<a name="anytype-model-InternalFlag-Value"></a>
+
+### InternalFlag.Value
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| editorAskTypeSelection | 0 |  |
+| editorAskTemplateSelection | 1 |  |
 
 
 

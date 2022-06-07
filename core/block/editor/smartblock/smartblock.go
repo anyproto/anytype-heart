@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/internalflag"
 	"sort"
 	"strings"
 	"sync"
@@ -1077,7 +1078,11 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
 	}
-	s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+
+	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorAskTypeSelection)
+	flags.AddToState(s)
+
 	// send event here to send updated details to client
 	if err = sb.Apply(s, NoRestrictions); err != nil {
 		return
@@ -1739,11 +1744,14 @@ func (sb *smartBlock) reportChange(s *state.State) {
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
-	if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String()) {
+	flags := internalflag.NewFromState(s)
+	if flags.Has(model.InternalFlag_editorAskTypeSelection) {
 		if !s.IsEmpty() {
-			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+			flags.Remove(model.InternalFlag_editorAskTypeSelection)
+			flags.AddToState(s)
 		}
 	}
+
 	sb.setRestrictionsDetail(s)
 	return
 }
