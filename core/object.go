@@ -309,7 +309,7 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 	var groups []*pb.RpcObjectRelationSearchDistinctResponseGroup
 
 	switch rel.Format {
-	case model.RelationFormat_status, model.RelationFormat_tag:
+	case model.RelationFormat_status:
 		options, err := store.GetAggregatedOptions(req.RelationKey, "")
 		if err != nil {
 			return errResponse(err)
@@ -319,12 +319,10 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 			if !uniqMap[rel.Text] {
 				uniqMap[rel.Text] = true
 				groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
-					Name: rel.Text,
-					Settings: &pb.RpcObjectRelationSearchDistinctResponseGroupSettingsOfListSettings{
-						ListSettings: &pb.RpcObjectRelationSearchDistinctResponseListSettings{
-							Color: rel.Color,
-						},
-					},
+					Value: []*pb.RpcObjectRelationSearchDistinctResponseValue{
+						{Field: &pb.RpcObjectRelationSearchDistinctResponseValueFieldOfRelationOption{
+							RelationOption: rel,
+						}}},
 				})
 			}
 		}

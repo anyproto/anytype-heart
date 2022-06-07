@@ -487,7 +487,7 @@
     - [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings)
     - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error)
     - [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group)
-    - [Rpc.Object.RelationSearchDistinct.Response.ListSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-ListSettings)
+    - [Rpc.Object.RelationSearchDistinct.Response.Value](#anytype-Rpc-Object-RelationSearchDistinct-Response-Value)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -8301,24 +8301,23 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| listSettings | [Rpc.Object.RelationSearchDistinct.Response.ListSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-ListSettings) |  |  |
-| dateSettings | [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings) |  |  |
+| value | [Rpc.Object.RelationSearchDistinct.Response.Value](#anytype-Rpc-Object-RelationSearchDistinct-Response-Value) | repeated |  |
 
 
 
 
 
 
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-ListSettings"></a>
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Value"></a>
 
-### Rpc.Object.RelationSearchDistinct.Response.ListSettings
+### Rpc.Object.RelationSearchDistinct.Response.Value
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| color | [string](#string) |  |  |
+| relationOption | [model.Relation.Option](#anytype-model-Relation-Option) |  |  |
+| dateSettings | [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings) |  |  |
 
 
 

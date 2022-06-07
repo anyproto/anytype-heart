@@ -931,15 +931,14 @@ message Rpc {
                 repeated Group groups = 4;
 
                 message Group {
-                    string name = 1;
-                    oneof settings {
-                        ListSettings listSettings = 2;
-                        DateSettings dateSettings = 3;
-                    }
+                    repeated Value value = 5;
                 }
 
-                message ListSettings {
-                    string color = 1;
+                message Value {
+                   oneof field {
+                        anytype.model.Relation.Option relationOption = 1;
+                        DateSettings dateSettings = 2;
+                    }
                 }
 
                 message DateSettings {
