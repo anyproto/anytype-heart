@@ -450,6 +450,14 @@ func (s *service) ClearTextStyle(ctx *state.Context, contextId string, blockIds 
 	})
 }
 
+func (s *service) ClearTextContent(ctx *state.Context, contextId string, blockIds ...string) error {
+	return s.DoText(contextId, func(b stext.Text) error {
+		return b.UpdateTextBlocks(ctx, blockIds, true, func(t text.Block) error {
+			return t.SetText("", nil)
+		})
+	})
+}
+
 func (s *service) SetTextMark(ctx *state.Context, contextId string, mark *model.BlockContentTextMark, blockIds ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.SetMark(ctx, mark, blockIds...)
@@ -916,7 +924,7 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 				return err
 			}
 			if textBlock != nil {
-				details.Fields[bundle.RelationKeyName.String()] =  pbtypes.String(textBlock.Text.Text)
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
 			}
 		}
 

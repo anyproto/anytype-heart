@@ -331,6 +331,10 @@
     - [Rpc.BlockTable.RowMove.Response](#anytype-Rpc-BlockTable-RowMove-Response)
     - [Rpc.BlockTable.RowMove.Response.Error](#anytype-Rpc-BlockTable-RowMove-Response-Error)
     - [Rpc.BlockText](#anytype-Rpc-BlockText)
+    - [Rpc.BlockText.ListClearContent](#anytype-Rpc-BlockText-ListClearContent)
+    - [Rpc.BlockText.ListClearContent.Request](#anytype-Rpc-BlockText-ListClearContent-Request)
+    - [Rpc.BlockText.ListClearContent.Response](#anytype-Rpc-BlockText-ListClearContent-Response)
+    - [Rpc.BlockText.ListClearContent.Response.Error](#anytype-Rpc-BlockText-ListClearContent-Response-Error)
     - [Rpc.BlockText.ListClearStyle](#anytype-Rpc-BlockText-ListClearStyle)
     - [Rpc.BlockText.ListClearStyle.Request](#anytype-Rpc-BlockText-ListClearStyle-Request)
     - [Rpc.BlockText.ListClearStyle.Response](#anytype-Rpc-BlockText-ListClearStyle-Response)
@@ -793,6 +797,7 @@
     - [Rpc.BlockTable.RowDelete.Response.Error.Code](#anytype-Rpc-BlockTable-RowDelete-Response-Error-Code)
     - [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code)
     - [Rpc.BlockTable.RowMove.Response.Error.Code](#anytype-Rpc-BlockTable-RowMove-Response-Error-Code)
+    - [Rpc.BlockText.ListClearContent.Response.Error.Code](#anytype-Rpc-BlockText-ListClearContent-Response-Error-Code)
     - [Rpc.BlockText.ListClearStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListClearStyle-Response-Error-Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype-Rpc-BlockText-ListSetColor-Response-Error-Code)
     - [Rpc.BlockText.ListSetMark.Response.Error.Code](#anytype-Rpc-BlockText-ListSetMark-Response-Error-Code)
@@ -1266,6 +1271,7 @@
 | BlockTextListSetMark | [Rpc.BlockText.ListSetMark.Request](#anytype-Rpc-BlockText-ListSetMark-Request) | [Rpc.BlockText.ListSetMark.Response](#anytype-Rpc-BlockText-ListSetMark-Response) |  |
 | BlockTextListSetStyle | [Rpc.BlockText.ListSetStyle.Request](#anytype-Rpc-BlockText-ListSetStyle-Request) | [Rpc.BlockText.ListSetStyle.Response](#anytype-Rpc-BlockText-ListSetStyle-Response) |  |
 | BlockTextListClearStyle | [Rpc.BlockText.ListClearStyle.Request](#anytype-Rpc-BlockText-ListClearStyle-Request) | [Rpc.BlockText.ListClearStyle.Response](#anytype-Rpc-BlockText-ListClearStyle-Response) |  |
+| BlockTextListClearContent | [Rpc.BlockText.ListClearContent.Request](#anytype-Rpc-BlockText-ListClearContent-Request) | [Rpc.BlockText.ListClearContent.Response](#anytype-Rpc-BlockText-ListClearContent-Response) |  |
 | BlockFileSetName | [Rpc.BlockFile.SetName.Request](#anytype-Rpc-BlockFile-SetName-Request) | [Rpc.BlockFile.SetName.Response](#anytype-Rpc-BlockFile-SetName-Response) | File block commands *** |
 | BlockImageSetName | [Rpc.BlockImage.SetName.Request](#anytype-Rpc-BlockImage-SetName-Request) | [Rpc.BlockImage.SetName.Response](#anytype-Rpc-BlockImage-SetName-Response) |  |
 | BlockVideoSetName | [Rpc.BlockVideo.SetName.Request](#anytype-Rpc-BlockVideo-SetName-Request) | [Rpc.BlockVideo.SetName.Response](#anytype-Rpc-BlockVideo-SetName-Response) |  |
@@ -6087,6 +6093,64 @@ id of the closest simple block |
 
 ### Rpc.BlockText
 
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent"></a>
+
+### Rpc.BlockText.ListClearContent
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Request"></a>
+
+### Rpc.BlockText.ListClearContent.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Response"></a>
+
+### Rpc.BlockText.ListClearContent.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockText.ListClearContent.Response.Error](#anytype-Rpc-BlockText-ListClearContent-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Response-Error"></a>
+
+### Rpc.BlockText.ListClearContent.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockText.ListClearContent.Response.Error.Code](#anytype-Rpc-BlockText-ListClearContent-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -12696,6 +12760,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockTable-RowMove-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.RowMove.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockText-ListClearContent-Response-Error-Code"></a>
+
+### Rpc.BlockText.ListClearContent.Response.Error.Code
 
 
 | Name | Number | Description |
