@@ -868,9 +868,6 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 	var workspaceId string
 	if details != nil && details.Fields != nil {
-		internalFlags := internalflag.ExtractFromDetails(details)
-		internalFlags.AddToState(createState)
-
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
 			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {

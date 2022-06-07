@@ -8,21 +8,14 @@ import (
 	"github.com/gogo/protobuf/types"
 )
 
+const relationKey = bundle.RelationKeyInternalFlags
+
 type Set struct {
 	flags []int
 }
 
 func NewFromState(st *state.State) Set {
-	flags := pbtypes.GetIntList(st.LocalDetails(), bundle.RelationKeyInternalFlags.String())
-
-	return Set{
-		flags: flags,
-	}
-}
-
-func ExtractFromDetails(details *types.Struct) Set {
-	flags := pbtypes.GetIntList(details, bundle.RelationKeyInternalFlags.String())
-	delete(details.Fields, bundle.RelationKeyInternalFlags.String())
+	flags := pbtypes.GetIntList(st.LocalDetails(), relationKey.String())
 
 	return Set{
 		flags: flags,
@@ -41,7 +34,6 @@ func (s Set) Has(flag model.InternalFlagValue) bool {
 			return true
 		}
 	}
-
 	return false
 }
 
@@ -58,10 +50,10 @@ func (s *Set) Remove(flag model.InternalFlagValue) {
 
 func (s Set) AddToState(st *state.State) {
 	if len(s.flags) == 0 {
-		st.RemoveLocalDetail(bundle.RelationKeyInternalFlags.String())
+		st.RemoveLocalDetail(relationKey.String())
 		return
 	}
-	st.SetDetailAndBundledRelation(bundle.RelationKeyInternalFlags, pbtypes.IntList(s.flags...))
+	st.SetDetailAndBundledRelation(relationKey, pbtypes.IntList(s.flags...))
 }
 
 func AddToDetails(details *types.Struct, flags []*model.InternalFlag) *types.Struct {
@@ -85,7 +77,7 @@ func addToDetails(details *types.Struct, flags []int) *types.Struct {
 	if details.Fields == nil {
 		details.Fields = map[string]*types.Value{}
 	}
-	details.Fields[bundle.RelationKeyInternalFlags.String()] = pbtypes.IntList(flags...)
+	details.Fields[relationKey.String()] = pbtypes.IntList(flags...)
 
 	return details
 }
