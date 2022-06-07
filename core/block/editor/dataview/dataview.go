@@ -490,9 +490,9 @@ func (d *sdataview) getSchema(dvBlock dataview.Block) (schema.Schema, error) {
 	return SchemaBySources(dvBlock.Model().GetDataview().Source, d.Anytype().ObjectStore(), dvBlock.Model().GetDataview().Relations)
 }
 
-func (d *sdataview) checkDVBlocks(s *state.State) (err error) {
+func (d *sdataview) checkDVBlocks(info smartblock.ApplyInfo) (err error) {
 	var dvChanged bool
-	s.IterateActive(func(b simple.Block) (isContinue bool) {
+	info.State.IterateActive(func(b simple.Block) (isContinue bool) {
 		if dv := b.Model().GetDataview(); dv != nil {
 			dvChanged = true
 			return false
@@ -513,7 +513,7 @@ func (d *sdataview) checkDVBlocks(s *state.State) (err error) {
 	}
 	r := d.Restrictions().Copy()
 	r.Dataview = r.Dataview[:0]
-	s.Iterate(func(b simple.Block) (isContinue bool) {
+	info.State.Iterate(func(b simple.Block) (isContinue bool) {
 		if dv := b.Model().GetDataview(); dv != nil && len(dv.Source) == 1 {
 			if slice.FindPos(restrictedSources, dv.Source[0]) != -1 {
 				r.Dataview = append(r.Dataview, model.RestrictionsDataviewRestrictions{

@@ -56,7 +56,13 @@ const (
 
 type Hook int
 
-type HookCallback func(s *state.State) (err error)
+type ApplyInfo struct {
+	State   *state.State
+	Events  []simple.EventMessage
+	Changes []*pb.ChangeContent
+}
+
+type HookCallback func(info ApplyInfo) (err error)
 
 const (
 	HookOnNewState  Hook = iota
@@ -618,7 +624,7 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 	if sb.IsDeleted() {
 		return ErrIsDeleted
 	}
-	var sendEvent, addHistory, doSnapshot, checkRestrictions = true, true, false, true
+	var sendEvent, addHistory, doSnapshot, checkRestrictions, hooks = true, true, false, true, true
 	for _, f := range flags {
 		switch f {
 		case NoEvent:
@@ -629,14 +635,18 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 			doSnapshot = true
 		case NoRestrictions:
 			checkRestrictions = false
+		case NoHooks:
+			hooks = false
 		}
 	}
 	if sb.source.ReadOnly() && addHistory {
 		// workaround to detect user-generated action
 		return fmt.Errorf("object is readonly")
 	}
-	if err = sb.execHooks(HookBeforeApply, s); err != nil {
-		return nil
+	if hooks {
+		if err = sb.execHooks(HookBeforeApply, ApplyInfo{State: s}); err != nil {
+			return nil
+		}
 	}
 	if checkRestrictions {
 		if err = s.CheckRestrictions(); err != nil {
@@ -723,7 +733,11 @@ func (sb *smartBlock) Apply(s *state.State, flags ...ApplyFlag) (err error) {
 		sb.CheckSubscriptions()
 	}
 	afterReportChangeTime := time.Now()
-	sb.execHooks(HookAfterApply, sb.Doc.(*state.State))
+	if hooks {
+		if e := sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: changes}); e != nil {
+			log.With("thread", sb.Id()).Warnf("after apply execHooks error: %v", e)
+		}
+	}
 	afterApplyHookTime := time.Now()
 
 	metrics.SharedClient.RecordEvent(metrics.StateApply{
@@ -771,13 +785,13 @@ func (sb *smartBlock) CheckSubscriptions() (changed bool) {
 
 func (sb *smartBlock) NewState() *state.State {
 	s := sb.Doc.NewState().SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
-	sb.execHooks(HookOnNewState, s)
+	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
 
 func (sb *smartBlock) NewStateCtx(ctx *state.Context) *state.State {
 	s := sb.Doc.NewStateCtx(ctx).SetNoObjectType(sb.Type() == model.SmartBlockType_Archive || sb.Type() == model.SmartBlockType_Breadcrumbs)
-	sb.execHooks(HookOnNewState, s)
+	sb.execHooks(HookOnNewState, ApplyInfo{State: s})
 	return s
 }
 
@@ -1105,7 +1119,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		return err
 	}
 	s.InjectDerivedDetails()
-	sb.execHooks(HookBeforeApply, s)
+	sb.execHooks(HookBeforeApply, ApplyInfo{State: s})
 	msgs, act, err := state.ApplyState(s, !sb.disableLayouts)
 	if err != nil {
 		return err
@@ -1122,7 +1136,7 @@ func (sb *smartBlock) StateAppend(f func(d state.Doc) (s *state.State, err error
 		sb.CheckSubscriptions()
 	}
 	sb.reportChange(s)
-	sb.execHooks(HookAfterApply, s)
+	sb.execHooks(HookAfterApply, ApplyInfo{State: s, Events: msgs, Changes: s.GetChanges()})
 
 	return nil
 }
@@ -1134,6 +1148,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	}
 	d.(*state.State).InjectDerivedDetails()
 	d.(*state.State).SetParent(sb.Doc.(*state.State))
+	sb.execHooks(HookBeforeApply, ApplyInfo{State: d.(*state.State)})
 	msgs, _, err := state.ApplyState(d.(*state.State), !sb.disableLayouts)
 	log.Infof("changes: stateRebuild: %d events", len(msgs))
 	if len(msgs) > 0 && sb.sendEvent != nil {
@@ -1145,8 +1160,7 @@ func (sb *smartBlock) StateRebuild(d state.Doc) (err error) {
 	sb.storeFileKeys(d)
 	sb.CheckSubscriptions()
 	sb.reportChange(sb.Doc.(*state.State))
-	sb.execHooks(HookAfterApply, sb.Doc.(*state.State))
-
+	sb.execHooks(HookAfterApply, ApplyInfo{State: sb.Doc.(*state.State), Events: msgs, Changes: d.(*state.State).GetChanges()})
 	return nil
 }
 
@@ -1155,13 +1169,13 @@ func (sb *smartBlock) DocService() doc.Service {
 }
 
 func (sb *smartBlock) BlockClose() {
-	sb.execHooks(HookOnBlockClose, sb.Doc.(*state.State))
+	sb.execHooks(HookOnBlockClose, ApplyInfo{State: sb.Doc.(*state.State)})
 	sb.SetEventFunc(nil)
 }
 
 func (sb *smartBlock) Close() (err error) {
 	sb.Lock()
-	sb.execHooks(HookOnClose, sb.Doc.(*state.State))
+	sb.execHooks(HookOnClose, ApplyInfo{State: sb.Doc.(*state.State)})
 	if sb.closeRecordsSub != nil {
 		sb.closeRecordsSub()
 		sb.closeRecordsSub = nil
@@ -1282,20 +1296,6 @@ func mergeAndSortRelations(objTypeRelations []*model.Relation, extraRelations []
 	if details == nil || details.Fields == nil {
 		return rels
 	}
-
-	/*
-		comment-out relations sorting so the list order will be persistent after setting the details
-		sort.Slice(rels, func(i, j int) bool {
-			_, iExists := details.Fields[rels[i].Key]
-			_, jExists := details.Fields[rels[j].Key]
-
-				if iExists && !jExists {
-					return true
-				}
-
-				return false
-			})*/
-
 	return rels
 }
 
@@ -1366,10 +1366,10 @@ func (sb *smartBlock) objectTypeRelations(s *state.State) []*model.Relation {
 	return relations
 }
 
-func (sb *smartBlock) execHooks(event Hook, s *state.State) (err error) {
+func (sb *smartBlock) execHooks(event Hook, info ApplyInfo) (err error) {
 	for _, h := range sb.hooks[event] {
 		if h != nil {
-			if err = h(s); err != nil {
+			if err = h(info); err != nil {
 				return
 			}
 		}

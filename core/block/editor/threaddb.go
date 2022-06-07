@@ -45,8 +45,8 @@ func (p *ThreadDB) Init(ctx *smartblock.InitContext) (err error) {
 	)
 }
 
-func (p *ThreadDB) updateObjects(s *state.State) error {
-	objects := p.workspaceObjectsFromState(s)
+func (p *ThreadDB) updateObjects(info smartblock.ApplyInfo) error {
+	objects := p.workspaceObjectsFromState(info.State)
 	log.Debugf("threadDB migrate %d objects", len(objects))
 	migrated, err := p.migrator.MigrateMany(objects)
 	if err != nil {

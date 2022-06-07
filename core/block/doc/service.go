@@ -42,6 +42,7 @@ type Service interface {
 	GetDocInfo(ctx context.Context, id string) (info DocInfo, err error)
 	OnWholeChange(cb OnDocChangeCallback)
 	ReportChange(ctx context.Context, info DocInfo)
+	WakeupIds(ids ...string)
 
 	app.ComponentRunnable
 }
@@ -88,6 +89,12 @@ func (l *listener) OnWholeChange(cb OnDocChangeCallback) {
 	l.m.Lock()
 	defer l.m.Unlock()
 	l.wholeCallbacks = append(l.wholeCallbacks, cb)
+}
+
+func (l *listener) WakeupIds(ids ...string) {
+	for _, id := range ids {
+		l.records.Add(core.ThreadRecordInfo{ThreadID: id})
+	}
 }
 
 func (l *listener) GetDocInfo(ctx context.Context, id string) (info DocInfo, err error) {

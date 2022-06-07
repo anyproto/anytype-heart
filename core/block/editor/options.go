@@ -30,6 +30,14 @@ type Options struct {
 	openedCount int
 }
 
+func (o *Options) Init(ctx *smartblock.InitContext) (err error) {
+	if err = o.SmartBlock.Init(ctx); err != nil {
+		return
+	}
+	o.AddHook(o.onAfterApply, smartblock.HookAfterApply)
+	return
+}
+
 func (o *Options) Open(id string) (sb smartblock.SmartBlock, err error) {
 	so, err := o.sc.NewSubObject(id, o)
 	if err != nil {
@@ -44,6 +52,7 @@ func (o *Options) Open(id string) (sb smartblock.SmartBlock, err error) {
 
 func (o *Options) CreateOption(opt *types.Struct) (id string, err error) {
 	o.Lock()
+	defer o.Unlock()
 	subId := bson.NewObjectId().Hex()
 	id = o.Id() + "/" + subId
 	st := o.NewState()
@@ -52,11 +61,9 @@ func (o *Options) CreateOption(opt *types.Struct) (id string, err error) {
 	ids = append(ids, id)
 	st.SetDetail(bundle.RelationKeyRelationDict.String(), pbtypes.StringList(ids))
 	if err = o.Apply(st); err != nil {
-		o.Unlock()
 		return
 	}
-	o.Unlock()
-
+	return
 }
 
 func (o *Options) Locked() bool {
@@ -82,7 +89,20 @@ func (o *Options) SubStateApply(subId string, s *state.State) (err error) {
 	defer o.Unlock()
 	st := o.NewState()
 	st.SetInStore([]string{optionsCollName, subId}, pbtypes.Struct(s.CombinedDetails()))
-	return o.Apply(s)
+	return o.Apply(s, smartblock.NoHooks)
+}
+
+func (o *Options) onAfterApply(info smartblock.ApplyInfo) (err error) {
+	var ids []string
+	for _, ch := range info.Changes {
+		if keySet := ch.GetStoreKeySet(); keySet != nil {
+			if len(keySet.Path) >= 2 && keySet.Path[0] == optionsCollName {
+				id := o.Id() + "/" + keySet.Path[1]
+				ids = append(ids, id)
+			}
+		}
+	}
+	return
 }
 
 type Option struct {

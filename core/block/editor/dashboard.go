@@ -63,7 +63,7 @@ func (p *Dashboard) init(s *state.State) (err error) {
 	return
 }
 
-func (p *Dashboard) updateObjects(_ *state.State) (err error) {
+func (p *Dashboard) updateObjects(_ smartblock.ApplyInfo) (err error) {
 	favoritedIds, err := p.GetIds()
 	if err != nil {
 		return

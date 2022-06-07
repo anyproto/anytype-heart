@@ -34,7 +34,7 @@ func (s *SubObject) SubId() string {
 }
 
 func (s *SubObject) SubInit() {
-	s.AddHook(func(st *state.State) (err error) {
-		return s.ParentObject.SubStateApply(s.id, st)
+	s.AddHook(func(info smartblock.ApplyInfo) (err error) {
+		return s.ParentObject.SubStateApply(s.id, info.State)
 	}, smartblock.HookAfterApply)
 }

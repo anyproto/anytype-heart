@@ -1,7 +1,8 @@
 package smarttest
 
 import (
-	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/app"
+	"github.com/anytypeio/go-anytype-middleware/core/relation"
 	"sync"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -14,9 +15,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
-	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/testMock"
-	"github.com/globalsign/mgo/bson"
 	"github.com/gogo/protobuf/types"
 )
 
@@ -35,10 +34,15 @@ type SmartTest struct {
 	hist             undo.History
 	meta             *core.SmartBlockMeta
 	TestRestrictions restriction.Restrictions
+	App              *app.App
 	sync.Mutex
 	state.Doc
 	isDeleted bool
 	os        *testMock.MockObjectStore
+}
+
+func (st *SmartTest) RelationService() relation.Service {
+	return st.App.Component(relation.CName).(relation.Service)
 }
 
 func (st *SmartTest) Locked() bool {
@@ -107,22 +111,8 @@ func (st *SmartTest) MakeTemplateState() (*state.State, error) {
 	return st.Doc.NewState().Copy(), nil
 }
 
-func (st *SmartTest) AddExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) (*model.RelationOption, error) {
-	rel := pbtypes.GetRelation(st.Relations(), relationKey)
-	if rel == nil {
-		return nil, fmt.Errorf("relation not found")
-	}
-
-	if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-		return nil, fmt.Errorf("incorrect relation format")
-	}
-
-	newOption, err := st.Doc.(*state.State).AddExtraRelationOption(*rel, option)
-	if err != nil {
-		return nil, err
-	}
-
-	return newOption, nil
+func (st *SmartTest) AddExtraRelations(ctx *state.Context, relationIds ...string) (err error) {
+	return nil
 }
 
 func (st *SmartTest) CheckSubscriptions() (changed bool) {
@@ -130,96 +120,6 @@ func (st *SmartTest) CheckSubscriptions() (changed bool) {
 }
 
 func (st *SmartTest) RefreshLocalDetails(ctx *state.Context) error {
-	return nil
-}
-
-func (st *SmartTest) UpdateExtraRelationOption(ctx *state.Context, relationKey string, option model.RelationOption, showEvent bool) error {
-	for _, rel := range st.ExtraRelations() {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == option.Id {
-				copy := pbtypes.CopyRelation(rel)
-				copy.SelectDict[i] = &option
-				st.Doc.(*state.State).SetExtraRelation(copy)
-
-				return nil
-			}
-		}
-
-		return fmt.Errorf("relation option not found")
-	}
-
-	return fmt.Errorf("relation not found")
-}
-
-func (st *SmartTest) DeleteExtraRelationOption(ctx *state.Context, relationKey string, optionId string, showEvent bool) error {
-	for _, rel := range st.ExtraRelations() {
-		if rel.Key != relationKey {
-			continue
-		}
-		if rel.Format != model.RelationFormat_status && rel.Format != model.RelationFormat_tag {
-			return fmt.Errorf("relation has incorrect format")
-		}
-		for i, opt := range rel.SelectDict {
-			if opt.Id == optionId {
-				copy := pbtypes.CopyRelation(rel)
-				copy.SelectDict = append(rel.SelectDict[:i], rel.SelectDict[i+1:]...)
-				st.Doc.(*state.State).SetExtraRelation(copy)
-				return nil
-			}
-		}
-		// todo: should we remove option and value from all objects within type?
-
-		return fmt.Errorf("relation option not found")
-	}
-
-	return fmt.Errorf("relation not found")
-}
-
-func (st *SmartTest) AddExtraRelations(ctx *state.Context, relations []*model.Relation) (relationsWithKeys []*model.Relation, err error) {
-	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			}}
-	}
-	for _, d := range relations {
-		if d.Key == "" {
-			d.Key = bson.NewObjectId().Hex()
-		}
-		st.meta.Relations = append(st.meta.Relations, pbtypes.CopyRelation(d))
-	}
-	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
-	return st.meta.Relations, nil
-}
-
-func (st *SmartTest) UpdateExtraRelations(ctx *state.Context, relations []*model.Relation, createIfMissing bool) (err error) {
-	if st.meta == nil {
-		st.meta = &core.SmartBlockMeta{
-			Details: &types.Struct{
-				Fields: make(map[string]*types.Value),
-			}}
-	}
-	for _, d := range relations {
-		var found bool
-		for i, rel := range st.meta.Relations {
-			if rel.Key != d.Key {
-				continue
-			}
-			found = true
-			st.meta.Relations[i] = d
-		}
-		if !found && !createIfMissing {
-			return fmt.Errorf("relation not found")
-		}
-	}
-
-	st.Doc.(*state.State).SetExtraRelations(st.meta.Relations)
 	return nil
 }
 

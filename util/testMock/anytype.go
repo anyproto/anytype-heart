@@ -21,6 +21,8 @@ func RegisterMockAnytype(ctrl *gomock.Controller, ta *testapp.TestApp) *MockServ
 	ms.EXPECT().Init(gomock.Any()).AnyTimes()
 	ms.EXPECT().Run().AnyTimes()
 	ms.EXPECT().Close().AnyTimes()
+	ms.EXPECT().Account().AnyTimes().Return("account")
+	ms.EXPECT().ProfileID().AnyTimes().Return("profileId")
 	ta.Register(ms)
 	return ms
 }
