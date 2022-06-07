@@ -290,10 +290,11 @@ message Block {
                 repeated Sort sorts = 4;
                 repeated Filter filters = 5;
                 repeated Relation relations = 6; // relations fields/columns options, also used to provide the order
-				string coverRelationKey = 7; // Relation used for cover in gallery
+				        string coverRelationKey = 7; // Relation used for cover in gallery
                 bool hideIcon = 8; // Hide icon near name
                 Size cardSize = 9; // Gallery card size
                 bool coverFit = 10; // Image fits container
+                string kanbanKey = 11;
 
                 enum Type {
                     Table = 0;

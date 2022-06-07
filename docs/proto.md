@@ -481,6 +481,13 @@
     - [Rpc.Object.Redo.Request](#anytype-Rpc-Object-Redo-Request)
     - [Rpc.Object.Redo.Response](#anytype-Rpc-Object-Redo-Response)
     - [Rpc.Object.Redo.Response.Error](#anytype-Rpc-Object-Redo-Response-Error)
+    - [Rpc.Object.RelationSearchDistinct](#anytype-Rpc-Object-RelationSearchDistinct)
+    - [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request)
+    - [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response)
+    - [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings)
+    - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error)
+    - [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group)
+    - [Rpc.Object.RelationSearchDistinct.Response.ListSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-ListSettings)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -783,6 +790,7 @@
     - [Rpc.Object.Open.Response.Error.Code](#anytype-Rpc-Object-Open-Response-Error-Code)
     - [Rpc.Object.OpenBreadcrumbs.Response.Error.Code](#anytype-Rpc-Object-OpenBreadcrumbs-Response-Error-Code)
     - [Rpc.Object.Redo.Response.Error.Code](#anytype-Rpc-Object-Redo-Response-Error-Code)
+    - [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error-Code)
     - [Rpc.Object.Search.Response.Error.Code](#anytype-Rpc-Object-Search-Response-Error-Code)
     - [Rpc.Object.SearchSubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchSubscribe-Response-Error-Code)
     - [Rpc.Object.SearchUnsubscribe.Response.Error.Code](#anytype-Rpc-Object-SearchUnsubscribe-Response-Error-Code)
@@ -1119,6 +1127,7 @@
 | ObjectGraph | [Rpc.Object.Graph.Request](#anytype-Rpc-Object-Graph-Request) | [Rpc.Object.Graph.Response](#anytype-Rpc-Object-Graph-Response) |  |
 | ObjectSearch | [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request) | [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response) |  |
 | ObjectSearchSubscribe | [Rpc.Object.SearchSubscribe.Request](#anytype-Rpc-Object-SearchSubscribe-Request) | [Rpc.Object.SearchSubscribe.Response](#anytype-Rpc-Object-SearchSubscribe-Response) |  |
+| ObjectRelationSearchDistinct | [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request) | [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response) |  |
 | ObjectSubscribeIds | [Rpc.Object.SubscribeIds.Request](#anytype-Rpc-Object-SubscribeIds-Request) | [Rpc.Object.SubscribeIds.Response](#anytype-Rpc-Object-SubscribeIds-Response) |  |
 | ObjectSearchUnsubscribe | [Rpc.Object.SearchUnsubscribe.Request](#anytype-Rpc-Object-SearchUnsubscribe-Request) | [Rpc.Object.SearchUnsubscribe.Response](#anytype-Rpc-Object-SearchUnsubscribe-Response) |  |
 | ObjectSetDetails | [Rpc.Object.SetDetails.Request](#anytype-Rpc-Object-SetDetails-Request) | [Rpc.Object.SetDetails.Response](#anytype-Rpc-Object-SetDetails-Response) |  |
@@ -8215,6 +8224,106 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
+<a name="anytype-Rpc-Object-RelationSearchDistinct"></a>
+
+### Rpc.Object.RelationSearchDistinct
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Request"></a>
+
+### Rpc.Object.RelationSearchDistinct.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| relationKey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error) |  |  |
+| relationKey | [string](#string) |  |  |
+| groups | [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.DateSettings
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Error"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Object.RelationSearchDistinct.Response.Error.Code](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Group"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Group
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| listSettings | [Rpc.Object.RelationSearchDistinct.Response.ListSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-ListSettings) |  |  |
+| dateSettings | [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-ListSettings"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.ListSettings
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| color | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-Object-Search"></a>
 
 ### Rpc.Object.Search
@@ -12432,6 +12541,18 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Error-Code"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+
+
+
 <a name="anytype-Rpc-Object-Search-Response-Error-Code"></a>
 
 ### Rpc.Object.Search.Response.Error.Code
@@ -15862,6 +15983,7 @@ Bookmark is to keep a web-link and to preview a content.
 | hideIcon | [bool](#bool) |  | Hide icon near name |
 | cardSize | [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
+| kanbanKey | [string](#string) |  |  |
 
 
 

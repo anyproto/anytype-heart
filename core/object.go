@@ -1,6 +1,7 @@
 package core
 
 import (
+	"errors"
 	"fmt"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"strconv"
@@ -277,6 +278,67 @@ func (mw *Middleware) ObjectSearchSubscribe(req *pb.RpcObjectSearchSubscribeRequ
 	}
 
 	return resp
+}
+
+func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSearchDistinctRequest) *pb.RpcObjectRelationSearchDistinctResponse {
+	errResponse := func(err error) *pb.RpcObjectRelationSearchDistinctResponse {
+		r := &pb.RpcObjectRelationSearchDistinctResponse{
+			Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+				Code: pb.RpcObjectRelationSearchDistinctResponseError_UNKNOWN_ERROR,
+			},
+		}
+		if err != nil {
+			r.Error.Description = err.Error()
+		}
+		return r
+	}
+
+	mw.m.RLock()
+	defer mw.m.RUnlock()
+
+	if mw.app == nil {
+		return errResponse(errors.New("app must be started"))
+	}
+
+	store := mw.app.MustComponent(objectstore.CName).(objectstore.ObjectStore)
+	rel, err := store.GetRelation(req.RelationKey)
+	if err != nil {
+		return errResponse(err)
+	}
+
+	var groups []*pb.RpcObjectRelationSearchDistinctResponseGroup
+
+	switch rel.Format {
+	case model.RelationFormat_status, model.RelationFormat_tag:
+		options, err := store.GetAggregatedOptions(req.RelationKey, "")
+		if err != nil {
+			return errResponse(err)
+		}
+		uniqMap := make(map[string]bool)
+		for _, rel := range options {
+			if !uniqMap[rel.Text] {
+				uniqMap[rel.Text] = true
+				groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
+					Name: rel.Text,
+					Settings: &pb.RpcObjectRelationSearchDistinctResponseGroupSettingsOfListSettings{
+						ListSettings: &pb.RpcObjectRelationSearchDistinctResponseListSettings{
+							Color: rel.Color,
+						},
+					},
+				})
+			}
+		}
+	case model.RelationFormat_date:
+		// TODO
+	case model.RelationFormat_checkbox:
+
+	default:
+		return errResponse(errors.New("unsupported relation format"))
+	}
+	
+	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
+		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
+	}, RelationKey: req.RelationKey, Groups: groups}
 }
 
 func (mw *Middleware) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {

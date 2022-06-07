@@ -45,6 +45,7 @@ service ClientCommands {
     rpc ObjectGraph (anytype.Rpc.Object.Graph.Request) returns (anytype.Rpc.Object.Graph.Response);
     rpc ObjectSearch (anytype.Rpc.Object.Search.Request) returns (anytype.Rpc.Object.Search.Response);
     rpc ObjectSearchSubscribe (anytype.Rpc.Object.SearchSubscribe.Request) returns (anytype.Rpc.Object.SearchSubscribe.Response);
+    rpc ObjectRelationSearchDistinct (anytype.Rpc.Object.RelationSearchDistinct.Request) returns (anytype.Rpc.Object.RelationSearchDistinct.Response);
     rpc ObjectSubscribeIds (anytype.Rpc.Object.SubscribeIds.Request) returns (anytype.Rpc.Object.SubscribeIds.Response);
     rpc ObjectSearchUnsubscribe (anytype.Rpc.Object.SearchUnsubscribe.Request) returns (anytype.Rpc.Object.SearchUnsubscribe.Response);
     rpc ObjectSetDetails (anytype.Rpc.Object.SetDetails.Request) returns (anytype.Rpc.Object.SetDetails.Response);
