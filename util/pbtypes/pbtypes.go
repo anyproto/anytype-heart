@@ -437,7 +437,8 @@ func RelationFormatCanHaveListValue(format model.RelationFormat) bool {
 	switch format {
 	case model.RelationFormat_tag,
 		model.RelationFormat_file,
-		model.RelationFormat_object:
+		model.RelationFormat_object,
+		model.RelationFormat_number:
 		return true
 	default:
 		return false
