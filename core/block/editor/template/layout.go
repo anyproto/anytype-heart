@@ -14,6 +14,7 @@ func ByLayout(layout model.ObjectTypeLayout, templates ...StateTransformer) []St
 		WithRequiredRelations(),
 		WithMaxCountMigration,
 		WithLinkFieldsMigration,
+		WithIsDraftMigration,
 	)
 
 	switch layout {

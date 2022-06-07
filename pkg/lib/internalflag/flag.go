@@ -21,18 +21,17 @@ func NewFromState(st *state.State) Set {
 }
 
 func ExtractFromDetails(details *types.Struct) Set {
-	if details == nil {
-		return Set{}
-	}
-	if details.Fields == nil {
-		return Set{}
-	}
-
 	flags := pbtypes.GetIntList(details, bundle.RelationKeyInternalFlags.String())
 	delete(details.Fields, bundle.RelationKeyInternalFlags.String())
 
 	return Set{
 		flags: flags,
+	}
+}
+
+func (s *Set) Add(flag model.InternalFlagValue) {
+	if !s.Has(flag) {
+		s.flags = append(s.flags, int(flag))
 	}
 }
 

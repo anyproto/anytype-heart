@@ -7,6 +7,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/addr"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
@@ -726,4 +727,21 @@ var WithLinkFieldsMigration = func(s *state.State) {
 	})
 
 	return
+}
+
+var WithIsDraftMigration = func(s *state.State) {
+	det := s.LocalDetails()
+	if det == nil || det.Fields == nil {
+		return
+	}
+
+	if v, ok := det.Fields[bundle.RelationKeyIsDraft.String()]; ok {
+		s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+
+		if v.GetBoolValue() {
+			flags := internalflag.NewFromState(s)
+			flags.Add(model.InternalFlag_editorAskTypeSelection)
+			flags.AddToState(s)
+		}
+	}
 }
