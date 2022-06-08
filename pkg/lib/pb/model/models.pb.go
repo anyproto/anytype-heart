@@ -988,11 +988,15 @@ const (
 	// restricts work with blocks
 	Restrictions_Blocks RestrictionsObjectRestriction = 3
 	// restricts work with details
-	Restrictions_Details      RestrictionsObjectRestriction = 4
-	Restrictions_TypeChange   RestrictionsObjectRestriction = 5
+	Restrictions_Details RestrictionsObjectRestriction = 4
+	// restricts type changing
+	Restrictions_TypeChange RestrictionsObjectRestriction = 5
+	// restricts layout changing
 	Restrictions_LayoutChange RestrictionsObjectRestriction = 6
-	Restrictions_Template     RestrictionsObjectRestriction = 7
-	Restrictions_Duplicate    RestrictionsObjectRestriction = 8
+	// restricts template creation from this object
+	Restrictions_Template RestrictionsObjectRestriction = 7
+	// restricts duplicate object
+	Restrictions_Duplicate RestrictionsObjectRestriction = 8
 )
 
 var RestrictionsObjectRestriction_name = map[int32]string{
