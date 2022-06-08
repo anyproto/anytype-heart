@@ -294,7 +294,8 @@ message Block {
                 bool hideIcon = 8; // Hide icon near name
                 Size cardSize = 9; // Gallery card size
                 bool coverFit = 10; // Image fits container
-                string kanbanKey = 11;
+                string groupRelationKey = 11;
+                repeated string groupOrder = 12;
 
                 enum Type {
                     Table = 0;

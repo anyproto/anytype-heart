@@ -8258,8 +8258,6 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | error | [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error) |  |  |
-| relationKey | [string](#string) |  |  |
-| relationFormat | [model.RelationFormat](#anytype-model-RelationFormat) |  |  |
 | groups | [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group) | repeated |  |
 
 
@@ -8301,6 +8299,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
 | value | [Rpc.Object.RelationSearchDistinct.Response.Value](#anytype-Rpc-Object-RelationSearchDistinct-Response-Value) | repeated |  |
 
 
@@ -8316,7 +8315,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relationOption | [model.Relation.Option](#anytype-model-Relation-Option) |  |  |
+| relationId | [string](#string) |  |  |
 | dateSettings | [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings) |  |  |
 
 
@@ -15983,7 +15982,8 @@ Bookmark is to keep a web-link and to preview a content.
 | hideIcon | [bool](#bool) |  | Hide icon near name |
 | cardSize | [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
-| kanbanKey | [string](#string) |  |  |
+| groupRelationKey | [string](#string) |  |  |
+| groupOrder | [string](#string) | repeated |  |
 
 
 

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-naturaldate/v2"
+	"github.com/globalsign/mgo/bson"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -319,13 +321,21 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 			if !uniqMap[rel.Text] {
 				uniqMap[rel.Text] = true
 				groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
+					Id: rel.Id,
 					Value: []*pb.RpcObjectRelationSearchDistinctResponseValue{
 						{Field: &pb.RpcObjectRelationSearchDistinctResponseValueFieldOfRelationOption{
-							RelationOption: rel,
+							RelationOption: rel.Id,
 						}}},
 				})
 			}
 		}
+		sort.Slice(groups[:], func(i, j int) bool {
+			obI := bson.ObjectIdHex(groups[i].Id)
+			obJ := bson.ObjectIdHex(groups[j].Id)
+			return obI.Time().Unix() < obJ.Time().Unix()
+		})
+	case model.RelationFormat_tag:
+		// TODO
 	case model.RelationFormat_date:
 		// TODO
 	case model.RelationFormat_checkbox:
@@ -336,7 +346,7 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 
 	return &pb.RpcObjectRelationSearchDistinctResponse{Error: &pb.RpcObjectRelationSearchDistinctResponseError{
 		Code: pb.RpcObjectRelationSearchDistinctResponseError_NULL,
-	}, RelationKey: req.RelationKey, RelationFormat: rel.Format, Groups: groups}
+	}, Groups: groups}
 }
 
 func (mw *Middleware) ObjectSubscribeIds(req *pb.RpcObjectSubscribeIdsRequest) *pb.RpcObjectSubscribeIdsResponse {
