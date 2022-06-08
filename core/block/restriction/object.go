@@ -13,6 +13,7 @@ var (
 		model.Restrictions_LayoutChange,
 		model.Restrictions_TypeChange,
 		model.Restrictions_Template,
+		model.Restrictions_Duplicate,
 	}
 	objRestrictEdit = ObjectRestrictions{
 		model.Restrictions_Blocks,
@@ -33,6 +34,7 @@ var (
 			model.Restrictions_LayoutChange,
 			model.Restrictions_TypeChange,
 			model.Restrictions_Template,
+			model.Restrictions_Duplicate,
 		},
 		model.SmartBlockType_Workspace:           objRestrictAll,
 		model.SmartBlockType_File:                objRestrictAll,

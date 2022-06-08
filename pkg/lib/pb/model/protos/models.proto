@@ -507,6 +507,7 @@ message Restrictions {
         TypeChange = 5;
         LayoutChange = 6;
         Template = 7;
+        Duplicate = 8;
     }
 
 
