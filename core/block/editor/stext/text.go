@@ -295,7 +295,7 @@ func (t *textImpl) SetText(req pb.RpcBlockTextSetTextRequest) (err error) {
 	}()
 	ctx := state.NewContext(nil)
 	s := t.newSetTextState(req.BlockId, ctx)
-	wasEmpty := s.IsEmpty()
+	wasEmpty := s.IsEmpty(true)
 
 	tb, err := getText(s, req.BlockId)
 	if err != nil {

@@ -232,7 +232,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State = sb.NewState()
 		sb.storeFileKeys(sb.Doc)
 	} else {
-		if !sb.Doc.(*state.State).IsEmpty() {
+		if !sb.Doc.(*state.State).IsEmpty(true) {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
@@ -1748,11 +1748,14 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 
 	// Run empty check only if any of these flags are present
 	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) {
-		if !s.IsEmpty() {
+		if !s.IsEmpty(true) {
 			flags.Remove(model.InternalFlag_editorDeleteEmpty)
-			flags.Remove(model.InternalFlag_editorSelectType)
-			flags.AddToState(s)
 		}
+		if !s.IsEmpty(false) {
+			flags.Remove(model.InternalFlag_editorSelectType)
+		}
+
+		flags.AddToState(s)
 	}
 
 	sb.setRestrictionsDetail(s)
