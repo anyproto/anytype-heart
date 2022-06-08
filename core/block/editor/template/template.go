@@ -731,6 +731,7 @@ var WithLinkFieldsMigration = func(s *state.State) {
 	return
 }
 
+// TODO: remove?
 var WithIsDraftMigration = func(s *state.State) {
 	det := s.LocalDetails()
 	if det == nil || det.Fields == nil {
@@ -742,7 +743,7 @@ var WithIsDraftMigration = func(s *state.State) {
 
 		if v.GetBoolValue() {
 			flags := internalflag.NewFromState(s)
-			flags.Add(model.InternalFlag_editorAskTypeSelection)
+			flags.Add(model.InternalFlag_editorDeleteEmpty)
 			flags.AddToState(s)
 		}
 	}

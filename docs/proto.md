@@ -16107,7 +16107,7 @@ Used to decode block meta only, without the content itself
 <a name="anytype-model-InternalFlag"></a>
 
 ### InternalFlag
-TODO
+
 
 
 | Field | Type | Label | Description |
@@ -16719,12 +16719,14 @@ scope from which this relation have been aggregated |
 <a name="anytype-model-InternalFlag-Value"></a>
 
 ### InternalFlag.Value
-
+Use such a weird construction due to the issue with imported repeated enum type
+Look https://github.com/golang/protobuf/issues/1135 for more information.
 
 | Name | Number | Description |
 | ---- | ------ | ----------- |
-| editorAskTypeSelection | 0 |  |
-| editorAskTemplateSelection | 1 |  |
+| editorDeleteEmpty | 0 |  |
+| editorSelectType | 1 |  |
+| editorSelectTemplate | 2 |  |
 
 
 

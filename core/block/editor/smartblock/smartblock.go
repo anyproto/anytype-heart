@@ -1080,7 +1080,7 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	}
 
 	flags := internalflag.NewFromState(s)
-	flags.Remove(model.InternalFlag_editorAskTypeSelection)
+	flags.Remove(model.InternalFlag_editorSelectType)
 	flags.AddToState(s)
 
 	// send event here to send updated details to client
@@ -1745,11 +1745,9 @@ func (sb *smartBlock) reportChange(s *state.State) {
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
 	flags := internalflag.NewFromState(s)
-	if flags.Has(model.InternalFlag_editorAskTypeSelection) {
-		if !s.IsEmpty() {
-			flags.Remove(model.InternalFlag_editorAskTypeSelection)
-			flags.AddToState(s)
-		}
+	if !s.IsEmpty() {
+		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.AddToState(s)
 	}
 
 	sb.setRestrictionsDetail(s)

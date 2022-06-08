@@ -436,7 +436,7 @@ func (s *service) CloseBlock(id string) error {
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose()
 		s := b.NewState()
-		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorAskTypeSelection)
+		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
 		workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
 
 		return nil
@@ -1408,6 +1408,11 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		objType := ts.ObjectType()
 		// stateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectType(objType)
+
+		flags := internalflag.NewFromState(ts)
+		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.Remove(model.InternalFlag_editorSelectTemplate)
+		flags.AddToState(ts)
 
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})

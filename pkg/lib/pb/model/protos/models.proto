@@ -658,12 +658,14 @@ message RelationOptions {
     repeated Relation.Option options = 1;
 }
 
-// TODO
 message InternalFlag {
     Value value = 1;
 
+    // Use such a weird construction due to the issue with imported repeated enum type
+    // Look https://github.com/golang/protobuf/issues/1135 for more information.
     enum Value {
-        editorAskTypeSelection = 0;
-        editorAskTemplateSelection = 1;
+        editorDeleteEmpty = 0;
+        editorSelectType = 1;
+        editorSelectTemplate = 2;
     }
 }
