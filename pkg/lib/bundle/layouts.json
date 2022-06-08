@@ -43,10 +43,6 @@
     ]
   },
   {
-    "id": "bookmark",
-    "name": "Bookmark"
-  },
-  {
     "id": "space",
     "name": "Space"
   },
