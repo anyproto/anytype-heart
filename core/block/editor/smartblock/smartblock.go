@@ -1747,6 +1747,7 @@ func (sb *smartBlock) onApply(s *state.State) (err error) {
 	flags := internalflag.NewFromState(s)
 	if !s.IsEmpty() {
 		flags.Remove(model.InternalFlag_editorDeleteEmpty)
+		flags.Remove(model.InternalFlag_editorSelectType)
 		flags.AddToState(s)
 	}
 
