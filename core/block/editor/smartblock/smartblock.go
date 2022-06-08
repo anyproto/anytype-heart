@@ -1745,10 +1745,14 @@ func (sb *smartBlock) reportChange(s *state.State) {
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
 	flags := internalflag.NewFromState(s)
-	if !s.IsEmpty() {
-		flags.Remove(model.InternalFlag_editorDeleteEmpty)
-		flags.Remove(model.InternalFlag_editorSelectType)
-		flags.AddToState(s)
+
+	// Run empty check only if any of these flags are present
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) {
+		if !s.IsEmpty() {
+			flags.Remove(model.InternalFlag_editorDeleteEmpty)
+			flags.Remove(model.InternalFlag_editorSelectType)
+			flags.AddToState(s)
+		}
 	}
 
 	sb.setRestrictionsDetail(s)
