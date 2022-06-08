@@ -182,8 +182,8 @@ func (td *textDetails) RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBloc
 	return
 }
 
-func (td *textDetails) Merge(b simple.Block) (err error) {
-	if err = td.Text.Merge(b); err != nil {
+func (td *textDetails) Merge(b simple.Block, opts ...MergeOption) (err error) {
+	if err = td.Text.Merge(b, opts...); err != nil {
 		return
 	}
 	if td.keys.Text != "" {

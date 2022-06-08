@@ -43,6 +43,14 @@ func Test_suggestDateForSearch(t *testing.T) {
 			raw:  "1994",
 			want: time.Time{},
 		},
+		{
+			raw:  "foobar",
+			want: time.Time{},
+		},
+		{
+			raw:  "",
+			want: time.Time{},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.raw, func(t *testing.T) {

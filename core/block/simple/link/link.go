@@ -131,6 +131,23 @@ func (l *Link) ApplyEvent(e *pb.EventBlockSetLink) error {
 	if e.TargetBlockId != nil {
 		l.content.TargetBlockId = e.TargetBlockId.GetValue()
 	}
+
+	if e.IconSize != nil {
+		l.content.IconSize = e.IconSize.GetValue()
+	}
+
+	if e.CardStyle != nil {
+		l.content.CardStyle = e.CardStyle.GetValue()
+	}
+
+	if e.Description != nil {
+		l.content.Description = e.Description.GetValue()
+	}
+
+	if e.Relations != nil {
+		l.content.Relations = e.Relations.GetValue()
+	}
+
 	return nil
 }
 
