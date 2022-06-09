@@ -282,6 +282,7 @@ message Block {
             // index 3 is deprecated, was used for schemaURL in old-format sets
             repeated model.Relation relations = 4;
             string activeView = 3; // saved within a session
+            repeated GroupOrder groupOrder = 12;
 
             message View {
                 string id = 1;
@@ -295,7 +296,6 @@ message Block {
                 Size cardSize = 9; // Gallery card size
                 bool coverFit = 10; // Image fits container
                 string groupRelationKey = 11;
-                repeated string groupOrder = 12;
 
                 enum Type {
                     Table = 0;
@@ -390,6 +390,16 @@ message Block {
                     NumberOfDaysAgo = 10;
                     NumberOfDaysNow = 11;
                 }
+            }
+
+            message GroupOrder {
+                string viewId = 1;
+                repeated ViewGroup viewGroup = 2;
+            }
+
+            message ViewGroup {
+                string groupId = 1;
+                int32 index = 2;
             }
         }
 

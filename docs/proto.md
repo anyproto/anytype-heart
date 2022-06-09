@@ -487,7 +487,8 @@
     - [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings)
     - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error)
     - [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group)
-    - [Rpc.Object.RelationSearchDistinct.Response.Value](#anytype-Rpc-Object-RelationSearchDistinct-Response-Value)
+    - [Rpc.Object.RelationSearchDistinct.Response.Status](#anytype-Rpc-Object-RelationSearchDistinct-Response-Status)
+    - [Rpc.Object.RelationSearchDistinct.Response.Tag](#anytype-Rpc-Object-RelationSearchDistinct-Response-Tag)
     - [Rpc.Object.Search](#anytype-Rpc-Object-Search)
     - [Rpc.Object.Search.Request](#anytype-Rpc-Object-Search-Request)
     - [Rpc.Object.Search.Response](#anytype-Rpc-Object-Search-Response)
@@ -1011,9 +1012,11 @@
     - [Block.Content.Bookmark](#anytype-model-Block-Content-Bookmark)
     - [Block.Content.Dataview](#anytype-model-Block-Content-Dataview)
     - [Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter)
+    - [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder)
     - [Block.Content.Dataview.Relation](#anytype-model-Block-Content-Dataview-Relation)
     - [Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort)
     - [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View)
+    - [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup)
     - [Block.Content.Div](#anytype-model-Block-Content-Div)
     - [Block.Content.FeaturedRelations](#anytype-model-Block-Content-FeaturedRelations)
     - [Block.Content.File](#anytype-model-Block-Content-File)
@@ -4209,6 +4212,7 @@ set the current active view (persisted only within a session)
 | blockId | [string](#string) |  | id of dataview block to update |
 | viewId | [string](#string) |  | id of view to update |
 | view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) |  |  |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) |  |  |
 
 
 
@@ -8300,23 +8304,39 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
-| value | [Rpc.Object.RelationSearchDistinct.Response.Value](#anytype-Rpc-Object-RelationSearchDistinct-Response-Value) | repeated |  |
+| status | [Rpc.Object.RelationSearchDistinct.Response.Status](#anytype-Rpc-Object-RelationSearchDistinct-Response-Status) |  |  |
+| tag | [Rpc.Object.RelationSearchDistinct.Response.Tag](#anytype-Rpc-Object-RelationSearchDistinct-Response-Tag) |  |  |
+| dateSettings | [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings) |  |  |
 
 
 
 
 
 
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Value"></a>
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Status"></a>
 
-### Rpc.Object.RelationSearchDistinct.Response.Value
+### Rpc.Object.RelationSearchDistinct.Response.Status
 
 
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| relationId | [string](#string) |  |  |
-| dateSettings | [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings) |  |  |
+| id | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Tag"></a>
+
+### Rpc.Object.RelationSearchDistinct.Response.Tag
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) | repeated |  |
 
 
 
@@ -15902,6 +15922,7 @@ Bookmark is to keep a web-link and to preview a content.
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
 | relations | [Relation](#anytype-model-Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |
+| groupOrder | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 
 
 
@@ -15922,6 +15943,22 @@ Bookmark is to keep a web-link and to preview a content.
 | condition | [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition) |  |  |
 | value | [google.protobuf.Value](#google-protobuf-Value) |  |  |
 | quickOption | [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption) |  |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-GroupOrder"></a>
+
+### Block.Content.Dataview.GroupOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| viewId | [string](#string) |  |  |
+| viewGroup | [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup) | repeated |  |
 
 
 
@@ -15983,7 +16020,22 @@ Bookmark is to keep a web-link and to preview a content.
 | cardSize | [Block.Content.Dataview.View.Size](#anytype-model-Block-Content-Dataview-View-Size) |  | Gallery card size |
 | coverFit | [bool](#bool) |  | Image fits container |
 | groupRelationKey | [string](#string) |  |  |
-| groupOrder | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-ViewGroup"></a>
+
+### Block.Content.Dataview.ViewGroup
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| groupId | [string](#string) |  |  |
+| index | [int32](#int32) |  |  |
 
 
 

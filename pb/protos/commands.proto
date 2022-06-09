@@ -928,14 +928,19 @@ message Rpc {
 
                 message Group {
                     string id = 1;
-                    repeated Value value = 2;
+                    oneof Value {
+                        Status status = 2;
+                        Tag tag = 3;
+                        DateSettings dateSettings = 4;
+                    }
                 }
 
-                message Value {
-                   oneof field {
-                        string relationId = 1;
-                        DateSettings dateSettings = 2;
-                    }
+                message Status {
+                    string id = 1;
+                }
+
+                message Tag {
+                    repeated string id = 1;
                 }
 
                 message DateSettings {
@@ -3446,6 +3451,7 @@ message Rpc {
                     string blockId = 2; // id of dataview block to update
                     string viewId = 3; // id of view to update
                     anytype.model.Block.Content.Dataview.View view = 4;
+                    anytype.model.Block.Content.Dataview.GroupOrder groupOrder = 5;
                 }
 
                 message Response {

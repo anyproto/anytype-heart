@@ -322,10 +322,10 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 				uniqMap[rel.Text] = true
 				groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
 					Id: rel.Id,
-					Value: []*pb.RpcObjectRelationSearchDistinctResponseValue{
-						{Field: &pb.RpcObjectRelationSearchDistinctResponseValueFieldOfRelationOption{
-							RelationOption: rel.Id,
-						}}},
+					Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfStatus{
+						Status: &pb.RpcObjectRelationSearchDistinctResponseStatus{
+							Id: rel.Id,
+						}},
 				})
 			}
 		}
