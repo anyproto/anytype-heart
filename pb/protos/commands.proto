@@ -931,7 +931,7 @@ message Rpc {
                     oneof Value {
                         Status status = 2;
                         Tag tag = 3;
-                        DateSettings dateSettings = 4;
+                        Date date = 4;
                     }
                 }
 
@@ -943,7 +943,7 @@ message Rpc {
                     repeated string id = 1;
                 }
 
-                message DateSettings {
+                message Date {
                 }
 
                 message Error {

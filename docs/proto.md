@@ -484,7 +484,7 @@
     - [Rpc.Object.RelationSearchDistinct](#anytype-Rpc-Object-RelationSearchDistinct)
     - [Rpc.Object.RelationSearchDistinct.Request](#anytype-Rpc-Object-RelationSearchDistinct-Request)
     - [Rpc.Object.RelationSearchDistinct.Response](#anytype-Rpc-Object-RelationSearchDistinct-Response)
-    - [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings)
+    - [Rpc.Object.RelationSearchDistinct.Response.Date](#anytype-Rpc-Object-RelationSearchDistinct-Response-Date)
     - [Rpc.Object.RelationSearchDistinct.Response.Error](#anytype-Rpc-Object-RelationSearchDistinct-Response-Error)
     - [Rpc.Object.RelationSearchDistinct.Response.Group](#anytype-Rpc-Object-RelationSearchDistinct-Response-Group)
     - [Rpc.Object.RelationSearchDistinct.Response.Status](#anytype-Rpc-Object-RelationSearchDistinct-Response-Status)
@@ -8269,9 +8269,9 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 
 
-<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings"></a>
+<a name="anytype-Rpc-Object-RelationSearchDistinct-Response-Date"></a>
 
-### Rpc.Object.RelationSearchDistinct.Response.DateSettings
+### Rpc.Object.RelationSearchDistinct.Response.Date
 
 
 
@@ -8306,7 +8306,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 | id | [string](#string) |  |  |
 | status | [Rpc.Object.RelationSearchDistinct.Response.Status](#anytype-Rpc-Object-RelationSearchDistinct-Response-Status) |  |  |
 | tag | [Rpc.Object.RelationSearchDistinct.Response.Tag](#anytype-Rpc-Object-RelationSearchDistinct-Response-Tag) |  |  |
-| dateSettings | [Rpc.Object.RelationSearchDistinct.Response.DateSettings](#anytype-Rpc-Object-RelationSearchDistinct-Response-DateSettings) |  |  |
+| date | [Rpc.Object.RelationSearchDistinct.Response.Date](#anytype-Rpc-Object-RelationSearchDistinct-Response-Date) |  |  |
 
 
 
