@@ -262,7 +262,39 @@ func (t table) ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest)
 }
 
 func (t table) RowDuplicate(s *state.State, req pb.RpcBlockTableRowDuplicateRequest) error {
-	return fmt.Errorf("not implemented")
+	srcRow, err := pickRow(s, req.BlockId)
+	if err != nil {
+		return fmt.Errorf("pick source row: %w", err)
+	}
+
+	newRow := srcRow.Copy()
+	newRow.Model().Id = t.generateRowId()
+	if !s.Add(newRow) {
+		return fmt.Errorf("add new row %s", newRow.Model().Id)
+	}
+	if err = s.InsertTo(req.TargetId, req.Position, newRow.Model().Id); err != nil {
+		return fmt.Errorf("can't insert column: %w", err)
+	}
+
+	for i, srcId := range newRow.Model().ChildrenIds {
+		cell := s.Pick(srcId)
+		if cell == nil {
+			return fmt.Errorf("cell %s is not found", srcId)
+		}
+		_, colId, err := parseCellId(srcId)
+		if err != nil {
+			return fmt.Errorf("parse cell id %s: %w", srcId, err)
+		}
+
+		newCell := cell.Copy()
+		newCell.Model().Id = makeCellId(newRow.Model().Id, colId)
+		if !s.Add(newCell) {
+			return fmt.Errorf("add new cell %s", newCell.Model().Id)
+		}
+		newRow.Model().ChildrenIds[i] = newCell.Model().Id
+	}
+
+	return nil
 }
 
 func (t table) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequest) error {

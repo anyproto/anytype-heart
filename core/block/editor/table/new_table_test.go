@@ -244,7 +244,10 @@ func TestColumnDuplicate(t *testing.T) {
 				[][]string{
 					{"row1-col1", "row1-col2"},
 					{"row2-col1", "row2-col2"},
-				}),
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col1": mkTextBlock("test11"),
+					"row2-col1": mkTextBlock("test21"),
+				})),
 			newColId: "col3",
 			req: pb.RpcBlockTableColumnDuplicateRequest{
 				BlockId:  "col1",
@@ -255,7 +258,12 @@ func TestColumnDuplicate(t *testing.T) {
 				[][]string{
 					{"row1-col1", "row1-col2", "row1-col3"},
 					{"row2-col1", "row2-col2", "row2-col3"},
-				}),
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col1": mkTextBlock("test11"),
+					"row2-col1": mkTextBlock("test21"),
+					"row1-col3": mkTextBlock("test11"),
+					"row2-col3": mkTextBlock("test21"),
+				})),
 		},
 		{
 			name: "partially filled",
@@ -264,7 +272,9 @@ func TestColumnDuplicate(t *testing.T) {
 					{"row1-col1"},
 					{"row2-col2"},
 					{},
-				}),
+				}, withBlockContents(map[string]*model.Block{
+					"row2-col2": mkTextBlock("test22"),
+				})),
 			newColId: "col3",
 			req: pb.RpcBlockTableColumnDuplicateRequest{
 				BlockId:  "col2",
@@ -276,7 +286,10 @@ func TestColumnDuplicate(t *testing.T) {
 					{"row1-col1"},
 					{"row2-col3", "row2-col2"},
 					{},
-				}),
+				}, withBlockContents(map[string]*model.Block{
+					"row2-col2": mkTextBlock("test22"),
+					"row2-col3": mkTextBlock("test22"),
+				})),
 		},
 		// TODO: more tests
 	} {
@@ -288,6 +301,83 @@ func TestColumnDuplicate(t *testing.T) {
 			require.NoError(t, err)
 			assert.Equal(t, tc.want, tc.source)
 			assert.Equal(t, tc.newColId, id)
+		})
+	}
+}
+
+func TestRowDuplicate(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		source   *state.State
+		newRowId string
+		req      pb.RpcBlockTableRowDuplicateRequest
+		want     *state.State
+	}{
+		{
+			name: "fully filled",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col1": mkTextBlock("test11"),
+					"row1-col2": mkTextBlock("test12"),
+					"row2-col1": mkTextBlock("test21"),
+				})),
+			newRowId: "row3",
+			req: pb.RpcBlockTableRowDuplicateRequest{
+				BlockId:  "row1",
+				TargetId: "row2",
+				Position: model.Block_Bottom,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col1": mkTextBlock("test11"),
+					"row1-col2": mkTextBlock("test12"),
+					"row2-col1": mkTextBlock("test21"),
+					"row3-col1": mkTextBlock("test11"),
+					"row3-col2": mkTextBlock("test12"),
+				})),
+		},
+		{
+			name: "partially filled",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1"},
+					{"row2-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col1": mkTextBlock("test11"),
+					"row2-col2": mkTextBlock("test22"),
+				})),
+			newRowId: "row3",
+			req: pb.RpcBlockTableRowDuplicateRequest{
+				BlockId:  "row2",
+				TargetId: "row1",
+				Position: model.Block_Top,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"},
+				[][]string{
+					{"row3-col2"},
+					{"row1-col1"},
+					{"row2-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col1": mkTextBlock("test11"),
+					"row2-col2": mkTextBlock("test22"),
+					"row3-col2": mkTextBlock("test22"),
+				})),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := table{
+				generateRowId: idFromSlice([]string{tc.newRowId}),
+			}
+			err := tb.RowDuplicate(tc.source, tc.req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, tc.source)
 		})
 	}
 }
@@ -402,7 +492,24 @@ func TestColumnDelete(t *testing.T) {
 	}
 }
 
-func mkTestTable(columns []string, rows []string, cells [][]string) *state.State {
+type testTableOptions struct {
+	blocks map[string]*model.Block
+}
+
+type testTableOption func(o *testTableOptions)
+
+func withBlockContents(blocks map[string]*model.Block) testTableOption {
+	return func(o *testTableOptions) {
+		o.blocks = blocks
+	}
+}
+
+func mkTestTable(columns []string, rows []string, cells [][]string, opts ...testTableOption) *state.State {
+	o := testTableOptions{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+
 	s := state.NewDoc("root", nil).NewState()
 	blocks := []*model.Block{
 		{
@@ -453,10 +560,14 @@ func mkTestTable(columns []string, rows []string, cells [][]string) *state.State
 		cellsByRow[rowId] = cc
 
 		for _, c := range cc {
-			blocks = append(blocks, &model.Block{
-				Id:      c,
-				Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
-			})
+			proto, ok := o.blocks[c]
+			if !ok {
+				proto = &model.Block{
+					Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
+				}
+			}
+			proto.Id = c
+			blocks = append(blocks, proto)
 		}
 	}
 
@@ -472,6 +583,14 @@ func mkTestTable(columns []string, rows []string, cells [][]string) *state.State
 		s.Add(simple.New(b))
 	}
 	return s
+}
+
+func mkTextBlock(txt string) *model.Block {
+	return &model.Block{
+		Content: &model.BlockContentOfText{Text: &model.BlockContentText{
+			Text: txt,
+		}},
+	}
 }
 
 func idFromSlice(ids []string) func() string {
