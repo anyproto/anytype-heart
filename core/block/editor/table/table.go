@@ -277,9 +277,9 @@ func (t table) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillReques
 	columns := tb.columns().ChildrenIds
 
 	for _, rowId := range req.BlockIds {
-		row, err := pickRow(s, rowId)
+		row, err := getRow(s, rowId)
 		if err != nil {
-			return fmt.Errorf("pick row %s: %w", rowId, err)
+			return fmt.Errorf("get row %s: %w", rowId, err)
 		}
 
 		newIds := make([]string, 0, len(columns))
@@ -295,9 +295,7 @@ func (t table) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillReques
 			}
 		}
 		row.Model().ChildrenIds = newIds
-		s.Set(row)
 	}
-
 	return nil
 }
 
@@ -456,6 +454,17 @@ func (t table) Expand(s *state.State, req pb.RpcBlockTableExpandRequest) error {
 	}
 
 	return nil
+}
+
+func getRow(s *state.State, id string) (simple.Block, error) {
+	b := s.Get(id)
+	if b == nil {
+		return nil, fmt.Errorf("row is not found")
+	}
+	if b.Model().GetTableRow() == nil {
+		return nil, fmt.Errorf("block is not a row")
+	}
+	return b, nil
 }
 
 func pickRow(s *state.State, id string) (simple.Block, error) {
