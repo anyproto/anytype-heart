@@ -247,3 +247,25 @@ func (mw *Middleware) BlockTableRowListFill(req *pb.RpcBlockTableRowListFillRequ
 	}
 	return response(pb.RpcBlockTableRowListFillResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableRowListClean(req *pb.RpcBlockTableRowListCleanRequest) *pb.RpcBlockTableRowListCleanResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableRowListCleanResponseErrorCode, id string, err error) *pb.RpcBlockTableRowListCleanResponse {
+		m := &pb.RpcBlockTableRowListCleanResponse{Error: &pb.RpcBlockTableRowListCleanResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableRowListClean(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableRowListCleanResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableRowListCleanResponseError_NULL, id, nil)
+}

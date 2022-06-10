@@ -1131,3 +1131,10 @@ func (s *service) TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowLi
 	})
 	return err
 }
+
+func (s *service) TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+		return t.RowListClean(st, req)
+	})
+	return err
+}

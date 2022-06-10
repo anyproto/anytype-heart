@@ -3154,6 +3154,29 @@ message Rpc {
                 }
             }
         }
+        message RowListClean {
+            message Request {
+                string contextId = 1; // id of the context object
+                repeated string blockIds = 2;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
 
         message ColumnCreate {
             message Request {

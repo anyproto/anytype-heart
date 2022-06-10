@@ -33,6 +33,7 @@ type Table interface {
 	RowMove(s *state.State, req pb.RpcBlockTableRowMoveRequest) error
 	RowDuplicate(s *state.State, req pb.RpcBlockTableRowDuplicateRequest) error
 	RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequest) error
+	RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequest) error
 	ColumnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) error
 	ColumnDelete(s *state.State, req pb.RpcBlockTableColumnDeleteRequest) error
 	ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest) error
@@ -295,6 +296,28 @@ func (t table) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillReques
 			}
 		}
 		row.Model().ChildrenIds = newIds
+	}
+	return nil
+}
+
+// TODO: test!!
+func (t table) RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequest) error {
+	if len(req.BlockIds) == 0 {
+		return fmt.Errorf("empty row list")
+	}
+
+	for _, rowId := range req.BlockIds {
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row: %w", err)
+		}
+
+		for _, cellId := range row.Model().ChildrenIds {
+			cell := s.Pick(cellId)
+			if txt := cell.Model().GetText(); txt != nil && txt.Text == "" {
+				s.Unlink(cellId)
+			}
+		}
 	}
 	return nil
 }

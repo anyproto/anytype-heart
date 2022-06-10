@@ -72,12 +72,10 @@ func normalizeRow(s *state.State, colIdx map[string]int, row simple.Block) error
 		}
 		rs.indices = append(rs.indices, v)
 	}
-
 	sort.Sort(rs)
 
 	if rs.touched {
 		row.Model().ChildrenIds = rs.cells
-		s.Set(row)
 	}
 	return nil
 }

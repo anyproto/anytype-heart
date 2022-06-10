@@ -326,6 +326,10 @@
     - [Rpc.BlockTable.RowDuplicate.Request](#anytype-Rpc-BlockTable-RowDuplicate-Request)
     - [Rpc.BlockTable.RowDuplicate.Response](#anytype-Rpc-BlockTable-RowDuplicate-Response)
     - [Rpc.BlockTable.RowDuplicate.Response.Error](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error)
+    - [Rpc.BlockTable.RowListClean](#anytype-Rpc-BlockTable-RowListClean)
+    - [Rpc.BlockTable.RowListClean.Request](#anytype-Rpc-BlockTable-RowListClean-Request)
+    - [Rpc.BlockTable.RowListClean.Response](#anytype-Rpc-BlockTable-RowListClean-Response)
+    - [Rpc.BlockTable.RowListClean.Response.Error](#anytype-Rpc-BlockTable-RowListClean-Response-Error)
     - [Rpc.BlockTable.RowListFill](#anytype-Rpc-BlockTable-RowListFill)
     - [Rpc.BlockTable.RowListFill.Request](#anytype-Rpc-BlockTable-RowListFill-Request)
     - [Rpc.BlockTable.RowListFill.Response](#anytype-Rpc-BlockTable-RowListFill-Response)
@@ -800,6 +804,7 @@
     - [Rpc.BlockTable.RowCreate.Response.Error.Code](#anytype-Rpc-BlockTable-RowCreate-Response-Error-Code)
     - [Rpc.BlockTable.RowDelete.Response.Error.Code](#anytype-Rpc-BlockTable-RowDelete-Response-Error-Code)
     - [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code)
+    - [Rpc.BlockTable.RowListClean.Response.Error.Code](#anytype-Rpc-BlockTable-RowListClean-Response-Error-Code)
     - [Rpc.BlockTable.RowListFill.Response.Error.Code](#anytype-Rpc-BlockTable-RowListFill-Response-Error-Code)
     - [Rpc.BlockTable.RowMove.Response.Error.Code](#anytype-Rpc-BlockTable-RowMove-Response-Error-Code)
     - [Rpc.BlockText.ListClearContent.Response.Error.Code](#anytype-Rpc-BlockText-ListClearContent-Response-Error-Code)
@@ -1309,6 +1314,7 @@
 | BlockTableColumnDelete | [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request) | [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response) |  |
 | BlockTableColumnDuplicate | [Rpc.BlockTable.ColumnDuplicate.Request](#anytype-Rpc-BlockTable-ColumnDuplicate-Request) | [Rpc.BlockTable.ColumnDuplicate.Response](#anytype-Rpc-BlockTable-ColumnDuplicate-Response) |  |
 | BlockTableRowListFill | [Rpc.BlockTable.RowListFill.Request](#anytype-Rpc-BlockTable-RowListFill-Request) | [Rpc.BlockTable.RowListFill.Response](#anytype-Rpc-BlockTable-RowListFill-Response) |  |
+| BlockTableRowListClean | [Rpc.BlockTable.RowListClean.Request](#anytype-Rpc-BlockTable-RowListClean-Request) | [Rpc.BlockTable.RowListClean.Response](#anytype-Rpc-BlockTable-RowListClean-Response) |  |
 | BlockLinkCreateWithObject | [Rpc.BlockLink.CreateWithObject.Request](#anytype-Rpc-BlockLink-CreateWithObject-Request) | [Rpc.BlockLink.CreateWithObject.Response](#anytype-Rpc-BlockLink-CreateWithObject-Response) | Other specific block commands *** |
 | BlockLinkListSetAppearance | [Rpc.BlockLink.ListSetAppearance.Request](#anytype-Rpc-BlockLink-ListSetAppearance-Request) | [Rpc.BlockLink.ListSetAppearance.Response](#anytype-Rpc-BlockLink-ListSetAppearance-Response) |  |
 | BlockBookmarkFetch | [Rpc.BlockBookmark.Fetch.Request](#anytype-Rpc-BlockBookmark-Fetch-Request) | [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response) |  |
@@ -6028,6 +6034,64 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean"></a>
+
+### Rpc.BlockTable.RowListClean
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Request"></a>
+
+### Rpc.BlockTable.RowListClean.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| blockIds | [string](#string) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Response"></a>
+
+### Rpc.BlockTable.RowListClean.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowListClean.Response.Error](#anytype-Rpc-BlockTable-RowListClean-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Response-Error"></a>
+
+### Rpc.BlockTable.RowListClean.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowListClean.Response.Error.Code](#anytype-Rpc-BlockTable-RowListClean-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12811,6 +12875,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.RowDuplicate.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
+<a name="anytype-Rpc-BlockTable-RowListClean-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowListClean.Response.Error.Code
 
 
 | Name | Number | Description |
