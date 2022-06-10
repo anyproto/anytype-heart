@@ -65,6 +65,50 @@ func TestRowCreate(t *testing.T) {
 	}
 }
 
+func TestColumnCreate(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		source   *state.State
+		newColId string
+		req      pb.RpcBlockTableColumnCreateRequest
+		want     *state.State
+	}{
+		{
+			name:     "to the right",
+			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+			newColId: "col3",
+			req: pb.RpcBlockTableColumnCreateRequest{
+				TargetId: "col1",
+				Position: model.Block_Right,
+			},
+			want: mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+		},
+		{
+			name:     "to the left",
+			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+			newColId: "col3",
+			req: pb.RpcBlockTableColumnCreateRequest{
+				TargetId: "col1",
+				Position: model.Block_Left,
+			},
+			want: mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+		},
+		// TODO: more tests
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := table{
+				generateColId: idFromSlice([]string{tc.newColId}),
+			}
+
+			err := tb.ColumnCreate(tc.source, tc.req)
+
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.want, tc.source)
+		})
+	}
+}
+
 func TestColumnMove(t *testing.T) {
 	for _, tc := range []struct {
 		name   string

@@ -168,15 +168,6 @@ func (t table) RowMove(s *state.State, req pb.RpcBlockTableRowMoveRequest) error
 	return nil
 }
 
-func (t table) ColumnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) error {
-
-	if err := t.columnCreate(s, req); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func (t table) ColumnDelete(s *state.State, req pb.RpcBlockTableColumnDeleteRequest) error {
 	tb, err := newTableBlockFromState(s, req.TargetId)
 	if err != nil {
@@ -310,6 +301,43 @@ func (t table) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillReques
 	return nil
 }
 
+func (t table) ColumnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) error {
+	_, err := pickColumn(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("get column: %w", err)
+	}
+	switch req.Position {
+	// TODO: crutch
+	case model.Block_Left:
+		req.Position = model.Block_Top
+	case model.Block_Right:
+		req.Position = model.Block_Bottom
+	default:
+		return fmt.Errorf("position is not supported")
+	}
+
+	tb, err := newTableBlockFromState(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("initialize table state: %w", err)
+	}
+
+	colPos := slice.FindPos(tb.columns().ChildrenIds, req.TargetId)
+	if colPos < 0 {
+		return fmt.Errorf("can't find target column")
+	}
+
+	colId, err := t.addColumnHeader(s)
+	if err != nil {
+		return err
+	}
+
+	if err = s.InsertTo(req.TargetId, req.Position, colId); err != nil {
+		return fmt.Errorf("insert column header: %w", err)
+	}
+
+	return nil
+}
+
 func (t table) ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
 	switch req.Position {
 	// TODO: crutch
@@ -395,7 +423,7 @@ func (t table) Expand(s *state.State, req pb.RpcBlockTableExpandRequest) error {
 	}
 
 	for i := uint32(0); i < req.Columns; i++ {
-		err := t.columnCreate(s, pb.RpcBlockTableColumnCreateRequest{
+		err := t.ColumnCreate(s, pb.RpcBlockTableColumnCreateRequest{
 			TargetId: tb.columns().ChildrenIds[tb.columnsCount()-1],
 			Position: model.Block_Right,
 		})
@@ -426,63 +454,6 @@ func pickRow(s *state.State, id string) (simple.Block, error) {
 		return nil, fmt.Errorf("block is not a row")
 	}
 	return b, nil
-}
-
-func (t table) columnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) error {
-	_, err := pickColumn(s, req.TargetId)
-	if err != nil {
-		return fmt.Errorf("get column: %w", err)
-	}
-	switch req.Position {
-	// TODO: crutch
-	case model.Block_Left:
-		req.Position = model.Block_Top
-	case model.Block_Right:
-		req.Position = model.Block_Bottom
-	default:
-		return fmt.Errorf("position is not supported")
-	}
-
-	tb, err := newTableBlockFromState(s, req.TargetId)
-	if err != nil {
-		return fmt.Errorf("initialize table state: %w", err)
-	}
-
-	colPos := slice.FindPos(tb.columns().ChildrenIds, req.TargetId)
-	if colPos < 0 {
-		return fmt.Errorf("can't find target column")
-	}
-
-	colId, err := t.addColumnHeader(s)
-	if err != nil {
-		return err
-	}
-
-	for _, rowId := range tb.rows().ChildrenIds {
-		cellId, err := addCell(s, rowId, colId)
-		if err != nil {
-			return fmt.Errorf("add cell: %w", err)
-		}
-
-		row, err := pickRow(s, rowId)
-		if err != nil {
-			return fmt.Errorf("pick row %s: %w", rowId, err)
-		}
-		if len(row.Model().ChildrenIds) != tb.columnsCount() {
-			return fmt.Errorf("inconsistent row state")
-		}
-
-		targetColumnId := row.Model().ChildrenIds[colPos]
-		if err = s.InsertTo(targetColumnId, req.Position, cellId); err != nil {
-			return fmt.Errorf("insert cell: %w", err)
-		}
-	}
-
-	if err = s.InsertTo(req.TargetId, req.Position, colId); err != nil {
-		return fmt.Errorf("insert column header: %w", err)
-	}
-
-	return nil
 }
 
 func pickColumn(s *state.State, id string) (simple.Block, error) {
