@@ -378,41 +378,54 @@ func (t table) ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDuplica
 	if !s.Add(newCol) {
 		return "", fmt.Errorf("can't add column block")
 	}
+	if err = s.InsertTo(req.TargetId, req.Position, newCol.Model().Id); err != nil {
+		return "", fmt.Errorf("can't insert column: %w", err)
+	}
 
-	for _, id := range tb.rows().ChildrenIds {
-		row, err := pickRow(s, id)
+	colIdx := map[string]int{}
+	for i, c := range tb.columns().ChildrenIds {
+		colIdx[c] = i
+	}
+
+	for _, rowId := range tb.rows().ChildrenIds {
+		row, err := pickRow(s, rowId)
 		if err != nil {
-			return "", fmt.Errorf("can't get row %s: %w", id, err)
+			return "", fmt.Errorf("can't get row %s: %w", rowId, err)
 		}
 
-		if len(row.Model().ChildrenIds) != tb.columnsCount() {
-			return "", fmt.Errorf("invalid number of columns in row %s", id)
+		var cellId string
+		for _, id := range row.Model().ChildrenIds {
+			_, colId, err := parseCellId(id)
+			if err != nil {
+				return "", fmt.Errorf("parse cell %s in row %s: %w", cellId, rowId, err)
+			}
+			if colId == req.BlockId {
+				cellId = id
+				break
+			}
+		}
+		if cellId == "" {
+			continue
 		}
 
-		srcId := row.Model().ChildrenIds[srcPos]
-		targetId := row.Model().ChildrenIds[targetPos]
-
-		cell := s.Pick(srcId)
+		cell := s.Pick(cellId)
 		if cell == nil {
-			return "", fmt.Errorf("cell %s is not found", srcId)
+			return "", fmt.Errorf("cell %s is not found", cellId)
 		}
 		cell = cell.Copy()
-		cell.Model().Id = makeCellId(id, newCol.Model().Id)
+		cell.Model().Id = makeCellId(rowId, newCol.Model().Id)
 
 		if !s.Add(cell) {
 			return "", fmt.Errorf("can't add cell block")
 		}
 
-		if err = s.InsertTo(targetId, req.Position, cell.Model().Id); err != nil {
-			return "", fmt.Errorf("can't insert cell: %w", err)
+		row.Model().ChildrenIds = append(row.Model().ChildrenIds, cell.Model().Id)
+		if err = normalizeRow(s, colIdx, row); err != nil {
+			return "", fmt.Errorf("normalize row %s: %w", rowId, err)
 		}
 	}
 
-	if err = s.InsertTo(req.TargetId, req.Position, newCol.Model().Id); err != nil {
-		return "", fmt.Errorf("can't insert column: %w", err)
-	}
-
-	return newCol.Model().Id, t.Apply(s)
+	return newCol.Model().Id, nil
 }
 
 func (t table) Expand(s *state.State, req pb.RpcBlockTableExpandRequest) error {

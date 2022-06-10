@@ -230,6 +230,68 @@ func TestColumnCreate(t *testing.T) {
 	}
 }
 
+func TestColumnDuplicate(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		source   *state.State
+		newColId string
+		req      pb.RpcBlockTableColumnDuplicateRequest
+		want     *state.State
+	}{
+		{
+			name: "fully filled",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}),
+			newColId: "col3",
+			req: pb.RpcBlockTableColumnDuplicateRequest{
+				BlockId:  "col1",
+				TargetId: "col2",
+				Position: model.Block_Right,
+			},
+			want: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2", "row1-col3"},
+					{"row2-col1", "row2-col2", "row2-col3"},
+				}),
+		},
+		{
+			name: "partially filled",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1"},
+					{"row2-col2"},
+					{},
+				}),
+			newColId: "col3",
+			req: pb.RpcBlockTableColumnDuplicateRequest{
+				BlockId:  "col2",
+				TargetId: "col1",
+				Position: model.Block_Left,
+			},
+			want: mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1"},
+					{"row2-col3", "row2-col2"},
+					{},
+				}),
+		},
+		// TODO: more tests
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := table{
+				generateColId: idFromSlice([]string{tc.newColId}),
+			}
+			id, err := tb.ColumnDuplicate(tc.source, tc.req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.newColId, id)
+		})
+	}
+}
+
 func TestColumnMove(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
@@ -381,6 +443,9 @@ func mkTestTable(columns []string, rows []string, cells [][]string) *state.State
 
 	cellsByRow := map[string][]string{}
 	for _, cc := range cells {
+		if len(cc) == 0 {
+			continue
+		}
 		rowId, _, err := parseCellId(cc[0])
 		if err != nil {
 			panic(err)
