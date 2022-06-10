@@ -314,8 +314,21 @@ func (t table) RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequ
 
 		for _, cellId := range row.Model().ChildrenIds {
 			cell := s.Pick(cellId)
-			if txt := cell.Model().GetText(); txt != nil && txt.Text == "" {
-				s.Unlink(cellId)
+			if txt := cell.Model().GetText(); txt != nil {
+				// TODO extract to function (simple/text package)
+				if txt.Text == "" &&
+					!txt.Checked &&
+					txt.Color == "" &&
+					txt.Style == 0 &&
+					txt.IconEmoji == "" &&
+					txt.IconImage == "" &&
+					len(txt.GetMarks().GetMarks()) == 0 &&
+					cell.Model().BackgroundColor == "" &&
+					cell.Model().Align == 0 &&
+					cell.Model().VerticalAlign == 0 {
+
+					s.Unlink(cellId)
+				}
 			}
 		}
 	}
