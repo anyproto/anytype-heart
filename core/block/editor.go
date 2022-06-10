@@ -3,8 +3,9 @@ package block
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"time"
+
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/link"
 	"github.com/anytypeio/go-anytype-middleware/core/block/source"
@@ -1120,6 +1121,13 @@ func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableC
 func (s *service) TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error) {
 	err = s.DoTable(req.ContextId, func(t table.Table) error {
 		return t.Expand(ctx, req)
+	})
+	return err
+}
+
+func (s *service) TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error) {
+	err = s.DoTable(req.ContextId, func(t table.Table) error {
+		return t.RowListFill(ctx, req)
 	})
 	return err
 }

@@ -2,6 +2,7 @@ package table
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
@@ -27,6 +28,7 @@ type Table interface {
 	RowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) error
 	RowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) error
 	RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) error
+	RowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) error
 	ColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) error
 	ColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) error
 	ColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) error
@@ -287,6 +289,44 @@ func (t table) RowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicate
 	return fmt.Errorf("not implemented")
 }
 
+func (t table) RowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) error {
+	if len(req.BlockIds) == 0 {
+		return fmt.Errorf("empty row list")
+	}
+	s := t.NewStateCtx(ctx)
+
+	tb, err := newTableBlockFromState(s, req.BlockIds[0])
+	if err != nil {
+		return fmt.Errorf("init table: %w", err)
+	}
+
+	columns := tb.columns().ChildrenIds
+
+	for _, rowId := range req.BlockIds {
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row %s: %w", rowId, err)
+		}
+
+		newIds := make([]string, 0, len(columns))
+		for _, colId := range columns {
+			id := makeCellId(rowId, colId)
+			newIds = append(newIds, id)
+
+			if !s.Exists(id) {
+				_, err := addCell(s, rowId, colId)
+				if err != nil {
+					return fmt.Errorf("add cell %s: %w", id, err)
+				}
+			}
+		}
+		row.Model().ChildrenIds = newIds
+		s.Set(row)
+	}
+
+	return t.Apply(s)
+}
+
 func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
 	switch req.Position {
 	// TODO: crutch
@@ -480,6 +520,14 @@ func makeCellId(rowId, colId string) string {
 	return fmt.Sprintf("%s-%s", rowId, colId)
 }
 
+func parseCellId(id string) (rowId string, colId string, err error) {
+	toks := strings.SplitN(id, "-", 2)
+	if len(toks) != 2 {
+		return "", "", fmt.Errorf("invalid id: must contains rowId and colId")
+	}
+	return toks[0], toks[1], nil
+}
+
 func addCell(s *state.State, rowId, colId string) (string, error) {
 	tb := simple.New(&model.Block{
 		Id: makeCellId(rowId, colId),
@@ -534,7 +582,7 @@ func addRow(s *state.State, columns []string) (string, error) {
 		},
 	})
 
-	cellIds := make([]string, 0, len(columns))
+	/*cellIds := make([]string, 0, len(columns))
 	for _, colId := range columns {
 		id, err := addCell(s, row.Model().Id, colId)
 		if err != nil {
@@ -542,7 +590,7 @@ func addRow(s *state.State, columns []string) (string, error) {
 		}
 		cellIds = append(cellIds, id)
 	}
-	row.Model().ChildrenIds = cellIds
+	row.Model().ChildrenIds = cellIds*/
 
 	if !s.Add(row) {
 		return "", fmt.Errorf("can't add row block")

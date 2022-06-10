@@ -34,14 +34,33 @@ func TestTable_TableCreate(t *testing.T) {
 	assert.NoError(t, err)
 	assert.True(t, s.Exists(id))
 
-	want := mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"c11", "c12", "c13"}, {"c21", "c22", "c23"}})
+	want := mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{})
 
 	assertIsomorphic(t, want, s, map[string]string{}, map[string]string{})
 }
 
+func TestTable_FillRows(t *testing.T) {
+	ctx := newTableTestContext(t, 2, 2, false,
+		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{}))
+
+	tb, err := newTableBlockFromState(ctx.s, ctx.id)
+	require.NoError(t, err)
+
+	err = ctx.editor.RowListFill(nil, pb.RpcBlockTableRowListFillRequest{
+		ContextId: "",
+		BlockIds:  tb.rows().ChildrenIds,
+	})
+
+	require.NoError(t, err)
+
+	want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}})
+
+	assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
+}
+
 func TestTable_TableRowCreate(t *testing.T) {
-	ctx := newTableTestContext(t, 2, 2,
-		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+	ctx := newTableTestContext(t, 2, 2, true,
+		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 	t.Run("to the top of the target", func(t *testing.T) {
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
@@ -54,7 +73,8 @@ func TestTable_TableRowCreate(t *testing.T) {
 
 		require.NoError(t, err)
 
-		want := mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"}, [][]string{{"c31", "c32"}, {"c11", "c12"}, {"c21", "c22"}})
+		// Cells are not created automatically
+		want := mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
@@ -70,15 +90,16 @@ func TestTable_TableRowCreate(t *testing.T) {
 
 		require.NoError(t, err)
 
-		want := mkTestTable([]string{"col1", "col2"}, []string{"row3", "row4", "row1", "row2"}, [][]string{{"c31", "c32"}, {"c41", "c42"}, {"c11", "c12"}, {"c21", "c22"}})
+		// Cells are not created automatically
+		want := mkTestTable([]string{"col1", "col2"}, []string{"row3", "row4", "row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 }
 
 func TestTable_TableRowDelete(t *testing.T) {
-	ctx := newTableTestContext(t, 2, 2,
-		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+	ctx := newTableTestContext(t, 2, 2, true,
+		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 	tb, err := newTableBlockFromState(ctx.s, ctx.id)
 	require.NoError(t, err)
@@ -89,15 +110,15 @@ func TestTable_TableRowDelete(t *testing.T) {
 
 	require.NoError(t, err)
 
-	want := mkTestTable([]string{"col1", "col2"}, []string{"row1"}, [][]string{{"c11", "c12"}})
+	want := mkTestTable([]string{"col1", "col2"}, []string{"row1"}, [][]string{{"row1-col1", "row1-col2"}})
 
 	assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 }
 
 func TestTable_TableRowMove(t *testing.T) {
 	t.Run("to the top of the target", func(t *testing.T) {
-		ctx := newTableTestContext(t, 2, 3,
-			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{{"c11", "c12"}, {"c21", "c22"}, {"c31", "c32"}}))
+		ctx := newTableTestContext(t, 2, 3, true,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}, {"row3-col1", "row3-col2"}}))
 
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
@@ -110,14 +131,14 @@ func TestTable_TableRowMove(t *testing.T) {
 
 		require.NoError(t, err)
 
-		want := mkTestTable([]string{"col1", "col2"}, []string{"row2", "row1", "row3"}, [][]string{{"c21", "c22"}, {"c11", "c12"}, {"c31", "c32"}})
+		want := mkTestTable([]string{"col1", "col2"}, []string{"row2", "row1", "row3"}, [][]string{{"row2-col1", "row2-col2"}, {"row1-col1", "row1-col2"}, {"row3-col1", "row3-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 
 	t.Run("to the bottom of the target", func(t *testing.T) {
-		ctx := newTableTestContext(t, 2, 3,
-			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{{"c11", "c12"}, {"c21", "c22"}, {"c31", "c32"}}))
+		ctx := newTableTestContext(t, 2, 3, true,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}, {"row3-col1", "row3-col2"}}))
 
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
@@ -130,15 +151,15 @@ func TestTable_TableRowMove(t *testing.T) {
 
 		require.NoError(t, err)
 
-		want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row2"}, [][]string{{"c11", "c12"}, {"c31", "c32"}, {"c21", "c22"}})
+		want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row3-col1", "row3-col2"}, {"row2-col1", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 }
 
 func TestTable_TableColumnCreate(t *testing.T) {
-	ctx := newTableTestContext(t, 2, 2,
-		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+	ctx := newTableTestContext(t, 2, 2, true,
+		mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 	t.Run("to the right of target", func(t *testing.T) {
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
@@ -152,7 +173,7 @@ func TestTable_TableColumnCreate(t *testing.T) {
 
 		require.NoError(t, err)
 
-		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c13", "c12"}, {"c21", "c23", "c22"}})
+		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col3", "row1-col2"}, {"row2-col1", "row2-col3", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
@@ -170,7 +191,7 @@ func TestTable_TableColumnCreate(t *testing.T) {
 		require.NoError(t, err)
 
 		// Remember that we operate under the same table, so previous modifications preserved
-		want := mkTestTable([]string{"col4", "col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"c14", "c11", "c13", "c12"}, {"c24", "c21", "c23", "c22"}})
+		want := mkTestTable([]string{"col4", "col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col4", "row1-col1", "row1-col3", "row1-col2"}, {"row2-col4", "row2-col1", "row2-col3", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
@@ -178,8 +199,8 @@ func TestTable_TableColumnCreate(t *testing.T) {
 
 func TestTable_TableColumnDuplicate(t *testing.T) {
 	t.Run("to the right of the target", func(t *testing.T) {
-		ctx := newTableTestContext(t, 2, 2,
-			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+		ctx := newTableTestContext(t, 2, 2, true,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
@@ -193,14 +214,14 @@ func TestTable_TableColumnDuplicate(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ctx.s.Exists(id))
 
-		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c13", "c12"}, {"c21", "c23", "c22"}})
+		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col3", "row1-col2"}, {"row2-col1", "row2-col3", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 
 	t.Run("to the left of the target", func(t *testing.T) {
-		ctx := newTableTestContext(t, 2, 2,
-			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+		ctx := newTableTestContext(t, 2, 2, true,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
@@ -214,7 +235,7 @@ func TestTable_TableColumnDuplicate(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, ctx.s.Exists(id))
 
-		want := mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c13", "c11", "c12"}, {"c23", "c21", "c22"}})
+		want := mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col3", "row1-col1", "row1-col2"}, {"row2-col3", "row2-col1", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
@@ -222,8 +243,8 @@ func TestTable_TableColumnDuplicate(t *testing.T) {
 
 func TestTable_TableColumnMove(t *testing.T) {
 	t.Run("to the right of the drop target", func(t *testing.T) {
-		ctx := newTableTestContext(t, 3, 2,
-			mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"c11", "c12", "c13"}, {"c21", "c22", "c23"}}))
+		ctx := newTableTestContext(t, 3, 2, true,
+			mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2", "row1-col3"}, {"row2-col1", "row2-col2", "row2-col3"}}))
 
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
@@ -237,14 +258,14 @@ func TestTable_TableColumnMove(t *testing.T) {
 
 		require.NoError(t, err)
 
-		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c13", "c12"}, {"c21", "c23", "c22"}})
+		want := mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col3", "row1-col2"}, {"row2-col1", "row2-col3", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 
 	t.Run("to the left of the drop target", func(t *testing.T) {
-		ctx := newTableTestContext(t, 3, 2,
-			mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"c11", "c12", "c13"}, {"c21", "c22", "c23"}}))
+		ctx := newTableTestContext(t, 3, 2, true,
+			mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2", "row1-col3"}, {"row2-col1", "row2-col2", "row2-col3"}}))
 
 		tb, err := newTableBlockFromState(ctx.s, ctx.id)
 		require.NoError(t, err)
@@ -257,15 +278,15 @@ func TestTable_TableColumnMove(t *testing.T) {
 
 		require.NoError(t, err)
 
-		want := mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c13", "c11", "c12"}, {"c23", "c21", "c22"}})
+		want := mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col3", "row1-col1", "row1-col2"}, {"row2-col3", "row2-col1", "row2-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 }
 
 func TestTable_TableColumnDelete(t *testing.T) {
-	ctx := newTableTestContext(t, 3, 2,
-		mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"c11", "c12", "c13"}, {"c21", "c22", "c23"}}))
+	ctx := newTableTestContext(t, 3, 2, true,
+		mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2", "row1-col3"}, {"row2-col1", "row2-col2", "row2-col3"}}))
 
 	tb, err := newTableBlockFromState(ctx.s, ctx.id)
 	require.NoError(t, err)
@@ -275,15 +296,15 @@ func TestTable_TableColumnDelete(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	want := mkTestTable([]string{"col2", "col3"}, []string{"row1", "row2"}, [][]string{{"c12", "c13"}, {"c22", "c23"}})
+	want := mkTestTable([]string{"col2", "col3"}, []string{"row1", "row2"}, [][]string{{"row1-col2", "row1-col3"}, {"row2-col2", "row2-col3"}})
 
 	assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 }
 
 func TestTable_TableExpand(t *testing.T) {
 	t.Run("columns only", func(t *testing.T) {
-		ctx := newTableTestContext(t, 2, 2,
-			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+		ctx := newTableTestContext(t, 2, 2, true,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 		err := ctx.editor.Expand(nil, pb.RpcBlockTableExpandRequest{
 			TargetId: ctx.id,
@@ -293,14 +314,14 @@ func TestTable_TableExpand(t *testing.T) {
 		require.NoError(t, err)
 
 		want := mkTestTable([]string{"col1", "col2", "col3", "col4"}, []string{"row1", "row2"},
-			[][]string{{"c11", "c12", "c13", "c14"}, {"c21", "c22", "c23", "c24"}})
+			[][]string{{"row1-col1", "row1-col2", "row1-col3", "row1-col4"}, {"row2-col1", "row2-col2", "row2-col3", "row2-col4"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 
 	t.Run("rows only", func(t *testing.T) {
-		ctx := newTableTestContext(t, 2, 2,
-			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+		ctx := newTableTestContext(t, 2, 2, true,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 		err := ctx.editor.Expand(nil, pb.RpcBlockTableExpandRequest{
 			TargetId: ctx.id,
@@ -309,15 +330,23 @@ func TestTable_TableExpand(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
+		require.NoError(t, err)
+
+		err = ctx.editor.RowListFill(nil, pb.RpcBlockTableRowListFillRequest{
+			BlockIds: tb.rows().ChildrenIds,
+		})
+		require.NoError(t, err)
+
 		want := mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4"},
-			[][]string{{"c11", "c12"}, {"c21", "c22"}, {"c31", "c32"}, {"c41", "c42"}})
+			[][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}, {"row3-col1", "row3-col2"}, {"row4-col1", "row4-col2"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
 
 	t.Run("cols and rows", func(t *testing.T) {
-		ctx := newTableTestContext(t, 2, 2,
-			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"c11", "c12"}, {"c21", "c22"}}))
+		ctx := newTableTestContext(t, 2, 2, true,
+			mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col1", "row1-col2"}, {"row2-col1", "row2-col2"}}))
 
 		err := ctx.editor.Expand(nil, pb.RpcBlockTableExpandRequest{
 			TargetId: ctx.id,
@@ -326,8 +355,16 @@ func TestTable_TableExpand(t *testing.T) {
 		})
 		require.NoError(t, err)
 
+		tb, err := newTableBlockFromState(ctx.s, ctx.id)
+		require.NoError(t, err)
+
+		err = ctx.editor.RowListFill(nil, pb.RpcBlockTableRowListFillRequest{
+			BlockIds: tb.rows().ChildrenIds,
+		})
+		require.NoError(t, err)
+
 		want := mkTestTable([]string{"col1", "col2", "col3", "col4"}, []string{"row1", "row2", "row3", "row4"},
-			[][]string{{"c11", "c12", "c13", "c14"}, {"c21", "c22", "c23", "c24"}, {"c31", "c32", "c33", "c34"}, {"c41", "c42", "c43", "c44"}})
+			[][]string{{"row1-col1", "row1-col2", "row1-col3", "row1-col4"}, {"row2-col1", "row2-col2", "row2-col3", "row2-col4"}, {"row3-col1", "row3-col2", "row3-col3", "row3-col4"}, {"row4-col1", "row4-col2", "row4-col3", "row4-col4"}})
 
 		assertIsomorphic(t, want, ctx.s, ctx.wantMapping, ctx.gotMapping)
 	})
@@ -341,7 +378,7 @@ type tableTestContext struct {
 	gotMapping  map[string]string
 }
 
-func newTableTestContext(t *testing.T, columnsCount, rowsCount uint32, wantTable *state.State) tableTestContext {
+func newTableTestContext(t *testing.T, columnsCount, rowsCount uint32, filled bool, wantTable *state.State) tableTestContext {
 	sb := smarttest.New("root")
 	sb.AddBlock(simple.New(&model.Block{
 		Id: "root",
@@ -364,8 +401,19 @@ func newTableTestContext(t *testing.T, columnsCount, rowsCount uint32, wantTable
 	assert.NoError(t, err)
 	assert.True(t, ctx.s.Exists(id))
 
+	if filled {
+		tb, err := newTableBlockFromState(ctx.s, id)
+		require.NoError(t, err)
+
+		err = ctx.editor.RowListFill(nil, pb.RpcBlockTableRowListFillRequest{
+			BlockIds: tb.rows().ChildrenIds,
+		})
+		require.NoError(t, err)
+	}
+
 	ctx.wantMapping = map[string]string{}
 	ctx.gotMapping = map[string]string{}
+
 	assertIsomorphic(t, wantTable, ctx.s, ctx.wantMapping, ctx.gotMapping)
 
 	return ctx
@@ -469,21 +517,28 @@ func mkTestTable(columns []string, rows []string, cells [][]string) *state.State
 		})
 	}
 
-	for i, r := range rows {
-		blocks = append(blocks, &model.Block{
-			Id:          r,
-			ChildrenIds: cells[i],
-			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
-		})
-	}
-
+	cellsByRow := map[string][]string{}
 	for _, cc := range cells {
+		rowId, _, err := parseCellId(cc[0])
+		if err != nil {
+			panic(err)
+		}
+		cellsByRow[rowId] = cc
+
 		for _, c := range cc {
 			blocks = append(blocks, &model.Block{
 				Id:      c,
 				Content: &model.BlockContentOfText{Text: &model.BlockContentText{}},
 			})
 		}
+	}
+
+	for _, r := range rows {
+		blocks = append(blocks, &model.Block{
+			Id:          r,
+			ChildrenIds: cellsByRow[r],
+			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
+		})
 	}
 
 	for _, b := range blocks {
