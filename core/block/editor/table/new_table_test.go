@@ -65,6 +65,73 @@ func TestRowCreate(t *testing.T) {
 	}
 }
 
+func TestRowListFill(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source *state.State
+		req    pb.RpcBlockTableRowListFillRequest
+		want   *state.State
+	}{
+		{
+			name:   "empty",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{}),
+			req: pb.RpcBlockTableRowListFillRequest{
+				BlockIds: []string{"row1", "row2"},
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}),
+		},
+		{
+			name: "fully filled",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}),
+			req: pb.RpcBlockTableRowListFillRequest{
+				BlockIds: []string{"row1", "row2"},
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}),
+		},
+		{
+			name: "partially filled",
+			source: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2", "row3", "row4", "row5"},
+				[][]string{
+					{"row1-col1"},
+					{"row2-col2"},
+					{"row3-col3"},
+					{"row4-col1", "row4-col3"},
+					{"row5-col2", "row4-col3"},
+				}),
+			req: pb.RpcBlockTableRowListFillRequest{
+				BlockIds: []string{"row1", "row2", "row3", "row4", "row5"},
+			},
+			want: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2", "row3", "row4", "row5"},
+				[][]string{
+					{"row1-col1", "row1-col2", "row1-col3"},
+					{"row2-col1", "row2-col2", "row2-col3"},
+					{"row3-col1", "row3-col2", "row3-col3"},
+					{"row4-col1", "row4-col2", "row4-col3"},
+					{"row5-col1", "row5-col2", "row5-col3"},
+				}),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := table{}
+			err := tb.RowListFill(tc.source, tc.req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, tc.source)
+		})
+	}
+}
+
 func TestColumnCreate(t *testing.T) {
 	for _, tc := range []struct {
 		name     string
