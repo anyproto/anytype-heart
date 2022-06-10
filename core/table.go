@@ -226,10 +226,10 @@ func (mw *Middleware) BlockTableExpand(req *pb.RpcBlockTableExpandRequest) *pb.R
 	return response(pb.RpcBlockTableExpandResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableTableRowListFill(req *pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse {
+func (mw *Middleware) BlockTableRowListFill(req *pb.RpcBlockTableRowListFillRequest) *pb.RpcBlockTableRowListFillResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockTableRowListFillResponseErrorCode, id string, err error) *pb.RpcBlockTableRowListFillResponse {
-		m := &pb.RpcBlockTableRowListFillResponse{Error: &pb.RpcBlockTableRowListFillResponseError{Code: code}, BlockId: id}
+		m := &pb.RpcBlockTableRowListFillResponse{Error: &pb.RpcBlockTableRowListFillResponseError{Code: code}}
 		if err != nil {
 			m.Error.Description = err.Error()
 		} else {
@@ -239,7 +239,7 @@ func (mw *Middleware) BlockTableTableRowListFill(req *pb.RpcBlockTableRowListFil
 	}
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, err = bs.TableRowListFill(ctx, *req)
+		err = bs.TableRowListFill(ctx, *req)
 		return
 	})
 	if err != nil {
