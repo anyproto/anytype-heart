@@ -3,7 +3,6 @@ package table
 import (
 	"fmt"
 	"sort"
-	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -55,6 +54,34 @@ func (r *rowSort) Swap(i, j int) {
 	r.cells[i], r.cells[j] = r.cells[j], r.cells[i]
 }
 
+func normalizeRow(s *state.State, colIdx map[string]int, row simple.Block) error {
+	rs := &rowSort{
+		cells:   row.Model().ChildrenIds,
+		indices: make([]int, 0, len(row.Model().ChildrenIds)),
+	}
+	for _, id := range row.Model().ChildrenIds {
+		_, colId, err := parseCellId(id)
+		if err != nil {
+			return fmt.Errorf("parse cell id: %w", err)
+		}
+
+		v, ok := colIdx[colId]
+		if !ok {
+			// TODO: maybe delete cell?
+			return fmt.Errorf("bad cell id=%s: column not found", id)
+		}
+		rs.indices = append(rs.indices, v)
+	}
+
+	sort.Sort(rs)
+
+	if rs.touched {
+		row.Model().ChildrenIds = rs.cells
+		s.Set(row)
+	}
+	return nil
+}
+
 func (b block) Normalize(s *state.State) error {
 	tb, err := newTableBlockFromState(s, b.Id)
 	if err != nil {
@@ -68,33 +95,9 @@ func (b block) Normalize(s *state.State) error {
 
 	for _, rowId := range tb.rows().ChildrenIds {
 		row := s.Pick(rowId)
-
-		rs := &rowSort{
-			cells:   row.Model().ChildrenIds,
-			indices: make([]int, 0, len(row.Model().ChildrenIds)),
-		}
-		for _, id := range row.Model().ChildrenIds {
-			toks := strings.SplitN(id, "-", 2)
-			if len(toks) != 2 {
-				// TODO: maybe delete cell?
-				return fmt.Errorf("bad cell id=%s at row=%s: invalid format", id, rowId)
-			}
-
-			v, ok := colIdx[toks[1]]
-			if !ok {
-				// TODO: maybe delete cell?
-				return fmt.Errorf("bad cell id=%s at row=%s: column not found", id, rowId)
-			}
-			rs.indices = append(rs.indices, v)
-		}
-
-		sort.Sort(rs)
-
-		if rs.touched {
-			row.Model().ChildrenIds = rs.cells
-			s.Set(row)
+		if err := normalizeRow(s, colIdx, row); err != nil {
+			return fmt.Errorf("normalize row %s: %w", rowId, err)
 		}
 	}
-
 	return nil
 }

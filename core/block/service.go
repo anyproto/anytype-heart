@@ -1175,7 +1175,7 @@ func (s *service) DoBasic(id string, apply func(b basic.Basic) error) error {
 	return fmt.Errorf("basic operation not available for this block type: %T", sb)
 }
 
-func (s *service) DoTable(id string, apply func(b table.Table) error) error {
+func (s *service) DoTable(id string, ctx *state.Context, apply func(st *state.State, b table.Table) error) error {
 	sb, release, err := s.pickBlock(context.TODO(), id)
 	if err != nil {
 		return err
@@ -1184,7 +1184,12 @@ func (s *service) DoTable(id string, apply func(b table.Table) error) error {
 	if bb, ok := sb.(table.Table); ok {
 		sb.Lock()
 		defer sb.Unlock()
-		return apply(bb)
+
+		st := sb.NewStateCtx(ctx)
+		if err := apply(st, bb); err != nil {
+			return fmt.Errorf("apply function: %w", err)
+		}
+		return sb.Apply(st)
 	}
 	return fmt.Errorf("table operation not available for this block type: %T", sb)
 }
