@@ -324,6 +324,12 @@ func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDup
 		return "", fmt.Errorf("can't find target column position")
 	}
 
+	newCol := srcCol.Copy()
+	newCol.Model().Id = bson.NewObjectId().Hex()
+	if !s.Add(newCol) {
+		return "", fmt.Errorf("can't add column block")
+	}
+
 	for _, id := range tb.rows().ChildrenIds {
 		row, err := pickRow(s, id)
 		if err != nil {
@@ -342,8 +348,7 @@ func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDup
 			return "", fmt.Errorf("cell %s is not found", srcId)
 		}
 		cell = cell.Copy()
-		// TODO: fix id
-		cell.Model().Id = bson.NewObjectId().Hex()
+		cell.Model().Id = makeCellId(id, newCol.Model().Id)
 
 		if !s.Add(cell) {
 			return "", fmt.Errorf("can't add cell block")
@@ -354,12 +359,6 @@ func (t table) ColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDup
 		}
 	}
 
-	newCol := srcCol.Copy()
-	// TODO: fix id
-	newCol.Model().Id = bson.NewObjectId().Hex()
-	if !s.Add(newCol) {
-		return "", fmt.Errorf("can't add column block")
-	}
 	if err = s.InsertTo(req.TargetId, req.Position, newCol.Model().Id); err != nil {
 		return "", fmt.Errorf("can't insert column: %w", err)
 	}
