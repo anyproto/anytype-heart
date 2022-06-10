@@ -65,6 +65,60 @@ func TestRowCreate(t *testing.T) {
 	}
 }
 
+func TestExpand(t *testing.T) {
+	for _, tc := range []struct {
+		name      string
+		source    *state.State
+		newColIds []string
+		newRowIds []string
+		req       pb.RpcBlockTableExpandRequest
+		want      *state.State
+	}{
+		{
+			name:      "only rows",
+			source:    mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row2-col2"}}),
+			newRowIds: []string{"row3", "row4"},
+			req: pb.RpcBlockTableExpandRequest{
+				TargetId: "table",
+				Rows:     2,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4"}, [][]string{{"row2-col2"}}),
+		},
+		{
+			name:      "only columns",
+			source:    mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row2-col2"}}),
+			newColIds: []string{"col3", "col4"},
+			req: pb.RpcBlockTableExpandRequest{
+				TargetId: "table",
+				Columns:  2,
+			},
+			want: mkTestTable([]string{"col1", "col2", "col3", "col4"}, []string{"row1", "row2"}, [][]string{{"row2-col2"}}),
+		},
+		{
+			name:      "both columns and rows",
+			source:    mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row2-col2"}}),
+			newRowIds: []string{"row3", "row4"},
+			newColIds: []string{"col3", "col4"},
+			req: pb.RpcBlockTableExpandRequest{
+				TargetId: "table",
+				Rows:     2,
+				Columns:  2,
+			},
+			want: mkTestTable([]string{"col1", "col2", "col3", "col4"}, []string{"row1", "row2", "row3", "row4"}, [][]string{{"row2-col2"}}),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := table{
+				generateColId: idFromSlice(tc.newColIds),
+				generateRowId: idFromSlice(tc.newRowIds),
+			}
+			err := tb.Expand(tc.source, tc.req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want, tc.source)
+		})
+	}
+}
+
 func TestRowListFill(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
