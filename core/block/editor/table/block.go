@@ -94,7 +94,7 @@ func (b block) Normalize(s *state.State) error {
 	}
 
 	for _, rowId := range tb.rows().ChildrenIds {
-		row := s.Pick(rowId)
+		row := s.Get(rowId)
 		if err := normalizeRow(s, colIdx, row); err != nil {
 			return fmt.Errorf("normalize row %s: %w", rowId, err)
 		}

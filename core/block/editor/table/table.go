@@ -108,7 +108,7 @@ func (t table) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) (i
 		return "", fmt.Errorf("can't add rows block")
 	}
 
-	table := s.Pick(id)
+	table := s.Get(id)
 	table.Model().ChildrenIds = []string{columnsLayout.Model().Id, rowsLayout.Model().Id}
 
 	return id, nil
@@ -247,7 +247,7 @@ func (t table) ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest)
 	}
 
 	for _, id := range tb.rows().ChildrenIds {
-		row, err := pickRow(s, id)
+		row, err := getRow(s, id)
 		if err != nil {
 			return fmt.Errorf("can't get row %s: %w", id, err)
 		}
@@ -386,7 +386,7 @@ func (t table) ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDuplica
 	}
 
 	for _, rowId := range tb.rows().ChildrenIds {
-		row, err := pickRow(s, rowId)
+		row, err := getRow(s, rowId)
 		if err != nil {
 			return "", fmt.Errorf("can't get row %s: %w", rowId, err)
 		}
