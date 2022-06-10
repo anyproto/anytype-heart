@@ -167,6 +167,11 @@
     - [Rpc.BlockBookmark.Fetch.Response](#anytype-Rpc-BlockBookmark-Fetch-Response)
     - [Rpc.BlockBookmark.Fetch.Response.Error](#anytype-Rpc-BlockBookmark-Fetch-Response-Error)
     - [Rpc.BlockDataview](#anytype-Rpc-BlockDataview)
+    - [Rpc.BlockDataview.GroupOrder](#anytype-Rpc-BlockDataview-GroupOrder)
+    - [Rpc.BlockDataview.GroupOrder.Update](#anytype-Rpc-BlockDataview-GroupOrder-Update)
+    - [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error)
     - [Rpc.BlockDataview.Relation](#anytype-Rpc-BlockDataview-Relation)
     - [Rpc.BlockDataview.Relation.Add](#anytype-Rpc-BlockDataview-Relation-Add)
     - [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request)
@@ -714,6 +719,7 @@
     - [Rpc.Block.Upload.Response.Error.Code](#anytype-Rpc-Block-Upload-Response-Error-Code)
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
+    - [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code)
@@ -1227,6 +1233,7 @@
 | BlockDataviewRelationUpdate | [Rpc.BlockDataview.Relation.Update.Request](#anytype-Rpc-BlockDataview-Relation-Update-Request) | [Rpc.BlockDataview.Relation.Update.Response](#anytype-Rpc-BlockDataview-Relation-Update-Response) |  |
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response) |  |
 | BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response) |  |
+| BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
 | BlockDataviewRecordCreate | [Rpc.BlockDataviewRecord.Create.Request](#anytype-Rpc-BlockDataviewRecord-Create-Request) | [Rpc.BlockDataviewRecord.Create.Response](#anytype-Rpc-BlockDataviewRecord-Create-Response) |  |
 | BlockDataviewRecordUpdate | [Rpc.BlockDataviewRecord.Update.Request](#anytype-Rpc-BlockDataviewRecord-Update-Request) | [Rpc.BlockDataviewRecord.Update.Response](#anytype-Rpc-BlockDataviewRecord-Update-Response) |  |
 | BlockDataviewRecordDelete | [Rpc.BlockDataviewRecord.Delete.Request](#anytype-Rpc-BlockDataviewRecord-Delete-Request) | [Rpc.BlockDataviewRecord.Delete.Response](#anytype-Rpc-BlockDataviewRecord-Delete-Response) |  |
@@ -3633,6 +3640,75 @@ Makes blocks copy by given ids and paste it to shown place
 
 
 
+<a name="anytype-Rpc-BlockDataview-GroupOrder"></a>
+
+### Rpc.BlockDataview.GroupOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Request"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Response"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="anytype-Rpc-BlockDataview-Relation"></a>
 
 ### Rpc.BlockDataview.Relation
@@ -4212,7 +4288,6 @@ set the current active view (persisted only within a session)
 | blockId | [string](#string) |  | id of dataview block to update |
 | viewId | [string](#string) |  | id of view to update |
 | view | [model.Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) |  |  |
-| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) |  |  |
 
 
 
@@ -11543,6 +11618,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.Relation.Add.Response.Error.Code
@@ -12569,6 +12657,7 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ---- | ------ | ----------- |
 | NULL | 0 |  |
 | UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
 
 
 

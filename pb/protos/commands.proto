@@ -953,6 +953,7 @@ message Rpc {
                     enum Code {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
                     }
                 }
             }
@@ -3451,7 +3452,6 @@ message Rpc {
                     string blockId = 2; // id of dataview block to update
                     string viewId = 3; // id of view to update
                     anytype.model.Block.Content.Dataview.View view = 4;
-                    anytype.model.Block.Content.Dataview.GroupOrder groupOrder = 5;
                 }
 
                 message Response {
@@ -3663,6 +3663,31 @@ message Rpc {
                         NULL = 0;
                         UNKNOWN_ERROR = 1;
                         BAD_INPUT = 2;
+                    }
+                }
+            }
+        }
+        message GroupOrder {
+            message Update {
+                message Request {
+                    string contextId = 1;
+                    string blockId = 2;
+                    repeated anytype.model.Block.Content.Dataview.GroupOrder groupOrder = 3;
+                }
+
+                message Response {
+                    Error error = 1;
+                    ResponseEvent event = 2;
+
+                    message Error {
+                        Code code = 1;
+                        string description = 2;
+
+                        enum Code {
+                            NULL = 0;
+                            UNKNOWN_ERROR = 1;
+                            BAD_INPUT = 2;
+                        }
                     }
                 }
             }
