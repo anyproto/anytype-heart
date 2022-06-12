@@ -42,7 +42,7 @@ enum SmartBlockType {
     WorkspaceOld = 0x205; // deprecated thread-based workspace
     Workspace = 0x206;
     RelationOptionList = 0x207;
-
+    RelationOption = 0x208;
 }
 
 message Block {

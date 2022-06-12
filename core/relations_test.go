@@ -12,7 +12,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/bundle"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
-	"github.com/globalsign/mgo/bson"
 	types2 "github.com/gogo/protobuf/types"
 	"github.com/stretchr/testify/require"
 )
@@ -21,15 +20,6 @@ func getBlockById(id string, blocks []*model.Block) *model.Block {
 	for _, block := range blocks {
 		if block.Id == id {
 			return block
-		}
-	}
-	return nil
-}
-
-func getRelationByKey(relations []*model.Relation, key string) *model.Relation {
-	for _, relation := range relations {
-		if relation.Key == key {
-			return relation
 		}
 	}
 	return nil
@@ -61,24 +51,6 @@ func start(t *testing.T, eventSender event.Sender) (rootPath string, mw *Middlew
 	require.Equal(t, 0, int(respAccountCreate.Error.Code), respAccountCreate.Error.Description)
 
 	return rootPath, mw, close
-}
-
-func addRelation(t *testing.T, contextId string, mw *Middleware) (key string, name string) {
-	name = bson.NewObjectId().String()
-	respDataviewRelationAdd := mw.BlockDataviewRelationAdd(&pb.RpcBlockDataviewRelationAddRequest{
-		ContextId: contextId,
-		BlockId:   "dataview",
-		Relation: &model.Relation{
-			Key:      "",
-			Format:   0,
-			Name:     name,
-			ReadOnly: false,
-		},
-	})
-
-	require.Equal(t, 0, int(respDataviewRelationAdd.Error.Code), respDataviewRelationAdd.Error.Description)
-	key = respDataviewRelationAdd.RelationKey
-	return
 }
 
 func TestArchiveIndex(t *testing.T) {

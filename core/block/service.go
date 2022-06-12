@@ -5,7 +5,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/block/editor/subobject"
 	"net/url"
 	"strings"
 	"time"
@@ -1020,7 +1019,7 @@ func (s *service) newSmartBlock(id string, initCtx *smartblock.InitContext) (sb 
 	case model.SmartBlockType_AccountOld:
 		sb = editor.NewThreadDB(s)
 	case model.SmartBlockType_RelationOptionList:
-		sb = editor.NewOptions(s)
+		sb = editor.NewOptions(s.source)
 	default:
 		return nil, fmt.Errorf("unexpected smartblock type: %v", sc.Type())
 	}
@@ -1384,23 +1383,4 @@ func (s *service) replaceLink(id, oldId, newId string) error {
 	return s.DoBasic(id, func(b basic.Basic) error {
 		return b.ReplaceLink(oldId, newId)
 	})
-}
-
-func (s *service) NewSubObject(subId string, parent subobject.ParentObject) (so *subobject.SubObject, err error) {
-	so = subobject.NewSubObject(subId, parent)
-	st, err := parent.SubState(subId)
-	if err != nil {
-		return
-	}
-	ctx := &smartblock.InitContext{
-		Source:         s.source.NewStaticSource(so.Id(), model.SmartBlockType_Page, st),
-		ObjectTypeUrls: st.ObjectTypes(),
-		State:          st,
-		App:            s.app,
-	}
-	if err = so.Init(ctx); err != nil {
-		return
-	}
-	so.SubInit()
-	return
 }

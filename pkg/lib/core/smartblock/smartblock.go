@@ -38,6 +38,7 @@ const (
 	SmartBlockTypeWorkspaceOld        = SmartBlockType(model.SmartBlockType_WorkspaceOld) // deprecated thread-based workspaces
 	SmartBlockTypeWorkspace           = SmartBlockType(model.SmartBlockType_Workspace)
 	SmartBlockTypeRelationOptionList  = SmartBlockType(model.SmartBlockType_RelationOptionList)
+	SmartBlockTypeRelationOption      = SmartBlockType(model.SmartBlockType_RelationOption)
 )
 
 func SmartBlockTypeFromID(id string) (SmartBlockType, error) {

@@ -1,6 +1,7 @@
 package stext
 
 import (
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"testing"
 	"time"
 
@@ -239,7 +240,7 @@ func TestTextImpl_SetText(t *testing.T) {
 			Text:    "12",
 		}))
 		assert.Equal(t, " ", sb.NewState().Pick("1").Model().GetText().Text)
-		tb.(*textImpl).flushSetTextState(nil)
+		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
 		time.Sleep(time.Second)
 		assert.Equal(t, "12", sb.NewState().Pick("1").Model().GetText().Text)
@@ -256,12 +257,12 @@ func TestTextImpl_SetText(t *testing.T) {
 			BlockId: "1",
 			Text:    "1",
 		}))
-		tb.(*textImpl).flushSetTextState(nil)
+		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
 		require.NoError(t, tb.SetText(pb.RpcBlockSetTextTextRequest{
 			BlockId: "2",
 			Text:    "2",
 		}))
-		tb.(*textImpl).flushSetTextState(nil)
+		tb.(*textImpl).flushSetTextState(smartblock.ApplyInfo{})
 		assert.Equal(t, "1", sb.NewState().Pick("1").Model().GetText().Text)
 		assert.Equal(t, "2", sb.NewState().Pick("2").Model().GetText().Text)
 		time.Sleep(time.Second)

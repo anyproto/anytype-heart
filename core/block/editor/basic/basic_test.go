@@ -238,9 +238,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 			AddBlock(simple.New(&model.Block{Id: "2", Content: &model.BlockContentOfRelation{
 				Relation: &model.BlockContentRelation{},
 			}}))
-		sb.AddExtraRelations(nil, []*model.Relation{
-			{Key: "key"},
-		})
+		sb.AddExtraRelations(nil, "testRelId")
 	}
 	t.Run("correct", func(t *testing.T) {
 		sb := smarttest.New("test")
@@ -248,7 +246,7 @@ func TestBasic_SetRelationKey(t *testing.T) {
 		b := NewBasic(sb)
 		err := b.SetRelationKey(nil, pb.RpcBlockRelationSetKeyRequest{
 			BlockId: "2",
-			Key:     "key",
+			Key:     "testRelId",
 		})
 		require.NoError(t, err)
 		var setRelationEvent *pb.EventBlockSetRelation

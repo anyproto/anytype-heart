@@ -41,6 +41,10 @@ type SmartTest struct {
 	os        *testMock.MockObjectStore
 }
 
+func (st *SmartTest) IsLocked() bool {
+	return false
+}
+
 func (st *SmartTest) RelationService() relation.Service {
 	return st.App.Component(relation.CName).(relation.Service)
 }

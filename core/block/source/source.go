@@ -86,7 +86,7 @@ func (s *service) SourceTypeBySbType(blockType smartblock.SmartBlockType) (Sourc
 	case smartblock.SmartBlockTypeWorkspaceOld:
 		return &threadDB{a: s.anytype}, nil
 	case smartblock.SmartBlockTypeBundledTemplate:
-		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil), nil
+		return s.NewStaticSource("", model.SmartBlockType_BundledTemplate, nil, nil), nil
 	default:
 		if err := blockType.Valid(); err != nil {
 			return nil, err

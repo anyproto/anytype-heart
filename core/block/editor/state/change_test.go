@@ -492,10 +492,10 @@ func Test_ApplyChange(t *testing.T) {
 
 func TestRelationChanges(t *testing.T) {
 	a := NewDoc("root", nil).(*State)
-	a.relationLinks = []string{"1", "2", "3"}
+	a.relationLinks = []*model.RelationLink{{Id: "1"}, {Id: "2"}, {Id: "3"}}
 	ac := a.Copy()
 	b := a.NewState()
-	b.relationLinks = []string{"3", "4", "5"}
+	b.relationLinks = []*model.RelationLink{{Id: "3"}, {Id: "4"}, {Id: "5"}}
 	_, _, err := ApplyState(b, false)
 	require.NoError(t, err)
 	chs := a.GetChanges()

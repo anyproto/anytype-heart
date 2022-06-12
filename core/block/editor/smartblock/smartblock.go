@@ -109,6 +109,7 @@ type SmartBlock interface {
 	SetLayout(ctx *state.Context, layout model.ObjectTypeLayout) error
 	SetIsDeleted()
 	IsDeleted() bool
+	IsLocked() bool
 
 	SendEvent(msgs []*pb.EventMessage)
 	ResetToVersion(s *state.State) (err error)
@@ -612,6 +613,10 @@ func (sb *smartBlock) SetEventFunc(f func(e *pb.Event)) {
 func (sb *smartBlock) Locked() bool {
 	sb.Lock()
 	defer sb.Unlock()
+	return sb.IsLocked()
+}
+
+func (sb *smartBlock) IsLocked() bool {
 	return sb.sendEvent != nil
 }
 

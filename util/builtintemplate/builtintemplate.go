@@ -123,7 +123,7 @@ func (b *builtinTemplate) registerBuiltin(rd io.ReadCloser) (err error) {
 		return
 	}
 	b.source.RegisterStaticSource(id, func() source.Source {
-		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy())
+		return b.source.NewStaticSource(id, model.SmartBlockType_BundledTemplate, st.Copy(), nil)
 	})
 	return
 }

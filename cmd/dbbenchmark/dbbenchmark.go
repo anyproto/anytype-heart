@@ -174,9 +174,8 @@ func createObjects(store objectstore.ObjectStore, ids []string, detailsCount int
 	i := float32(0)
 	for _, id := range ids {
 		details := genRandomDetails(ids, detailsCount)
-		relations := genRandomRelations(ids, relationsCount)
 		start := time.Now()
-		err := store.CreateObject(id, details, relations, nil, "snippet")
+		err := store.CreateObject(id, details, nil, "snippet")
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
 			return err
@@ -192,19 +191,12 @@ func createObjects(store objectstore.ObjectStore, ids []string, detailsCount int
 func updateDetails(store objectstore.ObjectStore, ids []string, detailsCount int, relationsCount int) error {
 	avg := float32(0)
 	i := float32(0)
-	creatorId := genRandomIds(1, 60)[0]
 	for _, id := range ids {
 		details := genRandomDetails(ids, detailsCount)
-		relations := genRandomRelations(ids, relationsCount)
 		start := time.Now()
-		err := store.UpdateObjectDetails(id, details, relations, false)
+		err := store.UpdateObjectDetails(id, details, false)
 		if err != nil {
 			fmt.Println("error occurred while updating object store:", err.Error())
-			return err
-		}
-		err = store.UpdateRelationsInSetByObjectType(id, objectType, creatorId, relations.Relations)
-		if err != nil {
-			fmt.Println("updating relationships failed", err.Error())
 			return err
 		}
 		taken := float32(time.Now().Sub(start).Nanoseconds())

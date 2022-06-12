@@ -24,7 +24,7 @@ func New() Service {
 type Service interface {
 	NewSource(id string, listenToOwnChanges bool) (s Source, err error)
 	RegisterStaticSource(id string, new func() Source)
-	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State) SourceWithType
+	NewStaticSource(id string, sbType model.SmartBlockType, doc *state.State, pushChange func(p PushChangeParams) (string, error)) SourceWithType
 	GetDetailsFromIdBasedSource(id string) (*types.Struct, error)
 	SourceTypeBySbType(blockType smartblock.SmartBlockType) (SourceType, error)
 	app.Component
