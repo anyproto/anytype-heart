@@ -1089,13 +1089,6 @@ func (s *service) TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColu
 	return
 }
 
-func (s *service) TableRowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
-		return t.RowMove(st, req)
-	})
-	return
-}
-
 func (s *service) TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
 	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
 		return t.ColumnMove(st, req)

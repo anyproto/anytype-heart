@@ -8,6 +8,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
@@ -30,7 +31,6 @@ type Table interface {
 	Expand(s *state.State, req pb.RpcBlockTableExpandRequest) error
 	RowCreate(s *state.State, req pb.RpcBlockTableRowCreateRequest) error
 	RowDelete(s *state.State, req pb.RpcBlockTableRowDeleteRequest) error
-	RowMove(s *state.State, req pb.RpcBlockTableRowMoveRequest) error
 	RowDuplicate(s *state.State, req pb.RpcBlockTableRowDuplicateRequest) error
 	RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequest) error
 	RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequest) error
@@ -137,33 +137,6 @@ func (t table) RowDelete(s *state.State, req pb.RpcBlockTableRowDeleteRequest) e
 	}
 	if !s.Unlink(req.TargetId) {
 		return fmt.Errorf("can't unlink row block")
-	}
-
-	return nil
-}
-
-func (t table) RowMove(s *state.State, req pb.RpcBlockTableRowMoveRequest) error {
-	switch req.Position {
-	case model.Block_Top, model.Block_Bottom:
-	default:
-		return fmt.Errorf("position is not supported")
-	}
-
-	_, err := pickRow(s, req.TargetId)
-	if err != nil {
-		return fmt.Errorf("get target row: %w", err)
-	}
-	_, err = pickRow(s, req.DropTargetId)
-	if err != nil {
-		return fmt.Errorf("get drop target row: %w", err)
-	}
-
-	if !s.Unlink(req.TargetId) {
-		return fmt.Errorf("can't unlink target row")
-	}
-
-	if err = s.InsertTo(req.DropTargetId, req.Position, req.TargetId); err != nil {
-		return fmt.Errorf("can't insert the row: %w", err)
 	}
 
 	return nil
@@ -346,21 +319,8 @@ func (t table) RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequ
 
 		for _, cellId := range row.Model().ChildrenIds {
 			cell := s.Pick(cellId)
-			if txt := cell.Model().GetText(); txt != nil {
-				// TODO extract to function (simple/text package)
-				if txt.Text == "" &&
-					!txt.Checked &&
-					txt.Color == "" &&
-					txt.Style == 0 &&
-					txt.IconEmoji == "" &&
-					txt.IconImage == "" &&
-					len(txt.GetMarks().GetMarks()) == 0 &&
-					cell.Model().BackgroundColor == "" &&
-					cell.Model().Align == 0 &&
-					cell.Model().VerticalAlign == 0 {
-
-					s.Unlink(cellId)
-				}
+			if v, ok := cell.(text.Block); ok && v.IsEmpty() {
+				s.Unlink(cellId)
 			}
 		}
 	}

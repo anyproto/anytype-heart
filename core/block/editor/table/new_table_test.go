@@ -3,6 +3,7 @@ package table
 import (
 	"testing"
 
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock/smarttest"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -10,6 +11,37 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestTableCreate(t *testing.T) {
+	sb := smarttest.New("root")
+	sb.AddBlock(simple.New(&model.Block{Id: "root"}))
+	editor := New(sb)
+
+	s := sb.NewState()
+	id, err := editor.TableCreate(s, pb.RpcBlockTableCreateRequest{
+		TargetId: "root",
+		Position: model.Block_Inner,
+		Columns:  3,
+		Rows:     4,
+	})
+
+	require.NoError(t, err)
+	assert.NotEmpty(t, id)
+
+	tb, err := newTableBlockFromState(s, id)
+
+	require.NoError(t, err)
+
+	assert.Len(t, tb.columns().ChildrenIds, 3)
+	assert.Len(t, tb.rows().ChildrenIds, 4)
+
+	for _, rowId := range tb.rows().ChildrenIds {
+		row, err := pickRow(s, rowId)
+
+		require.NoError(t, err)
+		assert.Empty(t, row.Model().ChildrenIds)
+	}
+}
 
 func TestRowCreate(t *testing.T) {
 	for _, tc := range []struct {
@@ -49,7 +81,26 @@ func TestRowCreate(t *testing.T) {
 			},
 			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row2"}, nil),
 		},
-		// TODO: more tests
+		{
+			name:     "at the beginning",
+			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, nil),
+			newRowId: "row3",
+			req: pb.RpcBlockTableRowCreateRequest{
+				TargetId: "row1",
+				Position: model.Block_Top,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"}, nil),
+		},
+		{
+			name:     "at the end",
+			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, nil),
+			newRowId: "row3",
+			req: pb.RpcBlockTableRowCreateRequest{
+				TargetId: "row2",
+				Position: model.Block_Bottom,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, nil),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{
@@ -61,6 +112,71 @@ func TestRowCreate(t *testing.T) {
 			require.NoError(t, err)
 
 			assert.Equal(t, tc.want, tc.source)
+		})
+	}
+}
+
+func TestRowListClean(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source *state.State
+		req    pb.RpcBlockTableRowListCleanRequest
+		want   *state.State
+	}{
+		{
+			name: "empty rows",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{},
+				{},
+			}),
+			req: pb.RpcBlockTableRowListCleanRequest{
+				BlockIds: []string{"row1", "row2"},
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{},
+				{},
+			}),
+		},
+		{
+			name: "rows with empty blocks",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1", "row1-col2"},
+				{"row2-col2"},
+			}),
+			req: pb.RpcBlockTableRowListCleanRequest{
+				BlockIds: []string{"row1", "row2"},
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{},
+				{},
+			}),
+		},
+		{
+			name: "rows with not empty text block",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1", "row1-col2"},
+				{"row2-col2"},
+			}, withBlockContents(map[string]*model.Block{
+				"row1-col1": mkTextBlock("test11"),
+				"row2-col1": mkTextBlock(""),
+			})),
+			req: pb.RpcBlockTableRowListCleanRequest{
+				BlockIds: []string{"row1", "row2"},
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{
+				{"row1-col1"},
+				{},
+			}, withBlockContents(map[string]*model.Block{
+				"row1-col1": mkTextBlock("test11"),
+			})),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := table{}
+			err := tb.RowListClean(tc.source, tc.req)
+			require.NoError(t, err)
+
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
 }
@@ -195,7 +311,7 @@ func TestColumnCreate(t *testing.T) {
 		want     *state.State
 	}{
 		{
-			name:     "to the right",
+			name:     "between, to the right",
 			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
 			newColId: "col3",
 			req: pb.RpcBlockTableColumnCreateRequest{
@@ -205,7 +321,17 @@ func TestColumnCreate(t *testing.T) {
 			want: mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
 		},
 		{
-			name:     "to the left",
+			name:     "between, to the left",
+			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+			newColId: "col3",
+			req: pb.RpcBlockTableColumnCreateRequest{
+				TargetId: "col2",
+				Position: model.Block_Left,
+			},
+			want: mkTestTable([]string{"col1", "col3", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+		},
+		{
+			name:     "at the beginning",
 			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
 			newColId: "col3",
 			req: pb.RpcBlockTableColumnCreateRequest{
@@ -214,7 +340,16 @@ func TestColumnCreate(t *testing.T) {
 			},
 			want: mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
 		},
-		// TODO: more tests
+		{
+			name:     "at the end",
+			source:   mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+			newColId: "col3",
+			req: pb.RpcBlockTableColumnCreateRequest{
+				TargetId: "col2",
+				Position: model.Block_Right,
+			},
+			want: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{{"row1-col2"}}),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{
@@ -291,7 +426,27 @@ func TestColumnDuplicate(t *testing.T) {
 					"row2-col3": mkTextBlock("test22"),
 				})),
 		},
-		// TODO: more tests
+		{
+			name: "empty",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1"},
+					{},
+					{},
+				}),
+			newColId: "col3",
+			req: pb.RpcBlockTableColumnDuplicateRequest{
+				BlockId:  "col2",
+				TargetId: "col1",
+				Position: model.Block_Left,
+			},
+			want: mkTestTable([]string{"col3", "col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1"},
+					{},
+					{},
+				}),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{
@@ -370,6 +525,26 @@ func TestRowDuplicate(t *testing.T) {
 					"row3-col2": mkTextBlock("test22"),
 				})),
 		},
+		{
+			name: "empty",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{},
+					{},
+				}),
+			newRowId: "row3",
+			req: pb.RpcBlockTableRowDuplicateRequest{
+				BlockId:  "row2",
+				TargetId: "row1",
+				Position: model.Block_Bottom,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row2"},
+				[][]string{
+					{},
+					{},
+					{},
+				}),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{
@@ -425,7 +600,6 @@ func TestColumnMove(t *testing.T) {
 					{"row2-col1", "row2-col3", "row2-col2"},
 				}),
 		},
-		// TODO: more tests
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{}
@@ -478,7 +652,6 @@ func TestColumnDelete(t *testing.T) {
 					{"row2-col1", "row2-col2"},
 				}),
 		},
-		// TODO: more tests
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{}

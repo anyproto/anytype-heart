@@ -334,10 +334,6 @@
     - [Rpc.BlockTable.RowListFill.Request](#anytype-Rpc-BlockTable-RowListFill-Request)
     - [Rpc.BlockTable.RowListFill.Response](#anytype-Rpc-BlockTable-RowListFill-Response)
     - [Rpc.BlockTable.RowListFill.Response.Error](#anytype-Rpc-BlockTable-RowListFill-Response-Error)
-    - [Rpc.BlockTable.RowMove](#anytype-Rpc-BlockTable-RowMove)
-    - [Rpc.BlockTable.RowMove.Request](#anytype-Rpc-BlockTable-RowMove-Request)
-    - [Rpc.BlockTable.RowMove.Response](#anytype-Rpc-BlockTable-RowMove-Response)
-    - [Rpc.BlockTable.RowMove.Response.Error](#anytype-Rpc-BlockTable-RowMove-Response-Error)
     - [Rpc.BlockText](#anytype-Rpc-BlockText)
     - [Rpc.BlockText.ListClearContent](#anytype-Rpc-BlockText-ListClearContent)
     - [Rpc.BlockText.ListClearContent.Request](#anytype-Rpc-BlockText-ListClearContent-Request)
@@ -806,7 +802,6 @@
     - [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code)
     - [Rpc.BlockTable.RowListClean.Response.Error.Code](#anytype-Rpc-BlockTable-RowListClean-Response-Error-Code)
     - [Rpc.BlockTable.RowListFill.Response.Error.Code](#anytype-Rpc-BlockTable-RowListFill-Response-Error-Code)
-    - [Rpc.BlockTable.RowMove.Response.Error.Code](#anytype-Rpc-BlockTable-RowMove-Response-Error-Code)
     - [Rpc.BlockText.ListClearContent.Response.Error.Code](#anytype-Rpc-BlockText-ListClearContent-Response-Error-Code)
     - [Rpc.BlockText.ListClearStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListClearStyle-Response-Error-Code)
     - [Rpc.BlockText.ListSetColor.Response.Error.Code](#anytype-Rpc-BlockText-ListSetColor-Response-Error-Code)
@@ -1306,7 +1301,6 @@
 | BlockTableCreate | [Rpc.BlockTable.Create.Request](#anytype-Rpc-BlockTable-Create-Request) | [Rpc.BlockTable.Create.Response](#anytype-Rpc-BlockTable-Create-Response) | Simple table block commands *** |
 | BlockTableExpand | [Rpc.BlockTable.Expand.Request](#anytype-Rpc-BlockTable-Expand-Request) | [Rpc.BlockTable.Expand.Response](#anytype-Rpc-BlockTable-Expand-Response) |  |
 | BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
-| BlockTableRowMove | [Rpc.BlockTable.RowMove.Request](#anytype-Rpc-BlockTable-RowMove-Request) | [Rpc.BlockTable.RowMove.Response](#anytype-Rpc-BlockTable-RowMove-Response) |  |
 | BlockTableRowDelete | [Rpc.BlockTable.RowDelete.Request](#anytype-Rpc-BlockTable-RowDelete-Request) | [Rpc.BlockTable.RowDelete.Response](#anytype-Rpc-BlockTable-RowDelete-Response) |  |
 | BlockTableRowDuplicate | [Rpc.BlockTable.RowDuplicate.Request](#anytype-Rpc-BlockTable-RowDuplicate-Request) | [Rpc.BlockTable.RowDuplicate.Response](#anytype-Rpc-BlockTable-RowDuplicate-Response) |  |
 | BlockTableColumnCreate | [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request) | [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response) |  |
@@ -6150,66 +6144,6 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockTable.RowListFill.Response.Error.Code](#anytype-Rpc-BlockTable-RowListFill-Response-Error-Code) |  |  |
-| description | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-RowMove"></a>
-
-### Rpc.BlockTable.RowMove
-
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-RowMove-Request"></a>
-
-### Rpc.BlockTable.RowMove.Request
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| contextId | [string](#string) |  |  |
-| targetId | [string](#string) |  |  |
-| dropTargetId | [string](#string) |  |  |
-| position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-RowMove-Response"></a>
-
-### Rpc.BlockTable.RowMove.Response
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| error | [Rpc.BlockTable.RowMove.Response.Error](#anytype-Rpc-BlockTable-RowMove-Response-Error) |  |  |
-| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
-
-
-
-
-
-
-<a name="anytype-Rpc-BlockTable-RowMove-Response-Error"></a>
-
-### Rpc.BlockTable.RowMove.Response.Error
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| code | [Rpc.BlockTable.RowMove.Response.Error.Code](#anytype-Rpc-BlockTable-RowMove-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12901,19 +12835,6 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 <a name="anytype-Rpc-BlockTable-RowListFill-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.RowListFill.Response.Error.Code
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| NULL | 0 |  |
-| UNKNOWN_ERROR | 1 |  |
-| BAD_INPUT | 2 | ... |
-
-
-
-<a name="anytype-Rpc-BlockTable-RowMove-Response-Error-Code"></a>
-
-### Rpc.BlockTable.RowMove.Response.Error.Code
 
 
 | Name | Number | Description |

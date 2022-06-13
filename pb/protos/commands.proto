@@ -3249,32 +3249,6 @@ message Rpc {
             }
         }
 
-        message RowMove {
-            message Request {
-                string contextId = 1;
-                string targetId = 2;
-                string dropTargetId = 3;
-                anytype.model.Block.Position position = 4;
-            }
-
-            message Response {
-                Error error = 1;
-                ResponseEvent event = 2;
-
-                message Error {
-                    Code code = 1;
-                    string description = 2;
-
-                    enum Code {
-                        NULL = 0;
-                        UNKNOWN_ERROR = 1;
-                        BAD_INPUT = 2;
-                        // ...
-                    }
-                }
-            }
-        }
-
         message ColumnMove {
             message Request {
                 string contextId = 1;

@@ -116,28 +116,6 @@ func (mw *Middleware) BlockTableColumnDelete(req *pb.RpcBlockTableColumnDeleteRe
 	return response(pb.RpcBlockTableColumnDeleteResponseError_NULL, id, nil)
 }
 
-func (mw *Middleware) BlockTableRowMove(req *pb.RpcBlockTableRowMoveRequest) *pb.RpcBlockTableRowMoveResponse {
-	ctx := state.NewContext(nil)
-	response := func(code pb.RpcBlockTableRowMoveResponseErrorCode, id string, err error) *pb.RpcBlockTableRowMoveResponse {
-		m := &pb.RpcBlockTableRowMoveResponse{Error: &pb.RpcBlockTableRowMoveResponseError{Code: code}}
-		if err != nil {
-			m.Error.Description = err.Error()
-		} else {
-			m.Event = ctx.GetResponseEvent()
-		}
-		return m
-	}
-	var id string
-	err := mw.doBlockService(func(bs block.Service) (err error) {
-		err = bs.TableRowMove(ctx, *req)
-		return
-	})
-	if err != nil {
-		return response(pb.RpcBlockTableRowMoveResponseError_UNKNOWN_ERROR, "", err)
-	}
-	return response(pb.RpcBlockTableRowMoveResponseError_NULL, id, nil)
-}
-
 func (mw *Middleware) BlockTableColumnMove(req *pb.RpcBlockTableColumnMoveRequest) *pb.RpcBlockTableColumnMoveResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockTableColumnMoveResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnMoveResponse {

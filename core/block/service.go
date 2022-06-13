@@ -203,7 +203,6 @@ type Service interface {
 	TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error)
 	TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error)
 	TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error)
-	TableRowMove(ctx *state.Context, req pb.RpcBlockTableRowMoveRequest) (err error)
 	TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error)
 	TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error)
 	TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error)
