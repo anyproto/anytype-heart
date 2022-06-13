@@ -106,12 +106,9 @@ func TestRowCreate(t *testing.T) {
 			tb := table{
 				generateRowId: idFromSlice([]string{tc.newRowId}),
 			}
-
 			err := tb.RowCreate(tc.source, tc.req)
-
 			require.NoError(t, err)
-
-			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
 }
@@ -175,7 +172,6 @@ func TestRowListClean(t *testing.T) {
 			tb := table{}
 			err := tb.RowListClean(tc.source, tc.req)
 			require.NoError(t, err)
-
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
@@ -230,7 +226,7 @@ func TestExpand(t *testing.T) {
 			}
 			err := tb.Expand(tc.source, tc.req)
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
 }
@@ -297,7 +293,7 @@ func TestRowListFill(t *testing.T) {
 			tb := table{}
 			err := tb.RowListFill(tc.source, tc.req)
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
 }
@@ -355,12 +351,9 @@ func TestColumnCreate(t *testing.T) {
 			tb := table{
 				generateColId: idFromSlice([]string{tc.newColId}),
 			}
-
 			err := tb.ColumnCreate(tc.source, tc.req)
-
 			require.NoError(t, err)
-
-			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
 }
@@ -454,7 +447,7 @@ func TestColumnDuplicate(t *testing.T) {
 			}
 			id, err := tb.ColumnDuplicate(tc.source, tc.req)
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 			assert.Equal(t, tc.newColId, id)
 		})
 	}
@@ -552,7 +545,7 @@ func TestRowDuplicate(t *testing.T) {
 			}
 			err := tb.RowDuplicate(tc.source, tc.req)
 			require.NoError(t, err)
-			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
 }
@@ -603,12 +596,9 @@ func TestColumnMove(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{}
-
 			err := tb.ColumnMove(tc.source, tc.req)
-
 			require.NoError(t, err)
-
-			assert.Equal(t, tc.want, tc.source)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}
 }
@@ -655,11 +645,8 @@ func TestColumnDelete(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := table{}
-
 			err := tb.ColumnDelete(tc.source, tc.req)
-
 			require.NoError(t, err)
-
 			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
 		})
 	}

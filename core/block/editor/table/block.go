@@ -1,7 +1,6 @@
 package table
 
 import (
-	"fmt"
 	"sort"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
@@ -54,22 +53,26 @@ func (r *rowSort) Swap(i, j int) {
 	r.cells[i], r.cells[j] = r.cells[j], r.cells[i]
 }
 
-func normalizeRow(s *state.State, colIdx map[string]int, row simple.Block) error {
+func normalizeRow(colIdx map[string]int, row simple.Block) {
 	rs := &rowSort{
-		cells:   row.Model().ChildrenIds,
+		cells:   make([]string, 0, len(row.Model().ChildrenIds)),
 		indices: make([]int, 0, len(row.Model().ChildrenIds)),
 	}
 	for _, id := range row.Model().ChildrenIds {
 		_, colId, err := parseCellId(id)
 		if err != nil {
-			return fmt.Errorf("parse cell id: %w", err)
+			log.Warnf("normalize row %s: discard cell %s: invalid id", row.Model().Id, id)
+			rs.touched = true
+			continue
 		}
 
 		v, ok := colIdx[colId]
 		if !ok {
-			// TODO: maybe delete cell?
-			return fmt.Errorf("bad cell id=%s: column not found", id)
+			log.Warnf("normalize row %s: discard cell %s: column %s not found", row.Model().Id, id, colId)
+			rs.touched = true
+			continue
 		}
+		rs.cells = append(rs.cells, id)
 		rs.indices = append(rs.indices, v)
 	}
 	sort.Sort(rs)
@@ -77,13 +80,13 @@ func normalizeRow(s *state.State, colIdx map[string]int, row simple.Block) error
 	if rs.touched {
 		row.Model().ChildrenIds = rs.cells
 	}
-	return nil
 }
 
 func (b block) Normalize(s *state.State) error {
 	tb, err := newTableBlockFromState(s, b.Id)
 	if err != nil {
-		return err
+		log.Errorf("normalize table %s: broken table state", b.Model().Id)
+		return nil
 	}
 
 	colIdx := map[string]int{}
@@ -93,9 +96,7 @@ func (b block) Normalize(s *state.State) error {
 
 	for _, rowId := range tb.rows().ChildrenIds {
 		row := s.Get(rowId)
-		if err := normalizeRow(s, colIdx, row); err != nil {
-			return fmt.Errorf("normalize row %s: %w", rowId, err)
-		}
+		normalizeRow(colIdx, row)
 	}
 	return nil
 }

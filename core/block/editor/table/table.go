@@ -10,10 +10,13 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
 )
+
+var log = logging.Logger("anytype-simple-tables")
 
 func New(sb smartblock.SmartBlock) Table {
 	genId := func() string {
@@ -225,10 +228,7 @@ func (t table) ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest)
 		if err != nil {
 			return fmt.Errorf("can't get row %s: %w", id, err)
 		}
-
-		if err = normalizeRow(s, colIdx, row); err != nil {
-			return fmt.Errorf("normalize row %s: %w", id, err)
-		}
+		normalizeRow(colIdx, row)
 	}
 
 	return nil
@@ -305,7 +305,6 @@ func (t table) RowListFill(s *state.State, req pb.RpcBlockTableRowListFillReques
 	return nil
 }
 
-// TODO: test!!
 func (t table) RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequest) error {
 	if len(req.BlockIds) == 0 {
 		return fmt.Errorf("empty row list")
@@ -446,9 +445,7 @@ func (t table) ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDuplica
 		}
 
 		row.Model().ChildrenIds = append(row.Model().ChildrenIds, cell.Model().Id)
-		if err = normalizeRow(s, colIdx, row); err != nil {
-			return "", fmt.Errorf("normalize row %s: %w", rowId, err)
-		}
+		normalizeRow(colIdx, row)
 	}
 
 	return newCol.Model().Id, nil
