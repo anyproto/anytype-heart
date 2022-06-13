@@ -15,10 +15,11 @@ func init() {
 
 func NewBlock(b *model.Block) simple.Block {
 	if c := b.GetTable(); c != nil {
-		return &block{
+		var bl Block = &block{
 			Base:    base.NewBase(b).(*base.Base),
 			content: c,
 		}
+		return bl
 	}
 	return nil
 }

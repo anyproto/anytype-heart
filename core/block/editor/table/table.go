@@ -57,10 +57,10 @@ func (t table) cleanupTables() {
 	s := t.NewState()
 
 	err := s.Iterate(func(b simple.Block) bool {
-		_, ok := b.(Block)
-		if !ok {
+		if b.Model().GetTable() == nil {
 			return true
 		}
+
 		tb, err := newTableBlockFromState(s, b.Model().Id)
 		if err != nil {
 			log.Errorf("cleanup init table %s: %s", b.Model().Id, err)
