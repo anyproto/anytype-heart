@@ -22,11 +22,14 @@ func New(sb smartblock.SmartBlock) Table {
 	genId := func() string {
 		return bson.NewObjectId().Hex()
 	}
-	return table{
+
+	t := table{
 		SmartBlock:    sb,
 		generateRowId: genId,
 		generateColId: genId,
 	}
+	sb.AddHook(t.cleanupTables, smartblock.HookOnBlockClose)
+	return t
 }
 
 type Table interface {
@@ -48,6 +51,35 @@ type table struct {
 
 	generateRowId func() string
 	generateColId func() string
+}
+
+func (t table) cleanupTables() {
+	s := t.NewState()
+
+	err := s.Iterate(func(b simple.Block) bool {
+		_, ok := b.(Block)
+		if !ok {
+			return true
+		}
+		tb, err := newTableBlockFromState(s, b.Model().Id)
+		if err != nil {
+			log.Errorf("cleanup init table %s: %s", b.Model().Id, err)
+		}
+		err = t.RowListClean(s, pb.RpcBlockTableRowListCleanRequest{
+			BlockIds: tb.rows().ChildrenIds,
+		})
+		if err != nil {
+			log.Errorf("cleanup table %s: %s", b.Model().Id, err)
+		}
+		return true
+	})
+	if err != nil {
+		log.Errorf("cleanup iterate: %s", err)
+	}
+
+	if err = t.Apply(s); err != nil {
+		log.Errorf("cleanup apply: %s", err)
+	}
 }
 
 func (t table) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) (id string, err error) {
