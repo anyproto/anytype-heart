@@ -87,6 +87,28 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		return
 	}
 
+	for _, order2 := range dv.content.GroupOrder {
+		var found bool
+		var changed bool
+		for _, order1 := range d.content.GroupOrder {
+			if order1.ViewId == order2.ViewId {
+				found = true
+				changed = !proto.Equal(order1, order2)
+				break
+			}
+		}
+
+		if !found || changed {
+			msgs = append(msgs,
+				simple.EventMessage{
+					Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockDataViewGroupOrderUpdate{
+						&pb.EventBlockDataviewGroupOrderUpdate{
+							Id:     dv.Id,
+							GroupOrder: order2,
+						}}}})
+		}
+	}
+
 	// @TODO: rewrite for optimised compare
 	for _, view2 := range dv.content.Views {
 		var found bool

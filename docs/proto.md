@@ -855,6 +855,7 @@
     - [Event.Block](#anytype-Event-Block)
     - [Event.Block.Add](#anytype-Event-Block-Add)
     - [Event.Block.Dataview](#anytype-Event-Block-Dataview)
+    - [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate)
     - [Event.Block.Dataview.RecordsDelete](#anytype-Event-Block-Dataview-RecordsDelete)
     - [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert)
     - [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet)
@@ -13423,6 +13424,22 @@ B. Partial block load
 
 
 
+<a name="anytype-Event-Block-Dataview-GroupOrderUpdate"></a>
+
+### Event.Block.Dataview.GroupOrderUpdate
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  | dataview block&#39;s id |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Dataview-RecordsDelete"></a>
 
 ### Event.Block.Dataview.RecordsDelete
@@ -14946,6 +14963,7 @@ Precondition: user A opened a block
 | blockDataviewViewOrder | [Event.Block.Dataview.ViewOrder](#anytype-Event-Block-Dataview-ViewOrder) |  |  |
 | blockDataviewRelationDelete | [Event.Block.Dataview.RelationDelete](#anytype-Event-Block-Dataview-RelationDelete) |  |  |
 | blockDataviewRelationSet | [Event.Block.Dataview.RelationSet](#anytype-Event-Block-Dataview-RelationSet) |  |  |
+| blockDataViewGroupOrderUpdate | [Event.Block.Dataview.GroupOrderUpdate](#anytype-Event-Block-Dataview-GroupOrderUpdate) |  |  |
 | userBlockJoin | [Event.User.Block.Join](#anytype-Event-User-Block-Join) |  |  |
 | userBlockLeft | [Event.User.Block.Left](#anytype-Event-User-Block-Left) |  |  |
 | userBlockSelectRange | [Event.User.Block.SelectRange](#anytype-Event-User-Block-SelectRange) |  |  |
