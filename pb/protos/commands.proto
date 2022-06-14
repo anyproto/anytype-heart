@@ -3353,6 +3353,31 @@ message Rpc {
                 }
             }
         }
+
+        message Sort {
+            message Request {
+                string contextId = 1; // id of the context object
+                string columnId = 2;
+                anytype.model.Block.Content.Dataview.Sort.Type type = 3;
+            }
+
+            message Response {
+                Error error = 1;
+                ResponseEvent event = 2;
+
+                message Error {
+                    Code code = 1;
+                    string description = 2;
+
+                    enum Code {
+                        NULL = 0;
+                        UNKNOWN_ERROR = 1;
+                        BAD_INPUT = 2;
+                        // ...
+                    }
+                }
+            }
+        }
     }
 
     message BlockFile {

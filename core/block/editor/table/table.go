@@ -2,6 +2,7 @@ package table
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/basic"
@@ -43,6 +44,7 @@ type Table interface {
 	ColumnDelete(s *state.State, req pb.RpcBlockTableColumnDeleteRequest) error
 	ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest) error
 	ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
+	Sort(s *state.State, req pb.RpcBlockTableSortRequest) error
 }
 
 type table struct {
@@ -482,6 +484,71 @@ func (t table) Expand(s *state.State, req pb.RpcBlockTableExpandRequest) error {
 		}
 	}
 	return nil
+}
+
+func (t table) Sort(s *state.State, req pb.RpcBlockTableSortRequest) error {
+	_, err := pickColumn(s, req.ColumnId)
+	if err != nil {
+		return fmt.Errorf("pick column: %w", err)
+	}
+
+	tb, err := newTableBlockFromState(s, req.ColumnId)
+	if err != nil {
+		return fmt.Errorf("init table block: %w", err)
+	}
+
+	rows := s.Get(tb.rows().Id)
+	sorter := tableSorter{
+		rowIds: rows.Model().ChildrenIds,
+		values: make([]string, len(rows.Model().ChildrenIds)),
+	}
+	for i, rowId := range rows.Model().ChildrenIds {
+
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row %s: %w", rowId, err)
+		}
+
+		for _, cellId := range row.Model().ChildrenIds {
+			_, colId, err := parseCellId(cellId)
+			if err != nil {
+				return fmt.Errorf("parse cell id %s: %w", cellId, err)
+			}
+			if colId == req.ColumnId {
+				cell := s.Pick(cellId)
+				if cell == nil {
+					return fmt.Errorf("cell %s is not found", cellId)
+				}
+				sorter.values[i] = cell.Model().GetText().GetText()
+			}
+		}
+	}
+
+	if req.Type == model.BlockContentDataviewSort_Asc {
+		sort.Stable(sorter)
+	} else {
+		sort.Stable(sort.Reverse(sorter))
+	}
+
+	return nil
+}
+
+type tableSorter struct {
+	rowIds []string
+	values []string
+}
+
+func (t tableSorter) Len() int {
+	return len(t.rowIds)
+}
+
+func (t tableSorter) Less(i, j int) bool {
+	return t.values[i] < t.values[j]
+}
+
+func (t tableSorter) Swap(i, j int) {
+	t.values[i], t.values[j] = t.values[j], t.values[i]
+	t.rowIds[i], t.rowIds[j] = t.rowIds[j], t.rowIds[i]
 }
 
 func (t table) addColumnHeader(s *state.State) (string, error) {

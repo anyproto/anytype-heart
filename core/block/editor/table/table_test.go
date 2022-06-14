@@ -652,6 +652,77 @@ func TestColumnDelete(t *testing.T) {
 	}
 }
 
+func TestSort(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source *state.State
+		req    pb.RpcBlockTableSortRequest
+		want   *state.State
+	}{
+		{
+			name: "asc order",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("234"),
+					"row2-col2": mkTextBlock("323"),
+					"row3-col2": mkTextBlock("123"),
+				})),
+			req: pb.RpcBlockTableSortRequest{
+				ColumnId: "col2",
+				Type:     model.BlockContentDataviewSort_Asc,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("234"),
+					"row2-col2": mkTextBlock("323"),
+					"row3-col2": mkTextBlock("123"),
+				})),
+		},
+		{
+			name: "desc order",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("234"),
+					"row2-col2": mkTextBlock("323"),
+					"row3-col2": mkTextBlock("123"),
+				})),
+			req: pb.RpcBlockTableSortRequest{
+				ColumnId: "col2",
+				Type:     model.BlockContentDataviewSort_Desc,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row2", "row1", "row3"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("234"),
+					"row2-col2": mkTextBlock("323"),
+					"row3-col2": mkTextBlock("123"),
+				})),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := table{}
+			err := tb.Sort(tc.source, tc.req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
+		})
+	}
+}
+
 type testTableOptions struct {
 	blocks map[string]*model.Block
 }

@@ -1131,3 +1131,10 @@ func (s *service) TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowL
 	})
 	return err
 }
+
+func (s *service) TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+		return t.Sort(st, req)
+	})
+	return err
+}
