@@ -595,6 +595,8 @@ message Rpc {
         message Create {
             message Request {
                 google.protobuf.Struct details = 1; // object details
+                repeated anytype.model.InternalFlag internalFlags = 2;
+                string templateId = 3;
             }
 
             message Response {
@@ -621,6 +623,7 @@ message Rpc {
                 repeated string source = 1;
                 google.protobuf.Struct details = 2; // if omitted the name of page will be the same with object type
                 string templateId = 3; // optional template id for creating from template
+                repeated anytype.model.InternalFlag internalFlags = 4;
             }
 
             message Response {
@@ -3189,6 +3192,7 @@ message Rpc {
                 string contextId = 1; // id of the context object
                 google.protobuf.Struct details = 3; // new object details
                 string templateId = 5; // optional template id for creating from template
+                repeated anytype.model.InternalFlag internalFlags = 7;
 
                 // link block params
                 string targetId = 2; // id of the closest simple block

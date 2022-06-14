@@ -10,6 +10,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/metrics"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	ds "github.com/ipfs/go-datastore"
 	"github.com/textileio/go-threads/core/thread"
@@ -836,6 +837,8 @@ func (s *service) DeleteObjectFromWorkspace(workspaceId string, objectId string)
 }
 
 func (s *service) CreateSet(req pb.RpcObjectCreateSetRequest) (setId string, err error) {
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
 	var dvContent model.BlockContentOfDataview
 	var dvSchema schema.Schema
 	if len(req.Source) != 0 {
@@ -896,7 +899,7 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 				return err
 			}
 			if textBlock != nil {
-				details.Fields[bundle.RelationKeyName.String()] =  pbtypes.String(textBlock.Text.Text)
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
 			}
 		}
 

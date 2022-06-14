@@ -11,6 +11,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/database"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 )
 
 func (mw *Middleware) NavigationListObjects(req *pb.RpcNavigationListObjectsRequest) *pb.RpcNavigationListObjectsResponse {
@@ -114,7 +115,8 @@ func (mw *Middleware) ObjectCreate(req *pb.RpcObjectCreateRequest) *pb.RpcObject
 
 	var id string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		id, _, err = bs.CreateSmartBlock(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil)
+		req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+		id, _, err = bs.CreateSmartBlockFromTemplate(context.TODO(), coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 		return
 	})
 

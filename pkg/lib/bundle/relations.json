@@ -106,6 +106,16 @@
     "source": "details"
   },
   {
+    "description": "Artist URL",
+    "format": "url",
+    "hidden": true,
+    "key": "mediaArtistURL",
+    "maxCount": 1,
+    "name": "Media Artist URL",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "description": "Specifies whether template is provided by anytype",
     "format": "checkbox",
     "hidden": true,
@@ -132,6 +142,16 @@
     "name": "Birthday",
     "readonly": false,
     "source": "details"
+  },
+  {
+    "description": "Object restrictions list",
+    "format": "number",
+    "hidden": true,
+    "key": "restrictions",
+    "maxCount": 1,
+    "name": "Object restrictions",
+    "readonly": true,
+    "source": "derived"
   },
   {
     "description": "Adds the object to the highlighted dataview in space",
@@ -194,10 +214,12 @@
     "source": "details"
   },
   {
+    "description": "Plaintext extracted from the object's blocks ",
     "format": "longtext",
     "hidden": true,
     "key": "snippet",
     "maxCount": 1,
+    "name": "Snippet",
     "readonly": true,
     "source": "derived"
   },
@@ -557,6 +579,16 @@
     "source": "details"
   },
   {
+    "description": "Artist name",
+    "format": "longtext",
+    "hidden": true,
+    "key": "mediaArtistName",
+    "maxCount": 1,
+    "name": "Media Artist Name",
+    "readonly": true,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "rating",
@@ -897,16 +929,6 @@
     "source": "details"
   },
   {
-    "description": "Object restrictions list",
-    "format": "number",
-    "hidden": true,
-    "key": "restrictions",
-    "maxCount": 1,
-    "name": "Object restrictions",
-    "readonly": true,
-    "source": "derived"
-  },
-  {
     "format": "longtext",
     "hidden": false,
     "key": "materials",
@@ -931,6 +953,16 @@
     "key": "stars",
     "maxCount": 0,
     "name": "Stars",
+    "readonly": false,
+    "source": "details"
+  },
+  {
+    "description": "Repeat words that someone else has said or written",
+    "format": "longtext",
+    "hidden": false,
+    "key": "quote",
+    "maxCount": 1,
+    "name": "Quote",
     "readonly": false,
     "source": "details"
   },
@@ -1182,6 +1214,16 @@
     "source": "details"
   },
   {
+    "description": "Set of internal flags",
+    "format": "number",
+    "hidden": true,
+    "key": "internalFlags",
+    "maxCount": 0,
+    "name": "Internal flags",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "format": "url",
     "hidden": false,
     "key": "socialProfile",
@@ -1246,6 +1288,19 @@
     "source": "details"
   },
   {
+    "description": "An image is an artifact that depicts visual perception, such as a photograph or other two-dimensional picture",
+    "format": "file",
+    "hidden": false,
+    "key": "picture",
+    "maxCount": 1,
+    "name": "Picture",
+    "objectTypes": [
+      "image"
+    ],
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "description": "Link to itself. Used in databases",
     "format": "object",
     "hidden": true,
@@ -1265,30 +1320,22 @@
     "source": "details"
   },
   {
+    "description": "Web address, a reference to a web resource that specifies its location on a computer network and a mechanism for retrieving it",
+    "format": "url",
+    "hidden": false,
+    "key": "url",
+    "maxCount": 1,
+    "name": "URL",
+    "readonly": false,
+    "source": "details"
+  },
+  {
     "format": "longtext",
     "hidden": false,
     "key": "objectives",
     "maxCount": 1,
     "name": "Objectives",
     "readonly": false,
-    "source": "details"
-  },
-  {
-    "format": "longtext",
-    "hidden": true,
-    "key": "mediaArtistName",
-    "maxCount": 1,
-    "name": "Artist name",
-    "readonly": true,
-    "source": "details"
-  },
-  {
-    "format": "url",
-    "hidden": true,
-    "key": "mediaArtistURL",
-    "maxCount": 1,
-    "name": "Artist URL",
-    "readonly": true,
     "source": "details"
   },
   {
@@ -1318,6 +1365,16 @@
     "name": "Is deleted",
     "readonly": true,
     "source": "local"
+  },
+  {
+    "description": "Outgoing links",
+    "format": "object",
+    "hidden": true,
+    "key": "links",
+    "maxCount": 0,
+    "name": "Outgoing links",
+    "readonly": true,
+    "source": "derived"
   },
   {
     "format": "number",
@@ -1542,14 +1599,5 @@
     "name": "IMDb rating",
     "readonly": false,
     "source": "details"
-  },
-  {
-    "format": "object",
-    "hidden": true,
-    "key": "links",
-    "maxCount": 0,
-    "name": "Outgoing links",
-    "readonly": true,
-    "source": "derived"
   }
 ]
