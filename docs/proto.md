@@ -7447,6 +7447,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
 | internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -16762,7 +16763,6 @@ Look https://github.com/golang/protobuf/issues/1135 for more information.
 | image | 8 |  |
 | note | 9 |  |
 | space | 10 |  |
-| bookmark | 11 |  |
 | database | 20 | to be released later |
 
 

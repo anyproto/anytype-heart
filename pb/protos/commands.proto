@@ -596,6 +596,7 @@ message Rpc {
             message Request {
                 google.protobuf.Struct details = 1; // object details
                 repeated anytype.model.InternalFlag internalFlags = 2;
+                string templateId = 3;
             }
 
             message Response {
