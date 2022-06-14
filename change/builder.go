@@ -47,6 +47,7 @@ func BuildMetaTree(s core.SmartBlock) (t *Tree, logHeads map[string]*Change, err
 }
 
 type stateBuilder struct {
+	smartblockId    string
 	cache           map[string]*Change
 	logHeads        map[string]*Change
 	tree            *Tree
@@ -60,6 +61,7 @@ type stateBuilder struct {
 }
 
 func (sb *stateBuilder) Build(s core.SmartBlock) (err error) {
+	sb.smartblockId = s.ID()
 	st := time.Now()
 	sb.smartblock = s
 	logs, err := sb.getLogs()
@@ -199,6 +201,7 @@ func (sb *stateBuilder) findBreakpoint(heads []string) (breakpoint string, err e
 }
 
 func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId string, err error) {
+	// sb.smartblock can be nil in this func
 	if len(snapshotIds) == 1 {
 		return snapshotIds[0], nil
 	} else if len(snapshotIds) == 0 {
@@ -300,7 +303,7 @@ func (sb *stateBuilder) findCommonSnapshot(snapshotIds []string) (snapshotId str
 			p1, p2 = s2, s1
 		}
 
-		log.With("thread", sb.smartblock.ID()).Errorf("changes build tree: made base snapshot for logs %s and %s: conflicting snapshots %s+%s", ch1.Device, ch2.Device, p1, p2)
+		log.With("thread", sb.smartblockId).Errorf("changes build tree: made base snapshot for logs %s and %s: conflicting snapshots %s+%s", ch1.Device, ch2.Device, p1, p2)
 		baseId := sb.makeVirtualSnapshotId(p1, p2)
 
 		if len(ch2.PreviousIds) != 0 || len(ch2.PreviousIds) != 0 {
