@@ -16859,9 +16859,10 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Relations | 2 | restricts work with relations |
 | Blocks | 3 | restricts work with blocks |
 | Details | 4 | restricts work with details |
-| TypeChange | 5 |  |
-| LayoutChange | 6 |  |
-| Template | 7 |  |
+| TypeChange | 5 | restricts type changing |
+| LayoutChange | 6 | restricts layout changing |
+| Template | 7 | restricts template creation from this object |
+| Duplicate | 8 | restricts duplicate object |
 
 
 
