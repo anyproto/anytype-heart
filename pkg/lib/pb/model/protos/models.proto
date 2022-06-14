@@ -129,8 +129,9 @@ message Block {
             repeated string relations = 7;
 
             enum IconSize {
-                Small = 0;
-                Medium = 1;
+                SizeNone = 0;
+                SizeSmall = 1;
+                SizeMedium = 2;
             }
 
             enum Style {
@@ -348,6 +349,7 @@ message Block {
                 string relationProperty = 5;
                 Condition condition = 3;
                 google.protobuf.Value value = 4;
+                QuickOption quickOption = 6;
 
                 enum Operator {
                     And = 0;
@@ -370,6 +372,21 @@ message Block {
                     NotEmpty = 12;
                     AllIn = 13;
                     NotAllIn = 14;
+                }
+
+                enum QuickOption {
+                    ExactDate = 0;
+                    Yesterday = 1;
+                    Today = 2;
+                    Tomorrow = 3;
+                    LastWeek = 4;
+                    CurrentWeek = 5;
+                    NextWeek = 6;
+                    LastMonth = 7;
+                    CurrentMonth = 8;
+                    NextMonth = 9;
+                    NumberOfDaysAgo = 10;
+                    NumberOfDaysNow = 11;
                 }
             }
         }
@@ -487,9 +504,14 @@ message Restrictions {
         Blocks = 3;
         // restricts work with details
         Details = 4;
+        // restricts type changing
         TypeChange = 5;
+        // restricts layout changing
         LayoutChange = 6;
+        // restricts template creation from this object
         Template = 7;
+        // restricts duplicate object
+        Duplicate = 8;
     }
 
 

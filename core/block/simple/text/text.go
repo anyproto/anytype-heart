@@ -58,7 +58,7 @@ type Block interface {
 	RangeSplit(from int32, to int32, top bool) (newBlock simple.Block, err error)
 	RangeTextPaste(rangeFrom int32, rangeTo int32, copiedBlock *model.Block, isPartOfBlock bool) (caretPosition int32, err error)
 	RangeCut(from int32, to int32) (cutBlock *model.Block, initialBlock *model.Block, err error)
-	Merge(b simple.Block) error
+	Merge(b simple.Block, opts ...MergeOption) error
 	SplitMarks(textRange *model.Range, newMarks []*model.BlockContentTextMark, newText string) (combinedMarks []*model.BlockContentTextMark)
 	FillSmartIds(ids []string) []string
 	HasSmartIds() bool
@@ -543,10 +543,27 @@ func (t *Text) SplitMarks(textRange *model.Range, newMarks []*model.BlockContent
 	return combinedMarks
 }
 
-func (t *Text) Merge(b simple.Block) error {
+type mergeOpts struct {
+	dontSetStyle bool
+}
+
+type MergeOption func(opts *mergeOpts)
+
+func DontSetStyle() MergeOption {
+	return func(opts *mergeOpts) {
+		opts.dontSetStyle = true
+	}
+}
+
+func (t *Text) Merge(b simple.Block, opts ...MergeOption) error {
+	o := mergeOpts{}
+	for _, apply := range opts {
+		apply(&o)
+	}
+
 	text, ok := b.(*Text)
 
-	if t.content != nil && t.content.Text == "" {
+	if !o.dontSetStyle && t.content != nil && t.content.Text == "" {
 		t.SetStyle(text.content.Style)
 	}
 

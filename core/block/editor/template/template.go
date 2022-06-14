@@ -684,23 +684,26 @@ func InitTemplate(s *state.State, templates ...StateTransformer) (err error) {
 	return
 }
 
-var WithLink = func(s *state.State) {
+var WithLinkFieldsMigration = func(s *state.State) {
+	const linkMigratedKey = "_link_migrated"
 	s.Iterate(func(b simple.Block) (isContinue bool) {
 		if _, ok := b.(*link.Link); !ok {
 			return true
 		} else {
-			if b.Model().Fields != nil {
-				link := s.Get(b.Model().Id).(*link.Link).GetLink()
+			if b.Model().GetFields().GetFields() != nil && !pbtypes.GetBool(b.Model().GetFields(), linkMigratedKey) {
+
+				b = s.Get(b.Model().Id)
+				link := b.(*link.Link).GetLink()
 
 				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
 					link.CardStyle = model.BlockContentLinkCardStyle(cardStyle.GetNumberValue())
 				}
 
 				if iconSize, ok := b.Model().GetFields().Fields["iconSize"]; ok {
-					if int(iconSize.GetNumberValue()) < 2 {
-						link.IconSize = model.BlockContentLink_Small
-					} else {
-						link.IconSize = model.BlockContentLink_Medium
+					if int(iconSize.GetNumberValue()) == 1 {
+						link.IconSize = model.BlockContentLink_SizeSmall
+					} else if int(iconSize.GetNumberValue()) == 2 {
+						link.IconSize = model.BlockContentLink_SizeMedium
 					}
 				}
 
@@ -708,7 +711,7 @@ var WithLink = func(s *state.State) {
 					link.Description = model.BlockContentLinkDescription(description.GetNumberValue())
 				}
 
-				featuredRelations := map[string]string{"withCover": "cover", "withIcon": "icon", "withName": "name", "withType": "type"}
+				featuredRelations := map[string]string{"withCover": "cover", "withName": "name", "withType": "type"}
 				for key, relName := range featuredRelations {
 					if rel, ok := b.Model().GetFields().Fields[key]; ok {
 						if rel.GetBoolValue() {
@@ -717,7 +720,7 @@ var WithLink = func(s *state.State) {
 					}
 				}
 
-				b.Model().Fields = nil
+				b.Model().Fields.Fields[linkMigratedKey] = pbtypes.Bool(true)
 			}
 
 			return true

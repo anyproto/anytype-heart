@@ -3,7 +3,6 @@ package block
 import (
 	"context"
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"time"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -28,6 +27,7 @@ import (
 	coresb "github.com/anytypeio/go-anytype-middleware/pkg/lib/core/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/localstore/objectstore"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/schema"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/threads"
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -101,28 +101,6 @@ func (s *service) MergeBlock(ctx *state.Context, req pb.RpcBlockMergeRequest) (e
 	})
 }
 
-func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) (err error) {
-	if req.ContextId == req.TargetContextId {
-		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-			return b.Move(ctx, req)
-		})
-	}
-	return s.DoBasic(req.ContextId, func(b basic.Basic) error {
-		return s.DoBasic(req.TargetContextId, func(tb basic.Basic) error {
-			apply, blocks, err := b.InternalCut(ctx, req)
-			if err != nil {
-				return err
-			}
-
-			err = tb.InternalPaste(blocks)
-			if err != nil {
-				return err
-			}
-			return apply()
-		})
-	})
-}
-
 func (s *service) TurnInto(ctx *state.Context, contextId string, style model.BlockContentTextStyle, ids ...string) error {
 	return s.DoText(contextId, func(b stext.Text) error {
 		return b.TurnInto(ctx, style, ids...)
@@ -137,83 +115,8 @@ func (s *service) SimplePaste(contextId string, anySlot []*model.Block) (err err
 	}
 
 	return s.DoBasic(contextId, func(b basic.Basic) error {
-		return b.InternalPaste(blocks)
+		return b.PasteBlocks(blocks)
 	})
-}
-
-func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error) {
-	// 1. Create new page, link
-	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
-		ContextId: req.ContextId,
-		TargetId:  req.DropTargetId,
-		Position:  req.Position,
-		Details:   req.Details,
-	})
-
-	if err != nil {
-		return linkId, err
-	}
-
-	// 2. Move blocks to new page
-	err = s.MoveBlocks(nil, pb.RpcBlockListMoveToExistingObjectRequest{
-		ContextId:       req.ContextId,
-		BlockIds:        req.BlockIds,
-		TargetContextId: pageId,
-		DropTargetId:    "",
-		Position:        0,
-	})
-
-	if err != nil {
-		return linkId, err
-	}
-
-	return linkId, err
-}
-
-func (s *service) ConvertChildrenToPages(req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
-	blocks := make(map[string]*model.Block)
-
-	err = s.Do(req.ContextId, func(contextBlock smartblock.SmartBlock) error {
-		for _, b := range contextBlock.Blocks() {
-			blocks[b.Id] = b
-		}
-		return nil
-	})
-
-	if err != nil {
-		return linkIds, err
-	}
-
-	for _, blockId := range req.BlockIds {
-		if blocks[blockId] == nil || blocks[blockId].GetText() == nil {
-			continue
-		}
-
-		fields := map[string]*types.Value{
-			"name": pbtypes.String(blocks[blockId].GetText().Text),
-		}
-
-		if req.ObjectType != "" {
-			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
-		}
-
-		children := s.AllDescendantIds(blockId, blocks)
-		linkId, err := s.MoveBlocksToNewPage(nil, pb.RpcBlockListMoveToNewObjectRequest{
-			ContextId: req.ContextId,
-			BlockIds:  children,
-			Details: &types.Struct{
-				Fields: fields,
-			},
-			DropTargetId: blockId,
-			Position:     model.Block_Replace,
-		})
-		linkIds = append(linkIds, linkId)
-		if err != nil {
-			return linkIds, err
-		}
-	}
-
-	return linkIds, err
 }
 
 func (s *service) ReplaceBlock(ctx *state.Context, req pb.RpcBlockReplaceRequest) (newId string, err error) {
@@ -984,6 +887,18 @@ func (s *service) ObjectToSet(id string, source []string) (newId string, err err
 	var details *types.Struct
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
 		details = pbtypes.CopyStruct(b.Details())
+
+		s := b.NewState()
+		if layout, ok := s.Layout(); ok && layout == model.ObjectType_note {
+			textBlock, err := s.GetFirstTextBlock()
+			if err != nil {
+				return err
+			}
+			if textBlock != nil {
+				details.Fields[bundle.RelationKeyName.String()] = pbtypes.String(textBlock.Text.Text)
+			}
+		}
+
 		return nil
 	}); err != nil {
 		return
@@ -1043,4 +958,67 @@ func (s *service) ListAvailableRelations(objectId string) (aggregatedRelations [
 	})
 
 	return
+}
+
+func (s *service) ListConvertToObjects(ctx *state.Context, req pb.RpcBlockListConvertToObjectsRequest) (linkIds []string, err error) {
+	err = s.DoBasic(req.ContextId, func(b basic.Basic) error {
+		linkIds, err = b.ExtractBlocksToObjects(ctx, s, req)
+		return err
+	})
+	return
+}
+
+func (s *service) MoveBlocksToNewPage(ctx *state.Context, req pb.RpcBlockListMoveToNewObjectRequest) (linkId string, err error) {
+	// 1. Create new page, link
+	linkId, pageId, err := s.CreateLinkToTheNewObject(ctx, "", pb.RpcBlockLinkCreateWithObjectRequest{
+		ContextId: req.ContextId,
+		TargetId:  req.DropTargetId,
+		Position:  req.Position,
+		Details:   req.Details,
+	})
+
+	if err != nil {
+		return linkId, err
+	}
+
+	// 2. Move blocks to new page
+	err = s.MoveBlocks(nil, pb.RpcBlockListMoveToExistingObjectRequest{
+		ContextId:       req.ContextId,
+		BlockIds:        req.BlockIds,
+		TargetContextId: pageId,
+		DropTargetId:    "",
+		Position:        0,
+	})
+
+	if err != nil {
+		return linkId, err
+	}
+
+	return linkId, err
+}
+
+func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExistingObjectRequest) error {
+	if req.ContextId == req.TargetContextId {
+		return s.DoBasic(req.ContextId, func(b basic.Basic) error {
+			return b.Move(ctx, req)
+		})
+	}
+	return s.Do(req.ContextId, func(cb smartblock.SmartBlock) error {
+		return s.Do(req.TargetContextId, func(tb smartblock.SmartBlock) error {
+			cs := cb.NewState()
+			blocks := basic.CutBlocks(cs, req.BlockIds)
+
+			ts := tb.NewState()
+			err := basic.PasteBlocks(ts, blocks)
+			if err != nil {
+				return fmt.Errorf("paste blocks: %w", err)
+			}
+
+			err = tb.Apply(ts)
+			if err != nil {
+				return fmt.Errorf("apply target block state: %w", err)
+			}
+			return cb.Apply(cs)
+		})
+	})
 }

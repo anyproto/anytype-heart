@@ -646,16 +646,19 @@ func (mw *Middleware) BlockListMoveToNewObject(req *pb.RpcBlockListMoveToNewObje
 }
 
 func (mw *Middleware) BlockListConvertToObjects(req *pb.RpcBlockListConvertToObjectsRequest) *pb.RpcBlockListConvertToObjectsResponse {
+	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockListConvertToObjectsResponseErrorCode, linkIds []string, err error) *pb.RpcBlockListConvertToObjectsResponse {
 		m := &pb.RpcBlockListConvertToObjectsResponse{Error: &pb.RpcBlockListConvertToObjectsResponseError{Code: code}, LinkIds: linkIds}
 		if err != nil {
 			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
 		}
 		return m
 	}
 	var linkIds []string
 	err := mw.doBlockService(func(bs block.Service) (err error) {
-		linkIds, err = bs.ConvertChildrenToPages(*req)
+		linkIds, err = bs.ListConvertToObjects(ctx, *req)
 		return
 	})
 	if err != nil {
