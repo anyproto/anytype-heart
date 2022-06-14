@@ -1362,6 +1362,9 @@ func (s *service) TemplateClone(id string) (templateId string, err error) {
 func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	var st *state.State
 	if err = s.Do(id, func(b smartblock.SmartBlock) error {
+		if err = b.Restrictions().Object.Check(model.Restrictions_Duplicate); err != nil {
+			return err
+		}
 		st = b.NewState().Copy()
 		st.SetLocalDetails(nil)
 		return nil
@@ -1372,9 +1375,6 @@ func (s *service) ObjectDuplicate(id string) (objectId string, err error) {
 	sbt, err := coresb.SmartBlockTypeFromID(id)
 	if err != nil {
 		return
-	}
-	if sbt != coresb.SmartBlockTypePage && sbt != coresb.SmartBlockTypeSet {
-		return "", fmt.Errorf("invalid smartblockTYpe for duplicate")
 	}
 
 	objectId, _, err = s.CreateSmartBlockFromState(context.TODO(), sbt, nil, nil, st)

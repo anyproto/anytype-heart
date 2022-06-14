@@ -504,9 +504,14 @@ message Restrictions {
         Blocks = 3;
         // restricts work with details
         Details = 4;
+        // restricts type changing
         TypeChange = 5;
+        // restricts layout changing
         LayoutChange = 6;
+        // restricts template creation from this object
         Template = 7;
+        // restricts duplicate object
+        Duplicate = 8;
     }
 
 

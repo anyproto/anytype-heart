@@ -301,4 +301,16 @@ func TestTree_LastSnapshotId(t *testing.T) {
 		assert.Equal(t, []string{"newSh", "two"}, tr.Heads())
 		assert.Equal(t, "root", tr.LastSnapshotId())
 	})
+	t.Run("builder with split", func(t *testing.T) {
+		tr := new(Tree)
+		tr.Add(
+			newSnapshot("b", "", nil),
+			newSnapshot("root", "b", nil, "b"),
+			newSnapshot("root2", "b", nil, "b"),
+			newDetailsChange("one", "root", "root", "root", true),
+			newDetailsChange("two", "root2", "root2", "root2", false),
+			newSnapshot("newSh", "root", nil, "one"),
+		)
+		assert.Equal(t, "b", tr.LastSnapshotId())
+	})
 }

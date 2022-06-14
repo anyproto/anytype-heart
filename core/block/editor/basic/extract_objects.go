@@ -44,6 +44,9 @@ func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req
 			// This id will be replaced by id of the new object
 			Id:          "_root",
 			ChildrenIds: []string{newRoot},
+			Content: &model.BlockContentOfSmartblock{
+				Smartblock: &model.BlockContentSmartblock{},
+			},
 		}))
 
 		fields := map[string]*types.Value{
