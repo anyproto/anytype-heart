@@ -40,17 +40,22 @@ func (bs *basic) ExtractBlocksToObjects(ctx *state.Context, s ObjectCreator, req
 		for _, b := range newBlocks {
 			objState.Add(b)
 		}
-		objState.Add(base.NewBase(&model.Block{
-			// This id will be replaced by id of the new object
-			Id:          "_root",
-			ChildrenIds: []string{newRoot},
-			Content: &model.BlockContentOfSmartblock{
-				Smartblock: &model.BlockContentSmartblock{},
-			},
-		}))
+
+		// For note objects we have to create special block structure to
+		// avoid messing up with note content
+		if req.ObjectType == bundle.TypeKeyNote.URL() {
+			objState.Add(base.NewBase(&model.Block{
+				// This id will be replaced by id of the new object
+				Id:          "_root",
+				ChildrenIds: []string{newRoot},
+				Content: &model.BlockContentOfSmartblock{
+					Smartblock: &model.BlockContentSmartblock{},
+				},
+			}))
+		}
 
 		fields := map[string]*types.Value{
-			"name": pbtypes.String(root.Model().GetText().Text),
+			bundle.RelationKeyName.String(): pbtypes.String(root.Model().GetText().Text),
 		}
 		if req.ObjectType != "" {
 			fields[bundle.RelationKeyType.String()] = pbtypes.String(req.ObjectType)
