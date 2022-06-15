@@ -262,7 +262,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
 	}
 
-	if req.StorePath != "" {
+	if req.StorePath != "" && req.StorePath != mw.rootPath {
 		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
 
 		storePath := filepath.Join(req.StorePath, account.Address())
