@@ -274,7 +274,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 
-		if err := files.WriteFileConfig(configPath, config.ConfigRequired{LocalStorageAddr: storePath}); err != nil {
+		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{LocalStorageAddr: storePath}); err != nil {
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
 		}
 	}
@@ -672,7 +672,7 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	proc := process.New()
 
 	a.Register(proc).
-		Register(event.NewGrpcSender())
+		Register(event.NewCallbackSender(func(event *pb.Event) {}))
 	if err := a.Start(); err != nil {
 		return response(pb.RpcAccountMoveResponseError_UNKNOWN_ERROR, err)
 	}
@@ -750,7 +750,7 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 
 	progress.SetDone(3)
 
-	err = files.WriteFileConfig(configPath, config.ConfigRequired{LocalStorageAddr: destination})
+	err = files.WriteJsonConfig(configPath, config.ConfigRequired{LocalStorageAddr: destination})
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}

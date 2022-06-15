@@ -22,10 +22,10 @@ func TestFileConfig_WriteFileConfig(t *testing.T) {
 		confFile := "test_config.json"
 		defer os.Remove(confFile)
 
-		err := WriteFileConfig(confFile, testConfigOmitEmpty{One: "one test"})
+		err := WriteJsonConfig(confFile, testConfigOmitEmpty{One: "one test"})
 		require.NoError(t, err)
 
-		err = WriteFileConfig(confFile, testConfigOmitEmpty{Two: 2})
+		err = WriteJsonConfig(confFile, testConfigOmitEmpty{Two: 2})
 		require.NoError(t, err)
 
 		res := testConfigOmitEmpty{}
@@ -40,10 +40,10 @@ func TestFileConfig_WriteFileConfig(t *testing.T) {
 		confFile := "test_config2.json"
 		defer os.Remove(confFile)
 
-		err := WriteFileConfig(confFile, testConfig{One: "one test"})
+		err := WriteJsonConfig(confFile, testConfig{One: "one test"})
 		require.NoError(t, err)
 
-		err = WriteFileConfig(confFile, testConfig{Two: 2})
+		err = WriteJsonConfig(confFile, testConfig{Two: 2})
 		require.NoError(t, err)
 
 		res := testConfig{}
