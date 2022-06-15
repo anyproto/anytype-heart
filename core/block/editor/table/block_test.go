@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
@@ -53,5 +55,50 @@ func TestNormalize(t *testing.T) {
 
 			assert.Equal(t, tc.want.Blocks(), st.Blocks())
 		})
+	}
+}
+
+func TestDuplicate(t *testing.T) {
+	s := mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"},
+		[][]string{
+			{"row1-col1", "row1-col3"},
+			{"row2-col1", "row2-col2"},
+		}, withBlockContents(map[string]*model.Block{
+			"row1-col1": mkTextBlock("11"),
+			"row1-col3": mkTextBlock("13"),
+			"row2-col1": mkTextBlock("21"),
+			"row2-col2": mkTextBlock("22"),
+		}))
+	old, err := newTableBlockFromState(s, "table")
+	require.NoError(t, err)
+
+	b := block{
+		Base: base.NewBase(&model.Block{Id: "table"}).(*base.Base),
+	}
+
+	newId, err := b.Duplicate(s)
+
+	require.NoError(t, err)
+
+	got, err := newTableBlockFromState(s, newId)
+
+	require.NoError(t, err)
+
+	assertNotEqual := func(old, new *model.Block) {
+		assert.NotEmpty(t, new.Id)
+		assert.NotEqual(t, old.Id, new.Id)
+		assert.Equal(t, len(old.ChildrenIds), len(new.ChildrenIds))
+		assert.NotEqual(t, old.ChildrenIds, new.ChildrenIds)
+	}
+	assertNotEqual(old.block.Model(), got.block.Model())
+	assertNotEqual(old.columns(), got.columns())
+	assertNotEqual(old.rows(), got.rows())
+	for i, oldId := range old.rows().ChildrenIds {
+		newId := got.rows().ChildrenIds[i]
+
+		oldRow := s.Pick(oldId)
+		newRow := s.Pick(newId)
+
+		assertNotEqual(oldRow.Model(), newRow.Model())
 	}
 }
