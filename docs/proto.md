@@ -1101,6 +1101,7 @@
     - [Block.Content.Text.Marks](#anytype-model-Block-Content-Text-Marks)
     - [Block.Restrictions](#anytype-model-Block-Restrictions)
     - [BlockMetaOnly](#anytype-model-BlockMetaOnly)
+    - [InternalFlag](#anytype-model-InternalFlag)
     - [Layout](#anytype-model-Layout)
     - [LinkPreview](#anytype-model-LinkPreview)
     - [ObjectType](#anytype-model-ObjectType)
@@ -1139,6 +1140,7 @@
     - [Block.Content.Text.Style](#anytype-model-Block-Content-Text-Style)
     - [Block.Position](#anytype-model-Block-Position)
     - [Block.VerticalAlign](#anytype-model-Block-VerticalAlign)
+    - [InternalFlag.Value](#anytype-model-InternalFlag-Value)
     - [LinkPreview.Type](#anytype-model-LinkPreview-Type)
     - [ObjectType.Layout](#anytype-model-ObjectType-Layout)
     - [Relation.DataSource](#anytype-model-Relation-DataSource)
@@ -5259,6 +5261,7 @@ Add may return existing option in case object specified with recordId already ha
 | contextId | [string](#string) |  | id of the context object |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | new object details |
 | templateId | [string](#string) |  | optional template id for creating from template |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 | targetId | [string](#string) |  | link block params
 
 id of the closest simple block |
@@ -8436,6 +8439,8 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | object details |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
+| templateId | [string](#string) |  |  |
 
 
 
@@ -8496,6 +8501,7 @@ Get the info for page alongside with info for all inbound and outbound links fro
 | source | [string](#string) | repeated |  |
 | details | [google.protobuf.Struct](#google-protobuf-Struct) |  | if omitted the name of page will be the same with object type |
 | templateId | [string](#string) |  | optional template id for creating from template |
+| internalFlags | [model.InternalFlag](#anytype-model-InternalFlag) | repeated |  |
 
 
 
@@ -17338,6 +17344,21 @@ Used to decode block meta only, without the content itself
 
 
 
+<a name="anytype-model-InternalFlag"></a>
+
+### InternalFlag
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [InternalFlag.Value](#anytype-model-InternalFlag-Value) |  |  |
+
+
+
+
+
+
 <a name="anytype-model-Layout"></a>
 
 ### Layout
@@ -17950,6 +17971,20 @@ scope from which this relation have been aggregated |
 
 
 
+<a name="anytype-model-InternalFlag-Value"></a>
+
+### InternalFlag.Value
+Use such a weird construction due to the issue with imported repeated enum type
+Look https://github.com/golang/protobuf/issues/1135 for more information.
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| editorDeleteEmpty | 0 |  |
+| editorSelectType | 1 |  |
+| editorSelectTemplate | 2 |  |
+
+
+
 <a name="anytype-model-LinkPreview-Type"></a>
 
 ### LinkPreview.Type
@@ -18078,9 +18113,10 @@ RelationFormat describes how the underlying data is stored in the google.protobu
 | Relations | 2 | restricts work with relations |
 | Blocks | 3 | restricts work with blocks |
 | Details | 4 | restricts work with details |
-| TypeChange | 5 |  |
-| LayoutChange | 6 |  |
-| Template | 7 |  |
+| TypeChange | 5 | restricts type changing |
+| LayoutChange | 6 | restricts layout changing |
+| Template | 7 | restricts template creation from this object |
+| Duplicate | 8 | restricts duplicate object |
 
 
 
