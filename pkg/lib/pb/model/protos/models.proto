@@ -520,9 +520,14 @@ message Restrictions {
         Blocks = 3;
         // restricts work with details
         Details = 4;
+        // restricts type changing
         TypeChange = 5;
+        // restricts layout changing
         LayoutChange = 6;
+        // restricts template creation from this object
         Template = 7;
+        // restricts duplicate object
+        Duplicate = 8;
     }
 
 
@@ -673,3 +678,14 @@ message RelationOptions {
     repeated Relation.Option options = 1;
 }
 
+message InternalFlag {
+    Value value = 1;
+
+    // Use such a weird construction due to the issue with imported repeated enum type
+    // Look https://github.com/golang/protobuf/issues/1135 for more information.
+    enum Value {
+        editorDeleteEmpty = 0;
+        editorSelectType = 1;
+        editorSelectTemplate = 2;
+    }
+}

@@ -1320,14 +1320,17 @@ func (s *State) Validate() (err error) {
 }
 
 // IsEmpty returns whether state has any blocks beside template blocks(root, header, title, etc)
-func (s *State) IsEmpty() bool {
-	if pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
+func (s *State) IsEmpty(checkTitle bool) bool {
+	if checkTitle && pbtypes.GetString(s.Details(), bundle.RelationKeyName.String()) != "" {
 		return false
 	}
 	var emptyTextFound bool
+
 	if title := s.Pick("title"); title != nil {
-		if title.Model().GetText().Text != "" {
-			return false
+		if checkTitle {
+			if title.Model().GetText().Text != "" {
+				return false
+			}
 		}
 		emptyTextFound = true
 	}

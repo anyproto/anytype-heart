@@ -691,7 +691,9 @@ var WithLinkFieldsMigration = func(s *state.State) {
 			return true
 		} else {
 			if b.Model().GetFields().GetFields() != nil && !pbtypes.GetBool(b.Model().GetFields(), linkMigratedKey) {
-				link := s.Get(b.Model().Id).(*link.Link).GetLink()
+
+				b = s.Get(b.Model().Id)
+				link := b.(*link.Link).GetLink()
 
 				if cardStyle, ok := b.Model().GetFields().Fields["style"]; ok {
 					link.CardStyle = model.BlockContentLinkCardStyle(cardStyle.GetNumberValue())

@@ -27,6 +27,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/util"
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 	"github.com/globalsign/mgo/bson"
@@ -232,7 +233,7 @@ func (sb *smartBlock) Init(ctx *InitContext) (err error) {
 		ctx.State = sb.NewState()
 		sb.storeFileKeys(sb.Doc)
 	} else {
-		if !sb.Doc.(*state.State).IsEmpty() {
+		if !sb.Doc.(*state.State).IsEmpty(true) {
 			return ErrCantInitExistingSmartblockWithNonEmptyState
 		}
 		ctx.State.SetParent(sb.Doc.(*state.State))
@@ -1078,7 +1079,11 @@ func (sb *smartBlock) SetObjectTypes(ctx *state.Context, objectTypes []string) (
 	if err = sb.setObjectTypes(s, objectTypes); err != nil {
 		return
 	}
-	s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+
+	flags := internalflag.NewFromState(s)
+	flags.Remove(model.InternalFlag_editorSelectType)
+	flags.AddToState(s)
+
 	// send event here to send updated details to client
 	if err = sb.Apply(s, NoRestrictions); err != nil {
 		return
@@ -1750,11 +1755,20 @@ func (sb *smartBlock) reportChange(s *state.State) {
 }
 
 func (sb *smartBlock) onApply(s *state.State) (err error) {
-	if pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String()) {
-		if !s.IsEmpty() {
-			s.RemoveLocalDetail(bundle.RelationKeyIsDraft.String())
+	flags := internalflag.NewFromState(s)
+
+	// Run empty check only if any of these flags are present
+	if flags.Has(model.InternalFlag_editorDeleteEmpty) || flags.Has(model.InternalFlag_editorSelectType) {
+		if !s.IsEmpty(true) {
+			flags.Remove(model.InternalFlag_editorDeleteEmpty)
 		}
+		if !s.IsEmpty(false) {
+			flags.Remove(model.InternalFlag_editorSelectType)
+		}
+
+		flags.AddToState(s)
 	}
+
 	sb.setRestrictionsDetail(s)
 	return
 }

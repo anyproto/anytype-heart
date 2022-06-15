@@ -297,20 +297,64 @@ func BenchmarkState_Iterate(b *testing.B) {
 }
 
 func TestState_IsEmpty(t *testing.T) {
-	s := NewDoc("root", map[string]simple.Block{
-		"root": simple.New(&model.Block{
-			Id:          "root",
-			ChildrenIds: []string{"header", "emptyText"},
-		}),
-		"header": simple.New(&model.Block{Id: "header"}),
-		"emptyText": simple.New(&model.Block{Id: "emptyText",
-			Content: &model.BlockContentOfText{
-				Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
-			}}),
-	}).(*State)
-	assert.True(t, s.IsEmpty())
-	s.Pick("emptyText").Model().GetText().Text = "1"
-	assert.False(t, s.IsEmpty())
+	t.Run("without title block", func(t *testing.T) {
+		s := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id:          "root",
+				ChildrenIds: []string{"header", "emptyText"},
+			}),
+			"header": simple.New(&model.Block{Id: "header"}),
+			"emptyText": simple.New(&model.Block{Id: "emptyText",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+				}}),
+		}).(*State)
+		assert.True(t, s.IsEmpty(true))
+		s.Pick("emptyText").Model().GetText().Text = "1"
+		assert.False(t, s.IsEmpty(true))
+	})
+
+	t.Run("with title block", func(t *testing.T) {
+		s := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id:          "root",
+				ChildrenIds: []string{"header"},
+			}),
+			"header": simple.New(&model.Block{Id: "header", ChildrenIds: []string{"title"}}),
+			"title": simple.New(&model.Block{Id: "title",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+				}}),
+		}).(*State)
+
+		assert.True(t, s.IsEmpty(true))
+		assert.True(t, s.IsEmpty(false))
+
+		s.Pick("title").Model().GetText().Text = "1"
+		assert.False(t, s.IsEmpty(true))
+		assert.True(t, s.IsEmpty(false))
+	})
+
+	t.Run("with title block and empty block", func(t *testing.T) {
+		s := NewDoc("root", map[string]simple.Block{
+			"root": simple.New(&model.Block{
+				Id:          "root",
+				ChildrenIds: []string{"header", "emptyText"},
+			}),
+			"header": simple.New(&model.Block{Id: "header", ChildrenIds: []string{"title"}}),
+			"title": simple.New(&model.Block{Id: "title",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+				}}),
+			"emptyText": simple.New(&model.Block{Id: "emptyText",
+				Content: &model.BlockContentOfText{
+					Text: &model.BlockContentText{Marks: &model.BlockContentTextMarks{}},
+				}}),
+		}).(*State)
+
+		assert.False(t, s.IsEmpty(true))
+		assert.False(t, s.IsEmpty(false))
+	})
 }
 
 func TestState_Descendants(t *testing.T) {
