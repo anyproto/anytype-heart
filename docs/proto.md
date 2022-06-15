@@ -15523,7 +15523,6 @@ Precondition: user A and user B opened the same block
 | Export | 2 |  |
 | SaveFile | 3 |  |
 | RecoverAccount | 4 |  |
-| AccountMove | 5 |  |
 
 
  

@@ -8,8 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
-	"github.com/anytypeio/go-anytype-middleware/core/block/process"
-	"github.com/anytypeio/go-anytype-middleware/core/event"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
@@ -668,25 +666,6 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		return m
 	}
 
-	a := new(app.App)
-	proc := process.New()
-
-	a.Register(proc).
-		Register(event.NewCallbackSender(func(event *pb.Event) {}))
-	if err := a.Start(); err != nil {
-		return response(pb.RpcAccountMoveResponseError_UNKNOWN_ERROR, err)
-	}
-
-	progress := process.NewProgress(pb.ModelProcess_AccountMove)
-	defer progress.Finish()
-	if err := proc.Add(progress); err != nil {
-		return response(pb.RpcAccountMoveResponseError_UNKNOWN_ERROR, err)
-	}
-
-	progress.SetProgressMessage("Moving account data")
-
-	progress.SetTotal(5)
-
 	removeDirs := func(src string, dirs []string) error {
 		for _, dir := range dirs {
 			if err := os.RemoveAll(filepath.Join(src, dir)); err != nil {
@@ -731,14 +710,10 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 	}
 
-	progress.SetDone(1)
-
 	err = mw.stop()
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
 	}
-
-	progress.SetDone(2)
 
 	for _, dir := range dirs {
 		if _, err := os.Stat(filepath.Join(srcPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
@@ -748,26 +723,20 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		}
 	}
 
-	progress.SetDone(3)
-
 	err = files.WriteJsonConfig(configPath, config.ConfigRequired{LocalStorageAddr: destination})
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
-
-	progress.SetDone(4)
 
 	if err := removeDirs(srcPath, dirs); err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
 	}
 
 	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
-		if err := os.Remove(srcPath); err != nil {
+		if err := os.RemoveAll(srcPath); err != nil {
 			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
 		}
 	}
-
-	progress.SetDone(5)
 
 	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
