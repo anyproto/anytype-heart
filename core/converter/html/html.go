@@ -406,7 +406,7 @@ func (h *HTML) renderLink(b *model.Block) {
 }
 
 func (h *HTML) renderTable(b *model.Block) error {
-	h.buf.WriteString("<table>")
+	h.buf.WriteString(`<table style="border-collapse: collapse; border: 1px solid #dfddd0;">`)
 
 	tb, err := table.NewTable(h.s, b.Id)
 	if err != nil {
@@ -431,7 +431,7 @@ func (h *HTML) renderTable(b *model.Block) error {
 			colToCell[colId] = cellId
 		}
 		for _, colId := range cols.ChildrenIds {
-			h.buf.WriteString("<td>")
+			h.buf.WriteString(`<td style="border: 1px solid #dfddd0;">`)
 			if cellId, ok := colToCell[colId]; ok {
 				cell := h.s.Pick(cellId)
 				if cell == nil {
@@ -439,6 +439,8 @@ func (h *HTML) renderTable(b *model.Block) error {
 				}
 				rs := &renderState{h: h}
 				h.render(rs, cell.Model())
+			} else {
+				h.buf.WriteString("&nbsp;")
 			}
 			h.buf.WriteString("</td>")
 		}
