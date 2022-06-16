@@ -42,6 +42,7 @@ type Block interface {
 	AddView(view model.BlockContentDataviewView)
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
+	SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder)
 
 	AddRelation(relation model.Relation) error
 	GetRelation(relationKey string) (*model.Relation, error)
@@ -590,6 +591,20 @@ func (d *Dataview) SetViewOrder(viewIds []string) {
 		}
 	}
 	d.content.Views = newViews
+}
+
+func (d *Dataview) SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder) {
+	isExist := false;
+	for _, groupOrder := range d.Model().GetDataview().GroupOrders {
+		if groupOrder.ViewId == order.ViewId {
+			isExist = true
+			groupOrder.ViewGroups = order.ViewGroups
+			break
+		}
+	}
+	if !isExist {
+		d.Model().GetDataview().GroupOrders = append(d.Model().GetDataview().GroupOrders, order)
+	}
 }
 
 func mergeSelectOptions(opts1, opts2 []*model.RelationOption) []*model.RelationOption {

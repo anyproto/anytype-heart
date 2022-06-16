@@ -175,6 +175,16 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 		}); err != nil {
 			return
 		}
+	case *pb.EventMessageValueOfBlockDataViewGroupOrderUpdate:
+		if err = apply(o.BlockDataViewGroupOrderUpdate.Id, func(b simple.Block) error {
+			if f, ok := b.(dataview.Block); ok {
+				f.SetViewGroupOrder(o.BlockDataViewGroupOrderUpdate.GroupOrder)
+				return nil
+			}
+			return fmt.Errorf("not a dataview block")
+		}); err != nil {
+			return
+		}
 	}
 
 	return nil

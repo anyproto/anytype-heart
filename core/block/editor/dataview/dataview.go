@@ -882,17 +882,7 @@ func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *state.Context, blockI
 		return err
 	}
 
-	isExist := false;
-	for _, groupOrder := range dvBlock.Model().GetDataview().GroupOrders {
-		if groupOrder.ViewId == order.ViewId {
-			isExist = true
-			groupOrder.ViewGroups = order.ViewGroups
-			break
-		}
-	}
-	if !isExist {
-		dvBlock.Model().GetDataview().GroupOrders = append(dvBlock.Model().GetDataview().GroupOrders, order)
-	}
+	dvBlock.SetViewGroupOrder(order)
 
 	return d.Apply(st)
 }
