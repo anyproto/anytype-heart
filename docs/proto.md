@@ -16143,6 +16143,7 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | groupId | [string](#string) |  |  |
 | index | [int32](#int32) |  |  |
+| hidden | [bool](#bool) |  |  |
 
 
 

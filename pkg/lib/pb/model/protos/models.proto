@@ -400,6 +400,7 @@ message Block {
             message ViewGroup {
                 string groupId = 1;
                 int32 index = 2;
+                bool hidden = 3;
             }
         }
 
