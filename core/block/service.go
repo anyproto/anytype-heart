@@ -187,6 +187,7 @@ type Service interface {
 	UpdateDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionUpdateRequest) error
 	DeleteDataviewRecordRelationOption(ctx *state.Context, req pb.RpcBlockDataviewRecordRelationOptionDeleteRequest) error
 	UpdateDataviewGroupOrder(ctx *state.Context, req pb.RpcBlockDataviewGroupOrderUpdateRequest) error
+	UpdateDataviewObjectsOrder(ctx *state.Context, req pb.RpcBlockDataviewObjectsOrderUpdateRequest) error
 
 	CreateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordCreateRequest) (*types.Struct, error)
 	UpdateDataviewRecord(ctx *state.Context, req pb.RpcBlockDataviewRecordUpdateRequest) error

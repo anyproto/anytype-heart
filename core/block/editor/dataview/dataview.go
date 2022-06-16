@@ -56,6 +56,7 @@ type Dataview interface {
 	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
 	UpdateViewGroupOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
+	UpdateViewObjectsOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewObjectsOrder) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -883,6 +884,18 @@ func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *state.Context, blockI
 	}
 
 	dvBlock.SetViewGroupOrder(order)
+
+	return d.Apply(st)
+}
+
+func (d *dataviewCollectionImpl) UpdateViewObjectsOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewObjectsOrder) error {
+	st := d.NewStateCtx(ctx)
+	dvBlock, err := getDataviewBlock(st, blockId)
+	if err != nil {
+		return err
+	}
+
+	dvBlock.SetViewObjectsOrder(order)
 
 	return d.Apply(st)
 }

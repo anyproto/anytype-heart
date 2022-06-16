@@ -43,6 +43,7 @@ type Block interface {
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
 	SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder)
+	SetViewObjectsOrder(order *model.BlockContentDataviewObjectsOrder)
 
 	AddRelation(relation model.Relation) error
 	GetRelation(relationKey string) (*model.Relation, error)
@@ -604,6 +605,20 @@ func (d *Dataview) SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder
 	}
 	if !isExist {
 		d.Model().GetDataview().GroupOrders = append(d.Model().GetDataview().GroupOrders, order)
+	}
+}
+
+func (d *Dataview) SetViewObjectsOrder(order *model.BlockContentDataviewObjectsOrder) {
+	isExist := false;
+	for _, objOrder := range d.Model().GetDataview().ObjectsOrders {
+		if objOrder.ViewId == objOrder.ViewId && objOrder.GroupId == objOrder.GroupId {
+			isExist = true
+			objOrder.ObjectIds = order.ObjectIds
+			break
+		}
+	}
+	if !isExist {
+		d.Model().GetDataview().ObjectsOrders = append(d.Model().GetDataview().ObjectsOrders, order)
 	}
 }
 

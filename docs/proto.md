@@ -172,6 +172,11 @@
     - [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request)
     - [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response)
     - [Rpc.BlockDataview.GroupOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error)
+    - [Rpc.BlockDataview.ObjectsOrder](#anytype-Rpc-BlockDataview-ObjectsOrder)
+    - [Rpc.BlockDataview.ObjectsOrder.Update](#anytype-Rpc-BlockDataview-ObjectsOrder-Update)
+    - [Rpc.BlockDataview.ObjectsOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Request)
+    - [Rpc.BlockDataview.ObjectsOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response)
+    - [Rpc.BlockDataview.ObjectsOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response-Error)
     - [Rpc.BlockDataview.Relation](#anytype-Rpc-BlockDataview-Relation)
     - [Rpc.BlockDataview.Relation.Add](#anytype-Rpc-BlockDataview-Relation-Add)
     - [Rpc.BlockDataview.Relation.Add.Request](#anytype-Rpc-BlockDataview-Relation-Add-Request)
@@ -720,6 +725,7 @@
     - [Rpc.BlockBookmark.CreateAndFetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-CreateAndFetch-Response-Error-Code)
     - [Rpc.BlockBookmark.Fetch.Response.Error.Code](#anytype-Rpc-BlockBookmark-Fetch-Response-Error-Code)
     - [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code)
+    - [Rpc.BlockDataview.ObjectsOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Add.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.Delete.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-Delete-Response-Error-Code)
     - [Rpc.BlockDataview.Relation.ListAvailable.Response.Error.Code](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response-Error-Code)
@@ -1020,6 +1026,7 @@
     - [Block.Content.Dataview](#anytype-model-Block-Content-Dataview)
     - [Block.Content.Dataview.Filter](#anytype-model-Block-Content-Dataview-Filter)
     - [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder)
+    - [Block.Content.Dataview.ObjectsOrder](#anytype-model-Block-Content-Dataview-ObjectsOrder)
     - [Block.Content.Dataview.Relation](#anytype-model-Block-Content-Dataview-Relation)
     - [Block.Content.Dataview.Sort](#anytype-model-Block-Content-Dataview-Sort)
     - [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View)
@@ -1235,6 +1242,7 @@
 | BlockDataviewRelationDelete | [Rpc.BlockDataview.Relation.Delete.Request](#anytype-Rpc-BlockDataview-Relation-Delete-Request) | [Rpc.BlockDataview.Relation.Delete.Response](#anytype-Rpc-BlockDataview-Relation-Delete-Response) |  |
 | BlockDataviewRelationListAvailable | [Rpc.BlockDataview.Relation.ListAvailable.Request](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Request) | [Rpc.BlockDataview.Relation.ListAvailable.Response](#anytype-Rpc-BlockDataview-Relation-ListAvailable-Response) |  |
 | BlockDataviewGroupOrderUpdate | [Rpc.BlockDataview.GroupOrder.Update.Request](#anytype-Rpc-BlockDataview-GroupOrder-Update-Request) | [Rpc.BlockDataview.GroupOrder.Update.Response](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response) |  |
+| BlockDataviewObjectsOrderUpdate | [Rpc.BlockDataview.ObjectsOrder.Update.Request](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Request) | [Rpc.BlockDataview.ObjectsOrder.Update.Response](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response) |  |
 | BlockDataviewRecordCreate | [Rpc.BlockDataviewRecord.Create.Request](#anytype-Rpc-BlockDataviewRecord-Create-Request) | [Rpc.BlockDataviewRecord.Create.Response](#anytype-Rpc-BlockDataviewRecord-Create-Response) |  |
 | BlockDataviewRecordUpdate | [Rpc.BlockDataviewRecord.Update.Request](#anytype-Rpc-BlockDataviewRecord-Update-Request) | [Rpc.BlockDataviewRecord.Update.Response](#anytype-Rpc-BlockDataviewRecord-Update-Response) |  |
 | BlockDataviewRecordDelete | [Rpc.BlockDataviewRecord.Delete.Request](#anytype-Rpc-BlockDataviewRecord-Delete-Request) | [Rpc.BlockDataviewRecord.Delete.Response](#anytype-Rpc-BlockDataviewRecord-Delete-Response) |  |
@@ -3703,6 +3711,75 @@ Makes blocks copy by given ids and paste it to shown place
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockDataview.GroupOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-GroupOrder-Update-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectsOrder"></a>
+
+### Rpc.BlockDataview.ObjectsOrder
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectsOrder-Update"></a>
+
+### Rpc.BlockDataview.ObjectsOrder.Update
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectsOrder-Update-Request"></a>
+
+### Rpc.BlockDataview.ObjectsOrder.Update.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  |  |
+| blockId | [string](#string) |  |  |
+| objectsOrder | [model.Block.Content.Dataview.ObjectsOrder](#anytype-model-Block-Content-Dataview-ObjectsOrder) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response"></a>
+
+### Rpc.BlockDataview.ObjectsOrder.Update.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockDataview.ObjectsOrder.Update.Response.Error](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response-Error"></a>
+
+### Rpc.BlockDataview.ObjectsOrder.Update.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockDataview.ObjectsOrder.Update.Response.Error.Code](#anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -11632,6 +11709,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockDataview-ObjectsOrder-Update-Response-Error-Code"></a>
+
+### Rpc.BlockDataview.ObjectsOrder.Update.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+
+
+
 <a name="anytype-Rpc-BlockDataview-Relation-Add-Response-Error-Code"></a>
 
 ### Rpc.BlockDataview.Relation.Add.Response.Error.Code
@@ -16030,6 +16120,7 @@ Bookmark is to keep a web-link and to preview a content.
 | relations | [Relation](#anytype-model-Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |
 | groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
+| objectsOrders | [Block.Content.Dataview.ObjectsOrder](#anytype-model-Block-Content-Dataview-ObjectsOrder) | repeated |  |
 
 
 
@@ -16066,6 +16157,23 @@ Bookmark is to keep a web-link and to preview a content.
 | ----- | ---- | ----- | ----------- |
 | viewId | [string](#string) |  |  |
 | viewGroups | [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup) | repeated |  |
+
+
+
+
+
+
+<a name="anytype-model-Block-Content-Dataview-ObjectsOrder"></a>
+
+### Block.Content.Dataview.ObjectsOrder
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| viewId | [string](#string) |  |  |
+| groupId | [string](#string) |  |  |
+| objectIds | [string](#string) | repeated |  |
 
 
 

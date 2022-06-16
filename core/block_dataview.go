@@ -52,6 +52,26 @@ func (mw *Middleware) BlockDataviewGroupOrderUpdate(req *pb.RpcBlockDataviewGrou
 	return response(pb.RpcBlockDataviewGroupOrderUpdateResponseError_NULL, nil)
 }
 
+func (mw *Middleware) BlockDataviewObjectsOrderUpdate(req *pb.RpcBlockDataviewObjectsOrderUpdateRequest) *pb.RpcBlockDataviewObjectsOrderUpdateResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockDataviewObjectsOrderUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewObjectsOrderUpdateResponse {
+		m := &pb.RpcBlockDataviewObjectsOrderUpdateResponse{Error: &pb.RpcBlockDataviewObjectsOrderUpdateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		return bs.UpdateDataviewObjectsOrder(ctx, *req)
+	})
+	if err != nil {
+		return response(pb.RpcBlockDataviewObjectsOrderUpdateResponseError_UNKNOWN_ERROR, err)
+	}
+	return response(pb.RpcBlockDataviewObjectsOrderUpdateResponseError_NULL, nil)
+}
+
 func (mw *Middleware) BlockDataviewViewUpdate(req *pb.RpcBlockDataviewViewUpdateRequest) *pb.RpcBlockDataviewViewUpdateResponse {
 	ctx := state.NewContext(nil)
 	response := func(code pb.RpcBlockDataviewViewUpdateResponseErrorCode, err error) *pb.RpcBlockDataviewViewUpdateResponse {

@@ -283,6 +283,7 @@ message Block {
             repeated model.Relation relations = 4;
             string activeView = 3; // saved within a session
             repeated GroupOrder groupOrders = 12;
+            repeated ObjectsOrder objectsOrders = 13;
 
             message View {
                 string id = 1;
@@ -401,6 +402,12 @@ message Block {
                 string groupId = 1;
                 int32 index = 2;
                 bool hidden = 3;
+            }
+
+            message ObjectsOrder {
+                string viewId = 1;
+                string groupId = 2;
+                repeated string objectIds = 3;
             }
         }
 

@@ -171,6 +171,12 @@ func (s *service) UpdateDataviewGroupOrder(ctx *state.Context, req pb.RpcBlockDa
 	})
 }
 
+func (s *service) UpdateDataviewObjectsOrder(ctx *state.Context, req pb.RpcBlockDataviewObjectsOrderUpdateRequest) error {
+	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
+		return b.UpdateViewObjectsOrder(ctx, req.BlockId, req.ObjectsOrder)
+	})
+}
+
 func (s *service) DeleteDataviewView(ctx *state.Context, req pb.RpcBlockDataviewViewDeleteRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
 		return b.DeleteView(ctx, req.BlockId, req.ViewId, true)
