@@ -6,7 +6,7 @@ package bundle
 
 import "github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 
-const RelationChecksum = "d4933235f2b80c7655cb165b4e89688bc6a33ae363249ea5fd81996ab8deb735"
+const RelationChecksum = "627e65aaabbaf3066f3f49f3f6ae6e3c5b89868925ba4b337e9b4d7a18ceac39"
 
 type RelationKey string
 
@@ -140,6 +140,7 @@ const (
 	RelationKeyAudioAlbumTrackNumber     RelationKey = "audioAlbumTrackNumber"
 	RelationKeyPlaceOfBirth              RelationKey = "placeOfBirth"
 	RelationKeyComposer                  RelationKey = "composer"
+	RelationKeyInternalFlags             RelationKey = "internalFlags"
 	RelationKeySocialProfile             RelationKey = "socialProfile"
 	RelationKeyOccupation                RelationKey = "occupation"
 	RelationKey7hourssleep               RelationKey = "7hourssleep"
@@ -1022,6 +1023,18 @@ var (
 			MaxCount:         1,
 			Name:             "Intention",
 			ReadOnly:         false,
+			ReadOnlyRelation: true,
+			Scope:            model.Relation_type,
+		},
+		RelationKeyInternalFlags: {
+
+			DataSource:       model.Relation_derived,
+			Description:      "Set of internal flags",
+			Format:           model.RelationFormat_number,
+			Hidden:           true,
+			Key:              "internalFlags",
+			Name:             "Internal flags",
+			ReadOnly:         true,
 			ReadOnlyRelation: true,
 			Scope:            model.Relation_type,
 		},

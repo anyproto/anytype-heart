@@ -1214,6 +1214,16 @@
     "source": "details"
   },
   {
+    "description": "Set of internal flags",
+    "format": "number",
+    "hidden": true,
+    "key": "internalFlags",
+    "maxCount": 0,
+    "name": "Internal flags",
+    "readonly": true,
+    "source": "derived"
+  },
+  {
     "format": "url",
     "hidden": false,
     "key": "socialProfile",

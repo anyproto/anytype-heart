@@ -9,6 +9,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/anytypeio/go-anytype-middleware/util/internalflag"
+	"github.com/gogo/protobuf/proto"
+	"github.com/gogo/protobuf/types"
+	"github.com/hashicorp/go-multierror"
+	"github.com/textileio/go-threads/core/thread"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/doc"
@@ -43,10 +49,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/ocache"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/anytypeio/go-anytype-middleware/util/uri"
-	"github.com/gogo/protobuf/proto"
-	"github.com/gogo/protobuf/types"
-	"github.com/hashicorp/go-multierror"
-	"github.com/textileio/go-threads/core/thread"
 )
 
 const (
@@ -441,7 +443,7 @@ func (s *service) CloseBlock(id string) error {
 	err := s.Do(id, func(b smartblock.SmartBlock) error {
 		b.ObjectClose()
 		s := b.NewState()
-		isDraft = pbtypes.GetBool(s.LocalDetails(), bundle.RelationKeyIsDraft.String())
+		isDraft = internalflag.NewFromState(s).Has(model.InternalFlag_editorDeleteEmpty)
 		workspaceId = pbtypes.GetString(s.LocalDetails(), bundle.RelationKeyWorkspaceId.String())
 
 		return nil
@@ -873,9 +875,6 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 	var workspaceId string
 	if details != nil && details.Fields != nil {
-		var isDraft = pbtypes.GetBool(details, bundle.RelationKeyIsDraft.String())
-		delete(details.Fields, bundle.RelationKeyIsDraft.String())
-
 		for k, v := range details.Fields {
 			createState.SetDetail(k, v)
 			if !createState.HasRelation(k) && !pbtypes.HasRelation(relations, k) {
@@ -889,9 +888,6 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 			}
 		}
 
-		if isDraft {
-			createState.SetDetailAndBundledRelation(bundle.RelationKeyIsDraft, pbtypes.Bool(true))
-		}
 		detailsWorkspaceId := details.Fields[bundle.RelationKeyWorkspaceId.String()]
 		if detailsWorkspaceId != nil && detailsWorkspaceId.GetStringValue() != "" {
 			workspaceId = detailsWorkspaceId.GetStringValue()
@@ -947,6 +943,8 @@ func (s *service) CreateSmartBlockFromState(ctx context.Context, sbType coresb.S
 
 // CreateLinkToTheNewObject creates an object and stores the link to it in the context block
 func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, req pb.RpcBlockLinkCreateWithObjectRequest) (linkId string, objectId string, err error) {
+	req.Details = internalflag.AddToDetails(req.Details, req.InternalFlags)
+
 	creator := func(ctx context.Context) (string, error) {
 		objectId, _, err = s.CreateSmartBlockFromTemplate(ctx, coresb.SmartBlockTypePage, req.Details, nil, req.TemplateId)
 		if err != nil {
@@ -957,6 +955,7 @@ func (s *service) CreateLinkToTheNewObject(ctx *state.Context, groupId string, r
 
 	if req.ContextId != "" {
 		err = s.Do(req.ContextId, func(sb smartblock.SmartBlock) error {
+
 			linkId, objectId, err = s.createObject(ctx, sb, groupId, req, true, creator)
 			return err
 		})
@@ -1416,6 +1415,11 @@ func (s *service) ObjectApplyTemplate(contextId, templateId string) error {
 		objType := ts.ObjectType()
 		// stateFromTemplate returns state without the localdetails, so they will be taken from the orig state
 		ts.SetObjectType(objType)
+
+		flags := internalflag.NewFromState(ts)
+		flags.Remove(model.InternalFlag_editorSelectType)
+		flags.Remove(model.InternalFlag_editorSelectTemplate)
+		flags.AddToState(ts)
 
 		return b.Apply(ts, smartblock.NoRestrictions)
 	})

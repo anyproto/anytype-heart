@@ -41,6 +41,7 @@ enum SmartBlockType {
     Date = 0x204;
     WorkspaceOld = 0x205; // deprecated thread-based workspace
     Workspace = 0x206;
+
 }
 
 message Block {
@@ -563,7 +564,7 @@ message ObjectType {
         note = 9;
         space = 10;
         bookmark = 11;
-        
+
         database = 20; // to be released later
     }
 }
@@ -661,4 +662,16 @@ message Relations {
 
 message RelationOptions {
     repeated Relation.Option options = 1;
+}
+
+message InternalFlag {
+    Value value = 1;
+
+    // Use such a weird construction due to the issue with imported repeated enum type
+    // Look https://github.com/golang/protobuf/issues/1135 for more information.
+    enum Value {
+        editorDeleteEmpty = 0;
+        editorSelectType = 1;
+        editorSelectTemplate = 2;
+    }
 }

@@ -135,6 +135,40 @@ func GetStringList(s *types.Struct, name string) []string {
 	}
 }
 
+func GetIntList(s *types.Struct, name string) []int {
+	if s == nil || s.Fields == nil {
+		return nil
+	}
+
+	if v, ok := s.Fields[name]; !ok {
+		return nil
+	} else {
+		return GetIntListValue(v)
+
+	}
+}
+
+func GetIntListValue(v *types.Value) []int {
+	if v == nil {
+		return nil
+	}
+	var res []int
+	if list, ok := v.Kind.(*types.Value_ListValue); ok {
+		if list.ListValue == nil {
+			return nil
+		}
+		for _, v := range list.ListValue.Values {
+			if _, ok = v.GetKind().(*types.Value_NumberValue); ok {
+				res = append(res, int(v.GetNumberValue()))
+			}
+		}
+	} else if val, ok := v.Kind.(*types.Value_NumberValue); ok {
+		return []int{int(val.NumberValue)}
+	}
+
+	return res
+}
+
 // GetStringListValue returns string slice from StringValue and List of StringValue
 func GetStringListValue(v *types.Value) []string {
 	if v == nil {
@@ -403,7 +437,8 @@ func RelationFormatCanHaveListValue(format model.RelationFormat) bool {
 	switch format {
 	case model.RelationFormat_tag,
 		model.RelationFormat_file,
-		model.RelationFormat_object:
+		model.RelationFormat_object,
+		model.RelationFormat_number:
 		return true
 	default:
 		return false
