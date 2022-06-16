@@ -29,7 +29,7 @@ func NewBlock(b *model.Block) simple.Block {
 type Block interface {
 	simple.Block
 	Normalize(s *state.State) error
-	Duplicate(s *state.State) (newId string, err error)
+	Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error)
 }
 
 type block struct {
@@ -60,11 +60,13 @@ func (b *block) Normalize(s *state.State) error {
 	return nil
 }
 
-func (b block) Duplicate(s *state.State) (newId string, err error) {
+func (b block) Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error) {
 	tb, err := NewTable(s, b.Id)
 	if err != nil {
-		return "", fmt.Errorf("init table: %w", err)
+		err = fmt.Errorf("init table: %w", err)
+		return
 	}
+	visitedIds = append(visitedIds, b.Id)
 
 	colMapping := map[string]string{}
 	genId := func() string {
@@ -72,65 +74,63 @@ func (b block) Duplicate(s *state.State) (newId string, err error) {
 	}
 
 	cols := pbtypes.CopyBlock(tb.Columns())
+	visitedIds = append(visitedIds, cols.Id)
 	cols.Id = ""
 	for i, colId := range cols.ChildrenIds {
 		col := s.Pick(colId)
 		if col == nil {
-			return "", fmt.Errorf("column %s is not found", colId)
+			err = fmt.Errorf("column %s is not found", colId)
+			return
 		}
+		visitedIds = append(visitedIds, colId)
 		col = col.Copy()
 		col.Model().Id = genId()
-		if !s.Add(col) {
-			return "", fmt.Errorf("add copy of column %s", colId)
-		}
+		blocks = append(blocks, col)
 		colMapping[colId] = col.Model().Id
 		cols.ChildrenIds[i] = col.Model().Id
 	}
-	if !s.Add(simple.New(cols)) {
-		return "", fmt.Errorf("add copy of columns")
-	}
+	blocks = append(blocks, simple.New(cols))
 
 	rows := pbtypes.CopyBlock(tb.Rows())
+	visitedIds = append(visitedIds, rows.Id)
 	rows.Id = ""
 	for i, rowId := range rows.ChildrenIds {
+		visitedIds = append(visitedIds, rowId)
 		row := s.Pick(rowId)
 		row = row.Copy()
 		row.Model().Id = genId()
-		if !s.Add(row) {
-			return "", fmt.Errorf("add copy of row %s", rowId)
-		}
+		blocks = append(blocks, row)
 
 		for j, cellId := range row.Model().ChildrenIds {
-			_, oldColId, err := ParseCellId(cellId)
-			if err != nil {
-				return "", fmt.Errorf("parse cell id %s: %w", cellId, err)
+			_, oldColId, err2 := ParseCellId(cellId)
+			if err2 != nil {
+				err = fmt.Errorf("parse cell id %s: %w", cellId, err2)
+				return
 			}
 
 			newColId, ok := colMapping[oldColId]
 			if !ok {
-				return "", fmt.Errorf("column mapping for %s is not found", oldColId)
+				err = fmt.Errorf("column mapping for %s is not found", oldColId)
+				return
 			}
+			visitedIds = append(visitedIds, cellId)
 			cell := s.Pick(cellId)
 			cell = cell.Copy()
 			cell.Model().Id = makeCellId(row.Model().Id, newColId)
-			if !s.Add(cell) {
-				return "", fmt.Errorf("add copy of cell %s", cellId)
-			}
+			blocks = append(blocks, cell)
+
 			row.Model().ChildrenIds[j] = cell.Model().Id
 		}
 		rows.ChildrenIds[i] = row.Model().Id
 	}
-	if !s.Add(simple.New(rows)) {
-		return "", fmt.Errorf("add copy of rows")
-	}
+	blocks = append(blocks, simple.New(rows))
 
 	block := tb.block.Copy()
 	block.Model().Id = genId()
 	block.Model().ChildrenIds = []string{cols.Id, rows.Id}
-	if !s.Add(block) {
-		return "", fmt.Errorf("add copy of table")
-	}
-	return block.Model().Id, nil
+	blocks = append(blocks, block)
+
+	return block.Model().Id, visitedIds, blocks, nil
 }
 
 type rowSort struct {

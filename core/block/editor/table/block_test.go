@@ -76,9 +76,12 @@ func TestDuplicate(t *testing.T) {
 		Base: base.NewBase(&model.Block{Id: "table"}).(*base.Base),
 	}
 
-	newId, err := b.Duplicate(s)
-
+	newId, visitedId, blocks, err := b.Duplicate(s)
 	require.NoError(t, err)
+	for _, b := range blocks {
+		s.Add(b)
+	}
+	assert.ElementsMatch(t, []string{"table", "columns", "rows", "col1", "col2", "col3", "row1", "row2", "row1-col1", "row1-col3", "row2-col1", "row2-col2"}, visitedId)
 
 	got, err := NewTable(s, newId)
 
