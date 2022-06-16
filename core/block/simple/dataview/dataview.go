@@ -87,10 +87,10 @@ func (d *Dataview) Diff(b simple.Block) (msgs []simple.EventMessage, err error) 
 		return
 	}
 
-	for _, order2 := range dv.content.GroupOrder {
+	for _, order2 := range dv.content.GroupOrders {
 		var found bool
 		var changed bool
-		for _, order1 := range d.content.GroupOrder {
+		for _, order1 := range d.content.GroupOrders {
 			if order1.ViewId == order2.ViewId {
 				found = true
 				changed = !proto.Equal(order1, order2)

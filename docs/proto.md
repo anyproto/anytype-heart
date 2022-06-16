@@ -3671,7 +3671,7 @@ Makes blocks copy by given ids and paste it to shown place
 | ----- | ---- | ----- | ----------- |
 | contextId | [string](#string) |  |  |
 | blockId | [string](#string) |  |  |
-| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
+| groupOrder | [model.Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) |  |  |
 
 
 
@@ -16029,7 +16029,7 @@ Bookmark is to keep a web-link and to preview a content.
 | views | [Block.Content.Dataview.View](#anytype-model-Block-Content-Dataview-View) | repeated |  |
 | relations | [Relation](#anytype-model-Relation) | repeated | index 3 is deprecated, was used for schemaURL in old-format sets |
 | activeView | [string](#string) |  | saved within a session |
-| groupOrder | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
+| groupOrders | [Block.Content.Dataview.GroupOrder](#anytype-model-Block-Content-Dataview-GroupOrder) | repeated |  |
 
 
 
@@ -16065,7 +16065,7 @@ Bookmark is to keep a web-link and to preview a content.
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | viewId | [string](#string) |  |  |
-| viewGroup | [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup) | repeated |  |
+| viewGroups | [Block.Content.Dataview.ViewGroup](#anytype-model-Block-Content-Dataview-ViewGroup) | repeated |  |
 
 
 

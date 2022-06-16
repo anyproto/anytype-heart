@@ -3672,7 +3672,7 @@ message Rpc {
                 message Request {
                     string contextId = 1;
                     string blockId = 2;
-                    repeated anytype.model.Block.Content.Dataview.GroupOrder groupOrder = 3;
+                    anytype.model.Block.Content.Dataview.GroupOrder groupOrder = 3;
                 }
 
                 message Response {

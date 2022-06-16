@@ -55,7 +55,7 @@ type Dataview interface {
 	UpdateRelationOption(ctx *state.Context, blockId string, recordId string, relationKey string, option model.RelationOption, showEvent bool) error
 	DeleteRelationOption(ctx *state.Context, allowMultiupdate bool, blockId string, recordId string, relationKey string, optionId string, showEvent bool) error
 	FillAggregatedOptions(ctx *state.Context) error
-	UpdateViewGroupOrder(ctx *state.Context, blockId string, order []*model.BlockContentDataviewGroupOrder) error
+	UpdateViewGroupOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error
 
 	CreateRecord(ctx *state.Context, blockId string, rec model.ObjectDetails, templateId string) (*model.ObjectDetails, error)
 	UpdateRecord(ctx *state.Context, blockId string, recID string, rec model.ObjectDetails) error
@@ -875,14 +875,25 @@ func (d *dataviewCollectionImpl) FillAggregatedOptions(ctx *state.Context) error
 	return d.Apply(st)
 }
 
-func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *state.Context, blockId string, order []*model.BlockContentDataviewGroupOrder) error {
+func (d *dataviewCollectionImpl) UpdateViewGroupOrder(ctx *state.Context, blockId string, order *model.BlockContentDataviewGroupOrder) error {
 	st := d.NewStateCtx(ctx)
 	dvBlock, err := getDataviewBlock(st, blockId)
 	if err != nil {
 		return err
 	}
 
-	dvBlock.Model().GetDataview().GroupOrder = order
+	isExist := false;
+	for _, groupOrder := range dvBlock.Model().GetDataview().GroupOrders {
+		if groupOrder.ViewId == order.ViewId {
+			isExist = true
+			groupOrder.ViewGroups = order.ViewGroups
+			break
+		}
+	}
+	if !isExist {
+		dvBlock.Model().GetDataview().GroupOrders = append(dvBlock.Model().GetDataview().GroupOrders, order)
+	}
+
 	return d.Apply(st)
 }
 

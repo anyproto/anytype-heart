@@ -282,7 +282,7 @@ message Block {
             // index 3 is deprecated, was used for schemaURL in old-format sets
             repeated model.Relation relations = 4;
             string activeView = 3; // saved within a session
-            repeated GroupOrder groupOrder = 12;
+            repeated GroupOrder groupOrders = 12;
 
             message View {
                 string id = 1;
@@ -394,7 +394,7 @@ message Block {
 
             message GroupOrder {
                 string viewId = 1;
-                repeated ViewGroup viewGroup = 2;
+                repeated ViewGroup viewGroups = 2;
             }
 
             message ViewGroup {
