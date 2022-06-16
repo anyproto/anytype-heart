@@ -431,7 +431,7 @@ func (h *HTML) renderTable(b *model.Block) error {
 			colToCell[colId] = cellId
 		}
 		for _, colId := range cols.ChildrenIds {
-			h.buf.WriteString(`<td style="border: 1px solid #dfddd0;">`)
+			h.buf.WriteString(`<td style="border: 1px solid #dfddd0; padding: 9px; font-size: 14px; line-height: 22px;">`)
 			if cellId, ok := colToCell[colId]; ok {
 				cell := h.s.Pick(cellId)
 				if cell == nil {
