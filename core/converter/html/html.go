@@ -405,50 +405,70 @@ func (h *HTML) renderLink(b *model.Block) {
 	}
 }
 
-func (h *HTML) renderTable(b *model.Block) error {
-	h.buf.WriteString(`<table style="border-collapse: collapse; border: 1px solid #dfddd0;">`)
-
+func (h *HTML) renderTable(b *model.Block) {
 	tb, err := table.NewTable(h.s, b.Id)
 	if err != nil {
-		return fmt.Errorf("init table for rendering: %w", err)
+		return
 	}
+
+	h.buf.WriteString(`<table style="border-collapse: collapse; border: 1px solid #dfddd0;">`)
+	defer h.buf.WriteString("</table>")
 
 	cols := tb.Columns()
-
+	colWidth := map[string]float64{}
+	for _, colId := range cols.ChildrenIds {
+		col := h.s.Pick(colId)
+		if col == nil {
+			continue
+		}
+		colWidth[colId] = pbtypes.GetFloat64(col.Model().GetFields(), "width")
+	}
 	for _, rowId := range tb.Rows().ChildrenIds {
-		row := h.s.Pick(rowId)
-		if row == nil {
-			return fmt.Errorf("row %s is not found", rowId)
-		}
-		h.buf.WriteString("<tr>")
-		colToCell := map[string]string{}
-		for _, cellId := range row.Model().ChildrenIds {
-			_, colId, err := table.ParseCellId(cellId)
-			if err != nil {
-				return fmt.Errorf("parse cell id %s: %w", cellId, err)
-			}
+		h.renderRow(rowId, cols, colWidth)
+	}
+}
 
-			colToCell[colId] = cellId
+func (h *HTML) renderRow(rowId string, cols *model.Block, colWidth map[string]float64) {
+	row := h.s.Pick(rowId)
+	if row == nil {
+		return
+	}
+	h.buf.WriteString("<tr>")
+	defer h.buf.WriteString("</tr>")
+
+	colToCell := map[string]string{}
+	for _, cellId := range row.Model().ChildrenIds {
+		_, colId, err := table.ParseCellId(cellId)
+		if err != nil {
+			continue
 		}
-		for _, colId := range cols.ChildrenIds {
-			h.buf.WriteString(`<td style="border: 1px solid #dfddd0; padding: 9px; font-size: 14px; line-height: 22px;">`)
-			if cellId, ok := colToCell[colId]; ok {
-				cell := h.s.Pick(cellId)
-				if cell == nil {
-					return fmt.Errorf("pick cell %s", cellId)
-				}
-				rs := &renderState{h: h}
-				h.render(rs, cell.Model())
-			} else {
-				h.buf.WriteString("&nbsp;")
-			}
-			h.buf.WriteString("</td>")
-		}
-		h.buf.WriteString("</tr>")
+		colToCell[colId] = cellId
 	}
 
-	h.buf.WriteString("</table>")
-	return nil
+	for _, colId := range cols.ChildrenIds {
+		h.renderCell(colWidth, colId, colToCell)
+	}
+}
+
+func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell map[string]string) {
+	var extra string
+	if w := colWidth[colId]; w > 0 {
+		extra += fmt.Sprintf(` width="%d"`, int(w))
+	}
+	fmt.Fprintf(h.buf, `<td style="border: 1px solid #dfddd0; padding: 9px; font-size: 14px; line-height: 22px"%s>`, extra)
+	defer h.buf.WriteString("</td>")
+
+	if cellId, ok := colToCell[colId]; ok {
+		cell := h.s.Pick(cellId)
+		if cell == nil {
+			h.buf.WriteString("&nbsp;")
+			return
+		}
+		rs := &renderState{h: h}
+		h.render(rs, cell.Model())
+		return
+	}
+	h.buf.WriteString("&nbsp;")
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {
