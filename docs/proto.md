@@ -917,6 +917,7 @@
     - [Event.Block.Set.Bookmark.Description](#anytype-Event-Block-Set-Bookmark-Description)
     - [Event.Block.Set.Bookmark.FaviconHash](#anytype-Event-Block-Set-Bookmark-FaviconHash)
     - [Event.Block.Set.Bookmark.ImageHash](#anytype-Event-Block-Set-Bookmark-ImageHash)
+    - [Event.Block.Set.Bookmark.State](#anytype-Event-Block-Set-Bookmark-State)
     - [Event.Block.Set.Bookmark.TargetObjectId](#anytype-Event-Block-Set-Bookmark-TargetObjectId)
     - [Event.Block.Set.Bookmark.Title](#anytype-Event-Block-Set-Bookmark-Title)
     - [Event.Block.Set.Bookmark.Type](#anytype-Event-Block-Set-Bookmark-Type)
@@ -1061,6 +1062,7 @@
   
     - [Account.StatusType](#anytype-model-Account-StatusType)
     - [Block.Align](#anytype-model-Block-Align)
+    - [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State)
     - [Block.Content.Dataview.Filter.Condition](#anytype-model-Block-Content-Dataview-Filter-Condition)
     - [Block.Content.Dataview.Filter.Operator](#anytype-model-Block-Content-Dataview-Filter-Operator)
     - [Block.Content.Dataview.Filter.QuickOption](#anytype-model-Block-Content-Dataview-Filter-QuickOption)
@@ -14359,6 +14361,7 @@ Precondition: user A opened a block
 | faviconHash | [Event.Block.Set.Bookmark.FaviconHash](#anytype-Event-Block-Set-Bookmark-FaviconHash) |  |  |
 | type | [Event.Block.Set.Bookmark.Type](#anytype-Event-Block-Set-Bookmark-Type) |  |  |
 | targetObjectId | [Event.Block.Set.Bookmark.TargetObjectId](#anytype-Event-Block-Set-Bookmark-TargetObjectId) |  |  |
+| state | [Event.Block.Set.Bookmark.State](#anytype-Event-Block-Set-Bookmark-State) |  |  |
 
 
 
@@ -14404,6 +14407,21 @@ Precondition: user A opened a block
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-Bookmark-State"></a>
+
+### Event.Block.Set.Bookmark.State
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [model.Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State) |  |  |
 
 
 
@@ -16105,6 +16123,7 @@ Bookmark is to keep a web-link and to preview a content.
 | faviconHash | [string](#string) |  |  |
 | type | [LinkPreview.Type](#anytype-model-LinkPreview-Type) |  |  |
 | targetObjectId | [string](#string) |  |  |
+| state | [Block.Content.Bookmark.State](#anytype-model-Block-Content-Bookmark-State) |  |  |
 
 
 
@@ -16745,6 +16764,20 @@ scope from which this relation have been aggregated |
 | AlignLeft | 0 |  |
 | AlignCenter | 1 |  |
 | AlignRight | 2 |  |
+
+
+
+<a name="anytype-model-Block-Content-Bookmark-State"></a>
+
+### Block.Content.Bookmark.State
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| Empty | 0 |  |
+| Fetching | 1 |  |
+| Done | 2 |  |
+| Error | 3 |  |
 
 
 

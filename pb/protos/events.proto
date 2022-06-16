@@ -451,6 +451,7 @@ message Event {
                 FaviconHash faviconHash = 6;
                 Type type = 7;
                 TargetObjectId targetObjectId = 8;
+                State state = 9;
 
                 message Url {
                     string value = 1;
@@ -480,6 +481,9 @@ message Event {
                     string value = 1;
                 }
 
+                message State {
+                    anytype.model.Block.Content.Bookmark.State value = 1;
+                }
             }
         }
 

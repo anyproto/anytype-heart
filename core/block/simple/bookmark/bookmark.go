@@ -2,6 +2,7 @@ package bookmark
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/base"
 	"github.com/anytypeio/go-anytype-middleware/pb"
@@ -108,6 +109,10 @@ func (b *Bookmark) Diff(other simple.Block) (msgs []simple.EventMessage, err err
 		hasChanges = true
 		changes.TargetObjectId = &pb.EventBlockSetBookmarkTargetObjectId{Value: bookmark.content.TargetObjectId}
 	}
+	if b.content.State != bookmark.content.State {
+		hasChanges = true
+		changes.State = &pb.EventBlockSetBookmarkState{Value: bookmark.content.State}
+	}
 
 	if hasChanges {
 		msgs = append(msgs, simple.EventMessage{Msg: &pb.EventMessage{Value: &pb.EventMessageValueOfBlockSetBookmark{BlockSetBookmark: changes}}})
@@ -136,6 +141,9 @@ func (b *Bookmark) ApplyEvent(e *pb.EventBlockSetBookmark) (err error) {
 	}
 	if e.TargetObjectId != nil {
 		b.content.TargetObjectId = e.TargetObjectId.GetValue()
+	}
+	if e.State != nil {
+		b.content.State = e.State.GetValue()
 	}
 
 	return

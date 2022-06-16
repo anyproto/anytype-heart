@@ -179,6 +179,15 @@ message Block {
             string faviconHash = 5;
             LinkPreview.Type type = 6;
             string targetObjectId = 7;
+
+            State state = 8;
+
+            enum State {
+                Empty = 0;
+                Fetching = 1;
+                Done = 2;
+                Error = 3;
+            }
         }
 
         message Icon {
