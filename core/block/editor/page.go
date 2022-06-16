@@ -34,7 +34,7 @@ func NewPage(
 		Clipboard:  clipboard.NewClipboard(sb, f),
 		Bookmark:   bookmark.NewBookmark(sb, lp, bCtrl),
 		Import:     _import.NewImport(sb, importServices),
-		Table:      table.New(sb),
+		Editor:     table.NewEditor(sb),
 	}
 }
 
@@ -47,7 +47,7 @@ type Page struct {
 	clipboard.Clipboard
 	bookmark.Bookmark
 	_import.Import
-	table.Table
+	table.Editor
 }
 
 func (p *Page) Init(ctx *smartblock.InitContext) (err error) {

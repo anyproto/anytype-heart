@@ -45,7 +45,7 @@ func TestNormalize(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			tb, err := newTableBlockFromState(tc.source, "table")
+			tb, err := NewTable(tc.source, "table")
 
 			require.NoError(t, err)
 
@@ -69,7 +69,7 @@ func TestDuplicate(t *testing.T) {
 			"row2-col1": mkTextBlock("21"),
 			"row2-col2": mkTextBlock("22"),
 		}))
-	old, err := newTableBlockFromState(s, "table")
+	old, err := NewTable(s, "table")
 	require.NoError(t, err)
 
 	b := block{
@@ -80,7 +80,7 @@ func TestDuplicate(t *testing.T) {
 
 	require.NoError(t, err)
 
-	got, err := newTableBlockFromState(s, newId)
+	got, err := NewTable(s, newId)
 
 	require.NoError(t, err)
 
@@ -91,10 +91,10 @@ func TestDuplicate(t *testing.T) {
 		assert.NotEqual(t, old.ChildrenIds, new.ChildrenIds)
 	}
 	assertNotEqual(old.block.Model(), got.block.Model())
-	assertNotEqual(old.columns(), got.columns())
-	assertNotEqual(old.rows(), got.rows())
-	for i, oldId := range old.rows().ChildrenIds {
-		newId := got.rows().ChildrenIds[i]
+	assertNotEqual(old.Columns(), got.Columns())
+	assertNotEqual(old.Rows(), got.Rows())
+	for i, oldId := range old.Rows().ChildrenIds {
+		newId := got.Rows().ChildrenIds[i]
 
 		oldRow := s.Pick(oldId)
 		newRow := s.Pick(newId)

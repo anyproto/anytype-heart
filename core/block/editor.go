@@ -1057,7 +1057,7 @@ func (s *service) MoveBlocks(ctx *state.Context, req pb.RpcBlockListMoveToExisti
 }
 
 func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreateRequest) (id string, err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		id, err = t.TableCreate(st, req)
 		return err
 	})
@@ -1065,49 +1065,49 @@ func (s *service) CreateTableBlock(ctx *state.Context, req pb.RpcBlockTableCreat
 }
 
 func (s *service) TableRowCreate(ctx *state.Context, req pb.RpcBlockTableRowCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.RowCreate(st, req)
 	})
 	return
 }
 
 func (s *service) TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.ColumnCreate(st, req)
 	})
 	return
 }
 
 func (s *service) TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.RowDelete(st, req)
 	})
 	return
 }
 
 func (s *service) TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.ColumnDelete(st, req)
 	})
 	return
 }
 
 func (s *service) TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.ColumnMove(st, req)
 	})
 	return
 }
 
 func (s *service) TableRowDuplicate(ctx *state.Context, req pb.RpcBlockTableRowDuplicateRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.RowDuplicate(st, req)
 	})
 	return
 }
 
 func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		id, err = t.ColumnDuplicate(st, req)
 		return err
 	})
@@ -1115,28 +1115,28 @@ func (s *service) TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableC
 }
 
 func (s *service) TableExpand(ctx *state.Context, req pb.RpcBlockTableExpandRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.Expand(st, req)
 	})
 	return err
 }
 
 func (s *service) TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.RowListFill(st, req)
 	})
 	return err
 }
 
 func (s *service) TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.RowListClean(st, req)
 	})
 	return err
 }
 
 func (s *service) TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error) {
-	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Table) error {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.Sort(st, req)
 	})
 	return err

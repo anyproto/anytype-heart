@@ -10,6 +10,7 @@ import (
 	"strconv"
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
+	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -107,6 +108,9 @@ func (h *HTML) render(rs *renderState, b *model.Block) {
 	case *model.BlockContentOfLink:
 		rs.Close()
 		h.renderLink(b)
+	case *model.BlockContentOfTable:
+		rs.Close()
+		h.renderTable(b)
 	default:
 		rs.Close()
 		h.renderLayout(b)
@@ -399,6 +403,50 @@ func (h *HTML) renderLink(b *model.Block) {
 		h.renderChilds(b)
 		h.buf.WriteString("</div>")
 	}
+}
+
+func (h *HTML) renderTable(b *model.Block) error {
+	h.buf.WriteString("<table>")
+
+	tb, err := table.NewTable(h.s, b.Id)
+	if err != nil {
+		return fmt.Errorf("init table for rendering: %w", err)
+	}
+
+	cols := tb.Columns()
+
+	for _, rowId := range tb.Rows().ChildrenIds {
+		row := h.s.Pick(rowId)
+		if row == nil {
+			return fmt.Errorf("row %s is not found", rowId)
+		}
+		h.buf.WriteString("<tr>")
+		colToCell := map[string]string{}
+		for _, cellId := range row.Model().ChildrenIds {
+			_, colId, err := table.ParseCellId(cellId)
+			if err != nil {
+				return fmt.Errorf("parse cell id %s: %w", cellId, err)
+			}
+
+			colToCell[colId] = cellId
+		}
+		for _, colId := range cols.ChildrenIds {
+			h.buf.WriteString("<td>")
+			if cellId, ok := colToCell[colId]; ok {
+				cell := h.s.Pick(cellId)
+				if cell == nil {
+					return fmt.Errorf("pick cell %s", cellId)
+				}
+				rs := &renderState{h: h}
+				h.render(rs, cell.Model())
+			}
+			h.buf.WriteString("</td>")
+		}
+		h.buf.WriteString("</tr>")
+	}
+
+	h.buf.WriteString("</table>")
+	return nil
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {

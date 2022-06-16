@@ -42,18 +42,18 @@ func (b block) Copy() simple.Block {
 }
 
 func (b *block) Normalize(s *state.State) error {
-	tb, err := newTableBlockFromState(s, b.Id)
+	tb, err := NewTable(s, b.Id)
 	if err != nil {
 		log.Errorf("normalize table %s: broken table state", b.Model().Id)
 		return nil
 	}
 
 	colIdx := map[string]int{}
-	for i, c := range tb.columns().ChildrenIds {
+	for i, c := range tb.Columns().ChildrenIds {
 		colIdx[c] = i
 	}
 
-	for _, rowId := range tb.rows().ChildrenIds {
+	for _, rowId := range tb.Rows().ChildrenIds {
 		row := s.Get(rowId)
 		normalizeRow(colIdx, row)
 	}
@@ -61,7 +61,7 @@ func (b *block) Normalize(s *state.State) error {
 }
 
 func (b block) Duplicate(s *state.State) (newId string, err error) {
-	tb, err := newTableBlockFromState(s, b.Id)
+	tb, err := NewTable(s, b.Id)
 	if err != nil {
 		return "", fmt.Errorf("init table: %w", err)
 	}
@@ -71,7 +71,7 @@ func (b block) Duplicate(s *state.State) (newId string, err error) {
 		return bson.NewObjectId().Hex()
 	}
 
-	cols := pbtypes.CopyBlock(tb.columns())
+	cols := pbtypes.CopyBlock(tb.Columns())
 	cols.Id = ""
 	for i, colId := range cols.ChildrenIds {
 		col := s.Pick(colId)
@@ -90,7 +90,7 @@ func (b block) Duplicate(s *state.State) (newId string, err error) {
 		return "", fmt.Errorf("add copy of columns")
 	}
 
-	rows := pbtypes.CopyBlock(tb.rows())
+	rows := pbtypes.CopyBlock(tb.Rows())
 	rows.Id = ""
 	for i, rowId := range rows.ChildrenIds {
 		row := s.Pick(rowId)
@@ -101,7 +101,7 @@ func (b block) Duplicate(s *state.State) (newId string, err error) {
 		}
 
 		for j, cellId := range row.Model().ChildrenIds {
-			_, oldColId, err := parseCellId(cellId)
+			_, oldColId, err := ParseCellId(cellId)
 			if err != nil {
 				return "", fmt.Errorf("parse cell id %s: %w", cellId, err)
 			}
@@ -159,7 +159,7 @@ func normalizeRow(colIdx map[string]int, row simple.Block) {
 		indices: make([]int, 0, len(row.Model().ChildrenIds)),
 	}
 	for _, id := range row.Model().ChildrenIds {
-		_, colId, err := parseCellId(id)
+		_, colId, err := ParseCellId(id)
 		if err != nil {
 			log.Warnf("normalize row %s: discard cell %s: invalid id", row.Model().Id, id)
 			rs.touched = true
