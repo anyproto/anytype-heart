@@ -298,6 +298,67 @@ func TestRowListFill(t *testing.T) {
 	}
 }
 
+func TestColumnListFill(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source *state.State
+		req    pb.RpcBlockTableColumnListFillRequest
+		want   *state.State
+	}{
+		{
+			name:   "empty",
+			source: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{}),
+			req: pb.RpcBlockTableColumnListFillRequest{
+				BlockIds: []string{"col2", "col1"},
+			},
+			want: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}),
+		},
+		{
+			name: "fully filled",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}),
+			req: pb.RpcBlockTableColumnListFillRequest{
+				BlockIds: []string{"col2", "col1"},
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+				}),
+		},
+		{
+			name: "partially filled",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{
+				{"row1-col1"},
+				{"row2-col2"},
+				{"row3-col1", "row3-col2"},
+			}),
+			req: pb.RpcBlockTableColumnListFillRequest{
+				BlockIds: []string{"col1", "col2"},
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3"}, [][]string{
+				{"row1-col1", "row1-col2"},
+				{"row2-col1", "row2-col2"},
+				{"row3-col1", "row3-col2"},
+			}),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := editor{}
+			err := tb.ColumnListFill(tc.source, tc.req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
+		})
+	}
+}
+
 func TestColumnCreate(t *testing.T) {
 	for _, tc := range []struct {
 		name     string

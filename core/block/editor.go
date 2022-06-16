@@ -1141,3 +1141,10 @@ func (s *service) TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest)
 	})
 	return err
 }
+
+func (s *service) TableColumnListFill(ctx *state.Context, req pb.RpcBlockTableColumnListFillRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.ColumnListFill(st, req)
+	})
+	return err
+}

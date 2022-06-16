@@ -269,3 +269,25 @@ func (mw *Middleware) BlockTableSort(req *pb.RpcBlockTableSortRequest) *pb.RpcBl
 	}
 	return response(pb.RpcBlockTableSortResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableColumnListFill(req *pb.RpcBlockTableColumnListFillRequest) *pb.RpcBlockTableColumnListFillResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableColumnListFillResponseErrorCode, id string, err error) *pb.RpcBlockTableColumnListFillResponse {
+		m := &pb.RpcBlockTableColumnListFillResponse{Error: &pb.RpcBlockTableColumnListFillResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableColumnListFill(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableColumnListFillResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableColumnListFillResponseError_NULL, id, nil)
+}

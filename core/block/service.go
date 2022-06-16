@@ -211,6 +211,7 @@ type Service interface {
 	TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
 	TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)
 	TableColumnDelete(ctx *state.Context, req pb.RpcBlockTableColumnDeleteRequest) (err error)
+	TableColumnListFill(ctx *state.Context, req pb.RpcBlockTableColumnListFillRequest) (err error)
 	TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error)
 
 	SetRelationKey(ctx *state.Context, request pb.RpcBlockRelationSetKeyRequest) error

@@ -197,6 +197,7 @@ service ClientCommands {
     rpc BlockTableColumnDuplicate (anytype.Rpc.BlockTable.ColumnDuplicate.Request) returns (anytype.Rpc.BlockTable.ColumnDuplicate.Response);
     rpc BlockTableRowListFill (anytype.Rpc.BlockTable.RowListFill.Request) returns (anytype.Rpc.BlockTable.RowListFill.Response);
     rpc BlockTableRowListClean (anytype.Rpc.BlockTable.RowListClean.Request) returns (anytype.Rpc.BlockTable.RowListClean.Response);
+    rpc BlockTableColumnListFill (anytype.Rpc.BlockTable.ColumnListFill.Request) returns (anytype.Rpc.BlockTable.ColumnListFill.Response);
     rpc BlockTableSort (anytype.Rpc.BlockTable.Sort.Request) returns (anytype.Rpc.BlockTable.Sort.Response);
 
     // Other specific block commands

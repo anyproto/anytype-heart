@@ -44,6 +44,7 @@ type Editor interface {
 	ColumnDelete(s *state.State, req pb.RpcBlockTableColumnDeleteRequest) error
 	ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest) error
 	ColumnDuplicate(s *state.State, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
+	ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFillRequest) error
 	Sort(s *state.State, req pb.RpcBlockTableSortRequest) error
 }
 
@@ -324,6 +325,53 @@ func (t editor) RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanReq
 			}
 		}
 	}
+	return nil
+}
+
+func (t editor) ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFillRequest) error {
+	if len(req.BlockIds) == 0 {
+		return fmt.Errorf("empty row list")
+	}
+
+	tb, err := NewTable(s, req.BlockIds[0])
+	if err != nil {
+		return fmt.Errorf("init table: %w", err)
+	}
+
+	rows := tb.Rows().ChildrenIds
+
+	for _, colId := range req.BlockIds {
+		for _, rowId := range rows {
+			id := makeCellId(rowId, colId)
+			if s.Exists(id) {
+				continue
+			}
+			_, err := addCell(s, rowId, colId)
+			if err != nil {
+				return fmt.Errorf("add cell %s: %w", id, err)
+			}
+
+			row, err := getRow(s, rowId)
+			if err != nil {
+				return fmt.Errorf("get row %s: %w", rowId, err)
+			}
+
+			row.Model().ChildrenIds = append(row.Model().ChildrenIds, id)
+		}
+	}
+
+	colIdx := map[string]int{}
+	for i, id := range tb.Columns().ChildrenIds {
+		colIdx[id] = i
+	}
+	for _, rowId := range rows {
+		row, err := getRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("get row %s: %w", rowId, err)
+		}
+		normalizeRow(colIdx, row)
+	}
+
 	return nil
 }
 
