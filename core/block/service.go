@@ -1432,8 +1432,8 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 }
 
 func (s *service) fetchBookmarkContent(url string) func() (*model.BlockContentBookmark, error) {
-	contentCh := make(chan *model.BlockContentBookmark)
-	errCh := make(chan error)
+	contentCh := make(chan *model.BlockContentBookmark, 1)
+	errCh := make(chan error, 1)
 	go func() {
 		defer close(contentCh)
 
@@ -1507,6 +1507,7 @@ func (s *service) ObjectToBookmark(id string, url string) (objectId string, err 
 	if err != nil {
 		// intentionally do not return error here
 		log.Errorf("failed to delete object after conversion to bookmark: %s", err.Error())
+		err = nil
 	}
 
 	return

@@ -69,7 +69,7 @@ func (s service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s service) CreateBookmarkObject(url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error) {
+func (s *service) CreateBookmarkObject(url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error) {
 	records, _, err := s.store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
@@ -127,7 +127,7 @@ func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.V
 	}
 }
 
-func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model.BlockContentBookmark, error)) error {
+func (s *service) UpdateBookmarkObject(objectId string, getContent func() (*model.BlockContentBookmark, error)) error {
 	content, err := getContent()
 	if err != nil {
 		return fmt.Errorf("get content: %w", err)
@@ -148,7 +148,7 @@ func (s service) UpdateBookmarkObject(objectId string, getContent func() (*model
 	})
 }
 
-func (s service) Fetch(id string, params bookmark.FetchParams) (err error) {
+func (s *service) Fetch(id string, params bookmark.FetchParams) (err error) {
 	if !params.Sync {
 		go func() {
 			if err := s.fetcher(id, params); err != nil {
@@ -161,7 +161,7 @@ func (s service) Fetch(id string, params bookmark.FetchParams) (err error) {
 	return s.fetcher(id, params)
 }
 
-func (s service) ContentFetcher(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
+func (s *service) ContentFetcher(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
@@ -219,7 +219,7 @@ func (s service) ContentFetcher(url string) (chan func(contentBookmark *model.Bl
 	return updaters, nil
 }
 
-func (s service) fetcher(id string, params bookmark.FetchParams) error {
+func (s *service) fetcher(id string, params bookmark.FetchParams) error {
 	updaters, err := s.ContentFetcher(params.Url)
 
 	var upds []func(*model.BlockContentBookmark)
