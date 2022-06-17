@@ -11,6 +11,7 @@ import (
 
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/table"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/core"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
@@ -72,7 +73,7 @@ func (h *HTML) Convert() (result string) {
 	}
 	h.buf = bytes.NewBuffer(nil)
 	h.buf.WriteString(wrapCopyStart)
-	h.renderChilds(h.s.Pick(h.s.RootId()).Model())
+	h.renderChildren(h.s.Pick(h.s.RootId()).Model())
 	h.buf.WriteString(wrapCopyEnd)
 	result = h.buf.String()
 	h.buf.Reset()
@@ -82,7 +83,7 @@ func (h *HTML) Convert() (result string) {
 func (h *HTML) Export() (result string) {
 	h.buf = bytes.NewBuffer(nil)
 	h.buf.WriteString(wrapExportStart)
-	h.renderChilds(h.s.Pick(h.s.RootId()).Model())
+	h.renderChildren(h.s.Pick(h.s.RootId()).Model())
 	h.buf.WriteString(wrapExportEnd)
 	return h.buf.String()
 }
@@ -117,7 +118,7 @@ func (h *HTML) render(rs *renderState, b *model.Block) {
 	}
 }
 
-func (h *HTML) renderChilds(parent *model.Block) {
+func (h *HTML) renderChildren(parent *model.Block) {
 	var rs = &renderState{h: h}
 	for _, chId := range parent.ChildrenIds {
 		b := h.s.Pick(chId)
@@ -177,13 +178,13 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 			}
 		case model.BlockContentTextMark_TextColor:
 			if start {
-				fmt.Fprintf(h.buf, `<span style="color:%s">`, colorMapping(m.Param, true))
+				fmt.Fprintf(h.buf, `<span style="color:%s">`, textColor(m.Param))
 			} else {
 				h.buf.WriteString("</span>")
 			}
 		case model.BlockContentTextMark_BackgroundColor:
 			if start {
-				fmt.Fprintf(h.buf, `<span style="backgound-color:%s">`, colorMapping(m.Param, true))
+				fmt.Fprintf(h.buf, `<span style="backgound-color:%s">`, backgroundColor(m.Param))
 			} else {
 				h.buf.WriteString("</span>")
 			}
@@ -219,73 +220,73 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 		rs.Close()
 		h.buf.WriteString(`<h1 style="` + styleHeader1 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h1>`)
 	case model.BlockContentText_Header2:
 		rs.Close()
 		h.buf.WriteString(`<h2 style="` + styleHeader2 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h2>`)
 	case model.BlockContentText_Header3:
 		rs.Close()
 		h.buf.WriteString(`<h3 style="` + styleHeader3 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h3>`)
 	case model.BlockContentText_Header4:
 		rs.Close()
 		h.buf.WriteString(`<h4 style="` + styleHeader4 + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h4>`)
 	case model.BlockContentText_Quote:
 		rs.Close()
 		h.buf.WriteString(`<quote style="` + styleQuote + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</quote>`)
 	case model.BlockContentText_Code:
 		rs.Close()
 		h.buf.WriteString(`<code style="` + styleCode + `"><pre>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</pre></code>`)
 	case model.BlockContentText_Title:
 		rs.Close()
 		h.buf.WriteString(`<h1 style="` + styleTitle + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</h1>`)
 	case model.BlockContentText_Checkbox:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleCheckbox + `" class="check"><input type="checkbox"/>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	case model.BlockContentText_Marked:
 		rs.OpenUL()
 		h.buf.WriteString(`<li>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
 	case model.BlockContentText_Numbered:
 		rs.OpenOL()
 		h.buf.WriteString(`<li>`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</li>`)
 	case model.BlockContentText_Toggle:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleToggle + `" class="toggle">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	default:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleParagraph + `" class="paragraph" style="` + styleParagraph + `">`)
 		renderText()
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString(`</div>`)
 	}
 }
@@ -306,33 +307,33 @@ func (h *HTML) renderFile(b *model.Block) {
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Image:
 		baseImg := h.getImageBase64(file.Hash)
 		fmt.Fprintf(h.buf, `<div><img alt="%s" src="%s" />`, html.EscapeString(file.Name), baseImg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Video:
 		h.buf.WriteString(`<div class="video"><div class="name">`)
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_Audio:
 		h.buf.WriteString(`<div class="audio"><div class="name">`)
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentFile_PDF:
 		h.buf.WriteString(`<div class="pdf"><div class="name">`)
 		h.buf.WriteString(html.EscapeString(file.Name))
 		h.buf.WriteString(`</div>`)
 		h.buf.WriteString(goToAnytypeMsg)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	}
 }
@@ -344,7 +345,7 @@ func (h *HTML) renderBookmark(b *model.Block) {
 	} else {
 		h.buf.WriteString("<div>")
 	}
-	h.renderChilds(b)
+	h.renderChildren(b)
 	h.buf.WriteString("</div>")
 }
 
@@ -355,7 +356,7 @@ func (h *HTML) renderDiv(b *model.Block) {
 	case model.BlockContentDiv_Line:
 		h.buf.WriteString(`<hr class="line">`)
 	}
-	h.renderChilds(b)
+	h.renderChildren(b)
 }
 
 func (h *HTML) renderLayout(b *model.Block) {
@@ -376,17 +377,17 @@ func (h *HTML) renderLayout(b *model.Block) {
 			}
 		}
 		h.buf.WriteString(`<div class="column" ` + style + `>`)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentLayout_Row:
 		h.buf.WriteString(`<div class="row" style="display: flex">`)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	case model.BlockContentLayout_Div:
-		h.renderChilds(b)
+		h.renderChildren(b)
 	default:
 		h.buf.WriteString(`<div>`)
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	}
 }
@@ -400,7 +401,7 @@ func (h *HTML) renderLink(b *model.Block) {
 		Follow <a href="https://anytype.io">link</a> to ask a permission to get the content
 	</div>`)
 	if len(b.ChildrenIds) > 0 {
-		h.renderChilds(b)
+		h.renderChildren(b)
 		h.buf.WriteString("</div>")
 	}
 }
@@ -451,24 +452,31 @@ func (h *HTML) renderRow(rowId string, cols *model.Block, colWidth map[string]fl
 }
 
 func (h *HTML) renderCell(colWidth map[string]float64, colId string, colToCell map[string]string) {
-	var extra string
+	var extraAttr, extraStyle string
 	if w := colWidth[colId]; w > 0 {
-		extra += fmt.Sprintf(` width="%d"`, int(w))
+		extraAttr += fmt.Sprintf(` width="%d"`, int(w))
 	}
-	fmt.Fprintf(h.buf, `<td style="border: 1px solid #dfddd0; padding: 9px; font-size: 14px; line-height: 22px"%s>`, extra)
+
+	var cell simple.Block
+	cellId, ok := colToCell[colId]
+	if ok {
+		cell = h.s.Pick(cellId)
+		if cell != nil {
+			if bg := cell.Model().BackgroundColor; bg != "" {
+				extraStyle += fmt.Sprintf(`; background-color: %s`, backgroundColor(bg))
+			}
+		}
+	}
+
+	fmt.Fprintf(h.buf, `<td style="border: 1px solid #dfddd0; padding: 9px; font-size: 14px; line-height: 22px%s"%s>`, extraStyle, extraAttr)
 	defer h.buf.WriteString("</td>")
 
-	if cellId, ok := colToCell[colId]; ok {
-		cell := h.s.Pick(cellId)
-		if cell == nil {
-			h.buf.WriteString("&nbsp;")
-			return
-		}
+	if cell != nil {
 		rs := &renderState{h: h}
 		h.render(rs, cell.Model())
-		return
+	} else {
+		h.buf.WriteString("&nbsp;")
 	}
-	h.buf.WriteString("&nbsp;")
 }
 
 func (h *HTML) getImageBase64(hash string) (res string) {
@@ -527,60 +535,58 @@ func (rs *renderState) Close() {
 	}
 }
 
-func colorMapping(color string, isText bool) (out string) {
-	if isText {
-		switch color {
-		case "grey":
-			out = "#aca996"
-		case "yellow":
-			out = "#ecd91b"
-		case "orange":
-			out = "#ffb522"
-		case "red":
-			out = "#f55522"
-		case "pink":
-			out = "#e51ca0"
-		case "purple":
-			out = "#ab50cc"
-		case "blue":
-			out = "#3e58"
-		case "ice":
-			out = "#2aa7ee"
-		case "teal":
-			out = "#0fc8ba"
-		case "lime":
-			out = "#5dd400"
-		case "black":
-			out = "#2c2b27"
-		default:
-			out = color
-		}
-	} else {
-		switch color {
-		case "grey":
-			out = "#f3f2ec"
-		case "yellow":
-			out = "#fef9cc"
-		case "orange":
-			out = "#fef3c5"
-		case "red":
-			out = "#ffebe5"
-		case "pink":
-			out = "#fee3f5"
-		case "purple":
-			out = "#f4e3fa"
-		case "blue":
-			out = "#f4e3fa"
-		case "ice":
-			out = "#d6effd"
-		case "teal":
-			out = "#d6f5f3"
-		case "lime":
-			out = "#e3f7d0"
-		default:
-			out = color
-		}
+func textColor(color string) string {
+	switch color {
+	case "grey":
+		return "#aca996"
+	case "yellow":
+		return "#ecd91b"
+	case "orange":
+		return "#ffb522"
+	case "red":
+		return "#f55522"
+	case "pink":
+		return "#e51ca0"
+	case "purple":
+		return "#ab50cc"
+	case "blue":
+		return "#3e58"
+	case "ice":
+		return "#2aa7ee"
+	case "teal":
+		return "#0fc8ba"
+	case "lime":
+		return "#5dd400"
+	case "black":
+		return "#2c2b27"
+	default:
+		return color
 	}
+}
 
-	return out
+func backgroundColor(color string) string {
+	switch color {
+	case "grey":
+		return "#f3f2ec"
+	case "yellow":
+		return "#fef9cc"
+	case "orange":
+		return "#fef3c5"
+	case "red":
+		return "#ffebe5"
+	case "pink":
+		return "#fee3f5"
+	case "purple":
+		return "#f4e3fa"
+	case "blue":
+		return "#f4e3fa"
+	case "ice":
+		return "#d6effd"
+	case "teal":
+		return "#d6f5f3"
+	case "lime":
+		return "#e3f7d0"
+	default:
+		return color
+	}
 }
