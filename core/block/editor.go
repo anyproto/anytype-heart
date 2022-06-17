@@ -171,9 +171,9 @@ func (s *service) UpdateDataviewGroupOrder(ctx *state.Context, req pb.RpcBlockDa
 	})
 }
 
-func (s *service) UpdateDataviewObjectsOrder(ctx *state.Context, req pb.RpcBlockDataviewObjectsOrderUpdateRequest) error {
+func (s *service) UpdateDataviewObjectOrder(ctx *state.Context, req pb.RpcBlockDataviewObjectOrderUpdateRequest) error {
 	return s.DoDataview(req.ContextId, func(b dataview.Dataview) error {
-		return b.UpdateViewObjectsOrder(ctx, req.BlockId, req.ObjectsOrder)
+		return b.UpdateViewObjectOrder(ctx, req.BlockId, req.ObjectOrders)
 	})
 }
 

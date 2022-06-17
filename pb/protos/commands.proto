@@ -3692,12 +3692,12 @@ message Rpc {
                 }
             }
         }
-        message ObjectsOrder {
+        message ObjectOrder {
             message Update {
                 message Request {
                     string contextId = 1;
                     string blockId = 2;
-                    anytype.model.Block.Content.Dataview.ObjectsOrder objectsOrder = 3;
+                    repeated anytype.model.Block.Content.Dataview.ObjectOrder objectOrders = 3;
                 }
 
                 message Response {

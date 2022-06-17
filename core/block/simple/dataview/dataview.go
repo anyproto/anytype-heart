@@ -43,7 +43,7 @@ type Block interface {
 	DeleteView(viewID string) error
 	SetViewOrder(ids []string)
 	SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder)
-	SetViewObjectsOrder(order *model.BlockContentDataviewObjectsOrder)
+	SetViewObjectOrder(order []*model.BlockContentDataviewObjectOrder)
 
 	AddRelation(relation model.Relation) error
 	GetRelation(relationKey string) (*model.Relation, error)
@@ -608,17 +608,19 @@ func (d *Dataview) SetViewGroupOrder(order *model.BlockContentDataviewGroupOrder
 	}
 }
 
-func (d *Dataview) SetViewObjectsOrder(order *model.BlockContentDataviewObjectsOrder) {
-	isExist := false;
-	for _, objOrder := range d.Model().GetDataview().ObjectsOrders {
-		if objOrder.ViewId == objOrder.ViewId && objOrder.GroupId == objOrder.GroupId {
-			isExist = true
-			objOrder.ObjectIds = order.ObjectIds
-			break
+func (d *Dataview) SetViewObjectOrder(orders []*model.BlockContentDataviewObjectOrder) {
+	for _, reqOrder := range orders {
+		isExist := false
+		for _, existOrder := range d.Model().GetDataview().ObjectOrders {
+			if reqOrder.ViewId == existOrder.ViewId && reqOrder.GroupId == existOrder.GroupId {
+				isExist = true
+				existOrder.ObjectIds = reqOrder.ObjectIds
+				break
+			}
 		}
-	}
-	if !isExist {
-		d.Model().GetDataview().ObjectsOrders = append(d.Model().GetDataview().ObjectsOrders, order)
+		if !isExist {
+			d.Model().GetDataview().ObjectOrders = append(d.Model().GetDataview().ObjectOrders, reqOrder)
+		}
 	}
 }
 
