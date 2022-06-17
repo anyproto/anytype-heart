@@ -63,6 +63,7 @@ func (b *sbookmark) fetch(s *state.State, id, url string, isSync bool) (err erro
 	if !ok {
 		return fmt.Errorf("unexpected simple bock type: %T (want Bookmark)", bb)
 	}
+	bm.SetState(model.BlockContentBookmark_Fetching)
 
 	err = b.bookmarkSvc.Fetch(id, bookmark.FetchParams{
 		Url: url,

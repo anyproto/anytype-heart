@@ -3,6 +3,14 @@ package bookmark
 import (
 	"context"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"net/http"
+	"os"
+	"path/filepath"
+	"sync"
+	"time"
+
 	"github.com/anytypeio/go-anytype-middleware/app"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -18,13 +26,6 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/util/linkpreview"
 	"github.com/anytypeio/go-anytype-middleware/util/pbtypes"
 	"github.com/gogo/protobuf/types"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"path/filepath"
-	"sync"
-	"time"
 )
 
 const CName = "bookmark"
@@ -220,12 +221,21 @@ func (s service) ContentFetcher(url string) (chan func(contentBookmark *model.Bl
 
 func (s service) fetcher(id string, params bookmark.FetchParams) error {
 	updaters, err := s.ContentFetcher(params.Url)
-	if err != nil {
-		return fmt.Errorf("can't get updates: %w", err)
-	}
+
 	var upds []func(*model.BlockContentBookmark)
-	for u := range updaters {
-		upds = append(upds, u)
+
+	if err != nil {
+		log.Errorf("can't get updates for %s: %s", id, err)
+		upds = append(upds, func(c *model.BlockContentBookmark) {
+			c.State = model.BlockContentBookmark_Error
+		})
+	} else {
+		for u := range updaters {
+			upds = append(upds, u)
+		}
+		upds = append(upds, func(c *model.BlockContentBookmark) {
+			c.State = model.BlockContentBookmark_Done
+		})
 	}
 
 	err = params.Updater(id, func(bm bookmark.Block) error {

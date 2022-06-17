@@ -28,6 +28,7 @@ type Block interface {
 	simple.Block
 	simple.FileHashes
 	GetContent() *model.BlockContentBookmark
+	SetState(s model.BlockContentBookmarkState)
 	UpdateContent(func(content *model.BlockContentBookmark))
 	ApplyEvent(e *pb.EventBlockSetBookmark) (err error)
 }
@@ -43,6 +44,10 @@ func (b *Bookmark) GetContent() *model.BlockContentBookmark {
 
 func (b *Bookmark) UpdateContent(updater func(bookmark *model.BlockContentBookmark)) {
 	updater(b.content)
+}
+
+func (b *Bookmark) SetState(s model.BlockContentBookmarkState) {
+	b.content.State = s
 }
 
 var _ Block = &Bookmark{}
