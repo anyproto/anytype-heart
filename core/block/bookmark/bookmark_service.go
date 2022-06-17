@@ -30,9 +30,12 @@ import (
 
 const CName = "bookmark"
 
+// ContentFuture represents asynchronous result of getting bookmark content
+type ContentFuture func() (*model.BlockContentBookmark, error)
+
 type Service interface {
-	CreateBookmarkObject(url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error)
-	UpdateBookmarkObject(objectId string, getContent func() (*model.BlockContentBookmark, error)) error
+	CreateBookmarkObject(url string, getContent ContentFuture) (objectId string, err error)
+	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	Fetch(id string, params bookmark.FetchParams) (err error)
 	ContentFetcher(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
 
@@ -69,7 +72,7 @@ func (s service) Name() (name string) {
 
 var log = logging.Logger("anytype-mw-bookmark")
 
-func (s *service) CreateBookmarkObject(url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error) {
+func (s *service) CreateBookmarkObject(url string, getContent ContentFuture) (objectId string, err error) {
 	records, _, err := s.store.Query(nil, database.Query{
 		Sorts: []*model.BlockContentDataviewSort{
 			{
@@ -127,7 +130,7 @@ func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.V
 	}
 }
 
-func (s *service) UpdateBookmarkObject(objectId string, getContent func() (*model.BlockContentBookmark, error)) error {
+func (s *service) UpdateBookmarkObject(objectId string, getContent ContentFuture) error {
 	content, err := getContent()
 	if err != nil {
 		return fmt.Errorf("get content: %w", err)

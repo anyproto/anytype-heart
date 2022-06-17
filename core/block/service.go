@@ -1431,7 +1431,7 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 	})
 }
 
-func (s *service) fetchBookmarkContent(url string) func() (*model.BlockContentBookmark, error) {
+func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 	contentCh := make(chan *model.BlockContentBookmark, 1)
 	errCh := make(chan error, 1)
 	go func() {

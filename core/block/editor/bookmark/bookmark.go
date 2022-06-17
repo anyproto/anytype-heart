@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"sync"
 
+	bookmarksvc "github.com/anytypeio/go-anytype-middleware/core/block/bookmark"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
@@ -26,7 +27,7 @@ type Bookmark interface {
 }
 
 type BookmarkService interface {
-	CreateBookmarkObject(url string, getContent func() (*model.BlockContentBookmark, error)) (objectId string, err error)
+	CreateBookmarkObject(url string, getContent bookmarksvc.ContentFuture) (objectId string, err error)
 	Fetch(id string, params bookmark.FetchParams) (err error)
 }
 
