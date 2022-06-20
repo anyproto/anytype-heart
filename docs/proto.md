@@ -5840,6 +5840,7 @@ id of the closest simple block |
 | position | [model.Block.Position](#anytype-model-Block-Position) |  |  |
 | rows | [uint32](#uint32) |  |  |
 | columns | [uint32](#uint32) |  |  |
+| withHeaderRow | [bool](#bool) |  |  |
 
 
 

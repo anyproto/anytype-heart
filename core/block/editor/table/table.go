@@ -107,6 +107,7 @@ func (t editor) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) (
 		}
 		rowIds = append(rowIds, id)
 	}
+
 	rowsLayout := simple.New(&model.Block{
 		ChildrenIds: rowIds,
 		Content: &model.BlockContentOfLayout{
@@ -121,6 +122,38 @@ func (t editor) TableCreate(s *state.State, req pb.RpcBlockTableCreateRequest) (
 
 	table := s.Get(id)
 	table.Model().ChildrenIds = []string{columnsLayout.Model().Id, rowsLayout.Model().Id}
+
+	if req.WithHeaderRow {
+		headerId := rowIds[0]
+		err = t.RowSetHeader(s, pb.RpcBlockTableRowSetHeaderRequest{
+			TargetId: headerId,
+			IsHeader: true,
+		})
+		if err != nil {
+			return "", fmt.Errorf("row set header: %w", err)
+		}
+
+		err = t.RowListFill(s, pb.RpcBlockTableRowListFillRequest{
+			BlockIds: []string{headerId},
+		})
+		if err != nil {
+			return "", fmt.Errorf("fill header row: %w", err)
+		}
+
+		row, err := getRow(s, headerId)
+		if err != nil {
+			return "", fmt.Errorf("get header row: %w", err)
+		}
+
+		for _, cellId := range row.Model().ChildrenIds {
+			cell := s.Get(cellId)
+			if cell == nil {
+				return "", fmt.Errorf("get header cell id %s", cellId)
+			}
+
+			cell.Model().BackgroundColor = "grey"
+		}
+	}
 
 	return id, nil
 }

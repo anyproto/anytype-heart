@@ -3089,6 +3089,7 @@ message Rpc {
                 anytype.model.Block.Position position = 3;
                 uint32 rows = 4;
                 uint32 columns = 5;
+                bool withHeaderRow = 6;
             }
 
             message Response {
