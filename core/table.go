@@ -291,3 +291,25 @@ func (mw *Middleware) BlockTableColumnListFill(req *pb.RpcBlockTableColumnListFi
 	}
 	return response(pb.RpcBlockTableColumnListFillResponseError_NULL, id, nil)
 }
+
+func (mw *Middleware) BlockTableRowSetHeader(req *pb.RpcBlockTableRowSetHeaderRequest) *pb.RpcBlockTableRowSetHeaderResponse {
+	ctx := state.NewContext(nil)
+	response := func(code pb.RpcBlockTableRowSetHeaderResponseErrorCode, id string, err error) *pb.RpcBlockTableRowSetHeaderResponse {
+		m := &pb.RpcBlockTableRowSetHeaderResponse{Error: &pb.RpcBlockTableRowSetHeaderResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		} else {
+			m.Event = ctx.GetResponseEvent()
+		}
+		return m
+	}
+	var id string
+	err := mw.doBlockService(func(bs block.Service) (err error) {
+		err = bs.TableRowSetHeader(ctx, *req)
+		return
+	})
+	if err != nil {
+		return response(pb.RpcBlockTableRowSetHeaderResponseError_UNKNOWN_ERROR, "", err)
+	}
+	return response(pb.RpcBlockTableRowSetHeaderResponseError_NULL, id, nil)
+}

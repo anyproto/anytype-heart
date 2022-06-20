@@ -338,6 +338,10 @@
     - [Rpc.BlockTable.RowListFill.Request](#anytype-Rpc-BlockTable-RowListFill-Request)
     - [Rpc.BlockTable.RowListFill.Response](#anytype-Rpc-BlockTable-RowListFill-Response)
     - [Rpc.BlockTable.RowListFill.Response.Error](#anytype-Rpc-BlockTable-RowListFill-Response-Error)
+    - [Rpc.BlockTable.RowSetHeader](#anytype-Rpc-BlockTable-RowSetHeader)
+    - [Rpc.BlockTable.RowSetHeader.Request](#anytype-Rpc-BlockTable-RowSetHeader-Request)
+    - [Rpc.BlockTable.RowSetHeader.Response](#anytype-Rpc-BlockTable-RowSetHeader-Response)
+    - [Rpc.BlockTable.RowSetHeader.Response.Error](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error)
     - [Rpc.BlockTable.Sort](#anytype-Rpc-BlockTable-Sort)
     - [Rpc.BlockTable.Sort.Request](#anytype-Rpc-BlockTable-Sort-Request)
     - [Rpc.BlockTable.Sort.Response](#anytype-Rpc-BlockTable-Sort-Response)
@@ -811,6 +815,7 @@
     - [Rpc.BlockTable.RowDuplicate.Response.Error.Code](#anytype-Rpc-BlockTable-RowDuplicate-Response-Error-Code)
     - [Rpc.BlockTable.RowListClean.Response.Error.Code](#anytype-Rpc-BlockTable-RowListClean-Response-Error-Code)
     - [Rpc.BlockTable.RowListFill.Response.Error.Code](#anytype-Rpc-BlockTable-RowListFill-Response-Error-Code)
+    - [Rpc.BlockTable.RowSetHeader.Response.Error.Code](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error-Code)
     - [Rpc.BlockTable.Sort.Response.Error.Code](#anytype-Rpc-BlockTable-Sort-Response-Error-Code)
     - [Rpc.BlockText.ListClearContent.Response.Error.Code](#anytype-Rpc-BlockText-ListClearContent-Response-Error-Code)
     - [Rpc.BlockText.ListClearStyle.Response.Error.Code](#anytype-Rpc-BlockText-ListClearStyle-Response-Error-Code)
@@ -1006,6 +1011,8 @@
     - [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation)
     - [Event.Block.Set.Relation.Key](#anytype-Event-Block-Set-Relation-Key)
     - [Event.Block.Set.Restrictions](#anytype-Event-Block-Set-Restrictions)
+    - [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow)
+    - [Event.Block.Set.TableRow.IsHeader](#anytype-Event-Block-Set-TableRow-IsHeader)
     - [Event.Block.Set.Text](#anytype-Event-Block-Set-Text)
     - [Event.Block.Set.Text.Checked](#anytype-Event-Block-Set-Text-Checked)
     - [Event.Block.Set.Text.Color](#anytype-Event-Block-Set-Text-Color)
@@ -1315,6 +1322,7 @@
 | BlockTableRowCreate | [Rpc.BlockTable.RowCreate.Request](#anytype-Rpc-BlockTable-RowCreate-Request) | [Rpc.BlockTable.RowCreate.Response](#anytype-Rpc-BlockTable-RowCreate-Response) |  |
 | BlockTableRowDelete | [Rpc.BlockTable.RowDelete.Request](#anytype-Rpc-BlockTable-RowDelete-Request) | [Rpc.BlockTable.RowDelete.Response](#anytype-Rpc-BlockTable-RowDelete-Response) |  |
 | BlockTableRowDuplicate | [Rpc.BlockTable.RowDuplicate.Request](#anytype-Rpc-BlockTable-RowDuplicate-Request) | [Rpc.BlockTable.RowDuplicate.Response](#anytype-Rpc-BlockTable-RowDuplicate-Response) |  |
+| BlockTableRowSetHeader | [Rpc.BlockTable.RowSetHeader.Request](#anytype-Rpc-BlockTable-RowSetHeader-Request) | [Rpc.BlockTable.RowSetHeader.Response](#anytype-Rpc-BlockTable-RowSetHeader-Response) |  |
 | BlockTableColumnCreate | [Rpc.BlockTable.ColumnCreate.Request](#anytype-Rpc-BlockTable-ColumnCreate-Request) | [Rpc.BlockTable.ColumnCreate.Response](#anytype-Rpc-BlockTable-ColumnCreate-Response) |  |
 | BlockTableColumnMove | [Rpc.BlockTable.ColumnMove.Request](#anytype-Rpc-BlockTable-ColumnMove-Request) | [Rpc.BlockTable.ColumnMove.Response](#anytype-Rpc-BlockTable-ColumnMove-Response) |  |
 | BlockTableColumnDelete | [Rpc.BlockTable.ColumnDelete.Request](#anytype-Rpc-BlockTable-ColumnDelete-Request) | [Rpc.BlockTable.ColumnDelete.Response](#anytype-Rpc-BlockTable-ColumnDelete-Response) |  |
@@ -6217,6 +6225,65 @@ id of the closest simple block |
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
 | code | [Rpc.BlockTable.RowListFill.Response.Error.Code](#anytype-Rpc-BlockTable-RowListFill-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader"></a>
+
+### Rpc.BlockTable.RowSetHeader
+
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Request"></a>
+
+### Rpc.BlockTable.RowSetHeader.Request
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| contextId | [string](#string) |  | id of the context object |
+| targetId | [string](#string) |  |  |
+| isHeader | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Response"></a>
+
+### Rpc.BlockTable.RowSetHeader.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.BlockTable.RowSetHeader.Response.Error](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error) |  |  |
+| event | [ResponseEvent](#anytype-ResponseEvent) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Response-Error"></a>
+
+### Rpc.BlockTable.RowSetHeader.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.BlockTable.RowSetHeader.Response.Error.Code](#anytype-Rpc-BlockTable-RowSetHeader-Response-Error-Code) |  |  |
 | description | [string](#string) |  |  |
 
 
@@ -12993,6 +13060,19 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 
 
 
+<a name="anytype-Rpc-BlockTable-RowSetHeader-Response-Error-Code"></a>
+
+### Rpc.BlockTable.RowSetHeader.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 | ... |
+
+
+
 <a name="anytype-Rpc-BlockTable-Sort-Response-Error-Code"></a>
 
 ### Rpc.BlockTable.Sort.Response.Error.Code
@@ -15805,6 +15885,37 @@ Precondition: user A opened a block
 
 
 
+<a name="anytype-Event-Block-Set-TableRow"></a>
+
+### Event.Block.Set.TableRow
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| isHeader | [Event.Block.Set.TableRow.IsHeader](#anytype-Event-Block-Set-TableRow-IsHeader) |  |  |
+
+
+
+
+
+
+<a name="anytype-Event-Block-Set-TableRow-IsHeader"></a>
+
+### Event.Block.Set.TableRow.IsHeader
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| value | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="anytype-Event-Block-Set-Text"></a>
 
 ### Event.Block.Set.Text
@@ -15989,6 +16100,7 @@ Precondition: user A opened a block
 | blockSetRelation | [Event.Block.Set.Relation](#anytype-Event-Block-Set-Relation) |  |  |
 | blockSetLatex | [Event.Block.Set.Latex](#anytype-Event-Block-Set-Latex) |  |  |
 | blockSetVerticalAlign | [Event.Block.Set.VerticalAlign](#anytype-Event-Block-Set-VerticalAlign) |  |  |
+| blockSetTableRow | [Event.Block.Set.TableRow](#anytype-Event-Block-Set-TableRow) |  |  |
 | blockDataviewRecordsSet | [Event.Block.Dataview.RecordsSet](#anytype-Event-Block-Dataview-RecordsSet) |  |  |
 | blockDataviewRecordsUpdate | [Event.Block.Dataview.RecordsUpdate](#anytype-Event-Block-Dataview-RecordsUpdate) |  |  |
 | blockDataviewRecordsInsert | [Event.Block.Dataview.RecordsInsert](#anytype-Event-Block-Dataview-RecordsInsert) |  |  |
@@ -17327,6 +17439,11 @@ Link: block to link some content from an external sources.
 
 ### Block.Content.TableRow
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| isHeader | [bool](#bool) |  |  |
 
 
 

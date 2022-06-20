@@ -9,6 +9,7 @@ import (
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/smartblock"
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/text"
 	"github.com/anytypeio/go-anytype-middleware/pb"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/logging"
@@ -40,6 +41,7 @@ type Editor interface {
 	RowDuplicate(s *state.State, req pb.RpcBlockTableRowDuplicateRequest) error
 	RowListFill(s *state.State, req pb.RpcBlockTableRowListFillRequest) error
 	RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanRequest) error
+	RowSetHeader(s *state.State, req pb.RpcBlockTableRowSetHeaderRequest) error
 	ColumnCreate(s *state.State, req pb.RpcBlockTableColumnCreateRequest) error
 	ColumnDelete(s *state.State, req pb.RpcBlockTableColumnDeleteRequest) error
 	ColumnMove(s *state.State, req pb.RpcBlockTableColumnMoveRequest) error
@@ -328,6 +330,41 @@ func (t editor) RowListClean(s *state.State, req pb.RpcBlockTableRowListCleanReq
 	return nil
 }
 
+func (t editor) RowSetHeader(s *state.State, req pb.RpcBlockTableRowSetHeaderRequest) error {
+	tb, err := NewTable(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("init table: %w", err)
+	}
+
+	row, err := getRow(s, req.TargetId)
+	if err != nil {
+		return fmt.Errorf("get target row: %w", err)
+	}
+	row.Model().GetTableRow().IsHeader = req.IsHeader
+
+	rows := s.Get(tb.Rows().Id)
+
+	var headers []string
+	normal := make([]string, 0, len(rows.Model().ChildrenIds))
+
+	for _, rowId := range rows.Model().ChildrenIds {
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row %s: %w", rowId, err)
+		}
+
+		if row.Model().GetTableRow().IsHeader {
+			headers = append(headers, rowId)
+		} else {
+			normal = append(normal, rowId)
+		}
+	}
+
+	rows.Model().ChildrenIds = append(headers, normal...)
+
+	return nil
+}
+
 func (t editor) ColumnListFill(s *state.State, req pb.RpcBlockTableColumnListFillRequest) error {
 	if len(req.BlockIds) == 0 {
 		return fmt.Errorf("empty row list")
@@ -549,16 +586,24 @@ func (t editor) Sort(s *state.State, req pb.RpcBlockTableSortRequest) error {
 
 	rows := s.Get(tb.Rows().Id)
 	sorter := tableSorter{
-		rowIds: rows.Model().ChildrenIds,
+		rowIds: make([]string, 0, len(rows.Model().ChildrenIds)),
 		values: make([]string, len(rows.Model().ChildrenIds)),
 	}
-	for i, rowId := range rows.Model().ChildrenIds {
 
+	var headers []string
+
+	var i int
+	for _, rowId := range rows.Model().ChildrenIds {
 		row, err := pickRow(s, rowId)
 		if err != nil {
 			return fmt.Errorf("pick row %s: %w", rowId, err)
 		}
+		if row.Model().GetTableRow().GetIsHeader() {
+			headers = append(headers, rowId)
+			continue
+		}
 
+		sorter.rowIds = append(sorter.rowIds, rowId)
 		for _, cellId := range row.Model().ChildrenIds {
 			_, colId, err := ParseCellId(cellId)
 			if err != nil {
@@ -572,6 +617,7 @@ func (t editor) Sort(s *state.State, req pb.RpcBlockTableSortRequest) error {
 				sorter.values[i] = cell.Model().GetText().GetText()
 			}
 		}
+		i++
 	}
 
 	if req.Type == model.BlockContentDataviewSort_Asc {
@@ -579,6 +625,8 @@ func (t editor) Sort(s *state.State, req pb.RpcBlockTableSortRequest) error {
 	} else {
 		sort.Stable(sort.Reverse(sorter))
 	}
+
+	rows.Model().ChildrenIds = append(headers, sorter.rowIds...)
 
 	return nil
 }
@@ -632,7 +680,8 @@ func getRow(s *state.State, id string) (simple.Block, error) {
 	if b == nil {
 		return nil, fmt.Errorf("row is not found")
 	}
-	if b.Model().GetTableRow() == nil {
+	_, ok := b.(table.RowBlock)
+	if !ok {
 		return nil, fmt.Errorf("block is not a row")
 	}
 	return b, nil

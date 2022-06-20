@@ -2,7 +2,9 @@ package state
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/latex"
+	"github.com/anytypeio/go-anytype-middleware/core/block/simple/table"
 	"github.com/anytypeio/go-anytype-middleware/util/slice"
 
 	"github.com/gogo/protobuf/types"
@@ -53,6 +55,16 @@ func (s *State) applyEvent(ev *pb.EventMessage) (err error) {
 				return bm.ApplyEvent(o.BlockSetBookmark)
 			}
 			return fmt.Errorf("not a bookmark block")
+		}); err != nil {
+			return
+		}
+
+	case *pb.EventMessageValueOfBlockSetTableRow:
+		if err = apply(o.BlockSetTableRow.Id, func(b simple.Block) error {
+			if tr, ok := b.(table.RowBlock); ok {
+				return tr.ApplyEvent(o.BlockSetTableRow)
+			}
+			return fmt.Errorf("not a table row block")
 		}); err != nil {
 			return
 		}

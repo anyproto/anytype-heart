@@ -207,6 +207,7 @@ type Service interface {
 	TableRowDelete(ctx *state.Context, req pb.RpcBlockTableRowDeleteRequest) (err error)
 	TableRowListFill(ctx *state.Context, req pb.RpcBlockTableRowListFillRequest) (err error)
 	TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowListCleanRequest) (err error)
+	TableRowSetHeader(ctx *state.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error)
 	TableColumnCreate(ctx *state.Context, req pb.RpcBlockTableColumnCreateRequest) (err error)
 	TableColumnDuplicate(ctx *state.Context, req pb.RpcBlockTableColumnDuplicateRequest) (id string, err error)
 	TableColumnMove(ctx *state.Context, req pb.RpcBlockTableColumnMoveRequest) (err error)

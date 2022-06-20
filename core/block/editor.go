@@ -1135,6 +1135,13 @@ func (s *service) TableRowListClean(ctx *state.Context, req pb.RpcBlockTableRowL
 	return err
 }
 
+func (s *service) TableRowSetHeader(ctx *state.Context, req pb.RpcBlockTableRowSetHeaderRequest) (err error) {
+	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
+		return t.RowSetHeader(st, req)
+	})
+	return err
+}
+
 func (s *service) TableSort(ctx *state.Context, req pb.RpcBlockTableSortRequest) (err error) {
 	err = s.DoTable(req.ContextId, ctx, func(st *state.State, t table.Editor) error {
 		return t.Sort(st, req)

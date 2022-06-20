@@ -191,6 +191,7 @@ service ClientCommands {
     rpc BlockTableRowCreate (anytype.Rpc.BlockTable.RowCreate.Request) returns (anytype.Rpc.BlockTable.RowCreate.Response);
     rpc BlockTableRowDelete (anytype.Rpc.BlockTable.RowDelete.Request) returns (anytype.Rpc.BlockTable.RowDelete.Response);
     rpc BlockTableRowDuplicate (anytype.Rpc.BlockTable.RowDuplicate.Request) returns (anytype.Rpc.BlockTable.RowDuplicate.Response);
+    rpc BlockTableRowSetHeader (anytype.Rpc.BlockTable.RowSetHeader.Request) returns (anytype.Rpc.BlockTable.RowSetHeader.Response);
     rpc BlockTableColumnCreate (anytype.Rpc.BlockTable.ColumnCreate.Request) returns (anytype.Rpc.BlockTable.ColumnCreate.Response);
     rpc BlockTableColumnMove (anytype.Rpc.BlockTable.ColumnMove.Request) returns (anytype.Rpc.BlockTable.ColumnMove.Response);
     rpc BlockTableColumnDelete (anytype.Rpc.BlockTable.ColumnDelete.Request) returns (anytype.Rpc.BlockTable.ColumnDelete.Response);

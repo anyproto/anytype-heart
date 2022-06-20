@@ -416,7 +416,9 @@ message Block {
 
         message Table {}
 		    message TableColumn {}
-		    message TableRow {}
+		    message TableRow {
+            bool isHeader = 1;
+        }
     }
 }
 

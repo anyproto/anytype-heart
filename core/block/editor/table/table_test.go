@@ -774,6 +774,92 @@ func TestSort(t *testing.T) {
 					"row3-col2": mkTextBlock("123"),
 				})),
 		},
+		{
+			name: "asc order with header rows",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4", "row5"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+					{"row4-col1", "row4-col2"},
+					{"row5-col1", "row5-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("555"),
+					"row2-col2": mkTextBlock("444"),
+					"row3-col2": mkTextBlock("333"),
+					"row4-col2": mkTextBlock("222"),
+					"row5-col2": mkTextBlock("111"),
+				}),
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row1": {IsHeader: true},
+					"row3": {IsHeader: true},
+				})),
+			req: pb.RpcBlockTableSortRequest{
+				ColumnId: "col2",
+				Type:     model.BlockContentDataviewSort_Asc,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row5", "row4", "row2"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row3-col1", "row3-col2"},
+					{"row5-col1", "row5-col2"},
+					{"row4-col1", "row4-col2"},
+					{"row2-col1", "row2-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("555"),
+					"row2-col2": mkTextBlock("444"),
+					"row3-col2": mkTextBlock("333"),
+					"row4-col2": mkTextBlock("222"),
+					"row5-col2": mkTextBlock("111"),
+				}),
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row1": {IsHeader: true},
+					"row3": {IsHeader: true},
+				})),
+		},
+		{
+			name: "desc order with header rows",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4", "row5"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row3-col1", "row3-col2"},
+					{"row4-col1", "row4-col2"},
+					{"row5-col1", "row5-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("555"),
+					"row2-col2": mkTextBlock("444"),
+					"row3-col2": mkTextBlock("333"),
+					"row4-col2": mkTextBlock("222"),
+					"row5-col2": mkTextBlock("111"),
+				}),
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row1": {IsHeader: true},
+					"row3": {IsHeader: true},
+				})),
+			req: pb.RpcBlockTableSortRequest{
+				ColumnId: "col2",
+				Type:     model.BlockContentDataviewSort_Desc,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row3", "row2", "row4", "row5"},
+				[][]string{
+					{"row1-col1", "row1-col2"},
+					{"row3-col1", "row3-col2"},
+					{"row2-col1", "row2-col2"},
+					{"row4-col1", "row4-col2"},
+					{"row5-col1", "row5-col2"},
+				}, withBlockContents(map[string]*model.Block{
+					"row1-col2": mkTextBlock("555"),
+					"row2-col2": mkTextBlock("444"),
+					"row3-col2": mkTextBlock("333"),
+					"row4-col2": mkTextBlock("222"),
+					"row5-col2": mkTextBlock("111"),
+				}),
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row1": {IsHeader: true},
+					"row3": {IsHeader: true},
+				})),
+		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			tb := editor{}
@@ -784,8 +870,55 @@ func TestSort(t *testing.T) {
 	}
 }
 
+func TestRowSetHeader(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		source *state.State
+		req    pb.RpcBlockTableRowSetHeaderRequest
+		want   *state.State
+	}{
+		{
+			name:   "header row moves up",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row1", "row2", "row3", "row4"}, nil),
+			req: pb.RpcBlockTableRowSetHeaderRequest{
+				TargetId: "row3",
+				IsHeader: true,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row1", "row2", "row4"}, nil,
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row3": {IsHeader: true},
+				})),
+		},
+		{
+			name: "non-header row moves down",
+			source: mkTestTable([]string{"col1", "col2"}, []string{"row2", "row3", "row1", "row4"}, nil,
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row2": {IsHeader: true},
+					"row3": {IsHeader: true},
+				})),
+			req: pb.RpcBlockTableRowSetHeaderRequest{
+				TargetId: "row2",
+				IsHeader: false,
+			},
+			want: mkTestTable([]string{"col1", "col2"}, []string{"row3", "row2", "row1", "row4"}, nil,
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row3": {IsHeader: true},
+				})),
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tb := editor{}
+			err := tb.RowSetHeader(tc.source, tc.req)
+			require.NoError(t, err)
+			assert.Equal(t, tc.want.Blocks(), tc.source.Blocks())
+		})
+	}
+}
+
 type testTableOptions struct {
 	blocks map[string]*model.Block
+
+	rowBlocks map[string]*model.BlockContentTableRow
 }
 
 type testTableOption func(o *testTableOptions)
@@ -793,6 +926,12 @@ type testTableOption func(o *testTableOptions)
 func withBlockContents(blocks map[string]*model.Block) testTableOption {
 	return func(o *testTableOptions) {
 		o.blocks = blocks
+	}
+}
+
+func withRowBlockContents(blocks map[string]*model.BlockContentTableRow) testTableOption {
+	return func(o *testTableOptions) {
+		o.rowBlocks = blocks
 	}
 }
 
@@ -864,10 +1003,14 @@ func mkTestTable(columns []string, rows []string, cells [][]string, opts ...test
 	}
 
 	for _, r := range rows {
+		content := &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}}
+		if c, ok := o.rowBlocks[r]; ok {
+			content.TableRow = c
+		}
 		blocks = append(blocks, &model.Block{
 			Id:          r,
 			ChildrenIds: cellsByRow[r],
-			Content:     &model.BlockContentOfTableRow{TableRow: &model.BlockContentTableRow{}},
+			Content:     content,
 		})
 	}
 
