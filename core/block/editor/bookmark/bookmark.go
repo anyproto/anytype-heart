@@ -129,8 +129,8 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 	}
 
 	content := block.GetContent()
-	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() (*model.BlockContentBookmark, error) {
-		return content, nil
+	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() *model.BlockContentBookmark {
+		return content
 	})
 	if err != nil {
 		return fmt.Errorf("create bookmark object: %w", err)
@@ -148,8 +148,8 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 		return nil
 	}
 
-	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() (*model.BlockContentBookmark, error) {
-		return content, nil
+	pageId, err := b.bookmarkSvc.CreateBookmarkObject(content.Url, func() *model.BlockContentBookmark {
+		return content
 	})
 	if err != nil {
 		return fmt.Errorf("block %s: create bookmark object: %w", bm.Model().Id, err)

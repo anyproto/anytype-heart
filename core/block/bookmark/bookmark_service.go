@@ -31,13 +31,13 @@ import (
 const CName = "bookmark"
 
 // ContentFuture represents asynchronous result of getting bookmark content
-type ContentFuture func() (*model.BlockContentBookmark, error)
+type ContentFuture func() *model.BlockContentBookmark
 
 type Service interface {
 	CreateBookmarkObject(url string, getContent ContentFuture) (objectId string, err error)
 	UpdateBookmarkObject(objectId string, getContent ContentFuture) error
 	Fetch(id string, params bookmark.FetchParams) (err error)
-	ContentFetcher(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
+	ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error)
 
 	app.Component
 }
@@ -131,11 +131,7 @@ func detailsFromContent(content *model.BlockContentBookmark) map[string]*types.V
 }
 
 func (s *service) UpdateBookmarkObject(objectId string, getContent ContentFuture) error {
-	content, err := getContent()
-	if err != nil {
-		return fmt.Errorf("get content: %w", err)
-	}
-	detailsMap := detailsFromContent(content)
+	detailsMap := detailsFromContent(getContent())
 
 	details := make([]*pb.RpcObjectSetDetailsDetail, 0, len(detailsMap))
 	for k, v := range detailsMap {
@@ -164,16 +160,26 @@ func (s *service) Fetch(id string, params bookmark.FetchParams) (err error) {
 	return s.fetcher(id, params)
 }
 
-func (s *service) ContentFetcher(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
+func (s *service) ContentUpdaters(url string) (chan func(contentBookmark *model.BlockContentBookmark), error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*5)
 	defer cancel()
 
+	updaters := make(chan func(contentBookmark *model.BlockContentBookmark), 1)
+
 	data, err := s.linkPreview.Fetch(ctx, url)
 	if err != nil {
-		return nil, fmt.Errorf("bookmark: can't fetch link %s: %w", url, err)
+		updaters <- func(c *model.BlockContentBookmark) {
+			c.State = model.BlockContentBookmark_Error
+		}
+		close(updaters)
+		return updaters, fmt.Errorf("bookmark: can't fetch link %s: %w", url, err)
 	}
+
+	updaters <- func(c *model.BlockContentBookmark) {
+		c.State = model.BlockContentBookmark_Done
+	}
+
 	var wg sync.WaitGroup
-	updaters := make(chan func(contentBookmark *model.BlockContentBookmark))
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -218,29 +224,19 @@ func (s *service) ContentFetcher(url string) (chan func(contentBookmark *model.B
 		wg.Wait()
 		close(updaters)
 	}()
-
 	return updaters, nil
 }
 
 func (s *service) fetcher(id string, params bookmark.FetchParams) error {
-	updaters, err := s.ContentFetcher(params.Url)
-
-	var upds []func(*model.BlockContentBookmark)
-
+	updaters, err := s.ContentUpdaters(params.Url)
 	if err != nil {
 		log.Errorf("can't get updates for %s: %s", id, err)
-		upds = append(upds, func(c *model.BlockContentBookmark) {
-			c.State = model.BlockContentBookmark_Error
-		})
-	} else {
-		for u := range updaters {
-			upds = append(upds, u)
-		}
-		upds = append(upds, func(c *model.BlockContentBookmark) {
-			c.State = model.BlockContentBookmark_Done
-		})
 	}
 
+	var upds []func(*model.BlockContentBookmark)
+	for u := range updaters {
+		upds = append(upds, u)
+	}
 	err = params.Updater(id, func(bm bookmark.Block) error {
 		for _, u := range upds {
 			bm.UpdateContent(u)

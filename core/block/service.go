@@ -1433,17 +1433,15 @@ func (s *service) ResetToState(pageId string, state *state.State) (err error) {
 
 func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 	contentCh := make(chan *model.BlockContentBookmark, 1)
-	errCh := make(chan error, 1)
 	go func() {
 		defer close(contentCh)
 
 		content := &model.BlockContentBookmark{
 			Url: url,
 		}
-		updaters, err := s.bookmark.ContentFetcher(url)
+		updaters, err := s.bookmark.ContentUpdaters(url)
 		if err != nil {
-			errCh <- fmt.Errorf("fetch bookmark content: %w", err)
-			return
+			log.Error("fetch bookmark content %s: %s", url, err)
 		}
 		for upd := range updaters {
 			upd(content)
@@ -1451,13 +1449,8 @@ func (s *service) fetchBookmarkContent(url string) bookmarksvc.ContentFuture {
 		contentCh <- content
 	}()
 
-	return func() (*model.BlockContentBookmark, error) {
-		select {
-		case err := <-errCh:
-			return nil, err
-		case c := <-contentCh:
-			return c, nil
-		}
+	return func() *model.BlockContentBookmark {
+		return <-contentCh
 	}
 }
 
