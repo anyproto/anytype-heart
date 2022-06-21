@@ -730,7 +730,7 @@ var WithLinkFieldsMigration = func(s *state.State) {
 	return
 }
 
-var relationBlockKeys = []string{
+var bookmarkRelationKeys = []string{
 	bundle.RelationKeyUrl.String(),
 	bundle.RelationKeyPicture.String(),
 	bundle.RelationKeyCreatedDate.String(),
@@ -751,7 +751,11 @@ func makeRelationBlock(k string) *model.Block {
 }
 
 var WithBookmarkBlocks = func(s *state.State) {
-	for _, k := range relationBlockKeys {
+	for _, k := range bookmarkRelationKeys {
+		if !s.HasRelation(k) {
+			s.AddRelation(bundle.MustGetRelation(bundle.RelationKey(k)))
+		}
+
 		if b := s.Pick(k); b != nil {
 			if ok := s.Unlink(b.Model().Id); !ok {
 				log.Errorf("can't unlink block %s", b.Model().Id)
@@ -767,7 +771,7 @@ var WithBookmarkBlocks = func(s *state.State) {
 		}
 	}
 
-	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, relationBlockKeys...); err != nil {
+	if err := s.InsertTo(s.RootId(), model.Block_InnerFirst, bookmarkRelationKeys...); err != nil {
 		log.Errorf("insert relation blocks: %w", err)
 		return
 	}

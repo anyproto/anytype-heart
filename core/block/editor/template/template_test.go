@@ -1,16 +1,17 @@
 package template
 
 import (
+	"testing"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/pb/model"
 	"github.com/stretchr/testify/assert"
-	"testing"
 )
 
 func TestWithBookmarkBlocks(t *testing.T) {
-	requiredBlocks := make([]*model.Block, 0, len(relationBlockKeys))
-	for _, k := range relationBlockKeys {
+	requiredBlocks := make([]*model.Block, 0, len(bookmarkRelationKeys))
+	for _, k := range bookmarkRelationKeys {
 		requiredBlocks = append(requiredBlocks, makeRelationBlock(k))
 	}
 
@@ -21,7 +22,7 @@ func TestWithBookmarkBlocks(t *testing.T) {
 		WithBookmarkBlocks(s)
 
 		want := append([]*model.Block{
-			{Id: "test", ChildrenIds: relationBlockKeys},
+			{Id: "test", ChildrenIds: bookmarkRelationKeys},
 		}, requiredBlocks...)
 
 		assert.Equal(t, want, s.Blocks())
@@ -37,7 +38,7 @@ func TestWithBookmarkBlocks(t *testing.T) {
 		WithBookmarkBlocks(s)
 
 		want := append([]*model.Block{
-			{Id: "test", ChildrenIds: append(relationBlockKeys, "extra1")},
+			{Id: "test", ChildrenIds: append(bookmarkRelationKeys, "extra1")},
 		}, append(requiredBlocks,
 			&model.Block{Id: "extra1", ChildrenIds: []string{"extra2", "extra3"}},
 			&model.Block{Id: "extra2"},
@@ -57,7 +58,7 @@ func TestWithBookmarkBlocks(t *testing.T) {
 		WithBookmarkBlocks(s)
 
 		want := append([]*model.Block{
-			{Id: "test", ChildrenIds: append(relationBlockKeys, "extra1")},
+			{Id: "test", ChildrenIds: append(bookmarkRelationKeys, "extra1")},
 		}, append(requiredBlocks,
 			&model.Block{Id: "extra1"})...)
 
