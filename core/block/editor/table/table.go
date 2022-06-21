@@ -373,11 +373,14 @@ func (t editor) RowSetHeader(s *state.State, req pb.RpcBlockTableRowSetHeaderReq
 	if err != nil {
 		return fmt.Errorf("get target row: %w", err)
 	}
-	row.Model().GetTableRow().IsHeader = req.IsHeader
 
-	err = normalizeRows(s, tb)
-	if err != nil {
-		return fmt.Errorf("normalize rows: %w", err)
+	if row.Model().GetTableRow().IsHeader != req.IsHeader {
+		row.Model().GetTableRow().IsHeader = req.IsHeader
+
+		err = normalizeRows(s, tb)
+		if err != nil {
+			return fmt.Errorf("normalize rows: %w", err)
+		}
 	}
 
 	return nil
