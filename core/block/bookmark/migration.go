@@ -2,6 +2,7 @@ package bookmark
 
 import (
 	"fmt"
+
 	"github.com/anytypeio/go-anytype-middleware/core/block/editor/state"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple"
 	"github.com/anytypeio/go-anytype-middleware/core/block/simple/bookmark"
@@ -22,11 +23,12 @@ func WithFixedBookmarks(bm BlockMigrator) func(st *state.State) {
 func migrateBlocks(bm BlockMigrator, st *state.State) error {
 	var migrateErr error
 	err := st.Iterate(func(b simple.Block) bool {
-		block, ok := b.(bookmark.Block)
+		_, ok := b.(bookmark.Block)
 		if !ok {
 			return true
 		}
 
+		block := st.Get(b.Model().Id).(bookmark.Block)
 		if migrateErr = bm.MigrateBlock(block); migrateErr != nil {
 			return false
 		}
