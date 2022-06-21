@@ -46,6 +46,10 @@
     - [Rpc.Account.GetConfig](#anytype-Rpc-Account-GetConfig)
     - [Rpc.Account.GetConfig.Get](#anytype-Rpc-Account-GetConfig-Get)
     - [Rpc.Account.GetConfig.Get.Request](#anytype-Rpc-Account-GetConfig-Get-Request)
+    - [Rpc.Account.Move](#anytype-Rpc-Account-Move)
+    - [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request)
+    - [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response)
+    - [Rpc.Account.Move.Response.Error](#anytype-Rpc-Account-Move-Response-Error)
     - [Rpc.Account.Recover](#anytype-Rpc-Account-Recover)
     - [Rpc.Account.Recover.Request](#anytype-Rpc-Account-Recover-Request)
     - [Rpc.Account.Recover.Response](#anytype-Rpc-Account-Recover-Response)
@@ -676,6 +680,7 @@
   
     - [Rpc.Account.Create.Response.Error.Code](#anytype-Rpc-Account-Create-Response-Error-Code)
     - [Rpc.Account.Delete.Response.Error.Code](#anytype-Rpc-Account-Delete-Response-Error-Code)
+    - [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code)
     - [Rpc.Account.Recover.Response.Error.Code](#anytype-Rpc-Account-Recover-Response-Error-Code)
     - [Rpc.Account.Select.Response.Error.Code](#anytype-Rpc-Account-Select-Response-Error-Code)
     - [Rpc.Account.Stop.Response.Error.Code](#anytype-Rpc-Account-Stop-Response-Error-Code)
@@ -1111,6 +1116,7 @@
 | AccountDelete | [Rpc.Account.Delete.Request](#anytype-Rpc-Account-Delete-Request) | [Rpc.Account.Delete.Response](#anytype-Rpc-Account-Delete-Response) |  |
 | AccountSelect | [Rpc.Account.Select.Request](#anytype-Rpc-Account-Select-Request) | [Rpc.Account.Select.Response](#anytype-Rpc-Account-Select-Response) |  |
 | AccountStop | [Rpc.Account.Stop.Request](#anytype-Rpc-Account-Stop-Request) | [Rpc.Account.Stop.Response](#anytype-Rpc-Account-Stop-Response) |  |
+| AccountMove | [Rpc.Account.Move.Request](#anytype-Rpc-Account-Move-Request) | [Rpc.Account.Move.Response](#anytype-Rpc-Account-Move-Response) |  |
 | ObjectOpen | [Rpc.Object.Open.Request](#anytype-Rpc-Object-Open-Request) | [Rpc.Object.Open.Response](#anytype-Rpc-Object-Open-Response) | Object *** |
 | ObjectClose | [Rpc.Object.Close.Request](#anytype-Rpc-Object-Close-Request) | [Rpc.Object.Close.Response](#anytype-Rpc-Object-Close-Response) |  |
 | ObjectShow | [Rpc.Object.Show.Request](#anytype-Rpc-Object-Show-Request) | [Rpc.Object.Show.Response](#anytype-Rpc-Object-Show-Response) |  |
@@ -1706,6 +1712,7 @@ Front end to middleware request-to-create-an account
 | ----- | ---- | ----- | ----------- |
 | name | [string](#string) |  | Account name |
 | avatarLocalPath | [string](#string) |  | Path to an image, that will be used as an avatar of this account |
+| storePath | [string](#string) |  | Path to local storage |
 | alphaInviteCode | [string](#string) |  |  |
 
 
@@ -1827,6 +1834,62 @@ Middleware-to-front-end response for an account creation request, that can conta
 
 ### Rpc.Account.GetConfig.Get.Request
 
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Move"></a>
+
+### Rpc.Account.Move
+
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Move-Request"></a>
+
+### Rpc.Account.Move.Request
+Front-end-to-middleware request to move a account to a new disk location
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| newPath | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Move-Response"></a>
+
+### Rpc.Account.Move.Response
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| error | [Rpc.Account.Move.Response.Error](#anytype-Rpc-Account-Move-Response-Error) |  |  |
+
+
+
+
+
+
+<a name="anytype-Rpc-Account-Move-Response-Error"></a>
+
+### Rpc.Account.Move.Response.Error
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| code | [Rpc.Account.Move.Response.Error.Code](#anytype-Rpc-Account-Move-Response-Error-Code) |  |  |
+| description | [string](#string) |  |  |
 
 
 
@@ -10978,6 +11041,8 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_NAME | 102 |  |
 | ACCOUNT_CREATED_BUT_FAILED_TO_SET_AVATAR | 103 |  |
 | FAILED_TO_STOP_RUNNING_NODE | 104 |  |
+| FAILED_TO_WRITE_CONFIG | 105 |  |
+| FAILED_TO_CREATE_LOCAL_REPO | 106 |  |
 | BAD_INVITE_CODE | 900 |  |
 | NET_ERROR | 901 | means general network error |
 | NET_CONNECTION_REFUSED | 902 | means we wasn&#39;t able to connect to the cafe server |
@@ -10997,6 +11062,25 @@ Middleware-to-front-end response, that can contain a NULL error or a non-NULL er
 | BAD_INPUT | 2 |  |
 | ACCOUNT_IS_ALREADY_DELETED | 101 |  |
 | ACCOUNT_IS_ACTIVE | 102 |  |
+
+
+
+<a name="anytype-Rpc-Account-Move-Response-Error-Code"></a>
+
+### Rpc.Account.Move.Response.Error.Code
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| NULL | 0 |  |
+| UNKNOWN_ERROR | 1 |  |
+| BAD_INPUT | 2 |  |
+| FAILED_TO_STOP_NODE | 101 |  |
+| FAILED_TO_IDENTIFY_ACCOUNT_DIR | 102 |  |
+| FAILED_TO_REMOVE_ACCOUNT_DATA | 103 |  |
+| FAILED_TO_CREATE_LOCAL_REPO | 104 |  |
+| FAILED_TO_WRITE_CONFIG | 105 |  |
+| FAILED_TO_GET_CONFIG | 106 |  |
 
 
 
@@ -15685,6 +15769,7 @@ Avatar of a user&#39;s account. It could be an image or color
 | marketplaceTemplateObjectId | [string](#string) |  | marketplace template id |
 | deviceId | [string](#string) |  |  |
 | gatewayUrl | [string](#string) |  | gateway url for fetching static files |
+| localStoragePath | [string](#string) |  | path to local storage |
 
 
 
