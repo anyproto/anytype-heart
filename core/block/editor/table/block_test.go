@@ -33,7 +33,7 @@ func TestNormalize(t *testing.T) {
 			}),
 		},
 		{
-			name: "wrong order",
+			name: "wrong column order",
 			source: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2"}, [][]string{
 				{"row1-col3", "row1-col1", "row1-col2"},
 				{"row2-col3", "row2-c1", "row2-col1"},
@@ -42,6 +42,17 @@ func TestNormalize(t *testing.T) {
 				{"row1-col1", "row1-col2", "row1-col3"},
 				{"row2-col1", "row2-col3"},
 			}),
+		},
+		{
+			name: "wrong place for header rows",
+			source: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row1", "row2", "row3"}, nil,
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row3": {IsHeader: true},
+				})),
+			want: mkTestTable([]string{"col1", "col2", "col3"}, []string{"row3", "row1", "row2"}, nil,
+				withRowBlockContents(map[string]*model.BlockContentTableRow{
+					"row3": {IsHeader: true},
+				})),
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

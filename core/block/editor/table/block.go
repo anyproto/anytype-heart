@@ -57,6 +57,10 @@ func (b *block) Normalize(s *state.State) error {
 		row := s.Get(rowId)
 		normalizeRow(colIdx, row)
 	}
+
+	if err := normalizeRows(s, tb); err != nil {
+		return fmt.Errorf("normalize rows: %w", err)
+	}
 	return nil
 }
 
@@ -151,6 +155,29 @@ func (r *rowSort) Swap(i, j int) {
 	r.touched = true
 	r.indices[i], r.indices[j] = r.indices[j], r.indices[i]
 	r.cells[i], r.cells[j] = r.cells[j], r.cells[i]
+}
+
+func normalizeRows(s *state.State, tb *Table) error {
+	rows := s.Get(tb.Rows().Id)
+
+	var headers []string
+	normal := make([]string, 0, len(rows.Model().ChildrenIds))
+
+	for _, rowId := range rows.Model().ChildrenIds {
+		row, err := pickRow(s, rowId)
+		if err != nil {
+			return fmt.Errorf("pick row %s: %w", rowId, err)
+		}
+
+		if row.Model().GetTableRow().IsHeader {
+			headers = append(headers, rowId)
+		} else {
+			normal = append(normal, rowId)
+		}
+	}
+
+	rows.Model().ChildrenIds = append(headers, normal...)
+	return nil
 }
 
 func normalizeRow(colIdx map[string]int, row simple.Block) {

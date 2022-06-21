@@ -375,25 +375,10 @@ func (t editor) RowSetHeader(s *state.State, req pb.RpcBlockTableRowSetHeaderReq
 	}
 	row.Model().GetTableRow().IsHeader = req.IsHeader
 
-	rows := s.Get(tb.Rows().Id)
-
-	var headers []string
-	normal := make([]string, 0, len(rows.Model().ChildrenIds))
-
-	for _, rowId := range rows.Model().ChildrenIds {
-		row, err := pickRow(s, rowId)
-		if err != nil {
-			return fmt.Errorf("pick row %s: %w", rowId, err)
-		}
-
-		if row.Model().GetTableRow().IsHeader {
-			headers = append(headers, rowId)
-		} else {
-			normal = append(normal, rowId)
-		}
+	err = normalizeRows(s, tb)
+	if err != nil {
+		return fmt.Errorf("normalize rows: %w", err)
 	}
-
-	rows.Model().ChildrenIds = append(headers, normal...)
 
 	return nil
 }
