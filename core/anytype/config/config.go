@@ -30,8 +30,8 @@ type FileConfig interface {
 }
 
 type ConfigRequired struct {
-	HostAddr         string `json:",omitempty"`
-	LocalStorageAddr string `json:",omitempty"`
+	HostAddr        string `json:",omitempty"`
+	IPFSStorageAddr string `json:",omitempty"`
 }
 
 type Config struct {
@@ -230,7 +230,7 @@ func (c *Config) FSConfig() (clientds.FSConfig, error) {
 		return clientds.FSConfig{}, err
 	}
 
-	return clientds.FSConfig{LocalStorageAddr: res.LocalStorageAddr}, nil
+	return clientds.FSConfig{IPFSStorageAddr: res.IPFSStorageAddr}, nil
 }
 
 func (c *Config) ThreadsConfig() threads.Config {

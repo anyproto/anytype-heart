@@ -66,7 +66,7 @@ type Config struct {
 }
 
 type FSConfig struct {
-	LocalStorageAddr string
+	IPFSStorageAddr string
 }
 
 var DefaultConfig = Config{
@@ -144,13 +144,13 @@ func (r *clientds) Init(a *app.App) (err error) {
 	}
 	r.repoPath = wl.(wallet.Wallet).RepoPath()
 
-	if fileCfg.LocalStorageAddr == "" {
+	if fileCfg.IPFSStorageAddr == "" {
 		r.dynamicRepoPath = r.repoPath
 	} else {
-		if _, err := os.Stat(fileCfg.LocalStorageAddr); os.IsNotExist(err) {
-			return fmt.Errorf("local storage by address: %s not found", fileCfg.LocalStorageAddr)
+		if _, err := os.Stat(fileCfg.IPFSStorageAddr); os.IsNotExist(err) {
+			return fmt.Errorf("local storage by address: %s not found", fileCfg.IPFSStorageAddr)
 		}
-		r.dynamicRepoPath = fileCfg.LocalStorageAddr
+		r.dynamicRepoPath = fileCfg.IPFSStorageAddr
 	}
 
 	if cfgGetter, ok := a.Component("config").(DSConfigGetter); ok {

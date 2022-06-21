@@ -200,7 +200,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
-		LocalStoragePath: 			 cfg.LocalStorageAddr,
+		LocalStoragePath: 			 cfg.IPFSStorageAddr,
 	}
 }
 
@@ -272,7 +272,7 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
 		}
 
-		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{LocalStorageAddr: storePath}); err != nil {
+		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
 			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
 		}
 	}
@@ -684,8 +684,8 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
 	}
-	if fileConf.LocalStorageAddr != "" {
-		srcPath = fileConf.LocalStorageAddr
+	if fileConf.IPFSStorageAddr != "" {
+		srcPath = fileConf.IPFSStorageAddr
 	}
 
 	parts := strings.Split(srcPath, string(os.PathSeparator))
@@ -723,7 +723,7 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 		}
 	}
 
-	err = files.WriteJsonConfig(configPath, config.ConfigRequired{LocalStorageAddr: destination})
+	err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: destination})
 	if err != nil {
 		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
 	}
