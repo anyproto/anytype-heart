@@ -678,7 +678,7 @@ func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountM
 	dirs := clientds.GetDirsForMoving()
 	conf := mw.app.MustComponent(config.CName).(*config.Config)
 
-	configPath := filepath.Join(conf.RepoPath, config.ConfigFileName)
+	configPath := conf.GetConfigPath()
 	srcPath := conf.RepoPath
 	fileConf := config.ConfigRequired{}
 	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
@@ -790,6 +790,30 @@ func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAcco
 	}
 
 	return response(st, pb.RpcAccountDeleteResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountConfigUpdate(req *pb.RpcAccountConfigUpdateRequest) *pb.RpcAccountConfigUpdateResponse {
+	response := func(code pb.RpcAccountConfigUpdateResponseErrorCode, err error) *pb.RpcAccountConfigUpdateResponse {
+		m := &pb.RpcAccountConfigUpdateResponse{Error: &pb.RpcAccountConfigUpdateResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	if mw.app == nil {
+		return response(pb.RpcAccountConfigUpdateResponseError_ACCOUNT_IS_NOT_RUNNING, fmt.Errorf("anytype node not set"))
+	}
+
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
+	cfg := config.ConfigRequired{}
+	cfg.TimeZone = req.TimeZone
+	err := files.WriteJsonConfig(conf.GetConfigPath(), cfg)
+	if err != nil {
+		return response(pb.RpcAccountConfigUpdateResponseError_FAILED_TO_WRITE_CONFIG, err)
+	}
+
+	return response(pb.RpcAccountConfigUpdateResponseError_NULL, err)
 }
 
 func (mw *Middleware) getDerivedAccountsForMnemonic(count int) ([]wallet.Keypair, error) {
