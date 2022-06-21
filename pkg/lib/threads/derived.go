@@ -29,7 +29,7 @@ const (
 	threadDerivedIndexAccountOld  threadDerivedIndex = 3
 	threadDerivedIndexAccount     threadDerivedIndex = 4
 
-	threadDerivedIndexSetPages threadDerivedIndex = 20
+	threadDerivedIndexSetPages threadDerivedIndex = 20 // deprecated
 
 	threadDerivedIndexMarketplaceType     threadDerivedIndex = 30
 	threadDerivedIndexMarketplaceRelation threadDerivedIndex = 31
@@ -52,7 +52,6 @@ type DerivedSmartblockIds struct {
 	Profile             string
 	Home                string
 	Archive             string
-	SetPages            string
 	MarketplaceType     string
 	MarketplaceRelation string
 	MarketplaceTemplate string
@@ -96,10 +95,6 @@ func (s *service) DerivePredefinedThreadIds() (DerivedSmartblockIds, error) {
 	if err != nil {
 		return DerivedSmartblockIds{}, err
 	}
-	setPages, err := s.derivedThreadIdByIndex(threadDerivedIndexSetPages)
-	if err != nil {
-		return DerivedSmartblockIds{}, err
-	}
 	mpType, err := s.derivedThreadIdByIndex(threadDerivedIndexMarketplaceType)
 	if err != nil {
 		return DerivedSmartblockIds{}, err
@@ -119,7 +114,6 @@ func (s *service) DerivePredefinedThreadIds() (DerivedSmartblockIds, error) {
 		Profile:             profile.String(),
 		Home:                home.String(),
 		Archive:             archive.String(),
-		SetPages:            setPages.String(),
 		MarketplaceType:     mpType.String(),
 		MarketplaceRelation: mpRelation.String(),
 		MarketplaceTemplate: mpTemplate.String(),
@@ -198,13 +192,6 @@ func (s *service) EnsurePredefinedThreads(ctx context.Context, newAccount bool) 
 		return accountIds, err
 	}
 	accountIds.Archive = archive.ID.String()
-
-	// set pages
-	setPages, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexSetPages, newAccount, true)
-	if err != nil {
-		return accountIds, err
-	}
-	accountIds.SetPages = setPages.ID.String()
 
 	// marketplace
 	marketplace, _, err := s.derivedThreadEnsure(cctx, threadDerivedIndexMarketplaceType, newAccount, true)
