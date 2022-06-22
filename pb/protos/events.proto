@@ -220,11 +220,11 @@ message Event {
             repeated anytype.model.ObjectType objectTypes = 5; // objectTypes contains ONLY to get layouts for the actual and all dependent objects. Relations are currently omitted // todo: switch to other pb model
             repeated anytype.model.Relation relations = 7; // combined relations of object's type + extra relations. If object doesn't has some relation key in the details this means client should hide it and only suggest when adding existing one
             anytype.model.Restrictions restrictions = 8; // object restrictions
-            History history = 9;
+            HistorySize history = 9;
 
-            message History {
-                int32 undoCount = 1;
-                int32 redoCount = 2;
+            message HistorySize {
+                int32 undo = 1;
+                int32 redo = 2;
             }
         }
 

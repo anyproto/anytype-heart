@@ -391,8 +391,7 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 		}
 	}
 
-	hist := sb.History()
-	undo, redo := hist.Counters()
+	undo, redo := sb.History().Counters()
 
 	// todo: sb.Relations() makes extra query to read objectType which we already have here
 	// the problem is that we can have an extra object type of the set in the objectTypes so we can't reuse it
@@ -406,9 +405,9 @@ func (sb *smartBlock) Show(ctx *state.Context) error {
 				Relations:    sb.Relations(),
 				ObjectTypes:  objectTypes,
 				Restrictions: sb.restrictions.Proto(),
-				History: &pb.EventObjectShowHistory{
-					UndoCount: undo,
-					RedoCount: redo,
+				History: &pb.EventObjectShowHistorySize{
+					Undo: undo,
+					Redo: redo,
 				},
 			}},
 		},
