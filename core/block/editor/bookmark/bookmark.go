@@ -144,10 +144,13 @@ func (b *sbookmark) updateBlock(block bookmark.Block, apply func(bookmark.Block)
 
 func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 	content := bm.GetContent()
-	if content.State == model.BlockContentBookmark_Empty && content.Url == "" {
-		content.State = model.BlockContentBookmark_Done
-	}
+
 	if content.TargetObjectId != "" {
+		if content.State != model.BlockContentBookmark_Done {
+			bm.UpdateContent(func(content *model.BlockContentBookmark) {
+				content.State = model.BlockContentBookmark_Done
+			})
+		}
 		return nil
 	}
 
@@ -160,6 +163,7 @@ func (b *sbookmark) MigrateBlock(bm bookmark.Block) error {
 
 	bm.UpdateContent(func(content *model.BlockContentBookmark) {
 		content.TargetObjectId = pageId
+		content.State = model.BlockContentBookmark_Done
 	})
 	return nil
 }
