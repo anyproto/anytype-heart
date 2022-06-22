@@ -5,11 +5,15 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/anytypeio/go-anytype-middleware/core/account"
 	cafePb "github.com/anytypeio/go-anytype-middleware/pkg/lib/cafe/pb"
+	"github.com/anytypeio/go-anytype-middleware/pkg/lib/datastore/clientds"
 	"github.com/anytypeio/go-anytype-middleware/pkg/lib/gateway"
+	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"github.com/gogo/status"
+	cp "github.com/otiai10/copy"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -182,6 +186,10 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		gwAddr = "http://" + gwAddr
 	}
 
+	cfg := config.ConfigRequired{}
+	files.GetFileConfig(filepath.Join(wallet.RepoPath(), config.ConfigFileName), &cfg);
+
+
 	pBlocks := at.PredefinedBlocks()
 	return &model.AccountInfo{
 		HomeObjectId:                pBlocks.Home,
@@ -192,6 +200,7 @@ func (mw *Middleware) getInfo() *model.AccountInfo {
 		MarketplaceTemplateObjectId: pBlocks.MarketplaceTemplate,
 		GatewayUrl:                  gwAddr,
 		DeviceId:                    deviceId,
+		LocalStoragePath: 			 cfg.IPFSStorageAddr,
 	}
 }
 
@@ -251,6 +260,21 @@ func (mw *Middleware) AccountCreate(req *pb.RpcAccountCreateRequest) *pb.RpcAcco
 
 	if err = core.WalletInitRepo(mw.rootPath, seedRaw); err != nil {
 		return response(nil, pb.RpcAccountCreateResponseError_UNKNOWN_ERROR, err)
+	}
+
+	if req.StorePath != "" && req.StorePath != mw.rootPath {
+		configPath := filepath.Join(mw.rootPath, account.Address(), config.ConfigFileName)
+
+		storePath := filepath.Join(req.StorePath, account.Address())
+
+		err := os.MkdirAll(storePath, 0700)
+		if err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+		}
+
+		if err := files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: storePath}); err != nil {
+			return response(nil, pb.RpcAccountCreateResponseError_FAILED_TO_WRITE_CONFIG, err)
+		}
 	}
 
 	newAcc := &model.Account{Id: account.Address()}
@@ -627,6 +651,94 @@ func (mw *Middleware) AccountStop(req *pb.RpcAccountStopRequest) *pb.RpcAccountS
 	}
 
 	return response(pb.RpcAccountStopResponseError_NULL, nil)
+}
+
+func (mw *Middleware) AccountMove(req *pb.RpcAccountMoveRequest) *pb.RpcAccountMoveResponse {
+	mw.accountSearchCancel()
+	mw.m.Lock()
+	defer mw.m.Unlock()
+
+	response := func(code pb.RpcAccountMoveResponseErrorCode, err error) *pb.RpcAccountMoveResponse {
+		m := &pb.RpcAccountMoveResponse{Error: &pb.RpcAccountMoveResponseError{Code: code}}
+		if err != nil {
+			m.Error.Description = err.Error()
+		}
+		return m
+	}
+
+	removeDirs := func(src string, dirs []string) error {
+		for _, dir := range dirs {
+			if err := os.RemoveAll(filepath.Join(src, dir)); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+
+	dirs := clientds.GetDirsForMoving()
+	conf := mw.app.MustComponent(config.CName).(*config.Config)
+
+	configPath := filepath.Join(conf.RepoPath, config.ConfigFileName)
+	srcPath := conf.RepoPath
+	fileConf := config.ConfigRequired{}
+	if err := files.GetFileConfig(configPath, &fileConf); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_GET_CONFIG, err)
+	}
+	if fileConf.IPFSStorageAddr != "" {
+		srcPath = fileConf.IPFSStorageAddr
+	}
+
+	parts := strings.Split(srcPath, string(os.PathSeparator))
+	accountDir := parts[len(parts)-1]
+	if accountDir == "" {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_IDENTIFY_ACCOUNT_DIR, errors.New("fail to identify account dir"))
+	}
+
+	destination := filepath.Join(req.NewPath, accountDir)
+	if srcPath == destination {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, errors.New("source path should not be equal destination path"))
+	}
+
+	if _, err := os.Stat(destination); !os.IsNotExist(err) { // if already exist (in case of the previous fail moving)
+		if err := removeDirs(destination, dirs); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	err := os.MkdirAll(destination, 0700)
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+	}
+
+	err = mw.stop()
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_STOP_NODE, err)
+	}
+
+	for _, dir := range dirs {
+		if _, err := os.Stat(filepath.Join(srcPath, dir)); !os.IsNotExist(err) { // copy only if exist such dir
+			if err := cp.Copy(filepath.Join(srcPath, dir), filepath.Join(destination, dir), cp.Options{PreserveOwner: true}); err != nil {
+				return response(pb.RpcAccountMoveResponseError_FAILED_TO_CREATE_LOCAL_REPO, err)
+			}
+		}
+	}
+
+	err = files.WriteJsonConfig(configPath, config.ConfigRequired{IPFSStorageAddr: destination})
+	if err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_WRITE_CONFIG, err)
+	}
+
+	if err := removeDirs(srcPath, dirs); err != nil {
+		return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+	}
+
+	if srcPath != conf.RepoPath { // remove root account dir, if move not from anytype source dir
+		if err := os.RemoveAll(srcPath); err != nil {
+			return response(pb.RpcAccountMoveResponseError_FAILED_TO_REMOVE_ACCOUNT_DATA, err)
+		}
+	}
+
+	return response(pb.RpcAccountMoveResponseError_NULL, nil)
 }
 
 func (mw *Middleware) AccountDelete(req *pb.RpcAccountDeleteRequest) *pb.RpcAccountDeleteResponse {
