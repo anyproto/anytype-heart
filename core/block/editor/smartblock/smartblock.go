@@ -996,6 +996,11 @@ func (sb *smartBlock) addExtraRelations(s *state.State, relations []*model.Relat
 				log.With("thread", sb.Id()).Errorf("failed to get getAggregatedOptions: %s", err.Error())
 			} else {
 				s.SetAggregatedRelationsOptions(rel.Key, opts)
+				for _, copyRel := range copy {
+					if copyRel.Key == rel.Key {
+						copyRel.SelectDict = opts
+					}
+				}
 			}
 		}
 
