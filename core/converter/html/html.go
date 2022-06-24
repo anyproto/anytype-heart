@@ -30,8 +30,11 @@ const (
 				.header3 { padding: 15px 0px 1px 0px; font-size: 17px; line-height: 24px; font-weight: 600; }
 				.quote { padding: 7px 0px 7px 0px; font-size: 18px; line-height: 26px; font-style: italic; }
 				.paragraph { font-size: 15px; line-height: 24px; letter-spacing: -0.08px; font-weight: 400; word-wrap: break-word; }
+				.callout-image { width: 20px; height: 20px; font-size: 16px; line-height: 20px; margin-right: 6px; display: inline-block; }
+				.callout-image img { width: 100%; object-fit: cover; }
 				a { cursor: pointer; }
 				kbd { display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px; }
+				ul { margin: 0px; }
 			</style>
 		</head>
 		<body>`
@@ -136,6 +139,7 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 	styleCheckbox := "font-size:15px;"
 	styleToggle := "font-size:15px;"
 	styleKbd := "display: inline; font-family: 'Mono'; line-height: 1.71; background: rgba(247,245,240,0.5); padding: 0px 4px; border-radius: 2px;"
+	styleCallout := "background: #f3f2ec; border-radius: 6px; padding: 16px; margin: 6px 0px;"
 
 	text := b.GetText()
 
@@ -274,6 +278,18 @@ func (h *HTML) renderText(rs *renderState, b *model.Block) {
 	case model.BlockContentText_Toggle:
 		rs.Close()
 		h.buf.WriteString(`<div style="` + styleToggle + `" class="toggle">`)
+		renderText()
+		h.renderChilds(b)
+		h.buf.WriteString(`</div>`)
+	case model.BlockContentText_Callout:
+		rs.Close()
+
+		img := ""
+		if text.IconEmoji != "" {
+			img = fmt.Sprintf(`<span class="callout-image">%s</span>`, text.IconEmoji)
+		}
+
+		fmt.Fprintf(h.buf, `<div style="%s">%s`, styleCallout, img)
 		renderText()
 		h.renderChilds(b)
 		h.buf.WriteString(`</div>`)
