@@ -37,7 +37,7 @@ type block struct {
 	content *model.BlockContentTable
 }
 
-func (b block) Copy() simple.Block {
+func (b *block) Copy() simple.Block {
 	return NewBlock(pbtypes.CopyBlock(b.Model()))
 }
 
@@ -64,7 +64,7 @@ func (b *block) Normalize(s *state.State) error {
 	return nil
 }
 
-func (b block) Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error) {
+func (b *block) Duplicate(s *state.State) (newId string, visitedIds []string, blocks []simple.Block, err error) {
 	tb, err := NewTable(s, b.Id)
 	if err != nil {
 		err = fmt.Errorf("init table: %w", err)
@@ -143,11 +143,11 @@ type rowSort struct {
 	touched bool
 }
 
-func (r rowSort) Len() int {
+func (r *rowSort) Len() int {
 	return len(r.cells)
 }
 
-func (r rowSort) Less(i, j int) bool {
+func (r *rowSort) Less(i, j int) bool {
 	return r.indices[i] < r.indices[j]
 }
 
