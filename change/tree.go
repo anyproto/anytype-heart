@@ -146,6 +146,9 @@ func (t *Tree) add(c *Change) (attached bool) {
 }
 
 func (t *Tree) attach(c *Change, newEl bool) {
+	if _, ok := t.attached[c.Id]; ok {
+		return
+	}
 	t.attached[c.Id] = c
 	if !newEl {
 		delete(t.unAttached, c.Id)

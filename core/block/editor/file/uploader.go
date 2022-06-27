@@ -281,7 +281,9 @@ func (u *uploader) Upload(ctx context.Context) (result UploadResult) {
 	if u.block != nil {
 		u.fileStyle = u.block.Model().GetFile().GetStyle()
 	}
-	u.fileType = u.detectType(buf)
+	if !u.forceType {
+		u.fileType = u.detectType(buf)
+	}
 	if u.fileStyle == model.BlockContentFile_Auto {
 		if u.fileType == model.BlockContentFile_File || u.fileType == model.BlockContentFile_None {
 			u.fileStyle = model.BlockContentFile_Link
