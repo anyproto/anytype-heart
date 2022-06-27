@@ -2,8 +2,6 @@ package subscription
 
 import (
 	"fmt"
-	"github.com/anytypeio/go-anytype-middleware/core/anytype/config"
-	"github.com/anytypeio/go-anytype-middleware/util/files"
 	"sync"
 	"time"
 
@@ -55,8 +53,6 @@ type subscription interface {
 }
 
 type service struct {
-	conf *config.Config
-
 	cache         *cache
 	ds            *dependencyService
 	subscriptions map[string]subscription
@@ -70,7 +66,6 @@ type service struct {
 }
 
 func (s *service) Init(a *app.App) (err error) {
-	s.conf = a.MustComponent(config.CName).(*config.Config)
 	s.cache = newCache()
 	s.ds = newDependencyService(s)
 	s.subscriptions = make(map[string]subscription)
@@ -102,10 +97,6 @@ func (s *service) Search(req pb.RpcObjectSearchSubscribeRequest) (resp *pb.RpcOb
 		Filters: req.Filters,
 		Sorts:   req.Sorts,
 		Limit:   int(req.Limit),
-	}
-	cfg := config.ConfigRequired{}
-	if err := files.GetFileConfig(s.conf.GetConfigPath(), &cfg); err != nil {
-		log.Errorf("fail to get config from file: %+v", err)
 	}
 
 	f, err := database.NewFilters(q, nil, time.Now().Location())
