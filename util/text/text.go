@@ -1,6 +1,9 @@
 package text
 
 import (
+	"crypto/md5"
+	"fmt"
+	"strings"
 	"unicode"
 	"unicode/utf8"
 )
@@ -32,4 +35,10 @@ func Truncate(text string, length int) string {
 		}
 	}
 	return text
+}
+
+func SliceHash(keys []string) string {
+	s := strings.Join(keys, "_")
+	sum := md5.Sum([]byte(s))
+	return fmt.Sprintf("%x", sum)
 }

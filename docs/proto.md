@@ -8552,7 +8552,7 @@ Deletes the object, keys from the local store and unsubscribe from remote change
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| id | [string](#string) | repeated |  |
+| ids | [string](#string) | repeated |  |
 
 
 

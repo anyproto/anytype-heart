@@ -3,6 +3,7 @@ package core
 import (
 	"errors"
 	"fmt"
+	"github.com/anytypeio/go-anytype-middleware/util/text"
 	"github.com/anytypeio/go-naturaldate/v2"
 	"github.com/globalsign/mgo/bson"
 	"sort"
@@ -335,7 +336,45 @@ func (mw *Middleware) ObjectRelationSearchDistinct(req *pb.RpcObjectRelationSear
 			return obI.Time().Unix() < obJ.Time().Unix()
 		})
 	case model.RelationFormat_tag:
-		// TODO
+		records, _, err := store.Query(nil, database.Query{
+			Filters:          []*model.BlockContentDataviewFilter{
+				{RelationKey: "isDeleted", Condition: model.BlockContentDataviewFilter_Equal},
+				{RelationKey: "isArchived", Condition: model.BlockContentDataviewFilter_Equal},
+				{RelationKey: "type", Condition: model.BlockContentDataviewFilter_NotIn, Value: pbtypes.StringList([]string{
+					"_otfile",
+					"_otimage",
+					"_otvideo",
+					"_otaudio",
+				})},
+			},
+		})
+
+		if err != nil {
+			return errResponse(err)
+		}
+
+		uniqMap := make(map[string]bool)
+		for _, v := range records {
+			if v.Details.Fields["tag"] != nil {
+				tags := make([]string, 0)
+				for _, value := range v.Details.Fields["tag"].GetListValue().GetValues() {
+					tags = append(tags, value.GetStringValue())
+				}
+				sort.Strings(tags)
+				hash := text.SliceHash(tags)
+				if !uniqMap[hash] {
+					uniqMap[hash] = true
+					groups = append(groups, &pb.RpcObjectRelationSearchDistinctResponseGroup{
+						Id: hash,
+						Value: &pb.RpcObjectRelationSearchDistinctResponseGroupValueOfTag{
+							Tag: &pb.RpcObjectRelationSearchDistinctResponseTag{
+								Ids: tags,
+							}},
+					})
+				}
+			}
+		}
+
 	case model.RelationFormat_date:
 		// TODO
 	case model.RelationFormat_checkbox:
